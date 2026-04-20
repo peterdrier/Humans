@@ -81,7 +81,7 @@ public class DevSeedController : HumansControllerBase
     [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
     [HttpPost("dashboard")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SeedDashboard(CancellationToken cancellationToken)
+    public async Task<IActionResult> SeedDashboard(bool reset, CancellationToken cancellationToken)
     {
         // Stricter than IsDevSeedEnabled: dashboard seed runs only on local Development
         // (ASPNETCORE_ENVIRONMENT=Development), never on QA / preview / prod.
@@ -99,14 +99,25 @@ public class DevSeedController : HumansControllerBase
         try
         {
             var seeder = _serviceProvider.GetRequiredService<DevelopmentDashboardSeeder>();
+
+            DashboardResetResult? resetResult = null;
+            if (reset)
+            {
+                resetResult = await seeder.ResetAsync(cancellationToken);
+            }
+
             var result = await seeder.SeedAsync(cancellationToken);
+
             if (result.AlreadySeeded)
             {
-                SetSuccess("Dashboard demo data already present — no changes.");
+                SetSuccess("Dashboard demo data already present — no changes. Pass ?reset=true to reseed.");
             }
             else
             {
-                SetSuccess($"Dashboard demo seeded: {result.TeamsCreated} teams, {result.UsersCreated} humans, {result.ShiftsCreated} shifts, {result.SignupsCreated} signups, {result.TicketOrdersCreated} ticket orders.");
+                var resetNote = resetResult is null
+                    ? ""
+                    : $"Reset removed {resetResult.EventsDeleted} events, {resetResult.TeamsDeleted} teams, {resetResult.UsersDeleted} humans, {resetResult.TicketOrdersDeleted} ticket orders. ";
+                SetSuccess($"{resetNote}Dashboard demo seeded: {result.TeamsCreated} teams, {result.UsersCreated} humans, {result.ShiftsCreated} shifts, {result.SignupsCreated} signups, {result.TicketOrdersCreated} ticket orders.");
             }
         }
         catch (Exception ex)

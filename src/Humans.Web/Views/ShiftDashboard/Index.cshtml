@@ -24,6 +24,10 @@
                     @Html.AntiForgeryToken()
                     <button type="submit" class="btn btn-sm btn-outline-warning">Seed dashboard (dev)</button>
                 </form>
+                <form method="post" action="/dev/seed/dashboard?reset=true" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Reset &amp; reseed (dev)</button>
+                </form>
             }
             <span class="badge bg-secondary fs-6">@string.Format(Localizer["ShiftDash_ShiftsCount"].Value, Model.Shifts.Count)</span>
         </div>

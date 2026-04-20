@@ -15,6 +15,12 @@ public sealed record DashboardSeedResult(
     int SignupsCreated,
     int TicketOrdersCreated);
 
+public sealed record DashboardResetResult(
+    int EventsDeleted,
+    int TeamsDeleted,
+    int UsersDeleted,
+    int TicketOrdersDeleted);
+
 /// <summary>
 /// Seeds deterministic-ish demo data for the volunteer coordinator dashboard.
 /// Gated to IsDevelopment() only by the calling controller. Not safe to run in QA/prod.
@@ -376,6 +382,71 @@ public sealed class DevelopmentDashboardSeeder
             ShiftsCreated: shifts.Count,
             SignupsCreated: signupsCreated,
             TicketOrdersCreated: ticketOrdersCreated);
+    }
+
+    /// <summary>
+    /// Deletes all data previously created by <see cref="SeedAsync"/>: the seeded
+    /// event (with cascading rotas/shifts/signups), dev teams (slug prefix "dev-"),
+    /// dev users (email pattern "dev-human-*@seed.local"), and their DEV-* ticket
+    /// orders. Safe to call on a DB where no seed has ever run.
+    /// </summary>
+    public async Task<DashboardResetResult> ResetAsync(CancellationToken cancellationToken)
+    {
+        // Order matters: delete rows that reference others first to avoid FK violations
+        // on databases without ON DELETE CASCADE configured for every edge.
+        var devUserEmails = await _dbContext.Users
+            .Where(u => u.Email != null && u.Email.EndsWith("@seed.local") && u.Email.StartsWith("dev-human-"))
+            .Select(u => u.Id)
+            .ToListAsync(cancellationToken);
+
+        var devTeamIds = await _dbContext.Teams
+            .Where(t => t.Slug.StartsWith("dev-"))
+            .Select(t => t.Id)
+            .ToListAsync(cancellationToken);
+
+        var seededEventIds = await _dbContext.EventSettings
+            .Where(e => e.EventName == SeededEventName)
+            .Select(e => e.Id)
+            .ToListAsync(cancellationToken);
+
+        // Signups reference Users + Shifts; delete first.
+        await _dbContext.ShiftSignups
+            .Where(s => devUserEmails.Contains(s.UserId) || s.Shift.Rota.Team.Slug.StartsWith("dev-"))
+            .ExecuteDeleteAsync(cancellationToken);
+
+        await _dbContext.Shifts
+            .Where(s => s.Rota.Team.Slug.StartsWith("dev-"))
+            .ExecuteDeleteAsync(cancellationToken);
+
+        await _dbContext.Rotas
+            .Where(r => r.Team.Slug.StartsWith("dev-") || seededEventIds.Contains(r.EventSettingsId))
+            .ExecuteDeleteAsync(cancellationToken);
+
+        await _dbContext.TeamMembers
+            .Where(tm => devTeamIds.Contains(tm.TeamId) || devUserEmails.Contains(tm.UserId))
+            .ExecuteDeleteAsync(cancellationToken);
+
+        var ticketsDeleted = await _dbContext.TicketOrders
+            .Where(t => t.VendorOrderId.StartsWith("DEV-") || (t.MatchedUserId != null && devUserEmails.Contains(t.MatchedUserId.Value)))
+            .ExecuteDeleteAsync(cancellationToken);
+
+        var usersDeleted = await _dbContext.Users
+            .Where(u => devUserEmails.Contains(u.Id))
+            .ExecuteDeleteAsync(cancellationToken);
+
+        var teamsDeleted = await _dbContext.Teams
+            .Where(t => t.Slug.StartsWith("dev-"))
+            .ExecuteDeleteAsync(cancellationToken);
+
+        var eventsDeleted = await _dbContext.EventSettings
+            .Where(e => e.EventName == SeededEventName)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        _logger.LogInformation(
+            "Dashboard seed reset complete: {Events} events, {Teams} teams, {Users} users, {Tickets} ticket orders deleted.",
+            eventsDeleted, teamsDeleted, usersDeleted, ticketsDeleted);
+
+        return new DashboardResetResult(eventsDeleted, teamsDeleted, usersDeleted, ticketsDeleted);
     }
 
     private static string SlugFor(string name)
