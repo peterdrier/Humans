@@ -123,8 +123,11 @@ public class CachingProfileServiceTests
         var profile = new Profile { Id = profileId, UserId = userId, BurnerName = "Same burner" };
         profile.VolunteerHistory.Add(new VolunteerHistoryEntry
         {
-            Id = Guid.NewGuid(), ProfileId = profileId,
-            Date = new LocalDate(2025, 3, 1), EventName = "Nowhere 2025", Description = "Sound crew",
+            Id = Guid.NewGuid(),
+            ProfileId = profileId,
+            Date = new LocalDate(2025, 3, 1),
+            EventName = "Nowhere 2025",
+            Description = "Sound crew",
         });
         var user = new User { Id = userId, DisplayName = "Name" };
 
