@@ -66,7 +66,7 @@ There's a hard cap on how many people are on site during set-up and pre-event. E
 
 Reach Volunteer Coordination at [volunteers@nobodies.team](mailto:volunteers@nobodies.team) (Frank, Nurse, Hardcastle).
 
-## As a Board member / Admin
+## As a Board member / Admin (NoInfo Admin)
 
 Admins get the site-wide shift view and can approve, refuse, bail, or voluntell across any department. **NoInfoAdmin** has the same signup powers but can't create or edit rotas and shifts. **VolunteerCoordinator** has full coordinator capabilities across every department.
 

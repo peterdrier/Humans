@@ -59,7 +59,7 @@ Every edit is audit-logged. You cannot change the category's allocated amount or
 
 Each category shows budget vs actual with the unallocated remainder. Auto-generated line items (weekly ticket-sales rollups, for example) are marked **Auto** on a lighter row — don't edit those by hand; they are overwritten on the next sync.
 
-## As a Board member / Admin
+## As a Board member / Admin (Finance Admin)
 
 (assumes Coordinator knowledge)
 
