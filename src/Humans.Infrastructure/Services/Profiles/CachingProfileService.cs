@@ -19,7 +19,7 @@ namespace Humans.Infrastructure.Services.Profiles;
 /// <see cref="ValueTask{TResult}"/>; writes reload the affected entry from
 /// repositories via <c>RefreshEntryAsync</c>.
 /// </summary>
-public sealed class CachingProfileService : IProfileService
+public sealed class CachingProfileService : IProfileService, IFullProfileInvalidator
 {
     // Phase 3 cache-collapse note:
     //
@@ -208,6 +208,14 @@ public sealed class CachingProfileService : IProfileService
     }
 
     public Task InvalidateCacheAsync(Guid userId, CancellationToken ct = default) =>
+        RefreshEntryAsync(userId, ct);
+
+    // ==========================================================================
+    // IFullProfileInvalidator implementation
+    // ==========================================================================
+
+    /// <inheritdoc cref="IFullProfileInvalidator.InvalidateAsync"/>
+    public Task InvalidateAsync(Guid userId, CancellationToken ct = default) =>
         RefreshEntryAsync(userId, ct);
 
     // ==========================================================================

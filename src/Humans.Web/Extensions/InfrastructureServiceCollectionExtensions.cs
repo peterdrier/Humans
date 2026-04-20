@@ -257,6 +257,16 @@ public static class InfrastructureServiceCollectionExtensions
         // Wrap IProfileService with caching decorator via Scrutor
         services.Decorate<IProfileService, CachingProfileService>();
 
+        // CRITICAL: IFullProfileInvalidator must resolve to the same decorator instance
+        // that backs IProfileService. This factory delegates to the decorated
+        // IProfileService registration (above) — do not register a fresh
+        // CachingProfileService here, because the decorator holds cache state in a
+        // private ConcurrentDictionary that would otherwise diverge.
+        // Note: CachingProfileService is Scoped (same lifetime as IProfileService).
+        // Within a request scope both interfaces share the same instance.
+        services.AddScoped<IFullProfileInvalidator>(sp =>
+            (IFullProfileInvalidator)sp.GetRequiredService<IProfileService>());
+
         // Startup warmup: load profiles into the store before serving requests
         services.AddHostedService<ProfileStoreWarmupHostedService>();
 

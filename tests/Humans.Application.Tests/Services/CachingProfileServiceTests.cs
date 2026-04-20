@@ -161,6 +161,62 @@ public class CachingProfileServiceTests
     }
 
     [Fact]
+    public async Task InvalidateAsync_ExistingUser_ReloadsEntry()
+    {
+        var userId = Guid.NewGuid();
+        var profile = new Profile { Id = Guid.NewGuid(), UserId = userId, BurnerName = "After" };
+        var user = new User { Id = userId, DisplayName = "Name" };
+
+        _profileRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(profile);
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(user);
+        _userEmailRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmail>());
+
+        var sut = CreateSut();
+
+        // Prime with a stale entry
+        var stale = SampleFullProfile(userId) with { BurnerName = "Before" };
+        _inner.GetFullProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<FullProfile?>(stale));
+        await sut.GetFullProfileAsync(userId);
+
+        // Invalidate via the new interface
+        await ((IFullProfileInvalidator)sut).InvalidateAsync(userId);
+
+        // Next read returns the fresh value from dict
+        var fresh = await sut.GetFullProfileAsync(userId);
+        fresh!.BurnerName.Should().Be("After");
+        await _inner.Received(1).GetFullProfileAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task InvalidateAsync_DeletedUser_RemovesEntry()
+    {
+        var userId = Guid.NewGuid();
+        _profileRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns((Profile?)null);
+
+        var sut = CreateSut();
+
+        // Prime the dict
+        _inner.GetFullProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<FullProfile?>(SampleFullProfile(userId)));
+        await sut.GetFullProfileAsync(userId);
+
+        // Invalidate — repo returns null, so entry is removed
+        await ((IFullProfileInvalidator)sut).InvalidateAsync(userId);
+
+        // Next read sees empty dict, delegates to inner
+        _inner.GetFullProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<FullProfile?>((FullProfile?)null));
+        var result = await sut.GetFullProfileAsync(userId);
+        result.Should().BeNull();
+        await _inner.Received(2).GetFullProfileAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task SaveProfileLanguagesAsync_RefreshesDictEntry_WhenCached()
     {
         var userId = Guid.NewGuid();
