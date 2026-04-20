@@ -1,10 +1,15 @@
 @model Humans.Web.Models.ShiftDashboardViewModel
+@using Humans.Application.Enums
+@using Humans.Domain.Enums
 @using Humans.Web.Controllers
 
 @{
     ViewData["Title"] = Localizer["ShiftDash_Title"].Value;
     var searchUrl = Url.Action(nameof(ShiftDashboardController.SearchVolunteers), "ShiftDashboard");
     var voluntellUrl = Url.Action(nameof(ShiftDashboardController.Voluntell), "ShiftDashboard");
+
+    string PeriodBtnClass(ShiftPeriod? p) =>
+        Model.SelectedPeriod == p ? "btn btn-primary active" : "btn btn-outline-secondary";
 }
 
 <div class="container py-4">
@@ -35,18 +40,61 @@
 
     <vc:temp-data-alerts />
 
+    <div class="card mb-4">
+        <div class="card-body py-2 d-flex align-items-center flex-wrap gap-2">
+            <span class="text-muted small me-2">@Localizer["ShiftDash_PeriodFilter_Label"]</span>
+            <div class="btn-group btn-group-sm" role="group">
+                <a asp-action="Index"
+                   asp-route-departmentId="@Model.SelectedDepartmentId"
+                   asp-route-rotaId="@Model.SelectedRotaId"
+                   asp-route-date="@Model.SelectedDate"
+                   asp-route-trendWindow="@Model.TrendWindow"
+                   class="@PeriodBtnClass(null)">@Localizer["ShiftDash_PeriodFilter_All"]</a>
+                <a asp-action="Index"
+                   asp-route-departmentId="@Model.SelectedDepartmentId"
+                   asp-route-rotaId="@Model.SelectedRotaId"
+                   asp-route-date="@Model.SelectedDate"
+                   asp-route-trendWindow="@Model.TrendWindow"
+                   asp-route-period="@ShiftPeriod.Build"
+                   class="@PeriodBtnClass(ShiftPeriod.Build)">@Localizer["ShiftDash_PeriodFilter_BuildDays"]</a>
+                <a asp-action="Index"
+                   asp-route-departmentId="@Model.SelectedDepartmentId"
+                   asp-route-rotaId="@Model.SelectedRotaId"
+                   asp-route-date="@Model.SelectedDate"
+                   asp-route-trendWindow="@Model.TrendWindow"
+                   asp-route-period="@ShiftPeriod.Event"
+                   class="@PeriodBtnClass(ShiftPeriod.Event)">@Localizer["ShiftDash_PeriodFilter_EventShifts"]</a>
+                <a asp-action="Index"
+                   asp-route-departmentId="@Model.SelectedDepartmentId"
+                   asp-route-rotaId="@Model.SelectedRotaId"
+                   asp-route-date="@Model.SelectedDate"
+                   asp-route-trendWindow="@Model.TrendWindow"
+                   asp-route-period="@ShiftPeriod.Strike"
+                   class="@PeriodBtnClass(ShiftPeriod.Strike)">@Localizer["ShiftDash_PeriodFilter_Strike"]</a>
+            </div>
+        </div>
+    </div>
+
     @if (Model.Overview is not null)
     {
         @await Html.PartialAsync("_OverviewCounters", Model.Overview)
         @await Html.PartialAsync("_DepartmentsTable", Model.Overview.Departments)
     }
     @await Html.PartialAsync("_CoordinatorActivity", Model.CoordinatorActivity)
-    @await Html.PartialAsync("_TrendsChart", (Model.Trends, Model.TrendWindow))
+    @await Html.PartialAsync("_TrendsChart", (Model.Trends, Model.TrendWindow, Model.SelectedPeriod))
 
     @* Filter bar *@
     <div class="card mb-4">
         <div class="card-body">
             <form method="get" class="row g-2 align-items-end">
+                @if (Model.SelectedPeriod.HasValue)
+                {
+                    <input type="hidden" name="period" value="@Model.SelectedPeriod.Value" />
+                }
+                @if (Model.TrendWindow != TrendWindow.Last30Days)
+                {
+                    <input type="hidden" name="trendWindow" value="@Model.TrendWindow" />
+                }
                 <div class="col-md-3">
                     <label class="form-label">@Localizer["ShiftDash_Date"]</label>
                     <input type="date" name="date" value="@Model.SelectedDate" class="form-control" />

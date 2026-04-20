@@ -151,7 +151,7 @@ public interface IShiftManagementService
     /// </summary>
     Task<IReadOnlyList<UrgentShift>> GetUrgentShiftsAsync(
         Guid eventSettingsId, int? limit = null,
-        Guid? departmentId = null, LocalDate? date = null);
+        Guid? departmentId = null, LocalDate? date = null, ShiftPeriod? period = null);
 
     /// <summary>
     /// Gets all active shifts for browse page, with optional filtering. Includes full shifts.
@@ -174,14 +174,14 @@ public interface IShiftManagementService
     /// Gets per-day staffing data for all periods (set-up, event, strike).
     /// </summary>
     Task<IReadOnlyList<DailyStaffingData>> GetStaffingDataAsync(
-        Guid eventSettingsId, Guid? departmentId = null);
+        Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null);
 
     /// <summary>
     /// Gets per-day staffing hours across all periods, grouped by shift priority.
     /// Hours = shift duration × MaxVolunteers. All-day shifts count as 8 hours per slot.
     /// </summary>
     Task<IReadOnlyList<DailyStaffingHours>> GetStaffingHoursAsync(
-        Guid eventSettingsId, Guid? departmentId = null);
+        Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null);
 
     /// <summary>
     /// Gets shifts summary for a department. Returns null if no rotas.
@@ -206,17 +206,21 @@ public interface IShiftManagementService
     /// <summary>
     /// Gets the full coordinator-dashboard overview (counters + per-department staffing rows with subgroup drill-down).
     /// </summary>
-    Task<DashboardOverview> GetDashboardOverviewAsync(Guid eventSettingsId);
+    Task<DashboardOverview> GetDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period = null);
 
     /// <summary>
     /// Gets per-team coordinator activity, scoped to teams with at least one pending signup.
+    /// When <paramref name="period"/> is non-null, only signups on shifts in that period count.
     /// </summary>
-    Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(Guid eventSettingsId);
+    Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period = null);
 
     /// <summary>
     /// Gets daily trend points (signups, ticket sales, distinct logins) for the window.
+    /// Ticket sales and logins are unaffected by <paramref name="period"/>; the signups
+    /// series is scoped to shifts in that period when non-null.
     /// </summary>
-    Task<IReadOnlyList<DashboardTrendPoint>> GetDashboardTrendsAsync(Guid eventSettingsId, TrendWindow window);
+    Task<IReadOnlyList<DashboardTrendPoint>> GetDashboardTrendsAsync(
+        Guid eventSettingsId, TrendWindow window, ShiftPeriod? period = null);
 
     // === Shift Tags ===
 

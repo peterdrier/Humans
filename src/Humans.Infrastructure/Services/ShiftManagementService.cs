@@ -479,7 +479,7 @@ public class ShiftManagementService : IShiftManagementService
 
     public async Task<IReadOnlyList<UrgentShift>> GetUrgentShiftsAsync(
         Guid eventSettingsId, int? limit = null,
-        Guid? departmentId = null, LocalDate? date = null)
+        Guid? departmentId = null, LocalDate? date = null, ShiftPeriod? period = null)
     {
         var es = await _dbContext.EventSettings.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == eventSettingsId);
@@ -494,6 +494,15 @@ public class ShiftManagementService : IShiftManagementService
 
         if (departmentId.HasValue)
             query = query.Where(s => s.Rota.TeamId == departmentId.Value);
+
+        var eventEndOffset = es.EventEndOffset;
+        query = period switch
+        {
+            ShiftPeriod.Build => query.Where(s => s.DayOffset < 0),
+            ShiftPeriod.Event => query.Where(s => s.DayOffset >= 0 && s.DayOffset <= eventEndOffset),
+            ShiftPeriod.Strike => query.Where(s => s.DayOffset > eventEndOffset),
+            _ => query,
+        };
 
         if (date.HasValue)
         {
@@ -668,7 +677,7 @@ public class ShiftManagementService : IShiftManagementService
     // ============================================================
 
     public async Task<IReadOnlyList<DailyStaffingData>> GetStaffingDataAsync(
-        Guid eventSettingsId, Guid? departmentId = null)
+        Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null)
     {
         var es = await _dbContext.EventSettings.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == eventSettingsId);
@@ -676,11 +685,15 @@ public class ShiftManagementService : IShiftManagementService
 
         var tz = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
 
-        // All periods: Build [BuildStartOffset..-1], Event [0..EventEndOffset], Strike [EventEndOffset+1..StrikeEndOffset]
+        // Day offsets in the requested period (all if null):
+        //   Build [BuildStartOffset..-1], Event [0..EventEndOffset], Strike [EventEndOffset+1..StrikeEndOffset]
         var dayOffsets = new List<int>();
-        for (var d = es.BuildStartOffset; d < 0; d++) dayOffsets.Add(d);
-        for (var d = 0; d <= es.EventEndOffset; d++) dayOffsets.Add(d);
-        for (var d = es.EventEndOffset + 1; d <= es.StrikeEndOffset; d++) dayOffsets.Add(d);
+        if (period is null or ShiftPeriod.Build)
+            for (var d = es.BuildStartOffset; d < 0; d++) dayOffsets.Add(d);
+        if (period is null or ShiftPeriod.Event)
+            for (var d = 0; d <= es.EventEndOffset; d++) dayOffsets.Add(d);
+        if (period is null or ShiftPeriod.Strike)
+            for (var d = es.EventEndOffset + 1; d <= es.StrikeEndOffset; d++) dayOffsets.Add(d);
 
         if (dayOffsets.Count == 0) return [];
 
@@ -701,7 +714,7 @@ public class ShiftManagementService : IShiftManagementService
             var dayDate = es.GateOpeningDate.PlusDays(dayOffset);
             var dayStart = dayDate.AtStartOfDayInZone(tz).ToInstant();
             var dayEnd = dayDate.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
-            var period = dayOffset < 0 ? "Set-up" : dayOffset <= es.EventEndOffset ? "Event" : "Strike";
+            var periodLabel = dayOffset < 0 ? "Set-up" : dayOffset <= es.EventEndOffset ? "Event" : "Strike";
             var dateLabel = dayDate.DayOfWeek.ToString()[..3] + " " + dayDate.ToString("MMM d", null);
 
             var overlapping = shifts.Where(s =>
@@ -717,14 +730,14 @@ public class ShiftManagementService : IShiftManagementService
                 .SelectMany(s => s.ShiftSignups)
                 .Count(su => su.Status == SignupStatus.Confirmed);
 
-            results.Add(new DailyStaffingData(dayOffset, dateLabel, confirmedCount, totalSlots, minSlots, period));
+            results.Add(new DailyStaffingData(dayOffset, dateLabel, confirmedCount, totalSlots, minSlots, periodLabel));
         }
 
         return results;
     }
 
     public async Task<IReadOnlyList<DailyStaffingHours>> GetStaffingHoursAsync(
-        Guid eventSettingsId, Guid? departmentId = null)
+        Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null)
     {
         var es = await _dbContext.EventSettings.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == eventSettingsId);
@@ -733,9 +746,12 @@ public class ShiftManagementService : IShiftManagementService
         var tz = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
 
         var dayOffsets = new List<int>();
-        for (var d = es.BuildStartOffset; d < 0; d++) dayOffsets.Add(d);
-        for (var d = 0; d <= es.EventEndOffset; d++) dayOffsets.Add(d);
-        for (var d = es.EventEndOffset + 1; d <= es.StrikeEndOffset; d++) dayOffsets.Add(d);
+        if (period is null or ShiftPeriod.Build)
+            for (var d = es.BuildStartOffset; d < 0; d++) dayOffsets.Add(d);
+        if (period is null or ShiftPeriod.Event)
+            for (var d = 0; d <= es.EventEndOffset; d++) dayOffsets.Add(d);
+        if (period is null or ShiftPeriod.Strike)
+            for (var d = es.EventEndOffset + 1; d <= es.StrikeEndOffset; d++) dayOffsets.Add(d);
 
         if (dayOffsets.Count == 0) return [];
 
@@ -877,33 +893,40 @@ public class ShiftManagementService : IShiftManagementService
 
     private static readonly TimeSpan DashboardCacheTtl = TimeSpan.FromMinutes(5);
 
-    internal static string OverviewCacheKey(Guid eventId) => $"dashboard-overview:{eventId}";
-    internal static string CoordinatorActivityCacheKey(Guid eventId) => $"dashboard-coordinator-activity:{eventId}";
-    internal static string TrendsCacheKey(Guid eventId, TrendWindow window) => $"dashboard-trends:{eventId}:{window}";
+    internal static string OverviewCacheKey(Guid eventId, ShiftPeriod? period) =>
+        $"dashboard-overview:{eventId}:{period?.ToString() ?? "all"}";
+    internal static string CoordinatorActivityCacheKey(Guid eventId, ShiftPeriod? period) =>
+        $"dashboard-coordinator-activity:{eventId}:{period?.ToString() ?? "all"}";
+    internal static string TrendsCacheKey(Guid eventId, TrendWindow window, ShiftPeriod? period) =>
+        $"dashboard-trends:{eventId}:{window}:{period?.ToString() ?? "all"}";
 
-    public async Task<DashboardOverview> GetDashboardOverviewAsync(Guid eventSettingsId)
+    public async Task<DashboardOverview> GetDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period = null)
     {
-        var cached = await _cache.GetOrCreateAsync(OverviewCacheKey(eventSettingsId), async entry =>
+        var cached = await _cache.GetOrCreateAsync(OverviewCacheKey(eventSettingsId, period), async entry =>
         {
             entry.SlidingExpiration = DashboardCacheTtl;
-            return await ComputeDashboardOverviewAsync(eventSettingsId);
+            return await ComputeDashboardOverviewAsync(eventSettingsId, period);
         });
         return cached!;
     }
 
-    private async Task<DashboardOverview> ComputeDashboardOverviewAsync(Guid eventSettingsId)
+    private async Task<DashboardOverview> ComputeDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period)
     {
         var es = await _dbContext.EventSettings.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == eventSettingsId);
         if (es is null)
             return EmptyOverview();
 
-        var shifts = await _dbContext.Shifts.AsNoTracking()
+        var allShifts = await _dbContext.Shifts.AsNoTracking()
             .Include(s => s.Rota).ThenInclude(r => r.Team).ThenInclude(t => t.ParentTeam)
             .Where(s => s.Rota.EventSettingsId == eventSettingsId
                         && !s.AdminOnly
                         && s.Rota.IsVisibleToVolunteers)
             .ToListAsync();
+
+        var shifts = period is null
+            ? allShifts
+            : allShifts.Where(s => s.GetShiftPeriod(es) == period.Value).ToList();
 
         var shiftIds = shifts.Select(s => s.Id).ToList();
 
@@ -1076,29 +1099,50 @@ public class ShiftManagementService : IShiftManagementService
         return (total, filled, remaining, ToStaffing(ShiftPeriod.Build), ToStaffing(ShiftPeriod.Event), ToStaffing(ShiftPeriod.Strike));
     }
 
-    public async Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(Guid eventSettingsId)
+    public async Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period = null)
     {
-        var cached = await _cache.GetOrCreateAsync(CoordinatorActivityCacheKey(eventSettingsId), async entry =>
+        var cached = await _cache.GetOrCreateAsync(CoordinatorActivityCacheKey(eventSettingsId, period), async entry =>
         {
             entry.SlidingExpiration = DashboardCacheTtl;
-            return await ComputeCoordinatorActivityAsync(eventSettingsId);
+            return await ComputeCoordinatorActivityAsync(eventSettingsId, period);
         });
         return cached!;
     }
 
-    private async Task<IReadOnlyList<CoordinatorActivityRow>> ComputeCoordinatorActivityAsync(Guid eventSettingsId)
+    private async Task<IReadOnlyList<CoordinatorActivityRow>> ComputeCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period)
     {
+        // Need EventEndOffset for period filtering via DayOffset at the DB level.
+        int eventEndOffset = 0;
+        if (period is not null)
+        {
+            var es = await _dbContext.EventSettings.AsNoTracking()
+                .FirstOrDefaultAsync(e => e.Id == eventSettingsId);
+            if (es is null) return Array.Empty<CoordinatorActivityRow>();
+            eventEndOffset = es.EventEndOffset;
+        }
+
         // Pending signup counts per team (via rota.TeamId). Not deduped by SignupBlockId —
         // this count is the raw number of pending shift-signups that need attention.
-        var pendingCounts = await (
+        var pendingQuery =
             from rota in _dbContext.Rotas
             where rota.EventSettingsId == eventSettingsId
             join shift in _dbContext.Shifts on rota.Id equals shift.RotaId
             join signup in _dbContext.ShiftSignups on shift.Id equals signup.ShiftId
             where signup.Status == SignupStatus.Pending
-            group signup by rota.TeamId into g
-            select new { TeamId = g.Key, Count = g.Count() }
-        ).ToDictionaryAsync(x => x.TeamId, x => x.Count);
+            select new { rota.TeamId, shift.DayOffset };
+
+        pendingQuery = period switch
+        {
+            ShiftPeriod.Build => pendingQuery.Where(x => x.DayOffset < 0),
+            ShiftPeriod.Event => pendingQuery.Where(x => x.DayOffset >= 0 && x.DayOffset <= eventEndOffset),
+            ShiftPeriod.Strike => pendingQuery.Where(x => x.DayOffset > eventEndOffset),
+            _ => pendingQuery,
+        };
+
+        var pendingCounts = await pendingQuery
+            .GroupBy(x => x.TeamId)
+            .Select(g => new { TeamId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.TeamId, x => x.Count);
 
         if (pendingCounts.Count == 0)
             return Array.Empty<CoordinatorActivityRow>();
@@ -1192,17 +1236,19 @@ public class ShiftManagementService : IShiftManagementService
         }
     }
 
-    public async Task<IReadOnlyList<DashboardTrendPoint>> GetDashboardTrendsAsync(Guid eventSettingsId, TrendWindow window)
+    public async Task<IReadOnlyList<DashboardTrendPoint>> GetDashboardTrendsAsync(
+        Guid eventSettingsId, TrendWindow window, ShiftPeriod? period = null)
     {
-        var cached = await _cache.GetOrCreateAsync(TrendsCacheKey(eventSettingsId, window), async entry =>
+        var cached = await _cache.GetOrCreateAsync(TrendsCacheKey(eventSettingsId, window, period), async entry =>
         {
             entry.SlidingExpiration = DashboardCacheTtl;
-            return await ComputeDashboardTrendsAsync(eventSettingsId, window);
+            return await ComputeDashboardTrendsAsync(eventSettingsId, window, period);
         });
         return cached!;
     }
 
-    private async Task<IReadOnlyList<DashboardTrendPoint>> ComputeDashboardTrendsAsync(Guid eventSettingsId, TrendWindow window)
+    private async Task<IReadOnlyList<DashboardTrendPoint>> ComputeDashboardTrendsAsync(
+        Guid eventSettingsId, TrendWindow window, ShiftPeriod? period)
     {
         var es = await _dbContext.EventSettings.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == eventSettingsId);
@@ -1226,16 +1272,27 @@ public class ShiftManagementService : IShiftManagementService
         var startInstant = start.AtStartOfDayInZone(tz).ToInstant();
         var endInstant = today.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
 
-        // Signups created in window, scoped to this event's shifts.
-        var signupsInWindow = await (
+        // Signups created in window, scoped to this event's shifts. Period filter applies
+        // only to this series — ticket sales and logins are event-wide, not period-specific.
+        var eventEndOffset = es.EventEndOffset;
+        var signupsQuery =
             from su in _dbContext.ShiftSignups.AsNoTracking()
             join sh in _dbContext.Shifts.AsNoTracking() on su.ShiftId equals sh.Id
             join r in _dbContext.Rotas.AsNoTracking() on sh.RotaId equals r.Id
             where r.EventSettingsId == eventSettingsId
                   && su.CreatedAt >= startInstant
                   && su.CreatedAt < endInstant
-            select su.CreatedAt
-        ).ToListAsync();
+            select new { su.CreatedAt, sh.DayOffset };
+
+        signupsQuery = period switch
+        {
+            ShiftPeriod.Build => signupsQuery.Where(x => x.DayOffset < 0),
+            ShiftPeriod.Event => signupsQuery.Where(x => x.DayOffset >= 0 && x.DayOffset <= eventEndOffset),
+            ShiftPeriod.Strike => signupsQuery.Where(x => x.DayOffset > eventEndOffset),
+            _ => signupsQuery,
+        };
+
+        var signupsInWindow = await signupsQuery.Select(x => x.CreatedAt).ToListAsync();
 
         var ticketsInWindow = await _dbContext.TicketOrders.AsNoTracking()
             .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid

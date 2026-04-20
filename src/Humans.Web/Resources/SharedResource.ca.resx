@@ -1701,6 +1701,12 @@
   <data name="ShiftDash_Overview_StalePending" xml:space="preserve"><value>Pendents antics</value></data>
   <data name="ShiftDash_Overview_StaleSubline" xml:space="preserve"><value>pendents &gt; 3 dies</value></data>
 
+  <data name="ShiftDash_PeriodFilter_Label" xml:space="preserve"><value>Mostrant:</value></data>
+  <data name="ShiftDash_PeriodFilter_All" xml:space="preserve"><value>Tot</value></data>
+  <data name="ShiftDash_PeriodFilter_BuildDays" xml:space="preserve"><value>Dies de muntatge</value></data>
+  <data name="ShiftDash_PeriodFilter_EventShifts" xml:space="preserve"><value>Torns d'esdeveniment</value></data>
+  <data name="ShiftDash_PeriodFilter_Strike" xml:space="preserve"><value>Desmuntatge</value></data>
+
   <data name="ShiftDash_Departments_Title" xml:space="preserve"><value>Departaments</value></data>
   <data name="ShiftDash_Departments_SortNote" xml:space="preserve"><value>ordenats pel % més baix cobert primer</value></data>
   <data name="ShiftDash_Departments_Col_Department" xml:space="preserve"><value>Departament</value></data>

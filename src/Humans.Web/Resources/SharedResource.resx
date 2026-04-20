@@ -1719,6 +1719,12 @@
   <data name="ShiftDash_Overview_StalePending" xml:space="preserve"><value>Stale pending</value></data>
   <data name="ShiftDash_Overview_StaleSubline" xml:space="preserve"><value>pending &gt; 3 days</value></data>
 
+  <data name="ShiftDash_PeriodFilter_Label" xml:space="preserve"><value>Showing:</value></data>
+  <data name="ShiftDash_PeriodFilter_All" xml:space="preserve"><value>All</value></data>
+  <data name="ShiftDash_PeriodFilter_BuildDays" xml:space="preserve"><value>Build days</value></data>
+  <data name="ShiftDash_PeriodFilter_EventShifts" xml:space="preserve"><value>Event-time shifts</value></data>
+  <data name="ShiftDash_PeriodFilter_Strike" xml:space="preserve"><value>Strike</value></data>
+
   <data name="ShiftDash_Departments_Title" xml:space="preserve"><value>Departments</value></data>
   <data name="ShiftDash_Departments_SortNote" xml:space="preserve"><value>sorted by lowest fill % first</value></data>
   <data name="ShiftDash_Departments_Col_Department" xml:space="preserve"><value>Department</value></data>

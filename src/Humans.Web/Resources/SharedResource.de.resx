@@ -1699,6 +1699,12 @@
   <data name="ShiftDash_Overview_StalePending" xml:space="preserve"><value>Alte offene</value></data>
   <data name="ShiftDash_Overview_StaleSubline" xml:space="preserve"><value>offen &gt; 3 Tage</value></data>
 
+  <data name="ShiftDash_PeriodFilter_Label" xml:space="preserve"><value>Anzeige:</value></data>
+  <data name="ShiftDash_PeriodFilter_All" xml:space="preserve"><value>Alle</value></data>
+  <data name="ShiftDash_PeriodFilter_BuildDays" xml:space="preserve"><value>Aufbau-Tage</value></data>
+  <data name="ShiftDash_PeriodFilter_EventShifts" xml:space="preserve"><value>Veranstaltungsschichten</value></data>
+  <data name="ShiftDash_PeriodFilter_Strike" xml:space="preserve"><value>Abbau</value></data>
+
   <data name="ShiftDash_Departments_Title" xml:space="preserve"><value>Abteilungen</value></data>
   <data name="ShiftDash_Departments_SortNote" xml:space="preserve"><value>sortiert nach niedrigster Füllquote zuerst</value></data>
   <data name="ShiftDash_Departments_Col_Department" xml:space="preserve"><value>Abteilung</value></data>

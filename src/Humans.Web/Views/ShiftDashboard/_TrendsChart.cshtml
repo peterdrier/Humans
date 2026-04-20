@@ -1,12 +1,14 @@
 @using Humans.Application.DTOs
 @using Humans.Application.Enums
+@using Humans.Domain.Enums
 @using NodaTime
 @using NodaTime.Text
-@model (IReadOnlyList<DashboardTrendPoint> Points, TrendWindow Window)
+@model (IReadOnlyList<DashboardTrendPoint> Points, TrendWindow Window, ShiftPeriod? Period)
 
 @{
     var points = Model.Points;
     var window = Model.Window;
+    var period = Model.Period;
 
     var labelPattern = LocalDatePattern.Iso;
     var labels = points.Select(p => labelPattern.Format(p.Date)).ToArray();
@@ -38,7 +40,7 @@
         <div class="btn-group btn-group-sm" role="group">
             @foreach (var w in new[] { TrendWindow.Last7Days, TrendWindow.Last30Days, TrendWindow.Last90Days, TrendWindow.All })
             {
-                <a asp-action="Index" asp-route-trendWindow="@w" class="@ButtonClass(w)">@Label(w)</a>
+                <a asp-action="Index" asp-route-trendWindow="@w" asp-route-period="@period" class="@ButtonClass(w)">@Label(w)</a>
             }
         </div>
     </div>
