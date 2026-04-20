@@ -87,13 +87,6 @@ public interface IProfileService
     Task SaveCVEntriesAsync(Guid userId, IReadOnlyList<CVEntry> entries, CancellationToken ct = default);
 
     /// <summary>
-    /// Invalidates any cached profile data for the given user. Used by
-    /// cross-section services that modify profile-related data and need
-    /// to ensure the next read returns fresh results.
-    /// </summary>
-    Task InvalidateCacheAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
     /// Gets the languages associated with a profile, ordered by proficiency (descending) then language code.
     /// Returns an empty list if the profile does not exist.
     /// </summary>

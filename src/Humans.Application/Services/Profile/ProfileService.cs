@@ -579,13 +579,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         await _profileRepository.ReconcileCVEntriesAsync(profile.Id, entries, ct);
     }
 
-    public Task InvalidateCacheAsync(Guid userId, CancellationToken ct = default)
-    {
-        // No-op in the inner service — cache invalidation is handled
-        // by the CachingProfileService decorator.
-        return Task.CompletedTask;
-    }
-
     public Task<IReadOnlyList<ProfileLanguage>> GetProfileLanguagesAsync(
         Guid profileId, CancellationToken ct = default) =>
         _profileRepository.GetLanguagesAsync(profileId, ct);

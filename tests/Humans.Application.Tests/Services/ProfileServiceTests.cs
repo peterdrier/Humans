@@ -1230,18 +1230,6 @@ public class ProfileServiceTests : IDisposable
         result.Should().BeNull();
     }
 
-    // --- Cache behavior ---
-
-    [Fact]
-    public async Task InvalidateCacheAsync_DoesNotThrow()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserAsync(userId);
-
-        // Inner service is a no-op — should not throw
-        await _service.InvalidateCacheAsync(userId);
-    }
-
     // --- SaveCVEntriesAsync ---
 
     [Fact]

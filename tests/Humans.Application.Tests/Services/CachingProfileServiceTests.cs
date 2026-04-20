@@ -116,34 +116,6 @@ public class CachingProfileServiceTests
     }
 
     [Fact]
-    public async Task InvalidateAsync_DeletedProfile_RemovesEntryFromDict()
-    {
-        var userId = Guid.NewGuid();
-
-        // _profileRepository is NOT called during GetFullProfileAsync (the dict prime uses _inner).
-        // The first call to _profileRepository happens inside RefreshEntryAsync (called by
-        // InvalidateCacheAsync). Returning null there simulates a deleted profile.
-        _profileRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((Profile?)null);
-
-        var sut = CreateSut();
-
-        // Populate dict via _inner (does not touch _profileRepository)
-        _inner.GetFullProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<FullProfile?>(SampleFullProfile(userId)));
-        await sut.GetFullProfileAsync(userId);
-
-        // InvalidateCacheAsync triggers RefreshEntryAsync; profile is null → entry removed
-        await sut.InvalidateCacheAsync(userId);
-
-        // Next read: dict miss (entry was removed); _inner also returns null
-        _inner.GetFullProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<FullProfile?>((FullProfile?)null));
-        var result = await sut.GetFullProfileAsync(userId);
-        result.Should().BeNull();
-    }
-
-    [Fact]
     public async Task SaveCVEntriesAsync_RefreshesDictEntry()
     {
         var userId = Guid.NewGuid();

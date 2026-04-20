@@ -296,9 +296,6 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
             await RefreshEntryAsync(userId.Value, ct);
     }
 
-    public Task InvalidateCacheAsync(Guid userId, CancellationToken ct = default) =>
-        RefreshEntryAsync(userId, ct);
-
     // ==========================================================================
     // IFullProfileInvalidator implementation
     // ==========================================================================
