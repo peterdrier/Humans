@@ -435,7 +435,7 @@ This is the target. Existing code violates most of it. Migration is **per-domain
 - **2 stores** exist today (`ApplicationStore`, `ProfileStore`). Target: one per cached domain (~15–20).
 - **2 caching decorators** exist today (`CachingApplicationDecisionService`, `CachingProfileService`). Target: one per migrated service.
 - **Inline `IMemoryCache.GetOrCreateAsync`** still scattered across services. Governance and Profiles extracted invalidations to cross-cutting interfaces and the decorator pattern. Target: replaced by decorator + store pattern everywhere.
-- **Cross-domain navigation properties** (`TeamMember.User`, `CampLead.User`, etc.) are used freely today. **Governance entities** have been stripped. **Profile-section entities** (`Profile.User`, `UserEmail.User`, `CommunicationPreference.User`) are quarantined pending §15 Step 1 (#510) — annotated with QUARANTINE comments but not removed because ~25 consumer services still use them. Target: stripped at the entity boundary, FK-only.
+- **Cross-domain navigation properties** (`TeamMember.User`, `CampLead.User`, etc.) are used freely today. **Governance entities** and **Profile-section entities** (`Profile.User`, `UserEmail.User`, `CommunicationPreference.User`) have been stripped. Target: stripped at the entity boundary, FK-only.
 
 Controllers with direct DbContext access (violation of §2a, tracked separately):
 - `AdminController`, `ProfileController`, `GoogleController`, `DevLoginController` (dev-only, low priority).
