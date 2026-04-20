@@ -1162,6 +1162,73 @@ public class ProfileServiceTests : IDisposable
         results.Should().BeEmpty();
     }
 
+    // --- GetFullProfileAsync ---
+
+    [Fact]
+    public async Task GetFullProfileAsync_ReturnsStitchedProjection_WhenProfileExists()
+    {
+        var userId = Guid.NewGuid();
+        var profileId = Guid.NewGuid();
+
+        var user = await SeedUserAsync(userId, displayName: "Real Name", profilePictureUrl: "https://img");
+        _dbContext.Profiles.Add(new Profile
+        {
+            Id = profileId,
+            UserId = userId,
+            BurnerName = "Burner",
+            Bio = "Bio text",
+            City = "Madrid",
+            IsApproved = true,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant(),
+        });
+        await _dbContext.SaveChangesAsync();
+
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+
+        var result = await _service.GetFullProfileAsync(userId);
+
+        result.Should().NotBeNull();
+        result!.UserId.Should().Be(userId);
+        result.DisplayName.Should().Be("Real Name");
+        result.ProfilePictureUrl.Should().Be("https://img");
+        result.ProfileId.Should().Be(profileId);
+        result.BurnerName.Should().Be("Burner");
+        result.City.Should().Be("Madrid");
+        result.IsApproved.Should().BeTrue();
+        result.CVEntries.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetFullProfileAsync_ReturnsNull_WhenProfileMissing()
+    {
+        var userId = Guid.NewGuid();
+
+        var result = await _service.GetFullProfileAsync(userId);
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetFullProfileAsync_ReturnsNull_WhenUserMissing()
+    {
+        // Seed a profile but no user. _userService.GetByIdAsync is an NSubstitute
+        // default and returns null when unstubbed, exercising the second null guard.
+        var userId = Guid.NewGuid();
+        _dbContext.Profiles.Add(new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant(),
+        });
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetFullProfileAsync(userId);
+
+        result.Should().BeNull();
+    }
+
     // --- Cache behavior ---
 
     [Fact]
@@ -1176,14 +1243,16 @@ public class ProfileServiceTests : IDisposable
 
     // --- Helpers ---
 
-    private async Task<User> SeedUserAsync(Guid userId)
+    private async Task<User> SeedUserAsync(Guid userId,
+        string displayName = "Test User", string? profilePictureUrl = null)
     {
         var user = new User
         {
             Id = userId,
-            DisplayName = "Test User",
+            DisplayName = displayName,
             UserName = $"test-{userId}@test.com",
             Email = $"test-{userId}@test.com",
+            ProfilePictureUrl = profilePictureUrl,
             PreferredLanguage = "en"
         };
         _dbContext.Users.Add(user);

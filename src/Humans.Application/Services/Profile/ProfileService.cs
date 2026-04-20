@@ -90,6 +90,18 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         return await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
     }
 
+    public async ValueTask<FullProfile?> GetFullProfileAsync(Guid userId, CancellationToken ct = default)
+    {
+        // GetByUserIdReadOnlyAsync includes VolunteerHistory; GetByUserIdAsync does not.
+        var profile = await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
+        if (profile is null) return null;
+
+        var user = await _userService.GetByIdAsync(userId, ct);
+        if (user is null) return null;
+
+        return FullProfile.Create(profile, user);
+    }
+
     public async Task<IReadOnlyDictionary<Guid, Domain.Entities.Profile>> GetByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
         await _profileRepository.GetByUserIdsAsync(userIds, ct);

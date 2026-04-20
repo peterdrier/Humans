@@ -71,6 +71,9 @@ public sealed class CachingProfileService : IProfileService
         return profile;
     }
 
+    public ValueTask<FullProfile?> GetFullProfileAsync(Guid userId, CancellationToken ct = default) =>
+        _inner.GetFullProfileAsync(userId, ct);
+
     public Task<IReadOnlyDictionary<Guid, Profile>> GetByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
         _inner.GetByUserIdsAsync(userIds, ct);

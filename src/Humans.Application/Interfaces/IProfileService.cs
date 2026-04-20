@@ -11,6 +11,14 @@ public interface IProfileService
     Task<Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns the denormalized <see cref="FullProfile"/> projection for the
+    /// given user, stitched from Profile + User + CV entries. The caching
+    /// decorator serves dict hits synchronously; the base implementation loads
+    /// from repositories each call.
+    /// </summary>
+    ValueTask<FullProfile?> GetFullProfileAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// Batched profile fetch keyed by user id. Missing users are absent
     /// from the returned dictionary. Used by cross-section services that
     /// need to stitch profile slices in memory instead of pulling them
