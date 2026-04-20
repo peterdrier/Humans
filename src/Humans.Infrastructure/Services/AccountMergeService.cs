@@ -20,7 +20,7 @@ public class AccountMergeService : IAccountMergeService, IUserDataContributor
 {
     private readonly HumansDbContext _dbContext;
     private readonly IAuditLogService _auditLogService;
-    private readonly IProfileService _profileService;
+    private readonly IFullProfileInvalidator _fullProfileInvalidator;
     private readonly ITeamService _teamService;
     private readonly ILogger<AccountMergeService> _logger;
     private readonly IClock _clock;
@@ -28,14 +28,14 @@ public class AccountMergeService : IAccountMergeService, IUserDataContributor
     public AccountMergeService(
         HumansDbContext dbContext,
         IAuditLogService auditLogService,
-        IProfileService profileService,
+        IFullProfileInvalidator fullProfileInvalidator,
         ITeamService teamService,
         ILogger<AccountMergeService> logger,
         IClock clock)
     {
         _dbContext = dbContext;
         _auditLogService = auditLogService;
-        _profileService = profileService;
+        _fullProfileInvalidator = fullProfileInvalidator;
         _teamService = teamService;
         _logger = logger;
         _clock = clock;
@@ -152,7 +152,7 @@ public class AccountMergeService : IAccountMergeService, IUserDataContributor
         await _dbContext.SaveChangesAsync(ct);
 
         // Invalidate caches
-        await _profileService.InvalidateCacheAsync(sourceUser.Id, ct);
+        await _fullProfileInvalidator.InvalidateAsync(sourceUser.Id, ct);
         _teamService.RemoveMemberFromAllTeamsCache(sourceUser.Id);
     }
 

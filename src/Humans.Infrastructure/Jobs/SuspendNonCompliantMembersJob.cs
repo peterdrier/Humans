@@ -22,7 +22,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
     private readonly INotificationService _notificationService;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IAuditLogService _auditLogService;
-    private readonly IProfileService _profileService;
+    private readonly IFullProfileInvalidator _fullProfileInvalidator;
     private readonly ITeamService _teamService;
     private readonly IMemoryCache _cache;
     private readonly IHumansMetrics _metrics;
@@ -36,7 +36,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
         INotificationService notificationService,
         IGoogleSyncService googleSyncService,
         IAuditLogService auditLogService,
-        IProfileService profileService,
+        IFullProfileInvalidator fullProfileInvalidator,
         ITeamService teamService,
         IMemoryCache cache,
         IHumansMetrics metrics,
@@ -49,7 +49,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
         _notificationService = notificationService;
         _googleSyncService = googleSyncService;
         _auditLogService = auditLogService;
-        _profileService = profileService;
+        _fullProfileInvalidator = fullProfileInvalidator;
         _teamService = teamService;
         _cache = cache;
         _metrics = metrics;
@@ -176,7 +176,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
 
                 foreach (var suspendedUser in users.Where(u => suspendedUserIds.Contains(u.Id)))
                 {
-                    await _profileService.InvalidateCacheAsync(suspendedUser.Id, cancellationToken);
+                    await _fullProfileInvalidator.InvalidateAsync(suspendedUser.Id, cancellationToken);
                     _cache.InvalidateUserProfile(suspendedUser.Id);
                     _cache.InvalidateRoleAssignmentClaims(suspendedUser.Id);
                     _cache.InvalidateShiftAuthorization(suspendedUser.Id);

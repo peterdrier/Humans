@@ -24,7 +24,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
     private readonly INotificationService _notificationService;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IAuditLogService _auditLogService;
-    private readonly IProfileService _profileService;
+    private readonly IFullProfileInvalidator _fullProfileInvalidator;
     private readonly ITeamService _teamService;
     private readonly IMemoryCache _cache;
     private readonly HumansMetricsService _metrics;
@@ -45,7 +45,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         _notificationService = Substitute.For<INotificationService>();
         _googleSyncService = Substitute.For<IGoogleSyncService>();
         _auditLogService = Substitute.For<IAuditLogService>();
-        _profileService = Substitute.For<IProfileService>();
+        _fullProfileInvalidator = Substitute.For<IFullProfileInvalidator>();
         _teamService = Substitute.For<ITeamService>();
         _cache = new MemoryCache(new MemoryCacheOptions());
         _clock = new FakeClock(Now);
@@ -57,7 +57,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         _job = new SuspendNonCompliantMembersJob(
             _dbContext, _membershipCalculator, _emailService,
             _notificationService, _googleSyncService, _auditLogService,
-            _profileService, _teamService, _cache, _metrics, logger, _clock);
+            _fullProfileInvalidator, _teamService, _cache, _metrics, logger, _clock);
     }
 
     public void Dispose()
@@ -234,7 +234,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
 
         await _job.ExecuteAsync();
 
-        await _profileService.Received(1).InvalidateCacheAsync(user.Id, Arg.Any<CancellationToken>());
+        await _fullProfileInvalidator.Received(1).InvalidateAsync(user.Id, Arg.Any<CancellationToken>());
         _teamService.Received(1).RemoveMemberFromAllTeamsCache(user.Id);
     }
 

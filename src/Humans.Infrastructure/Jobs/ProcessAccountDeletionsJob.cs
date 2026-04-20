@@ -19,7 +19,7 @@ public class ProcessAccountDeletionsJob : IRecurringJob
     private readonly HumansDbContext _dbContext;
     private readonly IEmailService _emailService;
     private readonly IAuditLogService _auditLogService;
-    private readonly IProfileService _profileService;
+    private readonly IFullProfileInvalidator _fullProfileInvalidator;
     private readonly ITeamService _teamService;
     private readonly IMemoryCache _cache;
     private readonly IHumansMetrics _metrics;
@@ -30,7 +30,7 @@ public class ProcessAccountDeletionsJob : IRecurringJob
         HumansDbContext dbContext,
         IEmailService emailService,
         IAuditLogService auditLogService,
-        IProfileService profileService,
+        IFullProfileInvalidator fullProfileInvalidator,
         ITeamService teamService,
         IMemoryCache cache,
         IHumansMetrics metrics,
@@ -40,7 +40,7 @@ public class ProcessAccountDeletionsJob : IRecurringJob
         _dbContext = dbContext;
         _emailService = emailService;
         _auditLogService = auditLogService;
-        _profileService = profileService;
+        _fullProfileInvalidator = fullProfileInvalidator;
         _teamService = teamService;
         _cache = cache;
         _metrics = metrics;
@@ -137,7 +137,7 @@ public class ProcessAccountDeletionsJob : IRecurringJob
 
             foreach (var userId in processedUserIds)
             {
-                await _profileService.InvalidateCacheAsync(userId);
+                await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
                 _cache.InvalidateUserProfile(userId);
                 _teamService.RemoveMemberFromAllTeamsCache(userId);
                 _cache.InvalidateRoleAssignmentClaims(userId);

@@ -21,7 +21,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
     private readonly HumansDbContext _dbContext;
     private readonly IEmailService _emailService;
     private readonly IAuditLogService _auditLogService;
-    private readonly IProfileService _profileService;
+    private readonly IFullProfileInvalidator _fullProfileInvalidator;
     private readonly ITeamService _teamService;
     private readonly IMemoryCache _cache;
     private readonly HumansMetricsService _metrics;
@@ -39,7 +39,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _emailService = Substitute.For<IEmailService>();
         _auditLogService = Substitute.For<IAuditLogService>();
-        _profileService = Substitute.For<IProfileService>();
+        _fullProfileInvalidator = Substitute.For<IFullProfileInvalidator>();
         _teamService = Substitute.For<ITeamService>();
         _cache = new MemoryCache(new MemoryCacheOptions());
         _clock = new FakeClock(Now);
@@ -50,7 +50,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
         _job = new ProcessAccountDeletionsJob(
             _dbContext, _emailService, _auditLogService,
-            _profileService, _teamService, _cache, _metrics, logger, _clock);
+            _fullProfileInvalidator, _teamService, _cache, _metrics, logger, _clock);
     }
 
     public void Dispose()
@@ -315,7 +315,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
         await _job.ExecuteAsync();
 
-        await _profileService.Received(1).InvalidateCacheAsync(user.Id, Arg.Any<CancellationToken>());
+        await _fullProfileInvalidator.Received(1).InvalidateAsync(user.Id, Arg.Any<CancellationToken>());
         _teamService.Received(1).RemoveMemberFromAllTeamsCache(user.Id);
     }
 

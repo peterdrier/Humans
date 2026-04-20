@@ -18,7 +18,7 @@ public class DuplicateAccountService : IDuplicateAccountService
 {
     private readonly HumansDbContext _dbContext;
     private readonly IAuditLogService _auditLogService;
-    private readonly IProfileService _profileService;
+    private readonly IFullProfileInvalidator _fullProfileInvalidator;
     private readonly ITeamService _teamService;
     private readonly ILogger<DuplicateAccountService> _logger;
     private readonly IClock _clock;
@@ -26,14 +26,14 @@ public class DuplicateAccountService : IDuplicateAccountService
     public DuplicateAccountService(
         HumansDbContext dbContext,
         IAuditLogService auditLogService,
-        IProfileService profileService,
+        IFullProfileInvalidator fullProfileInvalidator,
         ITeamService teamService,
         ILogger<DuplicateAccountService> logger,
         IClock clock)
     {
         _dbContext = dbContext;
         _auditLogService = auditLogService;
-        _profileService = profileService;
+        _fullProfileInvalidator = fullProfileInvalidator;
         _teamService = teamService;
         _logger = logger;
         _clock = clock;
@@ -295,7 +295,7 @@ public class DuplicateAccountService : IDuplicateAccountService
         await transaction.CommitAsync(ct);
 
         // Invalidate caches
-        await _profileService.InvalidateCacheAsync(sourceUserId, ct);
+        await _fullProfileInvalidator.InvalidateAsync(sourceUserId, ct);
         _teamService.RemoveMemberFromAllTeamsCache(sourceUserId);
 
         _logger.LogInformation(
