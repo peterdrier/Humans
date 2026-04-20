@@ -9,9 +9,9 @@ namespace Humans.Application.Interfaces.Repositories;
 /// </summary>
 /// <remarks>
 /// Read methods may include aggregate-local collections (<c>VolunteerHistory</c>,
-/// <c>Languages</c>) where noted, but the write path for those collections
-/// belongs to <see cref="IVolunteerHistoryRepository"/> and the language-management
-/// service respectively.
+/// <c>Languages</c>) where noted. The write path for CV entries is owned by
+/// <see cref="ReconcileCVEntriesAsync"/>. Language writes are handled by
+/// <see cref="ReplaceLanguagesAsync"/>.
 /// </remarks>
 public interface IProfileRepository
 {
@@ -39,10 +39,17 @@ public interface IProfileRepository
     /// <summary>
     /// Loads every profile with aggregate-local <c>VolunteerHistory</c> and
     /// <c>Languages</c> collections. Used by the startup warmup hosted service
-    /// to populate <see cref="Stores.IProfileStore"/>. Trivial at ~500-user scale.
+    /// to populate the profile cache. Trivial at ~500-user scale.
     /// Read-only (AsNoTracking).
     /// </summary>
     Task<IReadOnlyList<Profile>> GetAllAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the <c>UserId</c> for the profile with the given <paramref name="profileId"/>,
+    /// or <c>null</c> if no such profile exists. Read-only scalar query.
+    /// Used by services that receive a profileId from a caller but need the owning userId.
+    /// </summary>
+    Task<Guid?> GetOwnerUserIdAsync(Guid profileId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns just the profile picture data and content type.

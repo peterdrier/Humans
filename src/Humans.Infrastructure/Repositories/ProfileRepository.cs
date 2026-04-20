@@ -66,6 +66,16 @@ public sealed class ProfileRepository : IProfileRepository
             .ToListAsync(ct);
     }
 
+    public async Task<Guid?> GetOwnerUserIdAsync(Guid profileId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Profiles
+            .AsNoTracking()
+            .Where(p => p.Id == profileId)
+            .Select(p => (Guid?)p.UserId)
+            .FirstOrDefaultAsync(ct);
+    }
+
     public async Task<(byte[]? Data, string? ContentType)> GetProfilePictureDataAsync(
         Guid profileId, CancellationToken ct = default)
     {

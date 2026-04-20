@@ -7,6 +7,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Caching;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -30,6 +31,7 @@ public class OnboardingServiceTests : IDisposable
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
+    private readonly IFullProfileInvalidator _fullProfileInvalidator = Substitute.For<IFullProfileInvalidator>();
 
     public OnboardingServiceTests()
     {
@@ -46,7 +48,7 @@ public class OnboardingServiceTests : IDisposable
         _service = new OnboardingService(
             _dbContext, userService, _auditLogService, _emailService, _notificationService,
             _notificationInboxService, _syncJob,
-            _membershipCalculator, _metrics, _clock, _cache,
+            _membershipCalculator, _metrics, _clock, _cache, _fullProfileInvalidator,
             NullLogger<OnboardingService>.Instance);
     }
 

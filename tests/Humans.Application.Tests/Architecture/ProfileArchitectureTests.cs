@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Stores;
 using Humans.Infrastructure.Services.Profiles;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -8,7 +7,6 @@ using ProfileService = Humans.Application.Services.Profile.ProfileService;
 using ContactFieldService = Humans.Application.Services.Profile.ContactFieldService;
 using UserEmailService = Humans.Application.Services.Profile.UserEmailService;
 using CommunicationPreferenceService = Humans.Application.Services.Profile.CommunicationPreferenceService;
-using VolunteerHistoryService = Humans.Application.Services.Profile.VolunteerHistoryService;
 
 namespace Humans.Application.Tests.Architecture;
 
@@ -57,16 +55,15 @@ public class ProfileArchitectureTests
     }
 
     [Fact]
-    public void ProfileService_TakesRepositoryAndStore()
+    public void ProfileService_TakesRepository()
     {
         var ctor = typeof(ProfileService).GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(IProfileRepository));
-        paramTypes.Should().Contain(typeof(IProfileStore));
     }
 
-    // ── IProfileRepository / IProfileStore ───────────────────────────────────
+    // ── IProfileRepository ────────────────────────────────────────────────────
 
     [Fact]
     public void IProfileRepository_LivesInApplicationInterfacesRepositoriesNamespace()
@@ -74,14 +71,6 @@ public class ProfileArchitectureTests
         typeof(IProfileRepository).Namespace
             .Should().Be("Humans.Application.Interfaces.Repositories",
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
-
-    [Fact]
-    public void IProfileStore_LivesInApplicationInterfacesStoresNamespace()
-    {
-        typeof(IProfileStore).Namespace
-            .Should().Be("Humans.Application.Interfaces.Stores",
-                because: "store interfaces live in Humans.Application.Interfaces.Stores per design-rules §4");
     }
 
     // ── CachingProfileService ─────────────────────────────────────────────────
@@ -190,35 +179,4 @@ public class ProfileArchitectureTests
             because: "caching is the decorator's concern (design-rules §5), not the service's");
     }
 
-    // ── VolunteerHistoryService ───────────────────────────────────────────────
-
-    [Fact]
-    public void VolunteerHistoryService_LivesInHumansApplicationServicesProfileNamespace()
-    {
-        typeof(VolunteerHistoryService).Namespace
-            .Should().Be("Humans.Application.Services.Profile",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [Fact]
-    public void VolunteerHistoryService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(VolunteerHistoryService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use IVolunteerHistoryRepository instead (design-rules §3)");
-    }
-
-    [Fact]
-    public void VolunteerHistoryService_HasNoIMemoryCacheConstructorParameter()
-    {
-        var ctor = typeof(VolunteerHistoryService).GetConstructors().Single();
-        var cachingParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
-                .StartsWith("Microsoft.Extensions.Caching.Memory", StringComparison.Ordinal));
-
-        cachingParam.Should().BeNull(
-            because: "caching is the decorator's concern (design-rules §5), not the service's");
-    }
 }

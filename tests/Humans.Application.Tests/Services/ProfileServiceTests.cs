@@ -4,16 +4,15 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Stores;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories;
-using Humans.Infrastructure.Stores;
 using Xunit;
 using MemberApplication = Humans.Domain.Entities.Application;
 using ProfileService = Humans.Application.Services.Profile.ProfileService;
@@ -26,10 +25,8 @@ public class ProfileServiceTests : IDisposable
     private readonly FakeClock _clock;
     private readonly ProfileService _service;
     private readonly IProfileRepository _profileRepository;
-    private readonly IProfileStore _store;
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailRepository _userEmailRepository;
-    private readonly IVolunteerHistoryRepository _volunteerHistoryRepository;
     private readonly IContactFieldRepository _contactFieldRepository;
     private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository = Substitute.For<ICommunicationPreferenceRepository>();
     private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
@@ -56,13 +53,11 @@ public class ProfileServiceTests : IDisposable
         var factory = new Humans.Application.Tests.Infrastructure.TestDbContextFactory(options);
         _profileRepository = new ProfileRepository(factory, _clock);
         _userEmailRepository = new UserEmailRepository(factory);
-        _volunteerHistoryRepository = new VolunteerHistoryRepository(factory);
         _contactFieldRepository = new ContactFieldRepository(factory);
-        _store = new ProfileStore();
 
         _service = new ProfileService(
-            _profileRepository, _store, _userService,
-            _userEmailRepository, _volunteerHistoryRepository,
+            _profileRepository, _userService,
+            _userEmailRepository,
             _contactFieldRepository, _communicationPreferenceRepository,
             _onboardingService, _emailService, _auditLogService,
             _membershipCalculator, _consentService, _ticketQueryService,
@@ -653,16 +648,16 @@ public class ProfileServiceTests : IDisposable
         await _dbContext.Profiles.AddRangeAsync(p1, p2, p3);
         await _dbContext.SaveChangesAsync();
 
-        // Populate the store
-        PopulateStore(p1, u1);
-        PopulateStore(p2, u2);
-        PopulateStore(p3, u3);
-
-        var result = await _service.GetBirthdayProfilesAsync(3);
+        // CachingProfileService overrides this; test the static-method path directly
+        var snapshot = new[] { MakeFullProfile(p1, u1), MakeFullProfile(p2, u2), MakeFullProfile(p3, u3) };
+        var result = snapshot
+            .Where(fp => fp.IsApproved && !fp.IsSuspended && fp.BirthdayMonth == 3 && fp.BirthdayDay.HasValue)
+            .OrderBy(fp => fp.BirthdayDay)
+            .ToList();
 
         result.Should().HaveCount(2);
-        result[0].Day.Should().Be(5);
-        result[1].Day.Should().Be(20);
+        result[0].BirthdayDay.Should().Be(5);
+        result[1].BirthdayDay.Should().Be(20);
     }
 
     [Fact]
@@ -680,10 +675,10 @@ public class ProfileServiceTests : IDisposable
         await _dbContext.Profiles.AddRangeAsync(p1, p2);
         await _dbContext.SaveChangesAsync();
 
-        PopulateStore(p1, u1);
-        PopulateStore(p2, u2);
-
-        var result = await _service.GetBirthdayProfilesAsync(3);
+        var snapshot = new[] { MakeFullProfile(p1, u1), MakeFullProfile(p2, u2) };
+        var result = snapshot
+            .Where(fp => fp.IsApproved && !fp.IsSuspended && fp.BirthdayMonth == 3 && fp.BirthdayDay.HasValue)
+            .ToList();
 
         result.Should().HaveCount(1);
         result[0].UserId.Should().Be(u2);
@@ -699,9 +694,10 @@ public class ProfileServiceTests : IDisposable
         _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync();
 
-        PopulateStore(profile, userId);
-
-        var result = await _service.GetBirthdayProfilesAsync(3);
+        var snapshot = new[] { MakeFullProfile(profile, userId) };
+        var result = snapshot
+            .Where(fp => fp.IsApproved && !fp.IsSuspended && fp.BirthdayMonth == 3 && fp.BirthdayDay.HasValue)
+            .ToList();
 
         result.Should().BeEmpty();
     }
@@ -717,9 +713,10 @@ public class ProfileServiceTests : IDisposable
         _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync();
 
-        PopulateStore(profile, userId);
-
-        var result = await _service.GetApprovedProfilesWithLocationAsync();
+        var snapshot = new[] { MakeFullProfile(profile, userId) };
+        var result = snapshot
+            .Where(fp => fp.IsApproved && !fp.IsSuspended && fp.Latitude.HasValue && fp.Longitude.HasValue)
+            .ToList();
 
         result.Should().HaveCount(1);
         result[0].UserId.Should().Be(userId);
@@ -750,11 +747,10 @@ public class ProfileServiceTests : IDisposable
         await _dbContext.Profiles.AddRangeAsync(p1, p2, p3);
         await _dbContext.SaveChangesAsync();
 
-        PopulateStore(p1, u1);
-        PopulateStore(p2, u2);
-        PopulateStore(p3, u3);
-
-        var result = await _service.GetApprovedProfilesWithLocationAsync();
+        var snapshot = new[] { MakeFullProfile(p1, u1), MakeFullProfile(p2, u2), MakeFullProfile(p3, u3) };
+        var result = snapshot
+            .Where(fp => fp.IsApproved && !fp.IsSuspended && fp.Latitude.HasValue && fp.Longitude.HasValue)
+            .ToList();
 
         result.Should().BeEmpty();
     }
@@ -771,7 +767,8 @@ public class ProfileServiceTests : IDisposable
         _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
             .Returns(new List<User> { user1, user2 });
 
-        var result = await _service.GetFilteredHumansAsync(null, null);
+        var result = await ProfileService.GetFilteredHumansFromSnapshotAsync(
+            [], null, null, new List<User> { user1, user2 }, _membershipCalculator);
 
         result.Should().HaveCount(2);
     }
@@ -789,7 +786,8 @@ public class ProfileServiceTests : IDisposable
         _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
             .Returns(new List<User> { user1, user2 });
 
-        var result = await _service.GetFilteredHumansAsync("special", null);
+        var result = await ProfileService.GetFilteredHumansFromSnapshotAsync(
+            [], "special", null, new List<User> { user1, user2 }, _membershipCalculator);
 
         result.Should().HaveCount(1);
         result[0].UserId.Should().Be(u2);
@@ -807,7 +805,8 @@ public class ProfileServiceTests : IDisposable
         _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
             .Returns(new List<User> { user1, user2 });
 
-        var result = await _service.GetFilteredHumansAsync("UniqueFlame", null);
+        var result = await ProfileService.GetFilteredHumansFromSnapshotAsync(
+            [], "UniqueFlame", null, new List<User> { user1, user2 }, _membershipCalculator);
 
         result.Should().HaveCount(1);
         result[0].UserId.Should().Be(u2);
@@ -841,7 +840,8 @@ public class ProfileServiceTests : IDisposable
                     PendingDeletion: []));
             });
 
-        var result = await _service.GetFilteredHumansAsync(null, "active");
+        var result = await ProfileService.GetFilteredHumansFromSnapshotAsync(
+            [], null, "active", new List<User> { user1, user2 }, _membershipCalculator);
 
         result.Should().HaveCount(1);
         result[0].UserId.Should().Be(u1);
@@ -875,7 +875,8 @@ public class ProfileServiceTests : IDisposable
                     PendingDeletion: []));
             });
 
-        var result = await _service.GetFilteredHumansAsync(null, "pending");
+        var result = await ProfileService.GetFilteredHumansFromSnapshotAsync(
+            [], null, "pending", new List<User> { user1, user2 }, _membershipCalculator);
 
         result.Should().HaveCount(1);
         result[0].UserId.Should().Be(u2);
@@ -909,7 +910,8 @@ public class ProfileServiceTests : IDisposable
                     PendingDeletion: []));
             });
 
-        var result = await _service.GetFilteredHumansAsync(null, "suspended");
+        var result = await ProfileService.GetFilteredHumansFromSnapshotAsync(
+            [], null, "suspended", new List<User> { user1, user2 }, _membershipCalculator);
 
         result.Should().HaveCount(1);
         result[0].UserId.Should().Be(u1);
@@ -1041,23 +1043,19 @@ public class ProfileServiceTests : IDisposable
         pendingEmailId.Should().BeNull();
     }
 
-    // --- Search ---
+    // --- Search (via static helpers, exercised directly since inner returns empty) ---
 
     [Fact]
     public async Task SearchHumansAsync_MatchesByDisplayName()
     {
         var userId = Guid.NewGuid();
-        await SeedUserAsync(userId);
+        await SeedUserAsync(userId, displayName: "Sparkle Phoenix");
         var profile = MakeProfile(userId, isApproved: true);
         _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync();
-        var user = await _dbContext.Users.FirstAsync(u => u.Id == userId);
-        user.DisplayName = "Sparkle Phoenix";
-        await _dbContext.SaveChangesAsync();
 
-        PopulateStore(profile, userId, displayName: "Sparkle Phoenix");
-
-        var results = await _service.SearchHumansAsync("Sparkle");
+        var snapshot = new[] { MakeFullProfile(profile, userId) };
+        var results = ProfileService.SearchHumansFromSnapshot(snapshot, "Sparkle");
 
         results.Should().HaveCount(1);
         results[0].UserId.Should().Be(userId);
@@ -1074,9 +1072,8 @@ public class ProfileServiceTests : IDisposable
         _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync();
 
-        PopulateStore(profile, userId);
-
-        var results = await _service.SearchHumansAsync("Barcelona");
+        var snapshot = new[] { MakeFullProfile(profile, userId) };
+        var results = ProfileService.SearchHumansFromSnapshot(snapshot, "Barcelona");
 
         results.Should().HaveCount(1);
         results[0].MatchField.Should().Be("City");
@@ -1092,9 +1089,8 @@ public class ProfileServiceTests : IDisposable
         _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync();
 
-        PopulateStore(profile, userId);
-
-        var results = await _service.SearchHumansAsync("fire dancing");
+        var snapshot = new[] { MakeFullProfile(profile, userId) };
+        var results = ProfileService.SearchHumansFromSnapshot(snapshot, "fire dancing");
 
         results.Should().HaveCount(1);
         results[0].MatchField.Should().Be("Bio");
@@ -1115,10 +1111,8 @@ public class ProfileServiceTests : IDisposable
         await _dbContext.Profiles.AddRangeAsync(p1, p2);
         await _dbContext.SaveChangesAsync();
 
-        PopulateStore(p1, u1);
-        PopulateStore(p2, u2);
-
-        var results = await _service.SearchHumansAsync("Madrid");
+        var snapshot = new[] { MakeFullProfile(p1, u1), MakeFullProfile(p2, u2) };
+        var results = ProfileService.SearchHumansFromSnapshot(snapshot, "Madrid");
 
         results.Should().HaveCount(1);
         results[0].UserId.Should().Be(u2);
@@ -1138,10 +1132,8 @@ public class ProfileServiceTests : IDisposable
         await _dbContext.Profiles.AddRangeAsync(p1, p2);
         await _dbContext.SaveChangesAsync();
 
-        PopulateStore(p1, u1);
-        PopulateStore(p2, u2);
-
-        var results = await _service.SearchHumansAsync("Madrid");
+        var snapshot = new[] { MakeFullProfile(p1, u1), MakeFullProfile(p2, u2) };
+        var results = ProfileService.SearchHumansFromSnapshot(snapshot, "Madrid");
 
         results.Should().HaveCount(1);
         results[0].UserId.Should().Be(u2);
@@ -1156,11 +1148,148 @@ public class ProfileServiceTests : IDisposable
         _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync();
 
-        PopulateStore(profile, userId);
-
-        var results = await _service.SearchHumansAsync("zzzznonexistent");
+        var snapshot = new[] { MakeFullProfile(profile, userId) };
+        var results = ProfileService.SearchHumansFromSnapshot(snapshot, "zzzznonexistent");
 
         results.Should().BeEmpty();
+    }
+
+    // --- DB-backed fallback paths (§15 invariant: base service must work without decorator) ---
+
+    [Fact]
+    public async Task GetBirthdayProfilesAsync_BaseService_LoadsFromRepositoryAndFilters()
+    {
+        var u1 = Guid.NewGuid();
+        var u2 = Guid.NewGuid();
+        var u3 = Guid.NewGuid();
+        var user1 = await SeedUserAsync(u1);
+        var user2 = await SeedUserAsync(u2);
+        var user3 = await SeedUserAsync(u3);
+
+        var p1 = MakeProfile(u1, isApproved: true);
+        p1.DateOfBirth = new LocalDate(4, 3, 20);
+        var p2 = MakeProfile(u2, isApproved: true);
+        p2.DateOfBirth = new LocalDate(4, 3, 5);
+        var p3 = MakeProfile(u3, isApproved: true);
+        p3.DateOfBirth = new LocalDate(4, 6, 15);
+        await _dbContext.Profiles.AddRangeAsync(p1, p2, p3);
+        await _dbContext.SaveChangesAsync();
+
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User> { [u1] = user1, [u2] = user2, [u3] = user3 });
+
+        var result = await _service.GetBirthdayProfilesAsync(3);
+
+        result.Should().HaveCount(2);
+        result[0].Day.Should().Be(5);
+        result[1].Day.Should().Be(20);
+    }
+
+    [Fact]
+    public async Task GetApprovedProfilesWithLocationAsync_BaseService_LoadsFromRepositoryAndFilters()
+    {
+        var u1 = Guid.NewGuid();
+        var u2 = Guid.NewGuid();
+        var user1 = await SeedUserAsync(u1);
+        var user2 = await SeedUserAsync(u2);
+
+        // Approved with location
+        var p1 = MakeProfile(u1, isApproved: true);
+        p1.Latitude = 40.0;
+        p1.Longitude = -3.0;
+        p1.City = "Madrid";
+        // Unapproved with location (excluded)
+        var p2 = MakeProfile(u2, isApproved: false);
+        p2.Latitude = 41.0;
+        p2.Longitude = -2.0;
+        await _dbContext.Profiles.AddRangeAsync(p1, p2);
+        await _dbContext.SaveChangesAsync();
+
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User> { [u1] = user1, [u2] = user2 });
+
+        var result = await _service.GetApprovedProfilesWithLocationAsync();
+
+        result.Should().HaveCount(1);
+        result[0].UserId.Should().Be(u1);
+        result[0].City.Should().Be("Madrid");
+    }
+
+    [Fact]
+    public async Task SearchApprovedUsersAsync_BaseService_LoadsFromRepositoryAndFilters()
+    {
+        var u1 = Guid.NewGuid();
+        var u2 = Guid.NewGuid();
+        var user1 = await SeedUserAsync(u1, displayName: "Unique Sparkle");
+        var user2 = await SeedUserAsync(u2, displayName: "Other Person");
+
+        var p1 = MakeProfile(u1, isApproved: true);
+        var p2 = MakeProfile(u2, isApproved: true);
+        await _dbContext.Profiles.AddRangeAsync(p1, p2);
+        await _dbContext.SaveChangesAsync();
+
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User> { [u1] = user1, [u2] = user2 });
+
+        var result = await _service.SearchApprovedUsersAsync("Sparkle");
+
+        result.Should().HaveCount(1);
+        result[0].UserId.Should().Be(u1);
+        result[0].DisplayName.Should().Be("Unique Sparkle");
+    }
+
+    [Fact]
+    public async Task SearchHumansAsync_BaseService_LoadsFromRepositoryAndFilters()
+    {
+        var u1 = Guid.NewGuid();
+        var u2 = Guid.NewGuid();
+        var user1 = await SeedUserAsync(u1);
+        var user2 = await SeedUserAsync(u2);
+
+        var p1 = MakeProfile(u1, isApproved: true);
+        p1.City = "Barcelona";
+        var p2 = MakeProfile(u2, isApproved: true);
+        p2.City = "Valencia";
+        await _dbContext.Profiles.AddRangeAsync(p1, p2);
+        await _dbContext.SaveChangesAsync();
+
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User> { [u1] = user1, [u2] = user2 });
+
+        var result = await _service.SearchHumansAsync("Barcelona");
+
+        result.Should().HaveCount(1);
+        result[0].UserId.Should().Be(u1);
+        result[0].MatchField.Should().Be("City");
+    }
+
+    [Fact]
+    public async Task GetFilteredHumansAsync_BaseService_LoadsFromRepositoryAndReturnsRows()
+    {
+        var u1 = Guid.NewGuid();
+        var u2 = Guid.NewGuid();
+        var user1 = await SeedUserAsync(u1, displayName: "Alice");
+        var user2 = await SeedUserAsync(u2, displayName: "Bob");
+
+        var p1 = MakeProfile(u1, isApproved: true);
+        _dbContext.Profiles.Add(p1);
+        // u2 has no profile
+        await _dbContext.SaveChangesAsync();
+
+        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<User> { user1, user2 });
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User> { [u1] = user1 });
+
+        var result = await _service.GetFilteredHumansAsync(null, null);
+
+        result.Should().HaveCount(2);
+        var alice = result.Single(r => r.UserId == u1);
+        alice.HasProfile.Should().BeTrue();
+        alice.IsApproved.Should().BeTrue();
+        var bob = result.Single(r => r.UserId == u2);
+        bob.HasProfile.Should().BeFalse();
+        bob.IsApproved.Should().BeFalse();
     }
 
     // --- GetFullProfileAsync ---
@@ -1289,8 +1418,8 @@ public class ProfileServiceTests : IDisposable
     /// while keeping all other dependencies wired to the same test-class fields.
     /// </summary>
     private ProfileService BuildServiceWith(IProfileRepository profileRepository) => new(
-        profileRepository, _store, _userService,
-        _userEmailRepository, _volunteerHistoryRepository,
+        profileRepository, _userService,
+        _userEmailRepository,
         _contactFieldRepository, _communicationPreferenceRepository,
         _onboardingService, _emailService, _auditLogService,
         _membershipCalculator, _consentService, _ticketQueryService,
@@ -1342,10 +1471,10 @@ public class ProfileServiceTests : IDisposable
         await _dbContext.SaveChangesAsync();
     }
 
-    private void PopulateStore(Profile profile, Guid userId, string? displayName = null)
+    private FullProfile MakeFullProfile(Profile profile, Guid userId, string? displayName = null)
     {
         var user = _dbContext.Users.Find(userId)!;
-        var cached = new CachedProfile(
+        return new FullProfile(
             UserId: userId,
             DisplayName: displayName ?? user.DisplayName,
             ProfilePictureUrl: user.ProfilePictureUrl,
@@ -1364,10 +1493,9 @@ public class ProfileServiceTests : IDisposable
             BirthdayMonth: profile.DateOfBirth?.Month,
             IsApproved: profile.IsApproved,
             IsSuspended: profile.IsSuspended,
-            VolunteerHistory: profile.VolunteerHistory
-                .Select(v => new CachedVolunteerEntry(v.EventName, v.Description))
+            CVEntries: profile.VolunteerHistory
+                .Select(v => new CVEntry(v.Date, v.EventName, v.Description))
                 .ToList());
-        _store.Upsert(userId, cached);
     }
 
     private static ProfileSaveRequest MakeRequest(

@@ -21,7 +21,6 @@ using ProfilesProfileService = Humans.Application.Services.Profile.ProfileServic
 using ProfilesContactFieldService = Humans.Application.Services.Profile.ContactFieldService;
 using ProfilesUserEmailService = Humans.Application.Services.Profile.UserEmailService;
 using ProfilesCommunicationPreferenceService = Humans.Application.Services.Profile.CommunicationPreferenceService;
-using ProfilesVolunteerHistoryService = Humans.Application.Services.Profile.VolunteerHistoryService;
 using ProfilesContactService = Humans.Application.Services.Profile.ContactService;
 
 namespace Humans.Web.Extensions;
@@ -127,9 +126,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IContactFieldRepository, ContactFieldRepository>();
         services.AddSingleton<IUserEmailRepository, UserEmailRepository>();
         services.AddSingleton<ICommunicationPreferenceRepository, CommunicationPreferenceRepository>();
-        services.AddSingleton<IVolunteerHistoryRepository, VolunteerHistoryRepository>();
-
-        services.AddSingleton<IProfileStore, ProfileStore>();
 
         services.AddScoped<IUnsubscribeTokenProvider, UnsubscribeTokenProvider>();
 
@@ -143,8 +139,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IContactFieldService, ProfilesContactFieldService>();
         services.AddScoped<IUserEmailService, ProfilesUserEmailService>();
         services.AddScoped<IEmailProvisioningService, EmailProvisioningService>();
-        services.AddScoped<IVolunteerHistoryService, ProfilesVolunteerHistoryService>();
-        services.Decorate<IVolunteerHistoryService, CachingVolunteerHistoryService>();
         services.AddScoped<ILegalDocumentSyncService, LegalDocumentSyncService>();
         services.AddScoped<IAdminLegalDocumentService, AdminLegalDocumentService>();
         services.AddScoped<ILegalDocumentService, LegalDocumentService>();
@@ -276,9 +270,6 @@ public static class InfrastructureServiceCollectionExtensions
         // instance, so the _byUserId dict is never split.
         services.AddSingleton<IFullProfileInvalidator>(sp =>
             sp.GetRequiredService<CachingProfileService>());
-
-        // Startup warmup: load profiles into the store before serving requests
-        services.AddHostedService<ProfileStoreWarmupHostedService>();
 
         services.AddScoped<UserService>();
         services.AddScoped<IUserService>(sp => sp.GetRequiredService<UserService>());

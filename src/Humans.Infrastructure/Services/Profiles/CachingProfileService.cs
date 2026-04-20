@@ -10,6 +10,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using MemberApplication = Humans.Domain.Entities.Application;
+using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
 
 namespace Humans.Infrastructure.Services.Profiles;
 
@@ -217,28 +218,33 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         return await inner.GetCustomPictureInfoByUserIdsAsync(userIds, ct);
     }
 
-    public async Task<IReadOnlyList<Application.DTOs.BirthdayProfileInfo>>
+    public Task<IReadOnlyList<Application.DTOs.BirthdayProfileInfo>>
         GetBirthdayProfilesAsync(int month, CancellationToken ct = default)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-        return await inner.GetBirthdayProfilesAsync(month, ct);
+        return Task.FromResult(
+            ProfilesProfileService.GetBirthdayProfilesFromSnapshot(_byUserId.Values, month));
     }
 
-    public async Task<IReadOnlyList<Application.DTOs.LocationProfileInfo>>
+    public Task<IReadOnlyList<Application.DTOs.LocationProfileInfo>>
         GetApprovedProfilesWithLocationAsync(CancellationToken ct = default)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-        return await inner.GetApprovedProfilesWithLocationAsync(ct);
+        return Task.FromResult(
+            ProfilesProfileService.GetApprovedProfilesWithLocationFromSnapshot(_byUserId.Values));
     }
 
     public async Task<IReadOnlyList<Application.DTOs.AdminHumanRow>> GetFilteredHumansAsync(
         string? search, string? statusFilter, CancellationToken ct = default)
     {
+        // Snapshot the dict values once to avoid holding the live reference across awaits.
+        var snapshot = _byUserId.Values.ToList();
+
         await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-        return await inner.GetFilteredHumansAsync(search, statusFilter, ct);
+        var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+        var membershipCalculator = scope.ServiceProvider.GetRequiredService<IMembershipCalculator>();
+
+        var allUsers = await userService.GetAllUsersAsync(ct);
+        return await ProfilesProfileService.GetFilteredHumansFromSnapshotAsync(
+            snapshot, search, statusFilter, allUsers, membershipCalculator, ct);
     }
 
     public async Task<Application.DTOs.AdminHumanDetailData?> GetAdminHumanDetailAsync(
@@ -257,20 +263,18 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         return await inner.GetEmailCooldownInfoAsync(pendingEmailId, ct);
     }
 
-    public async Task<IReadOnlyList<UserSearchResult>> SearchApprovedUsersAsync(
+    public Task<IReadOnlyList<UserSearchResult>> SearchApprovedUsersAsync(
         string query, CancellationToken ct = default)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-        return await inner.SearchApprovedUsersAsync(query, ct);
+        return Task.FromResult(
+            ProfilesProfileService.SearchApprovedUsersFromSnapshot(_byUserId.Values, query));
     }
 
-    public async Task<IReadOnlyList<HumanSearchResult>> SearchHumansAsync(
+    public Task<IReadOnlyList<HumanSearchResult>> SearchHumansAsync(
         string query, CancellationToken ct = default)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-        return await inner.SearchHumansAsync(query, ct);
+        return Task.FromResult(
+            ProfilesProfileService.SearchHumansFromSnapshot(_byUserId.Values, query));
     }
 
     public async Task<IReadOnlyList<ProfileLanguage>> GetProfileLanguagesAsync(

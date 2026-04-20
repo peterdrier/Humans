@@ -316,8 +316,6 @@
                             <div class="volunteer-history-row card mb-2" data-index="@i">
                                 <div class="card-body py-2">
                                     <div class="row g-2 align-items-start">
-                                        <input type="hidden" name="EditableVolunteerHistory[@i].Id" value="@Model.EditableVolunteerHistory[i].Id" />
-
                                         <div class="col-md-2">
                                             <label class="form-label small" for="EditableVolunteerHistory_@(i)__DateString">Date</label>
                                             <input type="date" name="EditableVolunteerHistory[@i].DateString" id="EditableVolunteerHistory_@(i)__DateString" value="@Model.EditableVolunteerHistory[i].DateString" class="form-control form-control-sm" required />
@@ -761,8 +759,6 @@
                     <div class="volunteer-history-row card mb-2" data-index="${index}">
                         <div class="card-body py-2">
                             <div class="row g-2 align-items-start">
-                                <input type="hidden" name="EditableVolunteerHistory[${index}].Id" value="" />
-
                                 <div class="col-md-2">
                                     <label class="form-label small" for="EditableVolunteerHistory_${index}__DateString">Date</label>
                                     <input type="date" name="EditableVolunteerHistory[${index}].DateString" id="EditableVolunteerHistory_${index}__DateString" class="form-control form-control-sm" required />

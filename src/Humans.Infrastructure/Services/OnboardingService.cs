@@ -5,7 +5,7 @@ using NodaTime;
 using Humans.Application.DTOs.Governance;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Stores;
+using Humans.Application.Interfaces.Caching;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -27,6 +27,7 @@ public class OnboardingService : IOnboardingService
     private readonly IHumansMetrics _metrics;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
+    private readonly IFullProfileInvalidator _fullProfileInvalidator;
     private readonly ILogger<OnboardingService> _logger;
 
     public OnboardingService(
@@ -41,6 +42,7 @@ public class OnboardingService : IOnboardingService
         IHumansMetrics metrics,
         IClock clock,
         IMemoryCache cache,
+        IFullProfileInvalidator fullProfileInvalidator,
         ILogger<OnboardingService> logger)
     {
         _dbContext = dbContext;
@@ -54,6 +56,7 @@ public class OnboardingService : IOnboardingService
         _metrics = metrics;
         _clock = clock;
         _cache = cache;
+        _fullProfileInvalidator = fullProfileInvalidator;
         _logger = logger;
     }
 
@@ -257,10 +260,8 @@ public class OnboardingService : IOnboardingService
         _cache.InvalidateNotificationMeters();
         _cache.InvalidateUserProfile(userId);
 
-        // Update profile cache (profile is now approved)
-        var user = await _userService.GetByIdAsync(userId, ct);
-        await _dbContext.Entry(profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
-        _cache.UpdateProfile(userId, CachedProfile.Create(profile, user!));
+        // Refresh FullProfile dict entry (profile is now approved)
+        await _fullProfileInvalidator.InvalidateAsync(userId, ct);
 
         // Sync Volunteers team membership (adds to team if consents are also complete)
         await _syncJob.SyncVolunteersMembershipForUserAsync(userId, CancellationToken.None);
@@ -313,10 +314,8 @@ public class OnboardingService : IOnboardingService
         _cache.InvalidateNotificationMeters();
         _cache.InvalidateUserProfile(userId);
 
-        // Update profile cache with current state
-        var flagUser = await _userService.GetByIdAsync(userId, ct);
-        await _dbContext.Entry(profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
-        _cache.UpdateProfile(userId, CachedProfile.Create(profile, flagUser!));
+        // Refresh FullProfile dict entry with current state
+        await _fullProfileInvalidator.InvalidateAsync(userId, ct);
 
         await DeprovisionApprovalGatedSystemTeamsAsync(userId);
 
@@ -406,13 +405,13 @@ public class OnboardingService : IOnboardingService
         _cache.InvalidateNotificationMeters();
         _cache.InvalidateUserProfile(userId);
 
-        // Update profile cache with current state
-        var rejectUser = await _userService.GetByIdAsync(userId, ct);
-        await _dbContext.Entry(profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
-        _cache.UpdateProfile(userId, CachedProfile.Create(profile, rejectUser!));
+        // Refresh FullProfile dict entry with current state
+        await _fullProfileInvalidator.InvalidateAsync(userId, ct);
 
         // FIX: Both Admin and OnboardingReview paths now deprovision
         await DeprovisionApprovalGatedSystemTeamsAsync(userId);
+
+        var rejectUser = await _userService.GetByIdAsync(userId, ct);
 
         try
         {
@@ -480,9 +479,8 @@ public class OnboardingService : IOnboardingService
         _cache.InvalidateNotificationMeters();
         _cache.InvalidateUserProfile(userId);
 
-        // Update profile cache
-        await _dbContext.Entry(user.Profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
-        _cache.UpdateProfile(userId, CachedProfile.Create(user.Profile, user));
+        // Refresh FullProfile dict entry
+        await _fullProfileInvalidator.InvalidateAsync(userId, ct);
 
         // Sync Volunteers team membership (adds user if they also have all required consents)
         await _syncJob.SyncVolunteersMembershipForUserAsync(userId);
@@ -533,10 +531,9 @@ public class OnboardingService : IOnboardingService
 
         await _dbContext.SaveChangesAsync(ct);
 
-        // Update profile cache with suspended state
-        await _dbContext.Entry(user.Profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
-        _cache.UpdateProfile(userId, CachedProfile.Create(user.Profile, user));
         _cache.InvalidateUserProfile(userId);
+        // Refresh FullProfile dict entry with suspended state
+        await _fullProfileInvalidator.InvalidateAsync(userId, ct);
 
         // In-app notification to the suspended user (best-effort)
         try
@@ -586,9 +583,8 @@ public class OnboardingService : IOnboardingService
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateUserProfile(userId);
 
-        // Update profile cache with unsuspended state
-        await _dbContext.Entry(user.Profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
-        _cache.UpdateProfile(userId, CachedProfile.Create(user.Profile, user));
+        // Refresh FullProfile dict entry with unsuspended state
+        await _fullProfileInvalidator.InvalidateAsync(userId, ct);
 
         // Auto-resolve any outstanding AccessSuspended notifications (best-effort)
         try

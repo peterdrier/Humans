@@ -2,7 +2,6 @@ using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Stores;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 
@@ -14,7 +13,7 @@ namespace Humans.Application.Services.Profile;
 public sealed class ContactFieldService : IContactFieldService
 {
     private readonly IContactFieldRepository _repository;
-    private readonly IProfileStore _profileStore;
+    private readonly IProfileRepository _profileRepository;
     private readonly ITeamService _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IClock _clock;
@@ -26,13 +25,13 @@ public sealed class ContactFieldService : IContactFieldService
 
     public ContactFieldService(
         IContactFieldRepository repository,
-        IProfileStore profileStore,
+        IProfileRepository profileRepository,
         ITeamService teamService,
         IRoleAssignmentService roleAssignmentService,
         IClock clock)
     {
         _repository = repository;
-        _profileStore = profileStore;
+        _profileRepository = profileRepository;
         _teamService = teamService;
         _roleAssignmentService = roleAssignmentService;
         _clock = clock;
@@ -43,13 +42,13 @@ public sealed class ContactFieldService : IContactFieldService
         Guid viewerUserId,
         CancellationToken cancellationToken = default)
     {
-        // Resolve profileId → ownerUserId via the store (O(n) scan, trivial at ~500 users)
-        var profileEntry = _profileStore.GetAll().FirstOrDefault(p => p.ProfileId == profileId);
-        if (profileEntry is null)
+        // Resolve profileId → ownerUserId via a scalar repo query
+        var ownerUserId = await _profileRepository.GetOwnerUserIdAsync(profileId, cancellationToken);
+        if (ownerUserId is null)
             return [];
 
         var accessLevel = await GetViewerAccessLevelAsync(
-            profileEntry.UserId, viewerUserId, cancellationToken);
+            ownerUserId.Value, viewerUserId, cancellationToken);
         var allowedVisibilities = GetAllowedVisibilities(accessLevel);
 
         var fields = await _repository.GetVisibleByProfileIdAsync(

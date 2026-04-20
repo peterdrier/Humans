@@ -6,7 +6,6 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Stores;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -22,10 +21,8 @@ namespace Humans.Application.Services.Profile;
 public sealed class ProfileService : IProfileService, IUserDataContributor
 {
     private readonly IProfileRepository _profileRepository;
-    private readonly IProfileStore _store;
     private readonly IUserService _userService;
     private readonly IUserEmailRepository _userEmailRepository;
-    private readonly IVolunteerHistoryRepository _volunteerHistoryRepository;
     private readonly IContactFieldRepository _contactFieldRepository;
     private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository;
     private readonly IOnboardingService _onboardingService;
@@ -43,10 +40,8 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
 
     public ProfileService(
         IProfileRepository profileRepository,
-        IProfileStore store,
         IUserService userService,
         IUserEmailRepository userEmailRepository,
-        IVolunteerHistoryRepository volunteerHistoryRepository,
         IContactFieldRepository contactFieldRepository,
         ICommunicationPreferenceRepository communicationPreferenceRepository,
         IOnboardingService onboardingService,
@@ -63,10 +58,8 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         ILogger<ProfileService> logger)
     {
         _profileRepository = profileRepository;
-        _store = store;
         _userService = userService;
         _userEmailRepository = userEmailRepository;
-        _volunteerHistoryRepository = volunteerHistoryRepository;
         _contactFieldRepository = contactFieldRepository;
         _communicationPreferenceRepository = communicationPreferenceRepository;
         _onboardingService = onboardingService;
@@ -380,54 +373,131 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default) =>
         _profileRepository.GetCustomPictureInfoByUserIdsAsync(userIds, ct);
 
-    public Task<IReadOnlyList<BirthdayProfileInfo>>
+    public async Task<IReadOnlyList<BirthdayProfileInfo>>
         GetBirthdayProfilesAsync(int month, CancellationToken ct = default)
     {
-        var result = _store.GetAll()
-            .Where(p => p.IsApproved && !p.IsSuspended && p.BirthdayMonth == month && p.BirthdayDay.HasValue)
-            .OrderBy(p => p.BirthdayDay)
-            .Select(p => new BirthdayProfileInfo(p.UserId, p.DisplayName, p.ProfilePictureUrl, p.HasCustomPicture, p.ProfileId, p.BirthdayDay!.Value, p.BirthdayMonth!.Value))
-            .ToList();
-
-        return Task.FromResult<IReadOnlyList<BirthdayProfileInfo>>(result);
+        // §15 invariant: the decorator is pure optimization — removing it must
+        // leave the app fully functional (just slower). Base service loads the
+        // snapshot from the DB on every call.
+        var snapshot = await BuildFullProfileSnapshotAsync(ct);
+        return GetBirthdayProfilesFromSnapshot(snapshot, month);
     }
 
-    public Task<IReadOnlyList<LocationProfileInfo>>
+    public async Task<IReadOnlyList<LocationProfileInfo>>
         GetApprovedProfilesWithLocationAsync(CancellationToken ct = default)
     {
-        var result = _store.GetAll()
-            .Where(p => p.IsApproved && !p.IsSuspended && p.Latitude.HasValue && p.Longitude.HasValue)
-            .Select(p => new LocationProfileInfo(p.UserId, p.DisplayName, p.ProfilePictureUrl, p.Latitude!.Value, p.Longitude!.Value, p.City, p.CountryCode))
-            .ToList();
-
-        return Task.FromResult<IReadOnlyList<LocationProfileInfo>>(result);
+        var snapshot = await BuildFullProfileSnapshotAsync(ct);
+        return GetApprovedProfilesWithLocationFromSnapshot(snapshot);
     }
 
     public async Task<IReadOnlyList<AdminHumanRow>> GetFilteredHumansAsync(
         string? search, string? statusFilter, CancellationToken ct = default)
     {
-        // Start from ALL users (including profileless) via IUserService
+        var snapshot = await BuildFullProfileSnapshotAsync(ct);
         var allUsers = await _userService.GetAllUsersAsync(ct);
+        return await GetFilteredHumansFromSnapshotAsync(
+            snapshot, search, statusFilter, allUsers, _membershipCalculator, ct);
+    }
 
-        // Build notification email lookup from the store's cached data
+    /// <summary>
+    /// Builds a <see cref="FullProfile"/> snapshot from repositories.
+    /// Used by the base <see cref="ProfileService"/> so that every read method
+    /// has a DB-backed fallback path. The caching decorator overrides these methods
+    /// to serve the same static helpers from its in-memory dict instead.
+    /// </summary>
+    private async Task<IReadOnlyList<FullProfile>> BuildFullProfileSnapshotAsync(CancellationToken ct)
+    {
+        var profiles = await _profileRepository.GetAllAsync(ct);
+        if (profiles.Count == 0) return [];
+
+        var userIds = profiles.Select(p => p.UserId).ToList();
+        var users = await _userService.GetByIdsAsync(userIds, ct);
+
+        var notificationEmails = await _userEmailRepository.GetAllNotificationTargetEmailsAsync(ct);
+
+        var result = new List<FullProfile>(profiles.Count);
+        foreach (var profile in profiles)
+        {
+            if (!users.TryGetValue(profile.UserId, out var user))
+                continue;
+
+            notificationEmails.TryGetValue(profile.UserId, out var notificationEmail);
+            result.Add(FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), notificationEmail));
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Pure filter for <see cref="GetBirthdayProfilesAsync"/>. Called by both the
+    /// base (DB-backed) and decorator (dict-backed) paths with the same output shape.
+    /// </summary>
+    public static IReadOnlyList<BirthdayProfileInfo> GetBirthdayProfilesFromSnapshot(
+        IEnumerable<FullProfile> snapshot, int month)
+    {
+        return snapshot
+            .Where(p => p.IsApproved && !p.IsSuspended && p.BirthdayMonth == month && p.BirthdayDay.HasValue)
+            .OrderBy(p => p.BirthdayDay)
+            .Select(p => new BirthdayProfileInfo(
+                p.UserId, p.DisplayName, p.ProfilePictureUrl,
+                p.HasCustomPicture, p.ProfileId, p.BirthdayDay!.Value, p.BirthdayMonth!.Value))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Pure filter for <see cref="GetApprovedProfilesWithLocationAsync"/>. Called by both the
+    /// base (DB-backed) and decorator (dict-backed) paths with the same output shape.
+    /// </summary>
+    public static IReadOnlyList<LocationProfileInfo> GetApprovedProfilesWithLocationFromSnapshot(
+        IEnumerable<FullProfile> snapshot)
+    {
+        return snapshot
+            .Where(p => p.IsApproved && !p.IsSuspended && p.Latitude.HasValue && p.Longitude.HasValue)
+            .Select(p => new LocationProfileInfo(
+                p.UserId, p.DisplayName, p.ProfilePictureUrl,
+                p.Latitude!.Value, p.Longitude!.Value, p.City, p.CountryCode))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Snapshot-based filter for <see cref="GetFilteredHumansAsync"/>. Called by both
+    /// the base (DB-backed) and decorator (dict-backed) paths. Takes <paramref name="allUsers"/>
+    /// and <paramref name="membershipCalculator"/> as parameters because the filter needs to
+    /// enumerate profileless users and compute membership partitions — both cross-cutting
+    /// concerns the static helper shouldn't own.
+    /// </summary>
+    public static async Task<IReadOnlyList<AdminHumanRow>> GetFilteredHumansFromSnapshotAsync(
+        IEnumerable<FullProfile> snapshot,
+        string? search,
+        string? statusFilter,
+        IReadOnlyList<User> allUsers,
+        IMembershipCalculator membershipCalculator,
+        CancellationToken ct = default)
+    {
+        var profilesByUserId = snapshot.ToDictionary(fp => fp.UserId);
+
+        // Build notification email lookup from the provided profile snapshot
         var notificationEmails = new Dictionary<Guid, string>();
         foreach (var user in allUsers)
         {
-            var cached = _store.GetByUserId(user.Id);
-            if (cached?.NotificationEmail is not null)
-                notificationEmails[user.Id] = cached.NotificationEmail;
+            if (profilesByUserId.TryGetValue(user.Id, out var fp) && fp.NotificationEmail is not null)
+                notificationEmails[user.Id] = fp.NotificationEmail;
         }
 
-        var userList = allUsers.Select(u => new
+        var userList = allUsers.Select(u =>
         {
-            u.Id,
-            Email = u.Email ?? string.Empty,
-            u.DisplayName,
-            u.ProfilePictureUrl,
-            CreatedAt = u.CreatedAt.ToDateTimeUtc(),
-            LastLoginAt = u.LastLoginAt != null ? u.LastLoginAt.Value.ToDateTimeUtc() : (DateTime?)null,
-            HasProfile = _store.GetByUserId(u.Id) is not null,
-            IsApproved = _store.GetByUserId(u.Id)?.IsApproved ?? false,
+            profilesByUserId.TryGetValue(u.Id, out var fp);
+            return new
+            {
+                u.Id,
+                Email = u.Email ?? string.Empty,
+                u.DisplayName,
+                u.ProfilePictureUrl,
+                CreatedAt = u.CreatedAt.ToDateTimeUtc(),
+                LastLoginAt = u.LastLoginAt != null ? u.LastLoginAt.Value.ToDateTimeUtc() : (DateTime?)null,
+                HasProfile = fp is not null,
+                IsApproved = fp?.IsApproved ?? false,
+            };
         }).ToList();
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -441,7 +511,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         }
 
         var allIds = userList.Select(u => u.Id).ToList();
-        var partition = await _membershipCalculator.PartitionUsersAsync(allIds, ct);
+        var partition = await membershipCalculator.PartitionUsersAsync(allIds, ct);
 
         HashSet<Guid>? filteredIds = statusFilter switch
         {
@@ -532,10 +602,27 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         return (true, 0, null);
     }
 
-    public Task<IReadOnlyList<UserSearchResult>> SearchApprovedUsersAsync(string query, CancellationToken ct = default)
+    public async Task<IReadOnlyList<UserSearchResult>> SearchApprovedUsersAsync(string query, CancellationToken ct = default)
     {
-        // CachedProfile already carries DisplayName and NotificationEmail — no user service call needed.
-        IReadOnlyList<UserSearchResult> results = _store.GetAll()
+        var snapshot = await BuildFullProfileSnapshotAsync(ct);
+        return SearchApprovedUsersFromSnapshot(snapshot, query);
+    }
+
+    public async Task<IReadOnlyList<HumanSearchResult>> SearchHumansAsync(string query, CancellationToken ct = default)
+    {
+        var snapshot = await BuildFullProfileSnapshotAsync(ct);
+        return SearchHumansFromSnapshot(snapshot, query);
+    }
+
+    /// <summary>
+    /// Searches all approved, non-suspended profiles from a pre-built <see cref="FullProfile"/>
+    /// snapshot for users whose display name or notification email contains <paramref name="query"/>.
+    /// Called by <c>CachingProfileService</c> with its private dict snapshot.
+    /// </summary>
+    public static IReadOnlyList<UserSearchResult> SearchApprovedUsersFromSnapshot(
+        IEnumerable<FullProfile> snapshot, string query)
+    {
+        return snapshot
             .Where(p => p.IsApproved && !p.IsSuspended)
             .Where(p =>
                 p.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
@@ -544,15 +631,19 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
             .Take(20)
             .Select(p => new UserSearchResult(p.UserId, p.DisplayName, p.NotificationEmail ?? ""))
             .ToList();
-
-        return Task.FromResult(results);
     }
 
-    public Task<IReadOnlyList<HumanSearchResult>> SearchHumansAsync(string query, CancellationToken ct = default)
+    /// <summary>
+    /// Searches all approved, non-suspended profiles from a pre-built <see cref="FullProfile"/>
+    /// snapshot for those matching <paramref name="query"/> on any indexed field.
+    /// Called by <c>CachingProfileService</c> with its private dict snapshot.
+    /// </summary>
+    public static IReadOnlyList<HumanSearchResult> SearchHumansFromSnapshot(
+        IEnumerable<FullProfile> snapshot, string query)
     {
         var results = new List<HumanSearchResult>();
 
-        foreach (var p in _store.GetAll().Where(p => p.IsApproved && !p.IsSuspended))
+        foreach (var p in snapshot.Where(p => p.IsApproved && !p.IsSuspended))
         {
             var (matchField, matchSnippet) = DetermineMatchFromCache(p, query);
             if (matchField is null) continue;
@@ -563,12 +654,10 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
                 matchField, matchSnippet));
         }
 
-        var ordered = results
+        return results
             .OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
             .Take(50)
             .ToList();
-
-        return Task.FromResult<IReadOnlyList<HumanSearchResult>>(ordered);
     }
 
     public async Task SaveCVEntriesAsync(Guid userId, IReadOnlyList<CVEntry> entries, CancellationToken ct = default)
@@ -602,9 +691,11 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
 
         var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
 
-        var volunteerHistory = profile is not null
-            ? await _volunteerHistoryRepository.GetByProfileIdReadOnlyAsync(profile.Id, ct)
-            : [];
+        // VolunteerHistory is eagerly loaded by GetByUserIdReadOnlyAsync
+        var volunteerHistory = profile?.VolunteerHistory
+            .OrderByDescending(v => v.Date)
+            .ThenByDescending(v => v.CreatedAt)
+            .ToList() ?? (IReadOnlyList<VolunteerHistoryEntry>)[];
 
         var profileLanguages = profile is not null
             ? await _profileRepository.GetLanguagesAsync(profile.Id, ct)
@@ -702,7 +793,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
     // Helpers
     // ==========================================================================
 
-    private static (string? Field, string? Snippet) DetermineMatchFromCache(CachedProfile p, string query)
+    private static (string? Field, string? Snippet) DetermineMatchFromCache(FullProfile p, string query)
     {
         if (p.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase))
             return ("Name", null);
@@ -717,7 +808,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         if (p.Pronouns?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
             return ("Pronouns", p.Pronouns);
 
-        foreach (var v in p.VolunteerHistory)
+        foreach (var v in p.CVEntries)
         {
             if (v.EventName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                 v.Description?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)

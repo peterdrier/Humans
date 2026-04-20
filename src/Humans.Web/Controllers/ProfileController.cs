@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Gdpr;
@@ -32,7 +33,6 @@ public class ProfileController : HumansControllerBase
     private readonly UserManager<User> _userManager;
     private readonly IProfileService _profileService;
     private readonly IContactFieldService _contactFieldService;
-    private readonly IVolunteerHistoryService _volunteerHistoryService;
     private readonly IEmailService _emailService;
     private readonly IUserEmailService _userEmailService;
     private readonly ICommunicationPreferenceService _commPrefService;
@@ -82,7 +82,6 @@ public class ProfileController : HumansControllerBase
         UserManager<User> userManager,
         IProfileService profileService,
         IContactFieldService contactFieldService,
-        IVolunteerHistoryService volunteerHistoryService,
         IEmailService emailService,
         IUserEmailService userEmailService,
         ICommunicationPreferenceService commPrefService,
@@ -109,7 +108,6 @@ public class ProfileController : HumansControllerBase
         _userManager = userManager;
         _profileService = profileService;
         _contactFieldService = contactFieldService;
-        _volunteerHistoryService = volunteerHistoryService;
         _emailService = emailService;
         _userEmailService = userEmailService;
         _commPrefService = commPrefService;
@@ -187,10 +185,9 @@ public class ProfileController : HumansControllerBase
             ? await _contactFieldService.GetAllContactFieldsAsync(profile.Id, ct)
             : [];
 
-        // Get all volunteer history entries for editing
-        var volunteerHistory = profile is not null
-            ? await _volunteerHistoryService.GetAllAsync(profile.Id, ct)
-            : [];
+        // Get CV entries for editing from the FullProfile projection
+        var fullProfile = await _profileService.GetFullProfileAsync(user.Id, ct);
+        var cvEntries = fullProfile?.CVEntries ?? [];
 
         // Get profile languages for editing
         var languages = profile is not null
@@ -252,12 +249,11 @@ public class ProfileController : HumansControllerBase
                 Visibility = cf.Visibility,
                 DisplayOrder = cf.DisplayOrder
             }).ToList(),
-            EditableVolunteerHistory = volunteerHistory.Select(vh => new VolunteerHistoryEntryEditViewModel
+            EditableVolunteerHistory = cvEntries.Select(cv => new VolunteerHistoryEntryEditViewModel
             {
-                Id = vh.Id,
-                DateString = vh.Date.ToIsoDateString(),
-                EventName = vh.EventName,
-                Description = vh.Description
+                DateString = cv.Date.ToIsoDateString(),
+                EventName = cv.EventName,
+                Description = cv.Description
             }).ToList(),
             EditableLanguages = languages.Select(pl => new ProfileLanguageEditViewModel
             {
@@ -483,18 +479,17 @@ public class ProfileController : HumansControllerBase
             return View(model);
         }
 
-        // Save volunteer history entries
-        var volunteerHistoryDtos = model.EditableVolunteerHistory
+        // Save CV entries (keyed by Date + EventName, no Id needed)
+        var cvEntries = model.EditableVolunteerHistory
             .Where(vh => !string.IsNullOrWhiteSpace(vh.EventName) && vh.ParsedDate.HasValue)
-            .Select(vh => new VolunteerHistoryEntryEditDto(
-                vh.Id,
+            .Select(vh => new CVEntry(
                 vh.ParsedDate!.Value,
                 vh.EventName,
                 vh.Description
             ))
             .ToList();
 
-        await _volunteerHistoryService.SaveAsync(profileId, volunteerHistoryDtos);
+        await _profileService.SaveCVEntriesAsync(user.Id, cvEntries);
 
         // Save profile languages (remove-and-replace)
         var newLanguages = model.EditableLanguages

@@ -23,7 +23,6 @@ public class ProfileCardViewComponent : ViewComponent
     private readonly IUserService _userService;
     private readonly IContactFieldService _contactFieldService;
     private readonly IUserEmailService _userEmailService;
-    private readonly IVolunteerHistoryService _volunteerHistoryService;
     private readonly ITeamService _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IMembershipCalculator _membershipCalculator;
@@ -35,7 +34,6 @@ public class ProfileCardViewComponent : ViewComponent
         IUserService userService,
         IContactFieldService contactFieldService,
         IUserEmailService userEmailService,
-        IVolunteerHistoryService volunteerHistoryService,
         ITeamService teamService,
         IRoleAssignmentService roleAssignmentService,
         IMembershipCalculator membershipCalculator,
@@ -46,7 +44,6 @@ public class ProfileCardViewComponent : ViewComponent
         _userService = userService;
         _contactFieldService = contactFieldService;
         _userEmailService = userEmailService;
-        _volunteerHistoryService = volunteerHistoryService;
         _teamService = teamService;
         _roleAssignmentService = roleAssignmentService;
         _membershipCalculator = membershipCalculator;
@@ -99,10 +96,9 @@ public class ProfileCardViewComponent : ViewComponent
 
         // nobodies.team email badge is now handled by NobodiesEmailBadgeViewComponent
 
-        // Get volunteer history entries
-        var volunteerHistory = profile is not null
-            ? await _volunteerHistoryService.GetAllAsync(profile.Id)
-            : [];
+        // Get CV entries from the FullProfile projection
+        var fullProfile = await _profileService.GetFullProfileAsync(userId);
+        var cvEntries = fullProfile?.CVEntries ?? [];
 
         // Get profile languages (service returns sorted by proficiency desc, then language code)
         var profileLanguages = profile is not null
@@ -175,12 +171,11 @@ public class ProfileCardViewComponent : ViewComponent
                 Value = cf.Value,
                 Visibility = cf.Visibility
             }).ToList(),
-            VolunteerHistory = volunteerHistory.Select(vh => new VolunteerHistoryEntryViewModel
+            VolunteerHistory = cvEntries.Select(cv => new VolunteerHistoryEntryViewModel
             {
-                Id = vh.Id,
-                Date = vh.Date,
-                EventName = vh.EventName,
-                Description = vh.Description
+                Date = cv.Date,
+                EventName = cv.EventName,
+                Description = cv.Description
             }).ToList(),
             Teams = displayableTeams,
             Languages = profileLanguages.Select(pl => new ProfileLanguageDisplayViewModel

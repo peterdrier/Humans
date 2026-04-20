@@ -5,12 +5,11 @@ using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Stores;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories;
-using Humans.Infrastructure.Stores;
 using Xunit;
 using ContactFieldService = Humans.Application.Services.Profile.ContactFieldService;
 
@@ -21,7 +20,7 @@ public class ContactFieldServiceTests : IDisposable
     private readonly HumansDbContext _dbContext;
     private readonly ITeamService _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
-    private readonly IProfileStore _store;
+    private readonly IProfileRepository _profileRepository;
     private readonly FakeClock _clock;
     private readonly ContactFieldService _service;
 
@@ -34,14 +33,14 @@ public class ContactFieldServiceTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _teamService = Substitute.For<ITeamService>();
         _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
-        _store = new ProfileStore();
         _clock = new FakeClock(Instant.FromUtc(2024, 1, 15, 12, 0, 0));
 
-        var repository = new ContactFieldRepository(
-            new Humans.Application.Tests.Infrastructure.TestDbContextFactory(options));
+        var factory = new Humans.Application.Tests.Infrastructure.TestDbContextFactory(options);
+        var repository = new ContactFieldRepository(factory);
+        _profileRepository = new ProfileRepository(factory, _clock);
 
         _service = new ContactFieldService(
-            repository, _store, _teamService, _roleAssignmentService, _clock);
+            repository, _profileRepository, _teamService, _roleAssignmentService, _clock);
     }
 
     public void Dispose()
@@ -396,15 +395,8 @@ public class ContactFieldServiceTests : IDisposable
         _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync();
 
-        // Populate the store so GetVisibleContactFieldsAsync can resolve profileId → userId
-        _store.Upsert(userId, new CachedProfile(
-            UserId: userId, DisplayName: "Test User", ProfilePictureUrl: null,
-            HasCustomPicture: false, ProfileId: profile.Id,
-            UpdatedAtTicks: profile.UpdatedAt.ToUnixTimeTicks(),
-            BurnerName: null, Bio: null, Pronouns: null, ContributionInterests: null,
-            City: null, CountryCode: null, Latitude: null, Longitude: null,
-            BirthdayDay: null, BirthdayMonth: null, IsApproved: false, IsSuspended: false,
-            VolunteerHistory: []));
+        // No store to populate — GetVisibleContactFieldsAsync now resolves profileId → userId
+        // via IProfileRepository.GetOwnerUserIdAsync (scalar DB query).
 
         return profile;
     }
