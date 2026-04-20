@@ -55,6 +55,7 @@ public class GuideController : Controller
 
         if (canonical is null)
         {
+            Response.StatusCode = StatusCodes.Status404NotFound;
             return View("NotFound", BuildSidebar(null));
         }
 
@@ -65,6 +66,7 @@ public class GuideController : Controller
         }
         catch (GuideContentUnavailableException)
         {
+            Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
             return View("Unavailable", BuildSidebar(canonical));
         }
 

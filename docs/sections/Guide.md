@@ -16,7 +16,7 @@
 | Role | Visibility |
 |------|------------|
 | Anonymous | View Volunteer-scoped blocks only; cannot trigger refresh |
-| Volunteer (human + not coordinator) | View Volunteer + Coordinator (filtered) blocks; cannot trigger refresh |
+| Any authenticated human | View Volunteer-scoped content |
 | Team coordinator (TeamMember.Role == Coordinator) | Additionally view Coordinator-scoped blocks |
 | Domain admin (*Admin or *Coordinator system role named in a parenthetical) | Additionally view blocks whose parenthetical names their role, on those specific files |
 | Admin, Board | View all blocks on all pages |

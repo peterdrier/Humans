@@ -11,6 +11,10 @@ namespace Humans.Application.Services;
 /// </summary>
 public static class GuideFilter
 {
+    /// <summary>
+    /// Regex that matches the innermost &lt;/div&gt; (non-greedy .*?), which is safe because
+    /// guide markdown is PR-reviewed and does not contain nested &lt;div&gt;s.
+    /// </summary>
     private static readonly Regex BlockPattern = new(
         """<div\s+data-guide-role="(?<role>[^"]+)"\s+data-guide-roles="(?<roles>[^"]*)"\s*>(?<body>.*?)</div>""",
         RegexOptions.Compiled | RegexOptions.Singleline,
