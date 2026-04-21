@@ -330,6 +330,43 @@ public class ShiftDashboardMetricsTests : IDisposable
     }
 
     [Fact]
+    public async Task GetCoordinatorActivity_RangeSignup_CountsAsOneBlockNotOneRowPerDay()
+    {
+        var es = await SeedEventAsync();
+        var build = await SeedTeamAsync("Build");
+
+        var buildRota = await SeedRotaAsync(build, es, RotaPeriod.Build);
+
+        // A 5-day range signup — five pending shift-signups sharing one SignupBlockId.
+        var volunteer = await SeedUserAsync("v", TestNow);
+        var blockId = Guid.NewGuid();
+        for (var day = -5; day <= -1; day++)
+        {
+            var shift = await SeedShiftAsync(buildRota, dayOffset: day, min: 1, max: 3);
+            _dbContext.ShiftSignups.Add(new ShiftSignup
+            {
+                Id = Guid.NewGuid(),
+                ShiftId = shift.Id,
+                UserId = volunteer.Id,
+                SignupBlockId = blockId,
+                Status = SignupStatus.Pending,
+                CreatedAt = TestNow.Minus(Duration.FromHours(1)),
+                UpdatedAt = TestNow,
+            });
+        }
+        await _dbContext.SaveChangesAsync();
+
+        var coord = await SeedUserAsync("coord", TestNow.Minus(Duration.FromDays(2)));
+        await SeedCoordinatorAsync(build, coord);
+
+        var result = await _service.GetCoordinatorActivityAsync(es.Id);
+
+        result.Should().HaveCount(1);
+        result[0].TeamName.Should().Be("Build");
+        result[0].PendingSignupCount.Should().Be(1);
+    }
+
+    [Fact]
     public async Task GetCoordinatorActivity_SortsByOldestLoginFirst()
     {
         var es = await SeedEventAsync();

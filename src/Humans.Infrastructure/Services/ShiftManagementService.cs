@@ -1147,15 +1147,17 @@ public class ShiftManagementService : IShiftManagementService
             eventEndOffset = es.EventEndOffset;
         }
 
-        // Pending signup counts per team (via rota.TeamId). Not deduped by SignupBlockId —
-        // this count is the raw number of pending shift-signups that need attention.
+        // Pending signup counts per team (via rota.TeamId). Deduped by SignupBlockId so a
+        // multi-day range signup (one volunteer request spanning N days, N pending rows
+        // sharing one block id) counts as one actionable item — matching SignupBlockId ?? Id
+        // treatment elsewhere in the service and in DashboardService.
         var pendingQuery =
             from rota in _dbContext.Rotas
             where rota.EventSettingsId == eventSettingsId
             join shift in _dbContext.Shifts on rota.Id equals shift.RotaId
             join signup in _dbContext.ShiftSignups on shift.Id equals signup.ShiftId
             where signup.Status == SignupStatus.Pending
-            select new { rota.TeamId, shift.DayOffset };
+            select new { rota.TeamId, shift.DayOffset, BlockKey = signup.SignupBlockId ?? signup.Id };
 
         pendingQuery = period switch
         {
@@ -1166,6 +1168,8 @@ public class ShiftManagementService : IShiftManagementService
         };
 
         var pendingCounts = await pendingQuery
+            .Select(x => new { x.TeamId, x.BlockKey })
+            .Distinct()
             .GroupBy(x => x.TeamId)
             .Select(g => new { TeamId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.TeamId, x => x.Count);
