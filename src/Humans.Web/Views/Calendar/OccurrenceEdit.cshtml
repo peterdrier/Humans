@@ -1,0 +1,55 @@
+@model Humans.Web.Models.Calendar.OccurrenceOverrideFormViewModel
+@{
+    ViewData["Title"] = "Edit single occurrence";
+}
+
+<div class="container py-4">
+    <h1 class="h3 mb-3">Edit a single occurrence</h1>
+    <p class="text-muted">
+        Override only this occurrence of the recurring event. Leave a field blank to inherit the value from the parent event.
+    </p>
+
+    <form method="post"
+          asp-action="EditOccurrence"
+          asp-route-id="@Model.EventId"
+          asp-route-originalStartUtc="@Model.OriginalOccurrenceStartUtc">
+        @Html.AntiForgeryToken()
+        @Html.HiddenFor(m => m.RecurrenceTimezone)
+
+        <div asp-validation-summary="All" class="text-danger mb-2"></div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label asp-for="OverrideStartLocal" class="form-label">Override start</label>
+                <input asp-for="OverrideStartLocal" type="datetime-local" class="form-control" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label asp-for="OverrideEndLocal" class="form-label">Override end</label>
+                <input asp-for="OverrideEndLocal" type="datetime-local" class="form-control" />
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="OverrideTitle" class="form-label">Override title</label>
+            <input asp-for="OverrideTitle" class="form-control" />
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="OverrideLocation" class="form-label">Override location</label>
+            <input asp-for="OverrideLocation" class="form-control" />
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="OverrideLocationUrl" class="form-label">Override location URL</label>
+            <input asp-for="OverrideLocationUrl" type="url" class="form-control" placeholder="https://..." />
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="OverrideDescription" class="form-label">Override description</label>
+            <textarea asp-for="OverrideDescription" class="form-control" rows="3"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save override</button>
+        <a class="btn btn-link" asp-action="Event" asp-route-id="@Model.EventId">Cancel</a>
+    </form>
+</div>

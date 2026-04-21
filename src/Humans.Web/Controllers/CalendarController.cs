@@ -249,6 +249,64 @@ public class CalendarController : HumansControllerBase
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpPost("Event/{id:guid}/Occurrence/{originalStartUtc}/Cancel")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CancelOccurrence(Guid id, string originalStartUtc, CancellationToken ct)
+    {
+        var ev = await _calendar.GetEventByIdAsync(id, ct);
+        if (ev is null) return NotFound();
+        var authz = await _authz.AuthorizeAsync(User, ev.OwningTeam, PolicyNames.CalendarEditor);
+        if (!authz.Succeeded) return Forbid();
+
+        var original = OccurrenceOverrideFormViewModel.ParseOriginal(originalStartUtc);
+        await _calendar.CancelOccurrenceAsync(id, original, GetCurrentUserId(), ct);
+        return RedirectToAction(nameof(Event), new { id });
+    }
+
+    [HttpGet("Event/{id:guid}/Occurrence/{originalStartUtc}/Edit")]
+    public async Task<IActionResult> EditOccurrence(Guid id, string originalStartUtc, CancellationToken ct)
+    {
+        var ev = await _calendar.GetEventByIdAsync(id, ct);
+        if (ev is null) return NotFound();
+        var authz = await _authz.AuthorizeAsync(User, ev.OwningTeam, PolicyNames.CalendarEditor);
+        if (!authz.Succeeded) return Forbid();
+
+        return View("OccurrenceEdit", new OccurrenceOverrideFormViewModel
+        {
+            EventId = id,
+            OriginalOccurrenceStartUtc = originalStartUtc,
+            RecurrenceTimezone = ev.RecurrenceTimezone ?? "Europe/Madrid",
+        });
+    }
+
+    [HttpPost("Event/{id:guid}/Occurrence/{originalStartUtc}/Edit")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditOccurrence(Guid id, string originalStartUtc, OccurrenceOverrideFormViewModel form, CancellationToken ct)
+    {
+        var ev = await _calendar.GetEventByIdAsync(id, ct);
+        if (ev is null) return NotFound();
+        var authz = await _authz.AuthorizeAsync(User, ev.OwningTeam, PolicyNames.CalendarEditor);
+        if (!authz.Succeeded) return Forbid();
+
+        var zone = DateTimeZoneProviders.Tzdb[form.RecurrenceTimezone];
+        var original = OccurrenceOverrideFormViewModel.ParseOriginal(originalStartUtc);
+
+        Instant? overrideStart = form.OverrideStartLocal is { } s
+            ? LocalDateTime.FromDateTime(s).InZoneLeniently(zone).ToInstant()
+            : null;
+        Instant? overrideEnd = form.OverrideEndLocal is { } e
+            ? LocalDateTime.FromDateTime(e).InZoneLeniently(zone).ToInstant()
+            : null;
+
+        await _calendar.OverrideOccurrenceAsync(id, original,
+            new OverrideOccurrenceDto(overrideStart, overrideEnd,
+                form.OverrideTitle, form.OverrideDescription,
+                form.OverrideLocation, form.OverrideLocationUrl),
+            GetCurrentUserId(), ct);
+
+        return RedirectToAction(nameof(Event), new { id });
+    }
+
     private async Task<IReadOnlyList<TeamOption>> GetEditableTeamsForCurrentUserAsync(CancellationToken ct)
     {
         if (User.IsInRole(RoleNames.Admin))
