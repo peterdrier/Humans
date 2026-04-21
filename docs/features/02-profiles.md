@@ -68,6 +68,8 @@ Profile
 ├── Longitude: double?
 ├── PlaceId: string? (256) [Google Places ID]
 ├── Bio: string? (4000)
+├── ContributionInterests: string? [public]
+├── PersonalBoundaries: string? [public]
 ├── EmergencyContactName: string? (256) [board only]
 ├── EmergencyContactPhone: string? (50) [board only]
 ├── EmergencyContactRelationship: string? (100) [board only]

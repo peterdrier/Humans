@@ -25,6 +25,7 @@ public class ProfileCardViewModel
     public int? BirthdayDay { get; set; }
     public string? Bio { get; set; }
     public string? ContributionInterests { get; set; }
+    public string? PersonalBoundaries { get; set; }
     public string? BoardNotes { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }

@@ -171,6 +171,14 @@
             <p class="mb-0" style="white-space: pre-line">@Model.ContributionInterests</p>
         }
 
+        @* Personal Boundaries *@
+        @if (!string.IsNullOrEmpty(Model.PersonalBoundaries))
+        {
+            <hr />
+            <h6 class="text-muted mb-2">@Localizer["Profile_PersonalBoundaries"]</h6>
+            <p class="mb-0" style="white-space: pre-line">@Model.PersonalBoundaries</p>
+        }
+
         @* Burner CV *@
         @if (Model.VolunteerHistory.Count > 0)
         {

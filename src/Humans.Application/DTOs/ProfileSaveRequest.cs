@@ -5,7 +5,7 @@ namespace Humans.Application.DTOs;
 public record ProfileSaveRequest(
     string BurnerName, string FirstName, string LastName,
     string? City, string? CountryCode, double? Latitude, double? Longitude, string? PlaceId,
-    string? Bio, string? Pronouns, string? ContributionInterests, string? BoardNotes,
+    string? Bio, string? Pronouns, string? ContributionInterests, string? PersonalBoundaries, string? BoardNotes,
     int? BirthdayMonth, int? BirthdayDay,
     string? EmergencyContactName, string? EmergencyContactPhone, string? EmergencyContactRelationship,
     bool NoPriorBurnExperience,

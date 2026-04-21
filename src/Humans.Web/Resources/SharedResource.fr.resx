@@ -977,6 +977,8 @@
   <!-- ======================== -->
   <data name="Profile_ContributionInterests" xml:space="preserve"><value>Comment j'aimerais contribuer</value></data>
   <data name="ProfileEdit_ContributionInterestsHelp" xml:space="preserve"><value>Partagez vos compétences, intérêts et comment vous aimeriez vous impliquer. Visible par tous les humans.</value></data>
+  <data name="Profile_PersonalBoundaries" xml:space="preserve"><value>Limites personnelles</value></data>
+  <data name="ProfileEdit_PersonalBoundariesHelp" xml:space="preserve"><value>Tout ce que vous aimeriez que les collaborateurs et coordinateurs sachent d'avance — contraintes de disponibilité, choses que vous préférez éviter, préférences de communication. Optionnel.</value></data>
   <data name="Profile_BoardNotes" xml:space="preserve"><value>Notes pour le Conseil</value></data>
   <data name="ProfileEdit_BoardNotesHelp" xml:space="preserve"><value>Notes privées pour le Conseil.</value></data>
   <data name="Validation_PhoneE164" xml:space="preserve"><value>{0} doit commencer par + et l'indicatif du pays (ex. +34 612 345 678)</value></data>

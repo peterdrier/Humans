@@ -150,6 +150,7 @@ public class ProfileCardViewComponent : ViewComponent
             BirthdayDay = profile?.DateOfBirth?.Day,
             Bio = profile?.Bio,
             ContributionInterests = profile?.ContributionInterests,
+            PersonalBoundaries = profile?.PersonalBoundaries,
             BoardNotes = canViewLegalName ? profile?.BoardNotes : null,
             FirstName = canViewLegalName ? profile?.FirstName : null,
             LastName = canViewLegalName ? profile?.LastName : null,
