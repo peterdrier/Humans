@@ -1755,6 +1755,22 @@
   <data name="Privacy_ContactBody" xml:space="preserve"><value>Per a preguntes o dubtes sobre aquesta política, contacta amb el nostre Delegat de Protecció de Dades a {0}.</value><comment>{0} = DPO email</comment></data>
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>Si no estàs satisfet amb la nostra resposta, tens dret a presentar una reclamació davant l'Agència Espanyola de Protecció de Dades (AEPD) a {0}.</value><comment>{0} = AEPD URL</comment></data>
 
+  <!-- Agent Widget -->
+  <data name="Agent_ConsentPrompt" xml:space="preserve"><value>Abans d'usar l'assistent, accepta les condicions.</value></data>
+  <data name="Agent_ConsentReviewButton" xml:space="preserve"><value>Revisar condicions</value></data>
+  <data name="Agent_HistoryActions" xml:space="preserve"><value>Accions</value></data>
+  <data name="Agent_HistoryDelete" xml:space="preserve"><value>Elimina</value></data>
+  <data name="Agent_HistoryEmpty" xml:space="preserve"><value>Encara no hi ha converses.</value></data>
+  <data name="Agent_HistoryLastMessage" xml:space="preserve"><value>Últim missatge</value></data>
+  <data name="Agent_HistoryMessages" xml:space="preserve"><value>Missatges</value></data>
+  <data name="Agent_HistoryStarted" xml:space="preserve"><value>Inici</value></data>
+  <data name="Agent_HistoryTitle" xml:space="preserve"><value>Assistent — Les meves converses</value></data>
+  <data name="Agent_InputPlaceholder" xml:space="preserve"><value>Pregunta com funciona el sistema…</value></data>
+  <data name="Agent_PanelTitle" xml:space="preserve"><value>Assistent</value></data>
+  <data name="Agent_Send" xml:space="preserve"><value>Envia</value></data>
+  <data name="Agent_WidgetButton" xml:space="preserve"><value>Obrir l'assistent</value></data>
+  <data name="Nav_Agent" xml:space="preserve"><value>Assistent</value></data>
+
 
   <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Places cobertes</value></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Amb entrada</value></data>

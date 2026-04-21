@@ -1753,6 +1753,22 @@
   <data name="Privacy_ContactBody" xml:space="preserve"><value>Bei Fragen oder Bedenken zu dieser Richtlinie kontaktiere unseren Datenschutzbeauftragten unter {0}.</value><comment>{0} = DPO email</comment></data>
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>Wenn du mit unserer Antwort nicht zufrieden bist, hast du das Recht, eine Beschwerde bei der Spanischen Datenschutzbehörde (AEPD) unter {0} einzureichen.</value><comment>{0} = AEPD URL</comment></data>
 
+  <!-- Agent Widget -->
+  <data name="Agent_ConsentPrompt" xml:space="preserve"><value>Bitte prüfe und akzeptiere die Nutzungsbedingungen des Assistenten.</value></data>
+  <data name="Agent_ConsentReviewButton" xml:space="preserve"><value>Bedingungen prüfen</value></data>
+  <data name="Agent_HistoryActions" xml:space="preserve"><value>Aktionen</value></data>
+  <data name="Agent_HistoryDelete" xml:space="preserve"><value>Löschen</value></data>
+  <data name="Agent_HistoryEmpty" xml:space="preserve"><value>Noch keine Gespräche.</value></data>
+  <data name="Agent_HistoryLastMessage" xml:space="preserve"><value>Letzte Nachricht</value></data>
+  <data name="Agent_HistoryMessages" xml:space="preserve"><value>Nachrichten</value></data>
+  <data name="Agent_HistoryStarted" xml:space="preserve"><value>Gestartet</value></data>
+  <data name="Agent_HistoryTitle" xml:space="preserve"><value>Assistent — Meine Gespräche</value></data>
+  <data name="Agent_InputPlaceholder" xml:space="preserve"><value>Frage, wie das System funktioniert…</value></data>
+  <data name="Agent_PanelTitle" xml:space="preserve"><value>Assistent</value></data>
+  <data name="Agent_Send" xml:space="preserve"><value>Senden</value></data>
+  <data name="Agent_WidgetButton" xml:space="preserve"><value>Assistent öffnen</value></data>
+  <data name="Nav_Agent" xml:space="preserve"><value>Assistent</value></data>
+
 
   <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Besetzte Plätze</value></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Ticketinhaber</value></data>

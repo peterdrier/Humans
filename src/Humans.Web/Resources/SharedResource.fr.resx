@@ -1753,6 +1753,22 @@
   <data name="Privacy_ContactBody" xml:space="preserve"><value>Pour toute question ou préoccupation concernant cette politique, contactez notre Délégué à la Protection des Données à {0}.</value><comment>{0} = DPO email</comment></data>
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>Si vous n'êtes pas satisfait de notre réponse, vous avez le droit de déposer une plainte auprès de l'Agence Espagnole de Protection des Données (AEPD) à {0}.</value><comment>{0} = AEPD URL</comment></data>
 
+  <!-- Agent Widget -->
+  <data name="Agent_ConsentPrompt" xml:space="preserve"><value>Avant d'utiliser l'assistant, veuillez accepter les conditions.</value></data>
+  <data name="Agent_ConsentReviewButton" xml:space="preserve"><value>Consulter les conditions</value></data>
+  <data name="Agent_HistoryActions" xml:space="preserve"><value>Actions</value></data>
+  <data name="Agent_HistoryDelete" xml:space="preserve"><value>Supprimer</value></data>
+  <data name="Agent_HistoryEmpty" xml:space="preserve"><value>Aucune conversation.</value></data>
+  <data name="Agent_HistoryLastMessage" xml:space="preserve"><value>Dernier message</value></data>
+  <data name="Agent_HistoryMessages" xml:space="preserve"><value>Messages</value></data>
+  <data name="Agent_HistoryStarted" xml:space="preserve"><value>Début</value></data>
+  <data name="Agent_HistoryTitle" xml:space="preserve"><value>Assistant — Mes conversations</value></data>
+  <data name="Agent_InputPlaceholder" xml:space="preserve"><value>Posez une question sur le fonctionnement…</value></data>
+  <data name="Agent_PanelTitle" xml:space="preserve"><value>Assistant</value></data>
+  <data name="Agent_Send" xml:space="preserve"><value>Envoyer</value></data>
+  <data name="Agent_WidgetButton" xml:space="preserve"><value>Ouvrir l'assistant</value></data>
+  <data name="Nav_Agent" xml:space="preserve"><value>Assistant</value></data>
+
 
   <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Places remplies</value></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Détenteurs de billets</value></data>
