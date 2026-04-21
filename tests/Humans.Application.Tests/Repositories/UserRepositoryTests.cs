@@ -159,12 +159,14 @@ public sealed class UserRepositoryTests : IDisposable
         var result = await _repo.UpsertParticipationAsync(
             userId, 2026, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared, now, default);
 
-        result.Should().BeTrue();
+        result.Should().NotBeNull();
+        result!.Status.Should().Be(ParticipationStatus.NotAttending);
+        result.Source.Should().Be(ParticipationSource.UserDeclared);
+        result.DeclaredAt.Should().Be(now);
+
         var persisted = await _dbContext.EventParticipations.AsNoTracking()
             .FirstAsync(ep => ep.UserId == userId && ep.Year == 2026);
-        persisted.Status.Should().Be(ParticipationStatus.NotAttending);
-        persisted.Source.Should().Be(ParticipationSource.UserDeclared);
-        persisted.DeclaredAt.Should().Be(now);
+        persisted.Id.Should().Be(result.Id);
     }
 
     [Fact]
@@ -185,12 +187,10 @@ public sealed class UserRepositoryTests : IDisposable
         var result = await _repo.UpsertParticipationAsync(
             userId, 2026, ParticipationStatus.Ticketed, ParticipationSource.TicketSync, null, default);
 
-        result.Should().BeTrue();
-        var persisted = await _dbContext.EventParticipations.AsNoTracking()
-            .FirstAsync(ep => ep.UserId == userId && ep.Year == 2026);
-        persisted.Status.Should().Be(ParticipationStatus.Ticketed);
-        persisted.Source.Should().Be(ParticipationSource.TicketSync);
-        persisted.DeclaredAt.Should().BeNull();
+        result.Should().NotBeNull();
+        result!.Status.Should().Be(ParticipationStatus.Ticketed);
+        result.Source.Should().Be(ParticipationSource.TicketSync);
+        result.DeclaredAt.Should().BeNull();
     }
 
     [Fact]
@@ -212,7 +212,7 @@ public sealed class UserRepositoryTests : IDisposable
         var result = await _repo.UpsertParticipationAsync(
             userId, 2026, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared, _clock.GetCurrentInstant(), default);
 
-        result.Should().BeFalse();
+        result.Should().BeNull();
         var persisted = await _dbContext.EventParticipations.AsNoTracking()
             .FirstAsync(ep => ep.UserId == userId && ep.Year == 2026);
         persisted.Status.Should().Be(ParticipationStatus.Attended);

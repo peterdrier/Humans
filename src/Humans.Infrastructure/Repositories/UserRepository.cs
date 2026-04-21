@@ -106,6 +106,19 @@ public sealed class UserRepository : IUserRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Instant>> GetLoginTimestampsInWindowAsync(
+        Instant fromInclusive, Instant toExclusive, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Users
+            .AsNoTracking()
+            .Where(u => u.LastLoginAt != null
+                        && u.LastLoginAt >= fromInclusive
+                        && u.LastLoginAt < toExclusive)
+            .Select(u => u.LastLoginAt!.Value)
+            .ToListAsync(ct);
+    }
+
     // ==========================================================================
     // Writes — User (atomic field updates)
     // ==========================================================================
@@ -191,7 +204,7 @@ public sealed class UserRepository : IUserRepository
     // Writes — EventParticipation
     // ==========================================================================
 
-    public async Task<bool> UpsertParticipationAsync(
+    public async Task<EventParticipation?> UpsertParticipationAsync(
         Guid userId,
         int year,
         ParticipationStatus status,
@@ -203,19 +216,21 @@ public sealed class UserRepository : IUserRepository
         var existing = await ctx.EventParticipations
             .FirstOrDefaultAsync(ep => ep.UserId == userId && ep.Year == year, ct);
 
+        EventParticipation persisted;
         if (existing is not null)
         {
             // Attended is permanent — never revert.
             if (existing.Status == ParticipationStatus.Attended)
-                return false;
+                return null;
 
             existing.Status = status;
             existing.Source = source;
             existing.DeclaredAt = declaredAt;
+            persisted = existing;
         }
         else
         {
-            ctx.EventParticipations.Add(new EventParticipation
+            persisted = new EventParticipation
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
@@ -223,11 +238,16 @@ public sealed class UserRepository : IUserRepository
                 Status = status,
                 Source = source,
                 DeclaredAt = declaredAt,
-            });
+            };
+            ctx.EventParticipations.Add(persisted);
         }
 
         await ctx.SaveChangesAsync(ct);
-        return true;
+
+        // Detach so callers cannot accidentally mutate a tracked entity through
+        // a disposed context.
+        ctx.Entry(persisted).State = EntityState.Detached;
+        return persisted;
     }
 
     public async Task<bool> RemoveParticipationAsync(

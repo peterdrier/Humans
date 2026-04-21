@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using ApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
 using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
+using UsersUserService = Humans.Application.Services.Users.UserService;
 
 namespace Humans.Application.Tests.Services.Gdpr;
 
@@ -59,7 +60,7 @@ public class GdprExportDependencyInjectionTests
     public static readonly Type[] ExpectedContributorTypes =
     [
         typeof(ProfilesProfileService),
-        typeof(UserService),
+        typeof(UsersUserService),
         typeof(AccountMergeService),
         typeof(ApplicationDecisionService),
         typeof(ConsentService),

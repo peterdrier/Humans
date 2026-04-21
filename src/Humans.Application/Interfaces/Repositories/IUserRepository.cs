@@ -58,6 +58,14 @@ public interface IUserRepository
     /// </summary>
     Task<IReadOnlyList<User>> GetContactUsersAsync(string? search, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns the <c>LastLoginAt</c> timestamp of every user whose last login
+    /// falls within the half-open window <c>[fromInclusive, toExclusive)</c>.
+    /// Read-only (AsNoTracking). Used by the shift coordinator dashboard.
+    /// </summary>
+    Task<IReadOnlyList<Instant>> GetLoginTimestampsInWindowAsync(
+        Instant fromInclusive, Instant toExclusive, CancellationToken ct = default);
+
     // ==========================================================================
     // Writes — User (atomic field updates)
     // ==========================================================================
@@ -113,14 +121,15 @@ public interface IUserRepository
     /// Upserts a participation record. If a record exists for (userId, year):
     /// <list type="bullet">
     ///   <item>if its <see cref="ParticipationStatus"/> is <see cref="ParticipationStatus.Attended"/>,
-    ///     the call is a no-op (Attended is permanent) — returns false;</item>
+    ///     the call is a no-op (Attended is permanent) — returns null;</item>
     ///   <item>otherwise, the status, source, and declaredAt are overwritten with
-    ///     the provided values — returns true.</item>
+    ///     the provided values — returns the updated row.</item>
     /// </list>
-    /// If no record exists, a new one is created with the provided values and persisted.
-    /// Returns true when a change was persisted, false when the Attended guard blocked the upsert.
+    /// If no record exists, a new one is created with the provided values and
+    /// persisted — returns the new row. The returned entity is detached
+    /// (AsNoTracking semantics; the owning context is disposed before return).
     /// </summary>
-    Task<bool> UpsertParticipationAsync(
+    Task<EventParticipation?> UpsertParticipationAsync(
         Guid userId,
         int year,
         ParticipationStatus status,

@@ -19,6 +19,7 @@ using ProfilesContactFieldService = Humans.Application.Services.Profile.ContactF
 using ProfilesUserEmailService = Humans.Application.Services.Profile.UserEmailService;
 using ProfilesCommunicationPreferenceService = Humans.Application.Services.Profile.CommunicationPreferenceService;
 using ProfilesContactService = Humans.Application.Services.Profile.ContactService;
+using UsersUserService = Humans.Application.Services.Users.UserService;
 
 namespace Humans.Web.Extensions;
 
@@ -266,9 +267,15 @@ public static class InfrastructureServiceCollectionExtensions
         // still works.
         services.AddHostedService<FullProfileWarmupHostedService>();
 
-        services.AddScoped<UserService>();
-        services.AddScoped<IUserService>(sp => sp.GetRequiredService<UserService>());
-        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<UserService>());
+        // User section — §15 repository pattern (issue #511).
+        // No decorator / cache: User is ~500 rows with no stitched projection or
+        // hot bulk-read path; see docs/superpowers/specs/2026-04-21-issue-511-user-migration.md
+        // for the Option A rationale. IUserRepository is Singleton
+        // (IDbContextFactory-based) so the service can inject it directly.
+        services.AddSingleton<IUserRepository, UserRepository>();
+        services.AddScoped<UsersUserService>();
+        services.AddScoped<IUserService>(sp => sp.GetRequiredService<UsersUserService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<UsersUserService>());
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<ISystemTeamSync, SystemTeamSyncJob>();
         services.AddScoped<SyncLegalDocumentsJob>();
