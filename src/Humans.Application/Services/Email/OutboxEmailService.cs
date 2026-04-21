@@ -1,57 +1,60 @@
-using Hangfire;
+using System.Globalization;
+using System.Text.Json;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Configuration;
-using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Helpers;
-using Humans.Infrastructure.Jobs;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using NodaTime;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Application.Services.Email;
 
 /// <summary>
-/// Email service implementation that writes messages to the outbox table instead of sending inline.
-/// Each method renders the email, wraps it in the template, and inserts an EmailOutboxMessage row.
-/// Time-sensitive emails (email_verification) also trigger immediate outbox processing via Hangfire.
+/// Application-layer implementation of <see cref="IEmailService"/>: renders
+/// each system email through <see cref="IEmailRenderer"/>, wraps the body
+/// with <see cref="IEmailBodyComposer"/>, and appends a row to the outbox
+/// through <see cref="IEmailOutboxRepository"/>. Time-sensitive templates
+/// (email verification, magic-link, workspace credentials) also trigger an
+/// immediate processor run through <see cref="IImmediateOutboxProcessor"/>.
 /// </summary>
-public class OutboxEmailService : IEmailService
+/// <remarks>
+/// The SMTP-send path lives in <c>ProcessEmailOutboxJob</c> (Infrastructure)
+/// and dispatches through <see cref="IEmailTransport"/>. This service is
+/// intentionally cache- and transport-free.
+/// </remarks>
+public sealed class OutboxEmailService : IEmailService
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly IEmailOutboxRepository _outboxRepo;
+    private readonly IUserEmailService _userEmailService;
     private readonly IEmailRenderer _renderer;
+    private readonly IEmailBodyComposer _bodyComposer;
+    private readonly IImmediateOutboxProcessor _immediateProcessor;
     private readonly IHumansMetrics _metrics;
     private readonly IClock _clock;
-    private readonly IBackgroundJobClient _backgroundJobClient;
     private readonly ICommunicationPreferenceService _commPrefService;
     private readonly ILogger<OutboxEmailService> _logger;
-    private readonly EmailSettings _settings;
-    private readonly string _environmentName;
 
     public OutboxEmailService(
-        HumansDbContext dbContext,
+        IEmailOutboxRepository outboxRepo,
+        IUserEmailService userEmailService,
         IEmailRenderer renderer,
+        IEmailBodyComposer bodyComposer,
+        IImmediateOutboxProcessor immediateProcessor,
         IHumansMetrics metrics,
         IClock clock,
-        IHostEnvironment hostEnvironment,
-        IOptions<EmailSettings> settings,
-        IBackgroundJobClient backgroundJobClient,
         ICommunicationPreferenceService commPrefService,
         ILogger<OutboxEmailService> logger)
     {
-        _dbContext = dbContext;
+        _outboxRepo = outboxRepo;
+        _userEmailService = userEmailService;
         _renderer = renderer;
+        _bodyComposer = bodyComposer;
+        _immediateProcessor = immediateProcessor;
         _metrics = metrics;
         _clock = clock;
-        _backgroundJobClient = backgroundJobClient;
         _commPrefService = commPrefService;
         _logger = logger;
-        _settings = settings.Value;
-        _environmentName = hostEnvironment.EnvironmentName;
     }
 
     /// <inheritdoc />
@@ -162,7 +165,9 @@ public class OutboxEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var formattedDate = deletionDate.ToInvariantLongDate();
+        // Invariant long-date formatter, matches Humans.Infrastructure.Helpers.EmailDateTimeExtensions
+        // (kept here to avoid an Infrastructure→Application back-reference).
+        var formattedDate = deletionDate.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
         var content = _renderer.RenderAccountDeletionRequested(userName, formattedDate, culture);
         await EnqueueAsync(userEmail, userName, content, "deletion_requested", cancellationToken);
     }
@@ -320,38 +325,28 @@ public class OutboxEmailService : IEmailService
     /// <inheritdoc />
     public async Task SendCampaignCodeAsync(CampaignCodeEmailRequest request, CancellationToken cancellationToken = default)
     {
-        // Substitute placeholders in the Markdown source, then render to HTML.
-        // HTML-encode the substitutions so malicious codes/names cannot inject markup.
-        var encodedCode = System.Net.WebUtility.HtmlEncode(request.Code);
-        var encodedName = System.Net.WebUtility.HtmlEncode(request.RecipientName);
-
-        var markdown = request.MarkdownBody
-            .Replace("{{Code}}", encodedCode, StringComparison.Ordinal)
-            .Replace("{{Name}}", encodedName, StringComparison.Ordinal);
-        var renderedBody = Markdig.Markdown.ToHtml(markdown);
-
-        var renderedSubject = request.Subject
-            .Replace("{{Code}}", request.Code, StringComparison.Ordinal)
-            .Replace("{{Name}}", request.RecipientName, StringComparison.Ordinal);
+        // Renderer performs the {{Code}} / {{Name}} substitution and markdown→HTML
+        // conversion (with HTML-encoded substitutions to prevent injection).
+        var rendered = _renderer.RenderCampaignCode(
+            request.Subject, request.MarkdownBody, request.Code, request.RecipientName);
 
         // Generate unsubscribe headers and footer link for the CampaignCodes category
         var unsubHeaders = _commPrefService.GenerateUnsubscribeHeaders(request.UserId, MessageCategory.CampaignCodes);
         string? extraHeadersJson = null;
         if (unsubHeaders is not null)
         {
-            extraHeadersJson = System.Text.Json.JsonSerializer.Serialize(unsubHeaders);
+            extraHeadersJson = JsonSerializer.Serialize(unsubHeaders);
         }
         var unsubscribeUrl = _commPrefService.GenerateBrowserUnsubscribeUrl(request.UserId, MessageCategory.CampaignCodes);
 
-        var (wrappedHtml, plainText) = EmailBodyComposer.Compose(
-            renderedBody, _settings.BaseUrl, _environmentName, unsubscribeUrl);
+        var (wrappedHtml, plainText) = _bodyComposer.Compose(rendered.HtmlBody, unsubscribeUrl);
 
         var message = new EmailOutboxMessage
         {
             Id = Guid.NewGuid(),
             RecipientEmail = request.RecipientEmail,
             RecipientName = request.RecipientName,
-            Subject = renderedSubject,
+            Subject = rendered.Subject,
             HtmlBody = wrappedHtml,
             PlainTextBody = plainText,
             TemplateName = "campaign_code",
@@ -363,8 +358,7 @@ public class OutboxEmailService : IEmailService
             CreatedAt = _clock.GetCurrentInstant()
         };
 
-        _dbContext.EmailOutboxMessages.Add(message);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _outboxRepo.AddAsync(message, cancellationToken);
 
         _metrics.RecordEmailQueued("campaign_code");
         _logger.LogInformation(
@@ -382,11 +376,10 @@ public class OutboxEmailService : IEmailService
         string? replyTo = null,
         MessageCategory? category = null)
     {
-        // Look up user by email to set UserId for profile email history
-        var userId = await _dbContext.UserEmails
-            .Where(ue => ue.Email == recipientEmail && ue.IsVerified)
-            .Select(ue => (Guid?)ue.UserId)
-            .FirstOrDefaultAsync(cancellationToken);
+        // Look up user by email to set UserId for profile email history.
+        // Routed through IUserEmailService so the Profile section's user_emails
+        // table stays behind its owning service.
+        var userId = await _userEmailService.GetUserIdByVerifiedEmailAsync(recipientEmail, cancellationToken);
 
         // Check opt-out for non-System categories
         if (category is not null && category != MessageCategory.System && userId.HasValue)
@@ -406,12 +399,11 @@ public class OutboxEmailService : IEmailService
         if (category is not null && category != MessageCategory.System && userId.HasValue)
         {
             var headers = _commPrefService.GenerateUnsubscribeHeaders(userId.Value, category.Value);
-            extraHeadersJson = System.Text.Json.JsonSerializer.Serialize(headers);
+            extraHeadersJson = JsonSerializer.Serialize(headers);
             unsubscribeUrl = _commPrefService.GenerateBrowserUnsubscribeUrl(userId.Value, category.Value);
         }
 
-        var (wrappedHtml, plainText) = EmailBodyComposer.Compose(
-            content.HtmlBody, _settings.BaseUrl, _environmentName, unsubscribeUrl);
+        var (wrappedHtml, plainText) = _bodyComposer.Compose(content.HtmlBody, unsubscribeUrl);
 
         var message = new EmailOutboxMessage
         {
@@ -429,15 +421,14 @@ public class OutboxEmailService : IEmailService
             CreatedAt = _clock.GetCurrentInstant()
         };
 
-        _dbContext.EmailOutboxMessages.Add(message);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _outboxRepo.AddAsync(message, cancellationToken);
 
         _metrics.RecordEmailQueued(templateName);
         _logger.LogInformation("Email queued: {TemplateName} to {Recipient}", templateName, recipientEmail);
 
         if (triggerImmediate)
         {
-            _backgroundJobClient.Enqueue<ProcessEmailOutboxJob>(x => x.ExecuteAsync(default));
+            _immediateProcessor.TriggerImmediate();
             _logger.LogInformation("Triggered immediate outbox processing for {TemplateName}", templateName);
         }
     }

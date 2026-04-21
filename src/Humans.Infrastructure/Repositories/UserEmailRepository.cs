@@ -153,6 +153,17 @@ public sealed class UserEmailRepository : IUserEmailRepository
             .FirstOrDefaultAsync(ct);
     }
 
+    public async Task<Guid?> GetUserIdByVerifiedEmailAsync(
+        string email, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.UserEmails
+            .AsNoTracking()
+            .Where(ue => ue.Email == email && ue.IsVerified)
+            .Select(ue => (Guid?)ue.UserId)
+            .FirstOrDefaultAsync(ct);
+    }
+
     public async Task AddAsync(UserEmail email, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

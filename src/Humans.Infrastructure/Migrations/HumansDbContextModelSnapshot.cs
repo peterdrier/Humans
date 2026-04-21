@@ -4054,7 +4054,7 @@ namespace Humans.Infrastructure.Migrations
                         .HasForeignKey("ShiftSignupId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Humans.Domain.Entities.User", "User")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -4062,8 +4062,6 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("CampaignGrant");
 
                     b.Navigation("ShiftSignup");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.EventParticipation", b =>

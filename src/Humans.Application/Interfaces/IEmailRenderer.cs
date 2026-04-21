@@ -120,4 +120,12 @@ public interface IEmailRenderer
     /// Workspace credentials email sent after provisioning a @nobodies.team account.
     /// </summary>
     EmailContent RenderWorkspaceCredentials(string userName, string workspaceEmail, string tempPassword, string? culture = null);
+
+    /// <summary>
+    /// Renders a campaign-code email by substituting <c>{{Code}}</c> and
+    /// <c>{{Name}}</c> placeholders in the campaign's markdown body and
+    /// subject line, HTML-encoding the substituted values to prevent
+    /// injection, and converting the resulting markdown body to HTML.
+    /// </summary>
+    EmailContent RenderCampaignCode(string subject, string markdownBody, string code, string recipientName);
 }

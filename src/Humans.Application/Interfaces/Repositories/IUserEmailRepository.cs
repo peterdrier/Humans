@@ -96,6 +96,14 @@ public interface IUserEmailRepository
     Task<string?> GetVerifiedEmailAddressAsync(
         Guid userId, Guid emailId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns the owning <c>UserId</c> for a verified email address matching
+    /// the given string exactly (no gmail/googlemail aliasing). Returns
+    /// <c>null</c> if no verified row matches.
+    /// </summary>
+    Task<Guid?> GetUserIdByVerifiedEmailAsync(
+        string email, CancellationToken ct = default);
+
     Task AddAsync(UserEmail email, CancellationToken ct = default);
     Task RemoveAsync(UserEmail email, CancellationToken ct = default);
     Task RemoveAllForUserAsync(Guid userId, CancellationToken ct = default);

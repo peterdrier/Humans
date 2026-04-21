@@ -25,6 +25,9 @@ using UsersUserService = Humans.Application.Services.Users.UserService;
 using CityPlanningCityPlanningService = Humans.Application.Services.CityPlanning.CityPlanningService;
 using AuditLogAuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
 using CampsCampService = Humans.Application.Services.Camps.CampService;
+using EmailOutboxService = Humans.Application.Services.Email.EmailOutboxService;
+using OutboxEmailService = Humans.Application.Services.Email.OutboxEmailService;
+using InfrastructureEmailBodyComposer = Humans.Infrastructure.Services.BrandedEmailBodyComposer;
 
 namespace Humans.Web.Extensions;
 
@@ -199,6 +202,14 @@ public static class InfrastructureServiceCollectionExtensions
         }
 
         services.AddScoped<IEmailRenderer, EmailRenderer>();
+
+        // Email section — §15 repository pattern (issue #548).
+        // The outbox repository owns email_outbox_messages + the IsEmailSendingPaused
+        // system_settings row. Registered Singleton (IDbContextFactory-based) so the
+        // Application-layer services can inject it directly.
+        services.AddSingleton<IEmailOutboxRepository, EmailOutboxRepository>();
+        services.AddSingleton<IEmailBodyComposer, InfrastructureEmailBodyComposer>();
+        services.AddScoped<IImmediateOutboxProcessor, HangfireImmediateOutboxProcessor>();
         services.AddScoped<IEmailService, OutboxEmailService>();
         services.AddScoped<IEmailOutboxService, EmailOutboxService>();
         services.AddScoped<IMembershipCalculator, MembershipCalculator>();

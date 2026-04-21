@@ -164,4 +164,15 @@ public interface IUserEmailService
     Task<IReadOnlyDictionary<Guid, string>> GetNotificationTargetEmailsAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Looks up the owning user for a verified email address. Exact match on
+    /// <see cref="UserEmail.Email"/> — no gmail/googlemail aliasing. Returns
+    /// <c>null</c> if no verified row matches. Used by the email-outbox
+    /// enqueue path to stamp <see cref="Humans.Domain.Entities.EmailOutboxMessage.UserId"/>
+    /// so admin views and unsubscribe flows can tie the row back to the human.
+    /// </summary>
+    Task<Guid?> GetUserIdByVerifiedEmailAsync(
+        string email,
+        CancellationToken cancellationToken = default);
 }
