@@ -1,0 +1,33 @@
+@model Humans.Web.Models.Agent.AdminAgentSettingsViewModel
+@{ ViewData["Title"] = "Agent — Settings"; }
+
+<h2>Agent Settings</h2>
+
+@if (TempData["Status"] is string status)
+{
+    <div class="alert alert-success">@status</div>
+}
+
+<form asp-action="Settings" method="post">
+    @Html.AntiForgeryToken()
+    <div class="form-check mb-3">
+        <input asp-for="Enabled" class="form-check-input" />
+        <label asp-for="Enabled" class="form-check-label">Enabled (visible to all consented users)</label>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Model" class="form-label"></label>
+        <input asp-for="Model" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label asp-for="PreloadConfig" class="form-label">Preload Config</label>
+        <select asp-for="PreloadConfig" asp-items="Html.GetEnumSelectList<Humans.Domain.Enums.AgentPreloadConfig>()" class="form-select"></select>
+        <div class="form-text">Tier1 for a fresh Anthropic org; Tier2 after promotion ($40 + 7 days).</div>
+    </div>
+    <div class="row g-3 mb-3">
+        <div class="col-md-3"><label asp-for="DailyMessageCap" class="form-label"></label><input asp-for="DailyMessageCap" class="form-control" /></div>
+        <div class="col-md-3"><label asp-for="HourlyMessageCap" class="form-label"></label><input asp-for="HourlyMessageCap" class="form-control" /></div>
+        <div class="col-md-3"><label asp-for="DailyTokenCap" class="form-label"></label><input asp-for="DailyTokenCap" class="form-control" /></div>
+        <div class="col-md-3"><label asp-for="RetentionDays" class="form-label"></label><input asp-for="RetentionDays" class="form-control" /></div>
+    </div>
+    <button type="submit" class="btn btn-primary">Save</button>
+</form>
