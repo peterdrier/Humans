@@ -1,121 +1,104 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Application.Services.Auth;
 
-public class RoleAssignmentService : IRoleAssignmentService, IUserDataContributor
+/// <summary>
+/// Application-layer implementation of <see cref="IRoleAssignmentService"/>.
+/// Goes through <see cref="IRoleAssignmentRepository"/> for all data access —
+/// this type never imports <c>Microsoft.EntityFrameworkCore</c>, enforced by
+/// <c>Humans.Application.csproj</c>'s reference graph. Cross-section reads
+/// (reporter / assigner display names) go through <see cref="IUserService"/>.
+/// Cross-cutting cache invalidation is routed through
+/// <see cref="INavBadgeCacheInvalidator"/> and
+/// <see cref="IRoleAssignmentClaimsCacheInvalidator"/> instead of
+/// <c>IMemoryCache</c> directly.
+/// </summary>
+/// <remarks>
+/// Auth writes are rare (handful of admin events per month) and reads are
+/// handful per day, so no caching decorator sits in front of this service —
+/// same rationale as Governance / Feedback. The service stitches display
+/// data in memory onto the <see cref="RoleAssignment"/> entity's (now
+/// <c>[Obsolete]</c>) cross-domain navigation properties so existing
+/// controllers and views can continue to read <c>ra.User.DisplayName</c>,
+/// <c>ra.CreatedByUser.DisplayName</c>, etc. without change — this is the
+/// "in-memory join" from design-rules §6b.
+/// </remarks>
+public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataContributor
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly IRoleAssignmentRepository _repository;
+    private readonly IUserService _userService;
     private readonly IAuditLogService _auditLogService;
     private readonly INotificationService _notificationService;
     private readonly ISystemTeamSync _systemTeamSyncJob;
+    private readonly INavBadgeCacheInvalidator _navBadge;
+    private readonly IRoleAssignmentClaimsCacheInvalidator _claimsInvalidator;
     private readonly IClock _clock;
-    private readonly IMemoryCache _cache;
     private readonly ILogger<RoleAssignmentService> _logger;
 
     public RoleAssignmentService(
-        HumansDbContext dbContext,
+        IRoleAssignmentRepository repository,
+        IUserService userService,
         IAuditLogService auditLogService,
         INotificationService notificationService,
         ISystemTeamSync systemTeamSyncJob,
+        INavBadgeCacheInvalidator navBadge,
+        IRoleAssignmentClaimsCacheInvalidator claimsInvalidator,
         IClock clock,
-        IMemoryCache cache,
         ILogger<RoleAssignmentService> logger)
     {
-        _dbContext = dbContext;
+        _repository = repository;
+        _userService = userService;
         _auditLogService = auditLogService;
         _notificationService = notificationService;
         _systemTeamSyncJob = systemTeamSyncJob;
+        _navBadge = navBadge;
+        _claimsInvalidator = claimsInvalidator;
         _clock = clock;
-        _cache = cache;
         _logger = logger;
     }
 
-    public async Task<bool> HasOverlappingAssignmentAsync(
+    public Task<bool> HasOverlappingAssignmentAsync(
         Guid userId,
         string roleName,
         Instant validFrom,
         Instant? validTo = null,
-        CancellationToken cancellationToken = default)
-    {
-        var query = _dbContext.RoleAssignments
-            .AsNoTracking()
-            .Where(ra => ra.UserId == userId && ra.RoleName == roleName);
-
-        // Overlap predicate:
-        // [A_start, A_end) overlaps [B_start, B_end) iff
-        // A_end > B_start AND B_end > A_start.
-        // Null end means open-ended.
-        if (validTo.HasValue)
-        {
-            query = query.Where(ra =>
-                (ra.ValidTo == null || ra.ValidTo > validFrom) &&
-                validTo.Value > ra.ValidFrom);
-        }
-        else
-        {
-            query = query.Where(ra => ra.ValidTo == null || ra.ValidTo > validFrom);
-        }
-
-        return await query.AnyAsync(cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        _repository.HasOverlappingAssignmentAsync(userId, roleName, validFrom, validTo, cancellationToken);
 
     public async Task<(IReadOnlyList<RoleAssignment> Items, int TotalCount)> GetFilteredAsync(
         string? roleFilter, bool activeOnly, int page, int pageSize, Instant now,
         CancellationToken ct = default)
     {
-        var query = _dbContext.RoleAssignments
-            .AsNoTracking()
-            .Include(ra => ra.User)
-            .Include(ra => ra.CreatedByUser)
-            .AsQueryable();
+        var (items, totalCount) = await _repository.GetFilteredAsync(
+            roleFilter, activeOnly, page, pageSize, now, ct);
 
-        if (!string.IsNullOrWhiteSpace(roleFilter))
-        {
-            query = query.Where(ra => ra.RoleName == roleFilter);
-        }
-
-        if (activeOnly)
-        {
-            query = query.Where(ra => ra.ValidFrom <= now && (ra.ValidTo == null || ra.ValidTo > now));
-        }
-
-        var totalCount = await query.CountAsync(ct);
-
-        var items = await query
-            .OrderBy(ra => ra.RoleName)
-            .ThenByDescending(ra => ra.ValidFrom)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync(ct);
-
+        await StitchCrossDomainNavsAsync(items, ct);
         return (items, totalCount);
     }
 
     public async Task<RoleAssignment?> GetByIdAsync(Guid assignmentId, CancellationToken ct = default)
     {
-        return await _dbContext.RoleAssignments
-            .Include(ra => ra.User)
-            .FirstOrDefaultAsync(ra => ra.Id == assignmentId, ct);
+        var assignment = await _repository.GetByIdAsync(assignmentId, ct);
+        if (assignment is null) return null;
+
+        await StitchCrossDomainNavsAsync([assignment], ct);
+        return assignment;
     }
 
     public async Task<IReadOnlyList<RoleAssignment>> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
     {
-        return await _dbContext.RoleAssignments
-            .AsNoTracking()
-            .Include(ra => ra.CreatedByUser)
-            .Where(ra => ra.UserId == userId)
-            .OrderByDescending(ra => ra.ValidFrom)
-            .ToListAsync(ct);
+        var items = await _repository.GetByUserIdAsync(userId, ct);
+        await StitchCrossDomainNavsAsync(items, ct);
+        return items;
     }
 
     public async Task<OnboardingResult> AssignRoleAsync(
@@ -125,7 +108,7 @@ public class RoleAssignmentService : IRoleAssignmentService, IUserDataContributo
     {
         var now = _clock.GetCurrentInstant();
 
-        var hasOverlap = await HasOverlappingAssignmentAsync(userId, roleName, now, cancellationToken: ct);
+        var hasOverlap = await _repository.HasOverlappingAssignmentAsync(userId, roleName, now, validTo: null, ct);
         if (hasOverlap)
         {
             return new OnboardingResult(false, "RoleAlreadyActive");
@@ -142,17 +125,15 @@ public class RoleAssignmentService : IRoleAssignmentService, IUserDataContributo
             CreatedByUserId = assignerId
         };
 
-        _dbContext.RoleAssignments.Add(roleAssignment);
-
-        await _dbContext.SaveChangesAsync(ct);
+        await _repository.AddAsync(roleAssignment, ct);
 
         await _auditLogService.LogAsync(
             AuditAction.RoleAssigned, nameof(User), userId,
             $"Role '{roleName}' assigned",
             assignerId);
 
-        _cache.InvalidateNavBadgeCounts();
-        _cache.InvalidateRoleAssignmentClaims(userId);
+        _navBadge.Invalidate();
+        _claimsInvalidator.Invalidate(userId);
 
         // In-app notification to the user (best-effort)
         try
@@ -185,9 +166,7 @@ public class RoleAssignmentService : IRoleAssignmentService, IUserDataContributo
         string? notes,
         CancellationToken ct = default)
     {
-        var roleAssignment = await _dbContext.RoleAssignments
-            .Include(ra => ra.User)
-            .FirstOrDefaultAsync(ra => ra.Id == assignmentId, ct);
+        var roleAssignment = await _repository.FindForMutationAsync(assignmentId, ct);
 
         if (roleAssignment is null)
         {
@@ -209,15 +188,15 @@ public class RoleAssignmentService : IRoleAssignmentService, IUserDataContributo
                 : $"{roleAssignment.Notes} | Ended: {notes}";
         }
 
-        await _dbContext.SaveChangesAsync(ct);
+        await _repository.SaveTrackedAsync(ct);
 
         await _auditLogService.LogAsync(
             AuditAction.RoleEnded, nameof(User), roleAssignment.UserId,
             $"Role '{roleAssignment.RoleName}' ended",
             enderId);
 
-        _cache.InvalidateNavBadgeCounts();
-        _cache.InvalidateRoleAssignmentClaims(roleAssignment.UserId);
+        _navBadge.Invalidate();
+        _claimsInvalidator.Invalidate(roleAssignment.UserId);
 
         // In-app notification to the user (best-effort)
         try
@@ -245,61 +224,23 @@ public class RoleAssignmentService : IRoleAssignmentService, IUserDataContributo
         return new OnboardingResult(true);
     }
 
-    public async Task<bool> IsUserAdminAsync(Guid userId, CancellationToken cancellationToken = default)
-    {
-        var now = _clock.GetCurrentInstant();
-        return await _dbContext.RoleAssignments
-            .AnyAsync(ra =>
-                ra.UserId == userId &&
-                ra.RoleName == RoleNames.Admin &&
-                ra.ValidFrom <= now &&
-                (ra.ValidTo == null || ra.ValidTo > now),
-                cancellationToken);
-    }
+    public Task<bool> IsUserAdminAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        _repository.HasActiveRoleAsync(userId, RoleNames.Admin, _clock.GetCurrentInstant(), cancellationToken);
 
-    public async Task<bool> IsUserBoardMemberAsync(Guid userId, CancellationToken cancellationToken = default)
-    {
-        var now = _clock.GetCurrentInstant();
-        return await _dbContext.RoleAssignments
-            .AnyAsync(ra =>
-                ra.UserId == userId &&
-                ra.RoleName == RoleNames.Board &&
-                ra.ValidFrom <= now &&
-                (ra.ValidTo == null || ra.ValidTo > now),
-                cancellationToken);
-    }
+    public Task<bool> IsUserBoardMemberAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        _repository.HasActiveRoleAsync(userId, RoleNames.Board, _clock.GetCurrentInstant(), cancellationToken);
 
-    public async Task<bool> IsUserTeamsAdminAsync(Guid userId, CancellationToken cancellationToken = default)
-    {
-        var now = _clock.GetCurrentInstant();
-        return await _dbContext.RoleAssignments
-            .AnyAsync(ra =>
-                ra.UserId == userId &&
-                ra.RoleName == RoleNames.TeamsAdmin &&
-                ra.ValidFrom <= now &&
-                (ra.ValidTo == null || ra.ValidTo > now),
-                cancellationToken);
-    }
+    public Task<bool> IsUserTeamsAdminAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        _repository.HasActiveRoleAsync(userId, RoleNames.TeamsAdmin, _clock.GetCurrentInstant(), cancellationToken);
 
-    public async Task<bool> HasActiveRoleAsync(Guid userId, string roleName, CancellationToken cancellationToken = default)
-    {
-        var now = _clock.GetCurrentInstant();
-        return await _dbContext.RoleAssignments
-            .AnyAsync(ra =>
-                ra.UserId == userId &&
-                ra.RoleName == roleName &&
-                ra.ValidFrom <= now &&
-                (ra.ValidTo == null || ra.ValidTo > now),
-                cancellationToken);
-    }
+    public Task<bool> HasActiveRoleAsync(Guid userId, string roleName, CancellationToken cancellationToken = default) =>
+        _repository.HasActiveRoleAsync(userId, roleName, _clock.GetCurrentInstant(), cancellationToken);
 
     public async Task<int> RevokeAllActiveAsync(Guid userId, CancellationToken ct = default)
     {
         var now = _clock.GetCurrentInstant();
 
-        var activeRoles = await _dbContext.RoleAssignments
-            .Where(ra => ra.UserId == userId && ra.ValidFrom <= now && (ra.ValidTo == null || ra.ValidTo > now))
-            .ToListAsync(ct);
+        var activeRoles = await _repository.GetActiveForUserForMutationAsync(userId, now, ct);
 
         if (activeRoles.Count == 0)
             return 0;
@@ -309,18 +250,15 @@ public class RoleAssignmentService : IRoleAssignmentService, IUserDataContributo
             role.ValidTo = now;
         }
 
-        await _dbContext.SaveChangesAsync(ct);
-        _cache.InvalidateRoleAssignmentClaims(userId);
+        await _repository.SaveTrackedAsync(ct);
+        _claimsInvalidator.Invalidate(userId);
 
         return activeRoles.Count;
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var assignments = await _dbContext.RoleAssignments
-            .AsNoTracking()
-            .Where(ra => ra.UserId == userId)
-            .ToListAsync(ct);
+        var assignments = await _repository.GetByUserIdAsync(userId, ct);
 
         var shaped = assignments.Select(ra => new
         {
@@ -331,4 +269,37 @@ public class RoleAssignmentService : IRoleAssignmentService, IUserDataContributo
 
         return [new UserDataSlice(GdprExportSections.RoleAssignments, shaped)];
     }
+
+    // ==========================================================================
+    // Cross-domain nav stitching — populates [Obsolete]-marked nav properties
+    // in memory from IUserService calls so controllers/views do not need to
+    // change. Design-rules §6b "in-memory join" pattern.
+    // ==========================================================================
+#pragma warning disable CS0618 // Obsolete cross-domain nav properties populated in-memory
+
+    private async Task StitchCrossDomainNavsAsync(
+        IReadOnlyList<RoleAssignment> assignments, CancellationToken ct)
+    {
+        if (assignments.Count == 0) return;
+
+        var userIds = new HashSet<Guid>();
+        foreach (var ra in assignments)
+        {
+            userIds.Add(ra.UserId);
+            userIds.Add(ra.CreatedByUserId);
+        }
+
+        var users = await _userService.GetByIdsAsync(userIds, ct);
+
+        foreach (var ra in assignments)
+        {
+            if (users.TryGetValue(ra.UserId, out var user))
+                ra.User = user;
+
+            if (users.TryGetValue(ra.CreatedByUserId, out var creator))
+                ra.CreatedByUser = creator;
+        }
+    }
+
+#pragma warning restore CS0618
 }

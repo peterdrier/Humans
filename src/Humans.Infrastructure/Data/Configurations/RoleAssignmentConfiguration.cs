@@ -30,10 +30,15 @@ public class RoleAssignmentConfiguration : IEntityTypeConfiguration<RoleAssignme
         builder.Property(ra => ra.CreatedAt)
             .IsRequired();
 
+        // EF needs the nav ref to configure the cross-section FK relationship.
+        // The nav itself is [Obsolete] for Application callers; this block
+        // owns the DB-level FK + cascade behavior.
+#pragma warning disable CS0618
         builder.HasOne(ra => ra.CreatedByUser)
             .WithMany()
             .HasForeignKey(ra => ra.CreatedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
+#pragma warning restore CS0618
 
         builder.HasIndex(ra => ra.UserId);
         builder.HasIndex(ra => ra.RoleName);

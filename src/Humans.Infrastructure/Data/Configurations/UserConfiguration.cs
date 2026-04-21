@@ -38,10 +38,14 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasForeignKey<Profile>(p => p.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // EF needs the nav ref to configure the cross-section FK relationship.
+        // RoleAssignment.User is [Obsolete] for Application callers.
+#pragma warning disable CS0618
         builder.HasMany(u => u.RoleAssignments)
             .WithOne(ra => ra.User)
             .HasForeignKey(ra => ra.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+#pragma warning restore CS0618
 
         builder.HasMany(u => u.ConsentRecords)
             .WithOne(cr => cr.User)
