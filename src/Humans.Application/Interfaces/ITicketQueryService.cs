@@ -139,6 +139,24 @@ public interface ITicketQueryService
     /// so GDPR exports stay stable after the service-ownership refactor.
     /// </summary>
     Task<UserTicketExportData> GetUserTicketExportDataAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the distinct set of matched user IDs across paid ticket orders.
+    /// Used by the shift coordinator dashboard to compute ticket-holder engagement
+    /// counters without reading the tickets table directly.
+    /// </summary>
+    Task<IReadOnlyCollection<Guid>> GetMatchedUserIdsForPaidOrdersAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the <c>PurchasedAt</c> timestamp of every paid ticket order that falls
+    /// within the half-open window <c>[fromInclusive, toExclusive)</c>. Used by the
+    /// shift coordinator dashboard to chart daily ticket sales without reading the
+    /// tickets table directly.
+    /// </summary>
+    Task<IReadOnlyList<Instant>> GetPaidOrderDatesInWindowAsync(
+        Instant fromInclusive,
+        Instant toExclusive,
+        CancellationToken ct = default);
 }
 
 /// <summary>

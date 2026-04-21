@@ -116,4 +116,15 @@ public interface IUserService
     /// Ordered by CreatedAt descending.
     /// </summary>
     Task<IReadOnlyList<User>> GetContactUsersAsync(string? search, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the <c>LastLoginAt</c> timestamp of every user whose last login falls
+    /// within the half-open window <c>[fromInclusive, toExclusive)</c>. Used by the
+    /// shift coordinator dashboard to chart distinct logins by day without reading
+    /// the users table directly.
+    /// </summary>
+    Task<IReadOnlyList<Instant>> GetLoginTimestampsInWindowAsync(
+        Instant fromInclusive,
+        Instant toExclusive,
+        CancellationToken ct = default);
 }

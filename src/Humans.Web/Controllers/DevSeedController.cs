@@ -116,8 +116,8 @@ public class DevSeedController : HumansControllerBase
             {
                 var resetNote = resetResult is null
                     ? ""
-                    : $"Reset removed {resetResult.EventsDeleted} events, {resetResult.TeamsDeleted} teams, {resetResult.UsersDeleted} humans, {resetResult.TicketOrdersDeleted} ticket orders. ";
-                SetSuccess($"{resetNote}Dashboard demo seeded: {result.TeamsCreated} teams, {result.UsersCreated} humans, {result.ShiftsCreated} shifts, {result.SignupsCreated} signups, {result.TicketOrdersCreated} ticket orders.");
+                    : $"Reset removed {resetResult.EventsDeleted} events, {resetResult.TeamsDeleted} teams, {resetResult.UsersDeleted} humans. ";
+                SetSuccess($"{resetNote}Dashboard demo seeded: {result.TeamsCreated} teams, {result.UsersCreated} humans, {result.ShiftsCreated} shifts, {result.SignupsCreated} signups.");
             }
         }
         catch (Exception ex)

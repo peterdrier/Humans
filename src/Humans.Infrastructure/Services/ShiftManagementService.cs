@@ -40,6 +40,13 @@ public class ShiftManagementService : IShiftManagementService
     // Lazy-resolved to break circular dependency: TeamService → IShiftManagementService → ITeamService
     private ITeamService TeamService => _serviceProvider.GetRequiredService<ITeamService>();
 
+    // Resolved on demand so this class stays construction-cheap in tests and avoids
+    // forcing the (heavy) ticket/user services as hard ctor dependencies. These are
+    // only used by the coordinator dashboard compute methods, which already live
+    // behind a 5-minute sliding cache.
+    private ITicketQueryService TicketQueryService => _serviceProvider.GetRequiredService<ITicketQueryService>();
+    private IUserService UserService => _serviceProvider.GetRequiredService<IUserService>();
+
     public ShiftManagementService(
         HumansDbContext dbContext,
         IAuditLogService auditLogService,
@@ -917,8 +924,10 @@ public class ShiftManagementService : IShiftManagementService
         if (es is null)
             return EmptyOverview();
 
+        // Load shifts with just their Rota (same Shifts-owned domain) — no cross-domain
+        // Team/ParentTeam includes. We resolve team metadata via ITeamService below.
         var allShifts = await _dbContext.Shifts.AsNoTracking()
-            .Include(s => s.Rota).ThenInclude(r => r.Team).ThenInclude(t => t.ParentTeam)
+            .Include(s => s.Rota)
             .Where(s => s.Rota.EventSettingsId == eventSettingsId
                         && !s.AdminOnly
                         && s.Rota.IsVisibleToVolunteers)
@@ -953,12 +962,8 @@ public class ShiftManagementService : IShiftManagementService
                 Pct(perPeriod, ShiftPeriod.Strike));
         }
 
-        var ticketHolderIds = await _dbContext.TicketOrders.AsNoTracking()
-            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && o.MatchedUserId != null)
-            .Select(o => o.MatchedUserId!.Value)
-            .Distinct()
-            .ToListAsync();
-        var ticketHolders = ticketHolderIds.ToHashSet();
+        var ticketHolderIds = await TicketQueryService.GetMatchedUserIdsForPaidOrdersAsync();
+        var ticketHolders = ticketHolderIds as HashSet<Guid> ?? ticketHolderIds.ToHashSet();
 
         var engagedUserIds = await _dbContext.ShiftSignups.AsNoTracking()
             .Where(su => shiftIds.Contains(su.ShiftId) && su.Status != SignupStatus.Cancelled)
@@ -976,7 +981,15 @@ public class ShiftManagementService : IShiftManagementService
                               && su.Status == SignupStatus.Pending
                               && su.CreatedAt < staleThreshold);
 
-        var departments = BuildDepartmentRows(shifts, confirmedCounts, es);
+        // Pull the teams referenced by our loaded rotas (plus their parents) via
+        // ITeamService so we never navigate across domains.
+        var teamIdsOnRotas = shifts
+            .Select(s => s.Rota.TeamId)
+            .Distinct()
+            .ToList();
+        var teamLookup = await TeamService.GetByIdsWithParentsAsync(teamIdsOnRotas);
+
+        var departments = BuildDepartmentRows(shifts, confirmedCounts, es, teamLookup);
 
         return new DashboardOverview(
             totalShifts, filledShifts, periodFillRates,
@@ -995,49 +1008,62 @@ public class ShiftManagementService : IShiftManagementService
     private static List<DepartmentStaffingRow> BuildDepartmentRows(
         List<Shift> shifts,
         Dictionary<Guid, int> confirmedCounts,
-        EventSettings es)
+        EventSettings es,
+        IReadOnlyDictionary<Guid, Team> teamLookup)
     {
-        // Helper: resolve department (parent team if any, else own team) from a shift.
-        static Team DeptOf(Shift s) => s.Rota.Team.ParentTeam ?? s.Rota.Team;
+        // Helper: resolve the department ID (parent team if any, else own team) for a shift.
+        // We defer to teamLookup so we never navigate the cross-domain .Team/.ParentTeam
+        // properties — the shift loader only includes the Rota (a Shifts-owned entity).
+        Guid DeptIdOf(Shift s)
+        {
+            if (!teamLookup.TryGetValue(s.Rota.TeamId, out var team))
+                return s.Rota.TeamId; // Team row vanished — fall back to the rota's team id.
+            return team.ParentTeamId ?? team.Id;
+        }
 
-        // Group by department ID (Team instances may differ across includes; grouping by identity is incorrect).
+        string NameOf(Guid teamId) =>
+            teamLookup.TryGetValue(teamId, out var t) ? t.Name : string.Empty;
+
+        // Group by department ID.
         var groups = shifts
-            .GroupBy(s => DeptOf(s).Id)
+            .GroupBy(DeptIdOf)
             .ToList();
 
         var rows = new List<DepartmentStaffingRow>();
         foreach (var g in groups)
         {
             var deptShifts = g.ToList();
-            var dept = DeptOf(deptShifts[0]);
+            var deptId = g.Key;
+            var deptName = NameOf(deptId);
             var agg = AggregateShifts(deptShifts, confirmedCounts, es);
 
             // Subgroups: any shift belongs to a subteam?
             var subgroups = new List<SubgroupStaffingRow>();
-            var anySubteam = deptShifts.Any(s => s.Rota.Team.ParentTeamId != null);
+            var anySubteam = deptShifts.Any(s =>
+                teamLookup.TryGetValue(s.Rota.TeamId, out var t) && t.ParentTeamId != null);
             if (anySubteam)
             {
-                // Per-subteam subgroups (group by team ID for stable identity across EF-include instances).
+                // Per-subteam subgroups (group by team ID for stable identity).
                 var subteamGroups = deptShifts
-                    .Where(s => s.Rota.Team.ParentTeamId != null)
-                    .GroupBy(s => s.Rota.Team.Id);
+                    .Where(s => teamLookup.TryGetValue(s.Rota.TeamId, out var t) && t.ParentTeamId != null)
+                    .GroupBy(s => s.Rota.TeamId);
                 foreach (var sg in subteamGroups)
                 {
-                    var sTeam = sg.First().Rota.Team;
+                    var sTeamId = sg.Key;
                     var sAgg = AggregateShifts(sg.ToList(), confirmedCounts, es);
                     subgroups.Add(new SubgroupStaffingRow(
-                        sTeam.Id, sTeam.Name, IsDirect: false,
+                        sTeamId, NameOf(sTeamId), IsDirect: false,
                         sAgg.Total, sAgg.Filled, sAgg.Remaining,
                         sAgg.Build, sAgg.Event, sAgg.Strike));
                 }
 
                 // "Direct" row for department's own rotas (if any).
-                var directShifts = deptShifts.Where(s => s.Rota.TeamId == dept.Id).ToList();
+                var directShifts = deptShifts.Where(s => s.Rota.TeamId == deptId).ToList();
                 if (directShifts.Count > 0)
                 {
                     var dAgg = AggregateShifts(directShifts, confirmedCounts, es);
                     subgroups.Insert(0, new SubgroupStaffingRow(
-                        dept.Id, "Direct", IsDirect: true,
+                        deptId, "Direct", IsDirect: true,
                         dAgg.Total, dAgg.Filled, dAgg.Remaining,
                         dAgg.Build, dAgg.Event, dAgg.Strike));
                 }
@@ -1051,7 +1077,7 @@ public class ShiftManagementService : IShiftManagementService
             }
 
             rows.Add(new DepartmentStaffingRow(
-                dept.Id, dept.Name,
+                deptId, deptName,
                 agg.Total, agg.Filled, agg.Remaining,
                 agg.Build, agg.Event, agg.Strike,
                 subgroups));
@@ -1147,12 +1173,29 @@ public class ShiftManagementService : IShiftManagementService
         if (pendingCounts.Count == 0)
             return Array.Empty<CoordinatorActivityRow>();
 
-        // Load the full team hierarchy so we can build the tree and include ancestors
-        // of any team that has pending (a parent with no pending of its own but pending
-        // subteams still needs to appear as the top-level row).
-        var teamMeta = await _dbContext.Teams.AsNoTracking()
-            .Select(t => new { t.Id, t.Name, t.ParentTeamId })
-            .ToDictionaryAsync(t => t.Id);
+        // Load team metadata for pending teams and walk up through parents until we
+        // have every ancestor in our working set. We request teams in passes because
+        // ITeamService.GetByIdsWithParentsAsync includes one level of parents; deeper
+        // chains (shouldn't exist today — CreateTeamAsync enforces a single nesting
+        // level — but we defend against it) iterate until fixed-point.
+        var teamMeta = new Dictionary<Guid, Team>();
+        var pendingFetch = pendingCounts.Keys.ToHashSet();
+        while (pendingFetch.Count > 0)
+        {
+            var toFetch = pendingFetch.Where(id => !teamMeta.ContainsKey(id)).ToList();
+            if (toFetch.Count == 0) break;
+
+            var fetched = await TeamService.GetByIdsWithParentsAsync(toFetch);
+            foreach (var kvp in fetched)
+            {
+                teamMeta[kvp.Key] = kvp.Value;
+            }
+
+            pendingFetch = fetched.Values
+                .Where(t => t.ParentTeamId.HasValue && !teamMeta.ContainsKey(t.ParentTeamId.Value))
+                .Select(t => t.ParentTeamId!.Value)
+                .ToHashSet();
+        }
 
         var relevantTeamIds = new HashSet<Guid>(pendingCounts.Keys);
         foreach (var id in pendingCounts.Keys.ToList())
@@ -1166,20 +1209,26 @@ public class ShiftManagementService : IShiftManagementService
             }
         }
 
-        // Coordinators per relevant team.
-        var coordsRaw = await _dbContext.TeamMembers.AsNoTracking()
-            .Where(m => relevantTeamIds.Contains(m.TeamId)
-                        && m.LeftAt == null
-                        && m.Role == TeamMemberRole.Coordinator)
-            .Select(m => new { m.TeamId, m.UserId, m.User.DisplayName, m.User.LastLoginAt })
-            .ToListAsync();
+        // Coordinators per relevant team (Teams domain — via ITeamService).
+        var coordsRaw = await TeamService.GetActiveCoordinatorsForTeamsAsync(relevantTeamIds.ToList());
+        var coordinatorUserIds = coordsRaw.Select(c => c.UserId).Distinct().ToList();
+
+        // User info (DisplayName + LastLoginAt) — via IUserService.
+        var userLookup = await UserService.GetByIdsAsync(coordinatorUserIds);
 
         var coordsByTeam = coordsRaw
             .GroupBy(c => c.TeamId)
             .ToDictionary(
                 g => g.Key,
                 g => (IReadOnlyList<CoordinatorLogin>)g
-                    .Select(c => new CoordinatorLogin(c.UserId, c.DisplayName ?? string.Empty, c.LastLoginAt))
+                    .Select(c =>
+                    {
+                        userLookup.TryGetValue(c.UserId, out var user);
+                        return new CoordinatorLogin(
+                            c.UserId,
+                            user?.DisplayName ?? string.Empty,
+                            user?.LastLoginAt);
+                    })
                     .OrderBy(c => c.LastLoginAt ?? Instant.MinValue)
                     .ToList());
 
@@ -1295,19 +1344,9 @@ public class ShiftManagementService : IShiftManagementService
 
         var signupsInWindow = await signupsQuery.Select(x => x.CreatedAt).ToListAsync();
 
-        var ticketsInWindow = await _dbContext.TicketOrders.AsNoTracking()
-            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid
-                        && o.PurchasedAt >= startInstant
-                        && o.PurchasedAt < endInstant)
-            .Select(o => o.PurchasedAt)
-            .ToListAsync();
-
-        var loginsInWindow = await _dbContext.Users.AsNoTracking()
-            .Where(u => u.LastLoginAt != null
-                        && u.LastLoginAt >= startInstant
-                        && u.LastLoginAt < endInstant)
-            .Select(u => u.LastLoginAt!.Value)
-            .ToListAsync();
+        // Cross-domain reads routed through the owning service interfaces.
+        var ticketsInWindow = await TicketQueryService.GetPaidOrderDatesInWindowAsync(startInstant, endInstant);
+        var loginsInWindow = await UserService.GetLoginTimestampsInWindowAsync(startInstant, endInstant);
 
         LocalDate ToLocalDate(Instant i) => i.InZone(tz).Date;
 

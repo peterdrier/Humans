@@ -1,6 +1,8 @@
+using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -12,22 +14,30 @@ public sealed record DashboardSeedResult(
     int TeamsCreated,
     int UsersCreated,
     int ShiftsCreated,
-    int SignupsCreated,
-    int TicketOrdersCreated);
+    int SignupsCreated);
 
 public sealed record DashboardResetResult(
     int EventsDeleted,
     int TeamsDeleted,
-    int UsersDeleted,
-    int TicketOrdersDeleted);
+    int UsersDeleted);
 
 /// <summary>
 /// Seeds deterministic-ish demo data for the volunteer coordinator dashboard.
 /// Gated to IsDevelopment() only by the calling controller. Not safe to run in QA/prod.
+///
+/// Cross-domain writes (Users, Teams, TeamMembers) go through the owning services:
+/// <see cref="UserManager{TUser}"/> for Users and <see cref="ITeamService"/> for
+/// Teams/TeamMembers. Shifts-owned tables (EventSettings, Rotas, Shifts, ShiftSignups)
+/// are written directly via <see cref="HumansDbContext"/> because this seeder IS the
+/// Shifts-test-data setup — the same ownership the <see cref="ShiftManagementService"/>
+/// holds in production.
 /// </summary>
 public sealed class DevelopmentDashboardSeeder
 {
     private const string SeededEventName = "Seeded Elsewhere 2026 (dev)";
+    private const string DevTeamNameSuffix = " (dev)";
+    private const string DevUserEmailSuffix = "@seed.local";
+    private const string DevUserEmailPrefix = "dev-human-";
 
     // Match real, non-hidden parent departments from the production Teams list
     // so the dashboard seed reflects terminology the coordinators actually use.
@@ -57,15 +67,21 @@ public sealed class DevelopmentDashboardSeeder
     private readonly Random _rng = new(42);
 
     private readonly HumansDbContext _dbContext;
+    private readonly ITeamService _teamService;
+    private readonly UserManager<User> _userManager;
     private readonly IClock _clock;
     private readonly ILogger<DevelopmentDashboardSeeder> _logger;
 
     public DevelopmentDashboardSeeder(
         HumansDbContext dbContext,
+        ITeamService teamService,
+        UserManager<User> userManager,
         IClock clock,
         ILogger<DevelopmentDashboardSeeder> logger)
     {
         _dbContext = dbContext;
+        _teamService = teamService;
+        _userManager = userManager;
         _clock = clock;
         _logger = logger;
     }
@@ -77,13 +93,14 @@ public sealed class DevelopmentDashboardSeeder
         if (existing is not null)
         {
             _logger.LogInformation("Dashboard seed already applied (event '{EventName}' exists).", SeededEventName);
-            return new DashboardSeedResult(AlreadySeeded: true, 0, 0, 0, 0, 0);
+            return new DashboardSeedResult(AlreadySeeded: true, 0, 0, 0, 0);
         }
 
         var now = _clock.GetCurrentInstant();
         var todayUtc = now.InUtc().Date;
 
         // Deactivate any existing active event so ours becomes the one resolved by GetActiveAsync.
+        // EventSettings is Shifts-owned — the service's direct-write path.
         var existingActive = await _dbContext.EventSettings
             .Where(e => e.IsActive)
             .ToListAsync(cancellationToken);
@@ -108,22 +125,20 @@ public sealed class DevelopmentDashboardSeeder
             UpdatedAt = now,
         };
         _dbContext.EventSettings.Add(es);
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
+        // Teams: create parents, then subteams. Goes through ITeamService so slug
+        // generation, validation, and cache seeding match production.
         var teamsCreated = 0;
         var parentTeams = new Dictionary<string, Team>(StringComparer.Ordinal);
         foreach (var name in ParentTeamNames)
         {
-            var t = new Team
-            {
-                Id = Guid.NewGuid(),
-                Name = $"{name} (dev)",
-                Slug = SlugFor(name),
-                IsActive = true,
-                CreatedAt = now,
-                UpdatedAt = now,
-            };
-            parentTeams[name] = t;
-            _dbContext.Teams.Add(t);
+            var created = await _teamService.CreateTeamAsync(
+                $"{name}{DevTeamNameSuffix}",
+                description: null,
+                requiresApproval: true,
+                cancellationToken: cancellationToken);
+            parentTeams[name] = created;
             teamsCreated++;
         }
 
@@ -132,18 +147,13 @@ public sealed class DevelopmentDashboardSeeder
         {
             foreach (var subName in subNames)
             {
-                var t = new Team
-                {
-                    Id = Guid.NewGuid(),
-                    Name = $"{subName} (dev)",
-                    Slug = SlugFor(subName),
-                    IsActive = true,
-                    ParentTeamId = parentTeams[parentName].Id,
-                    CreatedAt = now,
-                    UpdatedAt = now,
-                };
-                subteams[subName] = t;
-                _dbContext.Teams.Add(t);
+                var created = await _teamService.CreateTeamAsync(
+                    $"{subName}{DevTeamNameSuffix}",
+                    description: null,
+                    requiresApproval: true,
+                    parentTeamId: parentTeams[parentName].Id,
+                    cancellationToken: cancellationToken);
+                subteams[subName] = created;
                 teamsCreated++;
             }
         }
@@ -232,55 +242,44 @@ public sealed class DevelopmentDashboardSeeder
             }
         }
 
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
         // Users: keep the cohort small (~120) — large enough to show activity, small enough to keep the dev seed fast.
+        // Users are an Identity-framework concern; we create them via UserManager, the
+        // standard pattern for framework-owned types. Passwords are intentionally omitted
+        // — these accounts are never logged into; they exist purely as dashboard data.
         var totalUsers = 120;
-        var ticketHolderCount = 90;
 
         var users = new List<User>();
-        var ticketOrdersCreated = 0;
         for (var i = 0; i < totalUsers; i++)
         {
             var display = $"Dev Human {i:D3}";
-            var email = $"dev-human-{i:D3}@seed.local";
+            var email = $"{DevUserEmailPrefix}{i:D3}{DevUserEmailSuffix}";
             var createdAt = now.Minus(Duration.FromDays(_rng.Next(30, 400)));
             var lastLoginDaysAgo = _rng.Next(0, 85);
             var user = new User
             {
-                Id = Guid.NewGuid(),
                 UserName = email,
-                NormalizedUserName = email.ToUpperInvariant(),
                 Email = email,
-                NormalizedEmail = email.ToUpperInvariant(),
                 EmailConfirmed = true,
                 DisplayName = display,
-                SecurityStamp = Guid.NewGuid().ToString("N"),
                 CreatedAt = createdAt,
                 LastLoginAt = now.Minus(Duration.FromDays(lastLoginDaysAgo)).Minus(Duration.FromHours(_rng.Next(0, 23))),
             };
-            users.Add(user);
-            _dbContext.Users.Add(user);
 
-            if (i < ticketHolderCount)
+            var createResult = await _userManager.CreateAsync(user);
+            if (!createResult.Succeeded)
             {
-                _dbContext.TicketOrders.Add(new TicketOrder
-                {
-                    Id = Guid.NewGuid(),
-                    VendorOrderId = $"DEV-{i:D4}",
-                    BuyerName = display,
-                    BuyerEmail = email,
-                    MatchedUserId = user.Id,
-                    TotalAmount = 80m,
-                    Currency = "EUR",
-                    PaymentStatus = TicketPaymentStatus.Paid,
-                    VendorEventId = "dev-vendor-event",
-                    PurchasedAt = now.Minus(Duration.FromDays(_rng.Next(0, 85))),
-                    SyncedAt = now,
-                });
-                ticketOrdersCreated++;
+                throw new InvalidOperationException(
+                    $"Failed to create seeded dev user '{email}': {string.Join(", ", createResult.Errors.Select(e => e.Description))}");
             }
+
+            users.Add(user);
         }
 
-        // Coordinators: 2 per parent team. Infrastructure coords logged in 9 days ago (stale).
+        // Coordinators: 2 per parent team, routed via ITeamService.AddSeededMemberAsync so
+        // we never touch TeamMembers directly. Infrastructure coords logged in 9 days ago
+        // (stale) to drive the red chip on the dashboard.
         foreach (var parent in parentTeams.Values)
         {
             var isInfrastructure = parent.Name.StartsWith("Infrastructure", StringComparison.Ordinal);
@@ -292,14 +291,24 @@ public sealed class DevelopmentDashboardSeeder
             {
                 var coord = users[_rng.Next(users.Count)];
                 coord.LastLoginAt = coordLastLogin;
-                _dbContext.TeamMembers.Add(new TeamMember
+                var updateResult = await _userManager.UpdateAsync(coord);
+                if (!updateResult.Succeeded)
                 {
-                    Id = Guid.NewGuid(),
-                    TeamId = parent.Id,
-                    UserId = coord.Id,
-                    Role = TeamMemberRole.Coordinator,
-                    JoinedAt = now.Minus(Duration.FromDays(60)),
-                });
+                    throw new InvalidOperationException(
+                        $"Failed to update LastLoginAt for seeded coord '{coord.Email}': {string.Join(", ", updateResult.Errors.Select(e => e.Description))}");
+                }
+
+                try
+                {
+                    await _teamService.AddSeededMemberAsync(
+                        parent.Id, coord.Id, TeamMemberRole.Coordinator, now.Minus(Duration.FromDays(60)),
+                        cancellationToken);
+                }
+                catch (InvalidOperationException)
+                {
+                    // The RNG may pick the same user as a coord for multiple teams or twice for
+                    // the same team; ignore duplicate membership (it's just demo data).
+                }
             }
         }
 
@@ -372,101 +381,125 @@ public sealed class DevelopmentDashboardSeeder
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
-            "Dashboard seed complete: {Teams} teams, {Users} users, {Shifts} shifts, {Signups} signups, {Tickets} ticket orders.",
-            teamsCreated, users.Count, shifts.Count, signupsCreated, ticketOrdersCreated);
+            "Dashboard seed complete: {Teams} teams, {Users} users, {Shifts} shifts, {Signups} signups.",
+            teamsCreated, users.Count, shifts.Count, signupsCreated);
 
         return new DashboardSeedResult(
             AlreadySeeded: false,
             TeamsCreated: teamsCreated,
             UsersCreated: users.Count,
             ShiftsCreated: shifts.Count,
-            SignupsCreated: signupsCreated,
-            TicketOrdersCreated: ticketOrdersCreated);
+            SignupsCreated: signupsCreated);
     }
 
     /// <summary>
     /// Deletes all data previously created by <see cref="SeedAsync"/>: the seeded
-    /// event (with cascading rotas/shifts/signups), dev teams (slug prefix "dev-"),
-    /// dev users (email pattern "dev-human-*@seed.local"), and their DEV-* ticket
-    /// orders. Safe to call on a DB where no seed has ever run.
+    /// event (with its rotas/shifts/signups), dev teams (name suffix "<c> (dev)</c>"),
+    /// and dev users (email pattern <c>dev-human-*@seed.local</c>). Safe to call on
+    /// a DB where no seed has ever run.
+    ///
+    /// Users go through <see cref="UserManager{TUser}"/>; Teams go through
+    /// <see cref="ITeamService.HardDeleteSeededTeamsAsync"/>. Shifts-owned tables
+    /// are emptied directly — this seeder IS the owning test fixture.
     /// </summary>
     public async Task<DashboardResetResult> ResetAsync(CancellationToken cancellationToken)
     {
-        // Order matters: delete rows that reference others first to avoid FK violations
-        // on databases without ON DELETE CASCADE configured for every edge.
-        var devUserEmails = await _dbContext.Users
-            .Where(u => u.Email != null && u.Email.EndsWith("@seed.local") && u.Email.StartsWith("dev-human-"))
-            .Select(u => u.Id)
-            .ToListAsync(cancellationToken);
-
-        var devTeamIds = await _dbContext.Teams
-            .Where(t => t.Slug.StartsWith("dev-"))
-            .Select(t => t.Id)
-            .ToListAsync(cancellationToken);
-
+        // Order matters: clear Shifts-owned dependents that reference Users/Teams/Events
+        // first so downstream deletions don't trip FK constraints.
         var seededEventIds = await _dbContext.EventSettings
             .Where(e => e.EventName == SeededEventName)
             .Select(e => e.Id)
             .ToListAsync(cancellationToken);
 
-        // Signups reference Users + Shifts; delete first.
-        await _dbContext.ShiftSignups
-            .Where(s => devUserEmails.Contains(s.UserId) || s.Shift.Rota.Team.Slug.StartsWith("dev-"))
-            .ExecuteDeleteAsync(cancellationToken);
+        // Dev users — looked up via UserManager's query surface (framework-owned).
+        var devUserIds = await _userManager.Users
+            .Where(u => u.Email != null
+                        && u.Email.EndsWith(DevUserEmailSuffix)
+                        && u.Email.StartsWith(DevUserEmailPrefix))
+            .Select(u => u.Id)
+            .ToListAsync(cancellationToken);
 
-        await _dbContext.Shifts
-            .Where(s => s.Rota.Team.Slug.StartsWith("dev-"))
-            .ExecuteDeleteAsync(cancellationToken);
-
-        await _dbContext.Rotas
-            .Where(r => r.Team.Slug.StartsWith("dev-") || seededEventIds.Contains(r.EventSettingsId))
-            .ExecuteDeleteAsync(cancellationToken);
-
-        await _dbContext.TeamMembers
-            .Where(tm => devTeamIds.Contains(tm.TeamId) || devUserEmails.Contains(tm.UserId))
-            .ExecuteDeleteAsync(cancellationToken);
-
-        var ticketsDeleted = await _dbContext.TicketOrders
-            .Where(t => t.VendorOrderId.StartsWith("DEV-") || (t.MatchedUserId != null && devUserEmails.Contains(t.MatchedUserId.Value)))
-            .ExecuteDeleteAsync(cancellationToken);
-
-        var usersDeleted = await _dbContext.Users
-            .Where(u => devUserEmails.Contains(u.Id))
-            .ExecuteDeleteAsync(cancellationToken);
-
-        var teamsDeleted = await _dbContext.Teams
-            .Where(t => t.Slug.StartsWith("dev-"))
-            .ExecuteDeleteAsync(cancellationToken);
-
-        var eventsDeleted = await _dbContext.EventSettings
-            .Where(e => e.EventName == SeededEventName)
-            .ExecuteDeleteAsync(cancellationToken);
-
-        _logger.LogInformation(
-            "Dashboard seed reset complete: {Events} events, {Teams} teams, {Users} users, {Tickets} ticket orders deleted.",
-            eventsDeleted, teamsDeleted, usersDeleted, ticketsDeleted);
-
-        return new DashboardResetResult(eventsDeleted, teamsDeleted, usersDeleted, ticketsDeleted);
-    }
-
-    private static string SlugFor(string name)
-    {
-        var lower = name.ToLowerInvariant();
-        var sb = new System.Text.StringBuilder("dev-", lower.Length + 4);
-        var lastDash = true;
-        foreach (var ch in lower)
+        // Rotas created by the seeder live under the seeded event IDs; remove their
+        // shifts + signups first. All three tables are Shifts-owned, so direct
+        // ExecuteDeleteAsync is fine here.
+        if (seededEventIds.Count > 0)
         {
-            if (ch is >= 'a' and <= 'z' or >= '0' and <= '9')
+            var rotaIds = await _dbContext.Rotas
+                .Where(r => seededEventIds.Contains(r.EventSettingsId))
+                .Select(r => r.Id)
+                .ToListAsync(cancellationToken);
+
+            if (rotaIds.Count > 0)
             {
-                sb.Append(ch);
-                lastDash = false;
-            }
-            else if (!lastDash)
-            {
-                sb.Append('-');
-                lastDash = true;
+                var shiftIds = await _dbContext.Shifts
+                    .Where(s => rotaIds.Contains(s.RotaId))
+                    .Select(s => s.Id)
+                    .ToListAsync(cancellationToken);
+
+                if (shiftIds.Count > 0)
+                {
+                    await _dbContext.ShiftSignups
+                        .Where(s => shiftIds.Contains(s.ShiftId))
+                        .ExecuteDeleteAsync(cancellationToken);
+
+                    await _dbContext.Shifts
+                        .Where(s => shiftIds.Contains(s.Id))
+                        .ExecuteDeleteAsync(cancellationToken);
+                }
+
+                await _dbContext.Rotas
+                    .Where(r => rotaIds.Contains(r.Id))
+                    .ExecuteDeleteAsync(cancellationToken);
             }
         }
-        return sb.ToString().TrimEnd('-');
+
+        // Also clear any remaining signups that reference dev users — they might belong to
+        // non-seeded rotas (e.g., after a partially replayed seed). Shifts-owned, direct OK.
+        if (devUserIds.Count > 0)
+        {
+            await _dbContext.ShiftSignups
+                .Where(s => devUserIds.Contains(s.UserId))
+                .ExecuteDeleteAsync(cancellationToken);
+        }
+
+        // Teams (and their TeamMembers + TeamJoinRequests): routed via ITeamService.
+        var teamsDeleted = await _teamService.HardDeleteSeededTeamsAsync(DevTeamNameSuffix, cancellationToken);
+
+        // Users: routed via UserManager.
+        var usersDeleted = 0;
+        if (devUserIds.Count > 0)
+        {
+            // Load each user and delete — UserManager takes entity references, not IDs.
+            // At ~120 users this is fine; it's dev-only teardown.
+            foreach (var userId in devUserIds)
+            {
+                var user = await _userManager.FindByIdAsync(userId.ToString());
+                if (user is null) continue;
+                var deleteResult = await _userManager.DeleteAsync(user);
+                if (!deleteResult.Succeeded)
+                {
+                    _logger.LogWarning(
+                        "Failed to delete seeded dev user {UserId} during reset: {Errors}",
+                        userId, string.Join(", ", deleteResult.Errors.Select(e => e.Description)));
+                    continue;
+                }
+                usersDeleted++;
+            }
+        }
+
+        // Events last: Shifts-owned, direct OK.
+        var eventsDeleted = 0;
+        if (seededEventIds.Count > 0)
+        {
+            eventsDeleted = await _dbContext.EventSettings
+                .Where(e => seededEventIds.Contains(e.Id))
+                .ExecuteDeleteAsync(cancellationToken);
+        }
+
+        _logger.LogInformation(
+            "Dashboard seed reset complete: {Events} events, {Teams} teams, {Users} users deleted.",
+            eventsDeleted, teamsDeleted, usersDeleted);
+
+        return new DashboardResetResult(eventsDeleted, teamsDeleted, usersDeleted);
     }
 }
