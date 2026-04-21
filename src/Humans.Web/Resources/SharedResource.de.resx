@@ -531,6 +531,10 @@
   <data name="Teams_NoOtherTeams" xml:space="preserve"><value>Keine weiteren Teams verf&#xFC;gbar.</value></data>
   <data name="Teams_System" xml:space="preserve"><value>System</value></data>
 
+  <!-- Vol/Teams landing: Browse Shifts CTA (#534) -->
+  <data name="VolTeams_BrowseShiftsBanner" xml:space="preserve"><value>Suchst du Schichten? Sieh sie alle hier, oder w&#xE4;hle unten ein Team, um seine Rotas zu sehen.</value></data>
+  <data name="VolTeams_BrowseShiftsButton" xml:space="preserve"><value>Schichten ansehen</value></data>
+
   <!-- Team Detail View -->
   <data name="TeamDetail_NoDescription" xml:space="preserve"><value>Keine Beschreibung vorhanden.</value></data>
   <data name="TeamDetail_SystemTeamInfo" xml:space="preserve"><value>Dies ist ein systemverwaltetes Team. Die Mitgliedschaft wird automatisch anhand von {0}-Kriterien synchronisiert.</value><comment>{0} = system team type</comment></data>

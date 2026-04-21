@@ -531,6 +531,10 @@
   <data name="Teams_NoOtherTeams" xml:space="preserve"><value>Aucune autre &#xE9;quipe disponible.</value></data>
   <data name="Teams_System" xml:space="preserve"><value>Syst&#xE8;me</value></data>
 
+  <!-- Vol/Teams landing: Browse Shifts CTA (#534) -->
+  <data name="VolTeams_BrowseShiftsBanner" xml:space="preserve"><value>Vous cherchez des cr&#xE9;neaux&#xA0;? Parcourez-les tous ici, ou choisissez une &#xE9;quipe ci-dessous pour voir ses rotations.</value></data>
+  <data name="VolTeams_BrowseShiftsButton" xml:space="preserve"><value>Voir les cr&#xE9;neaux</value></data>
+
   <!-- Team Detail View -->
   <data name="TeamDetail_NoDescription" xml:space="preserve"><value>Aucune description fournie.</value></data>
   <data name="TeamDetail_SystemTeamInfo" xml:space="preserve"><value>Ceci est une &#xE9;quipe g&#xE9;r&#xE9;e par le syst&#xE8;me. L'adh&#xE9;sion est automatiquement synchronis&#xE9;e selon les crit&#xE8;res de {0}.</value><comment>{0} = system team type</comment></data>

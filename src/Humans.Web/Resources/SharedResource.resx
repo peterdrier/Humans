@@ -547,6 +547,10 @@
   <data name="Teams_NoOtherTeams" xml:space="preserve"><value>No other teams available.</value></data>
   <data name="Teams_System" xml:space="preserve"><value>System</value></data>
 
+  <!-- Vol/Teams landing: Browse Shifts CTA (#534) -->
+  <data name="VolTeams_BrowseShiftsBanner" xml:space="preserve"><value>Looking for shifts? Browse them all here, or pick a team below to see its rotas.</value></data>
+  <data name="VolTeams_BrowseShiftsButton" xml:space="preserve"><value>Browse shifts</value></data>
+
   <!-- Team Detail View -->
   <data name="TeamDetail_NoDescription" xml:space="preserve"><value>No description provided.</value></data>
   <data name="TeamDetail_SystemTeamInfo" xml:space="preserve"><value>This is a system-managed team. Membership is automatically synchronized based on {0} criteria.</value><comment>{0} = system team type</comment></data>
