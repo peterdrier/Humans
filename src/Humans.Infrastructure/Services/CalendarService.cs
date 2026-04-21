@@ -2,10 +2,13 @@ using Humans.Application.DTOs.Calendar;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
+using Ical.Net.DataTypes;
+using Ical.Net.Evaluation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using IcalEvent = Ical.Net.CalendarComponents.CalendarEvent;
 
 namespace Humans.Infrastructure.Services;
 
@@ -69,8 +72,53 @@ public class CalendarService : ICalendarService
             }
             else
             {
-                // Recurrence expansion lands in Task 10.
-                continue;
+                var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(e.RecurrenceTimezone!);
+                if (zone is null)
+                {
+                    _logger.LogWarning(
+                        "CalendarEvent {Id} has unknown timezone {Tz}; skipping occurrence expansion",
+                        e.Id, e.RecurrenceTimezone);
+                    continue;
+                }
+
+                var dur = (e.EndUtc ?? e.StartUtc) - e.StartUtc;
+                var dtStartLocal = e.StartUtc.InZone(zone).LocalDateTime.ToDateTimeUnspecified();
+
+                var icalEv = new IcalEvent
+                {
+                    DtStart = new CalDateTime(dtStartLocal, e.RecurrenceTimezone, hasTime: true),
+                    Duration = Ical.Net.DataTypes.Duration.FromTimeSpanExact(TimeSpan.FromTicks(dur.BclCompatibleTicks)),
+                };
+                icalEv.RecurrenceRules.Add(new RecurrencePattern(e.RecurrenceRule!));
+
+                var fromLocal = from.InZone(zone).LocalDateTime.ToDateTimeUnspecified();
+                var toLocal = to.InZone(zone).LocalDateTime.ToDateTimeUnspecified();
+                var fromCalDt = new CalDateTime(fromLocal, e.RecurrenceTimezone, hasTime: true);
+
+                foreach (var iocc in icalEv.GetOccurrences(fromCalDt, new EvaluationOptions())
+                    .TakeWhile(o => o.Period.StartTime.Value < toLocal))
+                {
+                    // iocc.Period.StartTime.Value is DateTime Kind=Unspecified in the rule's TZ.
+                    var occLocal = LocalDateTime.FromDateTime(iocc.Period.StartTime.Value);
+                    var startInstant = occLocal.InZoneLeniently(zone).ToInstant();
+                    var endInstant = e.EndUtc is null
+                        ? (Instant?)null
+                        : startInstant.Plus(e.EndUtc.Value - e.StartUtc);
+
+                    results.Add(new CalendarOccurrence(
+                        EventId: e.Id,
+                        OccurrenceStartUtc: startInstant,
+                        OccurrenceEndUtc: endInstant,
+                        IsAllDay: e.IsAllDay,
+                        Title: e.Title,
+                        Description: e.Description,
+                        Location: e.Location,
+                        LocationUrl: e.LocationUrl,
+                        OwningTeamId: e.OwningTeamId,
+                        OwningTeamName: e.OwningTeam.Name,
+                        IsRecurring: true,
+                        OriginalOccurrenceStartUtc: startInstant));
+                }
             }
         }
 

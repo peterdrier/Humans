@@ -140,6 +140,70 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
         occ.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task Recurring_weekly_event_stays_at_local_time_across_Madrid_DST()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var db  = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
+        var uid  = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+
+        // Tuesday 24 March 2026 19:00 Madrid (CET, UTC+1) = 18:00 UTC.
+        // After Madrid DST flip on 29 Mar 2026, 19:00 Madrid (CEST, UTC+2) = 17:00 UTC.
+        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+        var firstLocal = new LocalDateTime(2026, 3, 24, 19, 0);
+        var firstUtc   = firstLocal.InZoneLeniently(zone).ToInstant();
+
+        await svc.CreateEventAsync(new CreateCalendarEventDto(
+            "Tuesday call", null, null, null, team.Id,
+            StartUtc: firstUtc,
+            EndUtc:   firstUtc.Plus(Duration.FromHours(1)),
+            IsAllDay: false,
+            RecurrenceRule: "FREQ=WEEKLY;BYDAY=TU;COUNT=4",
+            RecurrenceTimezone: "Europe/Madrid"), uid);
+
+        var occ = await svc.GetOccurrencesInWindowAsync(
+            from: Instant.FromUtc(2026, 3, 1, 0, 0),
+            to:   Instant.FromUtc(2026, 5, 1, 0, 0),
+            teamId: team.Id);
+
+        occ.Should().HaveCount(4);
+        foreach (var o in occ)
+        {
+            var localStart = o.OccurrenceStartUtc.InZone(zone).LocalDateTime;
+            localStart.Hour.Should().Be(19);
+            localStart.Minute.Should().Be(0);
+        }
+    }
+
+    [Fact]
+    public async Task Recurring_bounded_event_is_skipped_when_until_before_window()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var db  = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
+        var uid  = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+
+        await svc.CreateEventAsync(new CreateCalendarEventDto(
+            "Old", null, null, null, team.Id,
+            StartUtc: Instant.FromUtc(2024, 1, 7, 18, 0),
+            EndUtc:   Instant.FromUtc(2024, 1, 7, 19, 0),
+            IsAllDay: false,
+            RecurrenceRule: "FREQ=WEEKLY;UNTIL=20240201T000000Z",
+            RecurrenceTimezone: "Europe/Madrid"), uid);
+
+        var occ = await svc.GetOccurrencesInWindowAsync(
+            Instant.FromUtc(2026, 1, 1, 0, 0),
+            Instant.FromUtc(2026, 2, 1, 0, 0),
+            teamId: team.Id);
+
+        occ.Should().BeEmpty();
+    }
+
     private static async Task<Team> SeedTeamAsync(HumansDbContext db, string name)
     {
         var now = SystemClock.Instance.GetCurrentInstant();
