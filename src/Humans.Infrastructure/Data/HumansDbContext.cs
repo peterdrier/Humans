@@ -72,6 +72,8 @@ public class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<BudgetCategory> BudgetCategories => Set<BudgetCategory>();
     public DbSet<BudgetLineItem> BudgetLineItems => Set<BudgetLineItem>();
     public DbSet<BudgetAuditLog> BudgetAuditLogs => Set<BudgetAuditLog>();
+    public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
+    public DbSet<CalendarEventException> CalendarEventExceptions => Set<CalendarEventException>();
     public DbSet<TicketingProjection> TicketingProjections => Set<TicketingProjection>();
     public DbSet<ShiftTag> ShiftTags => Set<ShiftTag>();
     public DbSet<VolunteerTagPreference> VolunteerTagPreferences => Set<VolunteerTagPreference>();
