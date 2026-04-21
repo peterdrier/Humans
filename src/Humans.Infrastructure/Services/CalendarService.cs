@@ -30,9 +30,54 @@ public class CalendarService : ICalendarService
         _logger = logger;
     }
 
-    public Task<IReadOnlyList<CalendarOccurrence>> GetOccurrencesInWindowAsync(
+    public async Task<IReadOnlyList<CalendarOccurrence>> GetOccurrencesInWindowAsync(
         Instant from, Instant to, Guid? teamId = null, CancellationToken ct = default)
-        => throw new NotSupportedException("Not yet implemented.");
+    {
+        var query = _db.CalendarEvents
+            .Include(e => e.OwningTeam)
+            .Include(e => e.Exceptions)
+            .AsQueryable();
+
+        query = query.Where(e => e.StartUtc <= to
+            && (e.RecurrenceUntilUtc == null || e.RecurrenceUntilUtc >= from));
+
+        if (teamId is { } t)
+            query = query.Where(e => e.OwningTeamId == t);
+
+        var events = await query.ToListAsync(ct);
+        var results = new List<CalendarOccurrence>();
+
+        foreach (var e in events)
+        {
+            if (string.IsNullOrWhiteSpace(e.RecurrenceRule))
+            {
+                var end = e.EndUtc ?? e.StartUtc;
+                if (end < from || e.StartUtc > to) continue;
+                results.Add(new CalendarOccurrence(
+                    EventId: e.Id,
+                    OccurrenceStartUtc: e.StartUtc,
+                    OccurrenceEndUtc: e.EndUtc,
+                    IsAllDay: e.IsAllDay,
+                    Title: e.Title,
+                    Description: e.Description,
+                    Location: e.Location,
+                    LocationUrl: e.LocationUrl,
+                    OwningTeamId: e.OwningTeamId,
+                    OwningTeamName: e.OwningTeam.Name,
+                    IsRecurring: false,
+                    OriginalOccurrenceStartUtc: null));
+            }
+            else
+            {
+                // Recurrence expansion lands in Task 10.
+                continue;
+            }
+        }
+
+        return results
+            .OrderBy(o => o.OccurrenceStartUtc)
+            .ToList();
+    }
 
     public async Task<CalendarEvent?> GetEventByIdAsync(Guid id, CancellationToken ct = default)
     {

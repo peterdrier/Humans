@@ -53,6 +53,93 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
         fetched.EndUtc.Should().Be(end);
     }
 
+    [Fact]
+    public async Task GetOccurrencesInWindow_returns_single_event_when_overlapping()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var db  = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        var team   = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
+        var userId = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+
+        await svc.CreateEventAsync(new CreateCalendarEventDto(
+            "Inside", null, null, null, team.Id,
+            Instant.FromUtc(2026, 6, 15, 17, 0),
+            Instant.FromUtc(2026, 6, 15, 18, 0),
+            false, null, null), userId);
+
+        await svc.CreateEventAsync(new CreateCalendarEventDto(
+            "Outside", null, null, null, team.Id,
+            Instant.FromUtc(2027, 1, 1, 0, 0),
+            Instant.FromUtc(2027, 1, 1, 1, 0),
+            false, null, null), userId);
+
+        var occ = await svc.GetOccurrencesInWindowAsync(
+            from: Instant.FromUtc(2026, 6, 1, 0, 0),
+            to:   Instant.FromUtc(2026, 7, 1, 0, 0),
+            teamId: team.Id);
+
+        occ.Should().ContainSingle(o => o.Title == "Inside");
+        occ.Should().NotContain(o => o.Title == "Outside");
+        occ.Single(o => string.Equals(o.Title, "Inside", StringComparison.Ordinal)).IsRecurring.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetOccurrencesInWindow_filters_by_team()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var db  = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        var a = await SeedTeamAsync(db, $"A-{Guid.NewGuid():N}");
+        var b = await SeedTeamAsync(db, $"B-{Guid.NewGuid():N}");
+        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+
+        await svc.CreateEventAsync(new CreateCalendarEventDto(
+            "A-evt", null, null, null, a.Id,
+            Instant.FromUtc(2026, 6, 15, 17, 0),
+            Instant.FromUtc(2026, 6, 15, 18, 0), false, null, null), uid);
+
+        await svc.CreateEventAsync(new CreateCalendarEventDto(
+            "B-evt", null, null, null, b.Id,
+            Instant.FromUtc(2026, 6, 15, 19, 0),
+            Instant.FromUtc(2026, 6, 15, 20, 0), false, null, null), uid);
+
+        var occ = await svc.GetOccurrencesInWindowAsync(
+            Instant.FromUtc(2026, 6, 1, 0, 0),
+            Instant.FromUtc(2026, 7, 1, 0, 0),
+            teamId: a.Id);
+
+        occ.Should().ContainSingle(o => o.Title == "A-evt");
+        occ.Should().NotContain(o => o.Title == "B-evt");
+    }
+
+    [Fact(Skip = "Needs DeleteEventAsync (Task 12) — un-skip then.")]
+    public async Task Soft_deleted_events_do_not_appear_in_window()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var db  = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
+        var uid  = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+
+        var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
+            "DoomedEvent", null, null, null, team.Id,
+            Instant.FromUtc(2026, 6, 15, 17, 0),
+            Instant.FromUtc(2026, 6, 15, 18, 0), false, null, null), uid);
+
+        await svc.DeleteEventAsync(ev.Id, uid);
+
+        var occ = await svc.GetOccurrencesInWindowAsync(
+            Instant.FromUtc(2026, 6, 1, 0, 0),
+            Instant.FromUtc(2026, 7, 1, 0, 0),
+            teamId: team.Id);
+
+        occ.Should().BeEmpty();
+    }
+
     private static async Task<Team> SeedTeamAsync(HumansDbContext db, string name)
     {
         var now = SystemClock.Instance.GetCurrentInstant();
