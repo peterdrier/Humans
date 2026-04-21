@@ -75,4 +75,9 @@ public enum AuditAction
     GoogleResourceInheritanceDriftCorrected,
     FeedbackAssignmentChanged,
     GoogleEmailRenamed,
+    CalendarEventCreated,
+    CalendarEventUpdated,
+    CalendarEventDeleted,
+    CalendarOccurrenceCancelled,
+    CalendarOccurrenceOverridden,
 }

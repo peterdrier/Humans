@@ -115,6 +115,26 @@
         </ul>
     }
 
+    @{
+        var createdLocal = Model.Event.CreatedAt.InZone(zone).LocalDateTime;
+        var updatedLocal = Model.Event.UpdatedAt.InZone(zone).LocalDateTime;
+    }
+    <p class="text-muted small mt-4">
+        Created @createdLocal.ToString("d MMM yyyy, HH:mm", System.Globalization.CultureInfo.CurrentCulture)
+        @if (Model.Event.UpdatedAt != Model.Event.CreatedAt)
+        {
+            <span>· Last updated @updatedLocal.ToString("d MMM yyyy, HH:mm", System.Globalization.CultureInfo.CurrentCulture)</span>
+        }
+    </p>
+
+    @await Component.InvokeAsync("AuditLog", new
+    {
+        entityType = nameof(Humans.Domain.Entities.CalendarEvent),
+        entityId = Model.Event.Id,
+        title = "Change history",
+        limit = 50
+    })
+
     <p class="mt-3">
         <a class="btn btn-link" asp-action="Index">Back to calendar</a>
     </p>

@@ -1,6 +1,7 @@
 using Humans.Application.DTOs.Calendar;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Ical.Net.DataTypes;
 using Ical.Net.Evaluation;
@@ -19,17 +20,20 @@ public class CalendarService : ICalendarService
     private readonly HumansDbContext _db;
     private readonly IMemoryCache _cache;
     private readonly IClock _clock;
+    private readonly IAuditLogService _audit;
     private readonly ILogger<CalendarService> _logger;
 
     public CalendarService(
         HumansDbContext db,
         IMemoryCache cache,
         IClock clock,
+        IAuditLogService audit,
         ILogger<CalendarService> logger)
     {
         _db = db;
         _cache = cache;
         _clock = clock;
+        _audit = audit;
         _logger = logger;
     }
 
@@ -200,6 +204,11 @@ public class CalendarService : ICalendarService
             throw new InvalidOperationException("CalendarEvent is invalid: " + string.Join("; ", errors));
 
         _db.CalendarEvents.Add(ev);
+        await _audit.LogAsync(
+            AuditAction.CalendarEventCreated, nameof(CalendarEvent), ev.Id,
+            $"Created calendar event '{ev.Title}'",
+            createdByUserId,
+            relatedEntityId: ev.OwningTeamId, relatedEntityType: nameof(Team));
         await _db.SaveChangesAsync(ct);
 
         InvalidateCache();
@@ -259,7 +268,11 @@ public class CalendarService : ICalendarService
         if (errors.Count > 0)
             throw new InvalidOperationException("CalendarEvent is invalid: " + string.Join("; ", errors));
 
-        _logger.LogInformation("CalendarEvent {Id} updated by {UserId}", id, updatedByUserId);
+        await _audit.LogAsync(
+            AuditAction.CalendarEventUpdated, nameof(CalendarEvent), ev.Id,
+            $"Updated calendar event '{ev.Title}'",
+            updatedByUserId,
+            relatedEntityId: ev.OwningTeamId, relatedEntityType: nameof(Team));
         await _db.SaveChangesAsync(ct);
         InvalidateCache();
         return ev;
@@ -271,33 +284,47 @@ public class CalendarService : ICalendarService
         if (ev is null) return;
         ev.DeletedAt = _clock.GetCurrentInstant();
         ev.UpdatedAt = ev.DeletedAt.Value;
-        _logger.LogInformation("CalendarEvent {Id} soft-deleted by {UserId}", id, deletedByUserId);
+        await _audit.LogAsync(
+            AuditAction.CalendarEventDeleted, nameof(CalendarEvent), ev.Id,
+            $"Deleted calendar event '{ev.Title}'",
+            deletedByUserId,
+            relatedEntityId: ev.OwningTeamId, relatedEntityType: nameof(Team));
         await _db.SaveChangesAsync(ct);
         InvalidateCache();
     }
 
     public async Task CancelOccurrenceAsync(Guid eventId, Instant originalOccurrenceStartUtc, Guid userId, CancellationToken ct = default)
     {
-        await UpsertExceptionAsync(eventId, originalOccurrenceStartUtc, userId, apply: x => x.IsCancelled = true, ct);
+        await UpsertExceptionAsync(eventId, originalOccurrenceStartUtc, userId,
+            apply: x => x.IsCancelled = true,
+            auditAction: AuditAction.CalendarOccurrenceCancelled,
+            auditDescription: $"Cancelled occurrence {originalOccurrenceStartUtc}",
+            ct);
     }
 
     public async Task OverrideOccurrenceAsync(Guid eventId, Instant originalOccurrenceStartUtc, OverrideOccurrenceDto dto, Guid userId, CancellationToken ct = default)
     {
-        await UpsertExceptionAsync(eventId, originalOccurrenceStartUtc, userId, apply: x =>
-        {
-            x.IsCancelled = false;
-            x.OverrideStartUtc = dto.OverrideStartUtc;
-            x.OverrideEndUtc = dto.OverrideEndUtc;
-            x.OverrideTitle = dto.OverrideTitle;
-            x.OverrideDescription = dto.OverrideDescription;
-            x.OverrideLocation = dto.OverrideLocation;
-            x.OverrideLocationUrl = dto.OverrideLocationUrl;
-        }, ct);
+        await UpsertExceptionAsync(eventId, originalOccurrenceStartUtc, userId,
+            apply: x =>
+            {
+                x.IsCancelled = false;
+                x.OverrideStartUtc = dto.OverrideStartUtc;
+                x.OverrideEndUtc = dto.OverrideEndUtc;
+                x.OverrideTitle = dto.OverrideTitle;
+                x.OverrideDescription = dto.OverrideDescription;
+                x.OverrideLocation = dto.OverrideLocation;
+                x.OverrideLocationUrl = dto.OverrideLocationUrl;
+            },
+            auditAction: AuditAction.CalendarOccurrenceOverridden,
+            auditDescription: $"Overrode occurrence {originalOccurrenceStartUtc}",
+            ct);
     }
 
     private async Task UpsertExceptionAsync(
         Guid eventId, Instant originalUtc, Guid userId,
-        Action<CalendarEventException> apply, CancellationToken ct)
+        Action<CalendarEventException> apply,
+        AuditAction auditAction, string auditDescription,
+        CancellationToken ct)
     {
         var existing = await _db.CalendarEventExceptions
             .FirstOrDefaultAsync(x => x.EventId == eventId && x.OriginalOccurrenceStartUtc == originalUtc, ct);
@@ -328,6 +355,10 @@ public class CalendarService : ICalendarService
         if (errors.Count > 0)
             throw new InvalidOperationException("Exception is invalid: " + string.Join("; ", errors));
 
+        await _audit.LogAsync(
+            auditAction, nameof(CalendarEvent), eventId,
+            auditDescription,
+            userId);
         await _db.SaveChangesAsync(ct);
         InvalidateCache();
     }
