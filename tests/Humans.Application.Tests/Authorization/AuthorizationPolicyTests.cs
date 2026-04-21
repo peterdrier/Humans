@@ -1,13 +1,16 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.Stores;
 using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Constants;
 using Humans.Web.Authorization;
 using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using NodaTime;
 using NSubstitute;
 using Xunit;
 
@@ -30,6 +33,9 @@ public class AuthorizationPolicyTests : IDisposable
         services.AddScoped(_ => Substitute.For<IBudgetService>());
         services.AddScoped(_ => Substitute.For<ICampService>());
         services.AddScoped(_ => Substitute.For<ITeamService>());
+        services.AddScoped(_ => Substitute.For<IAgentRateLimitStore>());
+        services.AddScoped(_ => Substitute.For<IAgentSettingsService>());
+        services.AddSingleton<IClock>(SystemClock.Instance);
         services.AddHumansAuthorizationPolicies();
         _serviceProvider = services.BuildServiceProvider();
         _authorizationService = _serviceProvider.GetRequiredService<IAuthorizationService>();
