@@ -10,7 +10,13 @@
                             size="64"
                             css-class="me-3" />
             <div>
-                <h1 class="mb-0">@Html.Raw(string.Format(Localizer["Dashboard_Welcome"].Value, Html.Encode(Model.DisplayName)))</h1>
+                <h1 class="mb-0">
+                    @Html.Raw(string.Format(Localizer["Dashboard_Welcome"].Value, Html.Encode(Model.DisplayName)))
+                    @if (Model.MembershipTier != MembershipTier.Volunteer)
+                    {
+                        <span class="badge bg-primary ms-2 align-middle" style="font-size: 0.4em; vertical-align: middle;">@Model.MembershipTier</span>
+                    }
+                </h1>
             </div>
         </div>
     </div>
@@ -170,34 +176,6 @@
                 </div>
             }
 
-            <div class="card mb-4">
-                <div class="card-header">@Localizer["Nav_Governance"]</div>
-                <div class="card-body">
-                    @if (Model.LatestApplicationStatus != null)
-                    {
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>@Localizer["Dashboard_LatestApplication"]</strong>
-                                @if (Model.LatestApplicationTier.HasValue)
-                                {
-                                    <span class="badge bg-info me-1">@Model.LatestApplicationTier.Value</span>
-                                }
-                                <span class="badge @Model.LatestApplicationStatus.GetBadgeClass()">@Localizer["ApplicationStatus_" + Model.LatestApplicationStatus.ToString()]</span>
-                            </div>
-                            <small class="text-muted">@Model.LatestApplicationDate?.ToDisplayDate()</small>
-                        </div>
-                        <div class="mt-2">
-                            <a asp-controller="Application" asp-action="Index">@Localizer["Dashboard_ViewApplicationHistory"]</a>
-                        </div>
-                    }
-                    else
-                    {
-                        <p class="text-muted mb-2">@Localizer["Dashboard_GovernanceDescription"]</p>
-                        <p class="text-muted mb-3"><small>@Localizer["Dashboard_GovernanceOptional"]</small></p>
-                        <a asp-controller="Application" asp-action="Index" class="btn btn-sm btn-outline-secondary">@Localizer["Dashboard_LearnMore"]</a>
-                    }
-                </div>
-            </div>
         }
     </div>
 
@@ -268,39 +246,16 @@
             @await Component.InvokeAsync("MyGoogleResources")
         }
 
-        <div class="card mb-4">
-            <div class="card-header">@Localizer["Dashboard_YourMembership"]</div>
-            <div class="card-body">
-                <dl class="row mb-0">
-                    <dt class="col-6">@Localizer["Dashboard_MemberSince"]</dt>
-                    <dd class="col-6">@Model.MemberSince.ToDisplayMonthYear()</dd>
-                    @if (Model.LastLogin.HasValue)
-                    {
-                        <dt class="col-6">@Localizer["Dashboard_LastLogin"]</dt>
-                        <dd class="col-6">@Model.LastLogin.Value.ToDisplayDayMonth()</dd>
-                    }
-                </dl>
+        @if (Model.PendingConsents > 0)
+        {
+            <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
+                <i class="fa-solid fa-file-signature me-2"></i>
+                <div>
+                    <a asp-controller="Consent" asp-action="Index" class="alert-link">
+                        @Model.PendingConsents @(Model.PendingConsents == 1 ? "agreement" : "agreements") to review
+                    </a>
+                </div>
             </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header">@Localizer["Dashboard_QuickLinks"]</div>
-            <div class="list-group list-group-flush">
-                <a asp-controller="Profile" asp-action="Edit" class="list-group-item list-group-item-action">@Localizer["Common_EditProfile"]</a>
-                <a asp-controller="Consent" asp-action="Index" class="list-group-item list-group-item-action">
-                    @Localizer["Dashboard_ManageConsents"]
-                    @if (Model.PendingConsents > 0)
-                    {
-                        <span class="badge bg-warning float-end">@Model.PendingConsents</span>
-                    }
-                </a>
-                @if (Model.IsVolunteerMember)
-                {
-                    <a asp-controller="Team" asp-action="Index" class="list-group-item list-group-item-action">@Localizer["Nav_Teams"]</a>
-                    <a asp-controller="Application" asp-action="Index" class="list-group-item list-group-item-action">@Localizer["Nav_Governance"]</a>
-                }
-                <a asp-controller="Profile" asp-action="Privacy" class="list-group-item list-group-item-action">@Localizer["ProfilePrivacy_Title"]</a>
-            </div>
-        </div>
+        }
     </div>
 </div>
