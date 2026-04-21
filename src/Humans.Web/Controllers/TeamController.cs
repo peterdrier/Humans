@@ -206,7 +206,8 @@ public class TeamController : HumansControllerBase
                         {
                             UserId = cm.UserId,
                             DisplayName = cm.User.DisplayName,
-                            ProfilePictureUrl = cm.User.ProfilePictureUrl,
+                            // Populated below via ProfilePictureUrlHelper (custom uploads only).
+                            ProfilePictureUrl = null,
                             ChildTeamName = child.Name,
                             ChildTeamSlug = child.Slug,
                             IsCoordinator = true,
@@ -221,7 +222,8 @@ public class TeamController : HumansControllerBase
                     {
                         UserId = cm.UserId,
                         DisplayName = cm.User.DisplayName,
-                        ProfilePictureUrl = cm.User.ProfilePictureUrl,
+                        // Populated below via ProfilePictureUrlHelper (custom uploads only).
+                        ProfilePictureUrl = null,
                         ChildTeamName = child.Name,
                         ChildTeamSlug = child.Slug,
                         IsCoordinator = isCoordinator,
@@ -239,7 +241,7 @@ public class TeamController : HumansControllerBase
             {
                 var effectiveUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
                     _profileService, Url,
-                    allChildUserEntries.Select(m => (m.UserId, m.ProfilePictureUrl)));
+                    allChildUserEntries.Select(m => m.UserId));
 
                 foreach (var member in allChildUserEntries)
                 {
@@ -345,7 +347,7 @@ public class TeamController : HumansControllerBase
 
         var effectiveUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
             _profileService, Url,
-            profilesWithBirthdays.Select(p => (p.UserId, p.ProfilePictureUrl)));
+            profilesWithBirthdays.Select(p => p.UserId));
 
         var viewModel = new BirthdayCalendarViewModel
         {
@@ -397,7 +399,7 @@ public class TeamController : HumansControllerBase
 
         var effectiveUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
             _profileService, Url,
-            profiles.Select(p => (p.UserId, p.ProfilePictureUrl)));
+            profiles.Select(p => p.UserId));
 
         var markers = profiles.Select(p => new MapMarkerViewModel
         {

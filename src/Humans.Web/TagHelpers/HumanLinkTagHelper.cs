@@ -1,4 +1,5 @@
 using System.Text.Encodings.Web;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -17,11 +18,16 @@ public class HumanLinkTagHelper : TagHelper
 {
     private readonly IUrlHelperFactory _urlHelperFactory;
     private readonly IUserService _userService;
+    private readonly IProfileService _profileService;
 
-    public HumanLinkTagHelper(IUrlHelperFactory urlHelperFactory, IUserService userService)
+    public HumanLinkTagHelper(
+        IUrlHelperFactory urlHelperFactory,
+        IUserService userService,
+        IProfileService profileService)
     {
         _urlHelperFactory = urlHelperFactory;
         _userService = userService;
+        _profileService = profileService;
     }
 
     [HtmlAttributeNotBound]
@@ -36,7 +42,12 @@ public class HumanLinkTagHelper : TagHelper
     [HtmlAttributeName("display-name")]
     public string DisplayName { get; set; } = "";
 
-    /// <summary>Profile picture URL (optional). If null, shows initial fallback.</summary>
+    /// <summary>
+    /// Profile picture URL. Deprecated — the tag helper now resolves the custom
+    /// profile picture URL internally from <see cref="IProfileService"/> by user id.
+    /// Passed values are ignored so that existing Google-avatar URLs threaded through
+    /// from view models never render (see issue #532). Retained for attribute-compat.
+    /// </summary>
     [HtmlAttributeName("profile-picture-url")]
     public string? ProfilePictureUrl { get; set; }
 
@@ -72,22 +83,40 @@ public class HumanLinkTagHelper : TagHelper
         if (output.TagName is null)
             return;
 
-        // Resolve display name and profile picture from cache when not explicitly provided
-        if (string.IsNullOrEmpty(DisplayName) && UserId != Guid.Empty)
+        // Resolve the effective profile picture URL from the Profile section (custom upload only).
+        // We ignore any inbound `profile-picture-url` value — many callers still thread Google
+        // avatar URLs through view models, which don't render reliably (see issue #532).
+        var urlHelper = _urlHelperFactory.GetUrlHelper(ViewContext);
+        string? resolvedPictureUrl = null;
+
+        if (UserId != Guid.Empty)
         {
-            var user = await _userService.GetByIdAsync(UserId);
-            if (user is not null)
+            var fullProfile = await _profileService.GetFullProfileAsync(UserId);
+            if (fullProfile is not null)
             {
-                DisplayName = user.DisplayName;
-                ProfilePictureUrl ??= user.ProfilePictureUrl;
+                if (string.IsNullOrEmpty(DisplayName))
+                {
+                    DisplayName = fullProfile.DisplayName;
+                }
+
+                if (fullProfile.HasCustomPicture && fullProfile.ProfileId != Guid.Empty)
+                {
+                    resolvedPictureUrl = urlHelper.Action(
+                        action: "Picture",
+                        controller: "Profile",
+                        values: new { id = fullProfile.ProfileId, v = fullProfile.UpdatedAtTicks });
+                }
             }
-            else
+            else if (string.IsNullOrEmpty(DisplayName))
             {
-                DisplayName = "Unknown";
+                // Fall back to the User row when the Profile isn't built yet (pre-onboarding).
+                var user = await _userService.GetByIdAsync(UserId);
+                DisplayName = user?.DisplayName ?? "Unknown";
             }
         }
 
-        var urlHelper = _urlHelperFactory.GetUrlHelper(ViewContext);
+        ProfilePictureUrl = resolvedPictureUrl;
+
         var href = Admin
             ? urlHelper.Action("AdminDetail", "Profile", new { id = UserId })
             : urlHelper.Action("ViewProfile", "Profile", new { id = UserId });

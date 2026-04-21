@@ -45,7 +45,10 @@ public class InterfaceMethodBudgetTests
         [typeof(ITeamService)] = 71,
         [typeof(ICampService)] = 53,
         [typeof(IShiftManagementService)] = 49,
-        [typeof(IProfileService)] = 39,
+        // +1 for SetProfilePictureAsync (issue #532 — Google avatar import button needs a
+        // narrow service write that owns its own cache invalidation; controllers can't reach
+        // the FullProfile cache directly).
+        [typeof(IProfileService)] = 40,
         [typeof(IUserService)] = 32,
     };
 

@@ -936,8 +936,16 @@
   <data name="Profile_PictureTooLarge" xml:space="preserve"><value>Profile picture must be under 20MB.</value></data>
   <data name="Profile_PictureInvalidFormat" xml:space="preserve"><value>Profile picture must be JPEG, PNG, WebP, or HEIC format.</value></data>
   <data name="ProfileEdit_GoogleAvatar" xml:space="preserve"><value>(Google avatar)</value></data>
-  <data name="ProfileEdit_PictureHelp" xml:space="preserve"><value>Upload a JPEG, PNG, WebP, or HEIC image (max 20MB). Large images are automatically resized. This replaces your Google avatar.</value></data>
-  <data name="ProfileEdit_RemovePicture" xml:space="preserve"><value>Remove custom picture (revert to Google avatar)</value></data>
+  <data name="ProfileEdit_PictureHelp" xml:space="preserve"><value>Upload a JPEG, PNG, WebP, or HEIC image (max 20MB). Large images are automatically resized.</value></data>
+  <data name="ProfileEdit_RemovePicture" xml:space="preserve"><value>Remove custom picture</value></data>
+  <data name="ProfileEdit_ImportGooglePhoto" xml:space="preserve"><value>Import my Google photo</value></data>
+  <data name="ProfileEdit_ImportGooglePhotoHelp" xml:space="preserve"><value>Copy the photo from your Google account as your profile picture. You can replace it later by uploading a new one.</value></data>
+  <data name="Profile_ImportGooglePhoto_Success" xml:space="preserve"><value>Your Google photo has been imported as your profile picture.</value></data>
+  <data name="Profile_ImportGooglePhoto_Unavailable" xml:space="preserve"><value>We can't import a Google photo — your account isn't linked to Google or no avatar was captured at sign-in.</value></data>
+  <data name="Profile_ImportGooglePhoto_NoProfile" xml:space="preserve"><value>Finish setting up your profile first, then you can import your Google photo.</value></data>
+  <data name="Profile_ImportGooglePhoto_AlreadyHasCustom" xml:space="preserve"><value>You already have a custom profile picture. Remove it first to import your Google photo.</value></data>
+  <data name="Profile_ImportGooglePhoto_FetchFailed" xml:space="preserve"><value>We couldn't fetch your Google photo. Please try again later or upload one directly.</value></data>
+  <data name="Profile_ImportGooglePhoto_InvalidFormat" xml:space="preserve"><value>Your Google photo couldn't be processed — unsupported format or bad response from Google.</value></data>
   <data name="ProfileEdit_DateOfBirthHelp" xml:space="preserve"><value>Only month and day are stored — we don't collect birth year.</value></data>
   <data name="Profile_Month" xml:space="preserve"><value>Month</value></data>
   <data name="Profile_Day" xml:space="preserve"><value>Day</value></data>

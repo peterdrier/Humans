@@ -46,6 +46,15 @@ public interface IProfileService
     Task<(Profile? Profile, bool IsTierLocked, MemberApplication? PendingApplication)>
         GetProfileEditDataAsync(Guid userId, CancellationToken ct = default);
     Task<(byte[]? Data, string? ContentType)> GetProfilePictureAsync(Guid profileId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Persists a new custom profile picture for the user's profile. No-op (logs a
+    /// warning) if the user has no profile yet. Invalidates the FullProfile cache
+    /// entry via the caching decorator. Callers are responsible for validating and
+    /// resizing the image before calling.
+    /// </summary>
+    Task SetProfilePictureAsync(Guid userId, byte[] pictureData, string contentType, CancellationToken ct = default);
+
     Task<Guid> SaveProfileAsync(Guid userId, string displayName, ProfileSaveRequest request, string language, CancellationToken ct = default);
     Task<OnboardingResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default);
     Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default);

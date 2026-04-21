@@ -917,8 +917,16 @@
   <data name="Profile_PictureTooLarge" xml:space="preserve"><value>Das Profilbild darf maximal 20MB gro&#xDF; sein.</value></data>
   <data name="Profile_PictureInvalidFormat" xml:space="preserve"><value>Das Profilbild muss im JPEG-, PNG-, WebP- oder HEIC-Format sein.</value></data>
   <data name="ProfileEdit_GoogleAvatar" xml:space="preserve"><value>(Google-Avatar)</value></data>
-  <data name="ProfileEdit_PictureHelp" xml:space="preserve"><value>Laden Sie ein JPEG-, PNG-, WebP- oder HEIC-Bild hoch (max. 20MB). Gro&#xDF;e Bilder werden automatisch verkleinert. Dies ersetzt Ihren Google-Avatar.</value></data>
-  <data name="ProfileEdit_RemovePicture" xml:space="preserve"><value>Benutzerdefiniertes Bild entfernen (zum Google-Avatar zur&#xFC;ckkehren)</value></data>
+  <data name="ProfileEdit_PictureHelp" xml:space="preserve"><value>Laden Sie ein JPEG-, PNG-, WebP- oder HEIC-Bild hoch (max. 20MB). Gro&#xDF;e Bilder werden automatisch verkleinert.</value></data>
+  <data name="ProfileEdit_RemovePicture" xml:space="preserve"><value>Benutzerdefiniertes Bild entfernen</value></data>
+  <data name="ProfileEdit_ImportGooglePhoto" xml:space="preserve"><value>Mein Google-Foto importieren</value></data>
+  <data name="ProfileEdit_ImportGooglePhotoHelp" xml:space="preserve"><value>Kopiert das Foto aus deinem Google-Konto als Profilbild. Du kannst es sp&#xE4;ter durch ein neues Bild ersetzen.</value></data>
+  <data name="Profile_ImportGooglePhoto_Success" xml:space="preserve"><value>Dein Google-Foto wurde als Profilbild importiert.</value></data>
+  <data name="Profile_ImportGooglePhoto_Unavailable" xml:space="preserve"><value>Google-Foto kann nicht importiert werden: Dein Konto ist nicht mit Google verkn&#xFC;pft oder es wurde kein Avatar bei der Anmeldung erfasst.</value></data>
+  <data name="Profile_ImportGooglePhoto_NoProfile" xml:space="preserve"><value>Schlie&#xDF;e zuerst die Einrichtung deines Profils ab, dann kannst du dein Google-Foto importieren.</value></data>
+  <data name="Profile_ImportGooglePhoto_AlreadyHasCustom" xml:space="preserve"><value>Du hast bereits ein benutzerdefiniertes Profilbild. Entferne es zuerst, um dein Google-Foto zu importieren.</value></data>
+  <data name="Profile_ImportGooglePhoto_FetchFailed" xml:space="preserve"><value>Dein Google-Foto konnte nicht abgerufen werden. Versuche es sp&#xE4;ter erneut oder lade direkt eines hoch.</value></data>
+  <data name="Profile_ImportGooglePhoto_InvalidFormat" xml:space="preserve"><value>Dein Google-Foto konnte nicht verarbeitet werden: Nicht unterst&#xFC;tztes Format oder fehlerhafte Antwort von Google.</value></data>
   <data name="ProfileEdit_DateOfBirthHelp" xml:space="preserve"><value>Nur f&#xFC;r Sie und den Vorstand sichtbar. Wird f&#xFC;r den Geburtstagskalender verwendet.</value></data>
   <data name="TeamDetail_TeamCoordinators" xml:space="preserve"><value>Koordinatoren</value></data>
 

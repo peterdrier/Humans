@@ -129,6 +129,34 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         // Store update handled by CachingProfileService decorator
     }
 
+    public async Task SetProfilePictureAsync(
+        Guid userId, byte[] pictureData, string contentType, CancellationToken ct = default)
+    {
+        if (pictureData.Length == 0)
+        {
+            throw new ArgumentException("Picture data must not be empty", nameof(pictureData));
+        }
+        if (string.IsNullOrWhiteSpace(contentType))
+        {
+            throw new ArgumentException("Content type must not be empty", nameof(contentType));
+        }
+
+        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        if (profile is null)
+        {
+            _logger.LogWarning(
+                "Cannot set profile picture for user {UserId} — no profile exists", userId);
+            return;
+        }
+
+        profile.ProfilePictureData = pictureData;
+        profile.ProfilePictureContentType = contentType;
+        profile.UpdatedAt = _clock.GetCurrentInstant();
+        await _profileRepository.UpdateAsync(profile, ct);
+
+        // FullProfile cache invalidation handled by CachingProfileService decorator.
+    }
+
     public async Task<(Domain.Entities.Profile? Profile, MemberApplication? LatestApplication, int PendingConsentCount)>
         GetProfileIndexDataAsync(Guid userId, CancellationToken ct = default)
     {
