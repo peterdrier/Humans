@@ -56,17 +56,11 @@ public sealed class GuideMarkdownPreprocessor
                 var roles = GuideRolePrivilegeMap.ParseParenthetical(parenContent);
                 var rolesAttr = string.Join(",", roles);
 
-                // Emit the heading with the parenthetical stripped, since the role
-                // information is now carried by the wrapping div's data attributes.
-                var headingLine = roleMatch.Groups["paren"].Success
-                    ? StripParenthetical(rawLine)
-                    : rawLine;
-
                 output.Append('\n');
                 output.Append($"<div data-guide-role=\"{head}\" data-guide-roles=\"{rolesAttr}\">");
                 output.Append('\n');
                 output.Append('\n');
-                output.Append(headingLine);
+                output.Append(rawLine);
                 output.Append('\n');
                 inBlock = true;
                 continue;
@@ -99,22 +93,5 @@ public sealed class GuideMarkdownPreprocessor
         sb.Append("</div>");
         sb.Append('\n');
         sb.Append('\n');
-    }
-
-    private static string StripParenthetical(string line)
-    {
-        var open = line.IndexOf('(');
-        if (open < 0)
-        {
-            return line;
-        }
-        var close = line.IndexOf(')', open + 1);
-        if (close < 0)
-        {
-            return line;
-        }
-        var before = line[..open].TrimEnd();
-        var after = line[(close + 1)..];
-        return before + after;
     }
 }

@@ -163,7 +163,7 @@ public class GuideMarkdownPreprocessorTests
     }
 
     [Fact]
-    public void Wrap_ParentheticalWithUnknownToken_OmitsUnknown()
+    public void Wrap_ParentheticalWithUnknownToken_OmitsFromDataAttributeButKeepsHeading()
     {
         const string input = """
             ## As a Board member / Admin (Camp Admin, Mystery Role)
@@ -173,7 +173,30 @@ public class GuideMarkdownPreprocessorTests
 
         var result = Preprocessor.Wrap(input);
 
+        // Unknown tokens must not appear in the data-guide-roles filter attribute.
         result.Should().Contain("data-guide-roles=\"CampAdmin\"");
-        result.Should().NotContain("Mystery");
+        result.Should().NotMatch("data-guide-roles=\"*Mystery*\"");
+
+        // The heading itself is passed through unchanged so that any markdown
+        // links inside it (e.g. "[Volunteer](Glossary.md#volunteer)") survive.
+        result.Should().Contain("## As a Board member / Admin (Camp Admin, Mystery Role)");
+    }
+
+    [Fact]
+    public void Wrap_HeadingWithGlossaryLinkAndRoleParenthetical_PreservesLink()
+    {
+        // Regression: the heading has a markdown link whose URL is parenthesised,
+        // and a trailing role parenthetical. The preprocessor must not mangle
+        // either — the link's URL must survive so Markdig can render it.
+        const string input = """
+            ## As a [Coordinator](Glossary.md#coordinator) (Camp Coordinator)
+
+            Content.
+            """;
+
+        var result = Preprocessor.Wrap(input);
+
+        result.Should().Contain("[Coordinator](Glossary.md#coordinator)");
+        result.Should().Contain("(Camp Coordinator)");
     }
 }
