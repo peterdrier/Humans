@@ -149,6 +149,23 @@ public static class AccessMatrixDefinitions
                 Feature("Legal documents", "Admin", A),
             ]
         },
+
+        ["CityPlanning"] = new AccessMatrixData
+        {
+            SectionName = "City Planning",
+            Roles = ["Volunteer", "Camp Lead", "Map Admin", "CampAdmin"],
+            Features =
+            [
+                Feature("View the map", "Volunteer", A, "Camp Lead", A, "Map Admin", A, "CampAdmin", A),
+                Feature("Place / edit own camp polygon (placement open)", "Volunteer", D, "Camp Lead", A, "Map Admin", A, "CampAdmin", A),
+                Feature("Edit any camp polygon", "Volunteer", D, "Camp Lead", D, "Map Admin", A, "CampAdmin", A),
+                Feature("View polygon history", "Volunteer", D, "Camp Lead", A, "Map Admin", A, "CampAdmin", A),
+                Feature("Restore historical polygon version", "Volunteer", D, "Camp Lead", D, "Map Admin", A, "CampAdmin", A),
+                Feature("Open / close placement phase", "Volunteer", D, "Camp Lead", D, "Map Admin", A, "CampAdmin", A),
+                Feature("Configure placement dates, limit zone, official zones", "Volunteer", D, "Camp Lead", D, "Map Admin", A, "CampAdmin", A),
+                Feature("Export GeoJSON", "Volunteer", D, "Camp Lead", D, "Map Admin", A, "CampAdmin", A),
+            ]
+        },
     };
 
     // Shorthand aliases for readability

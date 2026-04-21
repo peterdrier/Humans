@@ -65,15 +65,16 @@
     </div>
     }
 
-    <!-- Admin panel link -->
-    @if (isMapAdmin)
-    {
-    <div class="position-absolute top-0 end-0 m-3">
-        <a href="/CityPlanning/Admin" class="btn btn-outline-primary btn-sm shadow-sm">
-            <i class="fa fa-cog me-1"></i> @Localizer["CityPlanning_AdminLink"]
-        </a>
+    <!-- Admin panel link + section help -->
+    <div class="position-absolute top-0 end-0 m-3 d-flex gap-2">
+        @if (isMapAdmin)
+        {
+            <a href="/CityPlanning/Admin" class="btn btn-outline-primary btn-sm shadow-sm">
+                <i class="fa fa-cog me-1"></i> @Localizer["CityPlanning_AdminLink"]
+            </a>
+        }
+        <vc:access-matrix section="CityPlanning" />
     </div>
-    }
 
     <!-- Toolbars -->
     <div class="position-absolute bottom-0 start-50 translate-middle-x mb-3 d-flex flex-row gap-2">
