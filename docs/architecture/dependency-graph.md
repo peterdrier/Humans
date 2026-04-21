@@ -40,7 +40,6 @@ graph LR
     CF[ContactFieldService]:::profiles
     UEmail[UserEmailService]:::profiles
     CommPref[CommunicationPreferenceService]:::profiles
-    VolHist[VolunteerHistoryService]:::profiles
     Contact[ContactService]:::profiles
 
     Team[TeamService]:::teams
@@ -91,7 +90,6 @@ graph LR
     Prof --> Consent
     CF --> Team
     CF --> Role
-    VolHist --> Prof
     Contact --> CommPref
 
     %% Teams section
