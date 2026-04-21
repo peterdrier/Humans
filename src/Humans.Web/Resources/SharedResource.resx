@@ -865,7 +865,7 @@
   <!-- ======================== -->
   <data name="GoogleAccounts_Actions" xml:space="preserve"><value>Actions</value></data>
   <data name="GoogleAccounts_ResetPassword" xml:space="preserve"><value>Reset password</value></data>
-  <data name="GoogleAccounts_ResetPasswordConfirm" xml:space="preserve"><value>Reset password for {0}? A new temporary password will be generated and shown on screen. The user must change it at next sign-in.</value><comment>{0} = email</comment></data>
+  <data name="GoogleAccounts_ResetPasswordConfirm" xml:space="preserve"><value>Reset password for {0}? A new temporary password will be generated and shown on screen. The human must change it at next sign-in.</value><comment>{0} = email</comment></data>
 
   <!-- ======================== -->
   <!-- Google Sync View         -->
