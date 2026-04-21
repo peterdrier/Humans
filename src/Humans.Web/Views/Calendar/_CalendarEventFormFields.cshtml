@@ -1,0 +1,72 @@
+@model Humans.Web.Models.Calendar.CalendarEventFormViewModel
+@Html.HiddenFor(m => m.Id)
+
+<div asp-validation-summary="All" class="text-danger mb-2"></div>
+
+<div class="mb-3">
+    <label asp-for="Title" class="form-label">Title</label>
+    <input asp-for="Title" class="form-control" />
+    <span asp-validation-for="Title" class="text-danger small"></span>
+</div>
+
+<div class="mb-3">
+    <label asp-for="OwningTeamId" class="form-label">Owning team</label>
+    <select asp-for="OwningTeamId" class="form-select"
+            asp-items="@(Model.TeamOptions.Select(t => new SelectListItem(t.Name, t.Id.ToString())))">
+    </select>
+    <span asp-validation-for="OwningTeamId" class="text-danger small"></span>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <label asp-for="StartLocal" class="form-label">Start</label>
+        <input asp-for="StartLocal" type="datetime-local" class="form-control" />
+        <span asp-validation-for="StartLocal" class="text-danger small"></span>
+    </div>
+    <div class="col-md-6 mb-3">
+        <label asp-for="EndLocal" class="form-label">End</label>
+        <input asp-for="EndLocal" type="datetime-local" class="form-control" />
+        <span asp-validation-for="EndLocal" class="text-danger small"></span>
+    </div>
+</div>
+
+<div class="form-check mb-3">
+    <input asp-for="IsAllDay" class="form-check-input" />
+    <label asp-for="IsAllDay" class="form-check-label">All-day event</label>
+</div>
+
+<div class="mb-3">
+    <label asp-for="Location" class="form-label">Location</label>
+    <input asp-for="Location" class="form-control" />
+</div>
+
+<div class="mb-3">
+    <label asp-for="LocationUrl" class="form-label">Location URL</label>
+    <input asp-for="LocationUrl" type="url" class="form-control" placeholder="https://..." />
+    <span asp-validation-for="LocationUrl" class="text-danger small"></span>
+</div>
+
+<div class="mb-3">
+    <label asp-for="Description" class="form-label">Description</label>
+    <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+</div>
+
+<hr />
+
+<div class="form-check mb-3">
+    <input asp-for="IsRecurring" class="form-check-input" />
+    <label asp-for="IsRecurring" class="form-check-label">Recurring event</label>
+</div>
+
+<div class="row">
+    <div class="col-md-8 mb-3">
+        <label asp-for="RecurrenceRule" class="form-label">RRULE</label>
+        <input asp-for="RecurrenceRule" class="form-control" placeholder="FREQ=WEEKLY;BYDAY=TU" />
+        <small class="text-muted">RFC 5545 RRULE. Leave blank for single event. Example: <code>FREQ=WEEKLY;BYDAY=TU;COUNT=10</code></small>
+    </div>
+    <div class="col-md-4 mb-3">
+        <label asp-for="RecurrenceTimezone" class="form-label">Recurrence timezone</label>
+        <input asp-for="RecurrenceTimezone" class="form-control" />
+        <small class="text-muted">IANA TZ, e.g. <code>Europe/Madrid</code></small>
+    </div>
+</div>

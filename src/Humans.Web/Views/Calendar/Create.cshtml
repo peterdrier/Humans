@@ -1,0 +1,15 @@
+@model Humans.Web.Models.Calendar.CalendarEventFormViewModel
+@{
+    ViewData["Title"] = "New event";
+}
+
+<div class="container py-4">
+    <h1 class="h3 mb-3">New event</h1>
+
+    <form method="post" asp-action="Create">
+        @Html.AntiForgeryToken()
+        <partial name="_CalendarEventFormFields" model="Model" />
+        <button type="submit" class="btn btn-primary">Create event</button>
+        <a class="btn btn-link" asp-action="Index">Cancel</a>
+    </form>
+</div>

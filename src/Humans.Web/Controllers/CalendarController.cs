@@ -1,4 +1,6 @@
+using Humans.Application.DTOs.Calendar;
 using Humans.Application.Interfaces;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Web.Models.Calendar;
@@ -128,6 +130,145 @@ public class CalendarController : HumansControllerBase
         var canEdit = (await _authz.AuthorizeAsync(User, ev.OwningTeam, PolicyNames.CalendarEditor)).Succeeded;
 
         return View(new CalendarEventViewModel(ev, upcoming, canEdit, zone.Id));
+    }
+
+    [HttpGet("Event/Create")]
+    public async Task<IActionResult> Create([FromQuery] Guid? teamId, CancellationToken ct)
+    {
+        var teams = await GetEditableTeamsForCurrentUserAsync(ct);
+        if (teams.Count == 0) return Forbid();
+
+        return View(new CalendarEventFormViewModel
+        {
+            OwningTeamId = teamId ?? teams[0].Id,
+            StartLocal = DateTime.Today.AddHours(19),
+            EndLocal   = DateTime.Today.AddHours(20),
+            TeamOptions = teams,
+        });
+    }
+
+    [HttpPost("Event/Create")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(CalendarEventFormViewModel form, CancellationToken ct)
+    {
+        var team = await _teams.GetTeamByIdAsync(form.OwningTeamId, ct);
+        if (team is null) return NotFound();
+        var authz = await _authz.AuthorizeAsync(User, team, PolicyNames.CalendarEditor);
+        if (!authz.Succeeded) return Forbid();
+
+        if (!ModelState.IsValid)
+        {
+            form.TeamOptions = await GetEditableTeamsForCurrentUserAsync(ct);
+            return View(form);
+        }
+
+        var zone = DateTimeZoneProviders.Tzdb[form.RecurrenceTimezone];
+        var start = LocalDateTime.FromDateTime(form.StartLocal).InZoneLeniently(zone).ToInstant();
+        Instant? end = form.EndLocal is { } elo
+            ? LocalDateTime.FromDateTime(elo).InZoneLeniently(zone).ToInstant()
+            : null;
+
+        var ev = await _calendar.CreateEventAsync(new CreateCalendarEventDto(
+            form.Title, form.Description, form.Location, form.LocationUrl,
+            form.OwningTeamId, start, end, form.IsAllDay,
+            form.IsRecurring ? form.RecurrenceRule : null,
+            form.IsRecurring ? form.RecurrenceTimezone : null),
+            createdByUserId: GetCurrentUserId(), ct);
+
+        return RedirectToAction(nameof(Event), new { id = ev.Id });
+    }
+
+    [HttpGet("Event/{id:guid}/Edit")]
+    public async Task<IActionResult> Edit(Guid id, CancellationToken ct)
+    {
+        var ev = await _calendar.GetEventByIdAsync(id, ct);
+        if (ev is null) return NotFound();
+        var authz = await _authz.AuthorizeAsync(User, ev.OwningTeam, PolicyNames.CalendarEditor);
+        if (!authz.Succeeded) return Forbid();
+
+        var zone = DateTimeZoneProviders.Tzdb[ev.RecurrenceTimezone ?? "Europe/Madrid"];
+        return View(new CalendarEventFormViewModel
+        {
+            Id = ev.Id,
+            Title = ev.Title,
+            Description = ev.Description,
+            Location = ev.Location,
+            LocationUrl = ev.LocationUrl,
+            OwningTeamId = ev.OwningTeamId,
+            StartLocal = ev.StartUtc.InZone(zone).LocalDateTime.ToDateTimeUnspecified(),
+            EndLocal = ev.EndUtc?.InZone(zone).LocalDateTime.ToDateTimeUnspecified(),
+            IsAllDay = ev.IsAllDay,
+            IsRecurring = ev.RecurrenceRule is not null,
+            RecurrenceRule = ev.RecurrenceRule,
+            RecurrenceTimezone = ev.RecurrenceTimezone ?? "Europe/Madrid",
+            TeamOptions = await GetEditableTeamsForCurrentUserAsync(ct),
+        });
+    }
+
+    [HttpPost("Event/{id:guid}/Edit")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(Guid id, CalendarEventFormViewModel form, CancellationToken ct)
+    {
+        var ev = await _calendar.GetEventByIdAsync(id, ct);
+        if (ev is null) return NotFound();
+        var authz = await _authz.AuthorizeAsync(User, ev.OwningTeam, PolicyNames.CalendarEditor);
+        if (!authz.Succeeded) return Forbid();
+
+        if (!ModelState.IsValid)
+        {
+            form.TeamOptions = await GetEditableTeamsForCurrentUserAsync(ct);
+            return View(form);
+        }
+
+        var zone = DateTimeZoneProviders.Tzdb[form.RecurrenceTimezone];
+        var start = LocalDateTime.FromDateTime(form.StartLocal).InZoneLeniently(zone).ToInstant();
+        Instant? end = form.EndLocal is { } elo
+            ? LocalDateTime.FromDateTime(elo).InZoneLeniently(zone).ToInstant()
+            : null;
+
+        await _calendar.UpdateEventAsync(id, new UpdateCalendarEventDto(
+            form.Title, form.Description, form.Location, form.LocationUrl,
+            form.OwningTeamId, start, end, form.IsAllDay,
+            form.IsRecurring ? form.RecurrenceRule : null,
+            form.IsRecurring ? form.RecurrenceTimezone : null),
+            updatedByUserId: GetCurrentUserId(), ct);
+
+        return RedirectToAction(nameof(Event), new { id });
+    }
+
+    [HttpPost("Event/{id:guid}/Delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        var ev = await _calendar.GetEventByIdAsync(id, ct);
+        if (ev is null) return NotFound();
+        var authz = await _authz.AuthorizeAsync(User, ev.OwningTeam, PolicyNames.CalendarEditor);
+        if (!authz.Succeeded) return Forbid();
+
+        await _calendar.DeleteEventAsync(id, deletedByUserId: GetCurrentUserId(), ct);
+        return RedirectToAction(nameof(Index));
+    }
+
+    private async Task<IReadOnlyList<TeamOption>> GetEditableTeamsForCurrentUserAsync(CancellationToken ct)
+    {
+        if (User.IsInRole(RoleNames.Admin))
+        {
+            return (await _teams.GetAllTeamsAsync(ct))
+                .Select(t => new TeamOption(t.Id, t.Name))
+                .OrderBy(t => t.Name, StringComparer.CurrentCulture)
+                .ToList();
+        }
+
+        var uid = GetCurrentUserId();
+        var coordinatedIds = await _teams.GetUserCoordinatedTeamIdsAsync(uid, ct);
+        if (coordinatedIds.Count == 0) return Array.Empty<TeamOption>();
+
+        var coordinatedSet = coordinatedIds.ToHashSet();
+        return (await _teams.GetAllTeamsAsync(ct))
+            .Where(t => coordinatedSet.Contains(t.Id))
+            .Select(t => new TeamOption(t.Id, t.Name))
+            .OrderBy(t => t.Name, StringComparer.CurrentCulture)
+            .ToList();
     }
 
     private Guid GetCurrentUserId()
