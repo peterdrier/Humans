@@ -23,6 +23,7 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
     <PackageReference Include="Octokit" />
+    <PackageReference Include="Anthropic" />
     <PackageReference Include="Polly" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Google.Apis.Admin.Directory.directory_v1" />
