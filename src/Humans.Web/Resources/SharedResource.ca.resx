@@ -163,6 +163,8 @@
   <data name="Dashboard_LastLogin" xml:space="preserve"><value>Últim accés</value></data>
   <data name="Dashboard_QuickLinks" xml:space="preserve"><value>Accesos ràpids</value></data>
   <data name="Dashboard_ManageConsents" xml:space="preserve"><value>Revisar acords</value></data>
+  <data name="Dashboard_PendingAgreementsSingular" xml:space="preserve"><value>{0} acord per revisar</value></data>
+  <data name="Dashboard_PendingAgreementsPlural" xml:space="preserve"><value>{0} acords per revisar</value></data>
   <data name="Dashboard_RejectedTitle" xml:space="preserve"><value>Registre rebutjat</value></data>
   <data name="Dashboard_RejectedMessage" xml:space="preserve"><value>El teu registre ha estat revisat i no va ser aprovat. Si tens preguntes, contacta amb l'equip d'administració.</value></data>
   <data name="Dashboard_RejectionReason" xml:space="preserve"><value>Motiu</value></data>

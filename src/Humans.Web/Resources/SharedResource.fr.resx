@@ -163,6 +163,8 @@
   <data name="Dashboard_LastLogin" xml:space="preserve"><value>Derni&#xE8;re connexion</value></data>
   <data name="Dashboard_QuickLinks" xml:space="preserve"><value>Acc&#xE8;s rapides</value></data>
   <data name="Dashboard_ManageConsents" xml:space="preserve"><value>Consulter les accords</value></data>
+  <data name="Dashboard_PendingAgreementsSingular" xml:space="preserve"><value>{0} accord à consulter</value></data>
+  <data name="Dashboard_PendingAgreementsPlural" xml:space="preserve"><value>{0} accords à consulter</value></data>
   <data name="Dashboard_RejectedTitle" xml:space="preserve"><value>Inscription refus&#xE9;e</value></data>
   <data name="Dashboard_RejectedMessage" xml:space="preserve"><value>Votre inscription a &#xE9;t&#xE9; examin&#xE9;e et n'a pas &#xE9;t&#xE9; approuv&#xE9;e. Si vous avez des questions, veuillez contacter l'&#xE9;quipe d'administration.</value></data>
   <data name="Dashboard_RejectionReason" xml:space="preserve"><value>Motif</value></data>

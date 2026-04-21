@@ -163,6 +163,8 @@
   <data name="Dashboard_LastLogin" xml:space="preserve"><value>Ultimo accesso</value></data>
   <data name="Dashboard_QuickLinks" xml:space="preserve"><value>Link rapidi</value></data>
   <data name="Dashboard_ManageConsents" xml:space="preserve"><value>Esamina accordi</value></data>
+  <data name="Dashboard_PendingAgreementsSingular" xml:space="preserve"><value>{0} accordo da esaminare</value></data>
+  <data name="Dashboard_PendingAgreementsPlural" xml:space="preserve"><value>{0} accordi da esaminare</value></data>
   <data name="Dashboard_RejectedTitle" xml:space="preserve"><value>Registrazione rifiutata</value></data>
   <data name="Dashboard_RejectedMessage" xml:space="preserve"><value>La Sua registrazione &#xE8; stata esaminata e non &#xE8; stata approvata. Per domande, contatti il team di amministrazione.</value></data>
   <data name="Dashboard_RejectionReason" xml:space="preserve"><value>Motivo</value></data>

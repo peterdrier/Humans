@@ -163,6 +163,8 @@
   <data name="Dashboard_LastLogin" xml:space="preserve"><value>Letzte Anmeldung</value></data>
   <data name="Dashboard_QuickLinks" xml:space="preserve"><value>Schnellzugriff</value></data>
   <data name="Dashboard_ManageConsents" xml:space="preserve"><value>Vereinbarungen prüfen</value></data>
+  <data name="Dashboard_PendingAgreementsSingular" xml:space="preserve"><value>{0} Vereinbarung zu prüfen</value></data>
+  <data name="Dashboard_PendingAgreementsPlural" xml:space="preserve"><value>{0} Vereinbarungen zu prüfen</value></data>
   <data name="Dashboard_RejectedTitle" xml:space="preserve"><value>Anmeldung abgelehnt</value></data>
   <data name="Dashboard_RejectedMessage" xml:space="preserve"><value>Ihre Anmeldung wurde gepr&#xFC;ft und nicht genehmigt. Bei Fragen wenden Sie sich bitte an das Admin-Team.</value></data>
   <data name="Dashboard_RejectionReason" xml:space="preserve"><value>Grund</value></data>

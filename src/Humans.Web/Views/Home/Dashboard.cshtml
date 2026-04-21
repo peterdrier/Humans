@@ -252,7 +252,7 @@
                 <i class="fa-solid fa-file-signature me-2"></i>
                 <div>
                     <a asp-controller="Consent" asp-action="Index" class="alert-link">
-                        @Model.PendingConsents @(Model.PendingConsents == 1 ? "agreement" : "agreements") to review
+                        @string.Format((Model.PendingConsents == 1 ? Localizer["Dashboard_PendingAgreementsSingular"] : Localizer["Dashboard_PendingAgreementsPlural"]).Value, Model.PendingConsents)
                     </a>
                 </div>
             </div>
