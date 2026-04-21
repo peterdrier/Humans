@@ -21,9 +21,11 @@ public class CampaignConfiguration : IEntityTypeConfiguration<Campaign>
             .HasMaxLength(20)
             .IsRequired();
 
+#pragma warning disable CS0618 // Obsolete cross-domain nav kept so EF FK constraint stays modelled.
         builder.HasOne(c => c.CreatedByUser)
             .WithMany()
             .HasForeignKey(c => c.CreatedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
+#pragma warning restore CS0618
     }
 }

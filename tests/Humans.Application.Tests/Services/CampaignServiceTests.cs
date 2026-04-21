@@ -8,8 +8,9 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Repositories;
 using Xunit;
+using CampaignServiceImpl = Humans.Application.Services.Campaigns.CampaignService;
 
 namespace Humans.Application.Tests.Services;
 
@@ -17,8 +18,11 @@ public class CampaignServiceTests : IDisposable
 {
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock;
-    private readonly CampaignService _service;
+    private readonly CampaignServiceImpl _service;
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
+    private readonly ITeamService _teamService;
+    private readonly IUserService _userService;
+    private readonly IUserEmailService _userEmailService;
 
     public CampaignServiceTests()
     {
@@ -29,13 +33,83 @@ public class CampaignServiceTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
 
-        _service = new CampaignService(
-            _dbContext,
-            _clock,
+        var repository = new CampaignRepository(_dbContext);
+        _teamService = Substitute.For<ITeamService>();
+        _userService = Substitute.For<IUserService>();
+        _userEmailService = Substitute.For<IUserEmailService>();
+
+        // Default stubs: fetch data from the in-memory DbContext so the existing
+        // seed helpers still drive the scenarios end-to-end.
+        _teamService
+            .GetTeamMembersAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                var teamId = call.ArgAt<Guid>(0);
+                var list = await _dbContext.TeamMembers
+                    .Where(tm => tm.TeamId == teamId)
+                    .ToListAsync();
+                return (IReadOnlyList<TeamMember>)list;
+            });
+
+        _teamService
+            .GetActiveTeamOptionsAsync(Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                var list = await _dbContext.Teams
+                    .Where(t => t.IsActive)
+                    .OrderBy(t => t.Name)
+                    .Select(t => new TeamOptionDto(t.Id, t.Name))
+                    .ToListAsync();
+                return (IReadOnlyList<TeamOptionDto>)list;
+            });
+
+        _userService
+            .GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                var id = call.ArgAt<Guid>(0);
+                return await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == id);
+            });
+
+        _userService
+            .GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                var ids = call.ArgAt<IReadOnlyCollection<Guid>>(0);
+                var list = await _dbContext.Users
+                    .Where(u => ids.Contains(u.Id))
+                    .ToListAsync();
+                return (IReadOnlyDictionary<Guid, User>)list.ToDictionary(u => u.Id);
+            });
+
+        _userEmailService
+            .GetNotificationTargetEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                var ids = call.ArgAt<IReadOnlyCollection<Guid>>(0);
+                var users = await _dbContext.Users
+                    .Where(u => ids.Contains(u.Id))
+                    .ToListAsync();
+                return (IReadOnlyDictionary<Guid, string>)users
+                    .Where(u => !string.IsNullOrEmpty(u.Email))
+                    .ToDictionary(u => u.Id, u => u.Email!);
+            });
+
+        var commPrefService = Substitute.For<ICommunicationPreferenceService>();
+        commPrefService
+            .IsOptedOutAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        _service = new CampaignServiceImpl(
+            repository,
+            _teamService,
+            _userEmailService,
+            _userService,
             Substitute.For<INotificationService>(),
-            Substitute.For<ICommunicationPreferenceService>(),
+            commPrefService,
             _emailService,
-            NullLogger<CampaignService>.Instance);
+            _clock,
+            NullLogger<CampaignServiceImpl>.Instance);
     }
 
     public void Dispose()

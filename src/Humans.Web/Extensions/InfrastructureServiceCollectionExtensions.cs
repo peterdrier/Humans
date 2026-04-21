@@ -14,6 +14,7 @@ using Humans.Infrastructure.Services;
 using Humans.Infrastructure.Services.Profiles;
 using Humans.Web.Filters;
 using BudgetBudgetService = Humans.Application.Services.Budget.BudgetService;
+using CampaignsCampaignService = Humans.Application.Services.Campaigns.CampaignService;
 using GovernanceApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
 using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
 using ProfilesContactFieldService = Humans.Application.Services.Profile.ContactFieldService;
@@ -137,9 +138,12 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ICommunicationPreferenceService, ProfilesCommunicationPreferenceService>();
         services.AddScoped<IUnsubscribeService, UnsubscribeService>();
 
-        services.AddScoped<CampaignService>();
-        services.AddScoped<ICampaignService>(sp => sp.GetRequiredService<CampaignService>());
-        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CampaignService>());
+        // Campaigns section — §15 repository pattern (issue #546).
+        // No caching decorator: campaigns are admin-only, infrequent mutations.
+        services.AddScoped<ICampaignRepository, CampaignRepository>();
+        services.AddScoped<CampaignsCampaignService>();
+        services.AddScoped<ICampaignService>(sp => sp.GetRequiredService<CampaignsCampaignService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CampaignsCampaignService>());
 
         services.AddScoped<IContactFieldService, ProfilesContactFieldService>();
         services.AddScoped<IUserEmailService, ProfilesUserEmailService>();

@@ -399,6 +399,38 @@ public sealed class UserEmailService : IUserEmailService
                     .First().Email);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, string>> GetNotificationTargetEmailsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<Guid, string>();
+
+        // Start with users who have a verified IsNotificationTarget row.
+        var allNotificationTargets = await _repository.GetAllNotificationTargetEmailsAsync(cancellationToken);
+
+        var result = new Dictionary<Guid, string>(userIds.Count);
+        foreach (var userId in userIds)
+        {
+            if (allNotificationTargets.TryGetValue(userId, out var email))
+                result[userId] = email;
+        }
+
+        // For users without a notification-target row, fall back to User.Email
+        // (the Identity email). Single-batch round-trip via IUserService.
+        var missing = userIds.Where(id => !result.ContainsKey(id)).ToList();
+        if (missing.Count > 0)
+        {
+            var users = await _userService.GetByIdsAsync(missing, cancellationToken);
+            foreach (var userId in missing)
+            {
+                if (users.TryGetValue(userId, out var user) && !string.IsNullOrEmpty(user.Email))
+                    result[userId] = user.Email;
+            }
+        }
+
+        return result;
+    }
+
     public async Task<UserEmailWithUser?> FindVerifiedEmailWithUserAsync(
         string email, CancellationToken cancellationToken = default)
     {
