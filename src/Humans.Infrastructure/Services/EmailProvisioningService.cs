@@ -67,6 +67,36 @@ public class EmailProvisioningService : IEmailProvisioningService
 
         try
         {
+            // Check DB first: reject if the address is already tied to another human in our system.
+            // Must run BEFORE the Workspace existence check so a stale/deleted Workspace account
+            // cannot silently "move" the identity off its current human.
+            var conflictingEmailUserId = await _dbContext.UserEmails
+                .Where(ue => string.Equals(ue.Email, fullEmail, StringComparison.OrdinalIgnoreCase))
+                .Select(ue => (Guid?)ue.UserId)
+                .FirstOrDefaultAsync();
+            if (conflictingEmailUserId is not null && conflictingEmailUserId != userId)
+            {
+                _logger.LogWarning(
+                    "Provisioning rejected: {Email} is already linked to user {ConflictUserId} (requested for {UserId})",
+                    fullEmail, conflictingEmailUserId, userId);
+                return new EmailProvisioningResult(false, fullEmail,
+                    ErrorMessage: $"{fullEmail} is already in use by another human.");
+            }
+
+            var conflictingGoogleEmailUserId = await _dbContext.Users
+                .Where(u => u.GoogleEmail != null
+                    && string.Equals(u.GoogleEmail, fullEmail, StringComparison.OrdinalIgnoreCase))
+                .Select(u => (Guid?)u.Id)
+                .FirstOrDefaultAsync();
+            if (conflictingGoogleEmailUserId is not null && conflictingGoogleEmailUserId != userId)
+            {
+                _logger.LogWarning(
+                    "Provisioning rejected: {Email} is already set as GoogleEmail for user {ConflictUserId} (requested for {UserId})",
+                    fullEmail, conflictingGoogleEmailUserId, userId);
+                return new EmailProvisioningResult(false, fullEmail,
+                    ErrorMessage: $"{fullEmail} is already in use by another human.");
+            }
+
             // Check if account already exists in Google Workspace
             var existing = await _workspaceUserService.GetAccountAsync(fullEmail);
             if (existing is not null)

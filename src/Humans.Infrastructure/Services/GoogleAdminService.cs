@@ -136,12 +136,38 @@ public class GoogleAdminService : IGoogleAdminService
     {
         var fullEmail = $"{emailPrefix.Trim().ToLowerInvariant()}@{NobodiesTeamDomain}";
 
+        // Check DB first: reject if the address is already tied to any human in our system.
+        // Must run BEFORE the Workspace existence check so a stale/deleted Workspace account
+        // cannot silently "move" the identity off its current human.
+        var emailInUse = await _dbContext.UserEmails
+            .AnyAsync(ue => string.Equals(ue.Email, fullEmail, StringComparison.OrdinalIgnoreCase), ct);
+        if (emailInUse)
+        {
+            _logger.LogWarning(
+                "Standalone provisioning rejected: {Email} is already linked to a human",
+                fullEmail);
+            return new WorkspaceAccountActionResult(false,
+                ErrorMessage: $"{fullEmail} is already in use by another human.");
+        }
+
+        var googleEmailInUse = await _dbContext.Users
+            .AnyAsync(u => u.GoogleEmail != null
+                && string.Equals(u.GoogleEmail, fullEmail, StringComparison.OrdinalIgnoreCase), ct);
+        if (googleEmailInUse)
+        {
+            _logger.LogWarning(
+                "Standalone provisioning rejected: {Email} is already set as GoogleEmail for a human",
+                fullEmail);
+            return new WorkspaceAccountActionResult(false,
+                ErrorMessage: $"{fullEmail} is already in use by another human.");
+        }
+
         // Check if account already exists
         var existing = await _workspaceUserService.GetAccountAsync(fullEmail, ct);
         if (existing is not null)
         {
             return new WorkspaceAccountActionResult(false,
-                ErrorMessage: $"Account {fullEmail} already exists.");
+                ErrorMessage: $"Account {fullEmail} already exists in Google Workspace.");
         }
 
         try
