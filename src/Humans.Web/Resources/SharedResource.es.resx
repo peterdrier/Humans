@@ -849,6 +849,13 @@
   <data name="AdminAddRole_NotesPlaceholder" xml:space="preserve"><value>Motivo de la asignaci&#xF3;n</value></data>
 
   <!-- ======================== -->
+  <!-- Google Accounts View     -->
+  <!-- ======================== -->
+  <data name="GoogleAccounts_Actions" xml:space="preserve"><value>Acciones</value></data>
+  <data name="GoogleAccounts_ResetPassword" xml:space="preserve"><value>Restablecer contrase&#xF1;a</value></data>
+  <data name="GoogleAccounts_ResetPasswordConfirm" xml:space="preserve"><value>&#xBF;Restablecer la contrase&#xF1;a de {0}? Se generar&#xE1; una contrase&#xF1;a temporal nueva y se mostrar&#xE1; en pantalla. El usuario deber&#xE1; cambiarla al iniciar sesi&#xF3;n.</value><comment>{0} = email</comment></data>
+
+  <!-- ======================== -->
   <!-- Google Sync View         -->
   <!-- ======================== -->
   <data name="GoogleSync_SyncNow" xml:space="preserve"><value>Sincronizar ahora</value></data>

@@ -123,6 +123,7 @@
                         <th>Status</th>
                         <th>Created</th>
                         <th>Last Login</th>
+                        <th class="text-end">@Localizer["GoogleAccounts_Actions"]</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -180,6 +181,20 @@
                                     <span class="text-muted">Never</span>
                                 }
                             </td>
+                            <td class="text-end">
+                                @if (!account.IsSuspended)
+                                {
+                                    <form asp-action="ResetPassword" method="post" class="d-inline reset-password-form"
+                                          data-email="@account.PrimaryEmail"
+                                          data-confirm="@string.Format(Localizer["GoogleAccounts_ResetPasswordConfirm"].Value, account.PrimaryEmail)">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="email" value="@account.PrimaryEmail" />
+                                        <button type="submit" class="btn btn-outline-warning btn-sm">
+                                            <i class="fa-solid fa-key me-1"></i>@Localizer["GoogleAccounts_ResetPassword"]
+                                        </button>
+                                    </form>
+                                }
+                            </td>
                         </tr>
                     }
                 </tbody>
@@ -190,6 +205,15 @@
 
 @section Scripts {
     <script>
+        // Confirm before posting a password reset
+        document.querySelectorAll('.reset-password-form').forEach(function (form) {
+            form.addEventListener('submit', function (e) {
+                if (!confirm(form.dataset.confirm)) {
+                    e.preventDefault();
+                }
+            });
+        });
+
         // Sync the _HumanSearchInput hidden value to the form's userId field on submit
         document.querySelectorAll('.link-form').forEach(function (form) {
             form.addEventListener('submit', function (e) {

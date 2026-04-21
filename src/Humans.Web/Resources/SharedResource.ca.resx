@@ -849,6 +849,13 @@
   <data name="AdminAddRole_NotesPlaceholder" xml:space="preserve"><value>Motiu de la assignació</value></data>
 
   <!-- ======================== -->
+  <!-- Google Accounts View     -->
+  <!-- ======================== -->
+  <data name="GoogleAccounts_Actions" xml:space="preserve"><value>Accions</value></data>
+  <data name="GoogleAccounts_ResetPassword" xml:space="preserve"><value>Restableix contrasenya</value></data>
+  <data name="GoogleAccounts_ResetPasswordConfirm" xml:space="preserve"><value>Restablir la contrasenya de {0}? Es generar&#xE0; una nova contrasenya temporal i es mostrar&#xE0; a la pantalla. L'usuari l'haur&#xE0; de canviar la propera vegada que iniciï sessi&#xF3;.</value><comment>{0} = email</comment></data>
+
+  <!-- ======================== -->
   <!-- Google Sync View         -->
   <!-- ======================== -->
   <data name="GoogleSync_SyncNow" xml:space="preserve"><value>Sincronitza ara</value></data>
