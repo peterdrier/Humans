@@ -1,31 +1,41 @@
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
-using Humans.Infrastructure.Data;
 using Humans.Domain.Enums;
-using Microsoft.EntityFrameworkCore;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Application.Services.Teams;
 
-public class TeamPageService : ITeamPageService
+/// <summary>
+/// Application-layer composer for the public/member team page. Owns no tables
+/// — stitches data from <see cref="ITeamService"/>, <see cref="IProfileService"/>,
+/// <see cref="ITeamResourceService"/>, <see cref="IShiftManagementService"/>,
+/// and <see cref="IUserService"/>.
+/// </summary>
+/// <remarks>
+/// Part of §15 Part 1 Teams migration (<c>#540</c>). TeamPageService moved
+/// out of <c>Humans.Infrastructure</c> first because it is a pure composer
+/// with no owned tables; the larger <c>TeamService</c>, <c>TeamResourceService</c>,
+/// and <c>StubTeamResourceService</c> migrate in separate sub-tasks.
+/// </remarks>
+public sealed class TeamPageService : ITeamPageService
 {
     private readonly ITeamService _teamService;
     private readonly IProfileService _profileService;
     private readonly ITeamResourceService _teamResourceService;
     private readonly IShiftManagementService _shiftManagementService;
-    private readonly HumansDbContext _dbContext;
+    private readonly IUserService _userService;
 
     public TeamPageService(
         ITeamService teamService,
         IProfileService profileService,
         ITeamResourceService teamResourceService,
         IShiftManagementService shiftManagementService,
-        HumansDbContext dbContext)
+        IUserService userService)
     {
         _teamService = teamService;
         _profileService = profileService;
         _teamResourceService = teamResourceService;
         _shiftManagementService = shiftManagementService;
-        _dbContext = dbContext;
+        _userService = userService;
     }
 
     public async Task<TeamPageDetailResult?> GetTeamPageDetailAsync(
@@ -76,6 +86,7 @@ public class TeamPageService : ITeamPageService
 
         var shiftsSummary = await GetShiftsSummaryAsync(
             detail.Team,
+            detail.ChildTeams,
             userId,
             detail.IsAuthenticated,
             canManageShiftsByRole,
@@ -127,15 +138,13 @@ public class TeamPageService : ITeamPageService
             return null;
         }
 
-        return await _dbContext.Users
-            .AsNoTracking()
-            .Where(user => user.Id == userId.Value)
-            .Select(user => user.DisplayName)
-            .FirstOrDefaultAsync(cancellationToken);
+        var user = await _userService.GetByIdAsync(userId.Value, cancellationToken);
+        return user?.DisplayName;
     }
 
     private async Task<TeamPageShiftsSummary?> GetShiftsSummaryAsync(
         Team team,
+        IReadOnlyList<Team> childTeams,
         Guid? userId,
         bool isAuthenticated,
         bool canManageShiftsByRole,
@@ -157,17 +166,14 @@ public class TeamPageService : ITeamPageService
             return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);
         }
 
-        // For parent teams, aggregate shifts from the parent team plus all child teams
-        var childTeams = await _dbContext.Teams
-            .AsNoTracking()
-            .Where(t => t.ParentTeamId == team.Id && t.IsActive)
-            .Select(t => t.Id)
-            .ToListAsync(cancellationToken);
+        // For parent teams, aggregate shifts from the parent team plus all active child teams.
+        // detail.ChildTeams (authenticated path) is team.ChildTeams filtered to IsActive.
+        var activeChildTeamIds = childTeams.Select(c => c.Id).ToList();
 
-        if (childTeams.Count > 0)
+        if (activeChildTeamIds.Count > 0)
         {
-            var allTeamIds = new List<Guid> { team.Id };
-            allTeamIds.AddRange(childTeams);
+            var allTeamIds = new List<Guid>(activeChildTeamIds.Count + 1) { team.Id };
+            allTeamIds.AddRange(activeChildTeamIds);
 
             var aggregatedData = await _shiftManagementService.GetShiftsSummaryForTeamsAsync(activeEvent.Id, allTeamIds);
             if (aggregatedData is null)
@@ -176,14 +182,8 @@ public class TeamPageService : ITeamPageService
             }
 
             // Count only child teams that actually have shifts in the active event
-            var childTeamsWithShifts = await _dbContext.Rotas
-                .AsNoTracking()
-                .Where(r => r.EventSettingsId == activeEvent.Id
-                    && childTeams.Contains(r.TeamId)
-                    && r.Shifts.Any())
-                .Select(r => r.TeamId)
-                .Distinct()
-                .CountAsync(cancellationToken);
+            var childTeamIdsWithShifts = await _shiftManagementService.GetTeamIdsWithShiftsInEventAsync(
+                activeEvent.Id, activeChildTeamIds, cancellationToken);
 
             return new TeamPageShiftsSummary(
                 aggregatedData.TotalSlots,
@@ -191,7 +191,7 @@ public class TeamPageService : ITeamPageService
                 aggregatedData.PendingCount,
                 aggregatedData.UniqueVolunteerCount,
                 canManageShifts,
-                childTeamsWithShifts);
+                childTeamIdsWithShifts.Count);
         }
 
         // Child team or standalone team: show only own shifts

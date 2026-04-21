@@ -2,6 +2,7 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
+using TeamsTeamPageService = Humans.Application.Services.Teams.TeamPageService;
 
 namespace Humans.Web.Extensions.Sections;
 
@@ -17,7 +18,7 @@ internal static class TeamsSectionExtensions
         services.AddScoped<ITeamService>(sp => sp.GetRequiredService<TeamService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<TeamService>());
 
-        services.AddScoped<ITeamPageService, TeamPageService>();
+        services.AddScoped<ITeamPageService, TeamsTeamPageService>();
 
         services.AddScoped<ISystemTeamSync, SystemTeamSyncJob>();
 

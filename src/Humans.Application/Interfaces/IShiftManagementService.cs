@@ -201,6 +201,18 @@ public interface IShiftManagementService
     Task<IReadOnlyList<(Guid TeamId, string TeamName)>> GetDepartmentsWithRotasAsync(
         Guid eventSettingsId);
 
+    /// <summary>
+    /// Returns the subset of <paramref name="teamIds"/> that have at least
+    /// one rota with at least one shift in the given event. Used by team-page
+    /// aggregation to surface "N sub-teams have shifts" without letting the
+    /// Team Page section read <c>rotas</c> or <c>shifts</c> directly
+    /// (design-rules §2c).
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetTeamIdsWithShiftsInEventAsync(
+        Guid eventSettingsId,
+        IReadOnlyCollection<Guid> teamIds,
+        CancellationToken ct = default);
+
     // === Coordinator Dashboard ===
 
     /// <summary>
