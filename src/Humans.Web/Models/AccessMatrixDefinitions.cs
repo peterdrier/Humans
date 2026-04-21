@@ -151,6 +151,19 @@ public static class AccessMatrixDefinitions
         },
     };
 
+    /// <summary>All features across all sections, with the roles that have Allowed access.</summary>
+    public static readonly IReadOnlyList<(string Feature, IReadOnlyList<string> AllowedRoles)> Rows =
+        Sections.Values
+            .SelectMany(section => section.Features.Select(f => (
+                Feature: $"{section.SectionName}: {f.Name}",
+                AllowedRoles: (IReadOnlyList<string>)f.RoleAccess
+                    .Where(kv => kv.Value == AccessLevel.Allowed)
+                    .Select(kv => kv.Key)
+                    .ToList()
+            )))
+            .Where(row => row.AllowedRoles.Count > 0)
+            .ToList();
+
     // Shorthand aliases for readability
     private const AccessLevel A = AccessLevel.Allowed;
     private const AccessLevel L = AccessLevel.Limited;
