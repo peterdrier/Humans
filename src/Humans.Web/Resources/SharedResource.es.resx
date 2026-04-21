@@ -853,7 +853,7 @@
   <!-- ======================== -->
   <data name="GoogleAccounts_Actions" xml:space="preserve"><value>Acciones</value></data>
   <data name="GoogleAccounts_ResetPassword" xml:space="preserve"><value>Restablecer contrase&#xF1;a</value></data>
-  <data name="GoogleAccounts_ResetPasswordConfirm" xml:space="preserve"><value>&#xBF;Restablecer la contrase&#xF1;a de {0}? Se generar&#xE1; una contrase&#xF1;a temporal nueva y se mostrar&#xE1; en pantalla. El usuario deber&#xE1; cambiarla al iniciar sesi&#xF3;n.</value><comment>{0} = email</comment></data>
+  <data name="GoogleAccounts_ResetPasswordConfirm" xml:space="preserve"><value>&#xBF;Restablecer la contrase&#xF1;a de {0}? Se generar&#xE1; una nueva contrase&#xF1;a temporal y se mostrar&#xE1; en pantalla. El human deber&#xE1; cambiarla en el pr&#xF3;ximo inicio de sesi&#xF3;n.</value><comment>{0} = email</comment></data>
 
   <!-- ======================== -->
   <!-- Google Sync View         -->

@@ -848,7 +848,7 @@
   <!-- ======================== -->
   <data name="GoogleAccounts_Actions" xml:space="preserve"><value>Azioni</value></data>
   <data name="GoogleAccounts_ResetPassword" xml:space="preserve"><value>Reimposta password</value></data>
-  <data name="GoogleAccounts_ResetPasswordConfirm" xml:space="preserve"><value>Reimpostare la password di {0}? Verr&#xE0; generata una nuova password temporanea e mostrata sullo schermo. L'utente dovr&#xE0; cambiarla al prossimo accesso.</value><comment>{0} = email</comment></data>
+  <data name="GoogleAccounts_ResetPasswordConfirm" xml:space="preserve"><value>Reimpostare la password di {0}? Verr&#xE0; generata una nuova password temporanea e mostrata sullo schermo. Il human dovr&#xE0; cambiarla al prossimo accesso.</value><comment>{0} = email</comment></data>
 
   <!-- ======================== -->
   <!-- Google Sync View         -->

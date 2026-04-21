@@ -848,7 +848,7 @@
   <!-- ======================== -->
   <data name="GoogleAccounts_Actions" xml:space="preserve"><value>Actions</value></data>
   <data name="GoogleAccounts_ResetPassword" xml:space="preserve"><value>R&#xE9;initialiser le mot de passe</value></data>
-  <data name="GoogleAccounts_ResetPasswordConfirm" xml:space="preserve"><value>R&#xE9;initialiser le mot de passe pour {0}&#xA0;? Un nouveau mot de passe temporaire sera g&#xE9;n&#xE9;r&#xE9; et affich&#xE9; &#xE0; l'&#xE9;cran. L'utilisateur devra le changer &#xE0; la prochaine connexion.</value><comment>{0} = email</comment></data>
+  <data name="GoogleAccounts_ResetPasswordConfirm" xml:space="preserve"><value>R&#xE9;initialiser le mot de passe pour {0}&#xA0;? Un nouveau mot de passe temporaire sera g&#xE9;n&#xE9;r&#xE9; et affich&#xE9; &#xE0; l'&#xE9;cran. Le human devra le changer &#xE0; sa prochaine connexion.</value><comment>{0} = email</comment></data>
 
   <!-- ======================== -->
   <!-- Google Sync View         -->

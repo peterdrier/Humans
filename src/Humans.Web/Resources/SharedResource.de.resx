@@ -848,7 +848,7 @@
   <!-- ======================== -->
   <data name="GoogleAccounts_Actions" xml:space="preserve"><value>Aktionen</value></data>
   <data name="GoogleAccounts_ResetPassword" xml:space="preserve"><value>Passwort zur&#xFC;cksetzen</value></data>
-  <data name="GoogleAccounts_ResetPasswordConfirm" xml:space="preserve"><value>Passwort f&#xFC;r {0} zur&#xFC;cksetzen? Ein neues tempor&#xE4;res Passwort wird erzeugt und auf dem Bildschirm angezeigt. Der Nutzer muss es bei der n&#xE4;chsten Anmeldung &#xE4;ndern.</value><comment>{0} = email</comment></data>
+  <data name="GoogleAccounts_ResetPasswordConfirm" xml:space="preserve"><value>Passwort f&#xFC;r {0} zur&#xFC;cksetzen? Ein neues tempor&#xE4;res Passwort wird erzeugt und auf dem Bildschirm angezeigt. Der Human muss es bei der n&#xE4;chsten Anmeldung &#xE4;ndern.</value><comment>{0} = email</comment></data>
 
   <!-- ======================== -->
   <!-- Google Sync View         -->
