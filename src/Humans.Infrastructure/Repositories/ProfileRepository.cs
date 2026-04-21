@@ -175,28 +175,23 @@ public sealed class ProfileRepository : IProfileRepository
             .Where(v => v.ProfileId == profileId)
             .ToListAsync(ct);
 
-        // Dedup existing rows by (Date, EventName) — first row per group wins.
-        // Extra duplicates from pre-Phase-10 Guid-keyed writes are removed as
-        // part of this reconcile. See Phase 10 plan: this is a one-time cleanup
-        // consequence of the key switch; CVEntry has no Id field and the UI no
-        // longer posts one.
-        //
-        // NOTE: This differs from IProfileService.SaveCVEntriesAsync which keys
-        // by client-supplied Guid. CVEntry is a read projection without an Id,
-        // so (Date, EventName) is the natural identity key here.
-        var groups = existing.GroupBy(v => (v.Date, v.EventName)).ToList();
-        var extraDuplicates = groups.SelectMany(g => g.Skip(1)).ToList();
-        if (extraDuplicates.Count > 0)
-            ctx.VolunteerHistoryEntries.RemoveRange(extraDuplicates);
-
-        var existingLookup = groups.ToDictionary(g => g.Key, g => g.First());
-        var incomingKeys = entries.Select(e => (e.Date, e.EventName)).ToHashSet();
+        // Reconcile keyed by Id (the stable per-row identity):
+        //   - entries with an Id that matches an existing row update that row
+        //     in place (keep Id/CreatedAt, bump UpdatedAt only when fields
+        //     actually change);
+        //   - entries with Guid.Empty or an unknown Id are inserted with a
+        //     freshly generated Id;
+        //   - existing rows whose Id is absent from the incoming set are deleted.
+        var existingLookup = existing.ToDictionary(v => v.Id);
+        var incomingIds = entries
+            .Where(e => e.Id != Guid.Empty)
+            .Select(e => e.Id)
+            .ToHashSet();
         var now = _clock.GetCurrentInstant();
 
-        // Remove entries not present in the incoming set
-        var toRemove = existingLookup
-            .Where(kvp => !incomingKeys.Contains(kvp.Key))
-            .Select(kvp => kvp.Value)
+        // Remove entries whose Id is not in the incoming set
+        var toRemove = existing
+            .Where(v => !incomingIds.Contains(v.Id))
             .ToList();
         if (toRemove.Count > 0)
             ctx.VolunteerHistoryEntries.RemoveRange(toRemove);
@@ -204,11 +199,17 @@ public sealed class ProfileRepository : IProfileRepository
         // Update matched, add new
         foreach (var entry in entries)
         {
-            if (existingLookup.TryGetValue((entry.Date, entry.EventName), out var match))
+            if (entry.Id != Guid.Empty && existingLookup.TryGetValue(entry.Id, out var match))
             {
-                // Only touch UpdatedAt when the description actually changed.
-                if (!string.Equals(match.Description, entry.Description, StringComparison.Ordinal))
+                // Only touch UpdatedAt when a field actually changed.
+                var changed =
+                    match.Date != entry.Date ||
+                    !string.Equals(match.EventName, entry.EventName, StringComparison.Ordinal) ||
+                    !string.Equals(match.Description, entry.Description, StringComparison.Ordinal);
+                if (changed)
                 {
+                    match.Date = entry.Date;
+                    match.EventName = entry.EventName;
                     match.Description = entry.Description;
                     match.UpdatedAt = now;
                 }

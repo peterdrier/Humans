@@ -251,6 +251,7 @@ public class ProfileController : HumansControllerBase
             }).ToList(),
             EditableVolunteerHistory = cvEntries.Select(cv => new VolunteerHistoryEntryEditViewModel
             {
+                Id = cv.Id,
                 DateString = cv.Date.ToIsoDateString(),
                 EventName = cv.EventName,
                 Description = cv.Description
@@ -479,10 +480,13 @@ public class ProfileController : HumansControllerBase
             return View(model);
         }
 
-        // Save CV entries (keyed by Date + EventName, no Id needed)
+        // Save CV entries. Id round-trips for existing rows so the row keeps
+        // its identity and CreatedAt; new rows post Guid.Empty and get a
+        // fresh Id assigned on insert.
         var cvEntries = model.EditableVolunteerHistory
             .Where(vh => !string.IsNullOrWhiteSpace(vh.EventName) && vh.ParsedDate.HasValue)
             .Select(vh => new CVEntry(
+                vh.Id ?? Guid.Empty,
                 vh.ParsedDate!.Value,
                 vh.EventName,
                 vh.Description

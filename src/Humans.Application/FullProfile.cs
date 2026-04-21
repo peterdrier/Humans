@@ -48,7 +48,7 @@ public record FullProfile(
             IsSuspended: profile.IsSuspended,
             CVEntries: volunteerHistory
                 .OrderByDescending(v => v.Date)
-                .Select(v => new CVEntry(v.Date, v.EventName, v.Description))
+                .Select(v => new CVEntry(v.Id, v.Date, v.EventName, v.Description))
                 .ToList(),
             NotificationEmail: notificationEmail);
 

@@ -38,12 +38,14 @@ public sealed class ProfileRepositoryTests : IDisposable
     {
         // Arrange: profile with two existing CV entries
         var profileId = Guid.NewGuid();
+        var keepId = Guid.NewGuid();
+        var removeId = Guid.NewGuid();
         var now = _clock.GetCurrentInstant();
 
         await _dbContext.VolunteerHistoryEntries.AddRangeAsync(
             new VolunteerHistoryEntry
             {
-                Id = Guid.NewGuid(),
+                Id = keepId,
                 ProfileId = profileId,
                 Date = new LocalDate(2024, 3, 1),
                 EventName = "Keep me",
@@ -53,7 +55,7 @@ public sealed class ProfileRepositoryTests : IDisposable
             },
             new VolunteerHistoryEntry
             {
-                Id = Guid.NewGuid(),
+                Id = removeId,
                 ProfileId = profileId,
                 Date = new LocalDate(2024, 4, 1),
                 EventName = "Remove me",
@@ -70,8 +72,8 @@ public sealed class ProfileRepositoryTests : IDisposable
         // Act: reconcile — keep one (new description), add one, remove "Remove me"
         var newEntries = new List<CVEntry>
         {
-            new(new LocalDate(2024, 3, 1), "Keep me", "New desc"),
-            new(new LocalDate(2024, 5, 1), "Add me", null),
+            new(keepId, new LocalDate(2024, 3, 1), "Keep me", "New desc"),
+            new(Guid.Empty, new LocalDate(2024, 5, 1), "Add me", null),
         };
         await _repo.ReconcileCVEntriesAsync(profileId, newEntries, default);
 
@@ -85,12 +87,15 @@ public sealed class ProfileRepositoryTests : IDisposable
 
         persisted.Should().HaveCount(2);
 
-        // "Keep me" is updated with new description; "Remove me" is gone
+        // "Keep me" is updated with new description; "Remove me" is gone.
+        // Id is preserved across the update.
+        persisted[0].Id.Should().Be(keepId);
         persisted[0].EventName.Should().Be("Keep me");
         persisted[0].Description.Should().Be("New desc");
         persisted[0].UpdatedAt.Should().Be(afterAdvance);
 
-        // "Add me" is new
+        // "Add me" is new — fresh Id, not Guid.Empty
+        persisted[1].Id.Should().NotBe(Guid.Empty);
         persisted[1].EventName.Should().Be("Add me");
         persisted[1].Description.Should().BeNull();
         persisted[1].CreatedAt.Should().Be(afterAdvance);
@@ -98,14 +103,15 @@ public sealed class ProfileRepositoryTests : IDisposable
     }
 
     [Fact]
-    public async Task ReconcileCVEntriesAsync_DoesNotBumpUpdatedAt_WhenDescriptionUnchanged()
+    public async Task ReconcileCVEntriesAsync_DoesNotBumpUpdatedAt_WhenFieldsUnchanged()
     {
         var profileId = Guid.NewGuid();
+        var entryId = Guid.NewGuid();
         var seededAt = _clock.GetCurrentInstant();
 
         await _dbContext.VolunteerHistoryEntries.AddAsync(new VolunteerHistoryEntry
         {
-            Id = Guid.NewGuid(),
+            Id = entryId,
             ProfileId = profileId,
             Date = new LocalDate(2024, 3, 1),
             EventName = "Keep me",
@@ -120,7 +126,7 @@ public sealed class ProfileRepositoryTests : IDisposable
 
         var entries = new List<CVEntry>
         {
-            new(new LocalDate(2024, 3, 1), "Keep me", "unchanged"),
+            new(entryId, new LocalDate(2024, 3, 1), "Keep me", "unchanged"),
         };
         await _repo.ReconcileCVEntriesAsync(profileId, entries, default);
 
@@ -132,50 +138,48 @@ public sealed class ProfileRepositoryTests : IDisposable
     }
 
     [Fact]
-    public async Task ReconcileCVEntriesAsync_CollapsesPreExistingDuplicates()
+    public async Task ReconcileCVEntriesAsync_PreservesIdAndCreatedAt_WhenDateOrEventNameChanges()
     {
-        // Models pre-Phase-10 data: the old Guid-keyed writer allowed two rows
-        // with the same (Date, EventName). The new key scheme treats those as
-        // a single entry; the first reconcile must collapse the group down to
-        // one row without throwing.
+        // The whole point of Id-keyed reconcile: editing Date or EventName
+        // must update the existing row in place, not delete-and-insert (which
+        // would lose Id and CreatedAt).
         var profileId = Guid.NewGuid();
-        var now = _clock.GetCurrentInstant();
+        var entryId = Guid.NewGuid();
+        var createdAt = _clock.GetCurrentInstant();
 
-        await _dbContext.VolunteerHistoryEntries.AddRangeAsync(
-            new VolunteerHistoryEntry
-            {
-                Id = Guid.NewGuid(),
-                ProfileId = profileId,
-                Date = new LocalDate(2024, 3, 1),
-                EventName = "Dup",
-                Description = "first",
-                CreatedAt = now,
-                UpdatedAt = now,
-            },
-            new VolunteerHistoryEntry
-            {
-                Id = Guid.NewGuid(),
-                ProfileId = profileId,
-                Date = new LocalDate(2024, 3, 1),
-                EventName = "Dup",
-                Description = "second",
-                CreatedAt = now,
-                UpdatedAt = now,
-            });
+        await _dbContext.VolunteerHistoryEntries.AddAsync(new VolunteerHistoryEntry
+        {
+            Id = entryId,
+            ProfileId = profileId,
+            Date = new LocalDate(2024, 3, 1),
+            EventName = "Original Name",
+            Description = "desc",
+            CreatedAt = createdAt,
+            UpdatedAt = createdAt,
+        });
         await _dbContext.SaveChangesAsync();
 
-        // Reconcile with the same single entry — duplicates should collapse.
+        _clock.AdvanceSeconds(60);
+        var afterAdvance = _clock.GetCurrentInstant();
+
+        // Mutate both Date and EventName but keep Id
         var entries = new List<CVEntry>
         {
-            new(new LocalDate(2024, 3, 1), "Dup", "first"),
+            new(entryId, new LocalDate(2024, 6, 15), "Renamed Event", "desc"),
         };
         await _repo.ReconcileCVEntriesAsync(profileId, entries, default);
 
         var persisted = await _dbContext.VolunteerHistoryEntries
             .AsNoTracking()
             .Where(v => v.ProfileId == profileId)
-            .ToListAsync();
-        persisted.Should().ContainSingle();
-        persisted[0].Description.Should().Be("first");
+            .SingleAsync();
+
+        // Same row — Id and CreatedAt preserved
+        persisted.Id.Should().Be(entryId);
+        persisted.CreatedAt.Should().Be(createdAt);
+        // New field values, UpdatedAt bumped
+        persisted.Date.Should().Be(new LocalDate(2024, 6, 15));
+        persisted.EventName.Should().Be("Renamed Event");
+        persisted.UpdatedAt.Should().Be(afterAdvance);
     }
 }

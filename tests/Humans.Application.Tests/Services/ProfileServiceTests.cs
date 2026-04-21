@@ -1415,7 +1415,7 @@ public class ProfileServiceTests : IDisposable
 
         var entries = new List<CVEntry>
         {
-            new(new LocalDate(2025, 3, 1), "Nowhere 2025", "Sound crew"),
+            new(Guid.Empty, new LocalDate(2025, 3, 1), "Nowhere 2025", "Sound crew"),
         };
 
         // Act
@@ -1527,7 +1527,7 @@ public class ProfileServiceTests : IDisposable
             IsApproved: profile.IsApproved,
             IsSuspended: profile.IsSuspended,
             CVEntries: profile.VolunteerHistory
-                .Select(v => new CVEntry(v.Date, v.EventName, v.Description))
+                .Select(v => new CVEntry(v.Id, v.Date, v.EventName, v.Description))
                 .ToList());
     }
 

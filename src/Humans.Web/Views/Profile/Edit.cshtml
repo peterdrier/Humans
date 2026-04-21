@@ -315,6 +315,7 @@
                         {
                             <div class="volunteer-history-row card mb-2" data-index="@i">
                                 <div class="card-body py-2">
+                                    <input type="hidden" name="EditableVolunteerHistory[@i].Id" value="@(Model.EditableVolunteerHistory[i].Id?.ToString() ?? string.Empty)" />
                                     <div class="row g-2 align-items-start">
                                         <div class="col-md-2">
                                             <label class="form-label small" for="EditableVolunteerHistory_@(i)__DateString">Date</label>
@@ -758,6 +759,7 @@
                 const html = `
                     <div class="volunteer-history-row card mb-2" data-index="${index}">
                         <div class="card-body py-2">
+                            <input type="hidden" name="EditableVolunteerHistory[${index}].Id" value="" />
                             <div class="row g-2 align-items-start">
                                 <div class="col-md-2">
                                     <label class="form-label small" for="EditableVolunteerHistory_${index}__DateString">Date</label>

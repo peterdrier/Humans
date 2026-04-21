@@ -97,8 +97,17 @@ public interface IProfileRepository
 
     /// <summary>
     /// Reconciles the CV-entry collection for the given profile with the
-    /// provided set. Adds new entries, updates matched entries, and removes
-    /// entries not present in the new set. Persists in a single SaveChanges.
+    /// provided set, keyed by <see cref="CVEntry.Id"/>:
+    /// <list type="bullet">
+    ///   <item>entries with a non-empty Id that matches an existing row update
+    ///     that row in place (preserving <c>Id</c> and <c>CreatedAt</c>, bumping
+    ///     <c>UpdatedAt</c> only when fields actually change),</item>
+    ///   <item>entries with <see cref="Guid.Empty"/> or an unknown Id are
+    ///     inserted with a freshly generated Id,</item>
+    ///   <item>existing rows whose Id is absent from the incoming set are
+    ///     deleted.</item>
+    /// </list>
+    /// Persists in a single SaveChanges.
     /// </summary>
     Task ReconcileCVEntriesAsync(
         Guid profileId,

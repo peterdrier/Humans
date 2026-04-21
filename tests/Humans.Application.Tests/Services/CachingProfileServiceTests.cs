@@ -146,7 +146,7 @@ public class CachingProfileServiceTests
 
         // Call the write — decorator should refresh dict
         await sut.SaveCVEntriesAsync(userId,
-            new[] { new CVEntry(new LocalDate(2025, 3, 1), "Nowhere 2025", "Sound crew") });
+            new[] { new CVEntry(Guid.Empty, new LocalDate(2025, 3, 1), "Nowhere 2025", "Sound crew") });
 
         // Next read must return the fresh FullProfile from the dict (has CVEntries)
         var fresh = await sut.GetFullProfileAsync(userId);
