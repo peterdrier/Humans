@@ -52,4 +52,10 @@ public interface IFeedbackService
         string summary,
         string topic,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the IDs of feedback reports submitted by the user that are still Open.
+    /// Used by the agent snapshot provider.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetOpenFeedbackIdsForUserAsync(Guid userId, CancellationToken cancellationToken = default);
 }

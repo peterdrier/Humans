@@ -216,6 +216,25 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         IReadOnlyList<Guid> userIds, CancellationToken ct = default) =>
         _repo.GetExplicitlyConsentedVersionIdsForUsersAsync(userIds, ct);
 
+    public async Task<IReadOnlyList<string>> GetPendingDocumentNamesAsync(Guid userId, CancellationToken ct = default)
+    {
+        var membershipCalculator = _serviceProvider.GetRequiredService<IMembershipCalculator>();
+        var missingVersionIds = await membershipCalculator.GetMissingConsentVersionsAsync(userId, ct);
+
+        if (missingVersionIds.Count == 0)
+            return Array.Empty<string>();
+
+        var names = await _dbContext.DocumentVersions
+            .AsNoTracking()
+            .Where(v => missingVersionIds.Contains(v.Id))
+            .Select(v => v.LegalDocument.Name)
+            .Distinct()
+            .OrderBy(n => n)
+            .ToListAsync(ct);
+
+        return names;
+    }
+
     private static string ComputeContentHash(string content)
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(content));
