@@ -14,6 +14,7 @@ using ProfilesProfileService = Humans.Application.Services.Profile.ProfileServic
 using UsersUserService = Humans.Application.Services.Users.UserService;
 using AuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
 using CampService = Humans.Application.Services.Camps.CampService;
+using FeedbackService = Humans.Application.Services.Feedback.FeedbackService;
 
 namespace Humans.Application.Tests.Services.Gdpr;
 

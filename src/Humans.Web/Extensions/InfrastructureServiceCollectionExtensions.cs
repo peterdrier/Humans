@@ -25,6 +25,7 @@ using UsersUserService = Humans.Application.Services.Users.UserService;
 using CityPlanningCityPlanningService = Humans.Application.Services.CityPlanning.CityPlanningService;
 using AuditLogAuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
 using CampsCampService = Humans.Application.Services.Camps.CampService;
+using FeedbackApplicationService = Humans.Application.Services.Feedback.FeedbackService;
 
 namespace Humans.Web.Extensions;
 
@@ -227,9 +228,13 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IAccountProvisioningService, AccountProvisioningService>();
         services.AddScoped<IMagicLinkService, MagicLinkService>();
 
-        services.AddScoped<FeedbackService>();
-        services.AddScoped<IFeedbackService>(sp => sp.GetRequiredService<FeedbackService>());
-        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<FeedbackService>());
+        // Feedback section — §15 repository + Application-layer service, no caching decorator.
+        // Feedback is admin-review-only and low-traffic; same Scoped + DbContext repository
+        // pattern as Governance (issue #549).
+        services.AddScoped<IFeedbackRepository, FeedbackRepository>();
+        services.AddScoped<FeedbackApplicationService>();
+        services.AddScoped<IFeedbackService>(sp => sp.GetRequiredService<FeedbackApplicationService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<FeedbackApplicationService>());
 
         // Budget section — §15 repository pattern (issue #544).
         // No caching decorator: Budget pages are admin-only and low-traffic.

@@ -439,6 +439,44 @@ public sealed class UserEmailService : IUserEmailService
         return await _repository.FindVerifiedWithUserAsync(normalizedEmail, alternateEmail, cancellationToken);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, string>> GetNotificationTargetEmailsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<Guid, string>();
+
+        // Verified notification-target emails, keyed by userId.
+        var notificationTargets = await _repository.GetAllNotificationTargetEmailsAsync(cancellationToken);
+
+        // Users whose notification-target is missing — fall back to User.Email.
+        var missingUserIds = userIds
+            .Where(id => !notificationTargets.ContainsKey(id))
+            .ToList();
+
+        var fallbackUsers = missingUserIds.Count == 0
+            ? null
+            : await _userService.GetByIdsAsync(missingUserIds, cancellationToken);
+
+        var result = new Dictionary<Guid, string>(userIds.Count);
+        foreach (var id in userIds)
+        {
+            if (notificationTargets.TryGetValue(id, out var primary))
+            {
+                result[id] = primary;
+                continue;
+            }
+
+            if (fallbackUsers is not null &&
+                fallbackUsers.TryGetValue(id, out var user) &&
+                !string.IsNullOrWhiteSpace(user.Email))
+            {
+                result[id] = user.Email!;
+            }
+        }
+
+        return result;
+    }
+
     private static List<ContactFieldVisibility> GetAllowedVisibilities(ContactFieldVisibility accessLevel) =>
         accessLevel switch
         {
