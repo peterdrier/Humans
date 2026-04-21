@@ -1,0 +1,304 @@
+using Microsoft.EntityFrameworkCore;
+using NodaTime;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using Humans.Infrastructure.Data;
+
+namespace Humans.Infrastructure.Repositories;
+
+/// <summary>
+/// EF-backed implementation of <see cref="IUserRepository"/>. The only
+/// non-test file that touches <c>DbContext.Users</c> or
+/// <c>DbContext.EventParticipations</c> after the User migration lands.
+/// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
+/// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
+/// </summary>
+public sealed class UserRepository : IUserRepository
+{
+    private readonly IDbContextFactory<HumansDbContext> _factory;
+
+    public UserRepository(IDbContextFactory<HumansDbContext> factory)
+    {
+        _factory = factory;
+    }
+
+    // ==========================================================================
+    // Reads — User
+    // ==========================================================================
+
+    public async Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId, ct);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<Guid, User>();
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var list = await ctx.Users
+            .AsNoTracking()
+            .Where(u => userIds.Contains(u.Id))
+            .ToListAsync(ct);
+
+        return list.ToDictionary(u => u.Id);
+    }
+
+    public async Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Users
+            .AsNoTracking()
+            .ToListAsync(ct);
+    }
+
+    public async Task<User?> GetByEmailOrAlternateAsync(
+        string normalizedEmail, string? alternateEmail, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        if (alternateEmail is null)
+        {
+            return await ctx.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u =>
+                    (u.Email != null && EF.Functions.ILike(u.Email, normalizedEmail)) ||
+                    (u.GoogleEmail != null && EF.Functions.ILike(u.GoogleEmail, normalizedEmail)),
+                    ct);
+        }
+
+        return await ctx.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u =>
+                (u.Email != null && (
+                    EF.Functions.ILike(u.Email, normalizedEmail) ||
+                    EF.Functions.ILike(u.Email, alternateEmail))) ||
+                (u.GoogleEmail != null && (
+                    EF.Functions.ILike(u.GoogleEmail, normalizedEmail) ||
+                    EF.Functions.ILike(u.GoogleEmail, alternateEmail))),
+                ct);
+    }
+
+    public async Task<IReadOnlyList<User>> GetContactUsersAsync(
+        string? search, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var query = ctx.Users
+            .AsNoTracking()
+            .Where(u => u.ContactSource != null && u.LastLoginAt == null);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var pattern = $"%{search}%";
+            query = query.Where(u =>
+                EF.Functions.ILike(u.DisplayName, pattern) ||
+                (u.Email != null && EF.Functions.ILike(u.Email, pattern)));
+        }
+
+        return await query
+            .OrderByDescending(u => u.CreatedAt)
+            .ToListAsync(ct);
+    }
+
+    // ==========================================================================
+    // Writes — User (atomic field updates)
+    // ==========================================================================
+
+    public async Task<bool> UpdateDisplayNameAsync(
+        Guid userId, string displayName, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var user = await ctx.Users.FindAsync([userId], ct);
+        if (user is null)
+            return false;
+
+        user.DisplayName = displayName;
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public async Task<bool> TrySetGoogleEmailAsync(
+        Guid userId, string email, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var user = await ctx.Users.FindAsync([userId], ct);
+        if (user is null || user.GoogleEmail is not null)
+            return false;
+
+        user.GoogleEmail = email;
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public async Task<bool> SetDeletionPendingAsync(
+        Guid userId, Instant requestedAt, Instant scheduledFor, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var user = await ctx.Users.FindAsync([userId], ct);
+        if (user is null)
+            return false;
+
+        user.DeletionRequestedAt = requestedAt;
+        user.DeletionScheduledFor = scheduledFor;
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public async Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var user = await ctx.Users.FindAsync([userId], ct);
+        if (user is null)
+            return false;
+
+        user.DeletionRequestedAt = null;
+        user.DeletionScheduledFor = null;
+        user.DeletionEligibleAfter = null;
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
+    // ==========================================================================
+    // Reads — EventParticipation
+    // ==========================================================================
+
+    public async Task<EventParticipation?> GetParticipationAsync(
+        Guid userId, int year, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.EventParticipations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(ep => ep.UserId == userId && ep.Year == year, ct);
+    }
+
+    public async Task<IReadOnlyList<EventParticipation>> GetAllParticipationsForYearAsync(
+        int year, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.EventParticipations
+            .AsNoTracking()
+            .Where(ep => ep.Year == year)
+            .ToListAsync(ct);
+    }
+
+    // ==========================================================================
+    // Writes — EventParticipation
+    // ==========================================================================
+
+    public async Task<bool> UpsertParticipationAsync(
+        Guid userId,
+        int year,
+        ParticipationStatus status,
+        ParticipationSource source,
+        Instant? declaredAt,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var existing = await ctx.EventParticipations
+            .FirstOrDefaultAsync(ep => ep.UserId == userId && ep.Year == year, ct);
+
+        if (existing is not null)
+        {
+            // Attended is permanent — never revert.
+            if (existing.Status == ParticipationStatus.Attended)
+                return false;
+
+            existing.Status = status;
+            existing.Source = source;
+            existing.DeclaredAt = declaredAt;
+        }
+        else
+        {
+            ctx.EventParticipations.Add(new EventParticipation
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Year = year,
+                Status = status,
+                Source = source,
+                DeclaredAt = declaredAt,
+            });
+        }
+
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public async Task<bool> RemoveParticipationAsync(
+        Guid userId,
+        int year,
+        ParticipationSource requiredSource,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var existing = await ctx.EventParticipations
+            .FirstOrDefaultAsync(ep => ep.UserId == userId && ep.Year == year, ct);
+
+        if (existing is null ||
+            existing.Source != requiredSource ||
+            existing.Status == ParticipationStatus.Attended)
+        {
+            return false;
+        }
+
+        ctx.EventParticipations.Remove(existing);
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public async Task<int> BackfillParticipationsAsync(
+        int year,
+        IReadOnlyList<(Guid UserId, ParticipationStatus Status)> entries,
+        CancellationToken ct = default)
+    {
+        if (entries.Count == 0)
+            return 0;
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var existing = await ctx.EventParticipations
+            .Where(ep => ep.Year == year)
+            .ToDictionaryAsync(ep => ep.UserId, ct);
+
+        var count = 0;
+        foreach (var (userId, status) in entries)
+        {
+            if (existing.TryGetValue(userId, out var ep))
+            {
+                // Attended is permanent — leave it alone.
+                if (ep.Status == ParticipationStatus.Attended)
+                {
+                    count++;
+                    continue;
+                }
+
+                ep.Status = status;
+                ep.Source = ParticipationSource.AdminBackfill;
+                ep.DeclaredAt = null;
+            }
+            else
+            {
+                var newEp = new EventParticipation
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    Year = year,
+                    Status = status,
+                    Source = ParticipationSource.AdminBackfill,
+                };
+                ctx.EventParticipations.Add(newEp);
+                existing[userId] = newEp;
+            }
+
+            count++;
+        }
+
+        await ctx.SaveChangesAsync(ct);
+        return count;
+    }
+}

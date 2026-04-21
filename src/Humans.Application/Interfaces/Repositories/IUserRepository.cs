@@ -1,0 +1,154 @@
+using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using NodaTime;
+
+namespace Humans.Application.Interfaces.Repositories;
+
+/// <summary>
+/// Repository for the <c>AspNetUsers</c> (via <see cref="User"/>) and
+/// <c>event_participations</c> tables. The only non-test file that may write
+/// to those DbSets after the User migration lands.
+/// </summary>
+/// <remarks>
+/// Read methods are <c>AsNoTracking</c>. Narrow-field updates commit atomically
+/// in a single <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{HumansDbContext}"/>-owned
+/// context. Event-participation mutations expose load-then-save primitives so
+/// <see cref="Humans.Application.Services.Users.UserService"/> can apply the
+/// status/source business rules before persisting.
+/// </remarks>
+public interface IUserRepository
+{
+    // ==========================================================================
+    // Reads — User
+    // ==========================================================================
+
+    /// <summary>
+    /// Loads a single user by id. Read-only (AsNoTracking). Returns null if
+    /// the user does not exist.
+    /// </summary>
+    Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Batched user fetch keyed by id. Missing users are absent from the
+    /// returned dictionary. Read-only (AsNoTracking).
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Loads every user, read-only (AsNoTracking). Used by admin list views
+    /// that must include profileless users. Trivial at ~500-user scale.
+    /// </summary>
+    Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Finds a user whose <c>Email</c> or <c>GoogleEmail</c> matches the given
+    /// normalized address (case-insensitive). If <paramref name="alternateEmail"/>
+    /// is non-null, also matches users whose email matches the alternate form
+    /// (gmail.com ↔ googlemail.com). Read-only.
+    /// </summary>
+    Task<User?> GetByEmailOrAlternateAsync(
+        string normalizedEmail, string? alternateEmail, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns all contact users (ContactSource != null, LastLoginAt == null),
+    /// optionally filtered by display name or email substring.
+    /// Ordered by CreatedAt descending. Read-only.
+    /// </summary>
+    Task<IReadOnlyList<User>> GetContactUsersAsync(string? search, CancellationToken ct = default);
+
+    // ==========================================================================
+    // Writes — User (atomic field updates)
+    // ==========================================================================
+
+    /// <summary>
+    /// Updates <c>User.DisplayName</c>. Returns false if the user does not exist.
+    /// </summary>
+    Task<bool> UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets <c>User.GoogleEmail</c> if and only if it is currently null.
+    /// No-op if the user already has a GoogleEmail set or the user does not
+    /// exist. Returns true if the GoogleEmail was set.
+    /// </summary>
+    Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets the deletion-pending fields on a user (<c>DeletionRequestedAt</c>,
+    /// <c>DeletionScheduledFor</c>). Returns false if the user does not exist.
+    /// </summary>
+    Task<bool> SetDeletionPendingAsync(
+        Guid userId, Instant requestedAt, Instant scheduledFor, CancellationToken ct = default);
+
+    /// <summary>
+    /// Clears deletion-pending fields (<c>DeletionRequestedAt</c>,
+    /// <c>DeletionScheduledFor</c>, <c>DeletionEligibleAfter</c>).
+    /// Returns false if the user does not exist.
+    /// </summary>
+    Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default);
+
+    // ==========================================================================
+    // Reads — EventParticipation
+    // ==========================================================================
+
+    /// <summary>
+    /// Returns the participation record for a user/year, or null if none.
+    /// Read-only (AsNoTracking).
+    /// </summary>
+    Task<EventParticipation?> GetParticipationAsync(
+        Guid userId, int year, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns all participation records for a given year. Read-only (AsNoTracking).
+    /// </summary>
+    Task<IReadOnlyList<EventParticipation>> GetAllParticipationsForYearAsync(
+        int year, CancellationToken ct = default);
+
+    // ==========================================================================
+    // Writes — EventParticipation
+    // ==========================================================================
+
+    /// <summary>
+    /// Upserts a participation record. If a record exists for (userId, year):
+    /// <list type="bullet">
+    ///   <item>if its <see cref="ParticipationStatus"/> is <see cref="ParticipationStatus.Attended"/>,
+    ///     the call is a no-op (Attended is permanent) — returns false;</item>
+    ///   <item>otherwise, the status, source, and declaredAt are overwritten with
+    ///     the provided values — returns true.</item>
+    /// </list>
+    /// If no record exists, a new one is created with the provided values and persisted.
+    /// Returns true when a change was persisted, false when the Attended guard blocked the upsert.
+    /// </summary>
+    Task<bool> UpsertParticipationAsync(
+        Guid userId,
+        int year,
+        ParticipationStatus status,
+        ParticipationSource source,
+        Instant? declaredAt,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Removes the participation record for (userId, year) if and only if its
+    /// source matches <paramref name="requiredSource"/> and its status is not
+    /// <see cref="ParticipationStatus.Attended"/>. Returns true if a row was
+    /// deleted.
+    /// </summary>
+    Task<bool> RemoveParticipationAsync(
+        Guid userId,
+        int year,
+        ParticipationSource requiredSource,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Bulk import historical participation data (admin backfill). For each
+    /// (userId, status) entry: if an existing Attended record exists for the
+    /// year, skip it (Attended is permanent); otherwise upsert with
+    /// <see cref="ParticipationSource.AdminBackfill"/> and <c>DeclaredAt = null</c>.
+    /// Returns the number of entries processed (including skipped-for-Attended).
+    /// </summary>
+    Task<int> BackfillParticipationsAsync(
+        int year,
+        IReadOnlyList<(Guid UserId, ParticipationStatus Status)> entries,
+        CancellationToken ct = default);
+}
