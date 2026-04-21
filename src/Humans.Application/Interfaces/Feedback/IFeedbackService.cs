@@ -1,3 +1,4 @@
+using Humans.Application.Models;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Http;
@@ -43,5 +44,12 @@ public interface IFeedbackService
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<(Guid UserId, string DisplayName, int Count)>> GetDistinctReportersAsync(
+        CancellationToken cancellationToken = default);
+
+    Task<FeedbackHandoffResult> SubmitFromAgentAsync(
+        Guid userId,
+        Guid conversationId,
+        string summary,
+        string topic,
         CancellationToken cancellationToken = default);
 }
