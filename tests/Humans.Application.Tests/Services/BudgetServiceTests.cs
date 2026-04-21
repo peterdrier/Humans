@@ -1,18 +1,21 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime.Testing;
+using NSubstitute;
 using Xunit;
+using BudgetServiceImpl = Humans.Application.Services.Budget.BudgetService;
 
 namespace Humans.Application.Tests.Services;
 
 public class BudgetServiceTests : IDisposable
 {
     private readonly HumansDbContext _dbContext;
-    private readonly BudgetService _service;
+    private readonly BudgetServiceImpl _service;
 
     public BudgetServiceTests()
     {
@@ -21,10 +24,14 @@ public class BudgetServiceTests : IDisposable
             .Options;
 
         _dbContext = new HumansDbContext(options);
-        _service = new BudgetService(
-            _dbContext,
+        var repository = new BudgetRepository(_dbContext);
+        var teamService = Substitute.For<ITeamService>();
+
+        _service = new BudgetServiceImpl(
+            repository,
+            teamService,
             new FakeClock(NodaTime.Instant.FromUtc(2026, 3, 31, 12, 0)),
-            NullLogger<BudgetService>.Instance);
+            NullLogger<BudgetServiceImpl>.Instance);
     }
 
     public void Dispose()

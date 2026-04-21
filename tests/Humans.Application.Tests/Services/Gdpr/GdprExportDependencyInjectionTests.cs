@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using ApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
+using BudgetService = Humans.Application.Services.Budget.BudgetService;
 using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
 using UsersUserService = Humans.Application.Services.Users.UserService;
 using AuditLogService = Humans.Application.Services.AuditLog.AuditLogService;

@@ -557,6 +557,30 @@ public interface ITeamService
         CancellationToken cancellationToken = default);
 
     // ==========================================================================
+    // Budget Integration
+    // ==========================================================================
+
+    /// <summary>
+    /// Returns active teams flagged with <c>HasBudget</c>, ordered by name.
+    /// Used by the Budget section to seed department categories when a budget
+    /// year is created or synced. Returns just <see cref="TeamOptionDto"/> so
+    /// the Budget section does not navigate the Teams graph.
+    /// </summary>
+    Task<IReadOnlyList<TeamOptionDto>> GetBudgetableTeamsAsync(
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the department-scoped team IDs a user can coordinate for budget
+    /// purposes: departments (<c>ParentTeamId is null</c>) where the user is a
+    /// direct coordinator or holds a management role assignment, plus every
+    /// child team of those departments. Encapsulates the "department coordinators
+    /// manage child team budgets" policy inside the Teams section so the Budget
+    /// service does not read team graph tables itself.
+    /// </summary>
+    Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(
+        Guid userId, CancellationToken cancellationToken = default);
+
+    // ==========================================================================
     // Cache Helpers
     // ==========================================================================
 

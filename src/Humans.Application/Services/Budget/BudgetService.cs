@@ -1,78 +1,58 @@
 using System.Globalization;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
+using Microsoft.Extensions.Logging;
+using NodaTime;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Application.Services.Budget;
 
 /// <summary>
-/// Service for managing budget years, groups, categories, and line items with integrated audit logging.
+/// Application-layer implementation of <see cref="IBudgetService"/>. Goes
+/// through <see cref="IBudgetRepository"/> for all data access — this type
+/// never imports <c>Microsoft.EntityFrameworkCore</c>, enforced by
+/// <c>Humans.Application.csproj</c>'s reference graph. Cross-section reads
+/// (budget-flagged teams, coordinator team IDs) go through
+/// <see cref="ITeamService"/>.
 /// </summary>
-public class BudgetService : IBudgetService, IUserDataContributor
+/// <remarks>
+/// <c>budget_audit_logs</c> is append-only by convention — the service only
+/// issues <see cref="IBudgetRepository.AddAuditLog"/> calls and never updates
+/// or deletes audit rows. Multi-entity operations (create year + seed groups +
+/// audit entry) stage writes on the repository and commit them in a single
+/// <see cref="IBudgetRepository.SaveChangesAsync"/> call so they are atomic.
+/// </remarks>
+public sealed class BudgetService : IBudgetService, IUserDataContributor
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly IBudgetRepository _repository;
+    private readonly ITeamService _teamService;
     private readonly IClock _clock;
     private readonly ILogger<BudgetService> _logger;
 
     public BudgetService(
-        HumansDbContext dbContext,
+        IBudgetRepository repository,
+        ITeamService teamService,
         IClock clock,
         ILogger<BudgetService> logger)
     {
-        _dbContext = dbContext;
+        _repository = repository;
+        _teamService = teamService;
         _clock = clock;
         _logger = logger;
     }
 
     // ───────────────────────── Budget Years ─────────────────────────
 
-    public async Task<IReadOnlyList<BudgetYear>> GetAllYearsAsync(bool includeArchived = false)
-    {
-        var query = _dbContext.BudgetYears
-            .Include(y => y.Groups)
-                .ThenInclude(g => g.Categories)
-            .AsQueryable();
+    public Task<IReadOnlyList<BudgetYear>> GetAllYearsAsync(bool includeArchived = false) =>
+        _repository.GetAllYearsAsync(includeArchived);
 
-        if (!includeArchived)
-            query = query.Where(y => !y.IsDeleted);
+    public Task<BudgetYear?> GetYearByIdAsync(Guid id) => _repository.GetYearByIdAsync(id);
 
-        return await query
-            .OrderByDescending(y => y.Year)
-            .ToListAsync();
-    }
-
-    public async Task<BudgetYear?> GetYearByIdAsync(Guid id)
-    {
-        return await _dbContext.BudgetYears
-            .Include(y => y.Groups.OrderBy(g => g.SortOrder))
-                .ThenInclude(g => g.Categories.OrderBy(c => c.SortOrder))
-                    .ThenInclude(c => c.LineItems.OrderBy(li => li.SortOrder))
-            .Include(y => y.Groups)
-                .ThenInclude(g => g.Categories)
-                    .ThenInclude(c => c.Team)
-            .Include(y => y.Groups)
-                .ThenInclude(g => g.TicketingProjection)
-            .FirstOrDefaultAsync(y => y.Id == id);
-    }
-
-    public async Task<BudgetYear?> GetActiveYearAsync()
-    {
-        var activeYear = await _dbContext.BudgetYears
-            .OrderBy(y => y.Id)
-            .FirstOrDefaultAsync(y => y.Status == BudgetYearStatus.Active && !y.IsDeleted);
-
-        if (activeYear is null)
-            return null;
-
-        return await GetYearByIdAsync(activeYear.Id);
-    }
+    public Task<BudgetYear?> GetActiveYearAsync() => _repository.GetActiveYearAsync();
 
     public async Task<BudgetYear> CreateYearAsync(string year, string name, Guid actorUserId)
     {
@@ -88,9 +68,9 @@ public class BudgetService : IBudgetService, IUserDataContributor
             UpdatedAt = now
         };
 
-        _dbContext.BudgetYears.Add(budgetYear);
+        _repository.AddYear(budgetYear);
 
-        // Auto-create "Departments" group
+        // Auto-create "Departments" group.
         var departmentGroup = new BudgetGroup
         {
             Id = Guid.NewGuid(),
@@ -103,13 +83,10 @@ public class BudgetService : IBudgetService, IUserDataContributor
             UpdatedAt = now
         };
 
-        _dbContext.BudgetGroups.Add(departmentGroup);
+        _repository.AddGroup(departmentGroup);
 
-        // Auto-create categories for teams with HasBudget
-        var budgetTeams = await _dbContext.Teams
-            .Where(t => t.HasBudget && t.IsActive)
-            .OrderBy(t => t.Name)
-            .ToListAsync();
+        // Auto-create categories for teams with HasBudget (via Teams section).
+        var budgetTeams = await _teamService.GetBudgetableTeamsAsync();
 
         var sortOrder = 0;
         foreach (var team in budgetTeams)
@@ -127,10 +104,10 @@ public class BudgetService : IBudgetService, IUserDataContributor
                 UpdatedAt = now
             };
 
-            _dbContext.BudgetCategories.Add(category);
+            _repository.AddCategory(category);
         }
 
-        // Auto-create "Ticketing" group with projection defaults
+        // Auto-create "Ticketing" group with projection defaults.
         var ticketingGroup = new BudgetGroup
         {
             Id = Guid.NewGuid(),
@@ -143,7 +120,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
             UpdatedAt = now
         };
 
-        _dbContext.BudgetGroups.Add(ticketingGroup);
+        _repository.AddGroup(ticketingGroup);
 
         var ticketingProjection = new TicketingProjection
         {
@@ -153,9 +130,8 @@ public class BudgetService : IBudgetService, IUserDataContributor
             UpdatedAt = now
         };
 
-        _dbContext.TicketingProjections.Add(ticketingProjection);
+        _repository.AddTicketingProjection(ticketingProjection);
 
-        // Auto-create categories for the ticketing group
         var ticketingCategories = new[]
         {
             ("Ticket Revenue", 0),
@@ -164,7 +140,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
 
         foreach (var (catName, catSort) in ticketingCategories)
         {
-            _dbContext.BudgetCategories.Add(new BudgetCategory
+            _repository.AddCategory(new BudgetCategory
             {
                 Id = Guid.NewGuid(),
                 BudgetGroupId = ticketingGroup.Id,
@@ -181,7 +157,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
             $"Created budget year '{name}' ({year})",
             actorUserId, now);
 
-        await _dbContext.SaveChangesAsync();
+        await _repository.SaveChangesAsync();
 
         _logger.LogInformation("Created budget year {Year} ({Name}) with {TeamCount} department categories",
             year, name, budgetTeams.Count);
@@ -191,18 +167,16 @@ public class BudgetService : IBudgetService, IUserDataContributor
 
     public async Task UpdateYearStatusAsync(Guid yearId, BudgetYearStatus status, Guid actorUserId)
     {
-        var year = await _dbContext.BudgetYears.FindAsync(yearId)
+        var year = await _repository.FindYearForMutationAsync(yearId)
             ?? throw new InvalidOperationException($"Budget year {yearId} not found");
 
         var now = _clock.GetCurrentInstant();
         var oldStatus = year.Status;
 
-        // When activating, auto-close any currently active year
+        // When activating, auto-close any currently active year.
         if (status == BudgetYearStatus.Active)
         {
-            var currentlyActive = await _dbContext.BudgetYears
-                .Where(y => y.Status == BudgetYearStatus.Active && y.Id != yearId)
-                .ToListAsync();
+            var currentlyActive = await _repository.FindActiveYearsExcludingAsync(yearId);
 
             foreach (var active in currentlyActive)
             {
@@ -222,7 +196,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
             nameof(BudgetYear.Status), oldStatus.ToString(), status.ToString(),
             actorUserId, now);
 
-        await _dbContext.SaveChangesAsync();
+        await _repository.SaveChangesAsync();
 
         _logger.LogInformation("Updated budget year {YearId} status from {OldStatus} to {NewStatus}",
             yearId, oldStatus, status);
@@ -230,7 +204,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
 
     public async Task UpdateYearAsync(Guid yearId, string year, string name, Guid actorUserId)
     {
-        var budgetYear = await _dbContext.BudgetYears.FindAsync(yearId)
+        var budgetYear = await _repository.FindYearForMutationAsync(yearId)
             ?? throw new InvalidOperationException($"Budget year {yearId} not found");
 
         var now = _clock.GetCurrentInstant();
@@ -253,12 +227,12 @@ public class BudgetService : IBudgetService, IUserDataContributor
 
         budgetYear.UpdatedAt = now;
 
-        await _dbContext.SaveChangesAsync();
+        await _repository.SaveChangesAsync();
     }
 
     public async Task DeleteYearAsync(Guid yearId, Guid actorUserId)
     {
-        var year = await _dbContext.BudgetYears.FindAsync(yearId)
+        var year = await _repository.FindYearForMutationAsync(yearId)
             ?? throw new InvalidOperationException($"Budget year {yearId} not found");
 
         if (year.Status == BudgetYearStatus.Active)
@@ -266,7 +240,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
 
         var now = _clock.GetCurrentInstant();
 
-        // Soft-delete: mark as archived, preserve all data and audit logs
+        // Soft-delete: mark as archived, preserve all data and audit logs.
         year.IsDeleted = true;
         year.DeletedAt = now;
         year.Status = BudgetYearStatus.Closed;
@@ -276,14 +250,14 @@ public class BudgetService : IBudgetService, IUserDataContributor
             $"Archived budget year '{year.Name}' ({year.Year})",
             actorUserId, now);
 
-        await _dbContext.SaveChangesAsync();
+        await _repository.SaveChangesAsync();
 
         _logger.LogInformation("Archived budget year {YearId} ({Year})", yearId, year.Year);
     }
 
     public async Task RestoreYearAsync(Guid yearId, Guid actorUserId)
     {
-        var year = await _dbContext.BudgetYears.FindAsync(yearId)
+        var year = await _repository.FindYearForMutationAsync(yearId)
             ?? throw new InvalidOperationException($"Budget year {yearId} not found");
 
         if (!year.IsDeleted)
@@ -300,7 +274,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
             $"Restored budget year '{year.Name}' ({year.Year})",
             actorUserId, now);
 
-        await _dbContext.SaveChangesAsync();
+        await _repository.SaveChangesAsync();
 
         _logger.LogInformation("Restored budget year {YearId} ({Year})", yearId, year.Year);
     }
@@ -309,10 +283,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
     {
         await EnsureYearNotClosedAsync(budgetYearId);
 
-        var deptGroup = await _dbContext.BudgetGroups
-            .Include(g => g.Categories)
-            .OrderBy(g => g.Id)
-            .FirstOrDefaultAsync(g => g.BudgetYearId == budgetYearId && g.IsDepartmentGroup)
+        var deptGroup = await _repository.GetDepartmentGroupForMutationAsync(budgetYearId)
             ?? throw new InvalidOperationException("No Departments group found for this budget year");
 
         var existingTeamIds = deptGroup.Categories
@@ -320,12 +291,12 @@ public class BudgetService : IBudgetService, IUserDataContributor
             .Select(c => c.TeamId!.Value)
             .ToHashSet();
 
-        var budgetTeams = await _dbContext.Teams
-            .Where(t => t.HasBudget && t.IsActive && !existingTeamIds.Contains(t.Id))
-            .OrderBy(t => t.Name)
-            .ToListAsync();
+        var budgetableTeams = await _teamService.GetBudgetableTeamsAsync();
+        var newTeams = budgetableTeams
+            .Where(t => !existingTeamIds.Contains(t.Id))
+            .ToList();
 
-        if (budgetTeams.Count == 0)
+        if (newTeams.Count == 0)
             return 0;
 
         var now = _clock.GetCurrentInstant();
@@ -333,7 +304,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
             ? deptGroup.Categories.Max(c => c.SortOrder)
             : -1;
 
-        foreach (var team in budgetTeams)
+        foreach (var team in newTeams)
         {
             var category = new BudgetCategory
             {
@@ -347,35 +318,30 @@ public class BudgetService : IBudgetService, IUserDataContributor
                 CreatedAt = now,
                 UpdatedAt = now
             };
-            _dbContext.BudgetCategories.Add(category);
+            _repository.AddCategory(category);
 
             LogAudit(budgetYearId, nameof(BudgetCategory), category.Id,
                 $"Synced department '{team.Name}' into budget",
                 actorUserId, now);
         }
 
-        await _dbContext.SaveChangesAsync();
+        await _repository.SaveChangesAsync();
 
-        _logger.LogInformation("Synced {Count} departments into budget year {YearId}", budgetTeams.Count, budgetYearId);
+        _logger.LogInformation("Synced {Count} departments into budget year {YearId}", newTeams.Count, budgetYearId);
 
-        return budgetTeams.Count;
+        return newTeams.Count;
     }
 
     public async Task<bool> EnsureTicketingGroupAsync(Guid budgetYearId, Guid actorUserId)
     {
         await EnsureYearNotClosedAsync(budgetYearId);
 
-        var exists = await _dbContext.BudgetGroups
-            .AnyAsync(g => g.BudgetYearId == budgetYearId && g.IsTicketingGroup);
-
-        if (exists)
+        if (await _repository.HasTicketingGroupAsync(budgetYearId))
             return false;
 
         var now = _clock.GetCurrentInstant();
 
-        var maxSortOrder = await _dbContext.BudgetGroups
-            .Where(g => g.BudgetYearId == budgetYearId)
-            .MaxAsync(g => (int?)g.SortOrder) ?? -1;
+        var maxSortOrder = await _repository.GetMaxGroupSortOrderAsync(budgetYearId);
 
         var ticketingGroup = new BudgetGroup
         {
@@ -389,7 +355,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
             UpdatedAt = now
         };
 
-        _dbContext.BudgetGroups.Add(ticketingGroup);
+        _repository.AddGroup(ticketingGroup);
 
         var ticketingProjection = new TicketingProjection
         {
@@ -399,7 +365,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
             UpdatedAt = now
         };
 
-        _dbContext.TicketingProjections.Add(ticketingProjection);
+        _repository.AddTicketingProjection(ticketingProjection);
 
         var ticketingCategories = new[]
         {
@@ -409,7 +375,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
 
         foreach (var (catName, catSort) in ticketingCategories)
         {
-            _dbContext.BudgetCategories.Add(new BudgetCategory
+            _repository.AddCategory(new BudgetCategory
             {
                 Id = Guid.NewGuid(),
                 BudgetGroupId = ticketingGroup.Id,
@@ -426,7 +392,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
             "Added Ticketing group with projection parameters",
             actorUserId, now);
 
-        await _dbContext.SaveChangesAsync();
+        await _repository.SaveChangesAsync();
 
         _logger.LogInformation("Added ticketing group to budget year {YearId}", budgetYearId);
 
@@ -439,14 +405,12 @@ public class BudgetService : IBudgetService, IUserDataContributor
     {
         await EnsureYearNotClosedAsync(budgetYearId);
 
-        var year = await _dbContext.BudgetYears.FindAsync(budgetYearId)
+        var year = await _repository.FindYearForMutationAsync(budgetYearId)
             ?? throw new InvalidOperationException($"Budget year {budgetYearId} not found");
 
         var now = _clock.GetCurrentInstant();
 
-        var maxSortOrder = await _dbContext.BudgetGroups
-            .Where(g => g.BudgetYearId == budgetYearId)
-            .MaxAsync(g => (int?)g.SortOrder) ?? -1;
+        var maxSortOrder = await _repository.GetMaxGroupSortOrderAsync(budgetYearId);
 
         var group = new BudgetGroup
         {
@@ -460,13 +424,13 @@ public class BudgetService : IBudgetService, IUserDataContributor
             UpdatedAt = now
         };
 
-        _dbContext.BudgetGroups.Add(group);
+        _repository.AddGroup(group);
 
         LogAudit(year.Id, nameof(BudgetGroup), group.Id,
             $"Created budget group '{name}'",
             actorUserId, now);
 
-        await _dbContext.SaveChangesAsync();
+        await _repository.SaveChangesAsync();
 
         _logger.LogInformation("Created budget group '{Name}' in year {YearId}", name, budgetYearId);
 
@@ -475,7 +439,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
 
     public async Task UpdateGroupAsync(Guid groupId, string name, int sortOrder, bool isRestricted, Guid actorUserId)
     {
-        var group = await _dbContext.BudgetGroups.FindAsync(groupId)
+        var group = await _repository.FindGroupForMutationAsync(groupId)
             ?? throw new InvalidOperationException($"Budget group {groupId} not found");
 
         await EnsureYearNotClosedAsync(group.BudgetYearId);
@@ -507,12 +471,12 @@ public class BudgetService : IBudgetService, IUserDataContributor
 
         group.UpdatedAt = now;
 
-        await _dbContext.SaveChangesAsync();
+        await _repository.SaveChangesAsync();
     }
 
     public async Task DeleteGroupAsync(Guid groupId, Guid actorUserId)
     {
-        var group = await _dbContext.BudgetGroups.FindAsync(groupId)
+        var group = await _repository.FindGroupForMutationAsync(groupId)
             ?? throw new InvalidOperationException($"Budget group {groupId} not found");
 
         await EnsureYearNotClosedAsync(group.BudgetYearId);
@@ -526,40 +490,29 @@ public class BudgetService : IBudgetService, IUserDataContributor
             $"Deleted budget group '{group.Name}'",
             actorUserId, now);
 
-        await _dbContext.SaveChangesAsync();
+        await _repository.SaveChangesAsync();
 
-        _dbContext.BudgetGroups.Remove(group);
-        await _dbContext.SaveChangesAsync();
+        _repository.RemoveGroup(group);
+        await _repository.SaveChangesAsync();
 
         _logger.LogInformation("Deleted budget group {GroupId} ('{Name}')", groupId, group.Name);
     }
 
     // ───────────────────────── Budget Categories ─────────────────────────
 
-    public async Task<BudgetCategory?> GetCategoryByIdAsync(Guid id)
-    {
-        return await _dbContext.BudgetCategories
-            .Include(c => c.BudgetGroup)
-                .ThenInclude(g => g!.BudgetYear)
-            .Include(c => c.Team)
-            .Include(c => c.LineItems.OrderBy(li => li.SortOrder))
-                .ThenInclude(li => li.ResponsibleTeam)
-            .FirstOrDefaultAsync(c => c.Id == id);
-    }
+    public Task<BudgetCategory?> GetCategoryByIdAsync(Guid id) => _repository.GetCategoryByIdAsync(id);
 
     public async Task<BudgetCategory> CreateCategoryAsync(
         Guid budgetGroupId, string name, decimal allocatedAmount,
         ExpenditureType expenditureType, Guid? teamId, Guid actorUserId)
     {
-        var group = await _dbContext.BudgetGroups.FindAsync(budgetGroupId)
+        var group = await _repository.FindGroupForMutationAsync(budgetGroupId)
             ?? throw new InvalidOperationException($"Budget group {budgetGroupId} not found");
 
         await EnsureYearNotClosedAsync(group.BudgetYearId);
         var now = _clock.GetCurrentInstant();
 
-        var maxSortOrder = await _dbContext.BudgetCategories
-            .Where(c => c.BudgetGroupId == budgetGroupId)
-            .MaxAsync(c => (int?)c.SortOrder) ?? -1;
+        var maxSortOrder = await _repository.GetMaxCategorySortOrderAsync(budgetGroupId);
 
         var category = new BudgetCategory
         {
@@ -574,13 +527,13 @@ public class BudgetService : IBudgetService, IUserDataContributor
             UpdatedAt = now
         };
 
-        _dbContext.BudgetCategories.Add(category);
+        _repository.AddCategory(category);
 
         LogAudit(group.BudgetYearId, nameof(BudgetCategory), category.Id,
             $"Created budget category '{name}' with allocation {allocatedAmount:N2}",
             actorUserId, now);
 
-        await _dbContext.SaveChangesAsync();
+        await _repository.SaveChangesAsync();
 
         _logger.LogInformation("Created budget category '{Name}' in group {GroupId}", name, budgetGroupId);
 
@@ -591,9 +544,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
         Guid categoryId, string name, decimal allocatedAmount,
         ExpenditureType expenditureType, Guid actorUserId)
     {
-        var category = await _dbContext.BudgetCategories
-            .Include(c => c.BudgetGroup)
-            .FirstOrDefaultAsync(c => c.Id == categoryId)
+        var category = await _repository.FindCategoryForMutationAsync(categoryId)
             ?? throw new InvalidOperationException($"Budget category {categoryId} not found");
 
         var budgetYearId = category.BudgetGroup!.BudgetYearId;
@@ -628,14 +579,12 @@ public class BudgetService : IBudgetService, IUserDataContributor
 
         category.UpdatedAt = now;
 
-        await _dbContext.SaveChangesAsync();
+        await _repository.SaveChangesAsync();
     }
 
     public async Task DeleteCategoryAsync(Guid categoryId, Guid actorUserId)
     {
-        var category = await _dbContext.BudgetCategories
-            .Include(c => c.BudgetGroup)
-            .FirstOrDefaultAsync(c => c.Id == categoryId)
+        var category = await _repository.FindCategoryForMutationAsync(categoryId)
             ?? throw new InvalidOperationException($"Budget category {categoryId} not found");
 
         var budgetYearId = category.BudgetGroup!.BudgetYearId;
@@ -646,20 +595,17 @@ public class BudgetService : IBudgetService, IUserDataContributor
             $"Deleted budget category '{category.Name}'",
             actorUserId, now);
 
-        await _dbContext.SaveChangesAsync();
+        await _repository.SaveChangesAsync();
 
-        _dbContext.BudgetCategories.Remove(category);
-        await _dbContext.SaveChangesAsync();
+        _repository.RemoveCategory(category);
+        await _repository.SaveChangesAsync();
 
         _logger.LogInformation("Deleted budget category {CategoryId} ('{Name}')", categoryId, category.Name);
     }
 
     // ───────────────────────── Budget Line Items ─────────────────────────
 
-    public async Task<BudgetLineItem?> GetLineItemByIdAsync(Guid id)
-    {
-        return await _dbContext.BudgetLineItems.FindAsync(id);
-    }
+    public Task<BudgetLineItem?> GetLineItemByIdAsync(Guid id) => _repository.GetLineItemByIdAsync(id);
 
     public async Task<BudgetLineItem> CreateLineItemAsync(
         Guid budgetCategoryId, string description, decimal amount,
@@ -668,18 +614,14 @@ public class BudgetService : IBudgetService, IUserDataContributor
     {
         ValidateVatRate(vatRate);
 
-        var category = await _dbContext.BudgetCategories
-            .Include(c => c.BudgetGroup)
-            .FirstOrDefaultAsync(c => c.Id == budgetCategoryId)
+        var category = await _repository.FindCategoryForMutationAsync(budgetCategoryId)
             ?? throw new InvalidOperationException($"Budget category {budgetCategoryId} not found");
 
         var budgetYearId = category.BudgetGroup!.BudgetYearId;
         await EnsureYearNotClosedAsync(budgetYearId);
         var now = _clock.GetCurrentInstant();
 
-        var maxSortOrder = await _dbContext.BudgetLineItems
-            .Where(li => li.BudgetCategoryId == budgetCategoryId)
-            .MaxAsync(li => (int?)li.SortOrder) ?? -1;
+        var maxSortOrder = await _repository.GetMaxLineItemSortOrderAsync(budgetCategoryId);
 
         var lineItem = new BudgetLineItem
         {
@@ -696,13 +638,13 @@ public class BudgetService : IBudgetService, IUserDataContributor
             UpdatedAt = now
         };
 
-        _dbContext.BudgetLineItems.Add(lineItem);
+        _repository.AddLineItem(lineItem);
 
         LogAudit(budgetYearId, nameof(BudgetLineItem), lineItem.Id,
             $"Created line item '{description}' ({amount:N2})",
             actorUserId, now);
 
-        await _dbContext.SaveChangesAsync();
+        await _repository.SaveChangesAsync();
 
         _logger.LogInformation("Created line item '{Description}' in category {CategoryId}", description, budgetCategoryId);
 
@@ -716,10 +658,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
     {
         ValidateVatRate(vatRate);
 
-        var lineItem = await _dbContext.BudgetLineItems
-            .Include(li => li.BudgetCategory)
-                .ThenInclude(c => c!.BudgetGroup)
-            .FirstOrDefaultAsync(li => li.Id == lineItemId)
+        var lineItem = await _repository.FindLineItemForMutationAsync(lineItemId)
             ?? throw new InvalidOperationException($"Budget line item {lineItemId} not found");
 
         var budgetYearId = lineItem.BudgetCategory!.BudgetGroup!.BudgetYearId;
@@ -781,7 +720,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
 
         lineItem.UpdatedAt = now;
 
-        await _dbContext.SaveChangesAsync();
+        await _repository.SaveChangesAsync();
     }
 
     private static void ValidateVatRate(int vatRate)
@@ -792,10 +731,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
 
     public async Task DeleteLineItemAsync(Guid lineItemId, Guid actorUserId)
     {
-        var lineItem = await _dbContext.BudgetLineItems
-            .Include(li => li.BudgetCategory)
-                .ThenInclude(c => c!.BudgetGroup)
-            .FirstOrDefaultAsync(li => li.Id == lineItemId)
+        var lineItem = await _repository.FindLineItemForMutationAsync(lineItemId)
             ?? throw new InvalidOperationException($"Budget line item {lineItemId} not found");
 
         var budgetYearId = lineItem.BudgetCategory!.BudgetGroup!.BudgetYearId;
@@ -806,28 +742,25 @@ public class BudgetService : IBudgetService, IUserDataContributor
             $"Deleted line item '{lineItem.Description}'",
             actorUserId, now);
 
-        await _dbContext.SaveChangesAsync();
+        await _repository.SaveChangesAsync();
 
-        _dbContext.BudgetLineItems.Remove(lineItem);
-        await _dbContext.SaveChangesAsync();
+        _repository.RemoveLineItem(lineItem);
+        await _repository.SaveChangesAsync();
 
         _logger.LogInformation("Deleted line item {LineItemId} ('{Description}')", lineItemId, lineItem.Description);
     }
 
     // ───────────────────────── Ticketing Projection ─────────────────────────
 
-    public async Task<TicketingProjection?> GetTicketingProjectionAsync(Guid budgetGroupId)
-    {
-        return await _dbContext.TicketingProjections
-            .FirstOrDefaultAsync(p => p.BudgetGroupId == budgetGroupId);
-    }
+    public Task<TicketingProjection?> GetTicketingProjectionAsync(Guid budgetGroupId) =>
+        _repository.GetTicketingProjectionAsync(budgetGroupId);
 
     public async Task UpdateTicketingProjectionAsync(
         Guid budgetGroupId, LocalDate? startDate, LocalDate? eventDate,
         int initialSalesCount, decimal dailySalesRate, decimal averageTicketPrice, int vatRate,
         decimal stripeFeePercent, decimal stripeFeeFixed, decimal ticketTailorFeePercent, Guid actorUserId)
     {
-        var group = await _dbContext.BudgetGroups.FindAsync(budgetGroupId)
+        var group = await _repository.FindGroupForMutationAsync(budgetGroupId)
             ?? throw new InvalidOperationException($"Budget group {budgetGroupId} not found");
 
         if (!group.IsTicketingGroup)
@@ -835,8 +768,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
 
         await EnsureYearNotClosedAsync(group.BudgetYearId);
 
-        var projection = await _dbContext.TicketingProjections
-            .FirstOrDefaultAsync(p => p.BudgetGroupId == budgetGroupId)
+        var projection = await _repository.FindTicketingProjectionForMutationAsync(budgetGroupId)
             ?? throw new InvalidOperationException("No ticketing projection found for this group.");
 
         var now = _clock.GetCurrentInstant();
@@ -856,34 +788,21 @@ public class BudgetService : IBudgetService, IUserDataContributor
             "Updated ticketing projection parameters",
             actorUserId, now);
 
-        await _dbContext.SaveChangesAsync();
+        await _repository.SaveChangesAsync();
 
         _logger.LogInformation("Updated ticketing projection for group {GroupId}", budgetGroupId);
     }
 
     // ───────────────────────── Audit Log ─────────────────────────
 
-    public async Task<IReadOnlyList<BudgetAuditLog>> GetAuditLogAsync(Guid? budgetYearId)
-    {
-        var query = _dbContext.BudgetAuditLogs
-            .Include(a => a.ActorUser)
-            .AsQueryable();
-
-        if (budgetYearId.HasValue)
-            query = query.Where(a => a.BudgetYearId == budgetYearId.Value);
-
-        return await query
-            .OrderByDescending(a => a.OccurredAt)
-            .Take(500)
-            .ToListAsync();
-    }
+    public Task<IReadOnlyList<BudgetAuditLog>> GetAuditLogAsync(Guid? budgetYearId) =>
+        _repository.GetAuditLogAsync(budgetYearId);
 
     // ───────────────────────── Private Helpers ─────────────────────────
 
     private async Task EnsureYearNotClosedAsync(Guid budgetYearId)
     {
-        var year = await _dbContext.BudgetYears.FindAsync(budgetYearId);
-        if (year?.Status == BudgetYearStatus.Closed)
+        if (await _repository.IsYearClosedAsync(budgetYearId))
             throw new InvalidOperationException("Cannot modify a closed budget year.");
     }
 
@@ -910,54 +829,11 @@ public class BudgetService : IBudgetService, IUserDataContributor
             OccurredAt = occurredAt
         };
 
-        _dbContext.BudgetAuditLogs.Add(entry);
+        _repository.AddAuditLog(entry);
 
         _logger.LogInformation("BudgetAudit: {EntityType} {EntityId} — {Description} by user {ActorUserId}",
             entityType, entityId, description, actorUserId);
     }
-
-    // ───────────────────────── Coordinator ─────────────────────────
-
-    public async Task<HashSet<Guid>> GetEffectiveCoordinatorTeamIdsAsync(Guid userId)
-    {
-        // Teams where user is direct coordinator (departments only — sub-team managers don't get budget access)
-        var directTeamIds = await _dbContext.TeamMembers
-            .AsNoTracking()
-            .Where(tm => tm.UserId == userId && tm.LeftAt == null && tm.Role == TeamMemberRole.Coordinator
-                         && tm.Team.ParentTeamId == null)
-            .Select(tm => tm.TeamId)
-            .ToListAsync();
-
-        // Teams where user has management role assignment (departments only)
-        var mgmtTeamIds = await _dbContext.Set<TeamRoleAssignment>()
-            .AsNoTracking()
-            .Where(tra =>
-                tra.TeamMember.UserId == userId &&
-                tra.TeamMember.LeftAt == null &&
-                tra.TeamRoleDefinition.IsManagement &&
-                tra.TeamRoleDefinition.Team.ParentTeamId == null)
-            .Select(tra => tra.TeamMember.TeamId)
-            .ToListAsync();
-
-        var coordinatorTeamIds = directTeamIds.Concat(mgmtTeamIds).ToHashSet();
-
-        // Include child teams (department coordinators manage child team budgets)
-        if (coordinatorTeamIds.Count > 0)
-        {
-            var childTeamIds = await _dbContext.Teams
-                .AsNoTracking()
-                .Where(t => t.ParentTeamId != null && coordinatorTeamIds.Contains(t.ParentTeamId.Value))
-                .Select(t => t.Id)
-                .ToListAsync();
-
-            foreach (var childId in childTeamIds)
-                coordinatorTeamIds.Add(childId);
-        }
-
-        return coordinatorTeamIds;
-    }
-
-    // ───────────────────────── Audit Helpers ─────────────────────────
 
     /// <summary>
     /// Logs a create/delete action with a free-text description.
@@ -980,11 +856,21 @@ public class BudgetService : IBudgetService, IUserDataContributor
             OccurredAt = occurredAt
         };
 
-        _dbContext.BudgetAuditLogs.Add(entry);
+        _repository.AddAuditLog(entry);
 
         _logger.LogInformation("BudgetAudit: {EntityType} {EntityId} — {Description} by user {ActorUserId}",
             entityType, entityId, description, actorUserId);
     }
+
+    // ───────────────────────── Coordinator ─────────────────────────
+
+    public async Task<HashSet<Guid>> GetEffectiveCoordinatorTeamIdsAsync(Guid userId)
+    {
+        var ids = await _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId);
+        return ids.ToHashSet();
+    }
+
+    // ───────────────────────── Summary Computation (pure) ─────────────────────────
 
     public BudgetSummaryResult ComputeBudgetSummary(IEnumerable<BudgetGroup> groups)
     {
@@ -994,13 +880,13 @@ public class BudgetService : IBudgetService, IUserDataContributor
             .Where(li => !li.IsCashflowOnly)
             .ToList();
 
-        // Compute VAT projections
+        // Compute VAT projections.
         var vatProjections = budgetLineItems
             .Where(li => li.VatRate > 0 && li.ExpectedDate.HasValue)
             .Select(li => new
             {
                 VatAmount = Math.Abs(li.Amount) * li.VatRate / (100m + li.VatRate),
-                IsExpense = li.Amount > 0 // Income generates VAT liability (expense)
+                IsExpense = li.Amount > 0 // Income generates VAT liability (expense).
             })
             .ToList();
 
@@ -1013,7 +899,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
         var totalExpenses = expenses - vatExpenses;
         var netBalance = totalIncome + totalExpenses;
 
-        // Build income slices
+        // Build income slices.
         var incomeCategories = groups
             .SelectMany(g => g.Categories)
             .Select(c => new { c.Name, Total = c.LineItems.Where(li => li.Amount > 0 && !li.IsCashflowOnly).Sum(li => li.Amount) })
@@ -1034,7 +920,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
             })
             .ToList();
 
-        // Build expense slices
+        // Build expense slices.
         var expenseCategories = groups
             .SelectMany(g => g.Categories)
             .Select(c => new { c.Name, Total = Math.Abs(c.LineItems.Where(li => li.Amount < 0 && !li.IsCashflowOnly).Sum(li => li.Amount)) })
@@ -1135,7 +1021,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
             .Select(li =>
             {
                 var vatAmount = Math.Abs(li.Amount) * li.VatRate / (100m + li.VatRate);
-                // Income → VAT liability (expense); expense → VAT credit (income)
+                // Income → VAT liability (expense); expense → VAT credit (income).
                 var cashFlowAmount = li.Amount > 0 ? -vatAmount : vatAmount;
                 var categoryName = li.Amount > 0 ? "VAT Liability" : "VAT Credits";
                 return new VatCashFlowEntry
@@ -1170,13 +1056,13 @@ public class BudgetService : IBudgetService, IUserDataContributor
     // and projected-line materialization happen here because BudgetService owns
     // all budget tables.
 
-    // Prefix for auto-generated line item descriptions to identify them during sync
+    // Prefix for auto-generated line item descriptions to identify them during sync.
     private const string TicketingRevenuePrefix = "Week of ";
     private const string TicketingStripePrefix = "Stripe fees: ";
     private const string TicketingTtPrefix = "TT fees: ";
     private const string TicketingProjectedPrefix = "Projected: ";
 
-    // Spanish IVA rate applied to Stripe and TicketTailor processing fees
+    // Spanish IVA rate applied to Stripe and TicketTailor processing fees.
     private const int TicketingFeeVatRate = 21;
 
     public async Task<int> SyncTicketingActualsAsync(
@@ -1184,7 +1070,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
         IReadOnlyList<TicketingWeeklyActuals> weeklyActuals,
         CancellationToken ct = default)
     {
-        var ticketingGroup = await LoadTicketingGroupAsync(budgetYearId, ct);
+        var ticketingGroup = await _repository.GetTicketingGroupForMutationAsync(budgetYearId, ct);
         if (ticketingGroup is null)
         {
             _logger.LogDebug("No ticketing group found for budget year {YearId}", budgetYearId);
@@ -1234,8 +1120,8 @@ public class BudgetService : IBudgetService, IUserDataContributor
 
         lineItemsCreated += MaterializeTicketingProjections(ticketingGroup, revenueCategory, feesCategory, now);
 
-        if (_dbContext.ChangeTracker.HasChanges())
-            await _dbContext.SaveChangesAsync(ct);
+        if (_repository.HasPendingChanges())
+            await _repository.SaveChangesAsync(ct);
 
         _logger.LogInformation(
             "Ticketing budget sync: {Created} line items created/updated for {Weeks} actual weeks + projections",
@@ -1246,7 +1132,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
 
     public async Task<int> RefreshTicketingProjectionsAsync(Guid budgetYearId, CancellationToken ct = default)
     {
-        var ticketingGroup = await LoadTicketingGroupAsync(budgetYearId, ct);
+        var ticketingGroup = await _repository.GetTicketingGroupForMutationAsync(budgetYearId, ct);
         if (ticketingGroup is null) return 0;
 
         var revenueCategory = ticketingGroup.Categories.FirstOrDefault(c => string.Equals(c.Name, "Ticket Revenue", StringComparison.Ordinal));
@@ -1256,8 +1142,8 @@ public class BudgetService : IBudgetService, IUserDataContributor
         var now = _clock.GetCurrentInstant();
         var created = MaterializeTicketingProjections(ticketingGroup, revenueCategory, feesCategory, now);
 
-        if (_dbContext.ChangeTracker.HasChanges())
-            await _dbContext.SaveChangesAsync(ct);
+        if (_repository.HasPendingChanges())
+            await _repository.SaveChangesAsync(ct);
 
         _logger.LogInformation("Ticketing projections refreshed: {Count} line items", created);
         return created;
@@ -1266,16 +1152,17 @@ public class BudgetService : IBudgetService, IUserDataContributor
     public async Task<IReadOnlyList<TicketingWeekProjection>> GetTicketingProjectionEntriesAsync(
         Guid budgetGroupId, CancellationToken ct = default)
     {
-        var group = await _dbContext.BudgetGroups
-            .Include(g => g.TicketingProjection)
-            .Include(g => g.Categories)
-                .ThenInclude(c => c.LineItems)
-            .FirstOrDefaultAsync(g => g.Id == budgetGroupId && g.IsTicketingGroup, ct);
-
-        if (group?.TicketingProjection is null)
+        // This reads the group graph plus projection. We use the ticketing-group
+        // loader but it filters by year — here we need the group by id. Use the
+        // projection lookup + group info. Since this is a read-only display path,
+        // compute virtual entries entirely in memory from the projection.
+        var group = await _repository.FindGroupForMutationAsync(budgetGroupId);
+        if (group is null || !group.IsTicketingGroup)
             return [];
 
-        var projection = group.TicketingProjection;
+        var projection = await _repository.GetTicketingProjectionAsync(budgetGroupId, ct);
+        if (projection is null)
+            return [];
 
         if (projection.StartDate is null || projection.EventDate is null || projection.AverageTicketPrice == 0)
             return [];
@@ -1333,7 +1220,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
             });
 
             weekStart = weekEnd.PlusDays(1);
-            // Snap to next Monday
+            // Snap to next Monday.
             weekStart = GetTicketingIsoMonday(weekStart);
             if (weekStart <= weekEnd) weekStart = weekEnd.PlusDays(1);
         }
@@ -1357,7 +1244,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
             if (item.Description.StartsWith(TicketingProjectedPrefix, StringComparison.Ordinal)) continue;
             if (string.IsNullOrEmpty(item.Notes)) continue;
 
-            // Notes format: "187 tickets" or "~42 tickets" (projected use ~)
+            // Notes format: "187 tickets" or "~42 tickets" (projected use ~).
             var notes = item.Notes.TrimStart('~');
             var spaceIdx = notes.IndexOf(' ', StringComparison.Ordinal);
             if (spaceIdx > 0 && int.TryParse(
@@ -1371,15 +1258,6 @@ public class BudgetService : IBudgetService, IUserDataContributor
         }
 
         return total;
-    }
-
-    private async Task<BudgetGroup?> LoadTicketingGroupAsync(Guid budgetYearId, CancellationToken ct)
-    {
-        return await _dbContext.BudgetGroups
-            .Include(g => g.Categories)
-                .ThenInclude(c => c.LineItems)
-            .Include(g => g.TicketingProjection)
-            .FirstOrDefaultAsync(g => g.BudgetYearId == budgetYearId && g.IsTicketingGroup, ct);
     }
 
     /// <summary>
@@ -1420,12 +1298,12 @@ public class BudgetService : IBudgetService, IUserDataContributor
         if (projection is null || projection.StartDate is null || projection.EventDate is null
             || projection.AverageTicketPrice == 0)
         {
-            // No projection configured — remove any stale projected items
+            // No projection configured — remove any stale projected items.
             RemoveTicketingProjectedItems(revenueCategory, feesCategory);
             return 0;
         }
 
-        // Remove old projected items first
+        // Remove old projected items first.
         RemoveTicketingProjectedItems(revenueCategory, feesCategory);
 
         var today = _clock.GetCurrentInstant().InUtc().Date;
@@ -1451,7 +1329,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
 
             var daysInWeek = Period.Between(weekStart, weekEnd.PlusDays(1), PeriodUnits.Days).Days;
 
-            // First projected week includes initial burst if start date hasn't passed
+            // First projected week includes initial burst if start date hasn't passed.
             var weekTickets = (int)Math.Round(dailyRate * daysInWeek);
             if (isFirstWeek && projectionStart <= projection.StartDate.Value)
             {
@@ -1467,14 +1345,14 @@ public class BudgetService : IBudgetService, IUserDataContributor
 
             var weekRevenue = weekTickets * projection.AverageTicketPrice;
 
-            // Fees on revenue only
+            // Fees on revenue only.
             var stripeFees = weekRevenue * projection.StripeFeePercent / 100m +
                              weekTickets * projection.StripeFeeFixed;
             var ttFees = weekRevenue * projection.TicketTailorFeePercent / 100m;
 
             var weekLabel = FormatTicketingWeekLabel(weekStart, weekEnd);
 
-            // Revenue with VatRate — existing VAT projection system handles VAT automatically
+            // Revenue with VatRate — existing VAT projection system handles VAT automatically.
             created += UpsertTicketingLineItem(revenueCategory, $"{TicketingProjectedPrefix}{TicketingRevenuePrefix}{weekLabel}",
                 Math.Round(weekRevenue, 2), weekStart, projection.VatRate, false, $"~{weekTickets} tickets", now);
 
@@ -1504,7 +1382,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
             foreach (var item in projected)
             {
                 category.LineItems.Remove(item);
-                _dbContext.BudgetLineItems.Remove(item);
+                _repository.RemoveLineItem(item);
             }
         }
     }
@@ -1522,7 +1400,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
 
         if (existing is not null)
         {
-            // Update if values changed
+            // Update if values changed.
             if (existing.Amount == amount && existing.VatRate == vatRate
                 && string.Equals(existing.Notes, notes, StringComparison.Ordinal))
                 return 0;
@@ -1535,7 +1413,7 @@ public class BudgetService : IBudgetService, IUserDataContributor
             return 1;
         }
 
-        // Create new
+        // Create new.
         var maxSort = category.LineItems.Any() ? category.LineItems.Max(li => li.SortOrder) : -1;
         var lineItem = new BudgetLineItem
         {
@@ -1553,14 +1431,14 @@ public class BudgetService : IBudgetService, IUserDataContributor
             UpdatedAt = now
         };
 
-        _dbContext.BudgetLineItems.Add(lineItem);
+        _repository.AddLineItem(lineItem);
         category.LineItems.Add(lineItem);
         return 1;
     }
 
     private static LocalDate GetTicketingIsoMonday(LocalDate date)
     {
-        // NodaTime IsoDayOfWeek: Monday=1, Sunday=7
+        // NodaTime IsoDayOfWeek: Monday=1, Sunday=7.
         var dayOfWeek = (int)date.DayOfWeek;
         return date.PlusDays(-(dayOfWeek - 1));
     }
@@ -1570,13 +1448,11 @@ public class BudgetService : IBudgetService, IUserDataContributor
         return $"{monday.ToString("MMM d", null)}–{sunday.ToString("MMM d", null)}";
     }
 
+    // ───────────────────────── GDPR Export ─────────────────────────
+
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var entries = await _dbContext.BudgetAuditLogs
-            .AsNoTracking()
-            .Where(bal => bal.ActorUserId == userId)
-            .OrderByDescending(bal => bal.OccurredAt)
-            .ToListAsync(ct);
+        var entries = await _repository.GetAuditLogEntriesForUserAsync(userId, ct);
 
         var shaped = entries.Select(bal => new
         {
