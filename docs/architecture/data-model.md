@@ -661,6 +661,57 @@ Append-only version history of polygon edits and restores.
 | ModifiedAt | Instant | When this version was saved |
 | Note | string (512) | "Saved" or "Restored from {timestamp}" |
 
+### CalendarEvent
+
+A community-calendar event belonging to a team. May be a single event or a recurring series defined by an RFC 5545 `RRULE` expanded against an IANA timezone (default `Europe/Madrid`). Soft-deleted via `DeletedAt` with a global EF query filter.
+
+**Table:** `calendar_events`
+
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK |
+| Title | string (200) | Required |
+| Description | string (4000) | Optional |
+| Location | string (500) | Optional |
+| LocationUrl | string (2000) | Optional |
+| OwningTeamId | Guid | FK → Team (`OnDelete: Restrict`) — team that owns the event |
+| StartUtc | Instant | First (or only) occurrence start in UTC |
+| EndUtc | Instant? | Required iff `IsAllDay = false` |
+| IsAllDay | bool | All-day event |
+| RecurrenceRule | string (500)? | RFC 5545 RRULE (no `RRULE:` prefix). Null = single event |
+| RecurrenceTimezone | string (100)? | IANA TZ. Required iff `RecurrenceRule` is set |
+| RecurrenceUntilUtc | Instant? | Denormalised UNTIL — supports indexable "rule reaches window" queries |
+| CreatedByUserId | Guid | FK → User |
+| CreatedAt | Instant | |
+| UpdatedAt | Instant | |
+| DeletedAt | Instant? | Soft delete; global query filter excludes non-null |
+
+**Indexes:** `(OwningTeamId, StartUtc)`, `(StartUtc, RecurrenceUntilUtc)`
+
+### CalendarEventException
+
+Per-occurrence override or cancellation for a recurring `CalendarEvent`. Cascade-deletes with the parent event.
+
+**Table:** `calendar_event_exceptions`
+
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK |
+| EventId | Guid | FK → CalendarEvent (`OnDelete: Cascade`) |
+| OriginalOccurrenceStartUtc | Instant | The unmodified start of the occurrence this exception targets |
+| IsCancelled | bool | If true, occurrence is dropped during expansion |
+| OverrideStartUtc | Instant? | |
+| OverrideEndUtc | Instant? | |
+| OverrideTitle | string (200)? | |
+| OverrideDescription | string (4000)? | |
+| OverrideLocation | string (500)? | |
+| OverrideLocationUrl | string (2000)? | |
+| CreatedByUserId | Guid | FK → User |
+| CreatedAt | Instant | |
+| UpdatedAt | Instant | |
+
+**Indexes:** unique `(EventId, OriginalOccurrenceStartUtc)` — one exception per (event, occurrence)
+
 ## Serialization Notes
 
 - All entities use System.Text.Json serialization
