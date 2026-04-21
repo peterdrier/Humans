@@ -5,6 +5,11 @@
     static string PctClass(double pct) =>
         pct >= 80 ? "bg-success" : pct >= 60 ? "bg-warning text-dark" : "bg-danger";
 
+    string PctStatusLabel(double pct) =>
+        pct >= 80 ? Localizer["ShiftDash_Status_OnTrack"].Value
+        : pct >= 60 ? Localizer["ShiftDash_Status_AtRisk"].Value
+        : Localizer["ShiftDash_Status_BelowTarget"].Value;
+
     var filledPct = Model.TotalShifts == 0 ? 0 : 100.0 * Model.FilledShifts / Model.TotalShifts;
     var engagedPct = Model.TicketHolderCount == 0 ? 0 : 100.0 * Model.TicketHoldersEngaged / Model.TicketHolderCount;
     var unreached = Math.Max(0, Model.TicketHolderCount - Model.TicketHoldersEngaged);
@@ -21,9 +26,9 @@
                 <div class="text-muted small text-uppercase">@Localizer["ShiftDash_Overview_ShiftsFilled"]</div>
                 <div class="fs-3 fw-bold">@Model.FilledShifts <span class="text-muted fs-6">/ @Model.TotalShifts (@filledPct.ToString("0")%)</span></div>
                 <div class="mt-2">
-                    <span class="badge @PctClass(Model.PeriodFillRates.BuildPct) me-1">@Localizer["Shifts_SetUp"] @Model.PeriodFillRates.BuildPct.ToString("0")%</span>
-                    <span class="badge @PctClass(Model.PeriodFillRates.EventPct) me-1">@Localizer["Shifts_Event"] @Model.PeriodFillRates.EventPct.ToString("0")%</span>
-                    <span class="badge @PctClass(Model.PeriodFillRates.StrikePct)">@Localizer["Shifts_Strike"] @Model.PeriodFillRates.StrikePct.ToString("0")%</span>
+                    <span class="badge @PctClass(Model.PeriodFillRates.BuildPct) me-1">@Localizer["Shifts_SetUp"] @Model.PeriodFillRates.BuildPct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(Model.PeriodFillRates.BuildPct)</span></span>
+                    <span class="badge @PctClass(Model.PeriodFillRates.EventPct) me-1">@Localizer["Shifts_Event"] @Model.PeriodFillRates.EventPct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(Model.PeriodFillRates.EventPct)</span></span>
+                    <span class="badge @PctClass(Model.PeriodFillRates.StrikePct)">@Localizer["Shifts_Strike"] @Model.PeriodFillRates.StrikePct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(Model.PeriodFillRates.StrikePct)</span></span>
                 </div>
             </div>
         </div>

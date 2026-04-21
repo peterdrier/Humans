@@ -29,8 +29,9 @@
                     @Html.AntiForgeryToken()
                     <button type="submit" class="btn btn-sm btn-outline-warning">Seed dashboard (dev)</button>
                 </form>
-                <form method="post" action="/dev/seed/dashboard?reset=true" class="d-inline">
+                <form method="post" action="/dev/seed/dashboard" class="d-inline">
                     @Html.AntiForgeryToken()
+                    <input type="hidden" name="reset" value="true" />
                     <button type="submit" class="btn btn-sm btn-outline-danger">Reset &amp; reseed (dev)</button>
                 </form>
             }

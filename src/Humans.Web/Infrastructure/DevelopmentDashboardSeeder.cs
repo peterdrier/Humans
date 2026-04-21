@@ -27,7 +27,7 @@ public sealed record DashboardResetResult(
 /// </summary>
 public sealed class DevelopmentDashboardSeeder
 {
-    private const string SeededEventName = "Seeded Nowhere 2026 (dev)";
+    private const string SeededEventName = "Seeded Elsewhere 2026 (dev)";
 
     // Match real, non-hidden parent departments from the production Teams list
     // so the dashboard seed reflects terminology the coordinators actually use.

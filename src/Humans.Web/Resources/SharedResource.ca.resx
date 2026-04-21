@@ -1694,7 +1694,7 @@
   <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Torns coberts</value></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Amb entrada</value></data>
   <data name="ShiftDash_Overview_TicketHoldersSubline" xml:space="preserve"><value>humans que han pagat</value></data>
-  <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve"><value>Voluntaris amb entrada</value></data>
+  <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve"><value>Ticket holding humans</value></data>
   <data name="ShiftDash_Overview_EngagedSubline" xml:space="preserve"><value>{0} humans no s'han apuntat</value><comment>{0} = count</comment></data>
   <data name="ShiftDash_Overview_NonTicketSignups" xml:space="preserve"><value>Apuntats sense entrada</value></data>
   <data name="ShiftDash_Overview_NonTicketSubline" xml:space="preserve"><value>apuntats sense entrada (encara)</value></data>
@@ -1723,7 +1723,6 @@
   <data name="ShiftDash_Coordinators_Subtitle" xml:space="preserve"><value>equips amb pendents, inici de sessió més antic primer</value></data>
   <data name="ShiftDash_Coordinators_Col_Team" xml:space="preserve"><value>Equip</value></data>
   <data name="ShiftDash_Coordinators_Col_Coordinators" xml:space="preserve"><value>Coordinadors</value></data>
-  <data name="ShiftDash_Coordinators_Col_OldestLogin" xml:space="preserve"><value>Inici més antic</value></data>
   <data name="ShiftDash_Coordinators_Col_Pending" xml:space="preserve"><value>Pendents</value></data>
   <data name="ShiftDash_Coordinators_NoCoordinators" xml:space="preserve"><value>sense coordinadors</value></data>
   <data name="ShiftDash_Coordinators_Never" xml:space="preserve"><value>mai</value></data>
@@ -1741,5 +1740,9 @@
   <data name="ShiftDash_Trends_NewTicketSales" xml:space="preserve"><value>Noves entrades venudes</value></data>
   <data name="ShiftDash_Trends_DAU" xml:space="preserve"><value>Inicis de sessió únics (DAU)</value></data>
   <data name="ShiftDash_Trends_DAUNote" xml:space="preserve"><value>Només es desa l'últim inici per human — els períodes antics estan infrarrepresentats.</value></data>
+  <data name="ShiftDash_Status_OnTrack" xml:space="preserve"><value>En curs</value></data>
+  <data name="ShiftDash_Status_AtRisk" xml:space="preserve"><value>En risc</value></data>
+  <data name="ShiftDash_Status_BelowTarget" xml:space="preserve"><value>Per sota de l'objectiu</value></data>
+  <data name="ShiftDash_Coordinators_StaleLabel" xml:space="preserve"><value>Inactiu més de 7 dies</value></data>
 
 </root>

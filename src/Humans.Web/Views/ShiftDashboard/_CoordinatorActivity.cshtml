@@ -47,7 +47,8 @@
                     <tr role="@(hasSubgroups ? "button" : null)"
                         data-bs-toggle="@(hasSubgroups ? "collapse" : null)"
                         data-bs-target="@(hasSubgroups ? "#" + rowId : null)"
-                        aria-expanded="false">
+                        aria-expanded="false"
+                        aria-controls="@(hasSubgroups ? rowId : null)">
                         <td class="text-muted">
                             @if (hasSubgroups)
                             {
@@ -69,7 +70,7 @@
                                         <li>
                                             <span class="fw-semibold">@c.DisplayName</span>
                                             <span class="text-muted"> · </span>
-                                            <span class="@(stale ? "text-danger fw-semibold" : "text-muted")">@RelativeTime(c.LastLoginAt)</span>
+                                            <span class="@(stale ? "text-danger fw-semibold" : "text-muted")">@RelativeTime(c.LastLoginAt)@if (stale) {<span class="visually-hidden"> — @Localizer["ShiftDash_Coordinators_StaleLabel"]</span>}</span>
                                         </li>
                                     }
                                 </ul>
@@ -110,7 +111,7 @@
                                                                 <li>
                                                                     <span class="fw-semibold">@c.DisplayName</span>
                                                                     <span class="text-muted"> · </span>
-                                                                    <span class="@(stale ? "text-danger fw-semibold" : "text-muted")">@RelativeTime(c.LastLoginAt)</span>
+                                                                    <span class="@(stale ? "text-danger fw-semibold" : "text-muted")">@RelativeTime(c.LastLoginAt)@if (stale) {<span class="visually-hidden"> — @Localizer["ShiftDash_Coordinators_StaleLabel"]</span>}</span>
                                                                 </li>
                                                             }
                                                         </ul>

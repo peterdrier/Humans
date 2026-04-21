@@ -1692,7 +1692,7 @@
   <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Quarts remplis</value></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Détenteurs de billets</value></data>
   <data name="ShiftDash_Overview_TicketHoldersSubline" xml:space="preserve"><value>humans qui ont payé</value></data>
-  <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve"><value>Bénévoles avec billet</value></data>
+  <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve"><value>Ticket holding humans</value></data>
   <data name="ShiftDash_Overview_EngagedSubline" xml:space="preserve"><value>{0} humans ne se sont pas inscrits</value><comment>{0} = count</comment></data>
   <data name="ShiftDash_Overview_NonTicketSignups" xml:space="preserve"><value>Inscriptions sans billet</value></data>
   <data name="ShiftDash_Overview_NonTicketSubline" xml:space="preserve"><value>inscrits sans billet (pour l'instant)</value></data>
@@ -1721,7 +1721,6 @@
   <data name="ShiftDash_Coordinators_Subtitle" xml:space="preserve"><value>équipes avec inscriptions en attente, connexion la plus ancienne d'abord</value></data>
   <data name="ShiftDash_Coordinators_Col_Team" xml:space="preserve"><value>Équipe</value></data>
   <data name="ShiftDash_Coordinators_Col_Coordinators" xml:space="preserve"><value>Coordinateurs</value></data>
-  <data name="ShiftDash_Coordinators_Col_OldestLogin" xml:space="preserve"><value>Connexion la plus ancienne</value></data>
   <data name="ShiftDash_Coordinators_Col_Pending" xml:space="preserve"><value>En attente</value></data>
   <data name="ShiftDash_Coordinators_NoCoordinators" xml:space="preserve"><value>pas de coordinateurs</value></data>
   <data name="ShiftDash_Coordinators_Never" xml:space="preserve"><value>jamais</value></data>
@@ -1739,5 +1738,9 @@
   <data name="ShiftDash_Trends_NewTicketSales" xml:space="preserve"><value>Nouvelles ventes de billets</value></data>
   <data name="ShiftDash_Trends_DAU" xml:space="preserve"><value>Connexions uniques (DAU)</value></data>
   <data name="ShiftDash_Trends_DAUNote" xml:space="preserve"><value>Seule la dernière connexion par human est stockée — les périodes anciennes sont sous-comptées.</value></data>
+  <data name="ShiftDash_Status_OnTrack" xml:space="preserve"><value>En bonne voie</value></data>
+  <data name="ShiftDash_Status_AtRisk" xml:space="preserve"><value>À risque</value></data>
+  <data name="ShiftDash_Status_BelowTarget" xml:space="preserve"><value>En dessous de l'objectif</value></data>
+  <data name="ShiftDash_Coordinators_StaleLabel" xml:space="preserve"><value>Inactif depuis plus de 7 jours</value></data>
 
 </root>

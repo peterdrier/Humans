@@ -1232,6 +1232,7 @@ public class ShiftManagementService : IShiftManagementService
                 foreach (var sub in r.Subgroups) Walk(sub);
             }
             Walk(row);
+            // No coordinators in subtree: return MinValue so this row sorts first (needs coordinator attention).
             return found ? oldest : Instant.MinValue;
         }
     }
@@ -1312,7 +1313,6 @@ public class ShiftManagementService : IShiftManagementService
 
         var signupsByDay = signupsInWindow.GroupBy(ToLocalDate).ToDictionary(g => g.Key, g => g.Count());
         var ticketsByDay = ticketsInWindow.GroupBy(ToLocalDate).ToDictionary(g => g.Key, g => g.Count());
-        var loginsByDay = loginsInWindow.Select(ToLocalDate).Distinct().ToHashSet();
         // DistinctLogins as daily count = each user counted at most once on their LastLoginAt day; that's what we have.
         var loginCountsByDay = loginsInWindow
             .GroupBy(i => ToLocalDate(i))

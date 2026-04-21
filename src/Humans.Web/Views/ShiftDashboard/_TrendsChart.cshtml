@@ -21,10 +21,10 @@
 
     string Label(TrendWindow w) => w switch
     {
-        TrendWindow.Last7Days => "7d",
-        TrendWindow.Last30Days => "30d",
-        TrendWindow.Last90Days => "90d",
-        TrendWindow.All => "All",
+        TrendWindow.Last7Days => Localizer["ShiftDash_Trends_Window_7d"].Value,
+        TrendWindow.Last30Days => Localizer["ShiftDash_Trends_Window_30d"].Value,
+        TrendWindow.Last90Days => Localizer["ShiftDash_Trends_Window_90d"].Value,
+        TrendWindow.All => Localizer["ShiftDash_Trends_Window_All"].Value,
         _ => w.ToString(),
     };
 
@@ -50,7 +50,7 @@
         </div>
     </div>
     <div class="card-body">
-        <canvas id="dashboardTrendsChart" height="90"></canvas>
+        <canvas id="dashboardTrendsChart" height="90" role="img" aria-label="@Localizer["ShiftDash_Trends_Title"]"></canvas>
     </div>
 </div>
 

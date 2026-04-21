@@ -1692,7 +1692,7 @@
   <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Besetzte Schichten</value></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Ticketinhaber</value></data>
   <data name="ShiftDash_Overview_TicketHoldersSubline" xml:space="preserve"><value>humans, die bezahlt haben</value></data>
-  <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve"><value>Freiwillige mit Ticket</value></data>
+  <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve"><value>Ticket holding humans</value></data>
   <data name="ShiftDash_Overview_EngagedSubline" xml:space="preserve"><value>{0} humans haben sich noch nicht eingetragen</value><comment>{0} = count</comment></data>
   <data name="ShiftDash_Overview_NonTicketSignups" xml:space="preserve"><value>Eintragungen ohne Ticket</value></data>
   <data name="ShiftDash_Overview_NonTicketSubline" xml:space="preserve"><value>eingetragen, noch ohne Ticket</value></data>
@@ -1721,7 +1721,6 @@
   <data name="ShiftDash_Coordinators_Subtitle" xml:space="preserve"><value>Teams mit offenen Eintragungen, ältester Login zuerst</value></data>
   <data name="ShiftDash_Coordinators_Col_Team" xml:space="preserve"><value>Team</value></data>
   <data name="ShiftDash_Coordinators_Col_Coordinators" xml:space="preserve"><value>Koordinatoren</value></data>
-  <data name="ShiftDash_Coordinators_Col_OldestLogin" xml:space="preserve"><value>Ältester Login</value></data>
   <data name="ShiftDash_Coordinators_Col_Pending" xml:space="preserve"><value>Offen</value></data>
   <data name="ShiftDash_Coordinators_NoCoordinators" xml:space="preserve"><value>keine Koordinatoren</value></data>
   <data name="ShiftDash_Coordinators_Never" xml:space="preserve"><value>nie</value></data>
@@ -1739,5 +1738,9 @@
   <data name="ShiftDash_Trends_NewTicketSales" xml:space="preserve"><value>Neue Ticketverkäufe</value></data>
   <data name="ShiftDash_Trends_DAU" xml:space="preserve"><value>Einzigartige Logins (DAU)</value></data>
   <data name="ShiftDash_Trends_DAUNote" xml:space="preserve"><value>Nur der letzte Login pro human wird gespeichert — ältere Zeiträume sind untererfasst.</value></data>
+  <data name="ShiftDash_Status_OnTrack" xml:space="preserve"><value>Im Plan</value></data>
+  <data name="ShiftDash_Status_AtRisk" xml:space="preserve"><value>Gefährdet</value></data>
+  <data name="ShiftDash_Status_BelowTarget" xml:space="preserve"><value>Unter Ziel</value></data>
+  <data name="ShiftDash_Coordinators_StaleLabel" xml:space="preserve"><value>Über 7 Tage inaktiv</value></data>
 
 </root>
