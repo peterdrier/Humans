@@ -536,7 +536,7 @@
   <data name="Teams_System" xml:space="preserve"><value>Sistema</value></data>
 
   <!-- Vol/Teams landing: Browse Shifts CTA (#534) -->
-  <data name="VolTeams_BrowseShiftsBanner" xml:space="preserve"><value>&#xBF;Buscas turnos? M&#xED;ralos todos aqu&#xED;, o elige un equipo debajo para ver sus rotaciones.</value></data>
+  <data name="VolTeams_BrowseShiftsBanner" xml:space="preserve"><value>&#xBF;Buscas turnos? M&#xED;ralos todos aqu&#xED;, o elige un equipo abajo.</value></data>
   <data name="VolTeams_BrowseShiftsButton" xml:space="preserve"><value>Ver turnos</value></data>
 
   <!-- Team Detail View -->

@@ -532,7 +532,7 @@
   <data name="Teams_System" xml:space="preserve"><value>System</value></data>
 
   <!-- Vol/Teams landing: Browse Shifts CTA (#534) -->
-  <data name="VolTeams_BrowseShiftsBanner" xml:space="preserve"><value>Suchst du Schichten? Sieh sie alle hier, oder w&#xE4;hle unten ein Team, um seine Rotas zu sehen.</value></data>
+  <data name="VolTeams_BrowseShiftsBanner" xml:space="preserve"><value>Suchst du Schichten? Sieh dir hier alle an, oder w&#xE4;hle unten ein Team.</value></data>
   <data name="VolTeams_BrowseShiftsButton" xml:space="preserve"><value>Schichten ansehen</value></data>
 
   <!-- Team Detail View -->
