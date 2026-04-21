@@ -1317,6 +1317,14 @@
   <data name="Feedback_Submitted" xml:space="preserve"><value>Thank you! Your feedback has been submitted.</value></data>
   <data name="Feedback_Error" xml:space="preserve"><value>Something went wrong submitting your feedback. Please try again.</value></data>
 
+  <!-- Agent Widget -->
+  <data name="Agent_WidgetButton" xml:space="preserve"><value>Open Agent</value></data>
+  <data name="Agent_PanelTitle" xml:space="preserve"><value>Agent</value></data>
+  <data name="Agent_ConsentPrompt" xml:space="preserve"><value>To use the Agent, please review and accept the Agent Chat Terms.</value></data>
+  <data name="Agent_ConsentReviewButton" xml:space="preserve"><value>Review Terms</value></data>
+  <data name="Agent_InputPlaceholder" xml:space="preserve"><value>Ask something...</value></data>
+  <data name="Agent_Send" xml:space="preserve"><value>Send</value></data>
+
   <!-- Magic Link Auth -->
   <data name="Email_MagicLinkLogin_Subject" xml:space="preserve"><value>Your login link for Nobodies</value></data>
   <data name="Email_MagicLinkLogin_Body" xml:space="preserve"><value>&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;Click the link below to sign in:&lt;/p&gt;&lt;p&gt;&lt;a href="{1}"&gt;Sign in to Nobodies&lt;/a&gt;&lt;/p&gt;&lt;p&gt;This link expires in 15 minutes and can only be used once.&lt;/p&gt;&lt;p&gt;If you didn't request this, you can ignore this email.&lt;/p&gt;</value><comment>{0}=display name, {1}=magic link URL</comment></data>
