@@ -3,6 +3,7 @@ using System;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NodaTime;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -12,13 +13,15 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    partial class HumansDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260421150429_AddAgentSection")]
+    partial class AddAgentSection
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.7")
+                .HasAnnotation("ProductVersion", "10.0.6")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -710,127 +713,6 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("budget_years", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.CalendarEvent", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("CreatedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<Instant?>("EndUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsAllDay")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Location")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("LocationUrl")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<Guid>("OwningTeamId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("RecurrenceRule")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("RecurrenceTimezone")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<Instant?>("RecurrenceUntilUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Instant>("StartUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<Instant>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OwningTeamId", "StartUtc");
-
-                    b.HasIndex("StartUtc", "RecurrenceUntilUtc");
-
-                    b.ToTable("calendar_events", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.CalendarEventException", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("CreatedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("EventId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("IsCancelled")
-                        .HasColumnType("boolean");
-
-                    b.Property<Instant>("OriginalOccurrenceStartUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("OverrideDescription")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<Instant?>("OverrideEndUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("OverrideLocation")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("OverrideLocationUrl")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<Instant?>("OverrideStartUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("OverrideTitle")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<Instant>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EventId", "OriginalOccurrenceStartUtc")
-                        .IsUnique();
-
-                    b.ToTable("calendar_event_exceptions", (string)null);
-                });
-
             modelBuilder.Entity("Humans.Domain.Entities.Camp", b =>
                 {
                     b.Property<Guid>("Id")
@@ -989,50 +871,6 @@ namespace Humans.Infrastructure.Migrations
                         .HasFilter("\"LeftAt\" IS NULL");
 
                     b.ToTable("camp_leads", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.CampMember", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CampSeasonId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant?>("ConfirmedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("ConfirmedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant?>("RemovedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("RemovedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("RequestedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("CampSeasonId", "UserId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_camp_members_active_unique")
-                        .HasFilter("\"Status\" <> 'Removed'");
-
-                    b.ToTable("camp_members", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.CampPolygon", b =>
@@ -4080,28 +3918,6 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("ResponsibleTeam");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.CalendarEvent", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.Team", "OwningTeam")
-                        .WithMany()
-                        .HasForeignKey("OwningTeamId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("OwningTeam");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.CalendarEventException", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.CalendarEvent", "Event")
-                        .WithMany("Exceptions")
-                        .HasForeignKey("EventId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Event");
-                });
-
             modelBuilder.Entity("Humans.Domain.Entities.Camp", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.User", "CreatedByUser")
@@ -4143,24 +3959,15 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Humans.Domain.Entities.User", null)
+                    b.HasOne("Humans.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Camp");
-                });
 
-            modelBuilder.Entity("Humans.Domain.Entities.CampMember", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.CampSeason", "CampSeason")
-                        .WithMany()
-                        .HasForeignKey("CampSeasonId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("CampSeason");
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.CampPolygon", b =>
@@ -4330,7 +4137,7 @@ namespace Humans.Infrastructure.Migrations
                         .HasForeignKey("ShiftSignupId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Humans.Domain.Entities.User", null)
+                    b.HasOne("Humans.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -4338,6 +4145,8 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("CampaignGrant");
 
                     b.Navigation("ShiftSignup");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.EventParticipation", b =>
@@ -4416,13 +4225,15 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Humans.Domain.Entities.User", null)
+                    b.HasOne("Humans.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("EventSettings");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.GoogleResource", b =>
@@ -4899,11 +4710,6 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("AuditLogs");
 
                     b.Navigation("Groups");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.CalendarEvent", b =>
-                {
-                    b.Navigation("Exceptions");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Camp", b =>
