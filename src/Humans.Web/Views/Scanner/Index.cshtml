@@ -1,0 +1,29 @@
+@{
+    ViewData["Title"] = Localizer["Scanner_Index_Title"].Value;
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Scanner_Section"]</li>
+    </ol>
+</nav>
+
+<h1>@Localizer["Scanner_Section"]</h1>
+<p class="text-muted">@Localizer["Scanner_Index_Intro"]</p>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fa-solid fa-barcode me-2"></i>
+                    @Localizer["Scanner_Barcode_Title"]
+                </h5>
+                <p class="card-text text-muted">@Localizer["Scanner_Barcode_CardBlurb"]</p>
+                <a class="btn btn-primary" asp-action="Barcode">
+                    @Localizer["Scanner_Barcode_Open"]
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

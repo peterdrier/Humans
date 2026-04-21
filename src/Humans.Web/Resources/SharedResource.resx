@@ -1235,6 +1235,30 @@
   <data name="Nav_Review" xml:space="preserve"><value>Review</value></data>
   <data name="Nav_Voting" xml:space="preserve"><value>Voting</value></data>
   <data name="Nav_Board" xml:space="preserve"><value>Board</value></data>
+  <data name="Nav_Scanner" xml:space="preserve"><value>Scanner</value></data>
+
+  <!-- Scanner section (issue #525) -->
+  <data name="Scanner_Section" xml:space="preserve"><value>Scanner</value></data>
+  <data name="Scanner_Index_Title" xml:space="preserve"><value>Scanner tools</value></data>
+  <data name="Scanner_Index_Intro" xml:space="preserve"><value>In-browser scanner tools. No data is sent to the server — everything runs on your device.</value></data>
+  <data name="Scanner_Barcode_Title" xml:space="preserve"><value>Barcode scanner</value></data>
+  <data name="Scanner_Barcode_Open" xml:space="preserve"><value>Open barcode scanner</value></data>
+  <data name="Scanner_Barcode_CardBlurb" xml:space="preserve"><value>Decode QR codes and CODE128 barcodes using the device camera.</value></data>
+  <data name="Scanner_Barcode_NotForCheckIn" xml:space="preserve"><value>This is a test tool — it is not used for check-in. Scanning a ticket here does not mark anyone as arrived.</value></data>
+  <data name="Scanner_Barcode_Intro" xml:space="preserve"><value>Tap Scan to open the camera, point it at a barcode, and the decoded value will appear below. Nothing is saved.</value></data>
+  <data name="Scanner_Barcode_Scan" xml:space="preserve"><value>Scan</value></data>
+  <data name="Scanner_Barcode_Stop" xml:space="preserve"><value>Stop</value></data>
+  <data name="Scanner_Barcode_VideoAria" xml:space="preserve"><value>Live camera preview</value></data>
+  <data name="Scanner_Barcode_DecodedTitle" xml:space="preserve"><value>Decoded barcodes</value></data>
+  <data name="Scanner_Barcode_DecodedHelp" xml:space="preserve"><value>Most recent on top. This list is kept in your browser only and cleared when you leave the page.</value></data>
+  <data name="Scanner_Barcode_NoResultsYet" xml:space="preserve"><value>No barcodes decoded yet.</value></data>
+  <data name="Scanner_Barcode_Status_Starting" xml:space="preserve"><value>Starting camera…</value></data>
+  <data name="Scanner_Barcode_Status_Running" xml:space="preserve"><value>Scanning</value></data>
+  <data name="Scanner_Barcode_Status_Stopped" xml:space="preserve"><value>Stopped</value></data>
+  <data name="Scanner_Barcode_Path_Native" xml:space="preserve"><value>native detector</value></data>
+  <data name="Scanner_Barcode_Path_ZXing" xml:space="preserve"><value>ZXing fallback</value></data>
+  <data name="Scanner_Barcode_Error_Camera" xml:space="preserve"><value>Couldn't access the camera. Make sure you've granted permission and that this page is served over HTTPS.</value></data>
+  <data name="Scanner_Barcode_Error_NoDecoder" xml:space="preserve"><value>Your browser doesn't have a built-in barcode decoder and the fallback library failed to load. Try a recent mobile Chrome or Safari.</value></data>
 
   <!-- Team admin: add member -->
   <data name="TeamAdmin_AddMember" xml:space="preserve"><value>Add Member</value></data>

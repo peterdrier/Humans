@@ -1,0 +1,88 @@
+@{
+    ViewData["Title"] = Localizer["Scanner_Barcode_Title"].Value;
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Scanner_Section"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Scanner_Barcode_Title"]</li>
+    </ol>
+</nav>
+
+<h1>@Localizer["Scanner_Barcode_Title"]</h1>
+
+<div class="alert alert-warning d-flex align-items-center" role="alert">
+    <i class="fa-solid fa-triangle-exclamation me-2" aria-hidden="true"></i>
+    <div>@Localizer["Scanner_Barcode_NotForCheckIn"]</div>
+</div>
+
+<p class="text-muted">@Localizer["Scanner_Barcode_Intro"]</p>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex gap-2 mb-3">
+                    <button type="button" class="btn btn-primary" id="scanner-start">
+                        <i class="fa-solid fa-play me-1" aria-hidden="true"></i>
+                        @Localizer["Scanner_Barcode_Scan"]
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" id="scanner-stop" disabled>
+                        <i class="fa-solid fa-stop me-1" aria-hidden="true"></i>
+                        @Localizer["Scanner_Barcode_Stop"]
+                    </button>
+                </div>
+
+                <div id="scanner-status" class="small text-muted mb-2" aria-live="polite"></div>
+
+                <video id="scanner-video"
+                       class="w-100 rounded border bg-dark"
+                       style="aspect-ratio: 4 / 3; object-fit: cover;"
+                       playsinline
+                       muted
+                       aria-label="@Localizer["Scanner_Barcode_VideoAria"]"></video>
+
+                <div id="scanner-error" class="alert alert-danger mt-3 d-none" role="alert"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">@Localizer["Scanner_Barcode_DecodedTitle"]</h5>
+                <p class="small text-muted">@Localizer["Scanner_Barcode_DecodedHelp"]</p>
+                <ul id="scanner-results" class="list-group list-group-flush">
+                    <li id="scanner-results-empty" class="list-group-item text-muted small">
+                        @Localizer["Scanner_Barcode_NoResultsYet"]
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script nonce="@Context.Items["CspNonce"]" type="module">
+        import { initBarcodeScanner } from '@Url.Content("~/js/scanner/barcode.js")';
+
+        initBarcodeScanner({
+            startButton: document.getElementById('scanner-start'),
+            stopButton: document.getElementById('scanner-stop'),
+            video: document.getElementById('scanner-video'),
+            results: document.getElementById('scanner-results'),
+            resultsEmpty: document.getElementById('scanner-results-empty'),
+            status: document.getElementById('scanner-status'),
+            error: document.getElementById('scanner-error'),
+            labels: {
+                starting: '@Localizer["Scanner_Barcode_Status_Starting"]',
+                running: '@Localizer["Scanner_Barcode_Status_Running"]',
+                stopped: '@Localizer["Scanner_Barcode_Status_Stopped"]',
+                pathNative: '@Localizer["Scanner_Barcode_Path_Native"]',
+                pathZxing: '@Localizer["Scanner_Barcode_Path_ZXing"]',
+                errorCamera: '@Localizer["Scanner_Barcode_Error_Camera"]',
+                errorNoDecoder: '@Localizer["Scanner_Barcode_Error_NoDecoder"]'
+            }
+        });
+    </script>
+}

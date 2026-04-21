@@ -1207,6 +1207,30 @@
   <data name="Nav_Review" xml:space="preserve"><value>Revisión</value></data>
   <data name="Nav_Voting" xml:space="preserve"><value>Votación</value></data>
   <data name="Nav_Board" xml:space="preserve"><value>Board</value></data>
+  <data name="Nav_Scanner" xml:space="preserve"><value>Escáner</value></data>
+
+  <!-- Scanner section (issue #525) -->
+  <data name="Scanner_Section" xml:space="preserve"><value>Escáner</value></data>
+  <data name="Scanner_Index_Title" xml:space="preserve"><value>Herramientas de escáner</value></data>
+  <data name="Scanner_Index_Intro" xml:space="preserve"><value>Herramientas de escáner en el navegador. No se envían datos al servidor — todo se ejecuta en tu dispositivo.</value></data>
+  <data name="Scanner_Barcode_Title" xml:space="preserve"><value>Escáner de códigos de barras</value></data>
+  <data name="Scanner_Barcode_Open" xml:space="preserve"><value>Abrir escáner</value></data>
+  <data name="Scanner_Barcode_CardBlurb" xml:space="preserve"><value>Decodifica códigos QR y CODE128 usando la cámara del dispositivo.</value></data>
+  <data name="Scanner_Barcode_NotForCheckIn" xml:space="preserve"><value>Esta es una herramienta de prueba — no se usa para el check-in. Escanear una entrada aquí no marca a nadie como entrada.</value></data>
+  <data name="Scanner_Barcode_Intro" xml:space="preserve"><value>Pulsa Escanear para abrir la cámara, apúntala al código, y el valor decodificado aparecerá debajo. Nada se guarda.</value></data>
+  <data name="Scanner_Barcode_Scan" xml:space="preserve"><value>Escanear</value></data>
+  <data name="Scanner_Barcode_Stop" xml:space="preserve"><value>Detener</value></data>
+  <data name="Scanner_Barcode_VideoAria" xml:space="preserve"><value>Vista previa en vivo de la cámara</value></data>
+  <data name="Scanner_Barcode_DecodedTitle" xml:space="preserve"><value>Códigos decodificados</value></data>
+  <data name="Scanner_Barcode_DecodedHelp" xml:space="preserve"><value>El más reciente arriba. Esta lista se mantiene solo en tu navegador y se borra al salir de la página.</value></data>
+  <data name="Scanner_Barcode_NoResultsYet" xml:space="preserve"><value>Aún no se ha decodificado ningún código.</value></data>
+  <data name="Scanner_Barcode_Status_Starting" xml:space="preserve"><value>Iniciando cámara…</value></data>
+  <data name="Scanner_Barcode_Status_Running" xml:space="preserve"><value>Escaneando</value></data>
+  <data name="Scanner_Barcode_Status_Stopped" xml:space="preserve"><value>Detenido</value></data>
+  <data name="Scanner_Barcode_Path_Native" xml:space="preserve"><value>detector nativo</value></data>
+  <data name="Scanner_Barcode_Path_ZXing" xml:space="preserve"><value>fallback ZXing</value></data>
+  <data name="Scanner_Barcode_Error_Camera" xml:space="preserve"><value>No se pudo acceder a la cámara. Asegúrate de haber otorgado permiso y de que la página se sirva por HTTPS.</value></data>
+  <data name="Scanner_Barcode_Error_NoDecoder" xml:space="preserve"><value>Tu navegador no tiene decodificador integrado y la librería de fallback no se cargó. Prueba con Chrome o Safari móvil recientes.</value></data>
 
   <!-- Team admin: add member -->
   <data name="TeamAdmin_AddMember" xml:space="preserve"><value>Agregar miembro</value></data>
