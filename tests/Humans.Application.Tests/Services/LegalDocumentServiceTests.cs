@@ -32,16 +32,21 @@ public class LegalDocumentServiceTests : IDisposable
     }
 
     [HumansFact]
-    public void GetAvailableDocuments_ReturnsStatutes()
+    public void GetAvailableDocuments_ReturnsRegisteredDefinitions()
     {
         var documents = _service.GetAvailableDocuments();
 
-        documents.Should().HaveCount(1);
-        var statutes = documents[0];
-        statutes.Slug.Should().Be("statutes");
+        documents.Should().HaveCount(2);
+
+        var statutes = documents.Single(d => string.Equals(d.Slug, "statutes", StringComparison.Ordinal));
         statutes.DisplayName.Should().Be("Statutes");
         statutes.RepoFolder.Should().Be("Estatutos");
         statutes.FilePrefix.Should().Be("ESTATUTOS");
+
+        var agentChat = documents.Single(d => string.Equals(d.Slug, "agent-chat", StringComparison.Ordinal));
+        agentChat.DisplayName.Should().Be("Agent Chat Terms");
+        agentChat.RepoFolder.Should().Be("AgentChat");
+        agentChat.FilePrefix.Should().Be("AGENTCHAT");
     }
 
     [HumansFact]
