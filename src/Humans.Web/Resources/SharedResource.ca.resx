@@ -167,6 +167,33 @@
   <data name="Dashboard_RejectedMessage" xml:space="preserve"><value>El teu registre ha estat revisat i no va ser aprovat. Si tens preguntes, contacta amb l'equip d'administració.</value></data>
   <data name="Dashboard_RejectionReason" xml:space="preserve"><value>Motiu</value></data>
 
+  <data name="Dashboard_Subtitle" xml:space="preserve"><value>Això és el que passa.</value></data>
+  <data name="Dashboard_AgreementSingular" xml:space="preserve"><value>acord per revisar</value></data>
+  <data name="Dashboard_AgreementPlural" xml:space="preserve"><value>acords per revisar</value></data>
+  <data name="Dashboard_GetInvolved" xml:space="preserve"><value>Participa</value></data>
+  <data name="Dashboard_GetInvolvedSubtitle" xml:space="preserve"><value>Això no es munta sol.</value></data>
+  <data name="Dashboard_ShiftsDescription" xml:space="preserve"><value>Mira què cal fer i apunta't.</value></data>
+  <data name="Dashboard_TeamsDescription" xml:space="preserve"><value>Troba la teva gent. O fes-te la gent d'algú.</value></data>
+  <data name="Dashboard_CampsDescription" xml:space="preserve"><value>Els barris que fan que Elsewhere sembli casa.</value></data>
+  <data name="Dashboard_YourStuff" xml:space="preserve"><value>Les teves coses</value></data>
+  <data name="Dashboard_YourStuffSubtitle" xml:space="preserve"><value>Perfil, acords, i el que és només teu.</value></data>
+  <data name="Dashboard_ProfileCardDescription" xml:space="preserve"><value>Actualitza la teva info, foto, i tot això.</value></data>
+  <data name="Dashboard_ConsentsCardDescription" xml:space="preserve"><value>El paperassa de ser human.</value></data>
+  <data name="Dashboard_PrivacyCard" xml:space="preserve"><value>Privacitat</value></data>
+  <data name="Dashboard_PrivacyCardDescription" xml:space="preserve"><value>Controla el que els altres poden veure de tu.</value></data>
+  <data name="Dashboard_GovernanceCardDescription" xml:space="preserve"><value>Assemblees, eleccions, i el seriós.</value></data>
+  <data name="Dashboard_TicketNotConfigured" xml:space="preserve"><value>La info d'entrades encara no està disponible. Paciència.</value></data>
+  <data name="Dashboard_TicketConfirmed" xml:space="preserve"><value>Hi ets. Entrada llesta.</value></data>
+  <data name="Dashboard_TicketCount" xml:space="preserve"><value>Tens {0} entrades</value><comment>{0} = ticket count</comment></data>
+  <data name="Dashboard_NotAttending" xml:space="preserve"><value>No véns aquest any.</value></data>
+  <data name="Dashboard_NotAttendingHint" xml:space="preserve"><value>Has canviat d'opinió? Sense judici.</value></data>
+  <data name="Dashboard_UndoNotAttending" xml:space="preserve"><value>Bé, potser sí que hi vaig</value></data>
+  <data name="Dashboard_TicketMissing" xml:space="preserve"><value>Encara sense entrada</value></data>
+  <data name="Dashboard_TicketMissingHint" xml:space="preserve"><value>No en veiem cap vinculada al teu compte.</value></data>
+  <data name="Dashboard_BuyTicket" xml:space="preserve"><value>Aconsegueix la teva entrada</value></data>
+  <data name="Dashboard_DifferentEmail" xml:space="preserve"><value>Has comprat amb un altre email?</value></data>
+  <data name="Dashboard_DeclareNotAttending" xml:space="preserve"><value>No hi vaig aquest any</value></data>
+
   <!-- Guest Dashboard -->
   <data name="Guest_Greeting" xml:space="preserve"><value>Hola, {0}.</value></data>
   <data name="Guest_Subtitle" xml:space="preserve"><value>Benvingut/da a Humans &#x2014; on Nobodies Collective gestiona tot per a Elsewhere.</value></data>
