@@ -47,6 +47,7 @@
   <data name="Common_Submit" xml:space="preserve"><value>Envia</value></data>
   <data name="Common_NotProvided" xml:space="preserve"><value>No proporcionat</value></data>
   <data name="Common_Error" xml:space="preserve"><value>Alguna cosa ha anat malament. Si us plau, torna-ho a provar més tard.</value></data>
+  <data name="Common_Unknown" xml:space="preserve"><value>Desconegut</value></data>
 
   <!-- ======================== -->
   <!-- Navigation (_Layout)     -->
@@ -172,6 +173,8 @@
   <data name="Dashboard_Subtitle" xml:space="preserve"><value>Això és el que passa.</value></data>
   <data name="Dashboard_AgreementSingular" xml:space="preserve"><value>acord per revisar</value></data>
   <data name="Dashboard_AgreementPlural" xml:space="preserve"><value>acords per revisar</value></data>
+  <data name="Dashboard_SlotsSingular" xml:space="preserve"><value>plaça</value></data>
+  <data name="Dashboard_SlotsPlural" xml:space="preserve"><value>places</value></data>
   <data name="Dashboard_GetInvolved" xml:space="preserve"><value>Participa</value></data>
   <data name="Dashboard_GetInvolvedSubtitle" xml:space="preserve"><value>Això no es munta sol.</value></data>
   <data name="Dashboard_ShiftsDescription" xml:space="preserve"><value>Mira què cal fer i apunta't.</value></data>

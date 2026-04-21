@@ -47,6 +47,7 @@
   <data name="Common_Submit" xml:space="preserve"><value>Submit</value></data>
   <data name="Common_NotProvided" xml:space="preserve"><value>Not provided</value></data>
   <data name="Common_Error" xml:space="preserve"><value>Something went wrong. Please try again later.</value></data>
+  <data name="Common_Unknown" xml:space="preserve"><value>Unknown</value></data>
 
   <!-- ======================== -->
   <!-- Navigation (_Layout)     -->
@@ -171,6 +172,8 @@
   <data name="Dashboard_Subtitle" xml:space="preserve"><value>Here's what's happening.</value></data>
   <data name="Dashboard_AgreementSingular" xml:space="preserve"><value>agreement to review</value></data>
   <data name="Dashboard_AgreementPlural" xml:space="preserve"><value>agreements to review</value></data>
+  <data name="Dashboard_SlotsSingular" xml:space="preserve"><value>slot</value></data>
+  <data name="Dashboard_SlotsPlural" xml:space="preserve"><value>slots</value></data>
   <data name="Dashboard_GetInvolved" xml:space="preserve"><value>Get involved</value></data>
   <data name="Dashboard_GetInvolvedSubtitle" xml:space="preserve"><value>This thing doesn't build itself.</value></data>
   <data name="Dashboard_ShiftsDescription" xml:space="preserve"><value>See what needs doing and sign up.</value></data>

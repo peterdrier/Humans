@@ -251,10 +251,10 @@
                             {
                                 <li class="d-flex justify-content-between align-items-center py-1">
                                     <span>
-                                        <strong>@(item?.Shift?.Rota?.Name ?? "Unknown")</strong>
+                                        <strong>@(item?.Shift?.Rota?.Name ?? Localizer["Common_Unknown"].Value)</strong>
                                         <small class="text-muted ms-1">@(item?.DepartmentName ?? "")</small>
                                     </span>
-                                    <span class="badge bg-danger">@(item?.RemainingSlots ?? 0) slots</span>
+                                    <span class="badge bg-danger">@(item?.RemainingSlots ?? 0) @((item?.RemainingSlots ?? 0) == 1 ? Localizer["Dashboard_SlotsSingular"].Value : Localizer["Dashboard_SlotsPlural"].Value)</span>
                                 </li>
                             }
                         </ul>
@@ -309,10 +309,10 @@ else if (Model.IsShiftBrowsingOpen && Model.IsVolunteerMember)
                                 {
                                     <li class="d-flex justify-content-between align-items-center py-1" style="color: var(--h-parchment-light);">
                                         <span>
-                                            <strong>@(item?.Shift?.Rota?.Name ?? "Unknown")</strong>
+                                            <strong>@(item?.Shift?.Rota?.Name ?? Localizer["Common_Unknown"].Value)</strong>
                                             <small class="ms-1" style="color: var(--h-parchment-dark);">@(item?.DepartmentName ?? "")</small>
                                         </span>
-                                        <span class="badge bg-danger">@(item?.RemainingSlots ?? 0) slots</span>
+                                        <span class="badge bg-danger">@(item?.RemainingSlots ?? 0) @((item?.RemainingSlots ?? 0) == 1 ? Localizer["Dashboard_SlotsSingular"].Value : Localizer["Dashboard_SlotsPlural"].Value)</span>
                                     </li>
                                 }
                             </ul>

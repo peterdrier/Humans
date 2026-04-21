@@ -47,6 +47,7 @@
   <data name="Common_Submit" xml:space="preserve"><value>Envoyer</value></data>
   <data name="Common_NotProvided" xml:space="preserve"><value>Non renseign&#xE9;</value></data>
   <data name="Common_Error" xml:space="preserve"><value>Une erreur est survenue. Veuillez réessayer plus tard.</value></data>
+  <data name="Common_Unknown" xml:space="preserve"><value>Inconnu</value></data>
 
   <!-- ======================== -->
   <!-- Navigation (_Layout)     -->
@@ -172,6 +173,8 @@
   <data name="Dashboard_Subtitle" xml:space="preserve"><value>Voilà ce qui se passe.</value></data>
   <data name="Dashboard_AgreementSingular" xml:space="preserve"><value>accord à revoir</value></data>
   <data name="Dashboard_AgreementPlural" xml:space="preserve"><value>accords à revoir</value></data>
+  <data name="Dashboard_SlotsSingular" xml:space="preserve"><value>place</value></data>
+  <data name="Dashboard_SlotsPlural" xml:space="preserve"><value>places</value></data>
   <data name="Dashboard_GetInvolved" xml:space="preserve"><value>Participe</value></data>
   <data name="Dashboard_GetInvolvedSubtitle" xml:space="preserve"><value>Ça ne se construit pas tout seul.</value></data>
   <data name="Dashboard_ShiftsDescription" xml:space="preserve"><value>Regarde ce qu'il faut faire et inscris-toi.</value></data>
