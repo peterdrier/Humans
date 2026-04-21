@@ -656,6 +656,10 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         await _repository.UpdateAsync(application, ct);
     }
 
+    public Task<int> GetPendingVoteCountForBoardMemberAsync(
+        Guid boardMemberUserId, CancellationToken ct = default) =>
+        _repository.GetPendingVoteCountForBoardMemberAsync(boardMemberUserId, ct);
+
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         var applications = await _repository.GetByUserIdAsync(userId, ct);

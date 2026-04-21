@@ -18,6 +18,14 @@ public interface ITicketSyncService
     /// Clears LastSyncAt so all orders are re-fetched.
     /// </summary>
     Task ResetSyncStateForFullResyncAsync();
+
+    /// <summary>
+    /// Returns true when the singleton ticket sync state row has
+    /// <c>SyncStatus = Error</c>. Used by the notification meter to surface
+    /// ticket-sync failures to Admin without letting the Notifications
+    /// section read <c>ticket_sync_states</c> directly (design-rules §2c).
+    /// </summary>
+    Task<bool> IsInErrorStateAsync(CancellationToken ct = default);
 }
 
 /// <summary>Summary of a sync operation.</summary>

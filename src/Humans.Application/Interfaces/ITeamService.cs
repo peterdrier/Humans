@@ -658,4 +658,12 @@ public interface ITeamService
     /// and returns the count of ended memberships. Used during account deletion.
     /// </summary>
     Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the total number of pending team join requests across all teams.
+    /// Used by the notification meter to surface pending requests to Admin
+    /// without letting the Notifications section read <c>team_join_requests</c>
+    /// directly (design-rules §2c).
+    /// </summary>
+    Task<int> GetTotalPendingJoinRequestCountAsync(CancellationToken cancellationToken = default);
 }

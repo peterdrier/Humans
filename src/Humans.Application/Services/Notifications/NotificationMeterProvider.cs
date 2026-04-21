@@ -1,35 +1,68 @@
 using System.Security.Claims;
-using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Governance;
 using Humans.Domain.Constants;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Application.Services.Notifications;
 
 /// <summary>
-/// Provides live counter meters for admin/coordinator work queues.
-/// Counts are computed from DB and cached ~2 minutes. No DB storage or read state.
+/// Application-layer implementation of <see cref="INotificationMeterProvider"/>.
+/// Provides live counter meters for admin/coordinator work queues. Counts
+/// are computed by calling into each owning section service
+/// (<see cref="IProfileService"/>, <see cref="IUserService"/>,
+/// <see cref="IGoogleSyncService"/>, <see cref="ITeamService"/>,
+/// <see cref="ITicketSyncService"/>, <see cref="IApplicationDecisionService"/>)
+/// and cached for ~2 minutes. No direct DB access.
 /// </summary>
-public class NotificationMeterProvider : INotificationMeterProvider
+/// <remarks>
+/// <para>
+/// This service replaces the pre-§15 <c>NotificationMeterProvider</c> that
+/// read <c>profiles</c>, <c>users</c>, <c>google_sync_outbox_events</c>,
+/// <c>team_join_requests</c>, <c>ticket_sync_states</c>, and
+/// <c>applications</c> directly. Per design-rules §2c the Notifications
+/// section owns <c>notifications</c>/<c>notification_recipients</c> only —
+/// every other table is reached through its owning section's public
+/// service interface.
+/// </para>
+/// <para>
+/// The meter counts cache (<see cref="CacheKeys.NotificationMeters"/>) is a
+/// short-TTL request-acceleration cache appropriate for <see cref="IMemoryCache"/>
+/// per §15i. Writes elsewhere invalidate it via
+/// <see cref="INotificationMeterCacheInvalidator"/>.
+/// </para>
+/// </remarks>
+public sealed class NotificationMeterProvider : INotificationMeterProvider
 {
-    private readonly HumansDbContext _dbContext;
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(2);
+
+    private readonly IProfileService _profileService;
+    private readonly IUserService _userService;
+    private readonly IGoogleSyncService _googleSyncService;
+    private readonly ITeamService _teamService;
+    private readonly ITicketSyncService _ticketSyncService;
+    private readonly IApplicationDecisionService _applicationDecisionService;
     private readonly IMemoryCache _cache;
     private readonly ILogger<NotificationMeterProvider> _logger;
 
-    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(2);
-
-
     public NotificationMeterProvider(
-        HumansDbContext dbContext,
+        IProfileService profileService,
+        IUserService userService,
+        IGoogleSyncService googleSyncService,
+        ITeamService teamService,
+        ITicketSyncService ticketSyncService,
+        IApplicationDecisionService applicationDecisionService,
         IMemoryCache cache,
         ILogger<NotificationMeterProvider> logger)
     {
-        _dbContext = dbContext;
+        _profileService = profileService;
+        _userService = userService;
+        _googleSyncService = googleSyncService;
+        _teamService = teamService;
+        _ticketSyncService = ticketSyncService;
+        _applicationDecisionService = applicationDecisionService;
         _cache = cache;
         _logger = logger;
     }
@@ -167,46 +200,31 @@ public class NotificationMeterProvider : INotificationMeterProvider
         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = CacheDuration;
-
-            return await _dbContext.Applications
-                .CountAsync(a => a.Status == ApplicationStatus.Submitted
-                    && !a.BoardVotes.Any(v => v.BoardMemberUserId == boardMemberUserId),
-                    cancellationToken);
+            return await _applicationDecisionService
+                .GetPendingVoteCountForBoardMemberAsync(boardMemberUserId, cancellationToken);
         });
     }
 
     private async Task<MeterCounts> ComputeCountsAsync(CancellationToken cancellationToken)
     {
-        // Consent reviews pending (Pending or Flagged, not rejected)
-        var consentReviewsPending = await _dbContext.Profiles
-            .CountAsync(p => p.ConsentCheckStatus != null
-                && (p.ConsentCheckStatus == ConsentCheckStatus.Pending
-                    || p.ConsentCheckStatus == ConsentCheckStatus.Flagged)
-                && p.RejectedAt == null, cancellationToken);
+        var consentReviewsPending = await _profileService.GetConsentReviewPendingCountAsync(cancellationToken);
 
-        // Pending account deletions
-        var pendingDeletions = await _dbContext.Users
-            .CountAsync(u => u.DeletionRequestedAt != null, cancellationToken);
+        var pendingDeletions = await _userService.GetPendingDeletionCountAsync(cancellationToken);
 
-        // Failed Google sync events
-        var failedSyncEvents = await _dbContext.GoogleSyncOutboxEvents
-            .CountAsync(e => e.ProcessedAt == null && e.LastError != null, cancellationToken);
+        var failedSyncEvents = await _googleSyncService.GetFailedSyncEventCountAsync(cancellationToken);
 
-        // Onboarding profiles pending excludes consent-review items, matching the
-        // existing board digest "still onboarding" queue semantics.
-        var totalNotApproved = await _dbContext.Profiles
-            .CountAsync(p => !p.IsApproved && !p.IsSuspended, cancellationToken);
+        // Onboarding profiles pending excludes consent-review items, matching
+        // the board digest "still onboarding" queue semantics.
+        var totalNotApproved = await _profileService
+            .GetNotApprovedAndNotSuspendedCountAsync(cancellationToken);
         var onboardingPending = totalNotApproved - consentReviewsPending;
         if (onboardingPending < 0)
             onboardingPending = 0;
 
-        // Team join requests pending
-        var teamJoinRequestsPending = await _dbContext.TeamJoinRequests
-            .CountAsync(r => r.Status == TeamJoinRequestStatus.Pending, cancellationToken);
+        var teamJoinRequestsPending = await _teamService
+            .GetTotalPendingJoinRequestCountAsync(cancellationToken);
 
-        // Ticket sync error
-        var ticketSyncState = await _dbContext.TicketSyncStates.FindAsync([1], cancellationToken);
-        var ticketSyncError = ticketSyncState?.SyncStatus == TicketSyncStatus.Error;
+        var ticketSyncError = await _ticketSyncService.IsInErrorStateAsync(cancellationToken);
 
         return new MeterCounts
         {

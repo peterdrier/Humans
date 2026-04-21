@@ -204,6 +204,11 @@ public interface IUserRepository
     /// </remarks>
     Task<string?> PurgeAsync(Guid userId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns the count of users with a non-null <c>DeletionRequestedAt</c>.
+    /// </summary>
+    Task<int> GetPendingDeletionCountAsync(CancellationToken ct = default);
+
     // ==========================================================================
     // Reads — EventParticipation
     // ==========================================================================

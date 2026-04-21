@@ -165,4 +165,12 @@ public interface IGoogleSyncService
     /// RestrictInheritedAccess enabled. Returns the number of folders corrected.
     /// </summary>
     Task<int> EnforceInheritedAccessRestrictionsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the count of unprocessed Google sync outbox events that have a
+    /// non-null <c>LastError</c>. Used by the notification meter to surface
+    /// failed sync events to Admin without letting the Notifications section
+    /// read <c>google_sync_outbox_events</c> directly (design-rules §2c).
+    /// </summary>
+    Task<int> GetFailedSyncEventCountAsync(CancellationToken cancellationToken = default);
 }

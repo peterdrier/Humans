@@ -112,6 +112,9 @@ public sealed class UserService : IUserService, IUserDataContributor
         string email, Guid excludeUserId, CancellationToken ct = default) =>
         _repo.GetOtherUserIdHavingGoogleEmailAsync(email, excludeUserId, ct);
 
+    public Task<int> GetPendingDeletionCountAsync(CancellationToken ct = default) =>
+        _repo.GetPendingDeletionCountAsync(ct);
+
     // ==========================================================================
     // User writes
     // ==========================================================================

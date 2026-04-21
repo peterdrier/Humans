@@ -67,6 +67,22 @@ public interface IProfileService
     /// </summary>
     Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns the count of profiles whose <c>ConsentCheckStatus</c> is Pending
+    /// or Flagged and whose <c>RejectedAt</c> is null. Used by the notification
+    /// meter to surface pending consent reviews to Consent Coordinators
+    /// without letting the Notifications section read the <c>profiles</c> table
+    /// directly (design-rules §2c).
+    /// </summary>
+    Task<int> GetConsentReviewPendingCountAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the count of profiles that are neither approved nor suspended.
+    /// Used by the notification meter to compute the "onboarding profiles
+    /// pending" queue (total-not-approved minus consent reviews pending).
+    /// </summary>
+    Task<int> GetNotApprovedAndNotSuspendedCountAsync(CancellationToken ct = default);
+
     Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
         GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default);
 

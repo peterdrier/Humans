@@ -78,7 +78,8 @@ public interface IRoleAssignmentService
     /// Returns the user ids of every human with an active assignment for the
     /// given role. Read-only. Used by cross-section composers that need to
     /// enumerate Board members, Coordinators, etc. without touching the
-    /// <c>role_assignments</c> table directly.
+    /// <c>role_assignments</c> table directly — including notification
+    /// dispatch for role-targeted sends.
     /// </summary>
     Task<IReadOnlyList<Guid>> GetActiveUserIdsInRoleAsync(
         string roleName, CancellationToken ct = default);

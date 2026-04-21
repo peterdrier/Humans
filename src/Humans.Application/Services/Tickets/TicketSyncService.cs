@@ -428,6 +428,12 @@ public sealed class TicketSyncService : ITicketSyncService
     private static bool IsRevenueAttendee(TicketAttendee attendee) =>
         attendee.Status == TicketAttendeeStatus.Valid || attendee.Status == TicketAttendeeStatus.CheckedIn;
 
+    public async Task<bool> IsInErrorStateAsync(CancellationToken ct = default)
+    {
+        var syncState = await _ticketRepository.GetSyncStateAsync(ct);
+        return syncState?.SyncStatus == TicketSyncStatus.Error;
+    }
+
     /// <summary>
     /// Derive EventParticipation records from current ticket data.
     /// For each matched user: 1+ valid tickets → Ticketed, any checked-in → Attended.

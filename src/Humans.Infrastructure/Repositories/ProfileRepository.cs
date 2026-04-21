@@ -155,6 +155,24 @@ public sealed class ProfileRepository : IProfileRepository
             .ToListAsync(ct);
     }
 
+    public async Task<int> GetConsentReviewPendingCountAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Profiles
+            .CountAsync(p =>
+                p.ConsentCheckStatus != null &&
+                (p.ConsentCheckStatus == ConsentCheckStatus.Pending ||
+                 p.ConsentCheckStatus == ConsentCheckStatus.Flagged) &&
+                p.RejectedAt == null, ct);
+    }
+
+    public async Task<int> GetNotApprovedAndNotSuspendedCountAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Profiles
+            .CountAsync(p => !p.IsApproved && !p.IsSuspended, ct);
+    }
+
     public async Task<IReadOnlyList<ProfileLanguage>> GetLanguagesAsync(
         Guid profileId, CancellationToken ct = default)
     {

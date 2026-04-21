@@ -184,4 +184,12 @@ public interface IUserService
         string email,
         Guid excludeUserId,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the count of users with a non-null <c>DeletionRequestedAt</c>.
+    /// Used by the notification meter to surface pending account deletions
+    /// to Admin without letting the Notifications section read the users
+    /// table directly (design-rules §2c).
+    /// </summary>
+    Task<int> GetPendingDeletionCountAsync(CancellationToken ct = default);
 }

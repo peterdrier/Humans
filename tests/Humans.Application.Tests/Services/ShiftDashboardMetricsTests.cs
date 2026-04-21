@@ -700,6 +700,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<IReadOnlyList<Guid>> GetAllUserIdsAsync(CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<(string Language, int Count)>> GetLanguageDistributionForUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<(bool Purged, string? DisplayName)> PurgeAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<int> GetPendingDeletionCountAsync(CancellationToken ct = default) => throw new NotSupportedException();
     }
 
     private sealed class FakeTeamService : ITeamService
@@ -795,5 +796,6 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetActiveMemberUserIdsAsync(Guid teamId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> GetActiveNonSystemTeamNamesByUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<int> GetTotalPendingJoinRequestCountAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 }

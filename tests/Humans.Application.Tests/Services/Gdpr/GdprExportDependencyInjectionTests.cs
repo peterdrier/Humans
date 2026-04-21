@@ -20,6 +20,7 @@ using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentSer
 using ConsentService = Humans.Application.Services.Consent.ConsentService;
 using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
 using TicketsTicketQueryService = Humans.Application.Services.Tickets.TicketQueryService;
+using NotificationInboxService = Humans.Application.Services.Notifications.NotificationInboxService;
 
 namespace Humans.Application.Tests.Services.Gdpr;
 

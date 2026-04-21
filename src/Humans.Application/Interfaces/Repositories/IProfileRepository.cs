@@ -99,6 +99,17 @@ public interface IProfileRepository
     Task<IReadOnlyList<Guid>> GetApprovedUserIdsAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Returns the count of profiles whose <c>ConsentCheckStatus</c> is Pending
+    /// or Flagged and whose <c>RejectedAt</c> is null.
+    /// </summary>
+    Task<int> GetConsentReviewPendingCountAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the count of profiles that are neither approved nor suspended.
+    /// </summary>
+    Task<int> GetNotApprovedAndNotSuspendedCountAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the languages for a profile, ordered by proficiency descending
     /// then language code. Read-only.
     /// </summary>

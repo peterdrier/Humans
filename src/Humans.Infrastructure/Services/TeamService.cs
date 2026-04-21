@@ -2219,6 +2219,13 @@ public class TeamService : ITeamService, IUserDataContributor
         return result;
     }
 
+    public async Task<int> GetTotalPendingJoinRequestCountAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.TeamJoinRequests
+            .CountAsync(r => r.Status == TeamJoinRequestStatus.Pending, cancellationToken);
+    }
+
     public async Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
         IEnumerable<Guid> teamIds,
         CancellationToken cancellationToken = default)

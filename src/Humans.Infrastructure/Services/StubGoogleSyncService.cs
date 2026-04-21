@@ -171,4 +171,10 @@ public class StubGoogleSyncService : IGoogleSyncService
         _logger.LogInformation("[STUB] Would enforce inherited access restrictions on Drive folders");
         return Task.FromResult(0);
     }
+
+    public Task<int> GetFailedSyncEventCountAsync(CancellationToken cancellationToken = default)
+    {
+        // Stub: no outbox in non-production environments.
+        return Task.FromResult(0);
+    }
 }

@@ -404,6 +404,12 @@ public sealed class UserRepository : IUserRepository
         return displayName;
     }
 
+    public async Task<int> GetPendingDeletionCountAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Users.CountAsync(u => u.DeletionRequestedAt != null, ct);
+    }
+
     // ==========================================================================
     // Reads — EventParticipation
     // ==========================================================================

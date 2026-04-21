@@ -2538,6 +2538,12 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         return correctedCount;
     }
 
+    public async Task<int> GetFailedSyncEventCountAsync(CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.GoogleSyncOutboxEvents
+            .CountAsync(e => e.ProcessedAt == null && e.LastError != null, cancellationToken);
+    }
+
     /// <summary>
     /// Resolves extra emails against UserEmail records to get display names, user IDs, and profile pictures.
     /// Returns a lookup keyed by email (case-insensitive) with user identity info.
