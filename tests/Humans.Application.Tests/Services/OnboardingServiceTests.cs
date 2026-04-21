@@ -292,6 +292,21 @@ public class OnboardingServiceTests : IDisposable
         result.Should().BeTrue();
         var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
         profile.ConsentCheckStatus.Should().Be(ConsentCheckStatus.Pending);
+        await _fullProfileInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SetConsentCheckPendingIfEligibleAsync_MissingConsents_DoesNotInvalidate()
+    {
+        var userId = Guid.NewGuid();
+        await SeedProfileAsync(userId, isApproved: false, consentCheckStatus: null);
+        _membershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        var result = await _service.SetConsentCheckPendingIfEligibleAsync(userId);
+
+        result.Should().BeFalse();
+        await _fullProfileInvalidator.DidNotReceive().InvalidateAsync(userId, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -944,6 +959,32 @@ public class OnboardingServiceTests : IDisposable
 
         // Only the approved user is counted toward missing consents
         result.MissingConsents.Should().Be(1);
+    }
+
+    // --- Purge ---
+
+    [Fact]
+    public async Task PurgeHumanAsync_UserExists_InvalidatesFullProfile()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(userId);
+
+        var result = await _service.PurgeHumanAsync(userId);
+
+        result.Success.Should().BeTrue();
+        await _fullProfileInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task PurgeHumanAsync_UserMissing_DoesNotInvalidate()
+    {
+        var userId = Guid.NewGuid();
+
+        var result = await _service.PurgeHumanAsync(userId);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("NotFound");
+        await _fullProfileInvalidator.DidNotReceive().InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     // --- Helpers ---

@@ -611,6 +611,8 @@ public class OnboardingService : IOnboardingService
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
         _cache.InvalidateNotificationMeters();
+        // FullProfile projection includes consent-check state.
+        await _fullProfileInvalidator.InvalidateAsync(userId, ct);
         _logger.LogInformation("User {UserId} has all consents signed, consent check set to Pending", userId);
 
         // Dispatch in-app notification to Consent Coordinators
@@ -725,6 +727,12 @@ public class OnboardingService : IOnboardingService
 
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateActiveTeams();
+
+        // Refresh FullProfile dict entry so downstream consumers see the purged user.
+        // RefreshEntryAsync removes the entry when the user/profile no longer resolves;
+        // here the User row is renamed and locked (not deleted) so the entry is refreshed
+        // with the purged email/display name, which is the correct cached view.
+        await _fullProfileInvalidator.InvalidateAsync(userId, ct);
 
         _logger.LogWarning("Purged human {DisplayName} ({HumanId})", displayName, userId);
 

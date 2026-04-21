@@ -22,6 +22,7 @@ public sealed class UserEmailService : IUserEmailService
     private readonly IUserService _userService;
     private readonly UserManager<User> _userManager;
     private readonly IClock _clock;
+    private readonly IFullProfileInvalidator _fullProfileInvalidator;
 
     private const string EmailVerificationTokenPurpose = "UserEmailVerification";
 
@@ -30,13 +31,15 @@ public sealed class UserEmailService : IUserEmailService
         IAccountMergeService mergeService,
         IUserService userService,
         UserManager<User> userManager,
-        IClock clock)
+        IClock clock,
+        IFullProfileInvalidator fullProfileInvalidator)
     {
         _repository = repository;
         _mergeService = mergeService;
         _userService = userService;
         _userManager = userManager;
         _clock = clock;
+        _fullProfileInvalidator = fullProfileInvalidator;
     }
 
     public async Task<IReadOnlyList<UserEmailEditDto>> GetUserEmailsAsync(
@@ -216,6 +219,9 @@ public sealed class UserEmailService : IUserEmailService
         }
 
         await _repository.UpdateBatchAsync(emails.ToList(), cancellationToken);
+
+        // FullProfile.NotificationEmail derives from the row with IsNotificationTarget=true.
+        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
     }
 
     public async Task SetVisibilityAsync(
