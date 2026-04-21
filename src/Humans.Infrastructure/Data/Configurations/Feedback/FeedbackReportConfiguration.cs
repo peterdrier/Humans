@@ -1,4 +1,5 @@
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -44,6 +45,20 @@ public class FeedbackReportConfiguration : IEntityTypeConfiguration<FeedbackRepo
             .HasConversion<string>()
             .HasMaxLength(50)
             .IsRequired();
+
+        builder.Property(f => f.Source)
+            .HasConversion<string>()
+            .HasMaxLength(32)
+            .HasDefaultValue(FeedbackSource.UserReport)
+            .IsRequired();
+
+        builder.HasOne(f => f.AgentConversation)
+            .WithMany()
+            .HasForeignKey(f => f.AgentConversationId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasIndex(f => f.Source);
+        builder.HasIndex(f => f.AgentConversationId);
 
         builder.Property(f => f.CreatedAt).IsRequired();
         builder.Property(f => f.UpdatedAt).IsRequired();
