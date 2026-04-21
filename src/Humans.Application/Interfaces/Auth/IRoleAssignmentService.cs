@@ -99,4 +99,11 @@ public interface IRoleAssignmentService
     /// post-commit by <c>AccountMergeService.AcceptAsync</c> after a fold.
     /// </summary>
     void InvalidateNavBadgeCache();
+
+    /// <summary>
+    /// Returns all currently active role assignments for the user
+    /// (ValidFrom &lt;= now and ValidTo is null or in the future).
+    /// Used by the agent snapshot provider.
+    /// </summary>
+    Task<IReadOnlyList<RoleAssignment>> GetActiveForUserAsync(Guid userId, CancellationToken ct = default);
 }

@@ -288,6 +288,16 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
 
     public void InvalidateNavBadgeCache() => _navBadge.Invalidate();
 
+    public async Task<IReadOnlyList<RoleAssignment>> GetActiveForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        var now = _clock.GetCurrentInstant();
+        var all = await _repository.GetByUserIdAsync(userId, ct);
+        return all
+            .Where(ra => ra.ValidFrom <= now && (ra.ValidTo == null || ra.ValidTo > now))
+            .OrderBy(ra => ra.RoleName, StringComparer.Ordinal)
+            .ToList();
+    }
+
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         var assignments = await _repository.GetByUserIdAsync(userId, ct);

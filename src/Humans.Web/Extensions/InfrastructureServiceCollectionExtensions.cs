@@ -49,6 +49,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddGdprSection();
         services.AddAdminSection();
         services.AddGuideSection(configuration);
+        services.AddAgentSection();
 
         return services;
     }

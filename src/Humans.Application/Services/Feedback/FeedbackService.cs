@@ -450,6 +450,21 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         CancellationToken ct)
         => _repository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 
+    public async Task<IReadOnlyList<Guid>> GetOpenFeedbackIdsForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        var reports = await _repository.GetListAsync(
+            status: FeedbackStatus.Open,
+            category: null,
+            reporterUserId: userId,
+            assignedToUserId: null,
+            assignedToTeamId: null,
+            unassignedOnly: null,
+            limit: int.MaxValue,
+            ct: cancellationToken);
+        return reports.Select(r => r.Id).ToList();
+    }
+
     public async Task<FeedbackHandoffResult> SubmitFromAgentAsync(
         Guid userId, Guid conversationId, string summary, string topic,
         CancellationToken cancellationToken = default)
