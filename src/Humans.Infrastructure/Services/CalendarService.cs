@@ -58,8 +58,10 @@ public class CalendarService : ICalendarService
         {
             if (string.IsNullOrWhiteSpace(e.RecurrenceRule))
             {
+                // Half-open window [from, to): event overlaps when end > from AND start < to.
+                // Zero-duration events (start == end) are included if start is strictly inside.
                 var end = e.EndUtc ?? e.StartUtc;
-                if (end < from || e.StartUtc > to) continue;
+                if (end <= from || e.StartUtc >= to) continue;
                 results.Add(new CalendarOccurrence(
                     EventId: e.Id,
                     OccurrenceStartUtc: e.StartUtc,
@@ -132,6 +134,8 @@ public class CalendarService : ICalendarService
                 e.Exceptions.ToDictionary(x => x.OriginalOccurrenceStartUtc));
 
         var finalResults = new List<CalendarOccurrence>();
+        var handledExceptionKeys = new HashSet<(Guid EventId, Instant OriginalStart)>();
+
         foreach (var occ in results)
         {
             if (!occ.IsRecurring || occ.OriginalOccurrenceStartUtc is null)
@@ -147,12 +151,15 @@ public class CalendarService : ICalendarService
                 continue;
             }
 
+            handledExceptionKeys.Add((occ.EventId, ex.OriginalOccurrenceStartUtc));
+
             if (ex.IsCancelled) continue; // drop
 
             // Apply overrides; if the override moves the occurrence outside the window, drop it.
+            // Half-open [from, to): include when newStart < to AND (newEnd ?? newStart) > from.
             var newStart = ex.OverrideStartUtc ?? occ.OccurrenceStartUtc;
             var newEnd = ex.OverrideEndUtc ?? occ.OccurrenceEndUtc;
-            if (newStart > to || (newEnd ?? newStart) < from) continue;
+            if (newStart >= to || (newEnd ?? newStart) <= from) continue;
 
             finalResults.Add(occ with
             {
@@ -163,6 +170,40 @@ public class CalendarService : ICalendarService
                 Location = ex.OverrideLocation ?? occ.Location,
                 LocationUrl = ex.OverrideLocationUrl ?? occ.LocationUrl,
             });
+        }
+
+        // Inject overrides whose ORIGINAL occurrence was outside the window but whose
+        // override MOVED the occurrence into the window (the expansion pipeline never
+        // materialized them, so the override loop above didn't see them either).
+        foreach (var ev in events)
+        {
+            foreach (var ex in ev.Exceptions)
+            {
+                if (handledExceptionKeys.Contains((ev.Id, ex.OriginalOccurrenceStartUtc))) continue;
+                if (ex.IsCancelled) continue;
+                if (ex.OverrideStartUtc is null) continue; // no move → no in-window occurrence to inject
+
+                var newStart = ex.OverrideStartUtc.Value;
+                var eventDuration = (ev.EndUtc ?? ev.StartUtc) - ev.StartUtc;
+                var newEnd = ex.OverrideEndUtc
+                    ?? (ev.EndUtc is null ? (Instant?)null : newStart.Plus(eventDuration));
+
+                if (newStart >= to || (newEnd ?? newStart) <= from) continue;
+
+                finalResults.Add(new CalendarOccurrence(
+                    EventId: ev.Id,
+                    OccurrenceStartUtc: newStart,
+                    OccurrenceEndUtc: newEnd,
+                    IsAllDay: ev.IsAllDay,
+                    Title: ex.OverrideTitle ?? ev.Title,
+                    Description: ex.OverrideDescription ?? ev.Description,
+                    Location: ex.OverrideLocation ?? ev.Location,
+                    LocationUrl: ex.OverrideLocationUrl ?? ev.LocationUrl,
+                    OwningTeamId: ev.OwningTeamId,
+                    OwningTeamName: ev.OwningTeam.Name,
+                    IsRecurring: true,
+                    OriginalOccurrenceStartUtc: ex.OriginalOccurrenceStartUtc));
+            }
         }
 
         return finalResults.OrderBy(o => o.OccurrenceStartUtc).ToList();
@@ -234,19 +275,25 @@ public class CalendarService : ICalendarService
 
             if (string.Equals(key, "UNTIL", StringComparison.OrdinalIgnoreCase))
             {
+                // RFC 5545 allows UNTIL as either DATE-TIME (YYYYMMDDTHHMMSS[Z]) or DATE (YYYYMMDD).
+                var invariant = System.Globalization.CultureInfo.InvariantCulture;
+                var zone = DateTimeZoneProviders.Tzdb[tz];
+
                 if (val.EndsWith('Z'))
                 {
-                    var dt = DateTimeOffset.ParseExact(
-                        val, "yyyyMMdd'T'HHmmss'Z'", System.Globalization.CultureInfo.InvariantCulture);
+                    var dt = DateTimeOffset.ParseExact(val, "yyyyMMdd'T'HHmmss'Z'", invariant);
                     return Instant.FromDateTimeOffset(dt);
                 }
-                else
+                if (val.Contains('T'))
                 {
                     var local = NodaTime.Text.LocalDateTimePattern.CreateWithInvariantCulture("yyyyMMdd'T'HHmmss")
                         .Parse(val).Value;
-                    var zone = DateTimeZoneProviders.Tzdb[tz];
                     return local.InZoneStrictly(zone).ToInstant();
                 }
+                // DATE form — treat UNTIL as end-of-day in the rule's timezone.
+                var date = NodaTime.Text.LocalDatePattern.CreateWithInvariantCulture("yyyyMMdd")
+                    .Parse(val).Value;
+                return (date.PlusDays(1).AtMidnight()).InZoneStrictly(zone).ToInstant();
             }
             else if (string.Equals(key, "COUNT", StringComparison.OrdinalIgnoreCase))
             {

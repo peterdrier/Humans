@@ -244,6 +244,17 @@ public class CalendarController : HumansControllerBase
         var authz = await _authz.AuthorizeAsync(User, ev.OwningTeam, PolicyNames.CalendarEditor);
         if (!authz.Succeeded) return Forbid();
 
+        // If the editor is trying to move the event to a different team, they must also
+        // be authorised on the destination team — otherwise a coordinator of team A
+        // could tamper with the form to reassign the event into team B.
+        if (form.OwningTeamId != ev.OwningTeamId)
+        {
+            var destTeam = await _teams.GetTeamByIdAsync(form.OwningTeamId, ct);
+            if (destTeam is null) return NotFound();
+            var destAuthz = await _authz.AuthorizeAsync(User, destTeam, PolicyNames.CalendarEditor);
+            if (!destAuthz.Succeeded) return Forbid();
+        }
+
         if (!ModelState.IsValid)
         {
             form.TeamOptions = await GetEditableTeamsForCurrentUserAsync(ct);
