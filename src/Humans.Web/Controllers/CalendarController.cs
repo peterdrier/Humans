@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
+using Humans.Web.Authorization;
 using Humans.Web.Models.Calendar;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -15,17 +16,20 @@ public class CalendarController : HumansControllerBase
     private readonly ICalendarService _calendar;
     private readonly ITeamService _teams;
     private readonly IClock _clock;
+    private readonly IAuthorizationService _authz;
 
     public CalendarController(
         UserManager<User> userManager,
         ICalendarService calendar,
         ITeamService teams,
-        IClock clock)
+        IClock clock,
+        IAuthorizationService authz)
         : base(userManager)
     {
         _calendar = calendar;
         _teams = teams;
         _clock = clock;
+        _authz = authz;
     }
 
     [HttpGet("")]
@@ -105,6 +109,25 @@ public class CalendarController : HumansControllerBase
             FilterTeamId: teamId,
             TeamOptions: Array.Empty<TeamOption>(),
             ViewerTimezoneLabel: zone.Id));
+    }
+
+    [HttpGet("Event/{id:guid}")]
+    public async Task<IActionResult> Event(Guid id, CancellationToken ct)
+    {
+        var ev = await _calendar.GetEventByIdAsync(id, ct);
+        if (ev is null) return NotFound();
+
+        var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
+        var now = _clock.GetCurrentInstant();
+        var horizon = now.Plus(Duration.FromDays(180));
+        var upcoming = (await _calendar.GetOccurrencesInWindowAsync(now, horizon, ev.OwningTeamId, ct))
+            .Where(o => o.EventId == id)
+            .Take(5)
+            .ToList();
+
+        var canEdit = (await _authz.AuthorizeAsync(User, ev.OwningTeam, PolicyNames.CalendarEditor)).Succeeded;
+
+        return View(new CalendarEventViewModel(ev, upcoming, canEdit, zone.Id));
     }
 
     private Guid GetCurrentUserId()

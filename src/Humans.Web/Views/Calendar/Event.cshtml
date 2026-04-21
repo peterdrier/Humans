@@ -1,0 +1,121 @@
+@using NodaTime
+@model Humans.Web.Models.Calendar.CalendarEventViewModel
+@{
+    ViewData["Title"] = $"Event — {Model.Event.Title}";
+    var zone = DateTimeZoneProviders.Tzdb[Model.ViewerTimezoneLabel];
+    var firstLocal = Model.Event.StartUtc.InZone(zone).LocalDateTime;
+    var endLocal = Model.Event.EndUtc?.InZone(zone).LocalDateTime;
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+            <h1 class="h3 mb-0">@Model.Event.Title</h1>
+            <p class="text-muted mb-0">
+                <a asp-action="Team" asp-route-teamId="@Model.Event.OwningTeamId">@Model.Event.OwningTeam.Name</a>
+            </p>
+        </div>
+        @if (Model.CanEdit)
+        {
+            <div>
+                <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@Model.Event.Id">Edit</a>
+                <form asp-action="Delete" asp-route-id="@Model.Event.Id" method="post" class="d-inline"
+                      data-confirm="Delete this event and all its occurrences?">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                </form>
+            </div>
+        }
+    </div>
+
+    <dl class="row">
+        <dt class="col-sm-3">First start</dt>
+        <dd class="col-sm-9">
+            @firstLocal.ToString("dddd d MMM yyyy, HH:mm", System.Globalization.CultureInfo.CurrentCulture)
+            <small class="text-muted">(@Model.ViewerTimezoneLabel)</small>
+        </dd>
+
+        @if (endLocal is { } el)
+        {
+            <dt class="col-sm-3">End</dt>
+            <dd class="col-sm-9">@el.ToString("dddd d MMM yyyy, HH:mm", System.Globalization.CultureInfo.CurrentCulture)</dd>
+        }
+
+        @if (Model.Event.IsAllDay)
+        {
+            <dt class="col-sm-3">All-day</dt>
+            <dd class="col-sm-9">Yes</dd>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Model.Event.Location))
+        {
+            <dt class="col-sm-3">Location</dt>
+            <dd class="col-sm-9">
+                @if (!string.IsNullOrWhiteSpace(Model.Event.LocationUrl))
+                {
+                    <a href="@Model.Event.LocationUrl" target="_blank" rel="noopener">@Model.Event.Location</a>
+                }
+                else
+                {
+                    @Model.Event.Location
+                }
+            </dd>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Model.Event.Description))
+        {
+            <dt class="col-sm-3">Description</dt>
+            <dd class="col-sm-9">@Model.Event.Description</dd>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Model.Event.RecurrenceRule))
+        {
+            <dt class="col-sm-3">Recurrence</dt>
+            <dd class="col-sm-9">
+                <code>@Model.Event.RecurrenceRule</code>
+                <small class="text-muted d-block">Timezone: @Model.Event.RecurrenceTimezone</small>
+            </dd>
+        }
+    </dl>
+
+    @if (Model.UpcomingOccurrences.Count > 0)
+    {
+        <h2 class="h5 mt-4">Upcoming occurrences</h2>
+        <ul class="list-unstyled">
+            @foreach (var o in Model.UpcomingOccurrences)
+            {
+                var localStart = o.OccurrenceStartUtc.InZone(zone).LocalDateTime;
+                <li class="mb-1 d-flex align-items-center gap-2">
+                    <span>
+                        <strong>@localStart.ToString("d MMM (ddd) HH:mm", System.Globalization.CultureInfo.CurrentCulture)</strong>
+                        @if (!string.Equals(o.Title, Model.Event.Title, StringComparison.Ordinal))
+                        {
+                            <em class="text-muted">— @o.Title</em>
+                        }
+                    </span>
+                    @if (Model.CanEdit && o.IsRecurring && o.OriginalOccurrenceStartUtc is not null)
+                    {
+                        <a class="btn btn-sm btn-outline-secondary"
+                           asp-action="EditOccurrence"
+                           asp-route-id="@Model.Event.Id"
+                           asp-route-originalStartUtc="@o.OriginalOccurrenceStartUtc.Value.ToString()">
+                            Edit this occurrence
+                        </a>
+                        <form asp-action="CancelOccurrence"
+                              asp-route-id="@Model.Event.Id"
+                              asp-route-originalStartUtc="@o.OriginalOccurrenceStartUtc.Value.ToString()"
+                              method="post" class="d-inline"
+                              data-confirm="Cancel just this occurrence?">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-outline-warning">Cancel this</button>
+                        </form>
+                    }
+                </li>
+            }
+        </ul>
+    }
+
+    <p class="mt-3">
+        <a class="btn btn-link" asp-action="Index">Back to calendar</a>
+    </p>
+</div>
