@@ -975,6 +975,32 @@ public class TicketQueryService : ITicketQueryService, IUserDataContributor
         return new UserTicketExportData(orders, attendees);
     }
 
+    public async Task<IReadOnlyCollection<Guid>> GetMatchedUserIdsForPaidOrdersAsync(CancellationToken ct = default)
+    {
+        var ids = await _dbContext.TicketOrders
+            .AsNoTracking()
+            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && o.MatchedUserId != null)
+            .Select(o => o.MatchedUserId!.Value)
+            .Distinct()
+            .ToListAsync(ct);
+
+        return ids;
+    }
+
+    public async Task<IReadOnlyList<Instant>> GetPaidOrderDatesInWindowAsync(
+        Instant fromInclusive,
+        Instant toExclusive,
+        CancellationToken ct = default)
+    {
+        return await _dbContext.TicketOrders
+            .AsNoTracking()
+            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid
+                        && o.PurchasedAt >= fromInclusive
+                        && o.PurchasedAt < toExclusive)
+            .Select(o => o.PurchasedAt)
+            .ToListAsync(ct);
+    }
+
     private static bool HasSearchTerm([NotNullWhen(true)] string? value, int minLength = 2) =>
         !string.IsNullOrWhiteSpace(value) && value.Trim().Length >= minLength;
 

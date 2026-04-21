@@ -55,6 +55,32 @@
             return chartDanger;
         });
 
+        var pctLabelsPlugin = {
+            id: 'pctLabels',
+            afterDatasetsDraw: function(chart) {
+                var ctx = chart.ctx;
+                var confMeta = chart.getDatasetMeta(0);
+                var remMeta = chart.getDatasetMeta(1);
+                var confData = chart.data.datasets[0].data;
+                var remData = chart.data.datasets[1].data;
+                ctx.save();
+                ctx.font = '600 11px system-ui, -apple-system, sans-serif';
+                ctx.fillStyle = cv('--bs-body-color') || '#333';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                confMeta.data.forEach(function(_, i) {
+                    var conf = confData[i];
+                    var rem = remData[i];
+                    var total = conf + rem;
+                    if (total === 0) return;
+                    var pct = Math.round(100 * conf / total);
+                    var topBar = remMeta.data[i];
+                    ctx.fillText(pct + '%', topBar.x, topBar.y - 4);
+                });
+                ctx.restore();
+            }
+        };
+
         new Chart(document.getElementById('@chartKey'), {
             type: 'bar',
             data: {
@@ -67,15 +93,29 @@
             },
             options: {
                 responsive: true,
+                layout: { padding: { top: 20 } },
                 scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
+                interaction: { mode: 'index', intersect: false },
                 plugins: {
                     tooltip: {
                         callbacks: {
-                            afterTitle: function(items) { return data[items[0].dataIndex].period; }
+                            afterTitle: function(items) { return data[items[0].dataIndex].period; },
+                            footer: function(items) {
+                                var conf = 0, rem = 0;
+                                items.forEach(function(item) {
+                                    if (item.dataset.label === 'Confirmed') conf = item.parsed.y;
+                                    else if (item.dataset.label === 'Remaining') rem = item.parsed.y;
+                                });
+                                var total = conf + rem;
+                                if (total === 0) return '';
+                                var pct = Math.round(100 * conf / total);
+                                return 'Total: ' + total + ' (' + pct + '% confirmed)';
+                            }
                         }
                     }
                 }
-            }
+            },
+            plugins: [pctLabelsPlugin]
         });
     };
         </text>
@@ -91,7 +131,7 @@
             <div class="card mb-4">
                 <div class="card-header"><h6 class="mb-0">@group.Key Staffing</h6></div>
                 <div class="card-body">
-                    <canvas id="@chartKey" height="100"></canvas>
+                    <canvas id="@chartKey" height="100" role="img" aria-label="@(group.Key) Staffing"></canvas>
                 </div>
             </div>
         }

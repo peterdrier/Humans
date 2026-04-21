@@ -34,6 +34,8 @@
 - Rota period (Build, Event, Strike) determines the shift creation UX (all-day vs. time-slotted) and signup UX (date-range vs. individual).
 - Medical data in volunteer event profiles is restricted to Admin and NoInfoAdmin.
 - When shift browsing is closed, regular volunteers can only see shifts if they already have signups. Coordinators and privileged roles can always browse.
+- All dashboard methods on `IShiftManagementService` (`GetDashboardOverviewAsync`, `GetCoordinatorActivityAsync`, `GetDashboardTrendsAsync`) require the `ShiftDashboardAccess` policy at the controller. The service itself is auth-free per design rules.
+- `DevelopmentDashboardSeeder` and its `POST /dev/seed/dashboard` endpoint are gated to `IWebHostEnvironment.IsDevelopment()` only. QA, preview, and production environments cannot invoke it regardless of role.
 
 ## Negative Access Rules
 

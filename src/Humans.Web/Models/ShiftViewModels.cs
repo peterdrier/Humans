@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using Humans.Application.DTOs;
+using Humans.Application.Enums;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -405,9 +407,16 @@ public class ShiftDashboardViewModel
     public Guid? SelectedDepartmentId { get; set; }
     public Guid? SelectedRotaId { get; set; }
     public string? SelectedDate { get; set; }
+    public ShiftPeriod? SelectedPeriod { get; set; }
     public EventSettings EventSettings { get; set; } = null!;
     public List<DailyStaffingData> StaffingData { get; set; } = [];
     public List<DailyStaffingHours> StaffingHours { get; set; } = [];
+
+    public DashboardOverview? Overview { get; set; }
+    public IReadOnlyList<CoordinatorActivityRow> CoordinatorActivity { get; set; } = Array.Empty<CoordinatorActivityRow>();
+    public IReadOnlyList<DashboardTrendPoint> Trends { get; set; } = Array.Empty<DashboardTrendPoint>();
+    public TrendWindow TrendWindow { get; set; } = TrendWindow.Last30Days;
+    public bool IsDevelopment { get; set; }
 }
 
 public class VolunteerSearchResult

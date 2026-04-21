@@ -112,6 +112,14 @@ public record AdminTeamListResult(
     int TotalCount);
 
 /// <summary>
+/// Flat projection of an active coordinator row — the user who holds the
+/// Coordinator membership role on a specific team. Used by cross-section
+/// callers (shift dashboard) that need per-team coordinator lists without
+/// joining across the Teams-owned tables themselves.
+/// </summary>
+public record TeamCoordinatorRef(Guid TeamId, Guid UserId);
+
+/// <summary>
 /// Service for managing teams and team membership.
 /// </summary>
 public interface ITeamService
@@ -499,6 +507,54 @@ public interface ITeamService
     /// </summary>
     Task EnqueueGoogleResyncForUserTeamsAsync(
         Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Loads the Team rows for the requested IDs <b>and</b> any referenced parent
+    /// teams, so the caller can resolve the "department" (parent or self) for each
+    /// team via dictionary lookups without navigating <c>team.ParentTeam</c>. Used
+    /// by the shift coordinator dashboard to stitch department rows in memory after
+    /// moving off a cross-domain <c>.Include(Rota).ThenInclude(Team).ThenInclude(ParentTeam)</c>
+    /// chain. Returned teams are not active-filtered — shifts/rotas may still
+    /// reference deactivated teams and the caller still needs the name.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, Team>> GetByIdsWithParentsAsync(
+        IReadOnlyCollection<Guid> teamIds,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns one row per active (<see cref="TeamMember.LeftAt"/> is null) coordinator
+    /// across the requested teams. Used by the shift coordinator dashboard to look up
+    /// coordinators for teams with pending signups without reading the TeamMembers table.
+    /// </summary>
+    Task<IReadOnlyList<TeamCoordinatorRef>> GetActiveCoordinatorsForTeamsAsync(
+        IReadOnlyCollection<Guid> teamIds,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Adds a team member with an explicit <paramref name="role"/> and <paramref name="joinedAt"/>
+    /// timestamp, without emitting audit entries, outbox events, or user-facing emails. This is
+    /// a narrow seed/migration-only path; production membership changes must go through
+    /// <see cref="AddMemberToTeamAsync"/>, <see cref="ApproveJoinRequestAsync"/>, or the role
+    /// assignment APIs. Throws if the user is already an active member of the team.
+    /// </summary>
+    Task<TeamMember> AddSeededMemberAsync(
+        Guid teamId,
+        Guid userId,
+        TeamMemberRole role,
+        Instant joinedAt,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Hard-deletes every team whose <see cref="Team.Name"/> ends with
+    /// <paramref name="nameSuffix"/>, along with its <see cref="TeamMember"/> rows and
+    /// <see cref="TeamJoinRequest"/> rows. Narrow seed/test-only cleanup path that
+    /// bypasses <see cref="DeleteTeamAsync"/>'s soft-delete semantics so a subsequent
+    /// reseed can reuse the same slugs without collisions. Returns the number of teams
+    /// deleted.
+    /// </summary>
+    Task<int> HardDeleteSeededTeamsAsync(
+        string nameSuffix,
+        CancellationToken cancellationToken = default);
 
     // ==========================================================================
     // Cache Helpers

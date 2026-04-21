@@ -196,6 +196,20 @@ public class UserService : IUserService, IUserDataContributor
         // Note: caller is responsible for SaveChangesAsync (batch context)
     }
 
+    public async Task<IReadOnlyList<Instant>> GetLoginTimestampsInWindowAsync(
+        Instant fromInclusive,
+        Instant toExclusive,
+        CancellationToken ct = default)
+    {
+        return await _dbContext.Users
+            .AsNoTracking()
+            .Where(u => u.LastLoginAt != null
+                        && u.LastLoginAt >= fromInclusive
+                        && u.LastLoginAt < toExclusive)
+            .Select(u => u.LastLoginAt!.Value)
+            .ToListAsync(ct);
+    }
+
     public async Task<int> BackfillParticipationsAsync(int year, List<(Guid UserId, ParticipationStatus Status)> entries, CancellationToken ct = default)
     {
         var existing = await _dbContext.EventParticipations

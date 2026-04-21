@@ -1691,4 +1691,58 @@
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>Si no estás satisfecho con nuestra respuesta, tienes derecho a presentar una reclamación ante la Agencia Española de Protección de Datos (AEPD) en {0}.</value><comment>{0} = AEPD URL</comment></data>
 
 
+  <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Turnos cubiertos</value></data>
+  <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Con entrada</value></data>
+  <data name="ShiftDash_Overview_TicketHoldersSubline" xml:space="preserve"><value>humans que han pagado</value></data>
+  <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve"><value>Ticket holding humans</value></data>
+  <data name="ShiftDash_Overview_EngagedSubline" xml:space="preserve"><value>{0} humans no se han apuntado</value><comment>{0} = count</comment></data>
+  <data name="ShiftDash_Overview_NonTicketSignups" xml:space="preserve"><value>Apuntados sin entrada</value></data>
+  <data name="ShiftDash_Overview_NonTicketSubline" xml:space="preserve"><value>apuntados sin entrada (aún)</value></data>
+  <data name="ShiftDash_Overview_StalePending" xml:space="preserve"><value>Pendientes antiguos</value></data>
+  <data name="ShiftDash_Overview_StaleSubline" xml:space="preserve"><value>pendientes &gt; 3 días</value></data>
+  <data name="Common_NotAvailable" xml:space="preserve"><value>N/D</value></data>
+  <data name="ShiftDash_Overview_TicketData_Hidden" xml:space="preserve"><value>datos de entradas aún no compartidos</value></data>
+
+  <data name="ShiftDash_PeriodFilter_Label" xml:space="preserve"><value>Mostrando:</value></data>
+  <data name="ShiftDash_PeriodFilter_All" xml:space="preserve"><value>Todo</value></data>
+  <data name="ShiftDash_PeriodFilter_BuildDays" xml:space="preserve"><value>Días de montaje</value></data>
+  <data name="ShiftDash_PeriodFilter_EventShifts" xml:space="preserve"><value>Turnos de evento</value></data>
+  <data name="ShiftDash_PeriodFilter_Strike" xml:space="preserve"><value>Desmontaje</value></data>
+
+  <data name="ShiftDash_Departments_Title" xml:space="preserve"><value>Departamentos</value></data>
+  <data name="ShiftDash_Departments_SortNote" xml:space="preserve"><value>ordenados por menor % cubierto primero</value></data>
+  <data name="ShiftDash_Departments_Col_Department" xml:space="preserve"><value>Departamento</value></data>
+  <data name="ShiftDash_Departments_Col_Total" xml:space="preserve"><value>Total</value></data>
+  <data name="ShiftDash_Departments_Col_Filled" xml:space="preserve"><value>Cubiertos</value></data>
+  <data name="ShiftDash_Departments_Col_Pct" xml:space="preserve"><value>%</value></data>
+  <data name="ShiftDash_Departments_Col_SlotsRemaining" xml:space="preserve"><value>Plazas libres</value></data>
+  <data name="ShiftDash_Departments_Col_Period" xml:space="preserve"><value>Periodo</value></data>
+  <data name="ShiftDash_Departments_Direct" xml:space="preserve"><value>Directo</value></data>
+
+  <data name="ShiftDash_Coordinators_Title" xml:space="preserve"><value>Actividad de coordinadores</value></data>
+  <data name="ShiftDash_Coordinators_Subtitle" xml:space="preserve"><value>equipos con pendientes, inicio de sesión más antiguo primero</value></data>
+  <data name="ShiftDash_Coordinators_Col_Team" xml:space="preserve"><value>Equipo</value></data>
+  <data name="ShiftDash_Coordinators_Col_Coordinators" xml:space="preserve"><value>Coordinadores</value></data>
+  <data name="ShiftDash_Coordinators_Col_Pending" xml:space="preserve"><value>Pendientes</value></data>
+  <data name="ShiftDash_Coordinators_NoCoordinators" xml:space="preserve"><value>sin coordinadores</value></data>
+  <data name="ShiftDash_Coordinators_Never" xml:space="preserve"><value>nunca</value></data>
+  <data name="ShiftDash_Coordinators_MinutesAgo" xml:space="preserve"><value>hace {0} min</value><comment>{0} = minutes</comment></data>
+  <data name="ShiftDash_Coordinators_HoursAgo" xml:space="preserve"><value>hace {0} h</value><comment>{0} = hours</comment></data>
+  <data name="ShiftDash_Coordinators_DaysAgo" xml:space="preserve"><value>hace {0} d</value><comment>{0} = days</comment></data>
+  <data name="ShiftDash_Coordinators_DirectPending" xml:space="preserve"><value>{0} directos</value><comment>{0} = pending count at this team level only</comment></data>
+
+  <data name="ShiftDash_Trends_Title" xml:space="preserve"><value>Tendencias</value></data>
+  <data name="ShiftDash_Trends_Window_7d" xml:space="preserve"><value>7d</value></data>
+  <data name="ShiftDash_Trends_Window_30d" xml:space="preserve"><value>30d</value></data>
+  <data name="ShiftDash_Trends_Window_90d" xml:space="preserve"><value>90d</value></data>
+  <data name="ShiftDash_Trends_Window_All" xml:space="preserve"><value>Todo</value></data>
+  <data name="ShiftDash_Trends_NewSignups" xml:space="preserve"><value>Nuevas inscripciones</value></data>
+  <data name="ShiftDash_Trends_NewTicketSales" xml:space="preserve"><value>Nuevas entradas vendidas</value></data>
+  <data name="ShiftDash_Trends_DAU" xml:space="preserve"><value>Inicios de sesión únicos (DAU)</value></data>
+  <data name="ShiftDash_Trends_DAUNote" xml:space="preserve"><value>Solo se guarda el último inicio por human — los periodos antiguos están infrarrepresentados.</value></data>
+  <data name="ShiftDash_Status_OnTrack" xml:space="preserve"><value>En camino</value></data>
+  <data name="ShiftDash_Status_AtRisk" xml:space="preserve"><value>En riesgo</value></data>
+  <data name="ShiftDash_Status_BelowTarget" xml:space="preserve"><value>Por debajo del objetivo</value></data>
+  <data name="ShiftDash_Coordinators_StaleLabel" xml:space="preserve"><value>Inactivo más de 7 días</value></data>
+
 </root>

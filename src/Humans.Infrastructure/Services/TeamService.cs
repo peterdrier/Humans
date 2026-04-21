@@ -2187,6 +2187,148 @@ public class TeamService : ITeamService, IUserDataContributor
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, Team>> GetByIdsWithParentsAsync(
+        IReadOnlyCollection<Guid> teamIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (teamIds.Count == 0)
+        {
+            return new Dictionary<Guid, Team>();
+        }
+
+        // First pass: load the requested teams. We need them as tracked-free entities
+        // for read-only stitching at the caller.
+        var requested = await _dbContext.Teams
+            .AsNoTracking()
+            .Where(t => teamIds.Contains(t.Id))
+            .ToListAsync(cancellationToken);
+
+        // Second pass: load any parents that aren't already in the requested set.
+        var parentIds = requested
+            .Where(t => t.ParentTeamId.HasValue)
+            .Select(t => t.ParentTeamId!.Value)
+            .Distinct()
+            .Where(id => !teamIds.Contains(id))
+            .ToList();
+
+        var parents = parentIds.Count == 0
+            ? new List<Team>()
+            : await _dbContext.Teams
+                .AsNoTracking()
+                .Where(t => parentIds.Contains(t.Id))
+                .ToListAsync(cancellationToken);
+
+        var dict = new Dictionary<Guid, Team>(requested.Count + parents.Count);
+        foreach (var t in requested) dict[t.Id] = t;
+        foreach (var t in parents) dict[t.Id] = t;
+        return dict;
+    }
+
+    public async Task<IReadOnlyList<TeamCoordinatorRef>> GetActiveCoordinatorsForTeamsAsync(
+        IReadOnlyCollection<Guid> teamIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (teamIds.Count == 0)
+        {
+            return Array.Empty<TeamCoordinatorRef>();
+        }
+
+        return await _dbContext.TeamMembers
+            .AsNoTracking()
+            .Where(tm => teamIds.Contains(tm.TeamId)
+                         && tm.LeftAt == null
+                         && tm.Role == TeamMemberRole.Coordinator)
+            .Select(tm => new TeamCoordinatorRef(tm.TeamId, tm.UserId))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<TeamMember> AddSeededMemberAsync(
+        Guid teamId,
+        Guid userId,
+        TeamMemberRole role,
+        Instant joinedAt,
+        CancellationToken cancellationToken = default)
+    {
+        var team = await _dbContext.Teams.FindAsync(new object[] { teamId }, cancellationToken)
+            ?? throw new InvalidOperationException($"Team {teamId} not found");
+
+        if (team.IsSystemTeam)
+        {
+            throw new InvalidOperationException("AddSeededMemberAsync cannot target system teams");
+        }
+
+        var existing = await _dbContext.TeamMembers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(tm => tm.TeamId == teamId && tm.UserId == userId && tm.LeftAt == null, cancellationToken);
+        if (existing is not null)
+        {
+            throw new InvalidOperationException("User is already a member of this team");
+        }
+
+        var member = new TeamMember
+        {
+            Id = Guid.NewGuid(),
+            TeamId = teamId,
+            UserId = userId,
+            Role = role,
+            JoinedAt = joinedAt,
+        };
+
+        _dbContext.TeamMembers.Add(member);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        // Keep the cached team view in sync so subsequent reads see the seeded member.
+        var addedUser = await _dbContext.Users.FindAsync(new object[] { userId }, cancellationToken);
+        if (addedUser is not null)
+        {
+            AddMemberToTeamCache(teamId, new CachedTeamMember(
+                member.Id, userId, addedUser.DisplayName, addedUser.ProfilePictureUrl, role, joinedAt));
+        }
+
+        return member;
+    }
+
+    public async Task<int> HardDeleteSeededTeamsAsync(
+        string nameSuffix,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(nameSuffix))
+        {
+            throw new ArgumentException("nameSuffix must be a non-empty marker", nameof(nameSuffix));
+        }
+
+        var targetTeams = await _dbContext.Teams
+            .Where(t => t.Name.EndsWith(nameSuffix))
+            .ToListAsync(cancellationToken);
+
+        if (targetTeams.Count == 0)
+        {
+            return 0;
+        }
+
+        var teamIds = targetTeams.Select(t => t.Id).ToList();
+
+        // Clear dependent rows first (TeamMembers, TeamJoinRequests). Callers are responsible
+        // for cleaning up any cross-domain references (shift rotas, etc.) before this runs.
+        await _dbContext.TeamMembers
+            .Where(tm => teamIds.Contains(tm.TeamId))
+            .ExecuteDeleteAsync(cancellationToken);
+
+        await _dbContext.TeamJoinRequests
+            .Where(r => teamIds.Contains(r.TeamId))
+            .ExecuteDeleteAsync(cancellationToken);
+
+        _dbContext.Teams.RemoveRange(targetTeams);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        foreach (var id in teamIds)
+        {
+            RemoveCachedTeam(id);
+        }
+
+        return targetTeams.Count;
+    }
+
     // ==========================================================================
     // Team Cache
     // ==========================================================================

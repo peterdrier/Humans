@@ -179,6 +179,42 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 | `/` (Dashboard) | Shift signups ViewComponent + guided discovery when no signups |
 | `/Human/{id}/Admin` | Shift signups ViewComponent (admin view of user's shifts) |
 
+## Coordinator Dashboard
+
+**Purpose:** Give Volunteer Coordinators, NoInfoAdmins, and Admins a single cross-department view that answers the weekly coordination questions: is overall staffing tracking toward the event, which departments are behind, which coordinator teams have stale pending signups, and are new signups / ticket sales trending.
+
+**Route:** `/Shifts/Dashboard` (existing) — the four dashboard panels render above the legacy urgent-shifts filter.
+
+**Panels:**
+
+- **Overview counters** — five cards: shifts filled (with per-period Build/Event/Strike fill chips coloured ≥80% green / 60–79% amber / <60% red), ticket holders, ticket holding volunteers (primary-bordered emphasis card; sub-line shows how many ticket-holding humans haven't signed up), non-ticket signups, stale pending (warning-bordered when > 0).
+- **Departments table** — one row per parent team, sorted by ascending fill %. Clicking a row expands to either three period sub-rows (Build/Event/Strike) when the department has no subteams, or a subgroup table showing each subteam (plus a "Direct" row for rotas attached to the parent itself) with per-period fill % chips.
+- **Coordinator activity** — teams that have ≥1 pending signup, one row each listing coordinator names, oldest login across that team's coordinators (rendered red if > 7 days or never), and pending signup count. Hidden entirely if no team has pending signups.
+- **Trends chart** — line chart with three series (new signups, new ticket sales, distinct logins / DAU) over a selectable window (7/30/90 days, All). Window toggle re-renders via `asp-route-trendWindow=`. DAU series is dashed with a tooltip noting that only the last login per human is stored (older buckets undercount).
+
+**Metric definitions:**
+
+- **Shift filled** — confirmed signup count ≥ `MinVolunteers`.
+- **Period fill rate** — filled shifts in the period / total shifts in the period, expressed as a percentage. Aggregates ignore AdminOnly shifts' visibility.
+- **Ticket holder** — a human with an active ticket for the event.
+- **Ticket holding volunteer** — a ticket holder who has at least one shift signup on a visible, non-AdminOnly shift of this event, with any status other than `Cancelled`. Pending, Refused, Bailed, and NoShow all count as "engaged with the shift system", so the metric is "ticket holders we've gotten in front of", not "currently committed to work a shift".
+- **Non-ticket signup** — distinct humans who have ≥1 non-bailed/non-refused/non-cancelled signup but no active ticket.
+- **Stale pending** — a pending signup whose `CreatedAt` is more than 3 days ago.
+- **Subgroup aggregate invariant** — department totals equal the sum of subgroup totals (including the synthetic "Direct" row for rotas whose team is the parent itself).
+- **DAU** — distinct humans whose last login falls on the bucket date in the event timezone. Limitation: the system stores only the most recent login per human, so older buckets are biased low.
+
+**Authorization:** Controller action is gated by `[Authorize(Policy = PolicyNames.ShiftDashboardAccess)]` → Admin, NoInfoAdmin, VolunteerCoordinator. The service (`IShiftManagementService`) is auth-free per `design-rules.md`.
+
+**Caching:** Each dashboard query memoizes into `IMemoryCache` with a 5-minute sliding expiration. Keys:
+
+- `dashboard-overview:{eventSettingsId}`
+- `dashboard-coordinator-activity:{eventSettingsId}`
+- `dashboard-trends:{eventSettingsId}:{window}`
+
+At ~500-human scale, the dashboard view hits the cache on most loads and the underlying aggregation queries only run on first visit per coordinator per 5 minutes. Signup mutations do NOT currently invalidate these caches — counters lag real state by up to 5 minutes after approving, refusing, bailing, or creating signups (tracked as a follow-up; see the dashboard spec).
+
+**Development seeder:** `DevelopmentDashboardSeeder` populates a realistic demo dataset (one event, several departments including one with subteams, ticket holders with mixed signup states, pending signups of varying ages, and ~85 days of spread signup/ticket/login activity for the trend chart). Exposed at `POST /dev/seed/dashboard`, button rendered on `/Shifts/Dashboard` only when the app is running in the Development environment. Not reachable in QA / preview / production regardless of role.
+
 ## Related Features
 
 - **Teams** (06): Departments are parent teams; coordinator roles grant shift management access

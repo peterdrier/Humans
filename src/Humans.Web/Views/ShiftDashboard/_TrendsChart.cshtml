@@ -1,0 +1,187 @@
+@using Humans.Application.DTOs
+@using Humans.Application.Enums
+@using Humans.Domain.Enums
+@using NodaTime
+@using NodaTime.Text
+@model (IReadOnlyList<DashboardTrendPoint> Points, TrendWindow Window, ShiftPeriod? Period)
+
+@{
+    var points = Model.Points;
+    var initialWindow = Model.Window;
+    var period = Model.Period;
+
+    var labelPattern = LocalDatePattern.Iso;
+    var labels = points.Select(p => labelPattern.Format(p.Date)).ToArray();
+    var signups = points.Select(p => p.NewSignups).ToArray();
+    var tickets = points.Select(p => p.NewTicketSales).ToArray();
+    var logins = points.Select(p => p.DistinctLogins).ToArray();
+
+    string ButtonClass(TrendWindow w) =>
+        w == initialWindow ? "btn btn-primary active" : "btn btn-outline-secondary";
+
+    string Label(TrendWindow w) => w switch
+    {
+        TrendWindow.Last7Days => Localizer["ShiftDash_Trends_Window_7d"].Value,
+        TrendWindow.Last30Days => Localizer["ShiftDash_Trends_Window_30d"].Value,
+        TrendWindow.Last90Days => Localizer["ShiftDash_Trends_Window_90d"].Value,
+        TrendWindow.All => Localizer["ShiftDash_Trends_Window_All"].Value,
+        _ => w.ToString(),
+    };
+
+    var newSignupsLabel = Localizer["ShiftDash_Trends_NewSignups"].Value;
+    var newTicketsLabel = Localizer["ShiftDash_Trends_NewTicketSales"].Value;
+    var dauLabel = Localizer["ShiftDash_Trends_DAU"].Value;
+    var dauNote = Localizer["ShiftDash_Trends_DAUNote"].Value;
+
+    // TEMP: ticket figures are not shareable yet. Flip to true once ticket data is publishable.
+    // The underlying trend series still computes new-ticket-sales in ShiftManagementService.
+    var showTicketData = false;
+}
+
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>@Localizer["ShiftDash_Trends_Title"]</strong>
+        <div class="btn-group btn-group-sm" role="group" id="dashboardTrendsWindow">
+            @foreach (var w in new[] { TrendWindow.Last7Days, TrendWindow.Last30Days, TrendWindow.Last90Days, TrendWindow.All })
+            {
+                <a asp-action="Index" asp-route-trendWindow="@w" asp-route-period="@period"
+                   class="@ButtonClass(w)" data-trends-window="@w">@Label(w)</a>
+            }
+        </div>
+    </div>
+    <div class="card-body">
+        <canvas id="dashboardTrendsChart" height="90" role="img" aria-label="@Localizer["ShiftDash_Trends_Title"]"></canvas>
+    </div>
+</div>
+
+<script>
+(function () {
+    var allLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(labels));
+    var allSignups = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(signups));
+    var allTickets = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(tickets));
+    var allLogins = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(logins));
+    var newSignupsLabel = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(newSignupsLabel));
+    var newTicketsLabel = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(newTicketsLabel));
+    var dauLabel = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(dauLabel));
+    var dauNote = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(dauNote));
+    var initialWindow = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(initialWindow.ToString()));
+    var showTicketData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(showTicketData));
+
+    var chartInstance = null;
+
+    function sliceForWindow(win) {
+        var n;
+        if (win === 'Last7Days') n = 7;
+        else if (win === 'Last30Days') n = 30;
+        else if (win === 'Last90Days') n = 90;
+        else n = allLabels.length;
+        var start = Math.max(0, allLabels.length - n);
+        return {
+            labels: allLabels.slice(start),
+            signups: allSignups.slice(start),
+            tickets: allTickets.slice(start),
+            logins: allLogins.slice(start)
+        };
+    }
+
+    function renderChart(win) {
+        var ctx = document.getElementById('dashboardTrendsChart');
+        if (!ctx || typeof Chart === 'undefined') return;
+        var sliced = sliceForWindow(win);
+        if (chartInstance) {
+            chartInstance.data.labels = sliced.labels;
+            chartInstance.data.datasets[0].data = sliced.signups;
+            if (showTicketData) {
+                chartInstance.data.datasets[1].data = sliced.tickets;
+                chartInstance.data.datasets[2].data = sliced.logins;
+            } else {
+                chartInstance.data.datasets[1].data = sliced.logins;
+            }
+            chartInstance.update();
+            return;
+        }
+        var datasets = [
+            { label: newSignupsLabel, data: sliced.signups, borderColor: '#0d6efd', backgroundColor: 'rgba(13,110,253,0.1)', tension: 0.25 },
+            { label: dauLabel, data: sliced.logins, borderColor: '#6c757d', backgroundColor: 'rgba(108,117,125,0.1)', tension: 0.25, borderDash: [4, 4] }
+        ];
+        if (showTicketData) {
+            // Keep the tickets series wiring in place for when ticket data is shareable again.
+            datasets.splice(1, 0, { label: newTicketsLabel, data: sliced.tickets, borderColor: '#198754', backgroundColor: 'rgba(25,135,84,0.1)', tension: 0.25 });
+        }
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: sliced.labels,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function (c) {
+                                if (c.dataset.label === dauLabel) return dauNote;
+                                return null;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: true, ticks: { precision: 0 } }
+                }
+            }
+        });
+    }
+
+    function wireButtons() {
+        var group = document.getElementById('dashboardTrendsWindow');
+        if (!group) return;
+        var buttons = group.querySelectorAll('[data-trends-window]');
+        buttons.forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                var win = btn.getAttribute('data-trends-window');
+                buttons.forEach(function (b) {
+                    b.classList.remove('btn-primary', 'active');
+                    b.classList.add('btn-outline-secondary');
+                });
+                btn.classList.remove('btn-outline-secondary');
+                btn.classList.add('btn-primary', 'active');
+                renderChart(win);
+                try {
+                    var url = new URL(window.location.href);
+                    url.searchParams.set('trendWindow', win);
+                    history.replaceState({}, '', url.toString());
+                } catch (_) { /* ignore */ }
+            });
+        });
+    }
+
+    function bootstrap() {
+        wireButtons();
+        renderChart(initialWindow);
+    }
+
+    if (typeof Chart === 'undefined') {
+        var tries = 0;
+        var iv = setInterval(function () {
+            if (typeof Chart !== 'undefined') {
+                clearInterval(iv);
+                bootstrap();
+            } else if (++tries > 50) {
+                clearInterval(iv);
+                var s = document.createElement('script');
+                s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js';
+                s.integrity = 'sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ';
+                s.crossOrigin = 'anonymous';
+                s.onload = bootstrap;
+                document.head.appendChild(s);
+            }
+        }, 100);
+    } else {
+        bootstrap();
+    }
+})();
+</script>
