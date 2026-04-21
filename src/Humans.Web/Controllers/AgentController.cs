@@ -41,6 +41,7 @@ public class AgentController : HumansControllerBase
     }
 
     [HttpPost("Ask")]
+    [ValidateAntiForgeryToken]
     public async Task Ask([FromBody] AgentAskRequest body, CancellationToken cancellationToken)
     {
         var (missing, user) = await RequireCurrentUserAsync();
