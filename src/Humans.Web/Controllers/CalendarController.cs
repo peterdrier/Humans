@@ -41,7 +41,7 @@ public class CalendarController : HumansControllerBase
         [FromQuery] Guid? teamId,
         CancellationToken ct)
     {
-        var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
+        var zone = GetViewerZone();
         var today = _clock.GetCurrentInstant().InZone(zone).Date;
         var ym = new YearMonth(year ?? today.Year, month ?? today.Month);
 
@@ -71,7 +71,7 @@ public class CalendarController : HumansControllerBase
         [FromQuery] Guid? teamId,
         CancellationToken ct)
     {
-        var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
+        var zone = GetViewerZone();
         var today = _clock.GetCurrentInstant().InZone(zone).Date;
         var start = from is null ? today : LocalDate.FromDateTime(from.Value);
         var end = to is null ? today.PlusDays(60) : LocalDate.FromDateTime(to.Value);
@@ -93,7 +93,7 @@ public class CalendarController : HumansControllerBase
         var team = await _teams.GetTeamByIdAsync(teamId, ct);
         if (team is null) return NotFound();
 
-        var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
+        var zone = GetViewerZone();
         var today = _clock.GetCurrentInstant().InZone(zone).Date;
         var ym = new YearMonth(year ?? today.Year, month ?? today.Month);
 
@@ -119,7 +119,7 @@ public class CalendarController : HumansControllerBase
         var ev = await _calendar.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
-        var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
+        var zone = GetViewerZone();
         var now = _clock.GetCurrentInstant();
         var horizon = now.Plus(Duration.FromDays(180));
         var upcoming = (await _calendar.GetOccurrencesInWindowAsync(now, horizon, ev.OwningTeamId, ct))
@@ -336,4 +336,9 @@ public class CalendarController : HumansControllerBase
             throw new InvalidOperationException("Current user has no valid ID claim.");
         return userId;
     }
+
+    // Org default for v1. Every volunteer is in Spain; showing server-UTC ("Etc/UTC") is unhelpful.
+    // Follow-up: derive from browser (Intl API) or user profile preference.
+    private static DateTimeZone GetViewerZone() =>
+        DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 }
