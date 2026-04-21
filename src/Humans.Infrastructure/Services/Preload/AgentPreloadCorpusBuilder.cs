@@ -16,11 +16,14 @@ public sealed class AgentPreloadCorpusBuilder : IAgentPreloadCorpusBuilder
 
     private readonly AgentSectionDocReader _sections;
     private readonly IMemoryCache _cache;
+    private readonly IAgentPreloadAugmentor? _augmentor;
 
-    public AgentPreloadCorpusBuilder(AgentSectionDocReader sections, IMemoryCache cache)
+    public AgentPreloadCorpusBuilder(AgentSectionDocReader sections, IMemoryCache cache,
+        IAgentPreloadAugmentor? augmentor = null)
     {
         _sections = sections;
         _cache = cache;
+        _augmentor = augmentor;
     }
 
     public async Task<string> BuildAsync(AgentPreloadConfig config, CancellationToken cancellationToken = default)
@@ -42,6 +45,15 @@ public sealed class AgentPreloadCorpusBuilder : IAgentPreloadCorpusBuilder
             sb.AppendLine($"# {key}");
             sb.AppendLine(body);
             sb.AppendLine();
+        }
+
+        if (_augmentor is not null)
+        {
+            sb.AppendLine(_augmentor.BuildAccessMatrixMarkdown());
+            sb.AppendLine();
+            sb.AppendLine(_augmentor.BuildGlossariesMarkdown());
+            sb.AppendLine();
+            sb.AppendLine(_augmentor.BuildRouteMapMarkdown());
         }
 
         var result = sb.ToString();
