@@ -19,6 +19,9 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1 class="h3 mb-0">@Model.Month.Year @System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(Model.Month.Month)</h1>
         <div>
+            <span authorize-policy="AdminOnly">
+                <a class="btn btn-sm btn-primary" asp-action="Create">New event</a>
+            </span>
             <a class="btn btn-sm btn-outline-secondary" asp-action="Index" asp-route-year="@prev.Year" asp-route-month="@prev.Month" asp-route-teamId="@Model.FilterTeamId">&larr; Prev</a>
             <a class="btn btn-sm btn-outline-secondary" asp-action="Index">Today</a>
             <a class="btn btn-sm btn-outline-secondary" asp-action="Index" asp-route-year="@next.Year" asp-route-month="@next.Month" asp-route-teamId="@Model.FilterTeamId">Next &rarr;</a>
