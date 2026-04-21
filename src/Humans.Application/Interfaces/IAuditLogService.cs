@@ -4,9 +4,10 @@ using Humans.Domain.Enums;
 namespace Humans.Application.Interfaces;
 
 /// <summary>
-/// Service for recording audit log entries.
-/// Entries are added to the DbContext but NOT saved — the caller's SaveChangesAsync
-/// persists them atomically with the business operation.
+/// Service for recording audit log entries. Each <c>LogAsync</c> call
+/// persists its entry immediately (auto-saved by the Audit Log repository).
+/// The audit log table is append-only per design-rules §12 — only
+/// appends are exposed; there is no update or delete path.
 /// </summary>
 public interface IAuditLogService
 {
