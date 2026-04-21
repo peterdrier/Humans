@@ -84,9 +84,9 @@ Two new entities, in `Humans.Domain/Entities/Calendar/`.
 
 **Invariants (enforced in domain + EF configuration):**
 
-- `EndUtc IS NULL` iff `IsAllDay = true`.
+- `EndUtc IS NOT NULL` when `IsAllDay = false` (timed events always have an end). When `IsAllDay = true`, `EndUtc` is optional — null for a single-day all-day event, set for a multi-day all-day range.
 - `RecurrenceTimezone IS NOT NULL` iff `RecurrenceRule IS NOT NULL`.
-- `RecurrenceUntilUtc` matches the RRULE's UNTIL (or is null for open-ended rules); enforced by service on write.
+- `RecurrenceUntilUtc` is the last instant the recurrence can possibly contribute an occurrence (RRULE `UNTIL` if present, else the end of the `COUNT`-th occurrence, else null for open-ended rules); enforced by service on write and used for SQL prefiltering.
 - `StartUtc <= EndUtc` when `EndUtc` is present.
 
 ### `CalendarEventException`

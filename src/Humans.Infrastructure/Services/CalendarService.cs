@@ -193,7 +193,7 @@ public class CalendarService : ICalendarService
             IsAllDay = dto.IsAllDay,
             RecurrenceRule = dto.RecurrenceRule,
             RecurrenceTimezone = dto.RecurrenceTimezone,
-            RecurrenceUntilUtc = ComputeRecurrenceUntilUtc(dto.RecurrenceRule, dto.RecurrenceTimezone),
+            RecurrenceUntilUtc = ComputeRecurrenceUntilUtc(dto.RecurrenceRule, dto.RecurrenceTimezone, dto.StartUtc, dto.EndUtc),
             CreatedByUserId = createdByUserId,
             CreatedAt = now,
             UpdatedAt = now,
@@ -217,33 +217,73 @@ public class CalendarService : ICalendarService
 
     private void InvalidateCache() => _cache.Remove(CacheKeyActiveEvents);
 
-    private static Instant? ComputeRecurrenceUntilUtc(string? rrule, string? tz)
+    // Denormalise RRULE UNTIL (or the last occurrence for COUNT-bounded rules) into an Instant
+    // so the SQL window prefilter can skip events that cannot possibly contribute occurrences
+    // inside `[from, to]`. Returns null only for truly open-ended rules.
+    private static Instant? ComputeRecurrenceUntilUtc(string? rrule, string? tz, Instant dtStart, Instant? dtEnd)
     {
         if (string.IsNullOrWhiteSpace(rrule) || string.IsNullOrWhiteSpace(tz)) return null;
 
+        int? count = null;
         foreach (var part in rrule.Split(';', StringSplitOptions.RemoveEmptyEntries))
         {
             var eq = part.IndexOf('=');
             if (eq <= 0) continue;
             var key = part[..eq];
             var val = part[(eq + 1)..];
-            if (!string.Equals(key, "UNTIL", StringComparison.OrdinalIgnoreCase)) continue;
 
-            if (val.EndsWith('Z'))
+            if (string.Equals(key, "UNTIL", StringComparison.OrdinalIgnoreCase))
             {
-                var dt = DateTimeOffset.ParseExact(
-                    val, "yyyyMMdd'T'HHmmss'Z'", System.Globalization.CultureInfo.InvariantCulture);
-                return Instant.FromDateTimeOffset(dt);
+                if (val.EndsWith('Z'))
+                {
+                    var dt = DateTimeOffset.ParseExact(
+                        val, "yyyyMMdd'T'HHmmss'Z'", System.Globalization.CultureInfo.InvariantCulture);
+                    return Instant.FromDateTimeOffset(dt);
+                }
+                else
+                {
+                    var local = NodaTime.Text.LocalDateTimePattern.CreateWithInvariantCulture("yyyyMMdd'T'HHmmss")
+                        .Parse(val).Value;
+                    var zone = DateTimeZoneProviders.Tzdb[tz];
+                    return local.InZoneStrictly(zone).ToInstant();
+                }
             }
-            else
+            else if (string.Equals(key, "COUNT", StringComparison.OrdinalIgnoreCase))
             {
-                var local = NodaTime.Text.LocalDateTimePattern.CreateWithInvariantCulture("yyyyMMdd'T'HHmmss")
-                    .Parse(val).Value;
-                var zone = DateTimeZoneProviders.Tzdb[tz];
-                return local.InZoneStrictly(zone).ToInstant();
+                if (int.TryParse(val, System.Globalization.NumberStyles.Integer,
+                        System.Globalization.CultureInfo.InvariantCulture, out var c) && c > 0)
+                {
+                    count = c;
+                }
             }
         }
-        return null;
+
+        if (count is null) return null;
+
+        // Expand the COUNT-bounded rule via Ical.Net to find the last occurrence, then
+        // return its end-time so "rule still reaches window" checks stay correct.
+        var ruleZone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(tz);
+        if (ruleZone is null) return null;
+
+        var dtStartLocal = dtStart.InZone(ruleZone).LocalDateTime.ToDateTimeUnspecified();
+        var duration = (dtEnd ?? dtStart) - dtStart;
+
+        var icalEv = new IcalEvent
+        {
+            DtStart = new CalDateTime(dtStartLocal, tz, hasTime: true),
+            Duration = Ical.Net.DataTypes.Duration.FromTimeSpanExact(TimeSpan.FromTicks(duration.BclCompatibleTicks)),
+        };
+        icalEv.RecurrenceRules.Add(new RecurrencePattern(rrule));
+
+        var startCalDt = new CalDateTime(dtStartLocal, tz, hasTime: true);
+        var last = icalEv.GetOccurrences(startCalDt, new EvaluationOptions())
+            .Take(count.Value)
+            .LastOrDefault();
+        if (last is null) return null;
+
+        var lastLocal = LocalDateTime.FromDateTime(last.Period.StartTime.Value);
+        var lastStart = lastLocal.InZoneLeniently(ruleZone).ToInstant();
+        return lastStart.Plus(duration);
     }
 
     public async Task<CalendarEvent> UpdateEventAsync(Guid id, UpdateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
@@ -261,7 +301,7 @@ public class CalendarService : ICalendarService
         ev.IsAllDay = dto.IsAllDay;
         ev.RecurrenceRule = dto.RecurrenceRule;
         ev.RecurrenceTimezone = dto.RecurrenceTimezone;
-        ev.RecurrenceUntilUtc = ComputeRecurrenceUntilUtc(dto.RecurrenceRule, dto.RecurrenceTimezone);
+        ev.RecurrenceUntilUtc = ComputeRecurrenceUntilUtc(dto.RecurrenceRule, dto.RecurrenceTimezone, dto.StartUtc, dto.EndUtc);
         ev.UpdatedAt = _clock.GetCurrentInstant();
 
         var errors = ev.Validate();

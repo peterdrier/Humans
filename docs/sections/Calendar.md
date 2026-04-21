@@ -19,7 +19,7 @@
 - Only users with Admin role OR Coordinator role on the owning team may create, edit, or delete events, or manage exceptions (cancel/override occurrences)
 - Title is required (non-null, non-empty)
 - `StartUtc` is required
-- `EndUtc` is required iff `IsAllDay = false`. When `IsAllDay = true`, `EndUtc` must be null
+- `EndUtc` is required for timed events (`IsAllDay = false`). For all-day events it is optional — null means a single-day event, set means a multi-day all-day range
 - `StartUtc <= EndUtc` when both are non-null
 - `RecurrenceRule` and `RecurrenceTimezone` are set together, or neither is set (all-or-nothing invariant)
 - `RecurrenceTimezone` defaults to `"Europe/Madrid"` if not specified on a recurring event
