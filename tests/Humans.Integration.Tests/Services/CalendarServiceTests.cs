@@ -115,7 +115,7 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
         occ.Should().NotContain(o => o.Title == "B-evt");
     }
 
-    [Fact(Skip = "Needs DeleteEventAsync (Task 12) — un-skip then.")]
+    [Fact]
     public async Task Soft_deleted_events_do_not_appear_in_window()
     {
         await using var scope = _factory.Services.CreateAsyncScope();
@@ -274,6 +274,53 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
         var special = occ.Single(o => string.Equals(o.Title, "Special week", StringComparison.Ordinal));
         special.OccurrenceStartUtc.Should().Be(moved);
         special.OriginalOccurrenceStartUtc.Should().Be(original);
+    }
+
+    [Fact]
+    public async Task UpdateEvent_changes_fields_and_preserves_id()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var db  = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
+        var uid  = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+
+        var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
+            "Original", null, null, null, team.Id,
+            Instant.FromUtc(2026, 7, 1, 17, 0),
+            Instant.FromUtc(2026, 7, 1, 18, 0), false, null, null), uid);
+
+        await svc.UpdateEventAsync(ev.Id, new UpdateCalendarEventDto(
+            "Updated", "new desc", "Hall", null, team.Id,
+            Instant.FromUtc(2026, 7, 2, 17, 0),
+            Instant.FromUtc(2026, 7, 2, 18, 0), false, null, null), uid);
+
+        var fetched = await svc.GetEventByIdAsync(ev.Id);
+        fetched.Should().NotBeNull();
+        fetched!.Title.Should().Be("Updated");
+        fetched.Description.Should().Be("new desc");
+        fetched.StartUtc.Should().Be(Instant.FromUtc(2026, 7, 2, 17, 0));
+    }
+
+    [Fact]
+    public async Task DeleteEvent_soft_deletes_and_hides_from_queries()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var db  = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
+        var uid  = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+
+        var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
+            "ToDelete", null, null, null, team.Id,
+            Instant.FromUtc(2026, 8, 1, 10, 0),
+            Instant.FromUtc(2026, 8, 1, 11, 0), false, null, null), uid);
+
+        await svc.DeleteEventAsync(ev.Id, uid);
+
+        (await svc.GetEventByIdAsync(ev.Id)).Should().BeNull();
     }
 
     private static async Task<Team> SeedTeamAsync(HumansDbContext db, string name)

@@ -237,11 +237,44 @@ public class CalendarService : ICalendarService
         return null;
     }
 
-    public Task<CalendarEvent> UpdateEventAsync(Guid id, UpdateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
-        => throw new NotSupportedException("Not yet implemented.");
+    public async Task<CalendarEvent> UpdateEventAsync(Guid id, UpdateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
+    {
+        var ev = await _db.CalendarEvents.FirstOrDefaultAsync(e => e.Id == id, ct)
+            ?? throw new InvalidOperationException($"CalendarEvent {id} not found.");
 
-    public Task DeleteEventAsync(Guid id, Guid deletedByUserId, CancellationToken ct = default)
-        => throw new NotSupportedException("Not yet implemented.");
+        ev.Title = dto.Title;
+        ev.Description = dto.Description;
+        ev.Location = dto.Location;
+        ev.LocationUrl = dto.LocationUrl;
+        ev.OwningTeamId = dto.OwningTeamId;
+        ev.StartUtc = dto.StartUtc;
+        ev.EndUtc = dto.EndUtc;
+        ev.IsAllDay = dto.IsAllDay;
+        ev.RecurrenceRule = dto.RecurrenceRule;
+        ev.RecurrenceTimezone = dto.RecurrenceTimezone;
+        ev.RecurrenceUntilUtc = ComputeRecurrenceUntilUtc(dto.RecurrenceRule, dto.RecurrenceTimezone);
+        ev.UpdatedAt = _clock.GetCurrentInstant();
+
+        var errors = ev.Validate();
+        if (errors.Count > 0)
+            throw new InvalidOperationException("CalendarEvent is invalid: " + string.Join("; ", errors));
+
+        _logger.LogInformation("CalendarEvent {Id} updated by {UserId}", id, updatedByUserId);
+        await _db.SaveChangesAsync(ct);
+        InvalidateCache();
+        return ev;
+    }
+
+    public async Task DeleteEventAsync(Guid id, Guid deletedByUserId, CancellationToken ct = default)
+    {
+        var ev = await _db.CalendarEvents.FirstOrDefaultAsync(e => e.Id == id, ct);
+        if (ev is null) return;
+        ev.DeletedAt = _clock.GetCurrentInstant();
+        ev.UpdatedAt = ev.DeletedAt.Value;
+        _logger.LogInformation("CalendarEvent {Id} soft-deleted by {UserId}", id, deletedByUserId);
+        await _db.SaveChangesAsync(ct);
+        InvalidateCache();
+    }
 
     public async Task CancelOccurrenceAsync(Guid eventId, Instant originalOccurrenceStartUtc, Guid userId, CancellationToken ct = default)
     {
