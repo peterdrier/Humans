@@ -5,6 +5,7 @@ using NodaTime;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Models;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -448,6 +449,37 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
         => _repository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+
+    public async Task<FeedbackHandoffResult> SubmitFromAgentAsync(
+        Guid userId, Guid conversationId, string summary, string topic,
+        CancellationToken cancellationToken = default)
+    {
+        var now = _clock.GetCurrentInstant();
+        var reportId = Guid.NewGuid();
+
+        var report = new FeedbackReport
+        {
+            Id = reportId,
+            UserId = userId,
+            Category = FeedbackCategory.Question,
+            Description = string.Create(System.Globalization.CultureInfo.InvariantCulture, $"Topic: {topic}\n\n{summary}"),
+            PageUrl = string.Empty,
+            Status = FeedbackStatus.Open,
+            Source = FeedbackSource.AgentUnresolved,
+            AgentConversationId = conversationId,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        await _repository.AddReportAsync(report, cancellationToken);
+        _navBadge.Invalidate();
+
+        _logger.LogInformation(
+            "Agent feedback handoff {ReportId} submitted for user {UserId}, conversationId {ConversationId}",
+            reportId, userId, conversationId);
+
+        return new FeedbackHandoffResult(reportId, $"/Feedback/{reportId}");
+    }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
