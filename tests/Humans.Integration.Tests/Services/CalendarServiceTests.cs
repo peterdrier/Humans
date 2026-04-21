@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using AwesomeAssertions;
 using Humans.Application.DTOs.Calendar;
 using Humans.Application.Interfaces.Calendar;
@@ -301,6 +302,28 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
         fetched!.Title.Should().Be("Updated");
         fetched.Description.Should().Be("new desc");
         fetched.StartUtc.Should().Be(Instant.FromUtc(2026, 7, 2, 17, 0));
+    }
+
+    [HumansFact]
+    public async Task CreateEvent_rejects_malformed_rrule()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
+        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+
+        var act = async () => await svc.CreateEventAsync(new CreateCalendarEventDto(
+            "Bad", null, null, null, team.Id,
+            Instant.FromUtc(2026, 5, 1, 17, 0),
+            Instant.FromUtc(2026, 5, 1, 18, 0),
+            false,
+            RecurrenceRule: "FREQ=NOT_A_REAL_FREQ",
+            RecurrenceTimezone: "Europe/Madrid"), uid);
+
+        await act.Should().ThrowAsync<ValidationException>()
+            .WithMessage("*Recurrence rule is malformed*");
     }
 
     [HumansFact]

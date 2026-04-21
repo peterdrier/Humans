@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Humans.Application.DTOs.Calendar;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Calendar;
@@ -244,6 +245,8 @@ public sealed class CalendarService : ICalendarService
 
     public async Task<CalendarEvent> CreateEventAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default)
     {
+        ValidateRecurrenceRule(dto.RecurrenceRule);
+
         var now = _clock.GetCurrentInstant();
 
         var ev = new CalendarEvent
@@ -282,6 +285,22 @@ public sealed class CalendarService : ICalendarService
     }
 
     private void InvalidateCache() => _cache.Remove(CacheKeyActiveEvents);
+
+    // Parse-check the RRULE at write time so a malformed rule cannot persist and break
+    // calendar reads (where occurrence expansion would throw). Ical.Net's RecurrencePattern
+    // ctor throws for syntactically invalid rules. Internal so tests can call it directly.
+    internal static void ValidateRecurrenceRule(string? rrule)
+    {
+        if (string.IsNullOrWhiteSpace(rrule)) return;
+        try
+        {
+            _ = new RecurrencePattern(rrule);
+        }
+        catch (Exception ex)
+        {
+            throw new ValidationException($"Recurrence rule is malformed: {ex.Message}");
+        }
+    }
 
     // Denormalise RRULE UNTIL (or the last occurrence for COUNT-bounded rules) into an Instant
     // so the SQL window prefilter can skip events that cannot possibly contribute occurrences
@@ -360,6 +379,8 @@ public sealed class CalendarService : ICalendarService
 
     public async Task<CalendarEvent> UpdateEventAsync(Guid id, UpdateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
     {
+        ValidateRecurrenceRule(dto.RecurrenceRule);
+
         var now = _clock.GetCurrentInstant();
         CalendarEvent? mutated = null;
 

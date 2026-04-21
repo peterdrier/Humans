@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Humans.Application.DTOs.Calendar;
 using Humans.Application.Interfaces.Calendar;
 using Humans.Application.Interfaces.Teams;
@@ -199,14 +200,23 @@ public class CalendarController : HumansControllerBase
             return View(form);
         }
 
-        var ev = await _calendar.CreateEventAsync(new CreateCalendarEventDto(
-            form.Title, form.Description, form.Location, form.LocationUrl,
-            form.OwningTeamId, start, end, form.IsAllDay,
-            form.IsRecurring ? form.RecurrenceRule : null,
-            form.IsRecurring ? form.RecurrenceTimezone : null),
-            createdByUserId: GetCurrentUserId(), ct);
+        try
+        {
+            var ev = await _calendar.CreateEventAsync(new CreateCalendarEventDto(
+                form.Title, form.Description, form.Location, form.LocationUrl,
+                form.OwningTeamId, start, end, form.IsAllDay,
+                form.IsRecurring ? form.RecurrenceRule : null,
+                form.IsRecurring ? form.RecurrenceTimezone : null),
+                createdByUserId: GetCurrentUserId(), ct);
 
-        return RedirectToAction(nameof(Event), new { id = ev.Id });
+            return RedirectToAction(nameof(Event), new { id = ev.Id });
+        }
+        catch (ValidationException ex)
+        {
+            ModelState.AddModelError(nameof(form.RecurrenceRule), ex.Message);
+            form.TeamOptions = await GetSelectableTeamsAsync(ct);
+            return View(form);
+        }
     }
 
     [HttpGet("Event/{id:guid}/Edit")]
@@ -215,7 +225,11 @@ public class CalendarController : HumansControllerBase
         var ev = await _calendar.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
-        var zone = DateTimeZoneProviders.Tzdb[ev.RecurrenceTimezone ?? "Europe/Madrid"];
+        // Fall back to Europe/Madrid if a persisted tz is unknown — lets the form render
+        // so the admin can correct it, instead of 500'ing on display.
+        var tzId = ev.RecurrenceTimezone ?? "Europe/Madrid";
+        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(tzId)
+            ?? DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var startDate = ev.StartUtc.InZone(zone).Date;
         // Stored end is half-open exclusive midnight; subtract a tick to recover the
         // inclusive end date that the user originally entered.
@@ -256,14 +270,23 @@ public class CalendarController : HumansControllerBase
             return View(form);
         }
 
-        await _calendar.UpdateEventAsync(id, new UpdateCalendarEventDto(
-            form.Title, form.Description, form.Location, form.LocationUrl,
-            form.OwningTeamId, start, end, form.IsAllDay,
-            form.IsRecurring ? form.RecurrenceRule : null,
-            form.IsRecurring ? form.RecurrenceTimezone : null),
-            updatedByUserId: GetCurrentUserId(), ct);
+        try
+        {
+            await _calendar.UpdateEventAsync(id, new UpdateCalendarEventDto(
+                form.Title, form.Description, form.Location, form.LocationUrl,
+                form.OwningTeamId, start, end, form.IsAllDay,
+                form.IsRecurring ? form.RecurrenceRule : null,
+                form.IsRecurring ? form.RecurrenceTimezone : null),
+                updatedByUserId: GetCurrentUserId(), ct);
 
-        return RedirectToAction(nameof(Event), new { id });
+            return RedirectToAction(nameof(Event), new { id });
+        }
+        catch (ValidationException ex)
+        {
+            ModelState.AddModelError(nameof(form.RecurrenceRule), ex.Message);
+            form.TeamOptions = await GetSelectableTeamsAsync(ct);
+            return View(form);
+        }
     }
 
     // All-day events store half-open [Start 00:00, EndDate+1 00:00) so the display
