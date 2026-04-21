@@ -34,11 +34,78 @@ public class CalendarService : ICalendarService
         Instant from, Instant to, Guid? teamId = null, CancellationToken ct = default)
         => throw new NotSupportedException("Not yet implemented.");
 
-    public Task<CalendarEvent?> GetEventByIdAsync(Guid id, CancellationToken ct = default)
-        => throw new NotSupportedException("Not yet implemented.");
+    public async Task<CalendarEvent?> GetEventByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        return await _db.CalendarEvents
+            .Include(e => e.OwningTeam)
+            .Include(e => e.Exceptions)
+            .FirstOrDefaultAsync(e => e.Id == id, ct);
+    }
 
-    public Task<CalendarEvent> CreateEventAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default)
-        => throw new NotSupportedException("Not yet implemented.");
+    public async Task<CalendarEvent> CreateEventAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default)
+    {
+        var now = _clock.GetCurrentInstant();
+
+        var ev = new CalendarEvent
+        {
+            Id = Guid.NewGuid(),
+            Title = dto.Title,
+            Description = dto.Description,
+            Location = dto.Location,
+            LocationUrl = dto.LocationUrl,
+            OwningTeamId = dto.OwningTeamId,
+            StartUtc = dto.StartUtc,
+            EndUtc = dto.EndUtc,
+            IsAllDay = dto.IsAllDay,
+            RecurrenceRule = dto.RecurrenceRule,
+            RecurrenceTimezone = dto.RecurrenceTimezone,
+            RecurrenceUntilUtc = ComputeRecurrenceUntilUtc(dto.RecurrenceRule, dto.RecurrenceTimezone),
+            CreatedByUserId = createdByUserId,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var errors = ev.Validate();
+        if (errors.Count > 0)
+            throw new InvalidOperationException("CalendarEvent is invalid: " + string.Join("; ", errors));
+
+        _db.CalendarEvents.Add(ev);
+        await _db.SaveChangesAsync(ct);
+
+        InvalidateCache();
+        return ev;
+    }
+
+    private void InvalidateCache() => _cache.Remove(CacheKeyActiveEvents);
+
+    private static Instant? ComputeRecurrenceUntilUtc(string? rrule, string? tz)
+    {
+        if (string.IsNullOrWhiteSpace(rrule) || string.IsNullOrWhiteSpace(tz)) return null;
+
+        foreach (var part in rrule.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var eq = part.IndexOf('=');
+            if (eq <= 0) continue;
+            var key = part[..eq];
+            var val = part[(eq + 1)..];
+            if (!string.Equals(key, "UNTIL", StringComparison.OrdinalIgnoreCase)) continue;
+
+            if (val.EndsWith('Z'))
+            {
+                var dt = DateTimeOffset.ParseExact(
+                    val, "yyyyMMdd'T'HHmmss'Z'", System.Globalization.CultureInfo.InvariantCulture);
+                return Instant.FromDateTimeOffset(dt);
+            }
+            else
+            {
+                var local = NodaTime.Text.LocalDateTimePattern.CreateWithInvariantCulture("yyyyMMdd'T'HHmmss")
+                    .Parse(val).Value;
+                var zone = DateTimeZoneProviders.Tzdb[tz];
+                return local.InZoneStrictly(zone).ToInstant();
+            }
+        }
+        return null;
+    }
 
     public Task<CalendarEvent> UpdateEventAsync(Guid id, UpdateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
         => throw new NotSupportedException("Not yet implemented.");
