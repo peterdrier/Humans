@@ -117,7 +117,8 @@ public sealed class GoogleAdminService : IGoogleAdminService
                     LastLoginTime: account.LastLoginTime,
                     MatchedUserId: matched?.UserId,
                     MatchedDisplayName: matchedUser?.DisplayName,
-                    IsUsedAsPrimary: isUsedAsPrimary));
+                    IsUsedAsPrimary: isUsedAsPrimary,
+                    IsEnrolledIn2Sv: account.IsEnrolledIn2Sv));
             }
 
             var sorted = accountInfos
@@ -125,6 +126,9 @@ public sealed class GoogleAdminService : IGoogleAdminService
                 .ToList();
 
             var linkedCount = sorted.Count(a => a.MatchedUserId.HasValue);
+            // Missing-2FA only applies to accounts that can actually be used — suspended
+            // accounts can't sign in at all, so flagging their 2FA gap is noise.
+            var missingTwoFactorCount = sorted.Count(a => !a.IsSuspended && !a.IsEnrolledIn2Sv);
 
             return new WorkspaceAccountListResult(
                 Accounts: sorted,
@@ -133,7 +137,8 @@ public sealed class GoogleAdminService : IGoogleAdminService
                 SuspendedAccounts: sorted.Count(a => a.IsSuspended),
                 LinkedAccounts: linkedCount,
                 UnlinkedAccounts: sorted.Count - linkedCount,
-                NotPrimaryCount: notPrimaryCount);
+                NotPrimaryCount: notPrimaryCount,
+                MissingTwoFactorCount: missingTwoFactorCount);
         }
         catch (Exception ex)
         {
@@ -146,6 +151,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
                 LinkedAccounts: 0,
                 UnlinkedAccounts: 0,
                 NotPrimaryCount: 0,
+                MissingTwoFactorCount: 0,
                 ErrorMessage: "Failed to load @nobodies.team accounts. Check the logs for details.");
         }
     }
@@ -312,6 +318,61 @@ public sealed class GoogleAdminService : IGoogleAdminService
             _logger.LogError(ex, "Failed to reset password for: {Email}", email);
             return new WorkspaceAccountActionResult(false,
                 ErrorMessage: $"Failed to reset password for {email}.");
+        }
+    }
+
+    public async Task<WorkspaceBackupCodesResult> GenerateBackupCodesAsync(
+        string email, Guid actorUserId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var codes = await _workspaceUserService.GenerateBackupCodesAsync(email, ct);
+
+            await _auditLogService.LogAsync(
+                AuditAction.WorkspaceAccountBackupCodesGenerated,
+                "WorkspaceAccount", Guid.Empty,
+                $"Generated {codes.Count} backup code(s) for @{NobodiesTeamDomain} account: {email}",
+                actorUserId);
+
+            return new WorkspaceBackupCodesResult(
+                Success: true,
+                Email: email,
+                Codes: codes,
+                Message: $"Generated {codes.Count} backup code(s) for {email}. Deliver them securely — they cannot be retrieved again.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to generate backup codes for: {Email}", email);
+            return new WorkspaceBackupCodesResult(
+                Success: false,
+                Email: email,
+                ErrorMessage: $"Failed to generate backup codes for {email}. Check logs for details.");
+        }
+    }
+
+    public async Task<WorkspaceAccountActionResult> InvalidateBackupCodesAsync(
+        string email, Guid actorUserId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            await _workspaceUserService.InvalidateBackupCodesAsync(email, ct);
+
+            await _auditLogService.LogAsync(
+                AuditAction.WorkspaceAccountBackupCodesInvalidated,
+                "WorkspaceAccount", Guid.Empty,
+                $"Invalidated backup codes for @{NobodiesTeamDomain} account: {email}",
+                actorUserId);
+
+            return new WorkspaceAccountActionResult(true,
+                Message: $"Backup codes invalidated for {email}.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to invalidate backup codes for: {Email}", email);
+            return new WorkspaceAccountActionResult(false,
+                ErrorMessage: $"Failed to invalidate backup codes for {email}. Check logs for details.");
         }
     }
 

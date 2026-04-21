@@ -67,7 +67,7 @@ Team-level resource linking stays at `/Teams/{slug}/Resources` in `TeamAdminCont
 
 | Actor | Capabilities |
 |-------|--------------|
-| Admin | Manage sync settings (per-service mode). Trigger manual syncs and execute sync actions. View reconciliation results. Check and remediate Google Group settings drift. Link unlinked groups to teams. Review and apply email backfill corrections. Manage @nobodies.team Workspace accounts (provision, suspend, reactivate, reset password, link). Provision per-human @nobodies.team email |
+| Admin | Manage sync settings (per-service mode). Trigger manual syncs and execute sync actions. View reconciliation results. Check and remediate Google Group settings drift. Link unlinked groups to teams. Review and apply email backfill corrections. Manage @nobodies.team Workspace accounts (provision, suspend, reactivate, reset password, link, generate/invalidate 2FA backup codes). Provision per-human @nobodies.team email |
 | TeamsAdmin, Board, Admin | View resource sync status dashboard. Link and unlink Google resources (Drive folders, Groups) to teams via `TeamAdminController`. View resource status. Trigger per-resource sync |
 | Coordinator | Link and unlink Google resources for their own department (via `TeamAdminController`). Trigger per-resource sync for their own department |
 | Board, Admin | View Drive activity anomaly check results. View sync audit logs |

@@ -23,13 +23,16 @@ public sealed class StubWorkspaceUserDirectoryClient : IWorkspaceUserDirectoryCl
         [
             new WorkspaceUserAccount("alice@nobodies.team", "Alice", "Example", false,
                 new DateTime(2025, 1, 15, 0, 0, 0, DateTimeKind.Utc),
-                new DateTime(2026, 3, 18, 10, 0, 0, DateTimeKind.Utc)),
+                new DateTime(2026, 3, 18, 10, 0, 0, DateTimeKind.Utc),
+                IsEnrolledIn2Sv: true),
             new WorkspaceUserAccount("bob@nobodies.team", "Bob", "Test", false,
                 new DateTime(2025, 3, 1, 0, 0, 0, DateTimeKind.Utc),
-                new DateTime(2026, 3, 15, 14, 0, 0, DateTimeKind.Utc)),
+                new DateTime(2026, 3, 15, 14, 0, 0, DateTimeKind.Utc),
+                IsEnrolledIn2Sv: false),
             new WorkspaceUserAccount("carol@nobodies.team", "Carol", "Demo", true,
                 new DateTime(2025, 6, 10, 0, 0, 0, DateTimeKind.Utc),
-                null)
+                null,
+                IsEnrolledIn2Sv: false)
         ];
     }
 
@@ -56,7 +59,8 @@ public sealed class StubWorkspaceUserDirectoryClient : IWorkspaceUserDirectoryCl
     {
         _logger.LogInformation("[Stub] Provisioned fake account: {Email}", primaryEmail);
         var account = new WorkspaceUserAccount(
-            primaryEmail, firstName, lastName, false, DateTime.UtcNow, null);
+            primaryEmail, firstName, lastName, false, DateTime.UtcNow, null,
+            IsEnrolledIn2Sv: false);
         _accounts.Add(account);
         return Task.FromResult(account);
     }
@@ -78,6 +82,24 @@ public sealed class StubWorkspaceUserDirectoryClient : IWorkspaceUserDirectoryCl
     public Task ResetPasswordAsync(string primaryEmail, string newPassword, CancellationToken ct = default)
     {
         _logger.LogInformation("[Stub] Reset password for fake account: {Email}", primaryEmail);
+        return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<string>> GenerateBackupCodesAsync(string primaryEmail, CancellationToken ct = default)
+    {
+        _logger.LogInformation("[Stub] Generated backup codes for fake account: {Email}", primaryEmail);
+        // Return 10 placeholder codes for local development visibility.
+        IReadOnlyList<string> codes =
+        [
+            "1111-1111", "2222-2222", "3333-3333", "4444-4444", "5555-5555",
+            "6666-6666", "7777-7777", "8888-8888", "9999-9999", "0000-0000"
+        ];
+        return Task.FromResult(codes);
+    }
+
+    public Task InvalidateBackupCodesAsync(string primaryEmail, CancellationToken ct = default)
+    {
+        _logger.LogInformation("[Stub] Invalidated backup codes for fake account: {Email}", primaryEmail);
         return Task.CompletedTask;
     }
 

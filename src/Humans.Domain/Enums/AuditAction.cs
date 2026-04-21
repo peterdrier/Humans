@@ -65,6 +65,8 @@ public enum AuditAction
     WorkspaceAccountReactivated,
     WorkspaceAccountPasswordReset,
     WorkspaceAccountLinked,
+    WorkspaceAccountBackupCodesGenerated,
+    WorkspaceAccountBackupCodesInvalidated,
     AccountMergeRequested,
     AccountMergeAccepted,
     AccountMergeRejected,

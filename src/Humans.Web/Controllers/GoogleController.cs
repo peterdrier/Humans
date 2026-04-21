@@ -587,15 +587,28 @@ public class GoogleController : HumansControllerBase
                 LastLoginTime = a.LastLoginTime,
                 MatchedUserId = a.MatchedUserId,
                 MatchedDisplayName = a.MatchedDisplayName,
-                IsUsedAsPrimary = a.IsUsedAsPrimary
+                IsUsedAsPrimary = a.IsUsedAsPrimary,
+                IsEnrolledIn2Sv = a.IsEnrolledIn2Sv
             }).ToList(),
             TotalAccounts = result.TotalAccounts,
             ActiveAccounts = result.ActiveAccounts,
             SuspendedAccounts = result.SuspendedAccounts,
             LinkedAccounts = result.LinkedAccounts,
             UnlinkedAccounts = result.UnlinkedAccounts,
-            NotPrimaryCount = result.NotPrimaryCount
+            NotPrimaryCount = result.NotPrimaryCount,
+            MissingTwoFactorCount = result.MissingTwoFactorCount
         };
+
+        // If a previous POST just generated backup codes, surface them once via a modal.
+        // TempData is single-use — once the page renders, the codes are gone.
+        if (TempData[TempDataKeys.WorkspaceBackupCodes] is string codesJson)
+        {
+            var codesVm = System.Text.Json.JsonSerializer.Deserialize<WorkspaceBackupCodesViewModel>(codesJson);
+            if (codesVm is not null)
+            {
+                ViewBag.GeneratedBackupCodes = codesVm;
+            }
+        }
 
         return View(model);
     }
@@ -691,6 +704,65 @@ public class GoogleController : HumansControllerBase
 
         var result = await _googleAdminService.ResetPasswordAsync(
             email, currentUser.Id);
+
+        if (result.Success)
+            SetSuccess(result.Message!);
+        else
+            SetError(result.ErrorMessage!);
+
+        return RedirectToAction(nameof(Accounts));
+    }
+
+    [HttpPost("Accounts/GenerateBackupCodes")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> GenerateBackupCodes(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return BadRequest();
+        }
+
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser is null) return Unauthorized();
+
+        var result = await _googleAdminService.GenerateBackupCodesAsync(email, currentUser.Id);
+
+        if (result.Success && result.Codes is { Count: > 0 })
+        {
+            // Carry codes across the PRG redirect via TempData. Single-use so a refresh
+            // of the Accounts page after dismissing the modal doesn't re-expose them.
+            var codesVm = new WorkspaceBackupCodesViewModel
+            {
+                Email = result.Email ?? email,
+                Codes = result.Codes.ToList()
+            };
+            TempData[TempDataKeys.WorkspaceBackupCodes] =
+                System.Text.Json.JsonSerializer.Serialize(codesVm);
+            SetSuccess(result.Message ?? $"Generated {result.Codes.Count} backup code(s) for {email}.");
+        }
+        else
+        {
+            SetError(result.ErrorMessage ?? $"Failed to generate backup codes for {email}.");
+        }
+
+        return RedirectToAction(nameof(Accounts));
+    }
+
+    [HttpPost("Accounts/InvalidateBackupCodes")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> InvalidateBackupCodes(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return BadRequest();
+        }
+
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser is null) return Unauthorized();
+
+        var result = await _googleAdminService.InvalidateBackupCodesAsync(email, currentUser.Id);
 
         if (result.Success)
             SetSuccess(result.Message!);

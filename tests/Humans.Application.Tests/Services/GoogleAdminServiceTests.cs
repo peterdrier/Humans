@@ -70,9 +70,9 @@ public class GoogleAdminServiceTests
         _workspaceUserService.ListAccountsAsync(Arg.Any<CancellationToken>())
             .Returns([
                 new WorkspaceUserAccount("alice@nobodies.team", "Alice", "Smith", false,
-                    DateTime.UtcNow, DateTime.UtcNow),
+                    DateTime.UtcNow, DateTime.UtcNow, IsEnrolledIn2Sv: true),
                 new WorkspaceUserAccount("bob@nobodies.team", "Bob", "Jones", true,
-                    DateTime.UtcNow, null),
+                    DateTime.UtcNow, null, IsEnrolledIn2Sv: false),
             ]);
 
         _userEmailService.MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
@@ -119,7 +119,7 @@ public class GoogleAdminServiceTests
         _workspaceUserService.ListAccountsAsync(Arg.Any<CancellationToken>())
             .Returns([
                 new WorkspaceUserAccount("dup@nobodies.team", "Dup", "User", false,
-                    DateTime.UtcNow, null),
+                    DateTime.UtcNow, null, IsEnrolledIn2Sv: false),
             ]);
 
         _userEmailService.MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
@@ -175,7 +175,7 @@ public class GoogleAdminServiceTests
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(new WorkspaceUserAccount("test@nobodies.team", "Test", "User", false,
-                DateTime.UtcNow, null));
+                DateTime.UtcNow, null, IsEnrolledIn2Sv: false));
 
         var result = await _service.ProvisionStandaloneAccountAsync(
             "test", "Test", "User", _actorUserId);
@@ -196,7 +196,7 @@ public class GoogleAdminServiceTests
     {
         _workspaceUserService.GetAccountAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new WorkspaceUserAccount("test@nobodies.team", "Test", "User", false,
-                DateTime.UtcNow, null));
+                DateTime.UtcNow, null, IsEnrolledIn2Sv: false));
 
         var result = await _service.ProvisionStandaloneAccountAsync(
             "test", "Test", "User", _actorUserId);

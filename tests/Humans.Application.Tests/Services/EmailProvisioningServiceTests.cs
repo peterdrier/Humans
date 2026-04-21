@@ -237,7 +237,7 @@ public class EmailProvisioningServiceTests
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(new WorkspaceUserAccount(
                 "bob@nobodies.team", "Person", "Test", false,
-                DateTime.UtcNow, null));
+                DateTime.UtcNow, null, IsEnrolledIn2Sv: false));
 
         var result = await f.Service.ProvisionNobodiesEmailAsync(userId, "bob", userId);
 
