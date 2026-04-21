@@ -156,6 +156,47 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         _byUserId[userId] = FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), notificationEmail);
     }
 
+    /// <summary>
+    /// Populates <see cref="_byUserId"/> with a <see cref="FullProfile"/> for every
+    /// existing profile. Called at application startup by
+    /// <c>FullProfileWarmupHostedService</c> so bulk-read methods
+    /// (<see cref="GetBirthdayProfilesAsync"/>,
+    /// <see cref="GetApprovedProfilesWithLocationAsync"/>,
+    /// <see cref="GetFilteredHumansAsync"/>,
+    /// <see cref="SearchApprovedUsersAsync"/>) return complete results immediately
+    /// after deploy rather than filling in lazily as each user is accessed.
+    /// </summary>
+    /// <remarks>
+    /// Trivial at ~500-user scale. Runs inside an ad-hoc DI scope so the Scoped
+    /// <see cref="IUserService"/> can be resolved. Exceptions propagate to the
+    /// caller; the hosted service logs and swallows so startup is never blocked
+    /// by a warmup failure — lazy population from <see cref="GetFullProfileAsync"/>
+    /// will still work.
+    /// </remarks>
+    public async Task WarmAllAsync(CancellationToken ct = default)
+    {
+        var profiles = await _profileRepository.GetAllAsync(ct);
+        if (profiles.Count == 0)
+            return;
+
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+
+        var userIds = profiles.Select(p => p.UserId).ToList();
+        var users = await userService.GetByIdsAsync(userIds, ct);
+        var notificationEmails = await _userEmailRepository.GetAllNotificationTargetEmailsAsync(ct);
+
+        foreach (var profile in profiles)
+        {
+            if (!users.TryGetValue(profile.UserId, out var user))
+                continue;
+
+            notificationEmails.TryGetValue(profile.UserId, out var notificationEmail);
+            _byUserId[profile.UserId] =
+                FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), notificationEmail);
+        }
+    }
+
     public async Task<IReadOnlyDictionary<Guid, Profile>> GetByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {

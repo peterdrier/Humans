@@ -139,8 +139,11 @@ builder.Services.AddDbContext<HumansDbContext>((sp, options) =>
     }
 });
 
-// Register IDbContextFactory for creating short-lived DbContext instances in parallel operations
-// (e.g., GoogleWorkspaceSyncService parallel sync tasks that each need their own DbContext).
+// Register IDbContextFactory for creating short-lived DbContext instances from the
+// Singleton Profile-section repositories (ProfileRepository, ContactFieldRepository,
+// UserEmailRepository, CommunicationPreferenceRepository). Lifetime defaults to
+// Singleton — required so Singleton consumers (the repositories) can inject it
+// without tripping scope validation.
 builder.Services.AddDbContextFactory<HumansDbContext>((sp, options) =>
 {
     options.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>(), npgsqlOptions =>
@@ -150,7 +153,7 @@ builder.Services.AddDbContextFactory<HumansDbContext>((sp, options) =>
         npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
     });
     options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
-}, lifetime: ServiceLifetime.Scoped);
+});
 
 // Persist Data Protection keys to the database so auth cookies survive container restarts
 builder.Services.AddDataProtection()

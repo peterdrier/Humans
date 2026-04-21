@@ -244,6 +244,92 @@ public class CachingProfileServiceTests
         await _inner.Received(1).GetFullProfileAsync(userId, Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task WarmAllAsync_PopulatesDictForAllProfiles()
+    {
+        var userA = Guid.NewGuid();
+        var userB = Guid.NewGuid();
+        var profileA = new Profile { Id = Guid.NewGuid(), UserId = userA, BurnerName = "A" };
+        var profileB = new Profile { Id = Guid.NewGuid(), UserId = userB, BurnerName = "B" };
+
+        _profileRepository.GetAllAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<Profile> { profileA, profileB });
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User>
+            {
+                [userA] = new User { Id = userA, DisplayName = "Alice" },
+                [userB] = new User { Id = userB, DisplayName = "Bob" },
+            });
+        _userEmailRepository.GetAllNotificationTargetEmailsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string>());
+
+        var sut = CreateSut();
+
+        await sut.WarmAllAsync();
+
+        // Subsequent GetFullProfileAsync calls must be served from the dict — the
+        // inner service must NOT be invoked (it would have been for a lazy load).
+        var hitA = await sut.GetFullProfileAsync(userA);
+        var hitB = await sut.GetFullProfileAsync(userB);
+
+        hitA.Should().NotBeNull();
+        hitA!.BurnerName.Should().Be("A");
+        hitB.Should().NotBeNull();
+        hitB!.BurnerName.Should().Be("B");
+        await _inner.DidNotReceive().GetFullProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task WarmAllAsync_EmptyRepository_IsNoOp()
+    {
+        _profileRepository.GetAllAsync(Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<Profile>());
+
+        var sut = CreateSut();
+
+        await sut.WarmAllAsync();
+
+        // No user-service or email-repo calls should have happened.
+        await _userService.DidNotReceive()
+            .GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+        await _userEmailRepository.DidNotReceive()
+            .GetAllNotificationTargetEmailsAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task WarmAllAsync_SkipsProfilesWithMissingUser()
+    {
+        var userA = Guid.NewGuid();
+        var orphanUserId = Guid.NewGuid();
+        var profileA = new Profile { Id = Guid.NewGuid(), UserId = userA, BurnerName = "A" };
+        var orphanProfile = new Profile { Id = Guid.NewGuid(), UserId = orphanUserId, BurnerName = "Orphan" };
+
+        _profileRepository.GetAllAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<Profile> { profileA, orphanProfile });
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User>
+            {
+                [userA] = new User { Id = userA, DisplayName = "Alice" },
+                // orphanUserId intentionally missing
+            });
+        _userEmailRepository.GetAllNotificationTargetEmailsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string>());
+
+        var sut = CreateSut();
+
+        await sut.WarmAllAsync();
+
+        var hitA = await sut.GetFullProfileAsync(userA);
+        hitA.Should().NotBeNull();
+
+        // Orphan is not in the dict — a read falls through to inner.
+        _inner.GetFullProfileAsync(orphanUserId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<FullProfile?>((FullProfile?)null));
+        var orphanHit = await sut.GetFullProfileAsync(orphanUserId);
+        orphanHit.Should().BeNull();
+        await _inner.Received(1).GetFullProfileAsync(orphanUserId, Arg.Any<CancellationToken>());
+    }
+
     private static ProfileSaveRequest SampleSaveRequest() => new(
         BurnerName: "Burner", FirstName: "First", LastName: "Last",
         City: null, CountryCode: null, Latitude: null, Longitude: null, PlaceId: null,

@@ -271,6 +271,13 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IFullProfileInvalidator>(sp =>
             sp.GetRequiredService<CachingProfileService>());
 
+        // Eagerly warm the FullProfile dict at startup so bulk reads
+        // (birthday widget, location directory, admin human list, profile search)
+        // return complete results immediately after deploy instead of filling
+        // in lazily per user. Failures are logged and swallowed; lazy population
+        // still works.
+        services.AddHostedService<FullProfileWarmupHostedService>();
+
         services.AddScoped<UserService>();
         services.AddScoped<IUserService>(sp => sp.GetRequiredService<UserService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<UserService>());
