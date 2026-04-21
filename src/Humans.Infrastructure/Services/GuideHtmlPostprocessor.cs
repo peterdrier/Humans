@@ -20,6 +20,14 @@ public sealed class GuideHtmlPostprocessor
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture,
         TimeSpan.FromMilliseconds(500));
 
+    // Matches <code>/route/path</code> spans where the content is a concrete app path:
+    // starts with "/", contains no "{" (so route templates like /Profile/{id} are left
+    // alone), no whitespace, no "#" or "?". These spans get wrapped in an <a href>.
+    private static readonly Regex AppPathCodePattern = new(
+        """<code>(?<path>/[^\s<>{}#?]+)</code>""",
+        RegexOptions.Compiled | RegexOptions.ExplicitCapture,
+        TimeSpan.FromMilliseconds(500));
+
     public string Rewrite(string html, GuideSettings settings, IReadOnlySet<string> knownFileStems)
     {
         ArgumentNullException.ThrowIfNull(html);
@@ -54,6 +62,12 @@ public sealed class GuideHtmlPostprocessor
 
             var rewritten = RewriteImgSrc(url, rawBase, guideFolder);
             return $"<img {before}src=\"{rewritten}\"{after}>";
+        });
+
+        html = AppPathCodePattern.Replace(html, match =>
+        {
+            var path = match.Groups["path"].Value;
+            return $"""<a href="{path}" class="guide-app-path"><code>{path}</code></a>""";
         });
 
         return html;

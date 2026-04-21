@@ -133,4 +133,48 @@ public class GuideHtmlPostprocessorTests
 
         result.Should().Contain("""src="https://cdn.example.com/x.png" """.Trim());
     }
+
+    [Fact]
+    public void Rewrite_InlineCodeAppPath_WrappedInAnchor()
+    {
+        const string html = "<p>Go to <code>/Profile/Me</code> to view your profile.</p>";
+
+        var result = Processor.Rewrite(html, Settings, GuideFiles.All);
+
+        result.Should().Contain("""<a href="/Profile/Me" class="guide-app-path"><code>/Profile/Me</code></a>""");
+    }
+
+    [Fact]
+    public void Rewrite_InlineCodeAppPathWithSegments_WrappedInAnchor()
+    {
+        const string html = "<code>/Profile/Me/Edit</code>";
+
+        var result = Processor.Rewrite(html, Settings, GuideFiles.All);
+
+        result.Should().Contain("""href="/Profile/Me/Edit" """.Trim());
+    }
+
+    [Fact]
+    public void Rewrite_InlineCodeRouteTemplate_LeftAsIs()
+    {
+        // Routes with "{id}" placeholders should NOT be linked — clicking /Profile/{id} would 404.
+        const string html = "<code>/Profile/{id}/Admin</code>";
+
+        var result = Processor.Rewrite(html, Settings, GuideFiles.All);
+
+        result.Should().NotContain("<a href=");
+        result.Should().Contain("<code>/Profile/{id}/Admin</code>");
+    }
+
+    [Fact]
+    public void Rewrite_InlineCodeNonPath_LeftAsIs()
+    {
+        // Not a path (doesn't start with "/") — it's a config key or a literal value.
+        const string html = "<p>Set <code>Guide:Owner</code> to your fork.</p>";
+
+        var result = Processor.Rewrite(html, Settings, GuideFiles.All);
+
+        result.Should().NotContain("<a href=");
+        result.Should().Contain("<code>Guide:Owner</code>");
+    }
 }
