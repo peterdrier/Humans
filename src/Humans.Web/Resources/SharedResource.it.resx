@@ -169,6 +169,33 @@
   <data name="Dashboard_RejectedMessage" xml:space="preserve"><value>La Sua registrazione &#xE8; stata esaminata e non &#xE8; stata approvata. Per domande, contatti il team di amministrazione.</value></data>
   <data name="Dashboard_RejectionReason" xml:space="preserve"><value>Motivo</value></data>
 
+  <data name="Dashboard_Subtitle" xml:space="preserve"><value>Ecco cosa succede.</value></data>
+  <data name="Dashboard_AgreementSingular" xml:space="preserve"><value>accordo da rivedere</value></data>
+  <data name="Dashboard_AgreementPlural" xml:space="preserve"><value>accordi da rivedere</value></data>
+  <data name="Dashboard_GetInvolved" xml:space="preserve"><value>Partecipa</value></data>
+  <data name="Dashboard_GetInvolvedSubtitle" xml:space="preserve"><value>Non si costruisce da solo.</value></data>
+  <data name="Dashboard_ShiftsDescription" xml:space="preserve"><value>Guarda cosa serve e iscriviti.</value></data>
+  <data name="Dashboard_TeamsDescription" xml:space="preserve"><value>Trova la tua gente. O diventa la gente di qualcuno.</value></data>
+  <data name="Dashboard_CampsDescription" xml:space="preserve"><value>I quartieri che fanno sentire Elsewhere come casa.</value></data>
+  <data name="Dashboard_YourStuff" xml:space="preserve"><value>Le tue cose</value></data>
+  <data name="Dashboard_YourStuffSubtitle" xml:space="preserve"><value>Profilo, accordi, e le cose che sono solo tue.</value></data>
+  <data name="Dashboard_ProfileCardDescription" xml:space="preserve"><value>Aggiorna le tue info, foto, e tutto il resto.</value></data>
+  <data name="Dashboard_ConsentsCardDescription" xml:space="preserve"><value>La burocrazia dell'essere human.</value></data>
+  <data name="Dashboard_PrivacyCard" xml:space="preserve"><value>Privacy</value></data>
+  <data name="Dashboard_PrivacyCardDescription" xml:space="preserve"><value>Controlla cosa possono vedere gli altri di te.</value></data>
+  <data name="Dashboard_GovernanceCardDescription" xml:space="preserve"><value>Assemblee, elezioni, e le cose serie.</value></data>
+  <data name="Dashboard_TicketNotConfigured" xml:space="preserve"><value>Le info sui biglietti non sono ancora disponibili. Pazienza.</value></data>
+  <data name="Dashboard_TicketConfirmed" xml:space="preserve"><value>Ci sei. Biglietto fatto.</value></data>
+  <data name="Dashboard_TicketCount" xml:space="preserve"><value>Hai {0} biglietti</value><comment>{0} = ticket count</comment></data>
+  <data name="Dashboard_NotAttending" xml:space="preserve"><value>Non vieni quest'anno.</value></data>
+  <data name="Dashboard_NotAttendingHint" xml:space="preserve"><value>Hai cambiato idea? Nessun giudizio.</value></data>
+  <data name="Dashboard_UndoNotAttending" xml:space="preserve"><value>In realtà, forse vengo</value></data>
+  <data name="Dashboard_TicketMissing" xml:space="preserve"><value>Ancora nessun biglietto</value></data>
+  <data name="Dashboard_TicketMissingHint" xml:space="preserve"><value>Non ne vediamo nessuno collegato al tuo account.</value></data>
+  <data name="Dashboard_BuyTicket" xml:space="preserve"><value>Prendi il tuo biglietto</value></data>
+  <data name="Dashboard_DifferentEmail" xml:space="preserve"><value>Comprato con un'altra email?</value></data>
+  <data name="Dashboard_DeclareNotAttending" xml:space="preserve"><value>Non vengo quest'anno</value></data>
+
   <!-- Guest Dashboard -->
   <data name="Guest_Greeting" xml:space="preserve"><value>Ciao, {0}.</value></data>
   <data name="Guest_Subtitle" xml:space="preserve"><value>Benvenuto/a su Humans &#x2014; dove Nobodies Collective gestisce tutto per Elsewhere.</value></data>

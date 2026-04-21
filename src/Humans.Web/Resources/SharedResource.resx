@@ -168,6 +168,32 @@
   <data name="Dashboard_RejectedTitle" xml:space="preserve"><value>Signup Rejected</value></data>
   <data name="Dashboard_RejectedMessage" xml:space="preserve"><value>Your signup has been reviewed and was not approved. If you have questions, please contact the admin team.</value></data>
   <data name="Dashboard_RejectionReason" xml:space="preserve"><value>Reason</value></data>
+  <data name="Dashboard_Subtitle" xml:space="preserve"><value>Here's what's happening.</value></data>
+  <data name="Dashboard_AgreementSingular" xml:space="preserve"><value>agreement to review</value></data>
+  <data name="Dashboard_AgreementPlural" xml:space="preserve"><value>agreements to review</value></data>
+  <data name="Dashboard_GetInvolved" xml:space="preserve"><value>Get involved</value></data>
+  <data name="Dashboard_GetInvolvedSubtitle" xml:space="preserve"><value>This thing doesn't build itself.</value></data>
+  <data name="Dashboard_ShiftsDescription" xml:space="preserve"><value>See what needs doing and sign up.</value></data>
+  <data name="Dashboard_TeamsDescription" xml:space="preserve"><value>Find your people. Or become someone else's people.</value></data>
+  <data name="Dashboard_CampsDescription" xml:space="preserve"><value>The neighbourhoods that make Elsewhere feel like home.</value></data>
+  <data name="Dashboard_YourStuff" xml:space="preserve"><value>Your stuff</value></data>
+  <data name="Dashboard_YourStuffSubtitle" xml:space="preserve"><value>Profile, agreements, and the bits that are just yours.</value></data>
+  <data name="Dashboard_ProfileCardDescription" xml:space="preserve"><value>Update your info, photo, and all that.</value></data>
+  <data name="Dashboard_ConsentsCardDescription" xml:space="preserve"><value>The paperwork side of being a human.</value></data>
+  <data name="Dashboard_PrivacyCard" xml:space="preserve"><value>Privacy</value></data>
+  <data name="Dashboard_PrivacyCardDescription" xml:space="preserve"><value>Control what others can see about you.</value></data>
+  <data name="Dashboard_GovernanceCardDescription" xml:space="preserve"><value>Assemblies, elections, and the serious stuff.</value></data>
+  <data name="Dashboard_TicketNotConfigured" xml:space="preserve"><value>Ticket info isn't available yet. Hang tight.</value></data>
+  <data name="Dashboard_TicketConfirmed" xml:space="preserve"><value>You're in. Ticket sorted.</value></data>
+  <data name="Dashboard_TicketCount" xml:space="preserve"><value>You have {0} tickets</value><comment>{0} = ticket count</comment></data>
+  <data name="Dashboard_NotAttending" xml:space="preserve"><value>Not coming this year.</value></data>
+  <data name="Dashboard_NotAttendingHint" xml:space="preserve"><value>Changed your mind? No judgment.</value></data>
+  <data name="Dashboard_UndoNotAttending" xml:space="preserve"><value>Actually, I might come</value></data>
+  <data name="Dashboard_TicketMissing" xml:space="preserve"><value>No ticket yet</value></data>
+  <data name="Dashboard_TicketMissingHint" xml:space="preserve"><value>We don't see one linked to your account.</value></data>
+  <data name="Dashboard_BuyTicket" xml:space="preserve"><value>Get your ticket</value></data>
+  <data name="Dashboard_DifferentEmail" xml:space="preserve"><value>Bought on a different email?</value></data>
+  <data name="Dashboard_DeclareNotAttending" xml:space="preserve"><value>Not coming this year</value></data>
 
   <!-- Guest Dashboard -->
   <data name="Guest_Greeting" xml:space="preserve"><value>Hey, {0}.</value></data>
