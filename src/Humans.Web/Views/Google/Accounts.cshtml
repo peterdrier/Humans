@@ -100,7 +100,30 @@
             </div>
         </div>
     </div>
+    <div class="col">
+        <div class="card text-center">
+            <div class="card-body py-2">
+                <h4 class="mb-0 @(Model.MissingTwoFactorCount > 0 ? "text-danger" : "text-success")">@Model.MissingTwoFactorCount</h4>
+                <small class="text-muted">Missing 2FA</small>
+            </div>
+        </div>
+    </div>
 </div>
+
+@if (Model.MissingTwoFactorCount > 0)
+{
+    <div class="alert alert-warning d-flex align-items-center justify-content-between mb-3" role="alert">
+        <div>
+            <i class="fa-solid fa-triangle-exclamation me-2"></i>
+            <strong>@Model.MissingTwoFactorCount</strong> account@(Model.MissingTwoFactorCount == 1 ? "" : "s") missing 2FA setup
+            — these accounts cannot sign in until enrollment is completed.
+        </div>
+        <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" role="switch" id="filter-missing-2fa" />
+            <label class="form-check-label" for="filter-missing-2fa">Show only unenrolled</label>
+        </div>
+    </div>
+}
 
 @* Accounts list *@
 <div class="card">
@@ -114,15 +137,17 @@
         }
         else
         {
-            <table class="table table-hover mb-0">
+            <table class="table table-hover mb-0" id="accounts-table">
                 <thead>
                     <tr>
                         <th>Email</th>
                         <th>Name</th>
                         <th>Linked Human</th>
                         <th>Status</th>
+                        <th>2FA</th>
                         <th>Created</th>
                         <th>Last Login</th>
+                        <th>Backup Codes</th>
                         <th class="text-end">@Localizer["GoogleAccounts_Actions"]</th>
                     </tr>
                 </thead>
@@ -130,7 +155,9 @@
                     @for (var i = 0; i < Model.Accounts.Count; i++)
                     {
                         var account = Model.Accounts[i];
-                        <tr class="@(account.IsSuspended ? "table-secondary" : "")">
+                        <tr class="@(account.IsSuspended ? "table-secondary" : "")"
+                            data-is-enrolled-2sv="@(account.IsEnrolledIn2Sv ? "true" : "false")"
+                            data-is-suspended="@(account.IsSuspended ? "true" : "false")">
                             <td>
                                 <code>@account.PrimaryEmail</code>
                                 @if (account.MatchedUserId.HasValue && !account.IsUsedAsPrimary)
@@ -170,6 +197,20 @@
                                     <span class="badge bg-success">Active</span>
                                 }
                             </td>
+                            <td>
+                                @if (account.IsEnrolledIn2Sv)
+                                {
+                                    <span class="badge bg-success" title="2-Step Verification is enrolled on this account" data-bs-toggle="tooltip">
+                                        <i class="fa-solid fa-shield-halved me-1"></i>2FA ready
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger" title="Account has not completed 2FA enrollment — cannot sign in" data-bs-toggle="tooltip">
+                                        <i class="fa-solid fa-triangle-exclamation me-1"></i>2FA not set up
+                                    </span>
+                                }
+                            </td>
                             <td>@account.CreationTime.ToDisplayDate()</td>
                             <td>
                                 @if (account.LastLoginTime.HasValue)
@@ -180,6 +221,41 @@
                                 {
                                     <span class="text-muted">Never</span>
                                 }
+                            </td>
+                            <td>
+                                <div class="d-flex gap-1">
+                                    @if (account.IsEnrolledIn2Sv)
+                                    {
+                                        <form asp-action="GenerateBackupCodes" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="email" value="@account.PrimaryEmail" />
+                                            <button type="submit" class="btn btn-outline-primary btn-sm"
+                                                    title="Generate a fresh set of backup verification codes for this account"
+                                                    data-bs-toggle="tooltip"
+                                                    data-confirm="Generate backup codes for @account.PrimaryEmail? This invalidates any previously issued codes.">
+                                                <i class="fa-solid fa-key me-1"></i>Generate
+                                            </button>
+                                        </form>
+                                        <form asp-action="InvalidateBackupCodes" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="email" value="@account.PrimaryEmail" />
+                                            <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                    title="Invalidate all existing backup codes (no new codes issued)"
+                                                    data-bs-toggle="tooltip"
+                                                    data-confirm="Invalidate all backup codes for @account.PrimaryEmail immediately? Use this if codes may have leaked.">
+                                                <i class="fa-solid fa-ban"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" disabled
+                                                title="Backup codes require 2FA enrollment. The human must complete 2FA setup first."
+                                                data-bs-toggle="tooltip">
+                                            <i class="fa-solid fa-key me-1"></i>Generate
+                                        </button>
+                                    }
+                                </div>
                             </td>
                             <td class="text-end">
                                 @if (!account.IsSuspended)
@@ -203,6 +279,57 @@
     </div>
 </div>
 
+@{
+    var backupCodes = ViewBag.GeneratedBackupCodes as WorkspaceBackupCodesViewModel;
+}
+
+@if (backupCodes is not null && backupCodes.Codes.Count > 0)
+{
+    <div class="modal fade" id="backup-codes-modal" tabindex="-1" aria-labelledby="backup-codes-modal-label" aria-hidden="true"
+         data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="backup-codes-modal-label">
+                        <i class="fa-solid fa-key me-2"></i>Backup Codes for @backupCodes.Email
+                    </h5>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning mb-3">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                        <strong>These codes replace any previously issued codes.</strong>
+                        Deliver them to <code>@backupCodes.Email</code> securely and do not store them —
+                        they cannot be retrieved again after you close this dialog.
+                    </div>
+
+                    <pre id="backup-codes-text" class="bg-light p-3 border rounded mb-3 small">@string.Join("\n", backupCodes.Codes)</pre>
+
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="copy-backup-codes">
+                        <i class="fa-solid fa-copy me-1"></i>Copy all to clipboard
+                    </button>
+                    <span id="copy-backup-codes-feedback" class="text-success ms-2" style="display:none;">
+                        <i class="fa-solid fa-check me-1"></i>Copied
+                    </span>
+
+                    <hr />
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="ack-delivered" />
+                        <label class="form-check-label" for="ack-delivered">
+                            I've delivered these codes securely to the human
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="close-backup-codes" data-bs-dismiss="modal" disabled>
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @section Scripts {
     <script>
         // Sync the _HumanSearchInput hidden value to the form's userId field on submit
@@ -219,5 +346,64 @@
                 }
             });
         });
+
+        // Filter toggle: show only accounts missing 2FA setup (active + unenrolled).
+        (function () {
+            var toggle = document.getElementById('filter-missing-2fa');
+            if (!toggle) return;
+            toggle.addEventListener('change', function () {
+                var onlyUnenrolled = toggle.checked;
+                document.querySelectorAll('#accounts-table tbody tr').forEach(function (row) {
+                    if (!onlyUnenrolled) {
+                        row.style.display = '';
+                        return;
+                    }
+                    var enrolled = row.getAttribute('data-is-enrolled-2sv') === 'true';
+                    var suspended = row.getAttribute('data-is-suspended') === 'true';
+                    // Hide enrolled rows and suspended rows (suspended accounts can't sign in either way)
+                    row.style.display = (!enrolled && !suspended) ? '' : 'none';
+                });
+            });
+        })();
+
+        // Backup codes modal: copy-to-clipboard, acknowledgement gate, and auto-show once.
+        (function () {
+            var modalEl = document.getElementById('backup-codes-modal');
+            if (!modalEl) return;
+
+            // Auto-show on load
+            var modal = new bootstrap.Modal(modalEl);
+            modal.show();
+
+            var ackCheckbox = document.getElementById('ack-delivered');
+            var closeBtn = document.getElementById('close-backup-codes');
+            if (ackCheckbox && closeBtn) {
+                ackCheckbox.addEventListener('change', function () {
+                    closeBtn.disabled = !ackCheckbox.checked;
+                });
+            }
+
+            var copyBtn = document.getElementById('copy-backup-codes');
+            var codesEl = document.getElementById('backup-codes-text');
+            var feedback = document.getElementById('copy-backup-codes-feedback');
+            if (copyBtn && codesEl) {
+                copyBtn.addEventListener('click', function () {
+                    var text = codesEl.textContent || '';
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(text).then(function () {
+                            if (feedback) {
+                                feedback.style.display = 'inline';
+                                setTimeout(function () { feedback.style.display = 'none'; }, 2000);
+                            }
+                        });
+                    }
+                });
+            }
+
+            // On close, clear the codes from the DOM so browser back/refresh can't re-expose them.
+            modalEl.addEventListener('hidden.bs.modal', function () {
+                if (codesEl) codesEl.textContent = '';
+            });
+        })();
     </script>
 }

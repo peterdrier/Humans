@@ -12,6 +12,12 @@ public class WorkspaceEmailListViewModel
     public int LinkedAccounts { get; set; }
     public int UnlinkedAccounts { get; set; }
     public int NotPrimaryCount { get; set; }
+
+    /// <summary>
+    /// Count of active accounts that have not completed 2-Step Verification enrollment.
+    /// These accounts cannot sign in and need attention.
+    /// </summary>
+    public int MissingTwoFactorCount { get; set; }
 }
 
 /// <summary>
@@ -36,6 +42,22 @@ public class WorkspaceEmailAccountViewModel
     /// Whether the @nobodies.team email is being used as the notification target.
     /// </summary>
     public bool IsUsedAsPrimary { get; set; }
+
+    /// <summary>
+    /// Whether this account has completed 2-Step Verification enrollment.
+    /// Unenrolled accounts cannot sign in (2FA is enforced org-wide).
+    /// </summary>
+    public bool IsEnrolledIn2Sv { get; set; }
+}
+
+/// <summary>
+/// View model for the "codes generated" modal shown once after backup code generation.
+/// Codes are carried in TempData from GenerateBackupCodes POST → Accounts GET.
+/// </summary>
+public class WorkspaceBackupCodesViewModel
+{
+    public string Email { get; set; } = string.Empty;
+    public List<string> Codes { get; set; } = [];
 }
 
 /// <summary>

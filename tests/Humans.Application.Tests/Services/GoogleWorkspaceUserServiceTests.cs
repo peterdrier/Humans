@@ -32,7 +32,7 @@ public class GoogleWorkspaceUserServiceTests
     {
         IReadOnlyList<WorkspaceUserAccount> expected =
         [
-            new("a@nobodies.team", "A", "Alpha", false, DateTime.UtcNow, null)
+            new("a@nobodies.team", "A", "Alpha", false, DateTime.UtcNow, null, IsEnrolledIn2Sv: false)
         ];
         _client.ListAccountsAsync(Arg.Any<CancellationToken>()).Returns(expected);
 
@@ -57,7 +57,7 @@ public class GoogleWorkspaceUserServiceTests
     public async Task ProvisionAccountAsync_ForwardsAllArguments()
     {
         var expected = new WorkspaceUserAccount(
-            "new@nobodies.team", "New", "User", false, DateTime.UtcNow, null);
+            "new@nobodies.team", "New", "User", false, DateTime.UtcNow, null, IsEnrolledIn2Sv: false);
         _client.ProvisionAccountAsync(
                 "new@nobodies.team", "New", "User", "TempP@ss", "recover@example.com",
                 Arg.Any<CancellationToken>())

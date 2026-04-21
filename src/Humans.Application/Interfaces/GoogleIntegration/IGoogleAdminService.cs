@@ -45,6 +45,22 @@ public interface IGoogleAdminService
         CancellationToken ct = default);
 
     /// <summary>
+    /// Generates a fresh set of backup verification codes for a @nobodies.team account.
+    /// Invalidates any previously issued codes. Writes an audit log entry.
+    /// </summary>
+    Task<WorkspaceBackupCodesResult> GenerateBackupCodesAsync(
+        string email, Guid actorUserId,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Invalidates all backup verification codes for a @nobodies.team account.
+    /// Writes an audit log entry.
+    /// </summary>
+    Task<WorkspaceAccountActionResult> InvalidateBackupCodesAsync(
+        string email, Guid actorUserId,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Links a @nobodies.team account to a user.
     /// </summary>
     Task<WorkspaceAccountActionResult> LinkAccountAsync(
@@ -100,6 +116,7 @@ public record WorkspaceAccountListResult(
     int LinkedAccounts,
     int UnlinkedAccounts,
     int NotPrimaryCount,
+    int MissingTwoFactorCount,
     string? ErrorMessage = null);
 
 /// <summary>
@@ -114,7 +131,8 @@ public record WorkspaceAccountInfo(
     DateTime? LastLoginTime,
     Guid? MatchedUserId,
     string? MatchedDisplayName,
-    bool IsUsedAsPrimary);
+    bool IsUsedAsPrimary,
+    bool IsEnrolledIn2Sv);
 
 /// <summary>
 /// Result of a workspace account action (provision, suspend, reactivate, reset, link).
@@ -124,6 +142,17 @@ public record WorkspaceAccountActionResult(
     string? Message = null,
     string? ErrorMessage = null,
     string? TemporaryPassword = null);
+
+/// <summary>
+/// Result of generating backup verification codes. Codes are returned once and
+/// must be delivered to the human immediately — they cannot be retrieved again.
+/// </summary>
+public record WorkspaceBackupCodesResult(
+    bool Success,
+    string? Email = null,
+    IReadOnlyList<string>? Codes = null,
+    string? Message = null,
+    string? ErrorMessage = null);
 
 /// <summary>
 /// Result of applying email backfill corrections.
