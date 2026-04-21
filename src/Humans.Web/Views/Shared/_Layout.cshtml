@@ -132,16 +132,7 @@
         </main>
     </div>
 
-    <footer class="border-top py-3 text-muted text-center">
-        <div class="container d-flex justify-content-between align-items-center">
-            <div class="d-flex gap-3">
-                <a asp-controller="About" asp-action="Index" class="text-muted small">About</a>
-                <a asp-controller="Home" asp-action="Privacy" class="text-muted small">@Localizer["Nav_Privacy"]</a>
-
-            </div>
-            <partial name="_VersionInfo" />
-        </div>
-    </footer>
+    @* Footer removed — About and Privacy are in the avatar dropdown menu *@
 
     <!-- Cookie Consent Banner -->
     <div id="cookieConsent" class="position-fixed bottom-0 start-0 end-0 bg-dark text-white p-3" style="display: none; z-index: 1050;">
