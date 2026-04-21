@@ -22,7 +22,10 @@ public class GeneralAvailabilityConfiguration : IEntityTypeConfiguration<General
 
         builder.HasIndex(e => new { e.UserId, e.EventSettingsId }).IsUnique();
 
-        builder.HasOne(e => e.User)
+        // FK to User — no navigation property (cross-domain nav stripped per
+        // design-rules §6c). The FK constraint and Restrict delete behavior
+        // are preserved to keep the schema identical.
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(e => e.UserId)
             .OnDelete(DeleteBehavior.Restrict);

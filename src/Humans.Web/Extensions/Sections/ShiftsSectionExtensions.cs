@@ -5,6 +5,7 @@ using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using ShiftsShiftManagementService = Humans.Application.Services.Shifts.ShiftManagementService;
 using ShiftsShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
+using ShiftsGeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
 
 namespace Humans.Web.Extensions.Sections;
 
@@ -32,7 +33,12 @@ internal static class ShiftsSectionExtensions
         services.AddScoped<IShiftSignupService>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());
 
-        services.AddScoped<IGeneralAvailabilityService, GeneralAvailabilityService>();
+        // General Availability — §15 repository pattern (issue #541, sub-task c).
+        // Application-layer service goes through IGeneralAvailabilityRepository;
+        // no caching decorator (Option A — small admin/self-service surface,
+        // same rationale as Users/#243 and Audit Log/#552).
+        services.AddSingleton<IGeneralAvailabilityRepository, GeneralAvailabilityRepository>();
+        services.AddScoped<IGeneralAvailabilityService, ShiftsGeneralAvailabilityService>();
 
         services.AddScoped<ICalendarService, CalendarService>();
 
