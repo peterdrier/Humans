@@ -11,11 +11,11 @@ public class OccurrenceOverrideFormViewModel
     public string OriginalOccurrenceStartUtc { get; set; } = string.Empty;
 
     public DateTime? OverrideStartLocal { get; set; }
-    public DateTime? OverrideEndLocal   { get; set; }
-    public string? OverrideTitle        { get; set; }
-    public string? OverrideDescription  { get; set; }
-    public string? OverrideLocation     { get; set; }
-    public string? OverrideLocationUrl  { get; set; }
+    public DateTime? OverrideEndLocal { get; set; }
+    public string? OverrideTitle { get; set; }
+    public string? OverrideDescription { get; set; }
+    public string? OverrideLocation { get; set; }
+    public string? OverrideLocationUrl { get; set; }
 
     public string RecurrenceTimezone { get; set; } = "Europe/Madrid";
 

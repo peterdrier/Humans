@@ -147,17 +147,17 @@ public class CalendarService : ICalendarService
 
             // Apply overrides; if the override moves the occurrence outside the window, drop it.
             var newStart = ex.OverrideStartUtc ?? occ.OccurrenceStartUtc;
-            var newEnd   = ex.OverrideEndUtc   ?? occ.OccurrenceEndUtc;
+            var newEnd = ex.OverrideEndUtc ?? occ.OccurrenceEndUtc;
             if (newStart > to || (newEnd ?? newStart) < from) continue;
 
             finalResults.Add(occ with
             {
                 OccurrenceStartUtc = newStart,
-                OccurrenceEndUtc   = newEnd,
-                Title              = ex.OverrideTitle       ?? occ.Title,
-                Description        = ex.OverrideDescription ?? occ.Description,
-                Location           = ex.OverrideLocation    ?? occ.Location,
-                LocationUrl        = ex.OverrideLocationUrl ?? occ.LocationUrl,
+                OccurrenceEndUtc = newEnd,
+                Title = ex.OverrideTitle ?? occ.Title,
+                Description = ex.OverrideDescription ?? occ.Description,
+                Location = ex.OverrideLocation ?? occ.Location,
+                LocationUrl = ex.OverrideLocationUrl ?? occ.LocationUrl,
             });
         }
 
@@ -285,12 +285,12 @@ public class CalendarService : ICalendarService
     {
         await UpsertExceptionAsync(eventId, originalOccurrenceStartUtc, userId, apply: x =>
         {
-            x.IsCancelled         = false;
-            x.OverrideStartUtc    = dto.OverrideStartUtc;
-            x.OverrideEndUtc      = dto.OverrideEndUtc;
-            x.OverrideTitle       = dto.OverrideTitle;
+            x.IsCancelled = false;
+            x.OverrideStartUtc = dto.OverrideStartUtc;
+            x.OverrideEndUtc = dto.OverrideEndUtc;
+            x.OverrideTitle = dto.OverrideTitle;
             x.OverrideDescription = dto.OverrideDescription;
-            x.OverrideLocation    = dto.OverrideLocation;
+            x.OverrideLocation = dto.OverrideLocation;
             x.OverrideLocationUrl = dto.OverrideLocationUrl;
         }, ct);
     }

@@ -21,13 +21,13 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
     {
         await using var scope = _factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
-        var db  = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
-        var team   = await SeedTeamAsync(db, "Test Team A");
+        var team = await SeedTeamAsync(db, "Test Team A");
         var userId = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
 
         var start = Instant.FromUtc(2026, 5, 1, 17, 0);
-        var end   = Instant.FromUtc(2026, 5, 1, 18, 0);
+        var end = Instant.FromUtc(2026, 5, 1, 18, 0);
 
         var created = await svc.CreateEventAsync(
             new CreateCalendarEventDto(
@@ -58,9 +58,9 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
     {
         await using var scope = _factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
-        var db  = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
-        var team   = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
+        var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
         var userId = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
 
         await svc.CreateEventAsync(new CreateCalendarEventDto(
@@ -77,7 +77,7 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
 
         var occ = await svc.GetOccurrencesInWindowAsync(
             from: Instant.FromUtc(2026, 6, 1, 0, 0),
-            to:   Instant.FromUtc(2026, 7, 1, 0, 0),
+            to: Instant.FromUtc(2026, 7, 1, 0, 0),
             teamId: team.Id);
 
         occ.Should().ContainSingle(o => o.Title == "Inside");
@@ -90,7 +90,7 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
     {
         await using var scope = _factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
-        var db  = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var a = await SeedTeamAsync(db, $"A-{Guid.NewGuid():N}");
         var b = await SeedTeamAsync(db, $"B-{Guid.NewGuid():N}");
@@ -120,10 +120,10 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
     {
         await using var scope = _factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
-        var db  = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
-        var uid  = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
 
         var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
             "DoomedEvent", null, null, null, team.Id,
@@ -145,28 +145,28 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
     {
         await using var scope = _factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
-        var db  = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
-        var uid  = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
 
         // Tuesday 24 March 2026 19:00 Madrid (CET, UTC+1) = 18:00 UTC.
         // After Madrid DST flip on 29 Mar 2026, 19:00 Madrid (CEST, UTC+2) = 17:00 UTC.
         var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var firstLocal = new LocalDateTime(2026, 3, 24, 19, 0);
-        var firstUtc   = firstLocal.InZoneLeniently(zone).ToInstant();
+        var firstUtc = firstLocal.InZoneLeniently(zone).ToInstant();
 
         await svc.CreateEventAsync(new CreateCalendarEventDto(
             "Tuesday call", null, null, null, team.Id,
             StartUtc: firstUtc,
-            EndUtc:   firstUtc.Plus(Duration.FromHours(1)),
+            EndUtc: firstUtc.Plus(Duration.FromHours(1)),
             IsAllDay: false,
             RecurrenceRule: "FREQ=WEEKLY;BYDAY=TU;COUNT=4",
             RecurrenceTimezone: "Europe/Madrid"), uid);
 
         var occ = await svc.GetOccurrencesInWindowAsync(
             from: Instant.FromUtc(2026, 3, 1, 0, 0),
-            to:   Instant.FromUtc(2026, 5, 1, 0, 0),
+            to: Instant.FromUtc(2026, 5, 1, 0, 0),
             teamId: team.Id);
 
         occ.Should().HaveCount(4);
@@ -183,15 +183,15 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
     {
         await using var scope = _factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
-        var db  = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
-        var uid  = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
 
         await svc.CreateEventAsync(new CreateCalendarEventDto(
             "Old", null, null, null, team.Id,
             StartUtc: Instant.FromUtc(2024, 1, 7, 18, 0),
-            EndUtc:   Instant.FromUtc(2024, 1, 7, 19, 0),
+            EndUtc: Instant.FromUtc(2024, 1, 7, 19, 0),
             IsAllDay: false,
             RecurrenceRule: "FREQ=WEEKLY;UNTIL=20240201T000000Z",
             RecurrenceTimezone: "Europe/Madrid"), uid);
@@ -209,10 +209,10 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
     {
         await using var scope = _factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
-        var db  = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
-        var uid  = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
         var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
         var first = new LocalDateTime(2026, 5, 5, 19, 0).InZoneLeniently(zone).ToInstant();
@@ -240,10 +240,10 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
     {
         await using var scope = _factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
-        var db  = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
-        var uid  = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
         var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
         var first = new LocalDateTime(2026, 5, 5, 19, 0).InZoneLeniently(zone).ToInstant();
@@ -255,14 +255,14 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
 
         // Move the 2nd occurrence from 19:00 to 20:00.
         var original = new LocalDateTime(2026, 5, 12, 19, 0).InZoneLeniently(zone).ToInstant();
-        var moved    = new LocalDateTime(2026, 5, 12, 20, 0).InZoneLeniently(zone).ToInstant();
+        var moved = new LocalDateTime(2026, 5, 12, 20, 0).InZoneLeniently(zone).ToInstant();
 
         await svc.OverrideOccurrenceAsync(ev.Id, original, new OverrideOccurrenceDto(
             OverrideStartUtc: moved,
-            OverrideEndUtc:   moved.Plus(Duration.FromHours(1)),
-            OverrideTitle:    "Special week",
+            OverrideEndUtc: moved.Plus(Duration.FromHours(1)),
+            OverrideTitle: "Special week",
             OverrideDescription: null,
-            OverrideLocation:    null,
+            OverrideLocation: null,
             OverrideLocationUrl: null), uid);
 
         var occ = await svc.GetOccurrencesInWindowAsync(
@@ -281,10 +281,10 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
     {
         await using var scope = _factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
-        var db  = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
-        var uid  = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
 
         var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
             "Original", null, null, null, team.Id,
@@ -308,10 +308,10 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
     {
         await using var scope = _factory.Services.CreateAsyncScope();
         var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
-        var db  = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
-        var uid  = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
 
         var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
             "ToDelete", null, null, null, team.Id,

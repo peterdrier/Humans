@@ -74,10 +74,10 @@ public class CalendarController : HumansControllerBase
         var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
         var today = _clock.GetCurrentInstant().InZone(zone).Date;
         var start = from is null ? today : LocalDate.FromDateTime(from.Value);
-        var end   = to   is null ? today.PlusDays(60) : LocalDate.FromDateTime(to.Value);
+        var end = to is null ? today.PlusDays(60) : LocalDate.FromDateTime(to.Value);
 
         var fromUtc = start.AtMidnight().InZoneLeniently(zone).ToInstant();
-        var toUtc   = end.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
+        var toUtc = end.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
 
         var occ = await _calendar.GetOccurrencesInWindowAsync(fromUtc, toUtc, teamId, ct);
         return View(new CalendarAgendaViewModel(fromUtc, toUtc, occ, teamId, zone.Id));
@@ -100,7 +100,7 @@ public class CalendarController : HumansControllerBase
         var firstOfMonth = new LocalDate(ym.Year, ym.Month, 1);
         var daysInMonth = firstOfMonth.Calendar.GetDaysInMonth(ym.Year, ym.Month);
         var from = firstOfMonth.AtMidnight().InZoneLeniently(zone).ToInstant();
-        var to   = firstOfMonth.PlusDays(daysInMonth).AtMidnight().InZoneLeniently(zone).ToInstant();
+        var to = firstOfMonth.PlusDays(daysInMonth).AtMidnight().InZoneLeniently(zone).ToInstant();
 
         var occ = await _calendar.GetOccurrencesInWindowAsync(from, to, teamId, ct);
 
@@ -142,7 +142,7 @@ public class CalendarController : HumansControllerBase
         {
             OwningTeamId = teamId ?? teams[0].Id,
             StartLocal = DateTime.Today.AddHours(19),
-            EndLocal   = DateTime.Today.AddHours(20),
+            EndLocal = DateTime.Today.AddHours(20),
             TeamOptions = teams,
         });
     }
