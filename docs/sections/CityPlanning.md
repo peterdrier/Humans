@@ -43,43 +43,29 @@
 - **Admin**: CampAdmin role grants full city-planning access.
 - **Teams**: Membership in the city-planning team (slug: `city-planning`) grants admin access.
 
-## Architecture — Current vs Target
+## Architecture
 
 See `docs/architecture/design-rules.md` for the full rules.
 
-**Owning services:** `CityPlanningService`
+**Owning services:** `CityPlanningService` (`Humans.Application.Services.CityPlanning`)
+**Owning repository:** `ICityPlanningRepository` / `CityPlanningRepository` (`Humans.Infrastructure.Repositories`)
 **Owned tables:** `city_planning_settings`, `camp_polygons`, `camp_polygon_histories`
 
-## Target Architecture Direction
+Migrated to the §15 repository pattern in PR #543 (2026-04-22). Option A (no caching decorator) — admin-facing, low-traffic. Cross-section reads route through `ICampService`, `ITeamService`, `IProfileService`, and `IUserService`. The previous cross-domain `.Include(h => h.ModifiedByUser)` on `CampPolygonHistories` is replaced by a batched `IUserService.GetByIdsAsync` lookup at the service layer.
 
-> **Status:** This section currently follows the "services in Infrastructure, direct DbContext" model. It will be migrated to the repository/store/decorator pattern per [`../architecture/design-rules.md`](../architecture/design-rules.md). **Delete this block once the migration lands and this section's services live in `Humans.Application` with `*Repository.cs` impls in `Humans.Infrastructure/Repositories/`.**
+### Repository surface
 
-### Target repositories
+`ICityPlanningRepository` exposes:
 
-- **`ICityPlanningRepository`** — owns `city_planning_settings`, `camp_polygons`, `camp_polygon_histories`
-  - Aggregate-local navs kept: none (each of the three tables is its own aggregate root; `CampPolygon` and `CampPolygonHistory` are keyed by `CampSeasonId` but do not navigate between each other)
-  - Cross-domain navs stripped: `CampPolygon.CampSeason` (Camps), `CampPolygon.LastModifiedByUser` (Users), `CampPolygonHistory.CampSeason` (Camps), `CampPolygonHistory.ModifiedByUser` (Users) — replace with raw FK ids; resolve display data via `ICampService` / `IUserService` at the service layer
-  - Note: `camp_polygon_histories` is append-only per §12 — repository exposes `AddAsync` and `GetXxxAsync` but no `UpdateAsync`/`DeleteAsync`.
+- Polygon reads by camp season ids (`GetPolygonsByCampSeasonIdsAsync`, `GetCampSeasonIdsWithPolygonAsync`).
+- Polygon-history reads for a camp season (`GetHistoryForCampSeasonAsync`, `GetHistoryEntryAsync`).
+- Atomic "save polygon + append history" write (`SavePolygonAndAppendHistoryAsync`). Polygon upsert and history insert happen in one unit of work.
+- Settings read/upsert (`GetSettingsByYearAsync`, `GetOrCreateSettingsAsync`, `MutateSettingsAsync`).
 
-### Current violations
+Per §12, `camp_polygon_histories` is append-only — the repository intentionally exposes no `UpdateHistoryAsync` / `RemoveHistoryAsync`. Restores call `SavePolygonAndAppendHistoryAsync` with a `Restored from …` note, which both updates the polygon and appends a new history row.
 
-Observed in this section's service code as of 2026-04-15:
+### Design rules enforced
 
-- **Cross-domain `.Include()` calls:** `CityPlanningService.cs:104` — `.Include(h => h.ModifiedByUser)` on `CampPolygonHistories` pulls `User` (Users domain) so history rows can show who edited them.
-- **Cross-section direct DbContext reads:** None found. `CampSeasons` access already routes through `ICampService` (e.g. `GetCampSeasonDisplayDataForYearAsync`, `GetCampSeasonSoundZoneAsync`, `GetCampSeasonNameAsync`, `GetCampSeasonBriefsForYearAsync`, `GetCampLeadSeasonIdForYearAsync`, `IsUserCampLeadAsync`, `GetSettingsAsync`).
-- **Inline `IMemoryCache` usage in service methods:** None found.
-- **Cross-domain nav properties on this section's entities:**
-  - `CampPolygon.CampSeason` → Camps
-  - `CampPolygon.LastModifiedByUser` → Users
-  - `CampPolygonHistory.CampSeason` → Camps
-  - `CampPolygonHistory.ModifiedByUser` → Users
-  - `CityPlanningSettings`: none
-
-### Touch-and-clean guidance
-
-Until this section is migrated end-to-end, when touching its code:
-
-- When modifying the history list path (`CityPlanningService.cs:103-115`), start moving off the cross-domain `.Include(h => h.ModifiedByUser)`: project to a DTO with `ModifiedByUserId` only, then resolve user display names in a second pass via `IUserService` (batch lookup). Do not add new `.Include()` calls that cross into Camps or Users.
-- Keep all new `CampSeasons` / `Camps` / `Users` access behind `ICampService` / `IUserService`. Never reintroduce `_dbContext.CampSeasons` or `_dbContext.Users` reads into this service (see §6).
-- Treat `CampPolygonHistory` as strictly append-only (§12): `CityPlanningService.cs:161` `Add` is the only permitted write. Never add `Update`/`Remove` on `_dbContext.CampPolygonHistories` — restores must write a new history row and overwrite the `CampPolygon`, which the current `RestoreAsync` path already does.
-- When adding a new read method, return section-local DTOs (as `GetCampSeasonsWithoutCampPolygonAsync` already does with `CampSeasonSummaryDto`). Do not return `CampPolygon` / `CampPolygonHistory` entities with navs populated — it bakes cross-domain coupling into callers and will block the repository extraction.
+- The service holds no `DbContext` — enforced structurally by `Humans.Application.csproj` not referencing `Microsoft.EntityFrameworkCore`.
+- Cross-domain navs (`CampPolygon.CampSeason`, `CampPolygon.LastModifiedByUser`, `CampPolygonHistory.CampSeason`, `CampPolygonHistory.ModifiedByUser`) remain declared on the entities but are no longer read from this section's code. Stripping them at the entity boundary is a follow-up item consistent with the `User` nav-strip deferral in §15i — any new code must use `ICampService` / `IUserService` instead.
+- `CityPlanningArchitectureTests` pin the non-decorator shape and the append-only repository surface.

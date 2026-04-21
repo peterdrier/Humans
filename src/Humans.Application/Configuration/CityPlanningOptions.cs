@@ -1,4 +1,4 @@
-namespace Humans.Infrastructure.Configuration;
+namespace Humans.Application.Configuration;
 
 public class CityPlanningOptions
 {

@@ -20,6 +20,7 @@ using ProfilesUserEmailService = Humans.Application.Services.Profile.UserEmailSe
 using ProfilesCommunicationPreferenceService = Humans.Application.Services.Profile.CommunicationPreferenceService;
 using ProfilesContactService = Humans.Application.Services.Profile.ContactService;
 using UsersUserService = Humans.Application.Services.Users.UserService;
+using CityPlanningCityPlanningService = Humans.Application.Services.CityPlanning.CityPlanningService;
 
 namespace Humans.Web.Extensions;
 
@@ -115,7 +116,11 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ICampService>(sp => sp.GetRequiredService<CampService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CampService>());
 
-        services.AddScoped<ICityPlanningService, CityPlanningService>();
+        // City Planning section — repository + Application-layer service (§15 migration, PR #543).
+        // Small admin-facing section, no caching decorator warranted. Cross-section reads
+        // (camps, teams, profiles, users) route through the owning service interfaces.
+        services.AddSingleton<ICityPlanningRepository, CityPlanningRepository>();
+        services.AddScoped<ICityPlanningService, CityPlanningCityPlanningService>();
         services.AddScoped<ICampContactService, CampContactService>();
         // Profile section — repository/store/decorator pattern (§15 Step 0, PR #504)
         // Repositories use IDbContextFactory and are registered as Singleton so the
