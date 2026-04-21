@@ -312,8 +312,16 @@ Wrong patterns — each violates an invariant somewhere:
 // WRONG — reaches into another domain's repository
 public class CampService(ICampRepository repo, IProfileRepository profileRepo) : ICampService { ... }
 
-// WRONG — reaches into another domain's store
-public class CampService(ICampRepository repo, IProfileStore profileStore) : ICampService { ... }
+// WRONG — uses IDbContextFactory to query another domain's tables directly
+public class CampService(ICampRepository repo, IDbContextFactory<HumansDbContext> factory) : ICampService
+{
+    public async Task<CampDetailDto> GetCampDetailAsync(Guid campId, CancellationToken ct)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var leadProfiles = await ctx.Profiles.Where(...).ToListAsync(ct); // ← Profile section's table
+        ...
+    }
+}
 
 // WRONG — direct DbContext access (impossible by project graph once migrated)
 public class CampService(HumansDbContext db) : ICampService { ... }
@@ -476,7 +484,7 @@ services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ProfileServ
 
 ### 15d. Caching Decorator Rules
 
-`CachingProfileService` is a **Singleton** that owns a private `ConcurrentDictionary<Guid, FullProfile> _byUserId`. The dict persists across HTTP requests. There is no separate `IProfileStore` interface, no store class, no warmup hosted service, no `IMemoryCache` for canonical domain data.
+`CachingProfileService` is a **Singleton** that owns a private `ConcurrentDictionary<Guid, FullProfile> _byUserId`. The dict persists across HTTP requests. There is no separate `IProfileStore` interface, no store class, no `IMemoryCache` for canonical domain data. A narrow `FullProfileWarmupHostedService` populates the dict once at startup — see **Warming** below.
 
 **Constructor:**
 
@@ -509,7 +517,7 @@ var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(Inner
 
 **Writes:** delegate to the inner service, then call `RefreshEntryAsync(userId, ct)`. `RefreshEntryAsync` reloads directly from repositories, re-stitches the `FullProfile`, and upserts the dict. If the profile or user no longer exists, the dict entry is removed.
 
-**Warming:** lazy, on-demand. There is no startup warmup hosted service. The dict fills as individual users are accessed. If a future bulk-read path emerges, the decorator is the appropriate place to add a `_fullyWarm` flag tracking whether the full dataset has been loaded. No such flag exists today.
+**Warming:** eager at startup. `FullProfileWarmupHostedService` (registered via `AddHostedService`) calls `CachingProfileService.WarmAllAsync` during host start, enumerating all users and populating `_byUserId` before the app takes traffic. Bulk reads (`GetBirthdayProfilesAsync`, `GetApprovedProfilesWithLocationAsync`, `GetFilteredHumansAsync`, `SearchApprovedUsersAsync`) then read the warm dict directly — no runtime gate, no fully-warm flag. If warmup fails (e.g., DB unreachable at startup) the hosted service logs at Error and the host continues to start; individual per-user reads will lazy-populate the dict via `GetFullProfileAsync`. Warmup is an optimization, not a correctness requirement.
 
 **Static helpers:** methods like `GetBirthdayProfilesAsync` and `SearchApprovedUsersAsync` are served synchronously from `_byUserId.Values` via `ProfileService.GetBirthdayProfilesFromSnapshot` / `ProfileService.SearchApprovedUsersFromSnapshot` — no inner call, no scope.
 
