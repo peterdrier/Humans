@@ -23,6 +23,7 @@ public static class AuthorizationPolicyExtensions
         services.AddScoped<IAuthorizationHandler, BudgetAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, CampAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, TeamAuthorizationHandler>();
+        services.AddScoped<IAuthorizationHandler, CalendarEditorAuthorizationHandler>();
 
         // Service-layer enforcement handlers (singleton — no scoped dependencies)
         services.AddSingleton<IAuthorizationHandler, RoleAssignmentAuthorizationHandler>();
@@ -101,6 +102,9 @@ public static class AuthorizationPolicyExtensions
 
             options.AddPolicy(PolicyNames.HumanAdminOnly, policy =>
                 policy.AddRequirements(new HumanAdminOnlyRequirement()));
+
+            options.AddPolicy(PolicyNames.CalendarEditor, policy =>
+                policy.AddRequirements(new CalendarEditorRequirement()));
         });
 
         return services;
