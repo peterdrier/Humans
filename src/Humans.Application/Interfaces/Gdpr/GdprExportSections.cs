@@ -42,4 +42,5 @@ public static class GdprExportSections
     public const string AccountMergeRequests = "AccountMergeRequests";
     public const string AuditLog = "AuditLog";
     public const string BudgetAuditLog = "BudgetAuditLog";
+    public const string AgentConversations = "AgentConversations";
 }

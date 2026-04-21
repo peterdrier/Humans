@@ -85,7 +85,8 @@ public class GdprExportDependencyInjectionTests
         typeof(CampaignService),
         typeof(CampService),
         typeof(AuditLogService),
-        typeof(BudgetService)
+        typeof(BudgetService),
+        typeof(Humans.Infrastructure.Services.Agent.AgentService)
     ];
 
     [HumansFact]
