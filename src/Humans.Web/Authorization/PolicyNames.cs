@@ -7,6 +7,7 @@ namespace Humans.Web.Authorization;
 /// </summary>
 public static class PolicyNames
 {
+    public const string AgentRateLimit = nameof(AgentRateLimit);
     public const string AdminOnly = nameof(AdminOnly);
     public const string BoardOrAdmin = nameof(BoardOrAdmin);
     public const string HumanAdminBoardOrAdmin = nameof(HumanAdminBoardOrAdmin);
