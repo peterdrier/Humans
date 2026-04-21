@@ -122,9 +122,46 @@ public class CalendarService : ICalendarService
             }
         }
 
-        return results
-            .OrderBy(o => o.OccurrenceStartUtc)
-            .ToList();
+        // Build a per-event exception lookup once.
+        var exceptionsByEvent = events
+            .ToDictionary(e => e.Id, e =>
+                e.Exceptions.ToDictionary(x => x.OriginalOccurrenceStartUtc));
+
+        var finalResults = new List<CalendarOccurrence>();
+        foreach (var occ in results)
+        {
+            if (!occ.IsRecurring || occ.OriginalOccurrenceStartUtc is null)
+            {
+                finalResults.Add(occ);
+                continue;
+            }
+
+            if (!exceptionsByEvent.TryGetValue(occ.EventId, out var perEvent) ||
+                !perEvent.TryGetValue(occ.OriginalOccurrenceStartUtc.Value, out var ex))
+            {
+                finalResults.Add(occ);
+                continue;
+            }
+
+            if (ex.IsCancelled) continue; // drop
+
+            // Apply overrides; if the override moves the occurrence outside the window, drop it.
+            var newStart = ex.OverrideStartUtc ?? occ.OccurrenceStartUtc;
+            var newEnd   = ex.OverrideEndUtc   ?? occ.OccurrenceEndUtc;
+            if (newStart > to || (newEnd ?? newStart) < from) continue;
+
+            finalResults.Add(occ with
+            {
+                OccurrenceStartUtc = newStart,
+                OccurrenceEndUtc   = newEnd,
+                Title              = ex.OverrideTitle       ?? occ.Title,
+                Description        = ex.OverrideDescription ?? occ.Description,
+                Location           = ex.OverrideLocation    ?? occ.Location,
+                LocationUrl        = ex.OverrideLocationUrl ?? occ.LocationUrl,
+            });
+        }
+
+        return finalResults.OrderBy(o => o.OccurrenceStartUtc).ToList();
     }
 
     public async Task<CalendarEvent?> GetEventByIdAsync(Guid id, CancellationToken ct = default)
@@ -206,9 +243,59 @@ public class CalendarService : ICalendarService
     public Task DeleteEventAsync(Guid id, Guid deletedByUserId, CancellationToken ct = default)
         => throw new NotSupportedException("Not yet implemented.");
 
-    public Task CancelOccurrenceAsync(Guid eventId, Instant originalOccurrenceStartUtc, Guid userId, CancellationToken ct = default)
-        => throw new NotSupportedException("Not yet implemented.");
+    public async Task CancelOccurrenceAsync(Guid eventId, Instant originalOccurrenceStartUtc, Guid userId, CancellationToken ct = default)
+    {
+        await UpsertExceptionAsync(eventId, originalOccurrenceStartUtc, userId, apply: x => x.IsCancelled = true, ct);
+    }
 
-    public Task OverrideOccurrenceAsync(Guid eventId, Instant originalOccurrenceStartUtc, OverrideOccurrenceDto dto, Guid userId, CancellationToken ct = default)
-        => throw new NotSupportedException("Not yet implemented.");
+    public async Task OverrideOccurrenceAsync(Guid eventId, Instant originalOccurrenceStartUtc, OverrideOccurrenceDto dto, Guid userId, CancellationToken ct = default)
+    {
+        await UpsertExceptionAsync(eventId, originalOccurrenceStartUtc, userId, apply: x =>
+        {
+            x.IsCancelled         = false;
+            x.OverrideStartUtc    = dto.OverrideStartUtc;
+            x.OverrideEndUtc      = dto.OverrideEndUtc;
+            x.OverrideTitle       = dto.OverrideTitle;
+            x.OverrideDescription = dto.OverrideDescription;
+            x.OverrideLocation    = dto.OverrideLocation;
+            x.OverrideLocationUrl = dto.OverrideLocationUrl;
+        }, ct);
+    }
+
+    private async Task UpsertExceptionAsync(
+        Guid eventId, Instant originalUtc, Guid userId,
+        Action<CalendarEventException> apply, CancellationToken ct)
+    {
+        var existing = await _db.CalendarEventExceptions
+            .FirstOrDefaultAsync(x => x.EventId == eventId && x.OriginalOccurrenceStartUtc == originalUtc, ct);
+
+        var now = _clock.GetCurrentInstant();
+
+        if (existing is null)
+        {
+            existing = new CalendarEventException
+            {
+                Id = Guid.NewGuid(),
+                EventId = eventId,
+                OriginalOccurrenceStartUtc = originalUtc,
+                CreatedByUserId = userId,
+                CreatedAt = now,
+                UpdatedAt = now,
+            };
+            _db.CalendarEventExceptions.Add(existing);
+        }
+        else
+        {
+            existing.UpdatedAt = now;
+        }
+
+        apply(existing);
+
+        var errors = existing.Validate();
+        if (errors.Count > 0)
+            throw new InvalidOperationException("Exception is invalid: " + string.Join("; ", errors));
+
+        await _db.SaveChangesAsync(ct);
+        InvalidateCache();
+    }
 }

@@ -204,6 +204,78 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
         occ.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task Cancelled_exception_removes_that_occurrence()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var db  = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
+        var uid  = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+
+        var first = new LocalDateTime(2026, 5, 5, 19, 0).InZoneLeniently(zone).ToInstant();
+
+        var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
+            "Weekly", null, null, null, team.Id,
+            first, first.Plus(Duration.FromHours(1)),
+            false, "FREQ=WEEKLY;BYDAY=TU;COUNT=4", "Europe/Madrid"), uid);
+
+        // Cancel the 3rd occurrence (2026-05-19 19:00 Madrid).
+        var cancel = new LocalDateTime(2026, 5, 19, 19, 0).InZoneLeniently(zone).ToInstant();
+        await svc.CancelOccurrenceAsync(ev.Id, cancel, uid);
+
+        var occ = await svc.GetOccurrencesInWindowAsync(
+            Instant.FromUtc(2026, 5, 1, 0, 0),
+            Instant.FromUtc(2026, 6, 1, 0, 0),
+            teamId: team.Id);
+
+        occ.Should().HaveCount(3);
+        occ.Select(o => o.OccurrenceStartUtc).Should().NotContain(cancel);
+    }
+
+    [Fact]
+    public async Task Override_changes_title_and_moves_occurrence()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var db  = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
+        var uid  = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+
+        var first = new LocalDateTime(2026, 5, 5, 19, 0).InZoneLeniently(zone).ToInstant();
+
+        var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
+            "Weekly", null, null, null, team.Id,
+            first, first.Plus(Duration.FromHours(1)),
+            false, "FREQ=WEEKLY;BYDAY=TU;COUNT=4", "Europe/Madrid"), uid);
+
+        // Move the 2nd occurrence from 19:00 to 20:00.
+        var original = new LocalDateTime(2026, 5, 12, 19, 0).InZoneLeniently(zone).ToInstant();
+        var moved    = new LocalDateTime(2026, 5, 12, 20, 0).InZoneLeniently(zone).ToInstant();
+
+        await svc.OverrideOccurrenceAsync(ev.Id, original, new OverrideOccurrenceDto(
+            OverrideStartUtc: moved,
+            OverrideEndUtc:   moved.Plus(Duration.FromHours(1)),
+            OverrideTitle:    "Special week",
+            OverrideDescription: null,
+            OverrideLocation:    null,
+            OverrideLocationUrl: null), uid);
+
+        var occ = await svc.GetOccurrencesInWindowAsync(
+            Instant.FromUtc(2026, 5, 1, 0, 0),
+            Instant.FromUtc(2026, 6, 1, 0, 0),
+            teamId: team.Id);
+
+        occ.Should().HaveCount(4);
+        var special = occ.Single(o => string.Equals(o.Title, "Special week", StringComparison.Ordinal));
+        special.OccurrenceStartUtc.Should().Be(moved);
+        special.OriginalOccurrenceStartUtc.Should().Be(original);
+    }
+
     private static async Task<Team> SeedTeamAsync(HumansDbContext db, string name)
     {
         var now = SystemClock.Instance.GetCurrentInstant();
