@@ -3,6 +3,7 @@ using System;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NodaTime;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -12,13 +13,15 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    partial class HumansDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260421150429_AddAgentSection")]
+    partial class AddAgentSection
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.7")
+                .HasAnnotation("ProductVersion", "10.0.6")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -710,127 +713,6 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("budget_years", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.CalendarEvent", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("CreatedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<Instant?>("EndUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsAllDay")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Location")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("LocationUrl")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<Guid>("OwningTeamId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("RecurrenceRule")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("RecurrenceTimezone")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<Instant?>("RecurrenceUntilUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Instant>("StartUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<Instant>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OwningTeamId", "StartUtc");
-
-                    b.HasIndex("StartUtc", "RecurrenceUntilUtc");
-
-                    b.ToTable("calendar_events", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.CalendarEventException", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("CreatedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("EventId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("IsCancelled")
-                        .HasColumnType("boolean");
-
-                    b.Property<Instant>("OriginalOccurrenceStartUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("OverrideDescription")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<Instant?>("OverrideEndUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("OverrideLocation")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("OverrideLocationUrl")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<Instant?>("OverrideStartUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("OverrideTitle")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<Instant>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EventId", "OriginalOccurrenceStartUtc")
-                        .IsUnique();
-
-                    b.ToTable("calendar_event_exceptions", (string)null);
-                });
-
             modelBuilder.Entity("Humans.Domain.Entities.Camp", b =>
                 {
                     b.Property<Guid>("Id")
@@ -991,50 +873,6 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("camp_leads", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.CampMember", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CampSeasonId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant?>("ConfirmedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("ConfirmedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant?>("RemovedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("RemovedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("RequestedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("CampSeasonId", "UserId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_camp_members_active_unique")
-                        .HasFilter("\"Status\" <> 'Removed'");
-
-                    b.ToTable("camp_members", (string)null);
-                });
-
             modelBuilder.Entity("Humans.Domain.Entities.CampPolygon", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1101,84 +939,6 @@ namespace Humans.Infrastructure.Migrations
                     b.HasIndex("CampSeasonId", "ModifiedAt");
 
                     b.ToTable("camp_polygon_histories", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.CampRoleAssignment", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("AssignedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("AssignedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CampMemberId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CampRoleDefinitionId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CampSeasonId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CampMemberId");
-
-                    b.HasIndex("CampRoleDefinitionId");
-
-                    b.HasIndex("CampSeasonId", "CampRoleDefinitionId", "CampMemberId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_camp_role_assignments_unique");
-
-                    b.ToTable("camp_role_assignments", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.CampRoleDefinition", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Instant?>("DeactivatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<int>("MinimumRequired")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<int>("SlotCount")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<Instant>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Name")
-                        .IsUnique()
-                        .HasDatabaseName("IX_camp_role_definitions_name_unique");
-
-                    b.HasIndex("SortOrder");
-
-                    b.ToTable("camp_role_definitions", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.CampSeason", b =>
@@ -2149,134 +1909,6 @@ namespace Humans.Infrastructure.Migrations
                     b.HasIndex("TeamId", "UserId", "ProcessedAt");
 
                     b.ToTable("google_sync_outbox", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.Issue", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("AdditionalContext")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<Guid?>("AssigneeUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Category")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(5000)
-                        .HasColumnType("character varying(5000)");
-
-                    b.Property<LocalDate?>("DueDate")
-                        .HasColumnType("date");
-
-                    b.Property<int?>("GitHubIssueNumber")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("PageUrl")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<Guid>("ReporterUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant?>("ResolvedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("ResolvedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ScreenshotContentType")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("ScreenshotFileName")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<string>("ScreenshotStoragePath")
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
-
-                    b.Property<string>("Section")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<Instant>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("UserAgent")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AssigneeUserId");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("ReporterUserId");
-
-                    b.HasIndex("ResolvedByUserId");
-
-                    b.HasIndex("Section");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("Section", "Status");
-
-                    b.ToTable("issues", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.IssueComment", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasMaxLength(5000)
-                        .HasColumnType("character varying(5000)");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("IssueId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("SenderUserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("IssueId");
-
-                    b.HasIndex("SenderUserId");
-
-                    b.ToTable("issue_comments", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.LegalDocument", b =>
@@ -3669,8 +3301,7 @@ namespace Humans.Infrastructure.Migrations
 
                     b.Property<string>("GoogleEmail")
                         .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
-                        .HasColumnName("GoogleEmail");
+                        .HasColumnType("character varying(256)");
 
                     b.Property<string>("GoogleEmailStatus")
                         .IsRequired()
@@ -3696,12 +3327,6 @@ namespace Humans.Infrastructure.Migrations
 
                     b.Property<Instant?>("MagicLinkSentAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<Instant?>("MergedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("MergedToUserId")
-                        .HasColumnType("uuid");
 
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
@@ -3751,9 +3376,6 @@ namespace Humans.Infrastructure.Migrations
 
                     b.HasIndex("Email");
 
-                    b.HasIndex("MergedToUserId")
-                        .HasFilter("\"MergedToUserId\" IS NOT NULL");
-
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
 
@@ -3777,35 +3399,21 @@ namespace Humans.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("DisplayOrder")
-                        .HasColumnType("integer")
-                        .HasColumnName("DisplayOrder");
+                        .HasColumnType("integer");
 
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
-                    b.Property<bool>("IsGoogle")
+                    b.Property<bool>("IsNotificationTarget")
                         .HasColumnType("boolean");
 
                     b.Property<bool>("IsOAuth")
-                        .HasColumnType("boolean")
-                        .HasColumnName("IsOAuth");
-
-                    b.Property<bool>("IsPrimary")
-                        .HasColumnType("boolean")
-                        .HasColumnName("IsNotificationTarget");
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsVerified")
                         .HasColumnType("boolean");
-
-                    b.Property<string>("Provider")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("ProviderKey")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
 
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -4310,28 +3918,6 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("ResponsibleTeam");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.CalendarEvent", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.Team", "OwningTeam")
-                        .WithMany()
-                        .HasForeignKey("OwningTeamId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("OwningTeam");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.CalendarEventException", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.CalendarEvent", "Event")
-                        .WithMany("Exceptions")
-                        .HasForeignKey("EventId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Event");
-                });
-
             modelBuilder.Entity("Humans.Domain.Entities.Camp", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.User", "CreatedByUser")
@@ -4373,24 +3959,15 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Humans.Domain.Entities.User", null)
+                    b.HasOne("Humans.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Camp");
-                });
 
-            modelBuilder.Entity("Humans.Domain.Entities.CampMember", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.CampSeason", "CampSeason")
-                        .WithMany()
-                        .HasForeignKey("CampSeasonId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("CampSeason");
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.CampPolygon", b =>
@@ -4429,33 +4006,6 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("CampSeason");
 
                     b.Navigation("ModifiedByUser");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.CampRoleAssignment", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.CampMember", "CampMember")
-                        .WithMany()
-                        .HasForeignKey("CampMemberId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Humans.Domain.Entities.CampRoleDefinition", "Definition")
-                        .WithMany("Assignments")
-                        .HasForeignKey("CampRoleDefinitionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Humans.Domain.Entities.CampSeason", "CampSeason")
-                        .WithMany()
-                        .HasForeignKey("CampSeasonId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("CampMember");
-
-                    b.Navigation("CampSeason");
-
-                    b.Navigation("Definition");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.CampSeason", b =>
@@ -4587,7 +4137,7 @@ namespace Humans.Infrastructure.Migrations
                         .HasForeignKey("ShiftSignupId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Humans.Domain.Entities.User", null)
+                    b.HasOne("Humans.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -4595,6 +4145,8 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("CampaignGrant");
 
                     b.Navigation("ShiftSignup");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.EventParticipation", b =>
@@ -4673,13 +4225,15 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Humans.Domain.Entities.User", null)
+                    b.HasOne("Humans.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("EventSettings");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.GoogleResource", b =>
@@ -4706,49 +4260,6 @@ namespace Humans.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.Issue", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.User", "Assignee")
-                        .WithMany()
-                        .HasForeignKey("AssigneeUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Humans.Domain.Entities.User", "Reporter")
-                        .WithMany()
-                        .HasForeignKey("ReporterUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Humans.Domain.Entities.User", "ResolvedByUser")
-                        .WithMany()
-                        .HasForeignKey("ResolvedByUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Assignee");
-
-                    b.Navigation("Reporter");
-
-                    b.Navigation("ResolvedByUser");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.IssueComment", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.Issue", "Issue")
-                        .WithMany("Comments")
-                        .HasForeignKey("IssueId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Humans.Domain.Entities.User", "SenderUser")
-                        .WithMany()
-                        .HasForeignKey("SenderUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Issue");
-
-                    b.Navigation("SenderUser");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.LegalDocument", b =>
@@ -4838,13 +4349,15 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Humans.Domain.Entities.Team", null)
+                    b.HasOne("Humans.Domain.Entities.Team", "Team")
                         .WithMany()
                         .HasForeignKey("TeamId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("EventSettings");
+
+                    b.Navigation("Team");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Shift", b =>
@@ -4860,12 +4373,12 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.ShiftSignup", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", null)
+                    b.HasOne("Humans.Domain.Entities.User", "EnrolledByUser")
                         .WithMany()
                         .HasForeignKey("EnrolledByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Humans.Domain.Entities.User", null)
+                    b.HasOne("Humans.Domain.Entities.User", "ReviewedByUser")
                         .WithMany()
                         .HasForeignKey("ReviewedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -4876,13 +4389,19 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Humans.Domain.Entities.User", null)
+                    b.HasOne("Humans.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("EnrolledByUser");
+
+                    b.Navigation("ReviewedByUser");
+
                     b.Navigation("Shift");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.SyncServiceSettings", b =>
@@ -5046,14 +4565,6 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("BudgetGroup");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.User", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.User", null)
-                        .WithMany()
-                        .HasForeignKey("MergedToUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
-                });
-
             modelBuilder.Entity("Humans.Domain.Entities.UserEmail", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.User", null)
@@ -5065,11 +4576,13 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.VolunteerEventProfile", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", null)
+                    b.HasOne("Humans.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.VolunteerHistoryEntry", b =>
@@ -5091,13 +4604,15 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Humans.Domain.Entities.User", null)
+                    b.HasOne("Humans.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("ShiftTag");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -5197,11 +4712,6 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("Groups");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.CalendarEvent", b =>
-                {
-                    b.Navigation("Exceptions");
-                });
-
             modelBuilder.Entity("Humans.Domain.Entities.Camp", b =>
                 {
                     b.Navigation("HistoricalNames");
@@ -5211,11 +4721,6 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("Leads");
 
                     b.Navigation("Seasons");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.CampRoleDefinition", b =>
-                {
-                    b.Navigation("Assignments");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Campaign", b =>
@@ -5248,11 +4753,6 @@ namespace Humans.Infrastructure.Migrations
             modelBuilder.Entity("Humans.Domain.Entities.FeedbackReport", b =>
                 {
                     b.Navigation("Messages");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.Issue", b =>
-                {
-                    b.Navigation("Comments");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.LegalDocument", b =>
