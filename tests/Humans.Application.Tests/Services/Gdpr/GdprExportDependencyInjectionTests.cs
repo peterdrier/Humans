@@ -16,6 +16,7 @@ using AuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
 using CampService = Humans.Application.Services.Camps.CampService;
 using FeedbackService = Humans.Application.Services.Feedback.FeedbackService;
 using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
+using ConsentService = Humans.Application.Services.Consent.ConsentService;
 
 namespace Humans.Application.Tests.Services.Gdpr;
 

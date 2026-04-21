@@ -58,4 +58,15 @@ public interface ILegalDocumentSyncService
     /// </summary>
     Task<IReadOnlyList<DocumentVersion>> GetRequiredDocumentVersionsForTeamAsync(
         Guid teamId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets every active+required legal document whose <c>TeamId</c> is in
+    /// <paramref name="teamIds"/>, with the <see cref="LegalDocument.Team"/>
+    /// and <see cref="LegalDocument.Versions"/> navigation properties
+    /// populated. Used by the consent dashboard to build the "documents per
+    /// team" grouping without crossing the section boundary into
+    /// <c>DbContext.LegalDocuments</c> from the Application layer.
+    /// </summary>
+    Task<IReadOnlyList<LegalDocument>> GetActiveRequiredDocumentsForTeamsAsync(
+        IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default);
 }
