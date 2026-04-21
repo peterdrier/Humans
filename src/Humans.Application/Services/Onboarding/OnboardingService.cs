@@ -168,6 +168,36 @@ public sealed class OnboardingService : IOnboardingService
         return result;
     }
 
+    public async Task<OnboardingResult> AutoClearConsentCheckAsync(
+        Guid userId, string reason, string modelId, CancellationToken ct = default)
+    {
+        // Profile mutation + cache invalidation owned by ProfileService/decorator.
+        // Audit log actor is the job name (no human reviewer for system clears).
+        var result = await _profileService.AutoClearConsentCheckAsync(
+            userId, reason, modelId, "AutoConsentCheckJob", ct);
+        if (!result.Success)
+            return result;
+
+        // Sync Volunteers team membership (adds to team if consents are also complete)
+        await _syncJob.SyncVolunteersMembershipForUserAsync(userId, CancellationToken.None);
+
+        // If user already has approved tier applications, sync those teams too.
+        var approvedTiers = await _applicationDecisionService.GetApprovedTiersForUserAsync(userId, ct);
+
+        foreach (var tier in approvedTiers)
+        {
+            if (tier == MembershipTier.Colaborador)
+                await _syncJob.SyncColaboradorsMembershipForUserAsync(userId, CancellationToken.None);
+            else if (tier == MembershipTier.Asociado)
+                await _syncJob.SyncAsociadosMembershipForUserAsync(userId, CancellationToken.None);
+        }
+
+        return result;
+    }
+
+    public Task<IReadOnlyList<Guid>> GetPendingConsentCheckUserIdsAsync(CancellationToken ct = default) =>
+        _profileService.GetPendingConsentCheckUserIdsAsync(ct);
+
     // ==========================================================================
     // Board vote
     // ==========================================================================

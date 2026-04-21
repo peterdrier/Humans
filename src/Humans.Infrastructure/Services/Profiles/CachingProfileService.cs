@@ -496,6 +496,27 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         return result;
     }
 
+    public async Task<OnboardingResult> AutoClearConsentCheckAsync(
+        Guid userId, string reason, string modelId, string actorName, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        var navBadge = scope.ServiceProvider.GetRequiredService<INavBadgeCacheInvalidator>();
+        var notificationMeter = scope.ServiceProvider.GetRequiredService<INotificationMeterCacheInvalidator>();
+
+        var result = await inner.AutoClearConsentCheckAsync(userId, reason, modelId, actorName, ct);
+        if (result.Success)
+        {
+            navBadge.Invalidate();
+            notificationMeter.Invalidate();
+            await RefreshEntryAsync(userId, ct);
+        }
+        return result;
+    }
+
+    public Task<IReadOnlyList<Guid>> GetPendingConsentCheckUserIdsAsync(CancellationToken ct = default) =>
+        _profileRepository.GetPendingConsentCheckUserIdsAsync(ct);
+
     public async Task<OnboardingResult> RejectSignupAsync(
         Guid userId, Guid reviewerId, string? reason, CancellationToken ct = default)
     {

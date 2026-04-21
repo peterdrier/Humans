@@ -86,4 +86,8 @@ public enum AuditAction
     CampMemberWithdrawn,
     CampMemberLeft,
     CampMemberRemoved,
+    ConsentHoldListEntryAdded,
+    ConsentHoldListEntryRemoved,
+    ConsentCheckAutoCleared,
+    ConsentCheckAutoSkipped,
 }

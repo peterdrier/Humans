@@ -34,6 +34,8 @@ The only onboarding-specific value type is the narrow `IOnboardingEligibilityQue
 - OAuth login checks verified UserEmails, unverified UserEmails, and User.Email before creating a new account — preventing duplicate accounts when the same email exists on another user in any form.
 - `OnboardingService` depends only on interfaces (plus `IClock`) — no `DbContext`, `IDbContextFactory`, `DbSet<T>`, `IMemoryCache`, `IFullProfileInvalidator`, or repository. Enforced by `OnboardingArchitectureTests`.
 - The DI cycle between `OnboardingService` and `ProfileService` / `ConsentService` is broken by the narrow `IOnboardingEligibilityQuery` interface (`SetConsentCheckPendingIfEligibleAsync(userId, ct)`). `OnboardingService` implements it; Profile and Consent depend on it instead of the full `IOnboardingService`.
+- **Consent Check auto-approval:** An LLM-backed job (`AutoConsentCheckJob`, every 15 min) may auto-approve Consent Check = Pending profiles. The job ONLY approves — it never flags, never rejects, never sets a profile to Flagged. A failure (LLM error / timeout) leaves the entry in the manual queue for a human Consent Coordinator. See `docs/features/auto-consent-check.md`.
+- **Consent Hold List invariant:** Entries on the admin-maintained hold list (`/Admin/ConsentHoldList`) suppress auto-approval for names that match. A hold-list match does NOT block manual approval — a human coordinator can still approve. The list is never shown to non-admin users.
 
 ## Negative Access Rules
 
@@ -49,6 +51,7 @@ The only onboarding-specific value type is the narrow `IOnboardingEligibilityQue
 - When a legal document is signed: the system checks if the profile is also approved. If both conditions are met, the human is added to the Volunteers team.
 - When a consent check is flagged: onboarding is blocked. Board or Admin must review.
 - When a signup is rejected: the rejection reason and timestamp are recorded on the profile. The human is notified.
+- When `AutoConsentCheckJob` runs and `SyncServiceType.AutoConsentCheck` is not `None`: every Pending consent-check profile is evaluated by the LLM. Clean verdicts (`PlausibleRealName && !HoldListMatch`) trigger `IOnboardingService.AutoClearConsentCheckAsync`, which has the same effect as a human clear except the audit action is `ConsentCheckAutoCleared` and `ConsentCheckedByUserId` is left null. Every non-clear verdict and every LLM failure is audited as `ConsentCheckAutoSkipped` and leaves the entry in the manual queue.
 
 ## Cross-Section Dependencies
 

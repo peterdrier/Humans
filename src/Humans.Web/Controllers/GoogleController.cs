@@ -854,6 +854,7 @@ public class GoogleController : HumansControllerBase
         SyncServiceType.GoogleDrive => "Google Drive",
         SyncServiceType.GoogleGroups => "Google Groups",
         SyncServiceType.Discord => "Discord",
+        SyncServiceType.AutoConsentCheck => "Auto Consent Check (LLM)",
         _ => type.ToString()
     };
 }

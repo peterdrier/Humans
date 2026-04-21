@@ -82,6 +82,7 @@ public class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<NotificationRecipient> NotificationRecipients => Set<NotificationRecipient>();
     public DbSet<ProfileLanguage> ProfileLanguages => Set<ProfileLanguage>();
     public DbSet<EventParticipation> EventParticipations => Set<EventParticipation>();
+    public DbSet<ConsentHoldListEntry> ConsentHoldListEntries => Set<ConsentHoldListEntry>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

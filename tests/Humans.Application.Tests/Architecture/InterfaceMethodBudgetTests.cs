@@ -45,7 +45,7 @@ public class InterfaceMethodBudgetTests
         [typeof(ITeamService)] = 71,
         [typeof(ICampService)] = 53,
         [typeof(IShiftManagementService)] = 49,
-        [typeof(IProfileService)] = 39,
+        [typeof(IProfileService)] = 41,
         [typeof(IUserService)] = 32,
     };
 

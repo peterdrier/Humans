@@ -60,6 +60,13 @@ public class SyncServiceSettingsConfiguration : IEntityTypeConfiguration<SyncSer
                 ServiceType = SyncServiceType.Discord,
                 SyncMode = SyncMode.None,
                 UpdatedAt = SeedTimestamp,
+            },
+            new
+            {
+                Id = Guid.Parse("00000000-0000-0000-0002-000000000004"),
+                ServiceType = SyncServiceType.AutoConsentCheck,
+                SyncMode = SyncMode.None,
+                UpdatedAt = SeedTimestamp,
             });
     }
 }

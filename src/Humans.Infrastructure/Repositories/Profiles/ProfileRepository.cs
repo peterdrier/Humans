@@ -135,6 +135,19 @@ public sealed class ProfileRepository : IProfileRepository
             .CountAsync(p => !p.IsApproved && p.RejectedAt == null, ct);
     }
 
+    public async Task<IReadOnlyList<Guid>> GetPendingConsentCheckUserIdsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Profiles
+            .AsNoTracking()
+            .Where(p => p.ConsentCheckStatus == ConsentCheckStatus.Pending
+                && !p.IsApproved
+                && p.RejectedAt == null)
+            .OrderBy(p => p.CreatedAt)
+            .Select(p => p.UserId)
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<Guid>> GetApprovedUserIdsAsync(CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
