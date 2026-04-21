@@ -2,6 +2,7 @@
 @model Humans.Web.Models.Calendar.CalendarAgendaViewModel
 @{
     ViewData["Title"] = "Calendar — Agenda";
+    ViewData["ActiveView"] = "agenda";
     var zone = DateTimeZoneProviders.Tzdb[Model.ViewerTimezoneLabel];
     var grouped = Model.Occurrences
         .GroupBy(o => o.OccurrenceStartUtc.InZone(zone).Date)
@@ -10,10 +11,14 @@
 }
 
 <div class="container py-4">
+    <partial name="_CalendarViewPills" />
+
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1 class="h3 mb-0">Agenda</h1>
         <div>
-            <a class="btn btn-sm btn-outline-secondary" asp-action="Index">Month view</a>
+            <span authorize-policy="AdminOnly">
+                <a class="btn btn-sm btn-primary" asp-action="Create">New event</a>
+            </span>
         </div>
     </div>
 

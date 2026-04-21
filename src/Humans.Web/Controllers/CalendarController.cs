@@ -64,6 +64,36 @@ public class CalendarController : HumansControllerBase
             ViewerTimezoneLabel: zone.Id));
     }
 
+    [HttpGet("List")]
+    public async Task<IActionResult> List(
+        [FromQuery] int? year,
+        [FromQuery] int? month,
+        [FromQuery] Guid? teamId,
+        CancellationToken ct)
+    {
+        var zone = GetViewerZone();
+        var today = _clock.GetCurrentInstant().InZone(zone).Date;
+        var ym = new YearMonth(year ?? today.Year, month ?? today.Month);
+
+        var firstOfMonth = ym.OnDayOfMonth(1);
+        var from = firstOfMonth.AtMidnight().InZoneLeniently(zone).ToInstant();
+        var daysInMonth = firstOfMonth.Calendar.GetDaysInMonth(ym.Year, ym.Month);
+        var to = ym.OnDayOfMonth(daysInMonth).AtMidnight().InZoneLeniently(zone).ToInstant()
+                     .Plus(Duration.FromDays(1));
+
+        var occ = await _calendar.GetOccurrencesInWindowAsync(from, to, teamId, ct);
+        var teams = (await _teams.GetAllTeamsAsync(ct))
+            .Select(t => new TeamOption(t.Id, t.Name))
+            .ToList();
+
+        return View(new CalendarMonthViewModel(
+            Month: ym,
+            Occurrences: occ,
+            FilterTeamId: teamId,
+            TeamOptions: teams,
+            ViewerTimezoneLabel: zone.Id));
+    }
+
     [HttpGet("Agenda")]
     public async Task<IActionResult> Agenda(
         [FromQuery] DateTime? from,

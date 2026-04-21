@@ -2,22 +2,37 @@
 @model Humans.Web.Models.Calendar.CalendarMonthViewModel
 @{
     ViewData["Title"] = $"Calendar — {Model.Month.Year}-{Model.Month.Month:D2}";
+    ViewData["ActiveView"] = "grid";
     var zone = DateTimeZoneProviders.Tzdb[Model.ViewerTimezoneLabel];
     var prev = Model.Month.PlusMonths(-1);
     var next = Model.Month.PlusMonths(1);
 
-    // Group occurrences by local date (viewer TZ).
+    var firstOfMonth = new LocalDate(Model.Month.Year, Model.Month.Month, 1);
+    var daysInMonth = firstOfMonth.Calendar.GetDaysInMonth(Model.Month.Year, Model.Month.Month);
+    var lastOfMonth = firstOfMonth.PlusDays(daysInMonth - 1);
+
+    // Monday-first week. IsoDayOfWeek.Monday = 1, Sunday = 7.
+    int LeadOffset(LocalDate d) => ((int)d.DayOfWeek + 6) % 7;
+    var gridStart = firstOfMonth.PlusDays(-LeadOffset(firstOfMonth));
+    var trailOffset = 6 - LeadOffset(lastOfMonth);
+    var gridEnd = lastOfMonth.PlusDays(trailOffset);
+    var totalCells = Period.Between(gridStart, gridEnd.PlusDays(1), PeriodUnits.Days).Days;
+    var weeks = totalCells / 7;
+
     var byDate = Model.Occurrences
         .GroupBy(o => o.OccurrenceStartUtc.InZone(zone).Date)
         .ToDictionary(g => g.Key, g => g.OrderBy(x => x.OccurrenceStartUtc).ToList());
 
-    var firstOfMonth = new LocalDate(Model.Month.Year, Model.Month.Month, 1);
-    var daysInMonth = firstOfMonth.Calendar.GetDaysInMonth(Model.Month.Year, Model.Month.Month);
+    const int MaxPerCell = 3;
+    var culture = System.Globalization.CultureInfo.CurrentCulture;
+    var dayHeaders = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
 }
 
 <div class="container py-4">
+    <partial name="_CalendarViewPills" />
+
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1 class="h3 mb-0">@Model.Month.Year @System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(Model.Month.Month)</h1>
+        <h1 class="h3 mb-0">@Model.Month.Year @culture.DateTimeFormat.GetMonthName(Model.Month.Month)</h1>
         <div>
             <span authorize-policy="AdminOnly">
                 <a class="btn btn-sm btn-primary" asp-action="Create">New event</a>
@@ -30,38 +45,45 @@
 
     <p class="text-muted small">All times shown in @Model.ViewerTimezoneLabel.</p>
 
-    <table class="table table-bordered align-top">
+    <table class="table table-bordered calendar-grid" style="table-layout: fixed;">
+        <thead>
+            <tr>
+                @foreach (var h in dayHeaders)
+                {
+                    <th class="text-center small text-muted" style="width: 14.28%;">@h</th>
+                }
+            </tr>
+        </thead>
         <tbody>
-            @for (int d = 1; d <= daysInMonth; d++)
+            @for (int w = 0; w < weeks; w++)
             {
-                var day = firstOfMonth.PlusDays(d - 1);
-                var dayOccs = byDate.TryGetValue(day, out var list) ? list : new();
                 <tr>
-                    <td style="width: 10rem"><strong>@day.ToString("d MMM (ddd)", System.Globalization.CultureInfo.CurrentCulture)</strong></td>
-                    <td>
-                        @if (dayOccs.Count == 0)
-                        {
-                            <span class="text-muted">—</span>
-                        }
-                        else
-                        {
-                            @foreach (var o in dayOccs)
+                    @for (int dow = 0; dow < 7; dow++)
+                    {
+                        var day = gridStart.PlusDays(w * 7 + dow);
+                        var inMonth = day.Year == Model.Month.Year && day.Month == Model.Month.Month;
+                        var dayOccs = byDate.TryGetValue(day, out var list) ? list : new();
+                        var cellCls = inMonth ? "" : "bg-light text-muted";
+                        <td class="@cellCls align-top" style="height: 7rem; vertical-align: top;">
+                            <div class="small fw-bold mb-1">@day.Day</div>
+                            @foreach (var o in dayOccs.Take(MaxPerCell))
                             {
                                 var localStart = o.OccurrenceStartUtc.InZone(zone).LocalDateTime;
-                                <div>
-                                    <span class="badge bg-light text-dark">@localStart.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture)</span>
+                                <div class="small text-truncate" title="@o.Title — @o.OwningTeamName">
+                                    <span class="text-muted">@localStart.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture)</span>
                                     <a asp-action="Event" asp-route-id="@o.EventId">@o.Title</a>
-                                    <small class="text-muted">— @o.OwningTeamName</small>
                                 </div>
                             }
-                        }
-                    </td>
+                            @if (dayOccs.Count > MaxPerCell)
+                            {
+                                var more = dayOccs.Count - MaxPerCell;
+                                var isoDay = day.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+                                <a class="small text-muted" asp-action="Agenda" asp-route-from="@isoDay" asp-route-to="@isoDay" asp-route-teamId="@Model.FilterTeamId">+@more more</a>
+                            }
+                        </td>
+                    }
                 </tr>
             }
         </tbody>
     </table>
-
-    <p class="mt-3">
-        <a class="btn btn-link" asp-action="Agenda">Agenda view</a>
-    </p>
 </div>

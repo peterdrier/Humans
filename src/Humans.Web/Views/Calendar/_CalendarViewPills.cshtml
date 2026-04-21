@@ -1,0 +1,10 @@
+@{
+    var active = ViewData["ActiveView"] as string ?? "grid";
+    string Cls(string v) => "btn btn-sm " + (string.Equals(v, active, StringComparison.Ordinal) ? "btn-primary" : "btn-outline-secondary");
+}
+
+<div class="btn-group mb-3" role="group" aria-label="Calendar view">
+    <a class="@Cls("grid")" asp-action="Index">Grid</a>
+    <a class="@Cls("list")" asp-action="List">List</a>
+    <a class="@Cls("agenda")" asp-action="Agenda">Agenda</a>
+</div>
