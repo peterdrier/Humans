@@ -119,7 +119,9 @@ builder.Services.AddSingleton<TrackingMemoryCache>(sp =>
 builder.Services.AddSingleton<IMemoryCache>(sp => sp.GetRequiredService<TrackingMemoryCache>());
 builder.Services.AddSingleton<ICacheStatsProvider>(sp => sp.GetRequiredService<TrackingMemoryCache>());
 
-// Configure EF Core with PostgreSQL
+// Configure EF Core with PostgreSQL.
+// optionsLifetime: Singleton so the Singleton IDbContextFactory<HumansDbContext> below can
+// consume DbContextOptions; HumansDbContext itself stays Scoped for normal controller/service use.
 builder.Services.AddDbContext<HumansDbContext>((sp, options) =>
 {
     options.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>(), npgsqlOptions =>
@@ -137,7 +139,7 @@ builder.Services.AddDbContext<HumansDbContext>((sp, options) =>
         options.EnableSensitiveDataLogging();
         options.EnableDetailedErrors();
     }
-});
+}, optionsLifetime: ServiceLifetime.Singleton);
 
 // Register IDbContextFactory for creating short-lived DbContext instances from the
 // Singleton Profile-section repositories (ProfileRepository, ContactFieldRepository,
