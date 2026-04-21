@@ -75,6 +75,10 @@ public static class RecurringJobExtensions
             // Materialize ticket sales actuals into budget line items daily at 04:30.
             ("ticketing-budget-sync", () => RecurringJob.AddOrUpdate<TicketingBudgetSyncJob>(
                 "ticketing-budget-sync", job => job.ExecuteAsync(CancellationToken.None), "30 4 * * *")),
+
+            // Purge old agent conversations — daily at 03:15 UTC.
+            ("agent-conversation-retention", () => RecurringJob.AddOrUpdate<AgentConversationRetentionJob>(
+                "agent-conversation-retention", job => job.ExecuteAsync(CancellationToken.None), "15 3 * * *")),
         };
 
         foreach (var (id, register) in jobs)

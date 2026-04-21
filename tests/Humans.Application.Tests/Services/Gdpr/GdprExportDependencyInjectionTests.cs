@@ -130,11 +130,14 @@ public class GdprExportDependencyInjectionTests
         // forwarding factory. We read the collection's ServiceDescriptors directly
         // so the test doesn't need a live DbContext, Postgres, or config.
         var services = new ServiceCollection();
+        var config = BuildMinimalConfiguration();
         Humans.Web.Extensions.InfrastructureServiceCollectionExtensions
             .AddHumansInfrastructure(
                 services,
-                BuildMinimalConfiguration(),
+                config,
                 new StubHostEnvironment());
+        Humans.Web.Extensions.InfrastructureServiceCollectionExtensions
+            .AddAgentSection(services, config);
 
         var contributorDescriptors = services
             .Where(d => d.ServiceType == typeof(IUserDataContributor))
@@ -181,11 +184,14 @@ public class GdprExportDependencyInjectionTests
         // concrete type, and the set of resolved types must exactly match
         // `ExpectedContributorTypes`.
         var services = new ServiceCollection();
+        var config = BuildMinimalConfiguration();
         Humans.Web.Extensions.InfrastructureServiceCollectionExtensions
             .AddHumansInfrastructure(
                 services,
-                BuildMinimalConfiguration(),
+                config,
                 new StubHostEnvironment());
+        Humans.Web.Extensions.InfrastructureServiceCollectionExtensions
+            .AddAgentSection(services, config);
 
         // Replace every contributor's concrete-type registration with a fake
         // instance of that same type. GetUninitializedObject skips the
