@@ -27,13 +27,6 @@ public sealed class ApplicationRepository : IApplicationRepository
             .Include(a => a.StateHistory)
             .FirstOrDefaultAsync(a => a.Id == applicationId, ct);
 
-    public async Task<IReadOnlyList<MemberApplication>> GetAllAsync(CancellationToken ct = default) =>
-        await _dbContext.Applications
-            .Include(a => a.BoardVotes)
-            .Include(a => a.StateHistory)
-            .AsSplitQuery()
-            .ToListAsync(ct);
-
     public async Task<IReadOnlyList<MemberApplication>> GetByUserIdAsync(Guid userId, CancellationToken ct = default) =>
         await _dbContext.Applications
             .Include(a => a.StateHistory)

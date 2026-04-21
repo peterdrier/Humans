@@ -23,13 +23,6 @@ public interface IApplicationRepository
     Task<MemberApplication?> GetByIdAsync(Guid applicationId, CancellationToken ct = default);
 
     /// <summary>
-    /// Loads every application with aggregate-local collections eagerly
-    /// loaded. Used by the startup warmup hosted service to populate
-    /// <c>IApplicationStore</c>. Trivial at ~500-user scale.
-    /// </summary>
-    Task<IReadOnlyList<MemberApplication>> GetAllAsync(CancellationToken ct = default);
-
-    /// <summary>
     /// Returns every application for a user, ordered by <c>SubmittedAt</c>
     /// descending. Aggregate-local <c>StateHistory</c> is included.
     /// </summary>

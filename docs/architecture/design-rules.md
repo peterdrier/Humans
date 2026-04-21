@@ -83,7 +83,7 @@ public interface IProfileRepository
 
 ## 4. Store Pattern (In-Memory Entity Cache)
 
-> **Note:** §4–§5 describe the original store + warmup + decorator pattern. This pattern is still used by the **Governance** section (`ApplicationStore`, `ApplicationStoreWarmupHostedService`). **Profile** has migrated to the corrected pattern in §15, where the decorator owns the `ConcurrentDictionary` directly — no separate store or warmup service. New section migrations follow §15. Governance is tracked for §15 alignment on upstream issue #533.
+> **Note:** §4–§5 describe the original store + warmup + decorator pattern. **No section uses this pattern any more.** **Profile** migrated to §15 in PR #235 (decorator owns the `ConcurrentDictionary` directly). **Governance** dropped the caching layer entirely in PR for issue #533 — at its traffic level a caching decorator wasn't worth the complexity, so the service talks directly to `IApplicationRepository` and invalidates cross-cutting caches inline. §4–§5 are retained only for historical context. New sections: if caching is warranted, follow §15; if not, use a plain repository + Scoped service.
 
 Every cached domain has a **store** — a dedicated class that owns an in-memory canonical copy of its entities. The store is the *data shape* of the cache; it is separate from the decorator that makes reads transparent.
 
@@ -418,9 +418,9 @@ All Google Drive resources are on **Shared Drives** (never My Drive). Google int
 
 ## 15. Profile Section Pattern — Canonical Cache-Collapse Architecture
 
-The Profile section is the **reference implementation** for the target caching architecture (completed in PR #235, 2026-04-20). All future section migrations follow this pattern. The original §4/§5 store-and-decorator spec was superseded during Profile migration; §15 documents the final, code-verified shape.
+The Profile section is the **reference implementation** for the target caching architecture (completed in PR #235, 2026-04-20). All future section migrations that warrant a caching layer follow this pattern. The original §4/§5 store-and-decorator spec was superseded during Profile migration; §15 documents the final, code-verified shape.
 
-> **Governance** (`ApplicationDecisionService`) still uses the **old** pattern (Singleton store + `ApplicationStoreWarmupHostedService` + `CachedApplication` entity). It is tracked for alignment on `nobodies-collective/Humans` issue #533. Do **not** start §15 Phase 4 (Google integration, issue #473) until Governance is migrated.
+> **Governance** previously used the §4/§5 pattern but dropped its caching layer entirely (issue #533): the section is low-traffic enough that DB reads per request are fine, so `ApplicationDecisionService` talks directly to `IApplicationRepository` and invalidates cross-cutting caches (`INavBadgeCacheInvalidator`, `INotificationMeterCacheInvalidator`, `IVotingBadgeCacheInvalidator`) inline after successful writes. Not every section needs §15 — reach for it only when traffic or bulk-read patterns justify an in-memory projection.
 
 ### 15a. Four-Layer Stack
 
@@ -575,8 +575,8 @@ Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`
 - **~34 services** still live in `Humans.Infrastructure/Services/` and inject `HumansDbContext` directly. Target: 0. **Governance:** migrated 2026-04-15 in PR #503. **Profiles:** fully migrated 2026-04-20 in PR #235 — `ProfileService`, `ContactFieldService`, `ContactService`, `UserEmailService`, `CommunicationPreferenceService` now live in `Humans.Application.Services.Profile`. (`VolunteerHistoryService` was folded into `ProfileService`/`IProfileRepository`; it no longer exists as a separate service.)
 - **~28 cross-domain `.Include()` calls** across **~16 services**. Biggest offenders: `OnboardingService` (7), `GoogleWorkspaceSyncService` (4), `FeedbackService` (4). The Profile-section and Governance includes are gone. Target: 0.
 - **5 repositories** exist today (`ApplicationRepository`, `ProfileRepository`, `ContactFieldRepository`, `UserEmailRepository`, `CommunicationPreferenceRepository`). Target: one per domain (~20 total).
-- **1 store** exists today (`ApplicationStore` — Governance only, old pattern, tracked on #533). Target: replaced by §15 ConcurrentDict decorator pattern everywhere; `IApplicationStore` to be retired when Governance migrates.
-- **2 caching decorators** exist today (`CachingApplicationDecisionService` — old pattern; `CachingProfileService` — §15 pattern). Target: every migrated section uses the §15 `ConcurrentDictionary`-in-decorator pattern.
+- **0 stores** exist today. `IApplicationStore` was retired when Governance dropped its caching layer (issue #533). Target: replaced by §15 `ConcurrentDictionary`-in-decorator where a cache is warranted; no separate store type.
+- **1 caching decorator** exists today (`CachingProfileService` — §15 pattern). Governance operates without one. Target: every migrated section that needs caching uses the §15 pattern.
 - **Inline `IMemoryCache.GetOrCreateAsync`** still scattered across services for non-profile caches (nav badge, notification meter, role-assignment claims, shift auth). These are short-TTL request-acceleration caches, not canonical domain data caches, and are appropriate for `IMemoryCache`. Canonical domain data caches (full entity projections) must use the §15 pattern.
 - **Cross-domain navigation properties** (`TeamMember.User`, `CampLead.User`, etc.) are used freely today. Profile-section and Governance entities have been stripped (`Profile.User`, `UserEmail.User`, `CommunicationPreference.User`). Target: stripped at the entity boundary, FK-only everywhere.
 

@@ -3,10 +3,10 @@ using NodaTime;
 using Humans.Application.DTOs.Governance;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Stores;
 using Humans.Domain;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -20,19 +20,15 @@ namespace Humans.Application.Services.Governance;
 /// <see cref="IApplicationDecisionService"/> without touching
 /// <c>HumansDbContext</c> or <c>IMemoryCache</c> directly — goes through
 /// <see cref="IApplicationRepository"/> (persistence),
-/// <see cref="IApplicationStore"/> (in-memory canonical cache),
 /// <see cref="IUserService"/> / <see cref="IProfileService"/> (cross-domain
 /// reads and writes), and the existing cross-cutting services (audit log,
-/// email, notification, team sync, metrics, clock).
-///
-/// This is the first full end-to-end migration of the target pattern per
-/// <c>docs/architecture/design-rules.md</c> §§3–5. See PR #503 for the
-/// reference shape.
+/// email, notification, team sync, metrics, clock). Nav/notification/voting
+/// badge cache invalidations are called inline after successful writes —
+/// Governance is low-traffic enough that a caching decorator isn't warranted.
 /// </summary>
 public sealed class ApplicationDecisionService : IApplicationDecisionService, IUserDataContributor
 {
     private readonly IApplicationRepository _repository;
-    private readonly IApplicationStore _store;
     private readonly IUserService _userService;
     private readonly IProfileService _profileService;
     private readonly IAuditLogService _auditLogService;
@@ -40,12 +36,14 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
     private readonly INotificationService _notificationService;
     private readonly ISystemTeamSync _syncJob;
     private readonly IHumansMetrics _metrics;
+    private readonly INavBadgeCacheInvalidator _navBadge;
+    private readonly INotificationMeterCacheInvalidator _notificationMeter;
+    private readonly IVotingBadgeCacheInvalidator _votingBadge;
     private readonly IClock _clock;
     private readonly ILogger<ApplicationDecisionService> _logger;
 
     public ApplicationDecisionService(
         IApplicationRepository repository,
-        IApplicationStore store,
         IUserService userService,
         IProfileService profileService,
         IAuditLogService auditLogService,
@@ -53,11 +51,13 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         INotificationService notificationService,
         ISystemTeamSync syncJob,
         IHumansMetrics metrics,
+        INavBadgeCacheInvalidator navBadge,
+        INotificationMeterCacheInvalidator notificationMeter,
+        IVotingBadgeCacheInvalidator votingBadge,
         IClock clock,
         ILogger<ApplicationDecisionService> logger)
     {
         _repository = repository;
-        _store = store;
         _userService = userService;
         _profileService = profileService;
         _auditLogService = auditLogService;
@@ -65,6 +65,9 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         _notificationService = notificationService;
         _syncJob = syncJob;
         _metrics = metrics;
+        _navBadge = navBadge;
+        _notificationMeter = notificationMeter;
+        _votingBadge = votingBadge;
         _clock = clock;
         _logger = logger;
     }
@@ -83,6 +86,11 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         if (application.Status != ApplicationStatus.Submitted)
             return new ApplicationDecisionResult(false, "NotSubmitted");
 
+        // Capture voter ids BEFORE FinalizeAsync deletes the BoardVote rows as
+        // part of its atomic commit — we need them for per-voter VotingBadge
+        // invalidation after the write succeeds.
+        var voterIds = await _repository.GetVoterIdsForApplicationAsync(applicationId, cancellationToken);
+
         // State transition — mutates the entity (status, state history row).
         application.Approve(reviewerUserId, notes, _clock);
         application.BoardMeetingDate = boardMeetingDate;
@@ -100,7 +108,11 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         // or a partially-provisioned downstream state claiming an approval
         // that never committed.
         await _repository.FinalizeAsync(application, cancellationToken);
-        _store.Upsert(application);
+
+        _navBadge.Invalidate();
+        _notificationMeter.Invalidate();
+        foreach (var voterId in voterIds)
+            _votingBadge.Invalidate(voterId);
 
         // Audit AFTER the governance state is committed — separate
         // transaction but at minimum correctly sequenced. A failure here
@@ -188,13 +200,20 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         if (application.Status != ApplicationStatus.Submitted)
             return new ApplicationDecisionResult(false, "NotSubmitted");
 
+        // Capture voter ids BEFORE FinalizeAsync deletes them (same rationale as ApproveAsync).
+        var voterIds = await _repository.GetVoterIdsForApplicationAsync(applicationId, cancellationToken);
+
         application.Reject(reviewerUserId, reason, _clock);
         application.BoardMeetingDate = boardMeetingDate;
         application.DecisionNote = reason;
 
         // Atomic commit before audit (same rationale as ApproveAsync).
         await _repository.FinalizeAsync(application, cancellationToken);
-        _store.Upsert(application);
+
+        _navBadge.Invalidate();
+        _notificationMeter.Invalidate();
+        foreach (var voterId in voterIds)
+            _votingBadge.Invalidate(voterId);
 
         await _auditLogService.LogAsync(
             AuditAction.TierApplicationRejected,
@@ -307,7 +326,9 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         application.ValidateTier();
 
         await _repository.AddAsync(application, ct);
-        _store.Upsert(application);
+
+        _navBadge.Invalidate();
+        _notificationMeter.Invalidate();
 
         _logger.LogInformation(
             "User {UserId} submitted application {ApplicationId}",
@@ -349,7 +370,9 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
 
         application.Withdraw(_clock);
         await _repository.UpdateAsync(application, ct);
-        _store.Upsert(application);
+
+        _navBadge.Invalidate();
+        _notificationMeter.Invalidate();
 
         _metrics.RecordApplicationProcessed("withdrawn");
         _logger.LogInformation(

@@ -4,7 +4,6 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Stores;
 using Humans.Application.Services.Gdpr;
 using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Configuration;
@@ -12,9 +11,7 @@ using Humans.Infrastructure.HostedServices;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
-using Humans.Infrastructure.Services.Governance;
 using Humans.Infrastructure.Services.Profiles;
-using Humans.Infrastructure.Stores;
 using Humans.Web.Filters;
 using GovernanceApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
 using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
@@ -217,11 +214,11 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddScoped<ITicketingBudgetService, TicketingBudgetService>();
 
-        // Governance — first full end-to-end implementation of the target
-        // repository/store/decorator pattern (see PR #503 /
-        // docs/superpowers/plans/2026-04-15-governance-migration.md).
+        // Governance — repository + service, no caching decorator.
+        // Governance is low-traffic enough that DB reads per request are fine;
+        // the service invalidates nav/notification/voting badge caches inline
+        // after successful writes.
         services.AddScoped<IApplicationRepository, ApplicationRepository>();
-        services.AddSingleton<IApplicationStore, ApplicationStore>();
 
         services.AddScoped<INavBadgeCacheInvalidator, NavBadgeCacheInvalidator>();
         services.AddScoped<INotificationMeterCacheInvalidator, NotificationMeterCacheInvalidator>();
@@ -230,15 +227,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<GovernanceApplicationDecisionService>();
         services.AddScoped<IApplicationDecisionService>(sp => sp.GetRequiredService<GovernanceApplicationDecisionService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<GovernanceApplicationDecisionService>());
-
-        // Wrap IApplicationDecisionService with the caching decorator via
-        // Scrutor. Callers still inject IApplicationDecisionService and get
-        // the cached version transparently.
-        services.Decorate<IApplicationDecisionService, CachingApplicationDecisionService>();
-
-        // Startup warmup: load the full Application set into the store
-        // before the host starts accepting HTTP requests.
-        services.AddHostedService<ApplicationStoreWarmupHostedService>();
 
         services.AddScoped<IOnboardingService, OnboardingService>();
 

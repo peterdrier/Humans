@@ -260,18 +260,6 @@ public sealed class ApplicationRepositoryTests : IDisposable
         reloaded!.Status.Should().Be(ApplicationStatus.Withdrawn);
     }
 
-    [Fact]
-    public async Task GetAllAsync_ReturnsEveryApplication()
-    {
-        SeedApp();
-        SeedApp();
-        SeedApp();
-
-        var all = await _repo.GetAllAsync();
-
-        all.Should().HaveCount(3);
-    }
-
     private MemberApplication SeedApp(
         Guid? userId = null,
         Instant? submittedAt = null,

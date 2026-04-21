@@ -5,6 +5,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Services.Governance;
 using Humans.Domain;
@@ -12,7 +13,6 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories;
-using Humans.Infrastructure.Stores;
 using Xunit;
 using MemberApplication = Humans.Domain.Entities.Application;
 
@@ -22,7 +22,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 {
     private readonly HumansDbContext _dbContext;
     private readonly ApplicationRepository _repository;
-    private readonly ApplicationStore _store;
     private readonly FakeClock _clock;
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IProfileService _profileService = Substitute.For<IProfileService>();
@@ -31,6 +30,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     private readonly INotificationService _notificationService = Substitute.For<INotificationService>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
+    private readonly INavBadgeCacheInvalidator _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
+    private readonly INotificationMeterCacheInvalidator _notificationMeter = Substitute.For<INotificationMeterCacheInvalidator>();
+    private readonly IVotingBadgeCacheInvalidator _votingBadge = Substitute.For<IVotingBadgeCacheInvalidator>();
     private readonly ApplicationDecisionService _service;
 
     public ApplicationDecisionServiceTests()
@@ -41,7 +43,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         _dbContext = new HumansDbContext(options);
         _repository = new ApplicationRepository(_dbContext);
-        _store = new ApplicationStore();
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
 
         // Default stubs — tests that need stitched user data override these.
@@ -52,7 +53,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         _service = new ApplicationDecisionService(
             _repository,
-            _store,
             _userService,
             _profileService,
             _auditLogService,
@@ -60,6 +60,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             _notificationService,
             _syncJob,
             _metrics,
+            _navBadge,
+            _notificationMeter,
+            _votingBadge,
             _clock,
             NullLogger<ApplicationDecisionService>.Instance);
     }
@@ -132,7 +135,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task SubmitAsync_UpsertsIntoStore()
+    public async Task SubmitAsync_InvalidatesNavBadgeAndNotificationMeter()
     {
         var userId = Guid.NewGuid();
 
@@ -140,9 +143,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             userId, MembershipTier.Colaborador, "Motivation",
             null, null, null, "en");
 
-        var stored = _store.GetById(result.ApplicationId!.Value);
-        stored.Should().NotBeNull();
-        stored!.UserId.Should().Be(userId);
+        result.Success.Should().BeTrue();
+        _navBadge.Received().Invalidate();
+        _notificationMeter.Received().Invalidate();
     }
 
     // --- Withdraw flow ---
@@ -271,15 +274,45 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task ApproveAsync_UpsertsIntoStore()
+    public async Task ApproveAsync_InvalidatesNavBadgeAndNotificationMeter()
     {
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
-        var stored = _store.GetById(app.Id);
-        stored.Should().NotBeNull();
-        stored!.Status.Should().Be(ApplicationStatus.Approved);
+        _navBadge.Received().Invalidate();
+        _notificationMeter.Received().Invalidate();
+    }
+
+    [Fact]
+    public async Task ApproveAsync_InvalidatesEveryVoterBadge()
+    {
+        var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+        var voter1 = Guid.NewGuid();
+        var voter2 = Guid.NewGuid();
+        await _dbContext.BoardVotes.AddRangeAsync(
+            new BoardVote
+            {
+                Id = Guid.NewGuid(),
+                ApplicationId = app.Id,
+                BoardMemberUserId = voter1,
+                Vote = VoteChoice.Yay,
+                VotedAt = _clock.GetCurrentInstant()
+            },
+            new BoardVote
+            {
+                Id = Guid.NewGuid(),
+                ApplicationId = app.Id,
+                BoardMemberUserId = voter2,
+                Vote = VoteChoice.No,
+                VotedAt = _clock.GetCurrentInstant()
+            });
+        await _dbContext.SaveChangesAsync();
+
+        await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
+
+        _votingBadge.Received().Invalidate(voter1);
+        _votingBadge.Received().Invalidate(voter2);
     }
 
     [Fact]

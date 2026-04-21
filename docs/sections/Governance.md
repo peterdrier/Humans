@@ -51,25 +51,18 @@
 - **Onboarding**: Tier applications are a separate, optional path — never blocks Volunteer onboarding.
 - **Legal & Consent**: Consent checks are reviewed alongside (but independently of) tier applications.
 
-## Architecture — Current vs Target
-
-See `docs/architecture/design-rules.md` for the full rules.
-
-**Owning services:** `ApplicationDecisionService`
-**Owned tables:** `applications`, `application_state_histories`, `board_votes`
-
 ## Architecture
 
-This section is the **first fully-migrated implementation** of the target repository/store/decorator pattern per [`../architecture/design-rules.md`](../architecture/design-rules.md) §§3–5 — landed in PR #503. Use this section as the reference shape for every subsequent section migration.
+**Owning service:** `ApplicationDecisionService`
+**Owned tables:** `applications`, `application_state_histories`, `board_votes`
 
-- **`ApplicationDecisionService`** lives in `Humans.Application/Services/` and injects `IApplicationRepository` + `IApplicationStore` + `IUserService` + `IProfileService` + cross-cutting services (audit, email, notification, team sync). No `HumansDbContext`, no `IMemoryCache`.
+Governance runs on a plain repository + Scoped service — **no caching decorator, no store, no warmup hosted service**. At this section's traffic level (a handful of Board-driven writes per week and a few admin reads per day) a caching layer isn't worth the complexity. The earlier store/decorator pattern from PR #503 was removed under issue #533 once §15 (`CachingProfileService`) established the canonical shape for sections that *do* warrant caching.
+
+- **`ApplicationDecisionService`** lives in `Humans.Application/Services/Governance/` and injects `IApplicationRepository` + `IUserService` + `IProfileService` + cross-cutting services (audit, email, notification, team sync, metrics) + the three invalidator interfaces (`INavBadgeCacheInvalidator`, `INotificationMeterCacheInvalidator`, `IVotingBadgeCacheInvalidator`). No `HumansDbContext`, no `IMemoryCache`.
 - **`IApplicationRepository`** (`Humans.Application/Interfaces/Repositories/`, impl in `Humans.Infrastructure/Repositories/`) is the only non-test file that touches `DbContext.Applications` / `BoardVotes` / `ApplicationStateHistories`. Aggregate includes `Application` + `ApplicationStateHistory` + `BoardVote`. `FinalizeAsync(app, ct)` is the atomic approve/reject commit: application update + board-vote bulk delete in one `SaveChangesAsync`. `application_state_histories` is append-only per §12 — the repository exposes no `UpdateStateHistoryAsync`/`DeleteStateHistoryAsync`.
-- **`IApplicationStore`** (`Humans.Application/Interfaces/Stores/`, impl in `Humans.Infrastructure/Stores/`) is a dict-backed `ConcurrentDictionary<Guid, Application>` canonical store, warmed at startup via `ApplicationStoreWarmupHostedService`.
-- **`CachingApplicationDecisionService`** (`Humans.Infrastructure/Services/`) decorates `IApplicationDecisionService` via Scrutor `.Decorate<>()`. Read short-circuits serve `GetUserApplicationsAsync` from the store. Write invalidations flow through three cross-cutting interfaces: `INavBadgeCacheInvalidator`, `INotificationMeterCacheInvalidator`, `IVotingBadgeCacheInvalidator`.
+- **Write-side invalidation** is inline in the service. `ApproveAsync` / `RejectAsync` capture voter ids via `IApplicationRepository.GetVoterIdsForApplicationAsync` *before* `FinalizeAsync` (which deletes the BoardVote rows), then after the write invalidate `INavBadgeCacheInvalidator`, `INotificationMeterCacheInvalidator`, and every per-voter `IVotingBadgeCacheInvalidator`. `SubmitAsync` / `WithdrawAsync` invalidate nav badge + notification meter only.
 - **Cross-domain nav properties** (`Application.User`, `Application.ReviewedByUser`, `ApplicationStateHistory.ChangedByUser`, `BoardVote.BoardMemberUser`) are stripped from the entities. User/reviewer/voter display fields are resolved via `IUserService.GetByIdsAsync` and stitched into the returned DTOs (`ApplicationAdminDetailDto`, `ApplicationUserDetailDto`, `ApplicationAdminRowDto`, `ApplicationStateHistoryDto`).
 
 ### Known incoming violations (other sections reading Governance tables)
 
-`ProfileService` still calls `_dbContext.Applications.AnyAsync(...)` and similar in a few paths (tracked in `docs/sections/Profiles.md`). These remain as known violations until the Profiles section is migrated — at that point, ProfileService should call `IApplicationDecisionService.GetUserApplicationsAsync` instead. The Governance migration preserved these reads unchanged.
-
-`OnboardingService`, `SendBoardDailyDigestJob`, and `SendAdminDailyDigestJob` also still read governance-owned tables directly for dashboard-counting and batch jobs. Those uses are allowed until the sections owning those services migrate too.
+`OnboardingService`, `SendBoardDailyDigestJob`, `SendAdminDailyDigestJob`, `TermRenewalReminderJob`, `SystemTeamSyncJob`, and `NotificationMeterProvider` still read governance-owned tables directly for dashboard-counting and batch jobs. Those uses are allowed until the sections owning those services migrate to call `IApplicationDecisionService` / `IApplicationRepository` instead.

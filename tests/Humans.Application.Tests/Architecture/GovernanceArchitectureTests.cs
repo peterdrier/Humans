@@ -1,25 +1,21 @@
-using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Stores;
 using Humans.Application.Services.Governance;
-using Humans.Infrastructure.Services.Governance;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 namespace Humans.Application.Tests.Architecture;
 
 /// <summary>
-/// Architecture tests enforcing the repository/store/decorator pattern for the
-/// Governance section — the first section migrated per PR #503 /
-/// <c>docs/superpowers/plans/2026-04-15-governance-migration.md</c>.
+/// Architecture tests enforcing the repository/service pattern for the
+/// Governance section. Governance does not use a caching decorator or
+/// in-memory store — the service talks directly to the repository and
+/// invalidates cross-cutting caches inline after successful writes.
 ///
-/// These tests are the enforcement mechanism for §§3–5 of
-/// <c>docs/architecture/design-rules.md</c> applied to Governance: if any
-/// future change drags the service back into <c>Humans.Infrastructure</c>,
-/// reintroduces a <c>DbContext</c> dependency, or accidentally pulls an EF
-/// Core reference into <c>Humans.Application</c>, these tests fail loudly.
+/// These tests fail loudly if a future change drags the service back into
+/// <c>Humans.Infrastructure</c>, reintroduces a <c>DbContext</c> dependency,
+/// or accidentally pulls an EF Core reference into <c>Humans.Application</c>.
 /// </summary>
 public class GovernanceArchitectureTests
 {
@@ -50,17 +46,27 @@ public class GovernanceArchitectureTests
                 .StartsWith("Microsoft.Extensions.Caching.Memory", StringComparison.Ordinal));
 
         cachingParam.Should().BeNull(
-            because: "caching is the decorator's concern (design-rules §5), not the service's");
+            because: "caching is handled via cross-cutting invalidator interfaces, not IMemoryCache directly");
     }
 
     [Fact]
-    public void ApplicationDecisionService_TakesRepositoryAndStore()
+    public void ApplicationDecisionService_TakesRepository()
     {
         var ctor = typeof(ApplicationDecisionService).GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(IApplicationRepository));
-        paramTypes.Should().Contain(typeof(IApplicationStore));
+    }
+
+    [Fact]
+    public void ApplicationDecisionService_TakesNoTypeFromInterfacesStoresNamespace()
+    {
+        var ctor = typeof(ApplicationDecisionService).GetConstructors().Single();
+        ctor.GetParameters()
+            .Should().NotContain(
+                p => (p.ParameterType.Namespace ?? string.Empty)
+                    .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal),
+                because: "Governance has no store — service reads from IApplicationRepository directly (issue #533)");
     }
 
     [Fact]
@@ -83,21 +89,5 @@ public class GovernanceArchitectureTests
         typeof(IApplicationRepository).Namespace
             .Should().Be("Humans.Application.Interfaces.Repositories",
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
-
-    [Fact]
-    public void IApplicationStore_LivesInApplicationInterfacesStoresNamespace()
-    {
-        typeof(IApplicationStore).Namespace
-            .Should().Be("Humans.Application.Interfaces.Stores",
-                because: "store interfaces live in Humans.Application.Interfaces.Stores per design-rules §4");
-    }
-
-    [Fact]
-    public void CachingApplicationDecisionService_LivesInHumansInfrastructureServicesGovernanceNamespace()
-    {
-        typeof(CachingApplicationDecisionService).Namespace
-            .Should().Be("Humans.Infrastructure.Services.Governance",
-                because: "caching decorators live in Humans.Infrastructure.Services.{Section} alongside the IMemoryCache-backed invalidators they wrap (design-rules §5)");
     }
 }
