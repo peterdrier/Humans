@@ -58,6 +58,55 @@ public class CalendarController : HumansControllerBase
             ViewerTimezoneLabel: zone.Id));
     }
 
+    [HttpGet("Agenda")]
+    public async Task<IActionResult> Agenda(
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] Guid? teamId,
+        CancellationToken ct)
+    {
+        var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
+        var today = _clock.GetCurrentInstant().InZone(zone).Date;
+        var start = from is null ? today : LocalDate.FromDateTime(from.Value);
+        var end   = to   is null ? today.PlusDays(60) : LocalDate.FromDateTime(to.Value);
+
+        var fromUtc = start.AtMidnight().InZoneLeniently(zone).ToInstant();
+        var toUtc   = end.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
+
+        var occ = await _calendar.GetOccurrencesInWindowAsync(fromUtc, toUtc, teamId, ct);
+        return View(new CalendarAgendaViewModel(fromUtc, toUtc, occ, teamId, zone.Id));
+    }
+
+    [HttpGet("Team/{teamId:guid}")]
+    public async Task<IActionResult> Team(
+        Guid teamId,
+        [FromQuery] int? year,
+        [FromQuery] int? month,
+        CancellationToken ct)
+    {
+        var team = await _teams.GetTeamByIdAsync(teamId, ct);
+        if (team is null) return NotFound();
+
+        var zone = DateTimeZoneProviders.Tzdb.GetSystemDefault();
+        var today = _clock.GetCurrentInstant().InZone(zone).Date;
+        var ym = new YearMonth(year ?? today.Year, month ?? today.Month);
+
+        var firstOfMonth = new LocalDate(ym.Year, ym.Month, 1);
+        var daysInMonth = firstOfMonth.Calendar.GetDaysInMonth(ym.Year, ym.Month);
+        var from = firstOfMonth.AtMidnight().InZoneLeniently(zone).ToInstant();
+        var to   = firstOfMonth.PlusDays(daysInMonth).AtMidnight().InZoneLeniently(zone).ToInstant();
+
+        var occ = await _calendar.GetOccurrencesInWindowAsync(from, to, teamId, ct);
+
+        ViewData["TeamName"] = team.Name;
+        return View(new CalendarMonthViewModel(
+            Month: ym,
+            Occurrences: occ,
+            FilterTeamId: teamId,
+            TeamOptions: Array.Empty<TeamOption>(),
+            ViewerTimezoneLabel: zone.Id));
+    }
+
     private Guid GetCurrentUserId()
     {
         var id = UserManager.GetUserId(User);

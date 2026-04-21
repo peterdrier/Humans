@@ -1,0 +1,52 @@
+@using NodaTime
+@model Humans.Web.Models.Calendar.CalendarAgendaViewModel
+@{
+    ViewData["Title"] = "Calendar — Agenda";
+    var zone = DateTimeZoneProviders.Tzdb[Model.ViewerTimezoneLabel];
+    var grouped = Model.Occurrences
+        .GroupBy(o => o.OccurrenceStartUtc.InZone(zone).Date)
+        .OrderBy(g => g.Key)
+        .ToList();
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3 mb-0">Agenda</h1>
+        <div>
+            <a class="btn btn-sm btn-outline-secondary" asp-action="Index">Month view</a>
+        </div>
+    </div>
+
+    <p class="text-muted small">All times shown in @Model.ViewerTimezoneLabel.</p>
+
+    @if (!grouped.Any())
+    {
+        <p class="text-muted">No events in the selected range.</p>
+    }
+    else
+    {
+        @foreach (var dayGroup in grouped)
+        {
+            <h2 class="h5 mt-4">@dayGroup.Key.ToString("d MMM yyyy (ddd)", System.Globalization.CultureInfo.CurrentCulture)</h2>
+            <ul class="list-unstyled">
+                @foreach (var o in dayGroup.OrderBy(x => x.OccurrenceStartUtc))
+                {
+                    var localStart = o.OccurrenceStartUtc.InZone(zone).LocalDateTime;
+                    <li class="mb-2">
+                        <span class="badge bg-light text-dark me-2">@localStart.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture)</span>
+                        <a asp-action="Event" asp-route-id="@o.EventId">@o.Title</a>
+                        <small class="text-muted">— @o.OwningTeamName</small>
+                        @if (!string.IsNullOrWhiteSpace(o.Location))
+                        {
+                            <div class="small text-muted ms-5">@o.Location</div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(o.Description))
+                        {
+                            <div class="small ms-5">@o.Description</div>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+    }
+</div>
