@@ -339,9 +339,12 @@ public class CalendarController : HumansControllerBase
 
     private async Task<IReadOnlyList<TeamOption>> GetEditableTeamsForCurrentUserAsync(CancellationToken ct)
     {
+        var allSelectable = (await _teams.GetAllTeamsAsync(ct))
+            .Where(t => t.IsActive && !t.IsHidden);
+
         if (User.IsInRole(RoleNames.Admin))
         {
-            return (await _teams.GetAllTeamsAsync(ct))
+            return allSelectable
                 .Select(t => new TeamOption(t.Id, t.Name))
                 .OrderBy(t => t.Name, StringComparer.CurrentCulture)
                 .ToList();
@@ -352,7 +355,7 @@ public class CalendarController : HumansControllerBase
         if (coordinatedIds.Count == 0) return Array.Empty<TeamOption>();
 
         var coordinatedSet = coordinatedIds.ToHashSet();
-        return (await _teams.GetAllTeamsAsync(ct))
+        return allSelectable
             .Where(t => coordinatedSet.Contains(t.Id))
             .Select(t => new TeamOption(t.Id, t.Name))
             .OrderBy(t => t.Name, StringComparer.CurrentCulture)
