@@ -163,6 +163,8 @@
   <data name="Dashboard_LastLogin" xml:space="preserve"><value>Last Login</value></data>
   <data name="Dashboard_QuickLinks" xml:space="preserve"><value>Quick Links</value></data>
   <data name="Dashboard_ManageConsents" xml:space="preserve"><value>Review Agreements</value></data>
+  <data name="Dashboard_PendingAgreementsSingular" xml:space="preserve"><value>{0} agreement to review</value><comment>{0} = pending consent count (singular)</comment></data>
+  <data name="Dashboard_PendingAgreementsPlural" xml:space="preserve"><value>{0} agreements to review</value><comment>{0} = pending consent count (plural)</comment></data>
   <data name="Dashboard_RejectedTitle" xml:space="preserve"><value>Signup Rejected</value></data>
   <data name="Dashboard_RejectedMessage" xml:space="preserve"><value>Your signup has been reviewed and was not approved. If you have questions, please contact the admin team.</value></data>
   <data name="Dashboard_RejectionReason" xml:space="preserve"><value>Reason</value></data>
