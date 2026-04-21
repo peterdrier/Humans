@@ -1,9 +1,11 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
+using Humans.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -34,8 +36,12 @@ public class SystemTeamSyncJobBarrioLeadsTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 15, 12, 0));
 
+        var factory = new TestDbContextFactory(options);
+        var campRepo = new CampRepository(factory);
+
         _job = new SystemTeamSyncJob(
             _dbContext,
+            campRepo,
             Substitute.For<IMembershipCalculator>(),
             Substitute.For<IGoogleSyncService>(),
             Substitute.For<IAuditLogService>(),

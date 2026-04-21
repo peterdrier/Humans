@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using ApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
+using CampService = Humans.Application.Services.Camps.CampService;
 using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
 using UsersUserService = Humans.Application.Services.Users.UserService;
 

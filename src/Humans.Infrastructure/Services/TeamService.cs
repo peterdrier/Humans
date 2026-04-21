@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application;
 using Humans.Application.Extensions;
+using Humans.Application.Helpers;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Domain.Constants;
@@ -73,7 +74,7 @@ public class TeamService : ITeamService, IUserDataContributor
         bool isHidden = false,
         CancellationToken cancellationToken = default)
     {
-        var baseSlug = Helpers.SlugHelper.GenerateSlug(name);
+        var baseSlug = SlugHelper.GenerateSlug(name);
         var now = _clock.GetCurrentInstant();
 
         // Block reserved slugs (static routes in TeamController)
@@ -516,7 +517,7 @@ public class TeamService : ITeamService, IUserDataContributor
         // Validate custom slug if provided
         if (!string.IsNullOrWhiteSpace(customSlug))
         {
-            var normalized = Helpers.SlugHelper.GenerateSlug(customSlug);
+            var normalized = SlugHelper.GenerateSlug(customSlug);
             if (string.IsNullOrEmpty(normalized))
                 throw new InvalidOperationException("Custom slug is not valid. Use lowercase letters, numbers, and hyphens.");
 
@@ -547,7 +548,7 @@ public class TeamService : ITeamService, IUserDataContributor
         // Regenerate slug if name changed
         if (!string.Equals(team.Name, name, StringComparison.Ordinal))
         {
-            var newSlug = Helpers.SlugHelper.GenerateSlug(name);
+            var newSlug = SlugHelper.GenerateSlug(name);
             // Check slug isn't taken by another team (also check custom slugs)
             var slugTaken = await _dbContext.Teams.AnyAsync(
                 t => t.Id != teamId && (t.Slug == newSlug || t.CustomSlug == newSlug), cancellationToken);

@@ -13,6 +13,7 @@ using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using Humans.Infrastructure.Services.Profiles;
 using Humans.Web.Filters;
+using CampsCampService = Humans.Application.Services.Camps.CampService;
 using GovernanceApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
 using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
 using ProfilesContactFieldService = Humans.Application.Services.Profile.ContactFieldService;
@@ -111,9 +112,16 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddScoped<ITeamPageService, TeamPageService>();
 
-        services.AddScoped<CampService>();
-        services.AddScoped<ICampService>(sp => sp.GetRequiredService<CampService>());
-        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CampService>());
+        // Camps section — §15 repository pattern (issue #542).
+        // No caching decorator: camps list is ~100 rows and the existing
+        // short-TTL IMemoryCache on "camps for year" / "camp settings" is a
+        // request-acceleration cache, not a canonical domain cache
+        // (design-rules §15f). IMemoryCache usage stays inside the service.
+        services.AddSingleton<ICampRepository, CampRepository>();
+        services.AddSingleton<ICampImageStorage, CampImageStorage>();
+        services.AddScoped<CampsCampService>();
+        services.AddScoped<ICampService>(sp => sp.GetRequiredService<CampsCampService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CampsCampService>());
 
         services.AddScoped<ICityPlanningService, CityPlanningService>();
         services.AddScoped<ICampContactService, CampContactService>();

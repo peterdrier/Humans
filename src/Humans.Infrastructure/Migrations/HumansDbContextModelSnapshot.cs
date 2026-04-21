@@ -3878,15 +3878,13 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Humans.Domain.Entities.User", "User")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Camp");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.CampPolygon", b =>
@@ -3996,13 +3994,11 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.CommunicationPreference", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", "User")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany("CommunicationPreferences")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.ConsentRecord", b =>
@@ -4218,13 +4214,11 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.Profile", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", "User")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithOne("Profile")
                         .HasForeignKey("Humans.Domain.Entities.Profile", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.ProfileLanguage", b =>
@@ -4483,13 +4477,11 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.UserEmail", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", "User")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany("UserEmails")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.VolunteerEventProfile", b =>

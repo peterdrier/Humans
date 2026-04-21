@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace Humans.Infrastructure.Helpers;
+namespace Humans.Application.Helpers;
 
 public static partial class SlugHelper
 {

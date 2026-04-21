@@ -1,10 +1,12 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
+using Humans.Application.Services.Camps;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -21,7 +23,8 @@ public class CampServiceTests : IDisposable
     private readonly FakeClock _clock;
     private readonly CampService _service;
     private readonly IAuditLogService _auditLog;
-    private readonly string _campImagesRoot;
+    private readonly IUserService _userService;
+    private readonly InMemoryCampImageStorage _imageStorage;
 
     public CampServiceTests()
     {
@@ -31,23 +34,37 @@ public class CampServiceTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 13, 12, 0));
         _auditLog = Substitute.For<IAuditLogService>();
-        _campImagesRoot = Path.Combine(AppContext.BaseDirectory, "wwwroot", "uploads", "camps");
+        _imageStorage = new InMemoryCampImageStorage();
+
+        var factory = new TestDbContextFactory(options);
+        var repo = new CampRepository(factory);
+
+        // IUserService substitute — returns seeded users from the shared in-memory db.
+        _userService = Substitute.For<IUserService>();
+        _userService.GetByIdsAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var ids = call.Arg<IReadOnlyCollection<Guid>>();
+                using var ctx = new HumansDbContext(options);
+                var users = ctx.Users.AsNoTracking().Where(u => ids.Contains(u.Id)).ToList();
+                return Task.FromResult<IReadOnlyDictionary<Guid, User>>(
+                    users.ToDictionary(u => u.Id));
+            });
 
         _service = new CampService(
-            _dbContext,
+            repo,
+            _userService,
             _auditLog,
             Substitute.For<ISystemTeamSync>(),
+            _imageStorage,
             _clock,
-            new MemoryCache(new MemoryCacheOptions()));
+            new MemoryCache(new MemoryCacheOptions()),
+            NullLogger<CampService>.Instance);
     }
 
     public void Dispose()
     {
-        if (Directory.Exists(_campImagesRoot))
-        {
-            Directory.Delete(_campImagesRoot, recursive: true);
-        }
-
         _dbContext.Dispose();
         GC.SuppressFinalize(this);
     }
@@ -113,8 +130,8 @@ public class CampServiceTests : IDisposable
 
         await _service.ApproveSeasonAsync(season.Id, adminId, "Looks good");
 
-        var updated = await _dbContext.CampSeasons.FindAsync(season.Id);
-        updated!.Status.Should().Be(CampSeasonStatus.Active);
+        var updated = await _dbContext.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id);
+        updated.Status.Should().Be(CampSeasonStatus.Active);
         updated.ReviewedByUserId.Should().Be(adminId);
         updated.ReviewNotes.Should().Be("Looks good");
         updated.ResolvedAt.Should().NotBeNull();
@@ -133,8 +150,8 @@ public class CampServiceTests : IDisposable
 
         await _service.RejectSeasonAsync(season.Id, Guid.NewGuid(), "Not a real camp");
 
-        var updated = await _dbContext.CampSeasons.FindAsync(season.Id);
-        updated!.Status.Should().Be(CampSeasonStatus.Rejected);
+        var updated = await _dbContext.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id);
+        updated.Status.Should().Be(CampSeasonStatus.Rejected);
         updated.ReviewNotes.Should().Be("Not a real camp");
     }
 
@@ -543,10 +560,11 @@ public class CampServiceTests : IDisposable
 
         await _service.ChangeSeasonNameAsync(season.Id, "New Name");
 
-        var updated = await _dbContext.CampSeasons.FindAsync(season.Id);
-        updated!.Name.Should().Be("New Name");
+        var updated = await _dbContext.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id);
+        updated.Name.Should().Be("New Name");
 
         var historical = await _dbContext.CampHistoricalNames
+            .AsNoTracking()
             .FirstOrDefaultAsync(h => h.CampId == camp.Id && h.Source == CampNameSource.NameChange);
         historical.Should().NotBeNull();
         historical!.Name.Should().Be("Test Camp");

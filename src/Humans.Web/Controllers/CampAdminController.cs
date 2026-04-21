@@ -19,17 +19,20 @@ public class CampAdminController : HumansControllerBase
 {
     private readonly ICampService _campService;
     private readonly ICityPlanningService _cityPlanningService;
+    private readonly IUserService _userService;
     private readonly ILogger<CampAdminController> _logger;
 
     public CampAdminController(
         ICampService campService,
         ICityPlanningService cityPlanningService,
+        IUserService userService,
         UserManager<User> userManager,
         ILogger<CampAdminController> logger)
         : base(userManager)
     {
         _campService = campService;
         _cityPlanningService = cityPlanningService;
+        _userService = userService;
         _logger = logger;
     }
 
@@ -65,6 +68,13 @@ public class CampAdminController : HumansControllerBase
             var activeStatuses = new[] { CampSeasonStatus.Active, CampSeasonStatus.Full };
             var campsWithLeads = await _campService.GetCampsWithLeadsForYearAsync(settings.PublicYear, activeStatuses);
 
+            // Resolve lead display names via IUserService — CampLead.User nav is forbidden cross-domain.
+            var leadUserIds = campsWithLeads
+                .SelectMany(c => c.Leads.Where(l => l.IsActive).Select(l => l.UserId))
+                .Distinct()
+                .ToList();
+            var leadUsers = await _userService.GetByIdsAsync(leadUserIds);
+
             var summaries = campsWithLeads.Select(c =>
             {
                 var season = c.Seasons.FirstOrDefault();
@@ -83,7 +93,7 @@ public class CampAdminController : HumansControllerBase
                         {
                             LeadId = l.Id,
                             UserId = l.UserId,
-                            DisplayName = l.User.DisplayName
+                            DisplayName = leadUsers.TryGetValue(l.UserId, out var u) ? u.DisplayName : string.Empty
                         }).ToList()
                 };
             }).ToList();
@@ -273,6 +283,13 @@ public class CampAdminController : HumansControllerBase
 
             var camps = await _campService.GetCampsWithLeadsForYearAsync(year);
 
+            // Resolve lead display names + emails via IUserService.
+            var leadUserIds = camps
+                .SelectMany(c => c.Leads.Where(l => l.IsActive).Select(l => l.UserId))
+                .Distinct()
+                .ToList();
+            var leadUsers = await _userService.GetByIdsAsync(leadUserIds);
+
             var csv = new StringBuilder();
             csv.AppendCsvRow(
                 "Name", "Slug", "Status", "Contact Email", "Contact Phone",
@@ -288,7 +305,11 @@ public class CampAdminController : HumansControllerBase
 
                 var leads = string.Join("; ", camp.Leads
                     .Where(l => l.IsActive)
-                    .Select(l => $"{l.User.DisplayName} <{l.User.Email}>"));
+                    .Select(l =>
+                    {
+                        var user = leadUsers.TryGetValue(l.UserId, out var u) ? u : null;
+                        return $"{user?.DisplayName ?? string.Empty} <{user?.Email ?? string.Empty}>";
+                    }));
 
                 var vibes = season.Vibes.Count > 0
                     ? string.Join(", ", season.Vibes)

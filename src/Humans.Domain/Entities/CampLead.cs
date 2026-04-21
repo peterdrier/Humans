@@ -11,7 +11,6 @@ public class CampLead
     public Camp Camp { get; set; } = null!;
 
     public Guid UserId { get; init; }
-    public User User { get; set; } = null!;
 
     public CampLeadRole Role { get; set; }
 

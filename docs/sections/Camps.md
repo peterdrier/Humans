@@ -43,56 +43,20 @@
 - **Profiles**: Camp leads are linked to humans. Lead assignment requires a valid human account.
 - **Admin**: Camp settings management is restricted to CampAdmin and Admin.
 
-## Architecture — Current vs Target
+## Architecture — Migrated (issue #542)
 
-See `docs/architecture/design-rules.md` for the full rules.
+See `docs/architecture/design-rules.md` §15 for the full rules.
 
-**Owning services:** `CampService`, `CampContactService`
+**Owning services:** `CampService` (Humans.Application.Services.Camps), `CampContactService`
 **Owned tables:** `camps`, `camp_seasons`, `camp_leads`, `camp_images`, `camp_historical_names`, `camp_settings`
 
-**Incoming violations (other services querying Camp-owned tables):**
-- `ProfileService` queries `CampLeads` directly
-- `CityPlanningService` queries `CampSeasons` directly
+**Status:** Migrated to the §15 Application-layer repository pattern (issue #542, 2026-04-22).
 
-These are tracked in the Profiles and City Planning section docs.
+- `CampService` lives in `Humans.Application.Services.Camps.CampService` and goes through `ICampRepository` (`Humans.Application.Interfaces.Repositories`) for all data access. It never imports `Microsoft.EntityFrameworkCore` — enforced at compile time by `Humans.Application.csproj`'s reference graph.
+- `CampRepository` lives in `Humans.Infrastructure.Repositories`, uses `IDbContextFactory<HumansDbContext>`, and is registered as Singleton.
+- No caching decorator: camps list is ~100 rows; short-TTL `IMemoryCache` inside the service (for `camps-for-year` and `camp-settings`, ~5 min) is sufficient per design-rules §15f.
+- Filesystem I/O for camp images is abstracted behind `ICampImageStorage` (Application interface + `CampImageStorage` implementation under Infrastructure); the service never touches `System.IO`.
+- Cross-domain nav `CampLead.User` stripped — consumers route through `IUserService.GetByIdsAsync(...)`. `Camp.CreatedByUser` and `CampSeason.ReviewedByUser` remain declared on the entities but are never read (pre-existing; tracked for cross-cutting cleanup).
+- `CampContactService` has no owned DB tables and does not inject `HumansDbContext`; it retains its `IMemoryCache` rate-limit usage since that's a request-acceleration cache, not canonical domain data.
 
-## Target Architecture Direction
-
-> **Status:** This section currently follows the "services in Infrastructure, direct DbContext" model. It will be migrated to the repository/store/decorator pattern per [`../architecture/design-rules.md`](../architecture/design-rules.md). **Delete this block once the migration lands and this section's services live in `Humans.Application` with `*Repository.cs` impls in `Humans.Infrastructure/Repositories/`.**
-
-### Target repositories
-
-- **`ICampRepository`** — owns `camps`, `camp_seasons`, `camp_leads`, `camp_images`, `camp_historical_names`, `camp_settings`
-  - Aggregate-local navs kept: `Camp.Seasons`, `Camp.Leads`, `Camp.HistoricalNames`, `Camp.Images`, `CampSeason.Camp`, `CampLead.Camp`, `CampImage.Camp`, `CampHistoricalName.Camp`
-  - Cross-domain navs stripped: `Camp.CreatedByUser` (keep `CreatedByUserId`), `CampLead.User` (keep `UserId`), `CampSeason.ReviewedByUser` (keep `ReviewedByUserId`)
-  - Exposes within-section join method `GetCampLeadSeasonIdForYearAsync(userId, year)` instead of the raw `CampLeads.Join(CampSeasons, ...)` currently inline in `CampService`
-- **`CachingCampService`** decorator (Scrutor `.Decorate<>`) — owns `CacheKeys.CampSeasonsByYear`, `CacheKeys.CampSettings`, and the `CampContactRateLimit` reserve/invalidate. Removes `IMemoryCache` from `CampService` and `CampContactService`.
-- `CampContactService` has no persistent state of its own — no repository needed. Its audit-log writes go through `IAuditLogService` already.
-
-### Current violations
-
-Observed in this section's service code as of 2026-04-15:
-
-- **Cross-domain `.Include()` calls:** None found. All `.Include()` calls in `CampService.cs` (lines 132–147, 276–291, 326–327, 344–346, 366, 974, 986) are aggregate-local (`Camp.Seasons`, `Camp.Leads`, `Camp.Images`, `Camp.HistoricalNames`, `CampSeason.Camp`).
-- **Cross-section direct DbContext reads:** None found. All 57 `_dbContext.*` hits in `CampService.cs` target Camp-owned DbSets (`Camps`, `CampSeasons`, `CampLeads`, `CampImages`, `CampHistoricalNames`, `CampSettings`).
-- **Within-section cross-service direct DbContext reads:** None found. `CampContactService` does not inject `HumansDbContext` at all.
-- **Inline `IMemoryCache` usage in service methods:**
-  - `CampService.cs:272` — `_cache.GetOrCreateAsync(CacheKeys.CampSeasonsByYear(year), ...)` inside `GetCampsForYearAsync`
-  - `CampService.cs:353` — `_cache.GetOrCreateAsync(CacheKeys.CampSettings, ...)` inside `GetSettingsAsync`
-  - `CampService.cs:1127`, `:1137`, `:1147` — `_cache.InvalidateCampSettings()` inside settings mutators
-  - `CampService.cs:1233` — `_cache.InvalidateCampSeasonsByYear(year)`
-  - `CampContactService.cs:43` — `_cache.TryReserveAsync(rateLimitKey, ...)` for per-user per-camp rate limit
-  - `CampContactService.cs:71` — `_cache.InvalidateCampContactRateLimit(senderUserId, campId)` on send failure
-- **Cross-domain nav properties on this section's entities:**
-  - `Camp.CreatedByUser` (→ `User`) in `Camp.cs:19`
-  - `CampLead.User` (→ `User`) in `CampLead.cs:14`
-  - `CampSeason.ReviewedByUser` (→ `User?`) in `CampSeason.cs:49`
-
-### Touch-and-clean guidance
-
-Until this section is migrated end-to-end, when touching its code:
-
-- **Do not add new cross-domain navs or `.Include()` calls.** If you need a `User` from a `CampLead`/`Camp`/`CampSeason`, call `IUserService` / `IProfileService` with the existing `*UserId` foreign key — do not extend `Camp.CreatedByUser`, `CampLead.User`, or `CampSeason.ReviewedByUser` usage.
-- **Do not add new `_cache.*` call sites in `CampService` or `CampContactService`.** Route new caching needs through a thin method the future `CachingCampService` decorator can wrap. If you must invalidate an existing key, keep the call at a single well-named private method so the decorator lift is mechanical.
-- **Keep new queries on Camp-owned tables inside `CampService`.** If another section (Profiles, City Planning, etc.) needs camp data, add a method to `ICampService` returning a Camp-section DTO — never let the caller reach into `DbContext.Camps*`.
-- **When adding new season/lead/image/historical-name queries**, prefer `_dbContext.CampSeasons.Where(...)` style over new `.Join()` chains; the existing `CampLeads.Join(CampSeasons, ...)` at `CampService.cs:997` is the kind of shape the future `ICampRepository` should encapsulate behind a named method.
+Architecture invariants are enforced by tests in `tests/Humans.Application.Tests/Architecture/CampsArchitectureTests.cs`.

@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -18,6 +19,7 @@ namespace Humans.Infrastructure.Jobs;
 public class SystemTeamSyncJob : ISystemTeamSync
 {
     private readonly HumansDbContext _dbContext;
+    private readonly ICampRepository _campRepository;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IAuditLogService _auditLogService;
@@ -29,6 +31,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
     public SystemTeamSyncJob(
         HumansDbContext dbContext,
+        ICampRepository campRepository,
         IMembershipCalculator membershipCalculator,
         IGoogleSyncService googleSyncService,
         IAuditLogService auditLogService,
@@ -39,6 +42,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         IClock clock)
     {
         _dbContext = dbContext;
+        _campRepository = campRepository;
         _membershipCalculator = membershipCalculator;
         _googleSyncService = googleSyncService;
         _auditLogService = auditLogService;
@@ -482,12 +486,8 @@ public class SystemTeamSyncJob : ISystemTeamSync
             return;
         }
 
-        var eligibleUserIds = await _dbContext.CampLeads
-            .AsNoTracking()
-            .Where(l => l.LeftAt == null)
-            .Select(l => l.UserId)
-            .Distinct()
-            .ToListAsync(cancellationToken);
+        var activeLeadUserIds = await _campRepository.GetActiveLeadUserIdsAsync(cancellationToken);
+        var eligibleUserIds = activeLeadUserIds.ToList();
 
         await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, step: step);
         report?.Steps.Add(step);
@@ -506,9 +506,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
             return;
         }
 
-        var isLeadAnywhere = await _dbContext.CampLeads
-            .AsNoTracking()
-            .AnyAsync(l => l.UserId == userId && l.LeftAt == null, cancellationToken);
+        var isLeadAnywhere = await _campRepository.IsLeadAnywhereAsync(userId, cancellationToken);
 
         // Idempotency guard: if the user should be a member and already has an active
         // team_members row, do nothing. This avoids unique-index violations
