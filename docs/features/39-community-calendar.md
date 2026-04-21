@@ -10,8 +10,8 @@ Nobodies Collective teams coordinate through meetings, workshops, and gatherings
 - Team-filtered view — show only events from selected team(s)
 - Single and recurring events (RFC 5545 recurrence rules)
 - Cancel or override individual occurrences without deleting the entire series
-- Team-owned events with team coordinators and Admin as editors
-- Resource-based authorization: coordinators of the owning team or Admin can edit
+- Team-owned events; any authenticated human can create, edit, or delete events for any team
+- Changes captured in the audit log (who / when / what) rather than gated by upfront authorization
 - NodaTime and IANA timezone-aware recurrence expansion (occurrences expand in their configured timezone and render in the viewer's browser timezone)
 
 ## Out of Scope — Post-v1 Slices
@@ -55,9 +55,9 @@ See the design document at `docs/superpowers/specs/2026-04-21-community-calendar
 - Filtered view updates immediately
 
 ### US-39.3: Create Team Event
-**As a** team coordinator or Admin
-**I want to** create an event on my team's calendar
-**So that** the whole community knows about our meeting or workshop
+**As an** authenticated human
+**I want to** create an event on any team's calendar
+**So that** the whole community knows about a meeting or workshop
 
 **Acceptance Criteria:**
 - Form with: title, description (optional), team (pre-selected if viewing team), date/time, timezone
@@ -67,19 +67,20 @@ See the design document at `docs/superpowers/specs/2026-04-21-community-calendar
 - If recurring, show preview of next 5 occurrences
 
 ### US-39.4: Edit or Delete Team Event
-**As a** team coordinator or Admin
-**I want to** edit or delete an event on my team's calendar
+**As an** authenticated human
+**I want to** edit or delete an event on any team's calendar
 **So that** I can fix mistakes or remove cancelled events
 
 **Acceptance Criteria:**
-- Edit button on event details (only visible to coordinator or Admin)
+- Edit button visible on every event detail page (no role gate)
 - Edit form prefilled with current values
-- Can change title, description, date/time, recurrence
+- Can change title, description, date/time, recurrence, owning team
 - Delete button with confirmation
 - After save/delete, redirect to calendar view
+- Every change recorded in the audit log (actor + timestamp)
 
 ### US-39.5: Cancel or Override Event Occurrence
-**As a** team coordinator or Admin
+**As an** authenticated human
 **I want to** cancel a single occurrence of a recurring event or change its time without affecting the whole series
 **So that** I can reschedule or cancel a single meeting without deleting all future occurrences
 
@@ -130,16 +131,13 @@ CalendarEventException
 
 ## Authorization
 
-Authorization uses a **resource-based handler** pattern via `IAuthorizationService`:
+The calendar is intentionally open: any authenticated human can create, edit, delete, cancel, or override any event. The controller requires `[Authorize]` (authentication only, no role or resource gate). Accountability lives in the audit log:
 
-- **Policy**: `CalendarEditor`
-- **Resource**: The owning `Team` (the event's `OwningTeamId`)
-- **Handler checks**: 
-  - User is Admin (`User.IsInRole("Admin")`) → **allow**
-  - User is Coordinator of the owning team → **allow**
-  - Otherwise → **deny**
+- Every mutation (create, update, delete, occurrence cancel, occurrence override) writes an `AuditLogEntry` via `IAuditLogService` with the actor's user ID.
+- The event detail page renders the full audit history via the shared `AuditLog` view component, with an inline "Created {date} · Last updated {date}" line above it.
+- The owning team is recorded on each audit entry as `relatedEntityId` so audit queries can filter by team.
 
-Controllers call `AuthorizeAsync(User, resource, "CalendarEditor")` before permitting create/edit/delete or exception management.
+No resource-based authorization handler, no `CalendarEditor` policy. If upfront gates become needed later (e.g., to restrict deletion), add them via the standard `IAuthorizationService` pattern used by Teams / Camps / Budget.
 
 ## Timezones & DST
 
@@ -154,4 +152,4 @@ This ensures a recurring "19:00 weekly on Monday" stays at 19:00 local time even
 
 ## Related Features
 
-- [Teams & Working Groups](06-teams.md) — Calendar events are owned by teams; team membership and coordinator status gate event visibility and edit permissions
+- [Teams & Working Groups](06-teams.md) — Calendar events are owned by teams; the team reference is recorded on every audit entry for team-scoped audit filtering

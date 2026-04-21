@@ -1,8 +1,6 @@
 using Humans.Application.DTOs.Calendar;
 using Humans.Application.Interfaces;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
-using Humans.Web.Authorization;
 using Humans.Web.Models.Calendar;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -11,6 +9,8 @@ using NodaTime;
 
 namespace Humans.Web.Controllers;
 
+// Any authenticated human can create/edit/cancel calendar events for any team.
+// Changes are captured in the audit log (IAuditLogService) rather than gated upfront.
 [Authorize]
 [Route("Calendar")]
 public class CalendarController : HumansControllerBase
@@ -18,20 +18,17 @@ public class CalendarController : HumansControllerBase
     private readonly ICalendarService _calendar;
     private readonly ITeamService _teams;
     private readonly IClock _clock;
-    private readonly IAuthorizationService _authz;
 
     public CalendarController(
         UserManager<User> userManager,
         ICalendarService calendar,
         ITeamService teams,
-        IClock clock,
-        IAuthorizationService authz)
+        IClock clock)
         : base(userManager)
     {
         _calendar = calendar;
         _teams = teams;
         _clock = clock;
-        _authz = authz;
     }
 
     [HttpGet("")]
@@ -157,16 +154,15 @@ public class CalendarController : HumansControllerBase
             .Take(5)
             .ToList();
 
-        var canEdit = (await _authz.AuthorizeAsync(User, ev.OwningTeam, PolicyNames.CalendarEditor)).Succeeded;
-
-        return View(new CalendarEventViewModel(ev, upcoming, canEdit, zone.Id));
+        // Any authenticated human can edit; changes are audited.
+        return View(new CalendarEventViewModel(ev, upcoming, CanEdit: true, zone.Id));
     }
 
     [HttpGet("Event/Create")]
     public async Task<IActionResult> Create([FromQuery] Guid? teamId, CancellationToken ct)
     {
-        var teams = await GetEditableTeamsForCurrentUserAsync(ct);
-        if (teams.Count == 0) return Forbid();
+        var teams = await GetSelectableTeamsAsync(ct);
+        if (teams.Count == 0) return NotFound(); // no usable teams to own an event
 
         return View(new CalendarEventFormViewModel
         {
@@ -183,12 +179,10 @@ public class CalendarController : HumansControllerBase
     {
         var team = await _teams.GetTeamByIdAsync(form.OwningTeamId, ct);
         if (team is null) return NotFound();
-        var authz = await _authz.AuthorizeAsync(User, team, PolicyNames.CalendarEditor);
-        if (!authz.Succeeded) return Forbid();
 
         if (!ModelState.IsValid)
         {
-            form.TeamOptions = await GetEditableTeamsForCurrentUserAsync(ct);
+            form.TeamOptions = await GetSelectableTeamsAsync(ct);
             return View(form);
         }
 
@@ -213,8 +207,6 @@ public class CalendarController : HumansControllerBase
     {
         var ev = await _calendar.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
-        var authz = await _authz.AuthorizeAsync(User, ev.OwningTeam, PolicyNames.CalendarEditor);
-        if (!authz.Succeeded) return Forbid();
 
         var zone = DateTimeZoneProviders.Tzdb[ev.RecurrenceTimezone ?? "Europe/Madrid"];
         return View(new CalendarEventFormViewModel
@@ -231,7 +223,7 @@ public class CalendarController : HumansControllerBase
             IsRecurring = ev.RecurrenceRule is not null,
             RecurrenceRule = ev.RecurrenceRule,
             RecurrenceTimezone = ev.RecurrenceTimezone ?? "Europe/Madrid",
-            TeamOptions = await GetEditableTeamsForCurrentUserAsync(ct),
+            TeamOptions = await GetSelectableTeamsAsync(ct),
         });
     }
 
@@ -241,23 +233,10 @@ public class CalendarController : HumansControllerBase
     {
         var ev = await _calendar.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
-        var authz = await _authz.AuthorizeAsync(User, ev.OwningTeam, PolicyNames.CalendarEditor);
-        if (!authz.Succeeded) return Forbid();
-
-        // If the editor is trying to move the event to a different team, they must also
-        // be authorised on the destination team — otherwise a coordinator of team A
-        // could tamper with the form to reassign the event into team B.
-        if (form.OwningTeamId != ev.OwningTeamId)
-        {
-            var destTeam = await _teams.GetTeamByIdAsync(form.OwningTeamId, ct);
-            if (destTeam is null) return NotFound();
-            var destAuthz = await _authz.AuthorizeAsync(User, destTeam, PolicyNames.CalendarEditor);
-            if (!destAuthz.Succeeded) return Forbid();
-        }
 
         if (!ModelState.IsValid)
         {
-            form.TeamOptions = await GetEditableTeamsForCurrentUserAsync(ct);
+            form.TeamOptions = await GetSelectableTeamsAsync(ct);
             return View(form);
         }
 
@@ -283,8 +262,6 @@ public class CalendarController : HumansControllerBase
     {
         var ev = await _calendar.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
-        var authz = await _authz.AuthorizeAsync(User, ev.OwningTeam, PolicyNames.CalendarEditor);
-        if (!authz.Succeeded) return Forbid();
 
         await _calendar.DeleteEventAsync(id, deletedByUserId: GetCurrentUserId(), ct);
         return RedirectToAction(nameof(Index));
@@ -296,8 +273,6 @@ public class CalendarController : HumansControllerBase
     {
         var ev = await _calendar.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
-        var authz = await _authz.AuthorizeAsync(User, ev.OwningTeam, PolicyNames.CalendarEditor);
-        if (!authz.Succeeded) return Forbid();
 
         var original = OccurrenceOverrideFormViewModel.ParseOriginal(originalStartUtc);
         await _calendar.CancelOccurrenceAsync(id, original, GetCurrentUserId(), ct);
@@ -309,8 +284,6 @@ public class CalendarController : HumansControllerBase
     {
         var ev = await _calendar.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
-        var authz = await _authz.AuthorizeAsync(User, ev.OwningTeam, PolicyNames.CalendarEditor);
-        if (!authz.Succeeded) return Forbid();
 
         return View("OccurrenceEdit", new OccurrenceOverrideFormViewModel
         {
@@ -326,8 +299,6 @@ public class CalendarController : HumansControllerBase
     {
         var ev = await _calendar.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
-        var authz = await _authz.AuthorizeAsync(User, ev.OwningTeam, PolicyNames.CalendarEditor);
-        if (!authz.Succeeded) return Forbid();
 
         var zone = DateTimeZoneProviders.Tzdb[form.RecurrenceTimezone];
         var original = OccurrenceOverrideFormViewModel.ParseOriginal(originalStartUtc);
@@ -348,26 +319,10 @@ public class CalendarController : HumansControllerBase
         return RedirectToAction(nameof(Event), new { id });
     }
 
-    private async Task<IReadOnlyList<TeamOption>> GetEditableTeamsForCurrentUserAsync(CancellationToken ct)
+    private async Task<IReadOnlyList<TeamOption>> GetSelectableTeamsAsync(CancellationToken ct)
     {
-        var allSelectable = (await _teams.GetAllTeamsAsync(ct))
-            .Where(t => t.IsActive && !t.IsHidden);
-
-        if (User.IsInRole(RoleNames.Admin))
-        {
-            return allSelectable
-                .Select(t => new TeamOption(t.Id, t.Name))
-                .OrderBy(t => t.Name, StringComparer.CurrentCulture)
-                .ToList();
-        }
-
-        var uid = GetCurrentUserId();
-        var coordinatedIds = await _teams.GetUserCoordinatedTeamIdsAsync(uid, ct);
-        if (coordinatedIds.Count == 0) return Array.Empty<TeamOption>();
-
-        var coordinatedSet = coordinatedIds.ToHashSet();
-        return allSelectable
-            .Where(t => coordinatedSet.Contains(t.Id))
+        return (await _teams.GetAllTeamsAsync(ct))
+            .Where(t => t.IsActive && !t.IsHidden)
             .Select(t => new TeamOption(t.Id, t.Name))
             .OrderBy(t => t.Name, StringComparer.CurrentCulture)
             .ToList();

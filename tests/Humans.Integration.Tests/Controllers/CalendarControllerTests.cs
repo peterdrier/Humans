@@ -31,26 +31,10 @@ public class CalendarControllerTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task LoggedIn_Volunteer_GET_Create_is_forbidden_when_not_coordinator()
+    public async Task LoggedIn_Volunteer_can_GET_Create()
     {
-        // Sign in as volunteer (no coordinator role, no coordinated teams).
+        // Calendar editing is open to any authenticated human; changes are audited.
         await Client.GetAsync("/dev/login/volunteer");
-
-        var resp = await Client.GetAsync("/Calendar/Event/Create");
-
-        // Controller calls Forbid() when the user coordinates zero teams.
-        // Under cookie auth, Forbid redirects to /Account/AccessDenied.
-        resp.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found);
-        resp.Headers.Location.Should().NotBeNull();
-        resp.Headers.Location!.OriginalString
-            .Should().Contain("AccessDenied");
-    }
-
-    [Fact]
-    public async Task LoggedIn_Admin_can_GET_Create()
-    {
-        // Admin is the global superset — has edit rights on all teams.
-        await Client.GetAsync("/dev/login/admin");
 
         var resp = await Client.GetAsync("/Calendar/Event/Create");
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
