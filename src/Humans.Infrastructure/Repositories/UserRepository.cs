@@ -85,6 +85,18 @@ public sealed class UserRepository : IUserRepository
                 ct);
     }
 
+    public async Task<User?> GetByNormalizedEmailAsync(
+        string? normalizedEmail, CancellationToken ct = default)
+    {
+        if (normalizedEmail is null)
+            return null;
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail, ct);
+    }
+
     public async Task<IReadOnlyList<User>> GetContactUsersAsync(
         string? search, CancellationToken ct = default)
     {

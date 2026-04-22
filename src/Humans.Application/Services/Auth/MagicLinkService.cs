@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 
 namespace Humans.Application.Services.Auth;
@@ -30,6 +31,7 @@ public sealed class MagicLinkService : IMagicLinkService
 
     private readonly UserManager<User> _userManager;
     private readonly IUserEmailService _userEmailService;
+    private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
     private readonly IMagicLinkUrlBuilder _urlBuilder;
     private readonly IMagicLinkRateLimiter _rateLimiter;
@@ -39,6 +41,7 @@ public sealed class MagicLinkService : IMagicLinkService
     public MagicLinkService(
         UserManager<User> userManager,
         IUserEmailService userEmailService,
+        IUserRepository userRepository,
         IEmailService emailService,
         IMagicLinkUrlBuilder urlBuilder,
         IMagicLinkRateLimiter rateLimiter,
@@ -47,6 +50,7 @@ public sealed class MagicLinkService : IMagicLinkService
     {
         _userManager = userManager;
         _userEmailService = userEmailService;
+        _userRepository = userRepository;
         _emailService = emailService;
         _urlBuilder = urlBuilder;
         _rateLimiter = rateLimiter;
@@ -148,9 +152,12 @@ public sealed class MagicLinkService : IMagicLinkService
         // We intentionally skip unverified UserEmail rows — those are in a "pending
         // verification/merge review" state and auto-linking would bypass the
         // AccountMergeRequest admin review gate.
+        //
+        // The Application layer does not reference EF Core, so the async query
+        // runs through IUserRepository (which threads the cancellation token);
+        // this replaces a blocking synchronous IQueryable.FirstOrDefault().
         var normalizedEmail = _userManager.NormalizeEmail(email);
-        return _userManager.Users
-            .FirstOrDefault(u => u.NormalizedEmail == normalizedEmail);
+        return await _userRepository.GetByNormalizedEmailAsync(normalizedEmail, ct);
     }
 
     private async Task SendLoginLinkAsync(User user, string sendToEmail, string? returnUrl, CancellationToken ct)

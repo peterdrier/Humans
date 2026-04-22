@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
@@ -20,6 +21,7 @@ public class MagicLinkServiceTests : IDisposable
     private readonly FakeClock _clock;
     private readonly UserManager<User> _userManager;
     private readonly IUserEmailService _userEmailService;
+    private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
     private readonly IMagicLinkUrlBuilder _urlBuilder;
     private readonly IMagicLinkRateLimiter _rateLimiter;
@@ -46,6 +48,11 @@ public class MagicLinkServiceTests : IDisposable
             .FindVerifiedEmailWithUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns((UserEmailWithUser?)null);
 
+        _userRepository = Substitute.For<IUserRepository>();
+        _userRepository
+            .GetByNormalizedEmailAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns((User?)null);
+
         _emailService = Substitute.For<IEmailService>();
         _urlBuilder = Substitute.For<IMagicLinkUrlBuilder>();
         _urlBuilder.BuildLoginUrl(Arg.Any<Guid>(), Arg.Any<string?>()).Returns(call =>
@@ -60,6 +67,7 @@ public class MagicLinkServiceTests : IDisposable
         _service = new MagicLinkService(
             _userManager,
             _userEmailService,
+            _userRepository,
             _emailService,
             _urlBuilder,
             _rateLimiter,
