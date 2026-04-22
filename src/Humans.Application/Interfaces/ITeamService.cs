@@ -381,16 +381,6 @@ public interface ITeamService
         Guid teamId, string? prefix, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Returns the name of the team whose <c>GoogleGroupPrefix</c> matches
-    /// <paramref name="prefix"/> (case-insensitive), or null if no team uses that
-    /// prefix. Used by Google-admin flows to detect collisions between a
-    /// proposed standalone account address and an existing team group address
-    /// before mutating Workspace state.
-    /// </summary>
-    Task<string?> GetTeamNameByGoogleGroupPrefixAsync(
-        string prefix, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Gets all teams for admin list with active member counts and pending request counts.
     /// </summary>
     Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllTeamsForAdminAsync(

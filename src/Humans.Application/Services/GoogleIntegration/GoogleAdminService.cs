@@ -409,35 +409,53 @@ public sealed class GoogleAdminService : IGoogleAdminService
         Guid teamId, string groupPrefix,
         CancellationToken ct = default)
     {
+        var normalizedPrefix = groupPrefix.Trim().ToLowerInvariant();
+
+        (bool updated, string? previousPrefix) setResult;
         try
         {
-            var normalizedPrefix = groupPrefix.Trim().ToLowerInvariant();
-            var (updated, previousPrefix) = await _teamService.SetGoogleGroupPrefixAsync(
+            setResult = await _teamService.SetGoogleGroupPrefixAsync(
                 teamId, normalizedPrefix, ct);
-            if (!updated)
-            {
-                return new GroupLinkActionResult(false, ErrorMessage: "Team not found.");
-            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to link group {GroupPrefix} to team {TeamId}", groupPrefix, teamId);
+            return new GroupLinkActionResult(false,
+                ErrorMessage: $"Failed to link group: {ex.Message}");
+        }
 
-            // Re-fetch for downstream messaging (name).
+        if (!setResult.updated)
+        {
+            return new GroupLinkActionResult(false, ErrorMessage: "Team not found.");
+        }
+
+        // Track whether the prefix write is "committed" (the Google side either
+        // confirmed the group or deferred to a RequiresConfirmation warning the
+        // admin has been told about). If we exit without committing — including
+        // via a thrown exception from EnsureTeamGroupAsync — the finally block
+        // rolls the prefix back so the DB doesn't claim a mapping that Google
+        // never actually got.
+        var committed = false;
+        try
+        {
             var team = await _teamService.GetTeamByIdAsync(teamId, ct);
             var teamName = team?.Name ?? teamId.ToString();
 
             var linkResult = await _googleSyncService.EnsureTeamGroupAsync(teamId, cancellationToken: ct);
             if (linkResult.RequiresConfirmation)
             {
+                committed = true;
                 return new GroupLinkActionResult(true,
                     InfoMessage: $"Linked group for team \"{teamName}\". Note: {linkResult.WarningMessage}");
             }
 
             if (linkResult.ErrorMessage is not null)
             {
-                // Revert the prefix on downstream-service failure.
-                await _teamService.SetGoogleGroupPrefixAsync(teamId, previousPrefix, ct);
                 return new GroupLinkActionResult(false,
                     ErrorMessage: $"Could not link group: {linkResult.ErrorMessage}");
             }
 
+            committed = true;
             return new GroupLinkActionResult(true,
                 Message: $"Successfully linked {normalizedPrefix}@nobodies.team to team \"{teamName}\".");
         }
@@ -446,6 +464,22 @@ public sealed class GoogleAdminService : IGoogleAdminService
             _logger.LogError(ex, "Failed to link group {GroupPrefix} to team {TeamId}", groupPrefix, teamId);
             return new GroupLinkActionResult(false,
                 ErrorMessage: $"Failed to link group: {ex.Message}");
+        }
+        finally
+        {
+            if (!committed)
+            {
+                try
+                {
+                    await _teamService.SetGoogleGroupPrefixAsync(teamId, setResult.previousPrefix, ct);
+                }
+                catch (Exception revertEx)
+                {
+                    _logger.LogError(revertEx,
+                        "Failed to revert GoogleGroupPrefix for team {TeamId} after failed link (prefix remains {Prefix})",
+                        teamId, normalizedPrefix);
+                }
+            }
         }
     }
 
