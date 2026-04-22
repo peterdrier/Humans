@@ -359,6 +359,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor
 
         var now = _clock.GetCurrentInstant();
         var failedCount = 0;
+        var grantedUserIds = new List<Guid>(eligibleUserIds.Count);
 
         // Persist and enqueue one grant at a time. If an enqueue throws mid-loop,
         // we flip that single grant to Failed so subsequent grants still get
@@ -395,6 +396,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor
                 LatestEmailAt = now
             };
             await _repository.AddGrantAndSaveAsync(grant, ct);
+            grantedUserIds.Add(userId);
 
             try
             {
@@ -414,9 +416,12 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor
 
         _logger.LogInformation(
             "Campaign {CampaignId}: sent wave to team {TeamId}, {Count} grants created, {FailedCount} failed to enqueue",
-            campaignId, teamId, eligibleUserIds.Count, failedCount);
+            campaignId, teamId, grantedUserIds.Count, failedCount);
 
-        // In-app notification to each recipient (best-effort).
+        if (grantedUserIds.Count == 0)
+            return 0;
+
+        // In-app notification to each recipient who actually received a grant (best-effort).
         try
         {
             await _notificationService.SendAsync(
@@ -424,7 +429,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 $"You received a code from campaign: {campaign.Title}",
-                eligibleUserIds,
+                grantedUserIds,
                 body: "Check your email for your campaign code.",
                 cancellationToken: ct);
         }
@@ -433,7 +438,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor
             _logger.LogError(ex, "Failed to dispatch CampaignReceived notifications for campaign {CampaignId}", campaignId);
         }
 
-        return eligibleUserIds.Count;
+        return grantedUserIds.Count;
     }
 
     public async Task ResendToGrantAsync(Guid grantId, CancellationToken ct = default)
