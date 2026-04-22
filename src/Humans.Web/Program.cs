@@ -342,6 +342,12 @@ builder.Services.AddRateLimiter(options =>
         if (context.Request.Path.StartsWithSegments("/Profile/Picture", StringComparison.OrdinalIgnoreCase))
             return RateLimitPartition.GetNoLimiter(string.Empty);
 
+        // Exclude SignalR hubs — long-polling fallback sends one POST per invoke,
+        // which trivially exceeds the global 100/min cap during active use.
+        // SignalR manages its own backpressure; abuse is handled via auth on the hub.
+        if (context.Request.Path.StartsWithSegments("/hubs", StringComparison.OrdinalIgnoreCase))
+            return RateLimitPartition.GetNoLimiter(string.Empty);
+
         // Exclude local network — e2e tests and internal tooling run from 192.168.*
         var remoteIp = context.Connection.RemoteIpAddress?.ToString();
         if (remoteIp is not null && remoteIp.StartsWith("192.168.", StringComparison.Ordinal))
