@@ -174,8 +174,12 @@ public interface ITicketRepository
 
     Task<int> CountValidAttendeesMatchedToUserAsync(Guid userId, CancellationToken ct = default);
 
-    Task<int> CountValidAttendeesByUppercaseEmailsAsync(
-        IReadOnlyCollection<string> uppercaseEmails, CancellationToken ct = default);
+    /// <summary>
+    /// Returns all non-null <c>AttendeeEmail</c> values from attendees in
+    /// <c>Valid</c> or <c>CheckedIn</c> state. Callers filter case-insensitively
+    /// in memory (typical caller caches the result on a short TTL).
+    /// </summary>
+    Task<IReadOnlyList<string>> GetValidAttendeeEmailsAsync(CancellationToken ct = default);
 
     Task<IReadOnlyList<Guid>> GetValidMatchedAttendeeUserIdsAsync(CancellationToken ct = default);
 

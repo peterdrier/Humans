@@ -16,6 +16,7 @@ public static class CacheKeys
     public static string UserTicketCount(Guid userId) => $"UserTicketCount:{userId:N}";
     public const string TicketDashboardStats = "TicketDashboardStats";
     public const string UserIdsWithTickets = "UserIdsWithTickets";
+    public const string ValidAttendeeEmails = "ValidAttendeeEmails";
 
     public static string CampContactRateLimit(Guid userId, Guid campId) =>
         $"CampContactRateLimit:{userId:N}:{campId:N}";
@@ -65,6 +66,7 @@ public static class CacheKeys
             ["UserTicketCount"] = new("5 min", CacheKeyType.PerUser),
             ["TicketDashboardStats"] = new("5 min", CacheKeyType.Static),
             ["UserIdsWithTickets"] = new("5 min", CacheKeyType.Static),
+            ["ValidAttendeeEmails"] = new("5 min", CacheKeyType.Static),
             ["CampContactRateLimit"] = new("10 min", CacheKeyType.RateLimit),
             ["claims"] = new("60 sec", CacheKeyType.PerUser),
             ["shift-auth"] = new("60 sec", CacheKeyType.PerUser),

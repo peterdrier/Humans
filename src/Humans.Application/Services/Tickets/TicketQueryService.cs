@@ -27,6 +27,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
 {
     private static readonly TimeSpan TicketCountCacheTtl = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan UserIdsWithTicketsCacheTtl = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan ValidAttendeeEmailsCacheTtl = TimeSpan.FromMinutes(5);
 
     private readonly ITicketRepository _ticketRepository;
     private readonly IMemoryCache _cache;
@@ -90,20 +91,27 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             return matchedCount;
 
         // Fallback: check all verified user emails against attendee emails
-        // (case-insensitive).
+        // case-insensitively. The attendee email set is cached and compared
+        // in memory — avoids SQL upper() vs .NET ToUpperInvariant drift for
+        // non-ASCII code points by applying a single StringComparer rule.
         var verifiedEmails = await _userEmailService.GetVerifiedEmailsForUserAsync(userId);
         if (verifiedEmails.Count == 0)
             return 0;
 
-        var uppercaseEmails = verifiedEmails
-#pragma warning disable MA0011 // Repository-side ToUpper translates to SQL UPPER().
-            .Select(e => e.ToUpperInvariant())
-#pragma warning restore MA0011
-            .ToList();
+        var attendeeEmails = await GetValidAttendeeEmailsCachedAsync();
+        if (attendeeEmails.Count == 0)
+            return 0;
 
-        return await _ticketRepository
-            .CountValidAttendeesByUppercaseEmailsAsync(uppercaseEmails);
+        var verifiedSet = verifiedEmails.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return attendeeEmails.Count(e => verifiedSet.Contains(e));
     }
+
+    private Task<IReadOnlyList<string>> GetValidAttendeeEmailsCachedAsync() =>
+        _cache.GetOrCreateAsync<IReadOnlyList<string>>(CacheKeys.ValidAttendeeEmails, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = ValidAttendeeEmailsCacheTtl;
+            return await _ticketRepository.GetValidAttendeeEmailsAsync();
+        })!;
 
     public async Task<HashSet<Guid>> GetUserIdsWithTicketsAsync()
     {

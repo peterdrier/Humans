@@ -305,24 +305,17 @@ public sealed class TicketRepository : ITicketRepository
                 ct);
     }
 
-    [SuppressMessage("Meziantou", "MA0011:IFormatProvider is missing",
-        Justification = "ToUpper() translates to SQL UPPER() in EF/Npgsql; no client-side format provider applies.")]
-    public async Task<int> CountValidAttendeesByUppercaseEmailsAsync(
-        IReadOnlyCollection<string> uppercaseEmails, CancellationToken ct = default)
+    public async Task<IReadOnlyList<string>> GetValidAttendeeEmailsAsync(
+        CancellationToken ct = default)
     {
-        if (uppercaseEmails.Count == 0)
-            return 0;
-
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-#pragma warning disable MA0011 // EF LINQ: ToUpper() translates to SQL upper()
         return await ctx.TicketAttendees
             .AsNoTracking()
-            .CountAsync(
-                a => a.AttendeeEmail != null &&
-                     uppercaseEmails.Contains(a.AttendeeEmail.ToUpper()) &&
-                     (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn),
-                ct);
-#pragma warning restore MA0011
+            .Where(a => a.AttendeeEmail != null &&
+                        (a.Status == TicketAttendeeStatus.Valid ||
+                         a.Status == TicketAttendeeStatus.CheckedIn))
+            .Select(a => a.AttendeeEmail!)
+            .ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<Guid>> GetValidMatchedAttendeeUserIdsAsync(
