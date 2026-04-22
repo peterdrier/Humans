@@ -456,6 +456,24 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Guid>> GetTeamIdsWithShiftsInEventAsync(
+        Guid eventSettingsId,
+        IReadOnlyCollection<Guid> teamIds,
+        CancellationToken ct = default)
+    {
+        if (teamIds.Count == 0) return [];
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Rotas
+            .AsNoTracking()
+            .Where(r => r.EventSettingsId == eventSettingsId
+                && teamIds.Contains(r.TeamId)
+                && r.Shifts.Any())
+            .Select(r => r.TeamId)
+            .Distinct()
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyDictionary<Guid, int>> GetConfirmedSignupCountsByShiftAsync(
         IReadOnlyCollection<Guid> shiftIds,
         CancellationToken ct = default)

@@ -855,22 +855,11 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
                 .Count());
     }
 
-    public async Task<IReadOnlyList<Guid>> GetTeamIdsWithShiftsInEventAsync(
+    public Task<IReadOnlyList<Guid>> GetTeamIdsWithShiftsInEventAsync(
         Guid eventSettingsId,
         IReadOnlyCollection<Guid> teamIds,
-        CancellationToken ct = default)
-    {
-        if (teamIds.Count == 0) return [];
-
-        return await _dbContext.Rotas
-            .AsNoTracking()
-            .Where(r => r.EventSettingsId == eventSettingsId
-                && teamIds.Contains(r.TeamId)
-                && r.Shifts.Any())
-            .Select(r => r.TeamId)
-            .Distinct()
-            .ToListAsync(ct);
-    }
+        CancellationToken ct = default) =>
+        _repo.GetTeamIdsWithShiftsInEventAsync(eventSettingsId, teamIds, ct);
 
     public async Task<IReadOnlyList<(Guid TeamId, string TeamName)>> GetDepartmentsWithRotasAsync(
         Guid eventSettingsId)

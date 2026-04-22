@@ -229,6 +229,15 @@ public interface IShiftManagementRepository
         CancellationToken ct = default);
 
     /// <summary>
+    /// Filters <paramref name="teamIds"/> to those that own at least one rota
+    /// with at least one shift in the given event.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetTeamIdsWithShiftsInEventAsync(
+        Guid eventSettingsId,
+        IReadOnlyCollection<Guid> teamIds,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Confirmed-signup counts grouped by shift id, for a collection of shifts.
     /// Returns an empty dictionary when <paramref name="shiftIds"/> is empty.
     /// </summary>
