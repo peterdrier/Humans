@@ -248,14 +248,22 @@ public sealed class UserEmailRepository : IUserEmailRepository
     {
         // Filter UserId != excludeUserId inside the query (not after FirstOrDefault)
         // so duplicate rows with mixed case or historical drift can't mask a real
-        // cross-user conflict.
+        // cross-user conflict. Escape ILIKE wildcards so '_' and '%' in the address
+        // are treated as literals, matching the prior exact-comparison semantics.
+        var escaped = EscapeLikePattern(email);
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.UserEmails
             .AsNoTracking()
-            .Where(ue => EF.Functions.ILike(ue.Email, email) && ue.UserId != excludeUserId)
+            .Where(ue => EF.Functions.ILike(ue.Email, escaped, "\\") && ue.UserId != excludeUserId)
             .Select(ue => (Guid?)ue.UserId)
             .FirstOrDefaultAsync(ct);
     }
+
+    private static string EscapeLikePattern(string value)
+        => value
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
 
     public async Task AddAsync(UserEmail email, CancellationToken ct = default)
     {
