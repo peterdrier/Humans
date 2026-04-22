@@ -1,10 +1,12 @@
 using AwesomeAssertions;
 using Humans.Application.Enums;
 using Humans.Application.Interfaces;
+using Humans.Application.Services.Shifts;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -33,14 +35,17 @@ public class ShiftDashboardMetricsTests : IDisposable
         // The dashboard compute methods now reach cross-domain data through
         // ITicketQueryService / ITeamService / IUserService. Wire thin fakes that
         // read from the same in-memory DbContext so existing DbContext-based
-        // test seed helpers still drive the scenarios end-to-end.
+        // test seed helpers still drive the scenarios end-to-end. The repository
+        // is backed by the same in-memory options via TestDbContextFactory.
         var serviceProvider = Substitute.For<IServiceProvider>();
         serviceProvider.GetService(typeof(ITeamService)).Returns(new FakeTeamService(_dbContext));
         serviceProvider.GetService(typeof(ITicketQueryService)).Returns(new FakeTicketQueryService(_dbContext));
         serviceProvider.GetService(typeof(IUserService)).Returns(new FakeUserService(_dbContext));
 
+        var repo = new ShiftManagementRepository(new TestDbContextFactory(options));
+
         _service = new ShiftManagementService(
-            _dbContext,
+            repo,
             Substitute.For<IAuditLogService>(),
             Substitute.For<IRoleAssignmentService>(),
             serviceProvider,

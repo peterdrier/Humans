@@ -7,10 +7,13 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Interfaces;
+using Humans.Application.Services.Shifts;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using Xunit;
 
@@ -42,8 +45,10 @@ public class ShiftSignupServiceTests : IDisposable
         var serviceProvider = Substitute.For<IServiceProvider>();
         serviceProvider.GetService(typeof(ITeamService)).Returns(teamService);
 
+        var shiftRepo = new ShiftManagementRepository(new TestDbContextFactory(options));
+
         _shiftMgmt = new ShiftManagementService(
-            _dbContext,
+            shiftRepo,
             _auditLog,
             roleAssignmentService,
             serviceProvider,
