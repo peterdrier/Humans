@@ -107,7 +107,7 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
             // same address would cause mail-routing chaos and break group membership.
             var conflictingTeamName =
                 await _teamService.GetTeamNameByGoogleGroupPrefixAsync(sanitizedPrefix);
-            if (conflictingTeamName is not null)
+            if (!string.IsNullOrEmpty(conflictingTeamName))
             {
                 _logger.LogWarning(
                     "Provisioning rejected: {Email} is the Google Group address for team '{TeamName}' (requested for {UserId})",

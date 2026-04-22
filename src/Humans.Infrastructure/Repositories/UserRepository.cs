@@ -148,12 +148,11 @@ public sealed class UserRepository : IUserRepository
     public async Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
         string email, Guid excludeUserId, CancellationToken ct = default)
     {
-        var normalized = email.ToLowerInvariant();
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Users
             .AsNoTracking()
             .Where(u => u.GoogleEmail != null
-                        && u.GoogleEmail.ToLower() == normalized
+                        && EF.Functions.ILike(u.GoogleEmail, email)
                         && u.Id != excludeUserId)
             .Select(u => (Guid?)u.Id)
             .FirstOrDefaultAsync(ct);

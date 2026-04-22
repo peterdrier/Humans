@@ -184,11 +184,10 @@ public class TeamService : ITeamService, IUserDataContributor
         if (string.IsNullOrEmpty(googleGroupPrefix))
             return null;
 
-        var normalized = googleGroupPrefix.ToLowerInvariant();
         return await _dbContext.Teams
             .AsNoTracking()
             .Where(t => t.GoogleGroupPrefix != null
-                        && t.GoogleGroupPrefix.ToLower() == normalized)
+                        && EF.Functions.ILike(t.GoogleGroupPrefix, googleGroupPrefix))
             .Select(t => t.Name)
             .FirstOrDefaultAsync(cancellationToken);
     }
