@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Data;
 
 namespace Humans.Infrastructure.Jobs;
@@ -14,6 +15,7 @@ public class SyncLegalDocumentsJob : IRecurringJob
     private readonly ILegalDocumentSyncService _syncService;
     private readonly IEmailService _emailService;
     private readonly HumansDbContext _dbContext;
+    private readonly IConsentRepository _consentRepository;
     private readonly IHumansMetrics _metrics;
     private readonly ILogger<SyncLegalDocumentsJob> _logger;
     private readonly IClock _clock;
@@ -22,6 +24,7 @@ public class SyncLegalDocumentsJob : IRecurringJob
         ILegalDocumentSyncService syncService,
         IEmailService emailService,
         HumansDbContext dbContext,
+        IConsentRepository consentRepository,
         IHumansMetrics metrics,
         ILogger<SyncLegalDocumentsJob> logger,
         IClock clock)
@@ -29,6 +32,7 @@ public class SyncLegalDocumentsJob : IRecurringJob
         _syncService = syncService;
         _emailService = emailService;
         _dbContext = dbContext;
+        _consentRepository = consentRepository;
         _metrics = metrics;
         _logger = logger;
         _clock = clock;
@@ -101,13 +105,10 @@ public class SyncLegalDocumentsJob : IRecurringJob
             .Select(d => d.Versions.OrderByDescending(v => v.EffectiveFrom).First().Id)
             .ToList();
 
-        var consentsByUser = await _dbContext.ConsentRecords
-            .AsNoTracking()
-            .Where(cr => activeUserIds.Contains(cr.UserId) && updatedDocVersionIds.Contains(cr.DocumentVersionId))
-            .Select(cr => new { cr.UserId, cr.DocumentVersionId })
-            .ToListAsync(cancellationToken);
+        var consentPairs = await _consentRepository.GetPairsForUsersAndVersionsAsync(
+            activeUserIds, updatedDocVersionIds, cancellationToken);
 
-        var userConsents = consentsByUser
+        var userConsents = consentPairs
             .GroupBy(c => c.UserId)
             .ToDictionary(g => g.Key, g => g.Select(c => c.DocumentVersionId).ToHashSet());
 

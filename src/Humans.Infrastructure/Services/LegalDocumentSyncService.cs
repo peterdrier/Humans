@@ -204,6 +204,21 @@ public class LegalDocumentSyncService : ILegalDocumentSyncService
             .ToListAsync(cancellationToken);
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<LegalDocument>> GetActiveRequiredDocumentsForTeamsAsync(
+        IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default)
+    {
+        if (teamIds.Count == 0)
+            return [];
+
+        return await _dbContext.LegalDocuments
+            .AsNoTracking()
+            .Where(d => d.IsActive && d.IsRequired && teamIds.Contains(d.TeamId))
+            .Include(d => d.Team)
+            .Include(d => d.Versions)
+            .ToListAsync(cancellationToken);
+    }
+
     /// <summary>
     /// Syncs a single document from GitHub using folder-based discovery.
     /// </summary>

@@ -1,47 +1,74 @@
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using NodaTime;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using NodaTime;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Application.Services.Consent;
 
-public class ConsentService : IConsentService, IUserDataContributor
+/// <summary>
+/// Application-layer implementation of <see cref="IConsentService"/>. Goes
+/// through <see cref="IConsentRepository"/> for all consent-record access —
+/// this type never imports <c>Microsoft.EntityFrameworkCore</c>, enforced by
+/// <c>Humans.Application.csproj</c>'s reference graph.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <c>consent_records</c> is append-only per design-rules §12 — this service
+/// only appends records; there is no update or delete path.
+/// </para>
+/// <para>
+/// Cross-section dependencies are injected as service interfaces
+/// (<see cref="IOnboardingService"/>, <see cref="ILegalDocumentSyncService"/>,
+/// <see cref="ISystemTeamSync"/>, <see cref="INotificationInboxService"/>,
+/// <see cref="IProfileService"/>). Legal-document repository migration is
+/// tracked as sub-task #547a; until it lands, legal document data still
+/// flows through <see cref="ILegalDocumentSyncService"/>.
+/// </para>
+/// <para>
+/// Implements <see cref="IUserDataContributor"/> so the GDPR export
+/// orchestrator can assemble per-user consent slices without crossing the
+/// section boundary.
+/// </para>
+/// </remarks>
+public sealed class ConsentService : IConsentService, IUserDataContributor
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly IConsentRepository _repo;
     private readonly IOnboardingService _onboardingService;
-    private readonly IServiceProvider _serviceProvider;
     private readonly ILegalDocumentSyncService _legalDocumentSyncService;
     private readonly INotificationInboxService _notificationInboxService;
     private readonly ISystemTeamSync _syncJob;
+    private readonly IProfileService _profileService;
+    private readonly IServiceProvider _serviceProvider;
     private readonly IHumansMetrics _metrics;
     private readonly IClock _clock;
     private readonly ILogger<ConsentService> _logger;
 
     public ConsentService(
-        HumansDbContext dbContext,
+        IConsentRepository repo,
         IOnboardingService onboardingService,
-        IServiceProvider serviceProvider,
         ILegalDocumentSyncService legalDocumentSyncService,
         INotificationInboxService notificationInboxService,
         ISystemTeamSync syncJob,
+        IProfileService profileService,
+        IServiceProvider serviceProvider,
         IHumansMetrics metrics,
         IClock clock,
         ILogger<ConsentService> logger)
     {
-        _dbContext = dbContext;
+        _repo = repo;
         _onboardingService = onboardingService;
-        _serviceProvider = serviceProvider;
         _legalDocumentSyncService = legalDocumentSyncService;
         _notificationInboxService = notificationInboxService;
         _syncJob = syncJob;
+        _profileService = profileService;
+        _serviceProvider = serviceProvider;
         _metrics = metrics;
         _clock = clock;
         _logger = logger;
@@ -56,18 +83,13 @@ public class ConsentService : IConsentService, IUserDataContributor
         var membershipCalculator = _serviceProvider.GetRequiredService<IMembershipCalculator>();
         var userTeamIds = await membershipCalculator.GetRequiredTeamIdsForUserAsync(userId, ct);
 
-        var documents = await _dbContext.LegalDocuments
-            .Where(d => d.IsActive && d.IsRequired && userTeamIds.Contains(d.TeamId))
-            .Include(d => d.Team)
-            .Include(d => d.Versions)
-            .ToListAsync(ct);
+        // Documents + Teams still flow through the legacy Legal document service
+        // because LegalDocumentService / AdminLegalDocumentService are scoped out
+        // of this migration (#547a). The document-listing surface lives on
+        // ILegalDocumentSyncService today.
+        var documents = await _legalDocumentSyncService.GetActiveRequiredDocumentsForTeamsAsync(userTeamIds, ct);
 
-        var userConsents = await _dbContext.ConsentRecords
-            .Where(c => c.UserId == userId)
-            .Include(c => c.DocumentVersion)
-            .ThenInclude(v => v.LegalDocument)
-            .OrderByDescending(c => c.ConsentedAt)
-            .ToListAsync(ct);
+        var userConsents = await _repo.GetAllForUserAsync(userId, ct);
 
         var groups = documents
             .GroupBy(d => d.TeamId)
@@ -93,7 +115,7 @@ public class ConsentService : IConsentService, IUserDataContributor
             })
             .ToList();
 
-        return (groups, userConsents);
+        return (groups, userConsents.ToList());
     }
 
     public async Task<(DocumentVersion? Version, ConsentRecord? ExistingConsent, string? UserFullName)>
@@ -104,12 +126,11 @@ public class ConsentService : IConsentService, IUserDataContributor
         if (version is null)
             return (null, null, null);
 
-        var consentRecord = await _dbContext.ConsentRecords
-            .FirstOrDefaultAsync(c => c.UserId == userId && c.DocumentVersionId == documentVersionId, ct);
+        var consentRecord = await _repo.GetByUserAndVersionAsync(userId, documentVersionId, ct);
 
-        var profile = await _dbContext.Profiles
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == userId, ct);
+        // Cross-section lookup: profile is owned by Profiles section. Route
+        // through IProfileService rather than querying _dbContext.Profiles.
+        var profile = await _profileService.GetProfileAsync(userId, ct);
 
         return (version, consentRecord, profile?.FullName);
     }
@@ -123,8 +144,7 @@ public class ConsentService : IConsentService, IUserDataContributor
         if (version is null)
             return new ConsentSubmitResult(false, ErrorKey: "NotFound");
 
-        var alreadyConsented = await _dbContext.ConsentRecords
-            .AnyAsync(c => c.UserId == userId && c.DocumentVersionId == documentVersionId, ct);
+        var alreadyConsented = await _repo.ExistsForUserAndVersionAsync(userId, documentVersionId, ct);
 
         if (alreadyConsented)
             return new ConsentSubmitResult(false, ErrorKey: "AlreadyConsented");
@@ -144,8 +164,7 @@ public class ConsentService : IConsentService, IUserDataContributor
             ExplicitConsent = explicitConsent
         };
 
-        _dbContext.ConsentRecords.Add(consentRecord);
-        await _dbContext.SaveChangesAsync(ct);
+        await _repo.AddAsync(consentRecord, ct);
         _metrics.RecordConsentGiven();
 
         _logger.LogInformation(
@@ -154,11 +173,11 @@ public class ConsentService : IConsentService, IUserDataContributor
 
         await _onboardingService.SetConsentCheckPendingIfEligibleAsync(userId, ct);
 
-        // Sync system team memberships (adds user if eligible + all consents done)
+        // Sync system team memberships (adds user if eligible + all consents done).
         await _syncJob.SyncVolunteersMembershipForUserAsync(userId);
         await _syncJob.SyncCoordinatorsMembershipForUserAsync(userId);
 
-        // Auto-resolve AccessSuspended notifications only once ALL required consents are complete
+        // Auto-resolve AccessSuspended notifications only once ALL required consents are complete.
         try
         {
             var membershipCalc = _serviceProvider.GetRequiredService<IMembershipCalculator>();
@@ -175,62 +194,20 @@ public class ConsentService : IConsentService, IUserDataContributor
         return new ConsentSubmitResult(true, DocumentName: version.LegalDocument.Name);
     }
 
-    public async Task<IReadOnlyList<ConsentRecord>> GetUserConsentRecordsAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        return await _dbContext.ConsentRecords
-            .AsNoTracking()
-            .Include(c => c.DocumentVersion)
-                .ThenInclude(v => v.LegalDocument)
-            .Where(c => c.UserId == userId)
-            .OrderByDescending(c => c.ConsentedAt)
-            .ToListAsync(ct);
-    }
+    public Task<IReadOnlyList<ConsentRecord>> GetUserConsentRecordsAsync(
+        Guid userId, CancellationToken ct = default) =>
+        _repo.GetAllForUserAsync(userId, ct);
 
-    public async Task<int> GetConsentRecordCountAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        return await _dbContext.ConsentRecords
-            .CountAsync(cr => cr.UserId == userId, ct);
-    }
+    public Task<int> GetConsentRecordCountAsync(Guid userId, CancellationToken ct = default) =>
+        _repo.GetCountForUserAsync(userId, ct);
 
-    public async Task<IReadOnlySet<Guid>> GetConsentedVersionIdsAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        var ids = await _dbContext.ConsentRecords
-            .AsNoTracking()
-            .Where(cr => cr.UserId == userId && cr.ExplicitConsent)
-            .Select(cr => cr.DocumentVersionId)
-            .ToListAsync(ct);
+    public Task<IReadOnlySet<Guid>> GetConsentedVersionIdsAsync(
+        Guid userId, CancellationToken ct = default) =>
+        _repo.GetExplicitlyConsentedVersionIdsAsync(userId, ct);
 
-        return ids.ToHashSet();
-    }
-
-    public async Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetConsentMapForUsersAsync(
-        IReadOnlyList<Guid> userIds, CancellationToken ct = default)
-    {
-        if (userIds.Count == 0)
-        {
-            return new Dictionary<Guid, IReadOnlySet<Guid>>();
-        }
-
-        var consents = await _dbContext.ConsentRecords
-            .AsNoTracking()
-            .Where(cr => userIds.Contains(cr.UserId) && cr.ExplicitConsent)
-            .Select(cr => new { cr.UserId, cr.DocumentVersionId })
-            .ToListAsync(ct);
-
-        var result = userIds.ToDictionary(
-            id => id,
-            _ => (IReadOnlySet<Guid>)new HashSet<Guid>());
-
-        foreach (var consent in consents)
-        {
-            ((HashSet<Guid>)result[consent.UserId]).Add(consent.DocumentVersionId);
-        }
-
-        return result;
-    }
+    public Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetConsentMapForUsersAsync(
+        IReadOnlyList<Guid> userIds, CancellationToken ct = default) =>
+        _repo.GetExplicitlyConsentedVersionIdsForUsersAsync(userIds, ct);
 
     private static string ComputeContentHash(string content)
     {
@@ -240,7 +217,7 @@ public class ConsentService : IConsentService, IUserDataContributor
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var consents = await GetUserConsentRecordsAsync(userId, ct);
+        var consents = await _repo.GetAllForUserAsync(userId, ct);
 
         var shaped = consents.Select(c => new
         {
