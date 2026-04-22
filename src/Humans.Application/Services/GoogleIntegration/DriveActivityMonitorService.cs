@@ -67,6 +67,8 @@ public sealed class DriveActivityMonitorService : IDriveActivityMonitorService
         var serviceAccountEmail = await _driveActivityClient.GetServiceAccountEmailAsync(cancellationToken);
         var serviceAccountClientId = await _driveActivityClient.GetServiceAccountClientIdAsync(cancellationToken);
         var hadFailures = false;
+        var anyResourceQueried = false;
+        Exception? firstFailure = null;
 
         // Per-invocation cache for resolved people/ IDs to avoid repeated API calls.
         var peopleIdCache = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -126,9 +128,17 @@ public sealed class DriveActivityMonitorService : IDriveActivityMonitorService
                         ActorUserId = null,
                     });
                 }
+
+                // Reached only if the async enumerable completed without
+                // throwing — the connector is responsive for this resource.
+                anyResourceQueried = true;
             }
             catch (DriveActivityResourceNotFoundException)
             {
+                // Resource exists in our DB but is gone on Google's side.
+                // The connector itself worked, so this still counts as a
+                // successful query for "is the connector alive" purposes.
+                anyResourceQueried = true;
                 _logger.LogWarning(
                     "Drive resource {GoogleId} not found when checking activity (may have been deleted)",
                     resource.GoogleId);
@@ -136,6 +146,7 @@ public sealed class DriveActivityMonitorService : IDriveActivityMonitorService
             catch (Exception ex)
             {
                 hadFailures = true;
+                firstFailure ??= ex;
                 _logger.LogError(ex, "Error checking Drive activity for resource {ResourceId} ({GoogleId})",
                     resource.Id, resource.GoogleId);
             }
@@ -180,6 +191,18 @@ public sealed class DriveActivityMonitorService : IDriveActivityMonitorService
         }
 
         await _repository.PersistAnomaliesAsync(anomalies, newMarker, cancellationToken);
+
+        // If every resource failed, the connector is almost certainly
+        // misconfigured (revoked service-account key, network outage, etc.)
+        // rather than hitting per-resource errors. Propagate so the Hangfire
+        // job records a failed run instead of reporting success on a run
+        // that monitored nothing.
+        if (hadFailures && !anyResourceQueried)
+        {
+            throw new InvalidOperationException(
+                $"Drive activity monitor: all {resources.Count} resource(s) failed to query; connector is likely unavailable. See inner exception for the first failure.",
+                firstFailure);
+        }
 
         return anomalies.Count;
     }
