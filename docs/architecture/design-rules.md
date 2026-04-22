@@ -589,12 +589,42 @@ Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`
   - **Email** — migrated 2026-04-22 in PR for issue #548 — `EmailOutboxService` and `OutboxEmailService` now live in `Humans.Application.Services.Email`, go through `IEmailOutboxRepository`, and route the verified-email-by-recipient lookup through `IUserEmailService` so `user_emails` stays behind its owning service. Two new connector abstractions (`IEmailBodyComposer`, `IImmediateOutboxProcessor`) keep `IHostEnvironment`/`EmailSettings` and Hangfire out of the Application layer. No caching decorator — outbox is a sequential queue drain, not a hot-path read shape.
   - **Feedback** — migrated 2026-04-22 in issue #549 — `FeedbackService` now lives in `Humans.Application.Services.Feedback`, goes through `IFeedbackRepository`, and resolves reporter / assignee / resolver display names + effective email via `IUserService`, `IUserEmailService.GetNotificationTargetEmailsAsync`, and `ITeamService.GetTeamNamesByIdsAsync`. Cross-domain `.Include()` chains on `FeedbackReport.User`, `.ResolvedByUser`, `.AssignedToUser`, `.AssignedToTeam`, and `FeedbackMessage.SenderUser` are gone from the service (4→0). Navs are `[Obsolete]`-marked and populated in-memory by the service (§6b "in-memory join") so controllers and views continue to read `report.User.DisplayName` etc. under `#pragma warning disable CS0618`. Nav-strip follow-up lands as part of the wider User-entity nav cleanup. No caching decorator — Feedback is admin-review-only and low-traffic.
   - **Auth** — migrated 2026-04-22 in issue #551 — `RoleAssignmentService` and `MagicLinkService` now live in `Humans.Application.Services.Auth`. `RoleAssignmentService` goes through `IRoleAssignmentRepository`, stitches assignee / creator display names via `IUserService`, and invalidates the per-user claims cache via `IRoleAssignmentClaimsCacheInvalidator` + the nav-badge cache via `INavBadgeCacheInvalidator`. `MagicLinkService` owns no tables; verified-email lookup routes through `IUserEmailService.FindVerifiedEmailWithUserAsync`, and Data-Protection / URL / replay / signup-cooldown state sits behind Infrastructure-side `IMagicLinkUrlBuilder` + `IMagicLinkRateLimiter` (same shape as `CommunicationPreferenceService` + `IUnsubscribeTokenProvider`). Cross-domain navs on `RoleAssignment` (`User`, `CreatedByUser`) are `[Obsolete]`-marked and populated in-memory; controllers + the two daily-digest jobs that still read them do so under `#pragma warning disable CS0618`. No caching decorator — Auth writes are rare (handful of admin events per month).
-- **~20 cross-domain `.Include()` calls** across **~12 services**. Biggest offenders: `OnboardingService` (7), `GoogleWorkspaceSyncService` (4). The Profile-section, Governance, City-Planning, Campaigns, Camps, Feedback, and Auth includes are gone. **The User section's PR #243 landed the Application-layer move but deferred the nav-strip** — cross-domain nav reads via `user.UserEmails`, `user.Profile`, `user.TeamMemberships`, `user.GetEffectiveEmail()` still exist in `TicketQueryService`, `TeamService`, `GoogleWorkspaceSyncService`, `SendBoardDailyDigestJob`, `SyncLegalDocumentsJob`, `SystemTeamSyncJob`, `SuspendNonCompliantMembersJob`, `ProfileController`. Tracked as a follow-up. Target: 0.
-- **14 repositories** exist today (`ApplicationRepository`, `ProfileRepository`, `ContactFieldRepository`, `UserEmailRepository`, `CommunicationPreferenceRepository`, `UserRepository`, `CityPlanningRepository`, `AuditLogRepository`, `BudgetRepository`, `CampaignRepository`, `CampRepository`, `EmailOutboxRepository`, `FeedbackRepository`, `RoleAssignmentRepository`). Target: one per domain (~20 total).
+- **~20 cross-domain `.Include()` calls** across **~12 services**. Biggest offenders: `OnboardingService` (7), `GoogleWorkspaceSyncService` (4). Target: 0.
+  - Includes fully removed from the service layer in these sections:
+    - Profile
+    - Governance
+    - City Planning
+    - Campaigns
+    - Camps
+    - Feedback
+    - Auth
+  - **User section's PR #243 landed the Application-layer move but deferred the nav-strip** — cross-domain nav reads via `user.UserEmails`, `user.Profile`, `user.TeamMemberships`, `user.GetEffectiveEmail()` still exist in `TicketQueryService`, `TeamService`, `GoogleWorkspaceSyncService`, `SendBoardDailyDigestJob`, `SyncLegalDocumentsJob`, `SystemTeamSyncJob`, `SuspendNonCompliantMembersJob`, `ProfileController`. Tracked as a follow-up.
+- **14 repositories** exist today. Target: one per domain (~20 total):
+  - `ApplicationRepository`
+  - `ProfileRepository`
+  - `ContactFieldRepository`
+  - `UserEmailRepository`
+  - `CommunicationPreferenceRepository`
+  - `UserRepository`
+  - `CityPlanningRepository`
+  - `AuditLogRepository`
+  - `BudgetRepository`
+  - `CampaignRepository`
+  - `CampRepository`
+  - `EmailOutboxRepository`
+  - `FeedbackRepository`
+  - `RoleAssignmentRepository`
 - **0 stores** exist today. `IApplicationStore` was retired when Governance dropped its caching layer (issue #533). Target: replaced by §15 `ConcurrentDictionary`-in-decorator where a cache is warranted; no separate store type.
 - **1 caching decorator** exists today (`CachingProfileService` — §15 pattern). Governance, User, and Camps sections operate without one. Target: every migrated section that needs caching uses the §15 pattern. Not every section needs caching.
 - **Inline `IMemoryCache.GetOrCreateAsync`** still scattered across services for non-profile caches (nav badge, notification meter, role-assignment claims, shift auth, camps-for-year, camp settings). These are short-TTL request-acceleration caches, not canonical domain data caches, and are appropriate for `IMemoryCache`. Canonical domain data caches (full entity projections) must use the §15 pattern.
-- **Cross-domain navigation properties** (`User.Profile`, `User.UserEmails`, `User.TeamMemberships`, `User.RoleAssignments`, `User.Applications`, `User.ConsentRecords`, `User.CommunicationPreferences`, `User.GetEffectiveEmail()`) are still declared on the `User` entity — PR #243 deferred the strip to an isolated follow-up PR because ~15 call sites need service-routing migration (and a new `IUserEmailService.GetNotificationEmailAsync` surface). `TeamMember.User`, `Camp.CreatedByUser`, `CampSeason.ReviewedByUser`, etc. are also still declared freely. Profile-section (`Profile.User`, `UserEmail.User`, `CommunicationPreference.User`) and Email-section (`EmailOutboxMessage.User`) are stripped. **`CampLead.User` is stripped** (issue #542) — lead display data routes through `IUserService`. Target: stripped at the entity boundary, FK-only everywhere.
+- **Cross-domain navigation properties**. Target: stripped at the entity boundary, FK-only everywhere.
+  - Still declared:
+    - `User.Profile`, `User.UserEmails`, `User.TeamMemberships`, `User.RoleAssignments`, `User.Applications`, `User.ConsentRecords`, `User.CommunicationPreferences`, `User.GetEffectiveEmail()` — PR #243 deferred the strip to an isolated follow-up PR because ~15 call sites need service-routing migration (and a new `IUserEmailService.GetNotificationEmailAsync` surface).
+    - `TeamMember.User`, `Camp.CreatedByUser`, `CampSeason.ReviewedByUser`, etc. — still declared freely.
+  - Stripped:
+    - Profile-section: `Profile.User`, `UserEmail.User`, `CommunicationPreference.User`.
+    - Email-section: `EmailOutboxMessage.User`.
+    - `CampLead.User` (issue #542) — lead display data routes through `IUserService`.
 
 **External connectors (API bridge pattern).** External SDKs (Google, Stripe, SMTP/IMAP, Octokit, etc.) sit behind Application-layer interfaces so `Humans.Application` never references the SDK assembly. The concrete implementation lives in `Humans.Infrastructure/Services/` (or a subfolder) and is the only code that imports the SDK namespaces. Connectors own no database tables — side-effects that need persistence write through the owning section's repository (e.g., Stripe fee values land on `TicketOrder`, written by `ITicketRepository`).
 - **Stripe** (issue #556, 2026-04-22): `IStripeService` in `Humans.Application.Interfaces`, `StripeService` in `Humans.Infrastructure.Services`. The bridge is structurally enforced (`Humans.Application.csproj` does not reference `Stripe.net`) and additionally covered by `StripeConnectorArchitectureTests` (SDK types cannot leak onto the interface surface).
