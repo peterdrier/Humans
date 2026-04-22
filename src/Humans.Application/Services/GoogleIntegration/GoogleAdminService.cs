@@ -61,11 +61,26 @@ public sealed class GoogleAdminService : IGoogleAdminService
             // we just listed — much cheaper than loading the entire user_emails table.
             var accountEmails = accounts.Select(a => a.PrimaryEmail).ToList();
             var matches = await _userEmailService.MatchByEmailsAsync(accountEmails, ct);
-            var matchByEmail = matches.ToDictionary(
-                m => m.Email, StringComparer.OrdinalIgnoreCase);
+
+            // user_emails allows a verified + unverified row for the same
+            // address, so MatchByEmailsAsync can return multiple hits per
+            // email. Collapse to one winner per address: prefer verified
+            // rows, then the most recently updated, then a stable UserId
+            // tie-breaker. Using ToDictionary directly would throw on the
+            // duplicate key and fail the whole workspace-accounts view.
+            var matchByEmail = matches
+                .GroupBy(m => m.Email, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g
+                        .OrderByDescending(m => m.IsVerified)
+                        .ThenByDescending(m => m.UpdatedAt)
+                        .ThenBy(m => m.UserId)
+                        .First(),
+                    StringComparer.OrdinalIgnoreCase);
 
             // Batch-load users for matched emails
-            var matchedUserIds = matches.Select(m => m.UserId).Distinct().ToList();
+            var matchedUserIds = matchByEmail.Values.Select(m => m.UserId).Distinct().ToList();
             var usersById = matchedUserIds.Count == 0
                 ? new Dictionary<Guid, User>()
                 : (await _userService.GetByIdsAsync(matchedUserIds, ct))

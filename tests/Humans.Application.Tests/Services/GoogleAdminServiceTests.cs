@@ -73,7 +73,12 @@ public class GoogleAdminServiceTests
 
         _userEmailService.MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
             .Returns([
-                new UserEmailMatch("alice@nobodies.team", userId, IsNotificationTarget: true)
+                new UserEmailMatch(
+                    "alice@nobodies.team",
+                    userId,
+                    IsNotificationTarget: true,
+                    IsVerified: true,
+                    UpdatedAt: NodaTime.SystemClock.Instance.GetCurrentInstant())
             ]);
 
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -95,6 +100,52 @@ public class GoogleAdminServiceTests
             string.Equals(a.PrimaryEmail, "alice@nobodies.team", StringComparison.OrdinalIgnoreCase));
         alice.MatchedUserId.Should().Be(userId);
         alice.IsUsedAsPrimary.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetWorkspaceAccountListAsync_PicksVerifiedWinner_WhenDuplicateEmailMatches()
+    {
+        // user_emails may hold both a verified and unverified row for the
+        // same address. MatchByEmailsAsync surfaces both; the service must
+        // collapse them rather than throw on the duplicate key.
+        var verifiedUserId = Guid.NewGuid();
+        var unverifiedUserId = Guid.NewGuid();
+        var now = NodaTime.SystemClock.Instance.GetCurrentInstant();
+
+        _workspaceUserService.ListAccountsAsync(Arg.Any<CancellationToken>())
+            .Returns([
+                new WorkspaceUserAccount("dup@nobodies.team", "Dup", "User", false,
+                    DateTime.UtcNow, null),
+            ]);
+
+        _userEmailService.MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns([
+                // Unverified row is newer but must lose to the verified row.
+                new UserEmailMatch(
+                    "dup@nobodies.team", unverifiedUserId,
+                    IsNotificationTarget: false,
+                    IsVerified: false,
+                    UpdatedAt: now),
+                new UserEmailMatch(
+                    "dup@nobodies.team", verifiedUserId,
+                    IsNotificationTarget: true,
+                    IsVerified: true,
+                    UpdatedAt: now - NodaTime.Duration.FromHours(1)),
+            ]);
+
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User>
+            {
+                [verifiedUserId] = new User { Id = verifiedUserId, DisplayName = "Verified User" }
+            });
+
+        var result = await _service.GetWorkspaceAccountListAsync();
+
+        result.ErrorMessage.Should().BeNull();
+        result.TotalAccounts.Should().Be(1);
+        var dup = result.Accounts.Single();
+        dup.MatchedUserId.Should().Be(verifiedUserId);
+        dup.IsUsedAsPrimary.Should().BeTrue();
     }
 
     [Fact]
