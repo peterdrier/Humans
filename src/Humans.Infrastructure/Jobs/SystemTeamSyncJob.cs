@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Extensions;
@@ -20,7 +21,13 @@ public class SystemTeamSyncJob : ISystemTeamSync
 {
     private readonly HumansDbContext _dbContext;
     private readonly ICampRepository _campRepository;
-    private readonly IMembershipCalculator _membershipCalculator;
+    // IMembershipCalculator is resolved lazily via IServiceProvider to break a
+    // DI cycle: TeamService and RoleAssignmentService inject ISystemTeamSync,
+    // and MembershipCalculator (transitively, via IMembershipQuery) depends on
+    // those same services. All calls below happen after DI has finished
+    // building the graph, so deferring the lookup is safe — same pattern
+    // MembershipCalculator uses for IConsentService.
+    private readonly IServiceProvider _serviceProvider;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IAuditLogService _auditLogService;
     private readonly IEmailService _emailService;
@@ -32,7 +39,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
     public SystemTeamSyncJob(
         HumansDbContext dbContext,
         ICampRepository campRepository,
-        IMembershipCalculator membershipCalculator,
+        IServiceProvider serviceProvider,
         IGoogleSyncService googleSyncService,
         IAuditLogService auditLogService,
         IEmailService emailService,
@@ -43,7 +50,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
     {
         _dbContext = dbContext;
         _campRepository = campRepository;
-        _membershipCalculator = membershipCalculator;
+        _serviceProvider = serviceProvider;
         _googleSyncService = googleSyncService;
         _auditLogService = auditLogService;
         _emailService = emailService;
@@ -52,6 +59,9 @@ public class SystemTeamSyncJob : ISystemTeamSync
         _logger = logger;
         _clock = clock;
     }
+
+    private IMembershipCalculator MembershipCalculator =>
+        _serviceProvider.GetRequiredService<IMembershipCalculator>();
 
     /// <summary>
     /// Executes the system team sync job and returns a report of what changed.
@@ -185,7 +195,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
             .ToListAsync(cancellationToken);
 
         // Use shared partition to determine eligibility (Active = approved + not suspended + all consents signed)
-        var partition = await _membershipCalculator.PartitionUsersAsync(allApprovedIds, cancellationToken);
+        var partition = await MembershipCalculator.PartitionUsersAsync(allApprovedIds, cancellationToken);
         var eligibleUserIds = partition.Active.ToList();
 
         await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, step: step);
@@ -222,7 +232,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
             .ToListAsync(cancellationToken);
 
         // Additionally filter by Coordinators-team-required consents
-        var eligibleSet = await _membershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
+        var eligibleSet = await MembershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
             leadUserIds, SystemTeamIds.Coordinators, cancellationToken);
 
         await SyncTeamMembershipAsync(team, eligibleSet.ToList(), cancellationToken, step: step);
@@ -260,7 +270,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
             .ToListAsync(cancellationToken);
 
         // Additionally filter by Board-team-required consents
-        var eligibleSet = await _membershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
+        var eligibleSet = await MembershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
             boardMemberIds, SystemTeamIds.Board, cancellationToken);
 
         await SyncTeamMembershipAsync(team, eligibleSet.ToList(), cancellationToken, step: step);
@@ -313,7 +323,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
             .Select(p => p.UserId)
             .ToListAsync(cancellationToken);
 
-        var eligibleSet = await _membershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
+        var eligibleSet = await MembershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
             userIds, teamId, cancellationToken);
         var eligibleUserIds = eligibleSet.ToList();
 
@@ -394,7 +404,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
             .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
 
         var isEligible = profile is { IsApproved: true, IsSuspended: false }
-            && await _membershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, cancellationToken);
+            && await MembershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, cancellationToken);
 
         // Build a single-user eligible list and let the existing sync logic handle add/remove
         var eligibleUserIds = isEligible ? [userId] : new List<Guid>();
@@ -426,7 +436,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
                 cancellationToken);
 
         var isEligible = isCoordinatorAnywhere
-            && await _membershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Coordinators, cancellationToken);
+            && await MembershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Coordinators, cancellationToken);
 
         var eligibleUserIds = isEligible ? [userId] : new List<Guid>();
         await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, singleUserSync: userId);
@@ -469,7 +479,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
         var isEligible = hasApprovedApp
             && profile is { IsApproved: true, IsSuspended: false }
-            && await _membershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, teamId, cancellationToken);
+            && await MembershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, teamId, cancellationToken);
 
         var eligibleUserIds = isEligible ? [userId] : new List<Guid>();
         await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, singleUserSync: userId);

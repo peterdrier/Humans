@@ -8,6 +8,7 @@ using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -39,10 +40,14 @@ public class SystemTeamSyncJobBarrioLeadsTests : IDisposable
         var factory = new TestDbContextFactory(options);
         var campRepo = new CampRepository(factory);
 
+        var services = new ServiceCollection();
+        services.AddSingleton(Substitute.For<IMembershipCalculator>());
+        var provider = services.BuildServiceProvider();
+
         _job = new SystemTeamSyncJob(
             _dbContext,
             campRepo,
-            Substitute.For<IMembershipCalculator>(),
+            provider,
             Substitute.For<IGoogleSyncService>(),
             Substitute.For<IAuditLogService>(),
             Substitute.For<IEmailService>(),
