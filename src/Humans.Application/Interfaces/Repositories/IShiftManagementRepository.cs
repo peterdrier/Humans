@@ -64,6 +64,15 @@ public interface IShiftManagementRepository
     Task UpdateRotaAsync(Rota rota, CancellationToken ct = default);
 
     /// <summary>
+    /// Targeted update that only writes the rota's <c>TeamId</c> and
+    /// <c>UpdatedAt</c> columns, so concurrent edits to other fields are not
+    /// clobbered. Used by the team-move path. Returns <c>false</c> if the
+    /// rota does not exist.
+    /// </summary>
+    Task<bool> UpdateRotaTeamAssignmentAsync(
+        Guid rotaId, Guid newTeamId, Instant updatedAt, CancellationToken ct = default);
+
+    /// <summary>
     /// Loads a tracked rota for a team-move operation. Does not include
     /// cross-domain <see cref="Rota.Team"/>. Returns null if not found.
     /// </summary>

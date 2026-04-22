@@ -93,6 +93,25 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task<bool> UpdateRotaTeamAssignmentAsync(
+        Guid rotaId, Guid newTeamId, Instant updatedAt, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var rota = await ctx.Rotas
+            .FirstOrDefaultAsync(r => r.Id == rotaId, ct);
+        if (rota is null) return false;
+
+        // Targeted property update: only TeamId + UpdatedAt are flagged as
+        // modified, so concurrent edits to other Rota columns (Name, Period,
+        // etc.) by other admins are not silently overwritten on SaveChanges.
+        rota.TeamId = newTeamId;
+        rota.UpdatedAt = updatedAt;
+        ctx.Entry(rota).Property(r => r.TeamId).IsModified = true;
+        ctx.Entry(rota).Property(r => r.UpdatedAt).IsModified = true;
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
     public async Task<Rota?> GetRotaForUpdateAsync(Guid rotaId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

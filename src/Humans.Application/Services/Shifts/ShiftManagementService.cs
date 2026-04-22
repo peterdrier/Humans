@@ -248,9 +248,11 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         var oldTeam = await TeamService.GetTeamByIdAsync(rota.TeamId);
         var oldTeamName = oldTeam?.Name ?? "(unknown)";
 
-        rota.TeamId = targetTeamId;
-        rota.UpdatedAt = _clock.GetCurrentInstant();
-        await _repo.UpdateRotaAsync(rota);
+        // Targeted write: only TeamId + UpdatedAt are marked modified, so a
+        // concurrent admin editing unrelated rota fields (Name, Period, …)
+        // does not have their save clobbered by this detached-graph update.
+        await _repo.UpdateRotaTeamAssignmentAsync(
+            rota.Id, targetTeamId, _clock.GetCurrentInstant());
 
         await _auditLogService.LogAsync(
             AuditAction.RotaMovedToTeam, nameof(Rota), rota.Id,
@@ -876,8 +878,14 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         var teamIds = await _repo.GetTeamIdsWithRotasInEventAsync(eventSettingsId);
         if (teamIds.Count == 0) return [];
 
+        // GetByIdsWithParentsAsync also returns parent teams to enrich lookups,
+        // but only the requested rota-owning teams should appear in the
+        // department filter list. Otherwise parents with no rotas leak into the
+        // UI dropdown and exact-TeamId filtering produces empty result pages.
+        var rotaOwningIds = teamIds.ToHashSet();
         var teams = await TeamService.GetByIdsWithParentsAsync(teamIds);
         return teams.Values
+            .Where(t => rotaOwningIds.Contains(t.Id))
             .Select(t => (t.Id, t.Name))
             .OrderBy(x => x.Name, StringComparer.Ordinal)
             .ToList();
