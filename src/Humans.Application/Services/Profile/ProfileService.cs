@@ -827,12 +827,13 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         profile.IsApproved = true;
         profile.UpdatedAt = now;
 
+        await _profileRepository.UpdateAsync(profile, ct);
+
         await _auditLogService.LogAsync(
             AuditAction.ConsentCheckCleared, nameof(Domain.Entities.Profile), userId,
             "Consent check cleared",
             reviewerId);
 
-        await _profileRepository.UpdateAsync(profile, ct);
         _logger.LogInformation("Consent check cleared for user {UserId} by {ReviewerId}", userId, reviewerId);
 
         return new OnboardingResult(true);
@@ -854,12 +855,13 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         profile.IsApproved = false;
         profile.UpdatedAt = now;
 
+        await _profileRepository.UpdateAsync(profile, ct);
+
         await _auditLogService.LogAsync(
             AuditAction.ConsentCheckFlagged, nameof(Domain.Entities.Profile), userId,
             $"Consent check flagged: {notes}",
             reviewerId);
 
-        await _profileRepository.UpdateAsync(profile, ct);
         _logger.LogInformation("Consent check flagged for user {UserId} by {ReviewerId}", userId, reviewerId);
 
         return new OnboardingResult(true);
@@ -883,12 +885,13 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         profile.IsApproved = false;
         profile.UpdatedAt = now;
 
+        await _profileRepository.UpdateAsync(profile, ct);
+
         await _auditLogService.LogAsync(
             AuditAction.SignupRejected, nameof(Domain.Entities.Profile), userId,
             $"Signup rejected{(string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}")}",
             reviewerId);
 
-        await _profileRepository.UpdateAsync(profile, ct);
         _logger.LogInformation("Signup rejected for user {UserId} by {ReviewerId}", userId, reviewerId);
 
         return new OnboardingResult(true);
@@ -906,12 +909,13 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         profile.IsApproved = true;
         profile.UpdatedAt = now;
 
+        await _profileRepository.UpdateAsync(profile, ct);
+
         await _auditLogService.LogAsync(
             AuditAction.VolunteerApproved, nameof(User), userId,
             "Approved as volunteer",
             adminId);
 
-        await _profileRepository.UpdateAsync(profile, ct);
         _logger.LogInformation("Admin {AdminId} approved human {HumanId}", adminId, userId);
 
         return new OnboardingResult(true);
@@ -928,12 +932,13 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         profile.AdminNotes = notes;
         profile.UpdatedAt = _clock.GetCurrentInstant();
 
+        await _profileRepository.UpdateAsync(profile, ct);
+
         await _auditLogService.LogAsync(
             AuditAction.MemberSuspended, nameof(User), userId,
             $"Suspended{(string.IsNullOrWhiteSpace(notes) ? "" : $": {notes}")}",
             adminId);
 
-        await _profileRepository.UpdateAsync(profile, ct);
         _logger.LogInformation("Admin {AdminId} suspended human {HumanId}", adminId, userId);
 
         return new OnboardingResult(true);
@@ -949,12 +954,13 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         profile.IsSuspended = false;
         profile.UpdatedAt = _clock.GetCurrentInstant();
 
+        await _profileRepository.UpdateAsync(profile, ct);
+
         await _auditLogService.LogAsync(
             AuditAction.MemberUnsuspended, nameof(User), userId,
             "Unsuspended",
             adminId);
 
-        await _profileRepository.UpdateAsync(profile, ct);
         _logger.LogInformation("Admin {AdminId} unsuspended human {HumanId}", adminId, userId);
 
         return new OnboardingResult(true);
