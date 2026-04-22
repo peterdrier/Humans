@@ -61,6 +61,30 @@ public sealed class UserService : IUserService, IUserDataContributor
     public Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default) =>
         _repo.GetAllAsync(ct);
 
+    public Task<IReadOnlyList<Guid>> GetAllUserIdsAsync(CancellationToken ct = default) =>
+        _repo.GetAllUserIdsAsync(ct);
+
+    public Task<IReadOnlyList<(string Language, int Count)>>
+        GetLanguageDistributionForUserIdsAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
+        _repo.GetLanguageDistributionForUserIdsAsync(userIds, ct);
+
+    public async Task<(bool Purged, string? DisplayName)> PurgeAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var displayName = await _repo.PurgeAsync(userId, ct);
+        if (displayName is null)
+            return (false, null);
+
+        // The purge renames the user + removes UserEmail rows. The FullProfile
+        // cache entry must refresh so downstream consumers see the purged view.
+        await _fullProfileInvalidator.InvalidateAsync(userId, ct);
+
+        _logger.LogWarning("Purged human {DisplayName} ({HumanId})", displayName, userId);
+
+        return (true, displayName);
+    }
+
     public Task<User?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default)
     {
         var normalized = EmailNormalization.NormalizeForComparison(email);

@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using MemberApplication = Humans.Domain.Entities.Application;
@@ -111,4 +113,122 @@ public sealed class ApplicationRepository : IApplicationRepository
             .Select(bv => bv.BoardMemberUserId)
             .Distinct()
             .ToListAsync(ct);
+
+    public async Task<IReadOnlySet<Guid>> GetUserIdsWithSubmittedAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return new HashSet<Guid>();
+
+        var matched = await _dbContext.Applications
+            .AsNoTracking()
+            .Where(a => userIds.Contains(a.UserId) && a.Status == ApplicationStatus.Submitted)
+            .Select(a => a.UserId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        return matched.ToHashSet();
+    }
+
+    public Task<MemberApplication?> GetSubmittedForUserAsync(
+        Guid userId, CancellationToken ct = default) =>
+        _dbContext.Applications
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                a => a.UserId == userId && a.Status == ApplicationStatus.Submitted,
+                ct);
+
+    public async Task<IReadOnlyList<MembershipTier>> GetApprovedTiersForUserAsync(
+        Guid userId, CancellationToken ct = default) =>
+        await _dbContext.Applications
+            .AsNoTracking()
+            .Where(a => a.UserId == userId && a.Status == ApplicationStatus.Approved)
+            .Select(a => a.MembershipTier)
+            .Distinct()
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<MemberApplication>> GetAllSubmittedWithVotesAsync(
+        CancellationToken ct = default) =>
+        await _dbContext.Applications
+            .AsNoTracking()
+            .Include(a => a.BoardVotes)
+            .Where(a => a.Status == ApplicationStatus.Submitted)
+            .OrderBy(a => a.MembershipTier)
+            .ThenBy(a => a.SubmittedAt)
+            .ToListAsync(ct);
+
+    public Task<bool> HasBoardVotesAsync(Guid applicationId, CancellationToken ct = default) =>
+        _dbContext.BoardVotes.AnyAsync(v => v.ApplicationId == applicationId, ct);
+
+    public Task<BoardVote?> GetBoardVoteAsync(
+        Guid applicationId, Guid boardMemberUserId, CancellationToken ct = default) =>
+        _dbContext.BoardVotes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                v => v.ApplicationId == applicationId && v.BoardMemberUserId == boardMemberUserId,
+                ct);
+
+    public async Task UpsertBoardVoteAsync(
+        Guid applicationId,
+        Guid boardMemberUserId,
+        VoteChoice vote,
+        string? note,
+        Instant now,
+        CancellationToken ct = default)
+    {
+        var existing = await _dbContext.BoardVotes
+            .FirstOrDefaultAsync(
+                v => v.ApplicationId == applicationId && v.BoardMemberUserId == boardMemberUserId,
+                ct);
+
+        if (existing is not null)
+        {
+            existing.Vote = vote;
+            existing.Note = note;
+            existing.UpdatedAt = now;
+        }
+        else
+        {
+            _dbContext.BoardVotes.Add(new BoardVote
+            {
+                Id = Guid.NewGuid(),
+                ApplicationId = applicationId,
+                BoardMemberUserId = boardMemberUserId,
+                Vote = vote,
+                Note = note,
+                VotedAt = now
+            });
+        }
+
+        await _dbContext.SaveChangesAsync(ct);
+    }
+
+    public Task<int> GetUnvotedCountForBoardMemberAsync(
+        Guid boardMemberUserId, CancellationToken ct = default) =>
+        _dbContext.Applications.CountAsync(
+            a => a.Status == ApplicationStatus.Submitted &&
+                 !a.BoardVotes.Any(v => v.BoardMemberUserId == boardMemberUserId),
+            ct);
+
+    public async Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default)
+    {
+        var stats = await _dbContext.Applications
+            .AsNoTracking()
+            .Where(a => a.Status != ApplicationStatus.Withdrawn)
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                Total = g.Count(),
+                Approved = g.Count(a => a.Status == ApplicationStatus.Approved),
+                Rejected = g.Count(a => a.Status == ApplicationStatus.Rejected),
+                Colaborador = g.Count(a => a.MembershipTier == MembershipTier.Colaborador),
+                Asociado = g.Count(a => a.MembershipTier == MembershipTier.Asociado)
+            })
+            .FirstOrDefaultAsync(ct);
+
+        return stats is null
+            ? new ApplicationAdminStats(0, 0, 0, 0, 0)
+            : new ApplicationAdminStats(
+                stats.Total, stats.Approved, stats.Rejected, stats.Colaborador, stats.Asociado);
+    }
 }

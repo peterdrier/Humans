@@ -59,6 +59,34 @@ public sealed class UserRepository : IUserRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Guid>> GetAllUserIdsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Users
+            .AsNoTracking()
+            .Select(u => u.Id)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<(string Language, int Count)>>
+        GetLanguageDistributionForUserIdsAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return [];
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var grouped = await ctx.Users
+            .AsNoTracking()
+            .Where(u => userIds.Contains(u.Id))
+            .GroupBy(u => u.PreferredLanguage)
+            .Select(g => new { Language = g.Key, Count = g.Count() })
+            .OrderByDescending(g => g.Count)
+            .ToListAsync(ct);
+
+        return grouped.Select(g => (g.Language, g.Count)).ToList();
+    }
+
     public async Task<User?> GetByEmailOrAlternateAsync(
         string normalizedEmail, string? alternateEmail, CancellationToken ct = default)
     {
@@ -345,6 +373,35 @@ public sealed class UserRepository : IUserRepository
         }
 
         await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<string?> PurgeAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var user = await ctx.Users.FindAsync([userId], ct);
+        if (user is null)
+            return null;
+
+        var displayName = user.DisplayName;
+
+        // Remove UserEmails so the unique index doesn't block the new account
+        var userEmails = await ctx.UserEmails.Where(e => e.UserId == userId).ToListAsync(ct);
+        ctx.UserEmails.RemoveRange(userEmails);
+
+        // Change email so email-based lookup won't match
+        var purgedEmail = $"purged-{Guid.NewGuid()}@deleted.local";
+        user.Email = purgedEmail;
+        user.NormalizedEmail = purgedEmail.ToUpperInvariant();
+        user.UserName = purgedEmail;
+        user.NormalizedUserName = purgedEmail.ToUpperInvariant();
+        user.DisplayName = $"Purged ({displayName})";
+
+        // Lock out the account permanently
+        user.LockoutEnabled = true;
+        user.LockoutEnd = DateTimeOffset.MaxValue;
+
+        await ctx.SaveChangesAsync(ct);
+        return displayName;
     }
 
     // ==========================================================================

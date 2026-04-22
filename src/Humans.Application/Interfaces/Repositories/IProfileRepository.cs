@@ -79,6 +79,26 @@ public interface IProfileRepository
     Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Returns profiles that are in the onboarding review queue: not approved
+    /// and not rejected. Ordered by <c>CreatedAt</c> ascending. Read-only.
+    /// Used by the onboarding review queue.
+    /// </summary>
+    Task<IReadOnlyList<Profile>> GetReviewableAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the count of profiles in the review queue (not approved, not
+    /// rejected). Used by the nav-badge count for Consent Coordinators.
+    /// </summary>
+    Task<int> GetReviewableCountAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the user ids of every approved, non-suspended profile. Used
+    /// by the admin dashboard to compute active-user aggregates without
+    /// loading the full Profile graph.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetApprovedUserIdsAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the languages for a profile, ordered by proficiency descending
     /// then language code. Read-only.
     /// </summary>

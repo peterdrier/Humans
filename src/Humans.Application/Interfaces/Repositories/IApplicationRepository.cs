@@ -1,3 +1,5 @@
+using NodaTime;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using MemberApplication = Humans.Domain.Entities.Application;
 
@@ -82,4 +84,84 @@ public interface IApplicationRepository
     /// invalidate per-voter voting badges after a successful finalize.
     /// </summary>
     Task<IReadOnlyList<Guid>> GetVoterIdsForApplicationAsync(Guid applicationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the user ids from <paramref name="userIds"/> that have a pending
+    /// (Submitted) application. Read-only.
+    /// </summary>
+    Task<IReadOnlySet<Guid>> GetUserIdsWithSubmittedAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the single Submitted application for the given user, or null
+    /// if none. Read-only.
+    /// </summary>
+    Task<MemberApplication?> GetSubmittedForUserAsync(
+        Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the distinct Approved-status membership tiers for a user.
+    /// Read-only.
+    /// </summary>
+    Task<IReadOnlyList<MembershipTier>> GetApprovedTiersForUserAsync(
+        Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every Submitted application, including aggregate-local
+    /// <c>BoardVotes</c>, ordered by tier then <c>SubmittedAt</c>. Read-only.
+    /// </summary>
+    Task<IReadOnlyList<MemberApplication>> GetAllSubmittedWithVotesAsync(
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns true if the application has any board votes. Used for
+    /// pre-finalize gating.
+    /// </summary>
+    Task<bool> HasBoardVotesAsync(Guid applicationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the existing board vote for (applicationId, boardMemberUserId),
+    /// or null if none. Read-only for callers that will mutate via
+    /// <see cref="UpsertBoardVoteAsync"/>.
+    /// </summary>
+    Task<BoardVote?> GetBoardVoteAsync(
+        Guid applicationId, Guid boardMemberUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Upserts a board vote: if a vote row exists for the
+    /// (applicationId, boardMemberUserId) pair, updates its
+    /// <see cref="BoardVote.Vote"/>/<see cref="BoardVote.Note"/>/
+    /// <see cref="BoardVote.UpdatedAt"/>; otherwise inserts a new row with the
+    /// provided values. Persists atomically.
+    /// </summary>
+    Task UpsertBoardVoteAsync(
+        Guid applicationId,
+        Guid boardMemberUserId,
+        VoteChoice vote,
+        string? note,
+        Instant now,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the number of Submitted applications that the given board
+    /// member has not yet voted on.
+    /// </summary>
+    Task<int> GetUnvotedCountForBoardMemberAsync(
+        Guid boardMemberUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns aggregate counts used by the admin dashboard's tier
+    /// application block. All counts exclude <see cref="ApplicationStatus.Withdrawn"/>.
+    /// </summary>
+    Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default);
 }
+
+/// <summary>
+/// Aggregate counts for the admin dashboard's tier application block.
+/// </summary>
+public record ApplicationAdminStats(
+    int Total,
+    int Approved,
+    int Rejected,
+    int ColaboradorApplied,
+    int AsociadoApplied);

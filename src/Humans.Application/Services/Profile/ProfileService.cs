@@ -25,7 +25,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
     private readonly IUserEmailRepository _userEmailRepository;
     private readonly IContactFieldRepository _contactFieldRepository;
     private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository;
-    private readonly IOnboardingService _onboardingService;
+    private readonly IOnboardingEligibilityQuery _onboardingEligibilityQuery;
     private readonly IEmailService _emailService;
     private readonly IAuditLogService _auditLogService;
     private readonly IMembershipCalculator _membershipCalculator;
@@ -44,7 +44,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         IUserEmailRepository userEmailRepository,
         IContactFieldRepository contactFieldRepository,
         ICommunicationPreferenceRepository communicationPreferenceRepository,
-        IOnboardingService onboardingService,
+        IOnboardingEligibilityQuery onboardingEligibilityQuery,
         IEmailService emailService,
         IAuditLogService auditLogService,
         IMembershipCalculator membershipCalculator,
@@ -62,7 +62,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         _userEmailRepository = userEmailRepository;
         _contactFieldRepository = contactFieldRepository;
         _communicationPreferenceRepository = communicationPreferenceRepository;
-        _onboardingService = onboardingService;
+        _onboardingEligibilityQuery = onboardingEligibilityQuery;
         _emailService = emailService;
         _auditLogService = auditLogService;
         _membershipCalculator = membershipCalculator;
@@ -284,7 +284,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         // Cache invalidation and store update handled by CachingProfileService decorator
 
         // Check consent eligibility
-        await _onboardingService.SetConsentCheckPendingIfEligibleAsync(userId, ct);
+        await _onboardingEligibilityQuery.SetConsentCheckPendingIfEligibleAsync(userId, ct);
 
         _logger.LogInformation("User {UserId} updated their profile", userId);
 
@@ -793,6 +793,187 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
             languagesSlice,
             commPrefsSlice
         ];
+    }
+
+    // ==========================================================================
+    // Onboarding-section support methods — profile mutations that OnboardingService
+    // delegates here so each section owns its DbSet writes (design-rules §2c).
+    // Cache invalidation (FullProfile refresh, nav-badge, notification meter) is
+    // handled by the CachingProfileService decorator's wrappers for these methods.
+    // ==========================================================================
+
+    public Task<IReadOnlyList<Domain.Entities.Profile>> GetReviewableProfilesAsync(CancellationToken ct = default) =>
+        _profileRepository.GetReviewableAsync(ct);
+
+    public Task<int> GetPendingReviewCountAsync(CancellationToken ct = default) =>
+        _profileRepository.GetReviewableCountAsync(ct);
+
+    public async Task<OnboardingResult> ClearConsentCheckAsync(
+        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default)
+    {
+        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        if (profile is null)
+            return new OnboardingResult(false, "NotFound");
+
+        if (profile.RejectedAt is not null)
+            return new OnboardingResult(false, "AlreadyRejected");
+
+        var now = _clock.GetCurrentInstant();
+
+        profile.ConsentCheckStatus = ConsentCheckStatus.Cleared;
+        profile.ConsentCheckAt = now;
+        profile.ConsentCheckedByUserId = reviewerId;
+        profile.ConsentCheckNotes = notes;
+        profile.IsApproved = true;
+        profile.UpdatedAt = now;
+
+        await _auditLogService.LogAsync(
+            AuditAction.ConsentCheckCleared, nameof(Domain.Entities.Profile), userId,
+            "Consent check cleared",
+            reviewerId);
+
+        await _profileRepository.UpdateAsync(profile, ct);
+        _logger.LogInformation("Consent check cleared for user {UserId} by {ReviewerId}", userId, reviewerId);
+
+        return new OnboardingResult(true);
+    }
+
+    public async Task<OnboardingResult> FlagConsentCheckAsync(
+        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default)
+    {
+        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        if (profile is null)
+            return new OnboardingResult(false, "NotFound");
+
+        var now = _clock.GetCurrentInstant();
+
+        profile.ConsentCheckStatus = ConsentCheckStatus.Flagged;
+        profile.ConsentCheckAt = now;
+        profile.ConsentCheckedByUserId = reviewerId;
+        profile.ConsentCheckNotes = notes;
+        profile.IsApproved = false;
+        profile.UpdatedAt = now;
+
+        await _auditLogService.LogAsync(
+            AuditAction.ConsentCheckFlagged, nameof(Domain.Entities.Profile), userId,
+            $"Consent check flagged: {notes}",
+            reviewerId);
+
+        await _profileRepository.UpdateAsync(profile, ct);
+        _logger.LogInformation("Consent check flagged for user {UserId} by {ReviewerId}", userId, reviewerId);
+
+        return new OnboardingResult(true);
+    }
+
+    public async Task<OnboardingResult> RejectSignupAsync(
+        Guid userId, Guid reviewerId, string? reason, CancellationToken ct = default)
+    {
+        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        if (profile is null)
+            return new OnboardingResult(false, "NotFound");
+
+        if (profile.RejectedAt is not null)
+            return new OnboardingResult(false, "AlreadyRejected");
+
+        var now = _clock.GetCurrentInstant();
+
+        profile.RejectionReason = reason;
+        profile.RejectedAt = now;
+        profile.RejectedByUserId = reviewerId;
+        profile.IsApproved = false;
+        profile.UpdatedAt = now;
+
+        await _auditLogService.LogAsync(
+            AuditAction.SignupRejected, nameof(Domain.Entities.Profile), userId,
+            $"Signup rejected{(string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}")}",
+            reviewerId);
+
+        await _profileRepository.UpdateAsync(profile, ct);
+        _logger.LogInformation("Signup rejected for user {UserId} by {ReviewerId}", userId, reviewerId);
+
+        return new OnboardingResult(true);
+    }
+
+    public async Task<OnboardingResult> ApproveVolunteerAsync(
+        Guid userId, Guid adminId, CancellationToken ct = default)
+    {
+        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        if (profile is null)
+            return new OnboardingResult(false, "NotFound");
+
+        var now = _clock.GetCurrentInstant();
+
+        profile.IsApproved = true;
+        profile.UpdatedAt = now;
+
+        await _auditLogService.LogAsync(
+            AuditAction.VolunteerApproved, nameof(User), userId,
+            "Approved as volunteer",
+            adminId);
+
+        await _profileRepository.UpdateAsync(profile, ct);
+        _logger.LogInformation("Admin {AdminId} approved human {HumanId}", adminId, userId);
+
+        return new OnboardingResult(true);
+    }
+
+    public async Task<OnboardingResult> SuspendAsync(
+        Guid userId, Guid adminId, string? notes, CancellationToken ct = default)
+    {
+        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        if (profile is null)
+            return new OnboardingResult(false, "NotFound");
+
+        profile.IsSuspended = true;
+        profile.AdminNotes = notes;
+        profile.UpdatedAt = _clock.GetCurrentInstant();
+
+        await _auditLogService.LogAsync(
+            AuditAction.MemberSuspended, nameof(User), userId,
+            $"Suspended{(string.IsNullOrWhiteSpace(notes) ? "" : $": {notes}")}",
+            adminId);
+
+        await _profileRepository.UpdateAsync(profile, ct);
+        _logger.LogInformation("Admin {AdminId} suspended human {HumanId}", adminId, userId);
+
+        return new OnboardingResult(true);
+    }
+
+    public async Task<OnboardingResult> UnsuspendAsync(
+        Guid userId, Guid adminId, CancellationToken ct = default)
+    {
+        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        if (profile is null)
+            return new OnboardingResult(false, "NotFound");
+
+        profile.IsSuspended = false;
+        profile.UpdatedAt = _clock.GetCurrentInstant();
+
+        await _auditLogService.LogAsync(
+            AuditAction.MemberUnsuspended, nameof(User), userId,
+            "Unsuspended",
+            adminId);
+
+        await _profileRepository.UpdateAsync(profile, ct);
+        _logger.LogInformation("Admin {AdminId} unsuspended human {HumanId}", adminId, userId);
+
+        return new OnboardingResult(true);
+    }
+
+    public async Task<bool> SetConsentCheckPendingAsync(Guid userId, CancellationToken ct = default)
+    {
+        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        if (profile is null)
+            return false;
+
+        profile.ConsentCheckStatus = ConsentCheckStatus.Pending;
+        profile.UpdatedAt = _clock.GetCurrentInstant();
+        await _profileRepository.UpdateAsync(profile, ct);
+
+        _logger.LogInformation(
+            "User {UserId} has all consents signed, consent check set to Pending", userId);
+
+        return true;
     }
 
     // ==========================================================================

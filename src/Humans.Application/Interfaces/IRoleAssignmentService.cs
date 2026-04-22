@@ -73,4 +73,13 @@ public interface IRoleAssignmentService
     /// Used during account deletion.
     /// </summary>
     Task<int> RevokeAllActiveAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the user ids of every human with an active assignment for the
+    /// given role. Read-only. Used by cross-section composers that need to
+    /// enumerate Board members, Coordinators, etc. without touching the
+    /// <c>role_assignments</c> table directly.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetActiveUserIdsInRoleAsync(
+        string roleName, CancellationToken ct = default);
 }

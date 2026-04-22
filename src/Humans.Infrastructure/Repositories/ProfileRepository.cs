@@ -118,6 +118,33 @@ public sealed class ProfileRepository : IProfileRepository
         return (colaboradorCount, asociadoCount);
     }
 
+    public async Task<IReadOnlyList<Profile>> GetReviewableAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Profiles
+            .AsNoTracking()
+            .Where(p => !p.IsApproved && p.RejectedAt == null)
+            .OrderBy(p => p.CreatedAt)
+            .ToListAsync(ct);
+    }
+
+    public async Task<int> GetReviewableCountAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Profiles
+            .CountAsync(p => !p.IsApproved && p.RejectedAt == null, ct);
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetApprovedUserIdsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Profiles
+            .AsNoTracking()
+            .Where(p => p.IsApproved && !p.IsSuspended)
+            .Select(p => p.UserId)
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

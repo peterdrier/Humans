@@ -8,6 +8,7 @@ using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using GovernanceApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
+using OnboardingOrchestratorService = Humans.Application.Services.Onboarding.OnboardingService;
 
 namespace Humans.Web.Extensions.Sections;
 
@@ -29,7 +30,14 @@ internal static class GovernanceSectionExtensions
         services.AddScoped<IApplicationDecisionService>(sp => sp.GetRequiredService<GovernanceApplicationDecisionService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<GovernanceApplicationDecisionService>());
 
-        services.AddScoped<IOnboardingService, OnboardingService>();
+        // Onboarding — orchestrator only (owns no tables). Lives in Humans.Application
+        // per design-rules §2b; routes all reads/writes through owning-section
+        // service interfaces (IProfileService, IUserService, IApplicationDecisionService,
+        // ISystemTeamSync, etc.). Takes no DbContext dependency.
+        services.AddScoped<OnboardingOrchestratorService>();
+        services.AddScoped<IOnboardingService>(sp => sp.GetRequiredService<OnboardingOrchestratorService>());
+        // Narrow interface that breaks the DI cycle with ProfileService / ConsentService.
+        services.AddScoped<IOnboardingEligibilityQuery>(sp => sp.GetRequiredService<OnboardingOrchestratorService>());
 
         services.AddScoped<TermRenewalReminderJob>();
 
