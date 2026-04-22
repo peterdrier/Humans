@@ -1,10 +1,13 @@
 using AwesomeAssertions;
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
+using Humans.Application.Services.Tickets;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
@@ -13,19 +16,72 @@ using Xunit;
 
 namespace Humans.Application.Tests.Services;
 
-public class TicketQueryServiceTests : IDisposable
+public sealed class TicketQueryServiceTests : IDisposable
 {
+    private readonly DbContextOptions<HumansDbContext> _options;
     private readonly HumansDbContext _dbContext;
+    private readonly TicketRepository _repo;
+    private readonly IBudgetService _budgetService = Substitute.For<IBudgetService>();
+    private readonly ICampaignService _campaignService = Substitute.For<ICampaignService>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
+    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
+    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly IShiftManagementService _shiftManagementService = Substitute.For<IShiftManagementService>();
     private readonly TicketQueryService _service;
 
     public TicketQueryServiceTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        _options = new DbContextOptionsBuilder<HumansDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        _dbContext = new HumansDbContext(options);
-        _service = new TicketQueryService(_dbContext, new MemoryCache(new MemoryCacheOptions()), Substitute.For<IBudgetService>(), SystemClock.Instance);
+        _dbContext = new HumansDbContext(_options);
+        _repo = new TicketRepository(new TestDbContextFactory(_options));
+
+        _service = new TicketQueryService(
+            _repo,
+            new MemoryCache(new MemoryCacheOptions()),
+            _budgetService,
+            _campaignService,
+            _userService,
+            _userEmailService,
+            _profileService,
+            _teamService,
+            _shiftManagementService,
+            SystemClock.Instance);
+
+        // Defaults for the Volunteers team lookup — tests that care override them.
+        _teamService.GetActiveMemberUserIdsAsync(
+                SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<Guid>());
+
+        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<User>());
+
+        _userService.GetAllParticipationsForYearAsync(
+                Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new List<EventParticipation>());
+
+        _userService.GetByIdsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User>());
+
+        _profileService.GetByUserIdsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, Profile>());
+
+        _userEmailService.GetNotificationEmailsByUserIdsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string>());
+
+        _userEmailService.GetVerifiedEmailsForUserAsync(
+                Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<string>());
+
+        _teamService.GetActiveNonSystemTeamNamesByUserIdsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlyList<string>>());
     }
 
     public void Dispose()
@@ -268,25 +324,9 @@ public class TicketQueryServiceTests : IDisposable
     [Fact]
     public async Task GetWhoHasntBoughtAsync_ReturnsActiveHumansWithTicketStatus()
     {
-        var team = new Team
-        {
-            Id = SystemTeamIds.Volunteers,
-            Name = "Volunteers",
-            Description = "All active volunteers"
-        };
-        _dbContext.Set<Team>().Add(team);
-
         var userWithTicket = CreateUser("Has Ticket", "hasticket@example.com");
         var userWithout = CreateUser("No Ticket", "noticket@example.com");
 
-        await _dbContext.Users.AddRangeAsync(userWithTicket, userWithout);
-
-        await _dbContext.Set<TeamMember>().AddRangeAsync(
-            new TeamMember { Id = Guid.NewGuid(), TeamId = SystemTeamIds.Volunteers, UserId = userWithTicket.Id, Team = team },
-            new TeamMember { Id = Guid.NewGuid(), TeamId = SystemTeamIds.Volunteers, UserId = userWithout.Id, Team = team }
-        );
-
-        // Create a ticket order matched to userWithTicket
         var orderId = Guid.NewGuid();
         _dbContext.TicketOrders.Add(new TicketOrder
         {
@@ -300,10 +340,13 @@ public class TicketQueryServiceTests : IDisposable
             VendorEventId = "ev_test",
             PurchasedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
             SyncedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
-            MatchedUserId = userWithTicket.Id
+            MatchedUserId = userWithTicket.Id,
         });
 
         await _dbContext.SaveChangesAsync();
+
+        // Wire service dependencies — both users are Volunteers members with Profiles.
+        WireWhoHasntBoughtDependencies(userWithTicket, userWithout);
 
         var result = await _service.GetWhoHasntBoughtAsync(null, null, null, null, 1, 25);
 
@@ -315,21 +358,8 @@ public class TicketQueryServiceTests : IDisposable
     [Fact]
     public async Task GetWhoHasntBoughtAsync_FiltersByTicketStatus()
     {
-        var team = new Team
-        {
-            Id = SystemTeamIds.Volunteers,
-            Name = "Volunteers",
-            Description = "All active volunteers"
-        };
-        _dbContext.Set<Team>().Add(team);
-
         var userWithTicket = CreateUser("Has Ticket", "has@example.com");
         var userWithout = CreateUser("No Ticket", "no@example.com");
-        await _dbContext.Users.AddRangeAsync(userWithTicket, userWithout);
-        await _dbContext.Set<TeamMember>().AddRangeAsync(
-            new TeamMember { Id = Guid.NewGuid(), TeamId = SystemTeamIds.Volunteers, UserId = userWithTicket.Id, Team = team },
-            new TeamMember { Id = Guid.NewGuid(), TeamId = SystemTeamIds.Volunteers, UserId = userWithout.Id, Team = team }
-        );
 
         _dbContext.TicketOrders.Add(new TicketOrder
         {
@@ -343,10 +373,12 @@ public class TicketQueryServiceTests : IDisposable
             VendorEventId = "ev_test",
             PurchasedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
             SyncedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
-            MatchedUserId = userWithTicket.Id
+            MatchedUserId = userWithTicket.Id,
         });
 
         await _dbContext.SaveChangesAsync();
+
+        WireWhoHasntBoughtDependencies(userWithTicket, userWithout);
 
         var notBought = await _service.GetWhoHasntBoughtAsync(null, null, null, "not_bought", 1, 25);
         notBought.TotalCount.Should().Be(1);
@@ -433,6 +465,35 @@ public class TicketQueryServiceTests : IDisposable
     // Helpers
     // ====================================================================
 
+    private void WireWhoHasntBoughtDependencies(params User[] users)
+    {
+        var allUsers = users.ToList();
+        var userIds = users.Select(u => u.Id).ToList();
+
+        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
+            .Returns(allUsers);
+
+        _teamService.GetActiveMemberUserIdsAsync(
+                SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+            .Returns(userIds);
+
+        _profileService.GetByUserIdsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(users.Where(u => u.Profile is not null)
+                .ToDictionary(u => u.Id, u => u.Profile!));
+
+        _userEmailService.GetNotificationEmailsByUserIdsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(users.ToDictionary(u => u.Id, u => u.Email ?? string.Empty));
+
+        _teamService.GetActiveNonSystemTeamNamesByUserIdsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlyList<string>>());
+
+        _shiftManagementService.GetActiveAsync()
+            .Returns((EventSettings?)null);
+    }
+
     private static User CreateUser(string name, string email)
     {
         var userId = Guid.NewGuid();
@@ -448,7 +509,7 @@ public class TicketQueryServiceTests : IDisposable
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
-                MembershipTier = MembershipTier.Volunteer
+                MembershipTier = MembershipTier.Volunteer,
             }
         };
         user.UserEmails.Add(new UserEmail
@@ -458,7 +519,7 @@ public class TicketQueryServiceTests : IDisposable
             Email = email,
             IsOAuth = true,
             IsVerified = true,
-            IsNotificationTarget = true
+            IsNotificationTarget = true,
         });
         return user;
     }
@@ -504,7 +565,7 @@ public class TicketQueryServiceTests : IDisposable
             VendorEventId = "ev_test",
             PurchasedAt = purchasedAt,
             SyncedAt = purchasedAt,
-            Attendees = attendees
+            Attendees = attendees,
         };
     }
 }

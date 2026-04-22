@@ -36,6 +36,25 @@ public interface ICampaignRepository
     /// <summary>All campaigns ordered by CreatedAt descending, with codes and grants.</summary>
     Task<List<Campaign>> GetAllAsync(CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns the summary header (id/title/creation order) for every
+    /// Active or Completed campaign, ordered CreatedAt desc. Used together
+    /// with <see cref="GetCodeTrackingGrantRowsAsync"/> to build the Tickets
+    /// admin code-tracking dashboard (so campaigns with zero grants still
+    /// surface a row).
+    /// </summary>
+    Task<IReadOnlyList<CampaignCodeTrackingSummaryRow>> GetCodeTrackingSummariesAsync(
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns one row per grant (campaign id, code string, redemption,
+    /// email status, user id) for every grant on an Active or Completed
+    /// campaign. Recipient display names are resolved by the caller via
+    /// <c>IUserService.GetByIdsAsync</c>; grant rows carry only the user id.
+    /// </summary>
+    Task<IReadOnlyList<CampaignCodeTrackingGrantRow>> GetCodeTrackingGrantRowsAsync(
+        CancellationToken ct = default);
+
     /// <summary>Stage a new campaign in the change tracker.</summary>
     void AddCampaign(Campaign campaign);
 
@@ -148,6 +167,30 @@ public record GrantWithSendContext(
     string CampaignEmailSubject,
     string CampaignEmailBodyTemplate,
     string? CampaignReplyToAddress);
+
+/// <summary>
+/// Campaign header used by <see cref="ICampaignRepository.GetCodeTrackingSummariesAsync"/>.
+/// Grant totals are aggregated in the service from
+/// <see cref="ICampaignRepository.GetCodeTrackingGrantRowsAsync"/>.
+/// </summary>
+public record CampaignCodeTrackingSummaryRow(
+    Guid CampaignId,
+    string CampaignTitle,
+    Instant CampaignCreatedAt);
+
+/// <summary>
+/// One grant per row, used by <see cref="ICampaignRepository.GetCodeTrackingGrantRowsAsync"/>.
+/// The owning service stitches recipient display names via <c>IUserService</c>
+/// so no cross-domain navigation is read at the repository layer.
+/// </summary>
+public record CampaignCodeTrackingGrantRow(
+    Guid CampaignId,
+    string CampaignTitle,
+    Guid GrantId,
+    Guid UserId,
+    string? Code,
+    Instant? RedeemedAt,
+    Humans.Domain.Enums.EmailOutboxStatus? LatestEmailStatus);
 
 /// <summary>Flat row for the GDPR grant export.</summary>
 public record GrantExportRow(

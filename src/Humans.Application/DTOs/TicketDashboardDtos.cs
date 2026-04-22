@@ -214,6 +214,71 @@ public class AttendeeExportRow
     public string VendorOrderId { get; init; } = string.Empty;
 }
 
+/// <summary>
+/// Server-side aggregate numerics for the ticket dashboard (tickets sold,
+/// gross revenue / fees across paid orders, unmatched order count).
+/// </summary>
+public class TicketDashboardTotals
+{
+    public int TicketsSold { get; init; }
+    public decimal GrossRevenue { get; init; }
+    public decimal TotalStripeFees { get; init; }
+    public decimal TotalApplicationFees { get; init; }
+    public int UnmatchedOrderCount { get; init; }
+}
+
+/// <summary>
+/// A paid order's payment-method and fee slice, used for in-memory grouping
+/// by payment method on the ticket dashboard.
+/// </summary>
+public class PaidOrderPaymentMethodRow
+{
+    public string? PaymentMethod { get; init; }
+    public string? PaymentMethodDetail { get; init; }
+    public decimal TotalAmount { get; init; }
+    public decimal? StripeFee { get; init; }
+    public decimal? ApplicationFee { get; init; }
+}
+
+/// <summary>
+/// Narrow per-order projection used by the dashboard's daily-sales chart:
+/// purchase instant and the count of attendees on the order.
+/// </summary>
+public class OrderDateAndCount
+{
+    public Instant PurchasedAt { get; init; }
+    public int AttendeeCount { get; init; }
+}
+
+/// <summary>
+/// Narrow per-paid-order projection used for weekly/quarterly sales
+/// aggregation. <see cref="VipDonations"/> is the sum of
+/// <c>(Price - VipThreshold)</c> across Valid/CheckedIn VIP attendees priced
+/// above the threshold.
+/// </summary>
+public class PaidOrderSalesRow
+{
+    public Instant PurchasedAt { get; init; }
+    public decimal TotalAmount { get; init; }
+    public decimal DonationAmount { get; init; }
+    public decimal VatAmount { get; init; }
+    public int AttendeeCount { get; init; }
+    public decimal VipDonations { get; init; }
+}
+
+/// <summary>
+/// Narrow order projection used to correlate campaign-code redemptions to
+/// their redeeming order buyer. One row per order that carries a discount
+/// code.
+/// </summary>
+public class DiscountCodeOrderRow
+{
+    public string DiscountCode { get; init; } = string.Empty;
+    public string BuyerName { get; init; } = string.Empty;
+    public string BuyerEmail { get; init; } = string.Empty;
+    public string VendorOrderId { get; init; } = string.Empty;
+}
+
 /// <summary>CSV export data for orders.</summary>
 public class OrderExportRow
 {

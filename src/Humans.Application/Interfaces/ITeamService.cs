@@ -531,6 +531,26 @@ public interface ITeamService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns the user IDs of every active (<see cref="TeamMember.LeftAt"/>
+    /// is null) member of the given team. Used by cross-section callers
+    /// (Tickets dashboard, coverage reporting) that need a set of member ids
+    /// without loading full <see cref="TeamMember"/> entities.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetActiveMemberUserIdsAsync(
+        Guid teamId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the active non-system team names for each of the given user ids.
+    /// Entries are absent for users with no active memberships.
+    /// Used by the Tickets admin "who hasn't bought" view and similar
+    /// cross-section admin lists.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> GetActiveNonSystemTeamNamesByUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Adds a team member with an explicit <paramref name="role"/> and <paramref name="joinedAt"/>
     /// timestamp, without emitting audit entries, outbox events, or user-facing emails. This is
     /// a narrow seed/migration-only path; production membership changes must go through

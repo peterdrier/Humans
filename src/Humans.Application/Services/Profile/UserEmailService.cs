@@ -443,6 +443,28 @@ public sealed class UserEmailService : IUserEmailService
         string email, CancellationToken cancellationToken = default) =>
         _repository.GetUserIdByVerifiedEmailAsync(email, cancellationToken);
 
+    public async Task<IReadOnlyList<string>> GetVerifiedEmailsForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        var emails = await _repository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
+        return emails
+            .Where(e => e.IsVerified)
+            .Select(e => e.Email)
+            .ToList();
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, string>> GetNotificationEmailsByUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<Guid, string>();
+
+        var all = await _repository.GetAllNotificationTargetEmailsAsync(cancellationToken);
+        return all
+            .Where(kv => userIds.Contains(kv.Key))
+            .ToDictionary(kv => kv.Key, kv => kv.Value);
+    }
+
     private static List<ContactFieldVisibility> GetAllowedVisibilities(ContactFieldVisibility accessLevel) =>
         accessLevel switch
         {

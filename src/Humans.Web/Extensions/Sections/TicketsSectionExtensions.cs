@@ -5,6 +5,7 @@ using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using TicketsTicketSyncService = Humans.Application.Services.Tickets.TicketSyncService;
+using TicketsTicketQueryService = Humans.Application.Services.Tickets.TicketQueryService;
 
 namespace Humans.Web.Extensions.Sections;
 
@@ -19,9 +20,14 @@ internal static class TicketsSectionExtensions
         services.AddSingleton<ITicketRepository, TicketRepository>();
         services.AddScoped<ITicketSyncService, TicketsTicketSyncService>();
 
-        services.AddScoped<TicketQueryService>();
-        services.AddScoped<ITicketQueryService>(sp => sp.GetRequiredService<TicketQueryService>());
-        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<TicketQueryService>());
+        // Tickets repository — Singleton, IDbContextFactory-backed per §15b.
+        services.AddSingleton<ITicketRepository, TicketRepository>();
+
+        // Application-layer TicketQueryService (no caching decorator yet —
+        // reads are not hot-path enough to justify one at our scale).
+        services.AddScoped<TicketsTicketQueryService>();
+        services.AddScoped<ITicketQueryService>(sp => sp.GetRequiredService<TicketsTicketQueryService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<TicketsTicketQueryService>());
 
         services.AddScoped<TicketSyncJob>();
         services.AddScoped<TicketingBudgetSyncJob>();

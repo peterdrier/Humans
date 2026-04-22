@@ -1405,6 +1405,40 @@ public class TeamService : ITeamService, IUserDataContributor
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Guid>> GetActiveMemberUserIdsAsync(
+        Guid teamId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.TeamMembers
+            .AsNoTracking()
+            .Where(tm => tm.TeamId == teamId && tm.LeftAt == null)
+            .Select(tm => tm.UserId)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> GetActiveNonSystemTeamNamesByUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<Guid, IReadOnlyList<string>>();
+
+        var rows = await _dbContext.TeamMembers
+            .AsNoTracking()
+            .Where(tm => userIds.Contains(tm.UserId) && tm.LeftAt == null && !tm.Team.IsSystemTeam)
+            .Select(tm => new { tm.UserId, TeamName = tm.Team.Name })
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .GroupBy(r => r.UserId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<string>)g
+                    .Select(r => r.TeamName)
+                    .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+                    .ToList());
+    }
+
     // ==========================================================================
     // Team Role Definitions
     // ==========================================================================

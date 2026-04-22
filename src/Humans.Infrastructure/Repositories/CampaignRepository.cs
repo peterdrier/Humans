@@ -61,6 +61,37 @@ public sealed class CampaignRepository : ICampaignRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<CampaignCodeTrackingSummaryRow>> GetCodeTrackingSummariesAsync(
+        CancellationToken ct = default)
+    {
+        return await _dbContext.Campaigns
+            .AsNoTracking()
+            .Where(c => c.Status == CampaignStatus.Active || c.Status == CampaignStatus.Completed)
+            .OrderByDescending(c => c.CreatedAt)
+            .Select(c => new CampaignCodeTrackingSummaryRow(c.Id, c.Title, c.CreatedAt))
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<CampaignCodeTrackingGrantRow>> GetCodeTrackingGrantRowsAsync(
+        CancellationToken ct = default)
+    {
+        // Projected flat rows — no cross-domain .Include on CampaignGrant.User;
+        // recipient display names are resolved by the service via IUserService.
+        return await _dbContext.CampaignGrants
+            .AsNoTracking()
+            .Where(g => g.Campaign.Status == CampaignStatus.Active
+                || g.Campaign.Status == CampaignStatus.Completed)
+            .Select(g => new CampaignCodeTrackingGrantRow(
+                g.CampaignId,
+                g.Campaign.Title,
+                g.Id,
+                g.UserId,
+                g.Code != null ? g.Code.Code : null,
+                g.RedeemedAt,
+                g.LatestEmailStatus))
+            .ToListAsync(ct);
+    }
+
     public void AddCampaign(Campaign campaign) => _dbContext.Campaigns.Add(campaign);
 
     // ==========================================================================

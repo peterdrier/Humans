@@ -476,6 +476,55 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor
         return _repository.MarkGrantsRedeemedAsync(redemptions, ct);
     }
 
+    public async Task<CampaignCodeTrackingData> GetCodeTrackingAsync(CancellationToken ct = default)
+    {
+        // Campaigns-owned reads go through the repository; recipient display
+        // names are resolved via IUserService so no cross-domain navigation
+        // happens in this Application-layer service.
+        var summaryRows = await _repository.GetCodeTrackingSummariesAsync(ct);
+        var grantRowsRaw = await _repository.GetCodeTrackingGrantRowsAsync(ct);
+
+        var userIds = grantRowsRaw.Select(r => r.UserId).Distinct().ToList();
+        var users = userIds.Count > 0
+            ? await _userService.GetByIdsAsync(userIds, ct)
+            : new Dictionary<Guid, User>();
+
+        var grantRows = new List<CampaignCodeTrackingGrant>(grantRowsRaw.Count);
+        foreach (var row in grantRowsRaw)
+        {
+            var recipientName = users.TryGetValue(row.UserId, out var user)
+                ? user.DisplayName
+                : string.Empty;
+
+            grantRows.Add(new CampaignCodeTrackingGrant(
+                GrantId: row.GrantId,
+                CampaignId: row.CampaignId,
+                CampaignTitle: row.CampaignTitle,
+                UserId: row.UserId,
+                RecipientName: recipientName,
+                Code: row.Code,
+                RedeemedAt: row.RedeemedAt,
+                LatestEmailStatus: row.LatestEmailStatus?.ToString()));
+        }
+
+        var grantsByCampaign = grantRowsRaw
+            .GroupBy(r => r.CampaignId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var summaries = summaryRows
+            .Select(s =>
+            {
+                grantsByCampaign.TryGetValue(s.CampaignId, out var grants);
+                var total = grants?.Count ?? 0;
+                var redeemed = grants?.Count(g => g.RedeemedAt is not null) ?? 0;
+                return new CampaignCodeTrackingSummary(
+                    s.CampaignId, s.CampaignTitle, total, redeemed);
+            })
+            .ToList();
+
+        return new CampaignCodeTrackingData(summaries, grantRows);
+    }
+
     public async Task RetryAllFailedAsync(Guid campaignId, CancellationToken ct = default)
     {
         var failedGrants = await _repository.GetFailedGrantsForRetryAsync(campaignId, ct);
