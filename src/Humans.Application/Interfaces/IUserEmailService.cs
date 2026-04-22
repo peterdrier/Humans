@@ -151,4 +151,17 @@ public interface IUserEmailService
     Task<Dictionary<Guid, string>> GetNobodiesTeamEmailsByUserIdsAsync(
         IEnumerable<Guid> userIds,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Resolves the notification-target email for each requested user. The
+    /// result is <c>UserEmail.Email</c> where <c>IsNotificationTarget</c> is
+    /// true and the email is verified, falling back to <c>User.Email</c> when
+    /// no notification-target email exists. Users for whom no email can be
+    /// resolved are omitted from the result. Used by cross-section callers
+    /// (Campaigns, future mass-mail pipelines) so they never navigate
+    /// <c>User.UserEmails</c> directly.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, string>> GetNotificationTargetEmailsAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken cancellationToken = default);
 }

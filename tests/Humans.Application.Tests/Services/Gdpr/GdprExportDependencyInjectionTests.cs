@@ -8,9 +8,12 @@ using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using ApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
-using CampService = Humans.Application.Services.Camps.CampService;
+using BudgetService = Humans.Application.Services.Budget.BudgetService;
+using CampaignService = Humans.Application.Services.Campaigns.CampaignService;
 using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
 using UsersUserService = Humans.Application.Services.Users.UserService;
+using AuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
+using CampService = Humans.Application.Services.Camps.CampService;
 
 namespace Humans.Application.Tests.Services.Gdpr;
 

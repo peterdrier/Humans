@@ -13,7 +13,8 @@ using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using Humans.Infrastructure.Services.Profiles;
 using Humans.Web.Filters;
-using CampsCampService = Humans.Application.Services.Camps.CampService;
+using BudgetBudgetService = Humans.Application.Services.Budget.BudgetService;
+using CampaignsCampaignService = Humans.Application.Services.Campaigns.CampaignService;
 using GovernanceApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
 using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
 using ProfilesContactFieldService = Humans.Application.Services.Profile.ContactFieldService;
@@ -21,6 +22,9 @@ using ProfilesUserEmailService = Humans.Application.Services.Profile.UserEmailSe
 using ProfilesCommunicationPreferenceService = Humans.Application.Services.Profile.CommunicationPreferenceService;
 using ProfilesContactService = Humans.Application.Services.Profile.ContactService;
 using UsersUserService = Humans.Application.Services.Users.UserService;
+using CityPlanningCityPlanningService = Humans.Application.Services.CityPlanning.CityPlanningService;
+using AuditLogAuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
+using CampsCampService = Humans.Application.Services.Camps.CampService;
 
 namespace Humans.Web.Extensions;
 
@@ -113,17 +117,17 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ITeamPageService, TeamPageService>();
 
         // Camps section — §15 repository pattern (issue #542).
-        // No caching decorator: camps list is ~100 rows and the existing
-        // short-TTL IMemoryCache on "camps for year" / "camp settings" is a
-        // request-acceleration cache, not a canonical domain cache
-        // (design-rules §15f). IMemoryCache usage stays inside the service.
         services.AddSingleton<ICampRepository, CampRepository>();
         services.AddSingleton<ICampImageStorage, CampImageStorage>();
         services.AddScoped<CampsCampService>();
         services.AddScoped<ICampService>(sp => sp.GetRequiredService<CampsCampService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CampsCampService>());
 
-        services.AddScoped<ICityPlanningService, CityPlanningService>();
+        // City Planning section — repository + Application-layer service (§15 migration, PR #543).
+        // Small admin-facing section, no caching decorator warranted. Cross-section reads
+        // (camps, teams, profiles, users) route through the owning service interfaces.
+        services.AddSingleton<ICityPlanningRepository, CityPlanningRepository>();
+        services.AddScoped<ICityPlanningService, CityPlanningCityPlanningService>();
         services.AddScoped<ICampContactService, CampContactService>();
         // Profile section — repository/store/decorator pattern (§15 Step 0, PR #504)
         // Repositories use IDbContextFactory and are registered as Singleton so the
@@ -138,9 +142,12 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ICommunicationPreferenceService, ProfilesCommunicationPreferenceService>();
         services.AddScoped<IUnsubscribeService, UnsubscribeService>();
 
-        services.AddScoped<CampaignService>();
-        services.AddScoped<ICampaignService>(sp => sp.GetRequiredService<CampaignService>());
-        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CampaignService>());
+        // Campaigns section — §15 repository pattern (issue #546).
+        // No caching decorator: campaigns are admin-only, infrequent mutations.
+        services.AddScoped<ICampaignRepository, CampaignRepository>();
+        services.AddScoped<CampaignsCampaignService>();
+        services.AddScoped<ICampaignService>(sp => sp.GetRequiredService<CampaignsCampaignService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CampaignsCampaignService>());
 
         services.AddScoped<IContactFieldService, ProfilesContactFieldService>();
         services.AddScoped<IUserEmailService, ProfilesUserEmailService>();
@@ -200,9 +207,16 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IRoleAssignmentService>(sp => sp.GetRequiredService<RoleAssignmentService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<RoleAssignmentService>());
 
-        services.AddScoped<AuditLogService>();
-        services.AddScoped<IAuditLogService>(sp => sp.GetRequiredService<AuditLogService>());
-        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<AuditLogService>());
+        // Audit Log section — §15 repository pattern (issue #552).
+        // Append-only per design-rules §12. No decorator — writes are scattered
+        // across every section and reads are admin-only, so a cache is not
+        // warranted (same rationale as Governance/User/Budget/City Planning).
+        // IAuditLogRepository is Singleton (IDbContextFactory-based) so the
+        // service can inject it directly.
+        services.AddSingleton<IAuditLogRepository, AuditLogRepository>();
+        services.AddScoped<AuditLogAuditLogService>();
+        services.AddScoped<IAuditLogService>(sp => sp.GetRequiredService<AuditLogAuditLogService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<AuditLogAuditLogService>());
 
         services.AddScoped<AccountMergeService>();
         services.AddScoped<IAccountMergeService>(sp => sp.GetRequiredService<AccountMergeService>());
@@ -217,9 +231,15 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IFeedbackService>(sp => sp.GetRequiredService<FeedbackService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<FeedbackService>());
 
-        services.AddScoped<BudgetService>();
-        services.AddScoped<IBudgetService>(sp => sp.GetRequiredService<BudgetService>());
-        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<BudgetService>());
+        // Budget section — §15 repository pattern (issue #544).
+        // No caching decorator: Budget pages are admin-only and low-traffic.
+        // BudgetRepository uses scoped HumansDbContext (like ApplicationRepository)
+        // since the service stages multi-entity writes (year + groups + categories +
+        // audit log) and commits them through a single SaveChanges for atomicity.
+        services.AddScoped<IBudgetRepository, BudgetRepository>();
+        services.AddScoped<BudgetBudgetService>();
+        services.AddScoped<IBudgetService>(sp => sp.GetRequiredService<BudgetBudgetService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<BudgetBudgetService>());
 
         services.AddScoped<ITicketingBudgetService, TicketingBudgetService>();
 

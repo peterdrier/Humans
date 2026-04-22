@@ -30,9 +30,11 @@ public class CampaignGrantConfiguration : IEntityTypeConfiguration<CampaignGrant
             .HasForeignKey<CampaignGrant>(g => g.CampaignCodeId)
             .OnDelete(DeleteBehavior.Restrict);
 
+#pragma warning disable CS0618 // Obsolete cross-domain nav kept so EF FK constraint stays modelled.
         builder.HasOne(g => g.User)
             .WithMany()
             .HasForeignKey(g => g.UserId)
             .OnDelete(DeleteBehavior.Restrict);
+#pragma warning restore CS0618
     }
 }

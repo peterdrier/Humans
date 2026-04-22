@@ -230,6 +230,58 @@ public class TeamService : ITeamService, IUserDataContributor
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<TeamOptionDto>> GetBudgetableTeamsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Teams
+            .AsNoTracking()
+            .Where(t => t.HasBudget && t.IsActive)
+            .OrderBy(t => t.Name)
+            .Select(t => new TeamOptionDto(t.Id, t.Name))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        // Teams where user is direct coordinator (departments only — sub-team
+        // managers don't get budget access).
+        var directTeamIds = await _dbContext.TeamMembers
+            .AsNoTracking()
+            .Where(tm => tm.UserId == userId && tm.LeftAt == null && tm.Role == TeamMemberRole.Coordinator
+                         && tm.Team.ParentTeamId == null)
+            .Select(tm => tm.TeamId)
+            .ToListAsync(cancellationToken);
+
+        // Teams where user has a management role assignment (departments only).
+        var mgmtTeamIds = await _dbContext.Set<TeamRoleAssignment>()
+            .AsNoTracking()
+            .Where(tra =>
+                tra.TeamMember.UserId == userId &&
+                tra.TeamMember.LeftAt == null &&
+                tra.TeamRoleDefinition.IsManagement &&
+                tra.TeamRoleDefinition.Team.ParentTeamId == null)
+            .Select(tra => tra.TeamMember.TeamId)
+            .ToListAsync(cancellationToken);
+
+        var teamIds = directTeamIds.Concat(mgmtTeamIds).ToHashSet();
+
+        // Include child teams (department coordinators manage child team budgets).
+        if (teamIds.Count > 0)
+        {
+            var childTeamIds = await _dbContext.Teams
+                .AsNoTracking()
+                .Where(t => t.ParentTeamId != null && teamIds.Contains(t.ParentTeamId.Value))
+                .Select(t => t.Id)
+                .ToListAsync(cancellationToken);
+
+            foreach (var childId in childTeamIds)
+                teamIds.Add(childId);
+        }
+
+        return teamIds;
+    }
+
     public async Task<TeamDirectoryResult> GetTeamDirectoryAsync(
         Guid? userId,
         CancellationToken cancellationToken = default)

@@ -335,6 +335,11 @@ public class TicketQueryService : ITicketQueryService, IUserDataContributor
 
     public async Task<CodeTrackingData> GetCodeTrackingDataAsync(string? search)
     {
+        // Cross-domain CampaignGrant.User nav is tagged obsolete (Campaigns migration #546);
+        // TicketQueryService will move to Application + route through IUserService in its
+        // own migration (issue #545 follow-up). Until then, the Include is kept so this
+        // page still renders — wrapped in the CS0618 suppression block at the Include sites.
+#pragma warning disable CS0618
         var campaigns = await _dbContext.Set<Campaign>()
             .Where(c => c.Status == CampaignStatus.Active || c.Status == CampaignStatus.Completed)
             .Include(c => c.Grants).ThenInclude(g => g.Code)
@@ -342,6 +347,7 @@ public class TicketQueryService : ITicketQueryService, IUserDataContributor
             .OrderByDescending(c => c.CreatedAt)
             .AsSplitQuery()
             .ToListAsync();
+#pragma warning restore CS0618
 
         var campaignSummaries = campaigns.Select(c =>
         {
@@ -361,9 +367,11 @@ public class TicketQueryService : ITicketQueryService, IUserDataContributor
         var allGrants = campaigns.SelectMany(c => c.Grants).AsEnumerable();
         if (!string.IsNullOrWhiteSpace(search) && search.Trim().Length >= 1)
         {
+#pragma warning disable CS0618 // CampaignGrant.User obsolete (Tickets migration pending)
             allGrants = allGrants.Where(g =>
                 g.Code?.Code.Contains(search, StringComparison.OrdinalIgnoreCase) == true ||
                 g.User.DisplayName.Contains(search, StringComparison.OrdinalIgnoreCase));
+#pragma warning restore CS0618
         }
 
         // Load orders with discount codes to correlate redemptions
@@ -376,6 +384,7 @@ public class TicketQueryService : ITicketQueryService, IUserDataContributor
             .GroupBy(o => o.DiscountCode!, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
+#pragma warning disable CS0618 // CampaignGrant.User obsolete (Tickets migration pending)
         var codeRows = allGrants.Select(g =>
         {
             var code = g.Code?.Code;
@@ -393,6 +402,7 @@ public class TicketQueryService : ITicketQueryService, IUserDataContributor
                 RedeemedOrderVendorId = matchedOrder?.VendorOrderId,
             };
         }).ToList();
+#pragma warning restore CS0618
 
         var totalSent = campaignSummaries.Sum(c => c.TotalGrants);
         var totalRedeemed = campaignSummaries.Sum(c => c.Redeemed);

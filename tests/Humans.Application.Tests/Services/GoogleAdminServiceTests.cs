@@ -148,7 +148,93 @@ public class GoogleAdminServiceTests : IDisposable
             "test", "Test", "User", _actorUserId);
 
         result.Success.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("already exists");
+        result.ErrorMessage.Should().Contain("already exists in Google Workspace");
+    }
+
+    [Fact]
+    public async Task ProvisionStandaloneAccountAsync_RejectsWhenPrefixInUseByUserEmail()
+    {
+        var ownerId = Guid.NewGuid();
+        _dbContext.Users.Add(new User { Id = ownerId, Email = "x@example.com", DisplayName = "X" });
+        _dbContext.UserEmails.Add(new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = ownerId,
+            Email = "test@nobodies.team",
+            IsVerified = true,
+        });
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.ProvisionStandaloneAccountAsync(
+            "test", "Test", "User", _actorUserId);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("already in use by another human");
+
+        // No Workspace calls, no audit write
+        await _workspaceUserService.DidNotReceive().GetAccountAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _workspaceUserService.DidNotReceive().ProvisionAccountAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _auditLogService.DidNotReceive().LogAsync(
+            Arg.Any<Domain.Enums.AuditAction>(),
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [Fact]
+    public async Task ProvisionStandaloneAccountAsync_RejectsWhenPrefixInUseByGoogleEmail()
+    {
+        var ownerId = Guid.NewGuid();
+        _dbContext.Users.Add(new User
+        {
+            Id = ownerId,
+            Email = "x@example.com",
+            DisplayName = "X",
+            GoogleEmail = "test@nobodies.team",
+        });
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.ProvisionStandaloneAccountAsync(
+            "test", "Test", "User", _actorUserId);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("already in use by another human");
+
+        await _workspaceUserService.DidNotReceive().GetAccountAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _workspaceUserService.DidNotReceive().ProvisionAccountAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProvisionStandaloneAccountAsync_RejectsWhenPrefixCollidesWithTeamGoogleGroup()
+    {
+        _dbContext.Teams.Add(new Team
+        {
+            Id = Guid.NewGuid(),
+            Name = "Communications",
+            Slug = "communications",
+            IsActive = true,
+            GoogleGroupPrefix = "comms",
+        });
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.ProvisionStandaloneAccountAsync(
+            "comms", "Any", "Name", _actorUserId);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Google Group");
+        result.ErrorMessage.Should().Contain("Communications");
+
+        await _workspaceUserService.DidNotReceive().GetAccountAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _workspaceUserService.DidNotReceive().ProvisionAccountAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     // --- SuspendAccountAsync ---

@@ -776,5 +776,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<IReadOnlyList<string>> GetActiveTeamNamesForUserAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task EnqueueGoogleResyncForUserTeamsAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<TeamOptionDto>> GetBudgetableTeamsAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 }

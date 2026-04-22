@@ -1,13 +1,15 @@
 using AwesomeAssertions;
+using Humans.Application.Tests.Infrastructure;
+using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using Humans.Infrastructure.Data;
+using Humans.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
 using Xunit;
+using AuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
 
 namespace Humans.Application.Tests.Services;
 
@@ -15,6 +17,7 @@ public class AuditLogServiceTests : IDisposable
 {
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock;
+    private readonly AuditLogRepository _repo;
     private readonly AuditLogService _service;
 
     public AuditLogServiceTests()
@@ -24,9 +27,9 @@ public class AuditLogServiceTests : IDisposable
             .Options;
 
         _dbContext = new HumansDbContext(options);
-        var factory = new SharedOptionsDbContextFactory(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
-        _service = new AuditLogService(factory, _clock, NullLogger<AuditLogService>.Instance);
+        _repo = new AuditLogRepository(new TestDbContextFactory(options));
+        _service = new AuditLogService(_repo, _clock, NullLogger<AuditLogService>.Instance);
     }
 
     public void Dispose()
@@ -44,10 +47,14 @@ public class AuditLogServiceTests : IDisposable
             AuditAction.VolunteerApproved, nameof(User), entityId,
             "Auto-approved", "SystemTeamSyncJob");
 
-        var entry = _dbContext.AuditLogEntries.Single();
+        // Repository auto-saves — entry should be visible immediately.
+        var entry = _dbContext.AuditLogEntries.AsNoTracking().Single();
         entry.Action.Should().Be(AuditAction.VolunteerApproved);
+        entry.EntityType.Should().Be("User");
         entry.EntityId.Should().Be(entityId);
+        entry.Description.Should().Be("SystemTeamSyncJob: Auto-approved");
         entry.ActorUserId.Should().BeNull();
+        entry.OccurredAt.Should().Be(_clock.GetCurrentInstant());
     }
 
     [Fact]
@@ -60,7 +67,7 @@ public class AuditLogServiceTests : IDisposable
             AuditAction.MemberSuspended, nameof(User), entityId,
             "Suspended for inactivity", actorId);
 
-        var entry = _dbContext.AuditLogEntries.Single();
+        var entry = _dbContext.AuditLogEntries.AsNoTracking().Single();
         entry.ActorUserId.Should().Be(actorId);
         entry.Action.Should().Be(AuditAction.MemberSuspended);
         entry.EntityType.Should().Be("User");
@@ -70,7 +77,7 @@ public class AuditLogServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task LogAsync_PersistsWithoutCallerSave()
+    public async Task LogAsync_PersistsImmediatelyWithoutCallerSaveChanges()
     {
         var entityId = Guid.NewGuid();
 
@@ -78,8 +85,10 @@ public class AuditLogServiceTests : IDisposable
             AuditAction.RoleAssigned, nameof(User), entityId,
             "Assigned Board role", "TestJob");
 
-        // No SaveChangesAsync on the test's context — service persisted on its own.
-        _dbContext.AuditLogEntries.Count().Should().Be(1);
+        // Issue #552: the new Application-layer service persists each entry
+        // immediately through the repository. The caller no longer needs to
+        // call SaveChanges on a shared DbContext.
+        _dbContext.AuditLogEntries.AsNoTracking().Count().Should().Be(1);
     }
 
     [Fact]
@@ -100,7 +109,7 @@ public class AuditLogServiceTests : IDisposable
             relatedEntityId: relatedId,
             relatedEntityType: "User");
 
-        var entry = _dbContext.AuditLogEntries.Single();
+        var entry = _dbContext.AuditLogEntries.AsNoTracking().Single();
         entry.ResourceId.Should().Be(resourceId);
         entry.Role.Should().Be("writer");
         entry.SyncSource.Should().Be(GoogleSyncSource.SystemTeamSync);
@@ -392,23 +401,5 @@ public class AuditLogServiceTests : IDisposable
         };
         _dbContext.AuditLogEntries.Add(entry);
         return entry;
-    }
-
-    /// <summary>
-    /// Minimal <see cref="IDbContextFactory{TContext}"/> that shares
-    /// <see cref="DbContextOptions"/> with the test's assertion context.
-    /// The in-memory provider is keyed by database name, so every produced
-    /// context reads and writes the same store.
-    /// </summary>
-    private sealed class SharedOptionsDbContextFactory : IDbContextFactory<HumansDbContext>
-    {
-        private readonly DbContextOptions<HumansDbContext> _options;
-
-        public SharedOptionsDbContextFactory(DbContextOptions<HumansDbContext> options)
-        {
-            _options = options;
-        }
-
-        public HumansDbContext CreateDbContext() => new(_options);
     }
 }

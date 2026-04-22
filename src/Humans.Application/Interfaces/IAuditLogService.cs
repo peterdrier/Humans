@@ -5,10 +5,13 @@ namespace Humans.Application.Interfaces;
 
 /// <summary>
 /// Service for recording audit log entries. Each <c>LogAsync</c> call persists
-/// its entry in its own unit of work and is best-effort: save failures are
-/// logged at error level and swallowed so audit problems never break the
-/// business operation that invoked them. Call audit <em>after</em> the
-/// business save so a business rollback never leaves a ghost audit row.
+/// its entry immediately (auto-saved by the Audit Log repository). The audit
+/// log table is append-only per design-rules §12 — only appends are exposed;
+/// there is no update or delete path. Persistence is best-effort per §7a:
+/// save failures are logged at error level and swallowed so audit problems
+/// never break the business operation that invoked them. Call audit
+/// <em>after</em> the business save so a business rollback never leaves a
+/// ghost audit row.
 /// </summary>
 public interface IAuditLogService
 {

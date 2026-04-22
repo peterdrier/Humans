@@ -67,6 +67,58 @@ public class EmailProvisioningService : IEmailProvisioningService
 
         try
         {
+            // Check DB first: reject if the address is already tied to another human in our system.
+            // Must run BEFORE the Workspace existence check so a stale/deleted Workspace account
+            // cannot silently "move" the identity off its current human.
+            //
+            // Filter UserId != userId inside the query (not after FirstOrDefault) so duplicate
+            // rows with mixed case or historical drift can't mask a real cross-user conflict.
+            var conflictingEmailUserId = await _dbContext.UserEmails
+                .Where(ue => string.Equals(ue.Email, fullEmail, StringComparison.OrdinalIgnoreCase)
+                    && ue.UserId != userId)
+                .Select(ue => (Guid?)ue.UserId)
+                .FirstOrDefaultAsync();
+            if (conflictingEmailUserId is not null)
+            {
+                _logger.LogWarning(
+                    "Provisioning rejected: {Email} is already linked to user {ConflictUserId} (requested for {UserId})",
+                    fullEmail, conflictingEmailUserId, userId);
+                return new EmailProvisioningResult(false, fullEmail,
+                    ErrorMessage: $"{fullEmail} is already in use by another human.");
+            }
+
+            var conflictingGoogleEmailUserId = await _dbContext.Users
+                .Where(u => u.GoogleEmail != null
+                    && string.Equals(u.GoogleEmail, fullEmail, StringComparison.OrdinalIgnoreCase)
+                    && u.Id != userId)
+                .Select(u => (Guid?)u.Id)
+                .FirstOrDefaultAsync();
+            if (conflictingGoogleEmailUserId is not null)
+            {
+                _logger.LogWarning(
+                    "Provisioning rejected: {Email} is already set as GoogleEmail for user {ConflictUserId} (requested for {UserId})",
+                    fullEmail, conflictingGoogleEmailUserId, userId);
+                return new EmailProvisioningResult(false, fullEmail,
+                    ErrorMessage: $"{fullEmail} is already in use by another human.");
+            }
+
+            // Reject if the prefix collides with a team's Google Group. Team groups
+            // live on the same domain (@nobodies.team), so a user account with the
+            // same address would cause mail-routing chaos and break group membership.
+            var conflictingTeamName = await _dbContext.Teams
+                .Where(t => t.GoogleGroupPrefix != null
+                    && string.Equals(t.GoogleGroupPrefix, sanitizedPrefix, StringComparison.OrdinalIgnoreCase))
+                .Select(t => t.Name)
+                .FirstOrDefaultAsync();
+            if (conflictingTeamName is not null)
+            {
+                _logger.LogWarning(
+                    "Provisioning rejected: {Email} is the Google Group address for team '{TeamName}' (requested for {UserId})",
+                    fullEmail, conflictingTeamName, userId);
+                return new EmailProvisioningResult(false, fullEmail,
+                    ErrorMessage: $"{fullEmail} is the Google Group address for team \"{conflictingTeamName}\" and cannot be used as a personal account.");
+            }
+
             // Check if account already exists in Google Workspace
             var existing = await _workspaceUserService.GetAccountAsync(fullEmail);
             if (existing is not null)

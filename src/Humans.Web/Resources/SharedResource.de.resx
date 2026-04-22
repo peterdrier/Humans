@@ -531,6 +531,10 @@
   <data name="Teams_NoOtherTeams" xml:space="preserve"><value>Keine weiteren Teams verf&#xFC;gbar.</value></data>
   <data name="Teams_System" xml:space="preserve"><value>System</value></data>
 
+  <!-- Vol/Teams landing: Browse Shifts CTA (#534) -->
+  <data name="VolTeams_BrowseShiftsBanner" xml:space="preserve"><value>Suchst du Schichten? Sieh dir hier alle an, oder w&#xE4;hle unten ein Team.</value></data>
+  <data name="VolTeams_BrowseShiftsButton" xml:space="preserve"><value>Schichten ansehen</value></data>
+
   <!-- Team Detail View -->
   <data name="TeamDetail_NoDescription" xml:space="preserve"><value>Keine Beschreibung vorhanden.</value></data>
   <data name="TeamDetail_SystemTeamInfo" xml:space="preserve"><value>Dies ist ein systemverwaltetes Team. Die Mitgliedschaft wird automatisch anhand von {0}-Kriterien synchronisiert.</value><comment>{0} = system team type</comment></data>
@@ -842,6 +846,13 @@
   <data name="AdminAddRole_NoInfoAdminDesc" xml:space="preserve"><value>Schichtanmeldungen genehmigen, medizinische Daten einsehen</value></data>
   <data name="AdminAddRole_NotesLabel" xml:space="preserve"><value>Notizen (optional)</value></data>
   <data name="AdminAddRole_NotesPlaceholder" xml:space="preserve"><value>Grund der Zuweisung</value></data>
+
+  <!-- ======================== -->
+  <!-- Google Accounts View     -->
+  <!-- ======================== -->
+  <data name="GoogleAccounts_Actions" xml:space="preserve"><value>Aktionen</value></data>
+  <data name="GoogleAccounts_ResetPassword" xml:space="preserve"><value>Passwort zur&#xFC;cksetzen</value></data>
+  <data name="GoogleAccounts_ResetPasswordConfirm" xml:space="preserve"><value>Passwort f&#xFC;r {0} zur&#xFC;cksetzen? Ein neues tempor&#xE4;res Passwort wird erzeugt und auf dem Bildschirm angezeigt. Der Human muss es bei der n&#xE4;chsten Anmeldung &#xE4;ndern.</value><comment>{0} = email</comment></data>
 
   <!-- ======================== -->
   <!-- Google Sync View         -->

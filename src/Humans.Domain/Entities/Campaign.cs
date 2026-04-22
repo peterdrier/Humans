@@ -15,8 +15,16 @@ public class Campaign
     public Instant CreatedAt { get; set; }
     public Guid CreatedByUserId { get; set; }
 
-    // Navigation
+    // Navigation.
+    /// <summary>
+    /// Cross-domain navigation to the creator user. Do not use — callers
+    /// resolve user display names via <see cref="Humans.Application.Interfaces.IUserService"/>
+    /// keyed off <see cref="CreatedByUserId"/>. Retained only so EF's configured
+    /// relationship keeps the FK constraint.
+    /// </summary>
+    [Obsolete("Cross-domain nav. Use CreatedByUserId + IUserService to resolve the user.")]
     public User CreatedByUser { get; set; } = null!;
+
     public ICollection<CampaignCode> Codes { get; } = new List<CampaignCode>();
     public ICollection<CampaignGrant> Grants { get; } = new List<CampaignGrant>();
 }

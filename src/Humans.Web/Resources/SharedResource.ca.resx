@@ -535,6 +535,10 @@
   <data name="Teams_NoOtherTeams" xml:space="preserve"><value>No hi ha altres equips disponibles.</value></data>
   <data name="Teams_System" xml:space="preserve"><value>Sistema</value></data>
 
+  <!-- Vol/Teams landing: Browse Shifts CTA (#534) -->
+  <data name="VolTeams_BrowseShiftsBanner" xml:space="preserve"><value>Busques torns? Mira'ls tots aqu&#xED;, o tria un equip a sota.</value></data>
+  <data name="VolTeams_BrowseShiftsButton" xml:space="preserve"><value>Veure torns</value></data>
+
   <!-- Team Detail View -->
   <data name="TeamDetail_NoDescription" xml:space="preserve"><value>Sense descripció.</value></data>
   <data name="TeamDetail_SystemTeamInfo" xml:space="preserve"><value>Aquest és un equip gestionat pel sistema. La pertinença es sincronitza automàticament segons els criteris de {0}.</value><comment>{0} = system team type</comment></data>
@@ -847,6 +851,13 @@
   <data name="AdminAddRole_NoInfoAdminDesc" xml:space="preserve"><value>Aprovar inscripcions en torns, veure dades mèdiques de voluntaris</value></data>
   <data name="AdminAddRole_NotesLabel" xml:space="preserve"><value>Notes (opcional)</value></data>
   <data name="AdminAddRole_NotesPlaceholder" xml:space="preserve"><value>Motiu de la assignació</value></data>
+
+  <!-- ======================== -->
+  <!-- Google Accounts View     -->
+  <!-- ======================== -->
+  <data name="GoogleAccounts_Actions" xml:space="preserve"><value>Accions</value></data>
+  <data name="GoogleAccounts_ResetPassword" xml:space="preserve"><value>Restableix contrasenya</value></data>
+  <data name="GoogleAccounts_ResetPasswordConfirm" xml:space="preserve"><value>Restablir la contrasenya de {0}? Es generar&#xE0; una nova contrasenya temporal i es mostrar&#xE0; a la pantalla. El human l'haur&#xE0; de canviar en el proper inici de sessi&#xF3;.</value><comment>{0} = email</comment></data>
 
   <!-- ======================== -->
   <!-- Google Sync View         -->

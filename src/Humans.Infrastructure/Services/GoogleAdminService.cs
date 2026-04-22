@@ -134,14 +134,58 @@ public class GoogleAdminService : IGoogleAdminService
         Guid actorUserId,
         CancellationToken ct = default)
     {
-        var fullEmail = $"{emailPrefix.Trim().ToLowerInvariant()}@{NobodiesTeamDomain}";
+        var normalizedPrefix = emailPrefix.Trim().ToLowerInvariant();
+        var fullEmail = $"{normalizedPrefix}@{NobodiesTeamDomain}";
+
+        // Check DB first: reject if the address is already tied to any human in our system.
+        // Must run BEFORE the Workspace existence check so a stale/deleted Workspace account
+        // cannot silently "move" the identity off its current human.
+        var emailInUse = await _dbContext.UserEmails
+            .AnyAsync(ue => string.Equals(ue.Email, fullEmail, StringComparison.OrdinalIgnoreCase), ct);
+        if (emailInUse)
+        {
+            _logger.LogWarning(
+                "Standalone provisioning rejected: {Email} is already linked to a human",
+                fullEmail);
+            return new WorkspaceAccountActionResult(false,
+                ErrorMessage: $"{fullEmail} is already in use by another human.");
+        }
+
+        var googleEmailInUse = await _dbContext.Users
+            .AnyAsync(u => u.GoogleEmail != null
+                && string.Equals(u.GoogleEmail, fullEmail, StringComparison.OrdinalIgnoreCase), ct);
+        if (googleEmailInUse)
+        {
+            _logger.LogWarning(
+                "Standalone provisioning rejected: {Email} is already set as GoogleEmail for a human",
+                fullEmail);
+            return new WorkspaceAccountActionResult(false,
+                ErrorMessage: $"{fullEmail} is already in use by another human.");
+        }
+
+        // Reject if the prefix collides with a team's Google Group. Team groups live on
+        // the same domain (@nobodies.team), so provisioning a user account with the same
+        // address would cause mail-routing chaos and break group membership.
+        var conflictingTeamName = await _dbContext.Teams
+            .Where(t => t.GoogleGroupPrefix != null
+                && string.Equals(t.GoogleGroupPrefix, normalizedPrefix, StringComparison.OrdinalIgnoreCase))
+            .Select(t => t.Name)
+            .FirstOrDefaultAsync(ct);
+        if (conflictingTeamName is not null)
+        {
+            _logger.LogWarning(
+                "Standalone provisioning rejected: {Email} is the Google Group address for team '{TeamName}'",
+                fullEmail, conflictingTeamName);
+            return new WorkspaceAccountActionResult(false,
+                ErrorMessage: $"{fullEmail} is the Google Group address for team \"{conflictingTeamName}\" and cannot be used as a personal account.");
+        }
 
         // Check if account already exists
         var existing = await _workspaceUserService.GetAccountAsync(fullEmail, ct);
         if (existing is not null)
         {
             return new WorkspaceAccountActionResult(false,
-                ErrorMessage: $"Account {fullEmail} already exists.");
+                ErrorMessage: $"Account {fullEmail} already exists in Google Workspace.");
         }
 
         try

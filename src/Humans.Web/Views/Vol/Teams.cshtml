@@ -7,6 +7,17 @@
 
 <vc:temp-data-alerts />
 
+<div class="alert alert-info d-flex flex-column flex-sm-row align-items-sm-center gap-2 mb-4" role="alert">
+    <div class="flex-grow-1">
+        <i class="fa-solid fa-circle-info me-1"></i>
+        @Localizer["VolTeams_BrowseShiftsBanner"]
+    </div>
+    <a asp-controller="Vol" asp-action="Shifts" class="btn btn-primary btn-sm flex-shrink-0">
+        <i class="fa-solid fa-list-check me-1"></i>
+        @Localizer["VolTeams_BrowseShiftsButton"]
+    </a>
+</div>
+
 @if (Model.Departments.Count == 0)
 {
     <div class="card">

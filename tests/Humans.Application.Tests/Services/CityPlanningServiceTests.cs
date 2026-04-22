@@ -1,16 +1,18 @@
 using AwesomeAssertions;
+using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
-using Xunit;
+using Humans.Application.Services.CityPlanning;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Xunit;
 
 namespace Humans.Application.Tests.Services;
 
@@ -21,6 +23,7 @@ public class CityPlanningServiceTests : IDisposable
     private readonly ICampService _campService;
     private readonly ITeamService _teamService;
     private readonly IProfileService _profileService;
+    private readonly IUserService _userService;
     private readonly CityPlanningService _sut;
     private readonly CityPlanningOptions _options = new() { CityPlanningTeamSlug = "city-planning" };
 
@@ -34,11 +37,18 @@ public class CityPlanningServiceTests : IDisposable
         _campService = Substitute.For<ICampService>();
         _teamService = Substitute.For<ITeamService>();
         _profileService = Substitute.For<IProfileService>();
-        _sut = new CityPlanningService(_dbContext, _clock, Options.Create(_options),
-            _campService, _teamService, _profileService);
+        _userService = Substitute.For<IUserService>();
+        var repo = new CityPlanningRepository(new TestDbContextFactory(dbOptions));
+        _sut = new CityPlanningService(
+            repo, _clock, Options.Create(_options),
+            _campService, _teamService, _profileService, _userService);
     }
 
-    public void Dispose() => _dbContext.Dispose();
+    public void Dispose()
+    {
+        _dbContext.Dispose();
+        GC.SuppressFinalize(this);
+    }
 
     // --- Helpers ---
 
@@ -75,8 +85,8 @@ public class CityPlanningServiceTests : IDisposable
 
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 500.0, userId);
 
-        var polygon = await _dbContext.CampPolygons.SingleAsync(p => p.CampSeasonId == campSeasonId);
-        var history = await _dbContext.CampPolygonHistories.SingleAsync(h => h.CampSeasonId == campSeasonId);
+        var polygon = await _dbContext.CampPolygons.AsNoTracking().SingleAsync(p => p.CampSeasonId == campSeasonId);
+        var history = await _dbContext.CampPolygonHistories.AsNoTracking().SingleAsync(h => h.CampSeasonId == campSeasonId);
 
         polygon.GeoJson.Should().Be(geoJson);
         polygon.AreaSqm.Should().Be(500.0);
@@ -95,9 +105,9 @@ public class CityPlanningServiceTests : IDisposable
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson1, 100.0, userId);
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson2, 200.0, userId);
 
-        var polygonCount = await _dbContext.CampPolygons.CountAsync(p => p.CampSeasonId == campSeasonId);
-        var historyCount = await _dbContext.CampPolygonHistories.CountAsync(h => h.CampSeasonId == campSeasonId);
-        var polygon = await _dbContext.CampPolygons.SingleAsync(p => p.CampSeasonId == campSeasonId);
+        var polygonCount = await _dbContext.CampPolygons.AsNoTracking().CountAsync(p => p.CampSeasonId == campSeasonId);
+        var historyCount = await _dbContext.CampPolygonHistories.AsNoTracking().CountAsync(h => h.CampSeasonId == campSeasonId);
+        var polygon = await _dbContext.CampPolygons.AsNoTracking().SingleAsync(p => p.CampSeasonId == campSeasonId);
 
         polygonCount.Should().Be(1);
         historyCount.Should().Be(2);
@@ -119,8 +129,8 @@ public class CityPlanningServiceTests : IDisposable
 
         await _sut.RestoreCampPolygonVersionAsync(campSeasonId, historyEntry.Id, userId);
 
-        var polygon = await _dbContext.CampPolygons.SingleAsync(p => p.CampSeasonId == campSeasonId);
-        var latestHistory = await _dbContext.CampPolygonHistories
+        var polygon = await _dbContext.CampPolygons.AsNoTracking().SingleAsync(p => p.CampSeasonId == campSeasonId);
+        var latestHistory = await _dbContext.CampPolygonHistories.AsNoTracking()
             .OrderByDescending(h => h.ModifiedAt).FirstAsync(h => h.CampSeasonId == campSeasonId);
 
         polygon.GeoJson.Should().Be(originalGeoJson);
@@ -265,7 +275,7 @@ public class CityPlanningServiceTests : IDisposable
 
         settings.Year.Should().Be(2026);
         settings.IsPlacementOpen.Should().BeFalse();
-        (await _dbContext.CityPlanningSettings.CountAsync()).Should().Be(1);
+        (await _dbContext.CityPlanningSettings.AsNoTracking().CountAsync()).Should().Be(1);
     }
 
     [Fact]
@@ -277,7 +287,7 @@ public class CityPlanningServiceTests : IDisposable
 
         result.Id.Should().Be(existing.Id);
         result.IsPlacementOpen.Should().BeTrue();
-        (await _dbContext.CityPlanningSettings.CountAsync()).Should().Be(1);
+        (await _dbContext.CityPlanningSettings.AsNoTracking().CountAsync()).Should().Be(1);
     }
 
     [Fact]
@@ -288,7 +298,7 @@ public class CityPlanningServiceTests : IDisposable
 
         await _sut.OpenPlacementAsync(adminId);
 
-        var settings = await _dbContext.CityPlanningSettings.SingleAsync();
+        var settings = await _dbContext.CityPlanningSettings.AsNoTracking().SingleAsync();
         settings.IsPlacementOpen.Should().BeTrue();
         settings.OpenedAt.Should().Be(_clock.GetCurrentInstant());
     }
@@ -301,7 +311,7 @@ public class CityPlanningServiceTests : IDisposable
 
         await _sut.ClosePlacementAsync(adminId);
 
-        var settings = await _dbContext.CityPlanningSettings.SingleAsync();
+        var settings = await _dbContext.CityPlanningSettings.AsNoTracking().SingleAsync();
         settings.IsPlacementOpen.Should().BeFalse();
         settings.ClosedAt.Should().Be(_clock.GetCurrentInstant());
     }
@@ -375,14 +385,19 @@ public class CityPlanningServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetCampPolygonHistoryAsync_ReturnsEntriesInDescendingOrder()
+    public async Task GetCampPolygonHistoryAsync_ReturnsEntriesInDescendingOrder_WithDisplayNamesFromUserService()
     {
         var campSeasonId = Guid.NewGuid();
         var userId = NewUserId();
-        // Seed a user for the nav property (still needed for ModifiedByUser Include)
-        var user = new User { Id = userId, UserName = "test@test.com", Email = "test@test.com", DisplayName = "Test User" };
-        _dbContext.Users.Add(user);
-        await _dbContext.SaveChangesAsync();
+
+        // Stub the user service — replaces the old cross-domain .Include(h => h.ModifiedByUser).
+        _userService.GetByIdsAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User>
+            {
+                [userId] = new User { Id = userId, UserName = "test@test.com", Email = "test@test.com", DisplayName = "Test User" }
+            });
 
         _clock.Advance(Duration.FromSeconds(1));
         await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature"}""", 100.0, userId);
@@ -394,6 +409,27 @@ public class CityPlanningServiceTests : IDisposable
         history.Should().HaveCount(2);
         history[0].AreaSqm.Should().Be(200.0); // Most recent first
         history[1].AreaSqm.Should().Be(100.0);
+        history[0].ModifiedByDisplayName.Should().Be("Test User");
+    }
+
+    [Fact]
+    public async Task GetCampPolygonHistoryAsync_FallsBackToUserIdString_WhenUserNotFound()
+    {
+        var campSeasonId = Guid.NewGuid();
+        var userId = NewUserId();
+
+        // User service returns empty dictionary — user was deleted.
+        _userService.GetByIdsAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(),
+            Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User>());
+
+        await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature"}""", 100.0, userId);
+
+        var history = await _sut.GetCampPolygonHistoryAsync(campSeasonId);
+
+        history.Should().HaveCount(1);
+        history[0].ModifiedByDisplayName.Should().Be(userId.ToString());
     }
 
     [Fact]
@@ -434,30 +470,6 @@ public class CityPlanningServiceTests : IDisposable
         polygons.Single().SoundZone.Should().BeNull();
     }
 
-    [Fact]
-    public async Task GetCampSeasonSoundZoneAsync_ReturnsSoundZone_WhenSet()
-    {
-        var campSeasonId = Guid.NewGuid();
-        _campService.GetCampSeasonSoundZoneAsync(campSeasonId, Arg.Any<CancellationToken>())
-            .Returns(SoundZone.Red);
-
-        var result = await _sut.GetCampSeasonSoundZoneAsync(campSeasonId);
-
-        result.Should().Be(SoundZone.Red);
-    }
-
-    [Fact]
-    public async Task GetCampSeasonSoundZoneAsync_ReturnsNull_WhenNotSet()
-    {
-        var campSeasonId = Guid.NewGuid();
-        _campService.GetCampSeasonSoundZoneAsync(campSeasonId, Arg.Any<CancellationToken>())
-            .Returns((SoundZone?)null);
-
-        var result = await _sut.GetCampSeasonSoundZoneAsync(campSeasonId);
-
-        result.Should().BeNull();
-    }
-
     // --- UpdatePlacementDatesAsync ---
 
     [Fact]
@@ -469,7 +481,7 @@ public class CityPlanningServiceTests : IDisposable
 
         await _sut.UpdatePlacementDatesAsync(opens, closes);
 
-        var settings = await _dbContext.CityPlanningSettings.SingleAsync();
+        var settings = await _dbContext.CityPlanningSettings.AsNoTracking().SingleAsync();
         settings.PlacementOpensAt.Should().Be(opens);
         settings.PlacementClosesAt.Should().Be(closes);
     }
@@ -478,14 +490,15 @@ public class CityPlanningServiceTests : IDisposable
     public async Task UpdatePlacementDatesAsync_ClearsDates_WhenNull()
     {
         await SeedMapSettingsAsync();
-        var settings = await _dbContext.CityPlanningSettings.SingleAsync();
-        settings.PlacementOpensAt = new LocalDateTime(2026, 4, 10, 18, 0);
-        settings.PlacementClosesAt = new LocalDateTime(2026, 4, 20, 23, 59);
+        var seeded = await _dbContext.CityPlanningSettings.SingleAsync();
+        seeded.PlacementOpensAt = new LocalDateTime(2026, 4, 10, 18, 0);
+        seeded.PlacementClosesAt = new LocalDateTime(2026, 4, 20, 23, 59);
         await _dbContext.SaveChangesAsync();
+        _dbContext.Entry(seeded).State = EntityState.Detached;
 
         await _sut.UpdatePlacementDatesAsync(null, null);
 
-        var updated = await _dbContext.CityPlanningSettings.SingleAsync();
+        var updated = await _dbContext.CityPlanningSettings.AsNoTracking().SingleAsync();
         updated.PlacementOpensAt.Should().BeNull();
         updated.PlacementClosesAt.Should().BeNull();
     }
@@ -500,7 +513,7 @@ public class CityPlanningServiceTests : IDisposable
 
         await _sut.UpdateOfficialZonesAsync(geoJson, Guid.NewGuid());
 
-        var settings = await _dbContext.CityPlanningSettings.SingleAsync();
+        var settings = await _dbContext.CityPlanningSettings.AsNoTracking().SingleAsync();
         settings.OfficialZonesGeoJson.Should().Be(geoJson);
         settings.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
     }
@@ -509,13 +522,14 @@ public class CityPlanningServiceTests : IDisposable
     public async Task DeleteOfficialZonesAsync_SetsNull()
     {
         await SeedMapSettingsAsync();
-        var settings = await _dbContext.CityPlanningSettings.SingleAsync();
-        settings.OfficialZonesGeoJson = """{"type":"FeatureCollection","features":[]}""";
+        var seeded = await _dbContext.CityPlanningSettings.SingleAsync();
+        seeded.OfficialZonesGeoJson = """{"type":"FeatureCollection","features":[]}""";
         await _dbContext.SaveChangesAsync();
+        _dbContext.Entry(seeded).State = EntityState.Detached;
 
         await _sut.DeleteOfficialZonesAsync(Guid.NewGuid());
 
-        var updated = await _dbContext.CityPlanningSettings.SingleAsync();
+        var updated = await _dbContext.CityPlanningSettings.AsNoTracking().SingleAsync();
         updated.OfficialZonesGeoJson.Should().BeNull();
         updated.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
     }
@@ -544,16 +558,4 @@ public class CityPlanningServiceTests : IDisposable
         result.Should().BeNull();
     }
 
-    [Fact]
-    public async Task GetUserCampSeasonIdForYearAsync_DelegatesToCampService()
-    {
-        var userId = Guid.NewGuid();
-        var campSeasonId = Guid.NewGuid();
-        _campService.GetCampLeadSeasonIdForYearAsync(userId, 2026, Arg.Any<CancellationToken>())
-            .Returns(campSeasonId);
-
-        var result = await _sut.GetUserCampSeasonIdForYearAsync(userId, 2026);
-
-        result.Should().Be(campSeasonId);
-    }
 }
