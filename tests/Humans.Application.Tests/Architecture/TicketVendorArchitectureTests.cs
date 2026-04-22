@@ -118,9 +118,11 @@ public class TicketVendorArchitectureTests
     [Fact]
     public void ITicketVendorService_AllDtoTypesLiveInApplicationDtos()
     {
-        // Every non-BCL, non-NodaTime, non-primitive type surfaced by the
-        // interface must live in Humans.Application.DTOs (the
-        // Application-layer vendor-agnostic shape).
+        // Strict allowlist: every type surfaced by the interface must be a
+        // primitive, void/string, System.*, NodaTime.*, or live in
+        // Humans.Application.DTOs. Anything else — Humans.Domain entities,
+        // Humans.Infrastructure types, vendor SDKs, etc. — is a boundary
+        // leak and an offender, regardless of which assembly it lives in.
         var offenders = new List<string>();
 
         foreach (var method in typeof(ITicketVendorService).GetMethods())
@@ -140,18 +142,13 @@ public class TicketVendorArchitectureTests
             {
                 var ns = probed.Namespace ?? string.Empty;
 
-                // BCL, System.*, NodaTime, primitives — fine.
                 if (probed.IsPrimitive) continue;
                 if (probed == typeof(void) || probed == typeof(string)) continue;
                 if (ns.StartsWith("System", StringComparison.Ordinal)) continue;
                 if (ns.StartsWith("NodaTime", StringComparison.Ordinal)) continue;
+                if (string.Equals(ns, "Humans.Application.DTOs", StringComparison.Ordinal)) continue;
 
-                // Types declared by this assembly must live in the DTOs namespace.
-                if (probed.Assembly == typeof(ITicketVendorService).Assembly &&
-                    !string.Equals(ns, "Humans.Application.DTOs", StringComparison.Ordinal))
-                {
-                    offenders.Add($"{location}: {probed.FullName} (namespace {ns})");
-                }
+                offenders.Add($"{location}: {probed.FullName} (namespace {ns})");
             }
         }
 
