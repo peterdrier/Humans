@@ -205,15 +205,6 @@
 
 @section Scripts {
     <script>
-        // Confirm before posting a password reset
-        document.querySelectorAll('.reset-password-form').forEach(function (form) {
-            form.addEventListener('submit', function (e) {
-                if (!confirm(form.dataset.confirm)) {
-                    e.preventDefault();
-                }
-            });
-        });
-
         // Sync the _HumanSearchInput hidden value to the form's userId field on submit
         document.querySelectorAll('.link-form').forEach(function (form) {
             form.addEventListener('submit', function (e) {
