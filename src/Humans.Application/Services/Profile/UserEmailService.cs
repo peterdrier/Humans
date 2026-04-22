@@ -465,6 +465,10 @@ public sealed class UserEmailService : IUserEmailService
             .ToDictionary(kv => kv.Key, kv => kv.Value);
     }
 
+    public Task<IReadOnlyList<Guid>> SearchUserIdsByVerifiedEmailAsync(
+        string searchTerm, CancellationToken cancellationToken = default)
+        => _repository.SearchUserIdsByVerifiedEmailAsync(searchTerm, cancellationToken);
+
     private static List<ContactFieldVisibility> GetAllowedVisibilities(ContactFieldVisibility accessLevel) =>
         accessLevel switch
         {

@@ -619,7 +619,18 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             })
             .ToList();
 
-        var filtered = FilterWhoHasntBoughtRows(rows, filterTicketStatus, filterTeam, filterTier, search);
+        // Email search against the full UserEmail set (not just the notification
+        // target) so admins can find humans whose ticket-vendor address differs
+        // from their primary notification email.
+        HashSet<Guid>? emailMatchUserIds = null;
+        if (HasSearchTerm(search, 1))
+        {
+            var matches = await _userEmailService.SearchUserIdsByVerifiedEmailAsync(search!);
+            emailMatchUserIds = matches.ToHashSet();
+        }
+
+        var filtered = FilterWhoHasntBoughtRows(
+            rows, filterTicketStatus, filterTeam, filterTier, search, emailMatchUserIds);
 
         var totalCount = filtered.Count;
         var pagedHumans = filtered
@@ -665,7 +676,8 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         string? filterTicketStatus,
         string? filterTeam,
         string? filterTier,
-        string? search)
+        string? search,
+        IReadOnlySet<Guid>? emailMatchUserIds = null)
     {
         IEnumerable<WhoHasntBoughtRow> filtered = rows;
 
@@ -686,9 +698,14 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
 
         if (HasSearchTerm(search, 1))
         {
+            // Match against display name, notification email, and any verified
+            // email belonging to the user (via emailMatchUserIds). Admins rely
+            // on the verified-email match when a ticket was purchased under a
+            // secondary address.
             filtered = filtered.Where(r =>
                 ContainsIgnoreCase(r.Name, search) ||
-                ContainsIgnoreCase(r.Email, search));
+                ContainsIgnoreCase(r.Email, search) ||
+                (emailMatchUserIds is not null && emailMatchUserIds.Contains(r.UserId)));
         }
 
         return filtered.ToList();

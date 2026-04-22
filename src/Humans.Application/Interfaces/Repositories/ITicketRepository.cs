@@ -1,5 +1,7 @@
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -166,5 +168,84 @@ public interface ITicketRepository
     /// </summary>
     Task UpdateOrderStripeEnrichmentAsync(
         IReadOnlyList<TicketOrder> orders,
+        CancellationToken ct = default);
+
+    // ── TicketQueryService reads (matching / dashboard / exports) ────────────
+
+    Task<int> CountValidAttendeesMatchedToUserAsync(Guid userId, CancellationToken ct = default);
+
+    Task<int> CountValidAttendeesByUppercaseEmailsAsync(
+        IReadOnlyCollection<string> uppercaseEmails, CancellationToken ct = default);
+
+    Task<IReadOnlyList<Guid>> GetValidMatchedAttendeeUserIdsAsync(CancellationToken ct = default);
+
+    Task<IReadOnlyList<Guid>> GetAllMatchedAttendeeUserIdsAsync(CancellationToken ct = default);
+
+    Task<IReadOnlyList<Guid>> GetAllMatchedOrderUserIdsAsync(CancellationToken ct = default);
+
+    Task<IReadOnlyList<Guid>> GetMatchedUserIdsForPaidOrdersAsync(CancellationToken ct = default);
+
+    Task<bool> HasAnyTicketMatchAsync(Guid userId, CancellationToken ct = default);
+
+    Task<bool> HasEventTicketAsync(Guid userId, string vendorEventId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<string>> GetDistinctTicketTypesAsync(CancellationToken ct = default);
+
+    Task<int> CountSoldAttendeesAsync(CancellationToken ct = default);
+
+    Task<IReadOnlyList<TicketOrder>> GetOrdersMatchedToUserAsync(Guid userId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<TicketAttendee>> GetAttendeesMatchedToUserAsync(Guid userId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<Instant>> GetPaidOrderDatesInWindowAsync(
+        Instant fromInclusive,
+        Instant toExclusive,
+        CancellationToken ct = default);
+
+    Task<TicketDashboardTotals> GetDashboardTotalsAsync(CancellationToken ct = default);
+
+    Task<IReadOnlyList<PaidOrderPaymentMethodRow>> GetPaidOrderPaymentMethodsAsync(CancellationToken ct = default);
+
+    Task<IReadOnlyList<OrderDateAndCount>> GetOrderDateAttendeeCountsAsync(CancellationToken ct = default);
+
+    Task<IReadOnlyList<RecentOrder>> GetRecentOrdersAsync(int count, CancellationToken ct = default);
+
+    Task<decimal> GetGrossPaidRevenueAsync(CancellationToken ct = default);
+
+    Task<IReadOnlyList<PaidOrderSalesRow>> GetPaidOrderSalesRowsAsync(CancellationToken ct = default);
+
+    Task<IReadOnlyList<DiscountCodeOrderRow>> GetOrdersWithDiscountCodesAsync(CancellationToken ct = default);
+
+    Task<(IReadOnlyList<OrderRow> Rows, int TotalCount)> GetOrdersPageAsync(
+        string? search,
+        string sortBy,
+        bool sortDesc,
+        int page,
+        int pageSize,
+        TicketPaymentStatus? filterPaymentStatus,
+        string? filterTicketType,
+        bool? filterMatched,
+        CancellationToken ct = default);
+
+    Task<(IReadOnlyList<AttendeeRow> Rows, int TotalCount)> GetAttendeesPageAsync(
+        string? search,
+        string sortBy,
+        bool sortDesc,
+        int page,
+        int pageSize,
+        string? filterTicketType,
+        TicketAttendeeStatus? filterStatus,
+        bool? filterMatched,
+        string? filterOrderId,
+        CancellationToken ct = default);
+
+    Task<IReadOnlyList<AttendeeExportRow>> GetAttendeeExportDataAsync(CancellationToken ct = default);
+
+    Task<IReadOnlyList<OrderExportRow>> GetOrderExportDataAsync(CancellationToken ct = default);
+
+    Task<TicketSyncState?> ResetStaleRunningStateAsync(
+        Instant olderThan,
+        Instant now,
+        string errorMessage,
         CancellationToken ct = default);
 }

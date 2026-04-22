@@ -82,6 +82,15 @@ public interface IUserEmailRepository
         CancellationToken ct = default);
 
     /// <summary>
+    /// Returns distinct user ids whose verified email set contains the given
+    /// case-insensitive substring. Used by admin search surfaces (Tickets
+    /// "who hasn't bought") so secondary verified addresses are discoverable
+    /// even when they differ from the notification-target email.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> SearchUserIdsByVerifiedEmailAsync(
+        string searchTerm, CancellationToken ct = default);
+
+    /// <summary>
     /// Finds a verified UserEmail matching the normalized (or alternate) address,
     /// returning minimal User info for conflict checking.
     /// </summary>

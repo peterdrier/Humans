@@ -103,7 +103,7 @@ public class GdprExportDependencyInjectionTests
         // still holds most of them, and Humans.Application is the new target
         // location per the repository/store/decorator migration — the first
         // such move is ApplicationDecisionService (Governance, PR #503).
-        var infrastructureAssembly = typeof(TicketSyncService).Assembly;
+        var infrastructureAssembly = typeof(CalendarService).Assembly;
         var applicationAssembly = typeof(ApplicationDecisionService).Assembly;
 
         var foundContributors = new[] { infrastructureAssembly, applicationAssembly }

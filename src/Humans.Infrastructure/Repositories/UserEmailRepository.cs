@@ -142,6 +142,37 @@ public sealed class UserEmailRepository : IUserEmailRepository
             .ToDictionaryAsync(x => x.UserId, x => x.Email, ct);
     }
 
+    public async Task<IReadOnlyList<Guid>> SearchUserIdsByVerifiedEmailAsync(
+        string searchTerm, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return [];
+
+        // ILIKE treats '_' and '%' as wildcards, so raw input must be escaped
+        // to prevent unintended matches (e.g. a search for "a_b" matching
+        // "aXb"). Pass '\' as the explicit escape character.
+        var pattern = $"%{EscapeLikePattern(searchTerm.Trim())}%";
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.UserEmails
+            .AsNoTracking()
+            .Where(e => e.IsVerified && EF.Functions.ILike(e.Email, pattern, "\\"))
+            .Select(e => e.UserId)
+            .Distinct()
+            .ToListAsync(ct);
+    }
+
+    /// <summary>
+    /// Escapes LIKE/ILIKE wildcard metacharacters so a literal match is
+    /// performed. Must be used with an explicit escape clause, e.g.
+    /// <c>EF.Functions.ILike(x, pattern, "\\")</c>.
+    /// </summary>
+    private static string EscapeLikePattern(string value)
+        => value
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
+
     public async Task<string?> GetVerifiedEmailAddressAsync(
         Guid userId, Guid emailId, CancellationToken ct = default)
     {
