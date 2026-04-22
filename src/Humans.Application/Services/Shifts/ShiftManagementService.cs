@@ -252,8 +252,6 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         rota.UpdatedAt = _clock.GetCurrentInstant();
         await _repo.UpdateRotaAsync(rota);
 
-        await _dbContext.SaveChangesAsync();
-
         await _auditLogService.LogAsync(
             AuditAction.RotaMovedToTeam, nameof(Rota), rota.Id,
             $"Moved rota '{rota.Name}' from '{oldTeamName}' to '{targetTeam.Name}'",
