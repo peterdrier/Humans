@@ -1,6 +1,7 @@
 @model Humans.Web.Models.CampDetailViewModel
 @{
     ViewData["Title"] = Model.Name;
+    var isCityPlanningMember = ViewBag.IsCityPlanningTeamMember as bool? ?? false;
 }
 
 <nav aria-label="breadcrumb">
@@ -180,12 +181,32 @@
                 </div>
             }
 
-            @* Placement data (visible only to leads and CampAdmins) *@
-            @if (Model.IsCurrentUserLead || Model.IsCurrentUserCampAdmin)
+            @* Placement data (visible to leads, CampAdmins, and city planning team) *@
+            @if (Model.IsCurrentUserLead || Model.IsCurrentUserCampAdmin || isCityPlanningMember)
             {
+                var isPlacementOpen = ViewBag.PlacementIsOpen as bool? ?? false;
             <div class="card mb-4">
-                <div class="card-header">
-                    <i class="fa-solid fa-map-location-dot me-1"></i> Placement
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="fa-solid fa-map-location-dot me-1"></i> Placement</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="text-muted small">Placement phase:</span>
+                        @if (isPlacementOpen)
+                        {
+                            <span class="badge bg-success">Open</span>
+                            <a href="/CityPlanning" class="btn btn-sm btn-outline-primary">
+                                <i class="fa-solid fa-map me-1"></i> Go to placement map
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Closed</span>
+                        }
+                        <button type="button" class="btn btn-link btn-sm p-0"
+                                data-bs-toggle="modal" data-bs-target="#placement-help-modal"
+                                title="Placement phase info">
+                            <i class="fa-solid fa-circle-info text-muted"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -222,40 +243,7 @@
                     </div>
                 </div>
             </div>
-            }
-
-            @* Placement phase status (city planning team only) *@
-            var isCityPlanningMember = ViewBag.IsCityPlanningTeamMember as bool? ?? false;
-            @if (isCityPlanningMember)
-            {
-                var isPlacementOpen = ViewBag.PlacementIsOpen as bool? ?? false;
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <i class="fa-solid fa-city me-1"></i> City Planning
-                    </div>
-                    <div class="card-body">
-                        <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <span class="text-muted">Placement phase:</span>
-                            @if (isPlacementOpen)
-                            {
-                                <span class="badge bg-success">Open</span>
-                                <a href="/CityPlanning" class="btn btn-sm btn-outline-primary">
-                                    <i class="fa-solid fa-map me-1"></i> Go to placement map
-                                </a>
-                            }
-                            else
-                            {
-                                <span class="badge bg-secondary">Closed</span>
-                            }
-                            <button type="button" class="btn btn-link btn-sm p-0 ms-1"
-                                    data-bs-toggle="modal" data-bs-target="#placement-help-modal"
-                                    title="Placement phase info">
-                                <i class="fa-solid fa-circle-info text-muted"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                @await Html.PartialAsync("~/Views/CityPlanning/_PlacementHelpModal.cshtml")
+            @await Html.PartialAsync("~/Views/CityPlanning/_PlacementHelpModal.cshtml")
             }
         }
     </div>

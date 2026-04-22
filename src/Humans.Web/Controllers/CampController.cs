@@ -721,8 +721,6 @@ public class CampController : HumansCampControllerBase
 
         ViewBag.IsCityPlanningTeamMember = isCityPlanningMember;
 
-        if (!isCityPlanningMember) return;
-
         var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
         ViewBag.PlacementIsOpen = settings.IsPlacementOpen;
         ViewBag.PlacementOpensAt = settings.PlacementOpensAt;
