@@ -308,6 +308,23 @@ public sealed class UserEmailRepository : IUserEmailRepository
             user.LastLoginAt);
     }
 
+    public async Task<UserEmail?> FindByNormalizedEmailAsync(
+        string normalizedEmail, string? alternateEmail,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return alternateEmail is null
+            ? await ctx.UserEmails
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    e => EF.Functions.ILike(e.Email, normalizedEmail), ct)
+            : await ctx.UserEmails
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    e => EF.Functions.ILike(e.Email, normalizedEmail) ||
+                         EF.Functions.ILike(e.Email, alternateEmail), ct);
+    }
+
     public async Task UpdateAsync(UserEmail email, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

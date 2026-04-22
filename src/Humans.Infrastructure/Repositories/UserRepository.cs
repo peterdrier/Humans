@@ -226,6 +226,19 @@ public sealed class UserRepository : IUserRepository
         return true;
     }
 
+    public async Task<bool> SetContactSourceIfNullAsync(
+        Guid userId, ContactSource source, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var user = await ctx.Users.FindAsync([userId], ct);
+        if (user is null || user.ContactSource is not null)
+            return false;
+
+        user.ContactSource = source;
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
     public async Task RemoveExternalLoginsAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

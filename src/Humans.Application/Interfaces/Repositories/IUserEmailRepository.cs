@@ -128,6 +128,17 @@ public interface IUserEmailRepository
         CancellationToken ct = default);
 
     /// <summary>
+    /// Finds any <see cref="UserEmail"/> (verified or unverified, OAuth or not)
+    /// whose address matches the given normalized email — or its
+    /// googlemail/gmail alternate — using case-insensitive comparison.
+    /// Used by account provisioning to dedupe incoming contacts against
+    /// every known email for every user.
+    /// </summary>
+    Task<UserEmail?> FindByNormalizedEmailAsync(
+        string normalizedEmail, string? alternateEmail,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the email address for a verified email owned by the user,
     /// or null if not found or not verified.
     /// </summary>

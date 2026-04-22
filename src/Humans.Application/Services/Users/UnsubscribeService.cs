@@ -1,26 +1,34 @@
 using System.Security.Cryptography;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Logging;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Application.Services.Users;
 
-public class UnsubscribeService : IUnsubscribeService
+/// <summary>
+/// Validates unsubscribe tokens (new category-aware and legacy campaign-only)
+/// and applies the unsubscribe action.
+/// </summary>
+/// <remarks>
+/// Application-layer implementation — goes through <see cref="IUserRepository"/>,
+/// never injects <c>DbContext</c>.
+/// </remarks>
+public sealed class UnsubscribeService : IUnsubscribeService
 {
-    private readonly HumansDbContext _db;
+    private readonly IUserRepository _userRepository;
     private readonly ICommunicationPreferenceService _preferenceService;
     private readonly IDataProtectionProvider _dataProtection;
     private readonly ILogger<UnsubscribeService> _logger;
 
     public UnsubscribeService(
-        HumansDbContext db,
+        IUserRepository userRepository,
         ICommunicationPreferenceService preferenceService,
         IDataProtectionProvider dataProtection,
         ILogger<UnsubscribeService> logger)
     {
-        _db = db;
+        _userRepository = userRepository;
         _preferenceService = preferenceService;
         _dataProtection = dataProtection;
         _logger = logger;
@@ -32,7 +40,7 @@ public class UnsubscribeService : IUnsubscribeService
         var result = _preferenceService.ValidateUnsubscribeToken(token);
         if (result.Status == TokenValidationStatus.Valid)
         {
-            var user = await _db.Users.FindAsync(new object[] { result.UserId }, ct);
+            var user = await _userRepository.GetByIdAsync(result.UserId, ct);
             if (user is null)
                 return UnsubscribeTokenResult.Invalid();
 
@@ -77,10 +85,12 @@ public class UnsubscribeService : IUnsubscribeService
             // Don't double-log here — this is the legacy-protector fallback for the same event. See #483.
             if (ex.Message.Contains("expired", StringComparison.OrdinalIgnoreCase))
                 return UnsubscribeTokenResult.Expired();
+
+            _logger.LogDebug(ex, "Legacy unsubscribe token failed to unprotect");
             return UnsubscribeTokenResult.Invalid();
         }
 
-        var user = await _db.Users.FindAsync(new object[] { userId }, ct);
+        var user = await _userRepository.GetByIdAsync(userId, ct);
         if (user is null)
             return UnsubscribeTokenResult.Invalid();
 

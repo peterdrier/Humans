@@ -134,6 +134,14 @@ public interface IUserRepository
     Task MigrateExternalLoginsAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Sets <see cref="User.ContactSource"/> if and only if it is currently
+    /// <c>null</c>. No-op if the user already has a <c>ContactSource</c> set
+    /// or the user does not exist. Returns true when the source was set.
+    /// </summary>
+    Task<bool> SetContactSourceIfNullAsync(
+        Guid userId, ContactSource source, CancellationToken ct = default);
+
     // ==========================================================================
     // Reads — EventParticipation
     // ==========================================================================
