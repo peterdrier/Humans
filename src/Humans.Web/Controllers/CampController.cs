@@ -109,7 +109,7 @@ public class CampController : HumansCampControllerBase
     [HttpGet("{slug}")]
     public async Task<IActionResult> Details(string slug, CancellationToken cancellationToken)
     {
-        var campDetail = await _campService.GetCampDetailAsync(slug);
+        var campDetail = await _campService.GetCampDetailAsync(slug, cancellationToken: cancellationToken);
         if (campDetail is null)
             return NotFound();
 
@@ -130,7 +130,8 @@ public class CampController : HumansCampControllerBase
         var campDetail = await _campService.GetCampDetailAsync(
             slug,
             preferredYear: year,
-            fallbackToLatestSeason: false);
+            fallbackToLatestSeason: false,
+            cancellationToken: cancellationToken);
         if (campDetail is null)
             return NotFound();
 
