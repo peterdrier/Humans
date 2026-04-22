@@ -13,6 +13,18 @@ namespace Humans.Application.Interfaces;
 public interface IGoogleDriveActivityClient
 {
     /// <summary>
+    /// <c>true</c> when the client is backed by a real Google service-account
+    /// key and can return meaningful activity; <c>false</c> for the stub used
+    /// in dev environments without Google credentials. Follows the same
+    /// convention as <c>IStripeService.IsConfigured</c>. The Drive activity
+    /// monitor consults this to decide whether to advance its last-run
+    /// marker — a stub returns no events, so advancing the marker would
+    /// silently skip historical permission changes if the same database
+    /// later gains real credentials.
+    /// </summary>
+    bool IsConfigured { get; }
+
+    /// <summary>
     /// Returns the service account's primary email address (the <c>client_email</c>
     /// field of the configured service-account key), falling back to a sentinel
     /// <c>unknown@serviceaccount.iam.gserviceaccount.com</c> if the key is not

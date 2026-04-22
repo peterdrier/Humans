@@ -40,6 +40,7 @@ public class DriveActivityMonitorServiceTests
         _repository = Substitute.For<IDriveActivityMonitorRepository>();
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 22, 10, 0));
 
+        _client.IsConfigured.Returns(true);
         _client.GetServiceAccountEmailAsync(Arg.Any<CancellationToken>()).Returns(ServiceAccountEmail);
         _client.GetServiceAccountClientIdAsync(Arg.Any<CancellationToken>()).Returns(ServiceAccountClientId);
 
@@ -214,6 +215,28 @@ public class DriveActivityMonitorServiceTests
         await _repository.Received(1).PersistAnomaliesAsync(
             Arg.Is<IReadOnlyList<AuditLogEntry>>(a => a.Count == 0),
             _clock.GetCurrentInstant(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CheckForAnomalousActivityAsync_WithUnconfiguredClient_DoesNotAdvanceMarker()
+    {
+        // Simulates running the monitor in dev against StubGoogleDriveActivityClient:
+        // the stub returns no events, so without this guard the marker would advance
+        // to "now" and silently skip every historical permission change once the same
+        // database later gains real Google credentials.
+        _client.IsConfigured.Returns(false);
+
+        var resource = BuildResource("Unconfigured-Drive");
+        SeedResources(resource);
+        SeedActivity(resource.GoogleId /* no events */);
+
+        var count = await _service.CheckForAnomalousActivityAsync();
+
+        count.Should().Be(0);
+        await _repository.Received(1).PersistAnomaliesAsync(
+            Arg.Is<IReadOnlyList<AuditLogEntry>>(a => a.Count == 0),
+            (Instant?)null,
             Arg.Any<CancellationToken>());
     }
 

@@ -39,6 +39,10 @@ public sealed class GoogleDriveActivityClient : IGoogleDriveActivityClient
         _logger = logger;
     }
 
+    public bool IsConfigured =>
+        !string.IsNullOrEmpty(_settings.ServiceAccountKeyPath) ||
+        !string.IsNullOrEmpty(_settings.ServiceAccountKeyJson);
+
     public async Task<string> GetServiceAccountEmailAsync(CancellationToken ct = default)
     {
         if (_serviceAccountEmailResolved && _serviceAccountEmail is not null)

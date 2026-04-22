@@ -154,14 +154,29 @@ public sealed class DriveActivityMonitorService : IDriveActivityMonitorService
                 resources.Count);
         }
 
-        // Only advance the last-run marker when every resource was processed successfully.
-        // If any resource failed, keep the old marker so the next run re-checks those events.
-        Instant? newMarker = hadFailures ? null : now;
+        // Only advance the last-run marker when every resource was processed successfully
+        // AND the client is actually backed by real credentials. If any resource failed,
+        // keep the old marker so the next run re-checks those events. When the client is
+        // the stub (no Google credentials), advancing would silently skip every historical
+        // permission change that happens before the same database later gains real
+        // credentials — so never advance in stub mode regardless of "success".
+        Instant? newMarker;
         if (hadFailures)
         {
+            newMarker = null;
             _logger.LogWarning(
                 "Skipping last-run marker update due to partial failures — next run will re-process from {LookbackTime}",
                 filterTime);
+        }
+        else if (!_driveActivityClient.IsConfigured)
+        {
+            newMarker = null;
+            _logger.LogDebug(
+                "Drive activity client is not configured (stub mode) — leaving last-run marker unchanged so anomaly coverage is preserved once real credentials are configured");
+        }
+        else
+        {
+            newMarker = now;
         }
 
         await _repository.PersistAnomaliesAsync(anomalies, newMarker, cancellationToken);

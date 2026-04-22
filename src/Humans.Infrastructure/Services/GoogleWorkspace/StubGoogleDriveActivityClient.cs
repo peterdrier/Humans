@@ -21,6 +21,8 @@ public sealed class StubGoogleDriveActivityClient : IGoogleDriveActivityClient
         _logger = logger;
     }
 
+    public bool IsConfigured => false;
+
     public Task<string> GetServiceAccountEmailAsync(CancellationToken ct = default)
         => Task.FromResult("stub-service-account@example.iam.gserviceaccount.com");
 
