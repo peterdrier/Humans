@@ -716,9 +716,6 @@ public class CampController : HumansCampControllerBase
 
     private async Task PopulateCityPlanningViewBagAsync(User? currentUser, CancellationToken cancellationToken)
     {
-        if (User.Identity?.IsAuthenticated != true)
-            return;
-
         var isCityPlanningMember = currentUser is not null &&
             await _cityPlanningService.IsCityPlanningTeamMemberAsync(currentUser.Id, cancellationToken);
 
