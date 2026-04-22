@@ -535,6 +535,10 @@
   <data name="Teams_NoOtherTeams" xml:space="preserve"><value>No hi ha altres equips disponibles.</value></data>
   <data name="Teams_System" xml:space="preserve"><value>Sistema</value></data>
 
+  <!-- Vol/Teams landing: Browse Shifts CTA (#534) -->
+  <data name="VolTeams_BrowseShiftsBanner" xml:space="preserve"><value>Busques torns? Mira'ls tots aqu&#xED;, o tria un equip a sota.</value></data>
+  <data name="VolTeams_BrowseShiftsButton" xml:space="preserve"><value>Veure torns</value></data>
+
   <!-- Team Detail View -->
   <data name="TeamDetail_NoDescription" xml:space="preserve"><value>Sense descripció.</value></data>
   <data name="TeamDetail_SystemTeamInfo" xml:space="preserve"><value>Aquest és un equip gestionat pel sistema. La pertinença es sincronitza automàticament segons els criteris de {0}.</value><comment>{0} = system team type</comment></data>

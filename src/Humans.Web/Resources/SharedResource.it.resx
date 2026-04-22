@@ -531,6 +531,10 @@
   <data name="Teams_NoOtherTeams" xml:space="preserve"><value>Nessun altro team disponibile.</value></data>
   <data name="Teams_System" xml:space="preserve"><value>Sistema</value></data>
 
+  <!-- Vol/Teams landing: Browse Shifts CTA (#534) -->
+  <data name="VolTeams_BrowseShiftsBanner" xml:space="preserve"><value>Cerchi turni? Guardali tutti qui, o scegli una squadra qui sotto.</value></data>
+  <data name="VolTeams_BrowseShiftsButton" xml:space="preserve"><value>Vedi turni</value></data>
+
   <!-- Team Detail View -->
   <data name="TeamDetail_NoDescription" xml:space="preserve"><value>Nessuna descrizione fornita.</value></data>
   <data name="TeamDetail_SystemTeamInfo" xml:space="preserve"><value>Questo è un team gestito dal sistema. L'appartenenza viene sincronizzata automaticamente in base ai criteri {0}.</value><comment>{0} = system team type</comment></data>
