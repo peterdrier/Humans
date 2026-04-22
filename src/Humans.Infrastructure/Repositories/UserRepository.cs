@@ -197,8 +197,26 @@ public sealed class UserRepository : IUserRepository
             return false;
 
         user.GoogleEmail = email;
+        user.GoogleEmailStatus = GoogleEmailStatus.Unknown;
         await ctx.SaveChangesAsync(ct);
         return true;
+    }
+
+    public async Task<(bool Updated, string? OldEmail)> RewritePrimaryEmailAsync(
+        Guid userId, string newEmail, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var user = await ctx.Users.FindAsync([userId], ct);
+        if (user is null)
+            return (false, null);
+
+        var oldEmail = user.Email;
+        user.Email = newEmail;
+        user.UserName = newEmail;
+        user.NormalizedEmail = newEmail.ToUpperInvariant();
+        user.NormalizedUserName = newEmail.ToUpperInvariant();
+        await ctx.SaveChangesAsync(ct);
+        return (true, oldEmail);
     }
 
     public async Task<bool> SetDeletionPendingAsync(

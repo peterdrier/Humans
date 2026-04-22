@@ -48,8 +48,10 @@ public class OnboardingServiceTests : IDisposable
         // stitched user reads in OnboardingService's BoardVoting methods
         // resolve to the seeded users without extra mocking.
         var userRepo = new UserRepository(new TestDbContextFactory(options));
+        var userEmailRepo = new UserEmailRepository(new TestDbContextFactory(options));
         var userService = new UsersUserService(
-            userRepo, _fullProfileInvalidator, _clock, NullLogger<UsersUserService>.Instance);
+            userRepo, userEmailRepo, _fullProfileInvalidator, _clock,
+            NullLogger<UsersUserService>.Instance);
         _service = new OnboardingService(
             _dbContext, userService, _auditLogService, _emailService, _notificationService,
             _notificationInboxService, _syncJob,

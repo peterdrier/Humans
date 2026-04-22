@@ -4,47 +4,49 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Application.Services.GoogleIntegration;
 
 /// <summary>
-/// Service for Google Workspace admin operations:
-/// workspace account management, group linking, email backfill, account linking.
+/// Application-layer service for Google Workspace admin operations:
+/// workspace account management, group linking, email backfill, account
+/// linking. Migrated to the §15 pattern as part of issue #554 — no DbContext
+/// dependency; all cross-section data access routes through the owning
+/// services (<see cref="IUserService"/>, <see cref="IUserEmailService"/>,
+/// <see cref="ITeamService"/>, <see cref="ITeamResourceService"/>).
 /// </summary>
-public class GoogleAdminService : IGoogleAdminService
+public sealed class GoogleAdminService : IGoogleAdminService
 {
-    private readonly HumansDbContext _dbContext;
     private readonly IGoogleWorkspaceUserService _workspaceUserService;
     private readonly IGoogleSyncService _googleSyncService;
+    private readonly ITeamService _teamService;
     private readonly ITeamResourceService _teamResourceService;
+    private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
     private readonly IAuditLogService _auditLogService;
-    private readonly IClock _clock;
     private readonly ILogger<GoogleAdminService> _logger;
 
     private const string NobodiesTeamDomain = "nobodies.team";
 
     public GoogleAdminService(
-        HumansDbContext dbContext,
         IGoogleWorkspaceUserService workspaceUserService,
         IGoogleSyncService googleSyncService,
+        ITeamService teamService,
         ITeamResourceService teamResourceService,
+        IUserService userService,
         IUserEmailService userEmailService,
         IAuditLogService auditLogService,
-        IClock clock,
         ILogger<GoogleAdminService> logger)
     {
-        _dbContext = dbContext;
         _workspaceUserService = workspaceUserService;
         _googleSyncService = googleSyncService;
+        _teamService = teamService;
         _teamResourceService = teamResourceService;
+        _userService = userService;
         _userEmailService = userEmailService;
         _auditLogService = auditLogService;
-        _clock = clock;
         _logger = logger;
     }
 
@@ -55,36 +57,36 @@ public class GoogleAdminService : IGoogleAdminService
         {
             var accounts = await _workspaceUserService.ListAccountsAsync(ct);
 
-            // Load all user emails to match accounts to humans
-            var allUserEmails = await _dbContext.UserEmails
-                .AsNoTracking()
-                .ToListAsync(ct);
+            // Match only against emails that correspond to Google-side accounts
+            // we just listed — much cheaper than loading the entire user_emails table.
+            var accountEmails = accounts.Select(a => a.PrimaryEmail).ToList();
+            var matches = await _userEmailService.MatchByEmailsAsync(accountEmails, ct);
+            var matchByEmail = matches.ToDictionary(
+                m => m.Email, StringComparer.OrdinalIgnoreCase);
 
             // Batch-load users for matched emails
-            var matchedUserIds = allUserEmails.Select(ue => ue.UserId).Distinct().ToList();
-            var usersById = await _dbContext.Users
-                .AsNoTracking()
-                .Where(u => matchedUserIds.Contains(u.Id))
-                .ToDictionaryAsync(u => u.Id, ct);
+            var matchedUserIds = matches.Select(m => m.UserId).Distinct().ToList();
+            var usersById = matchedUserIds.Count == 0
+                ? new Dictionary<Guid, User>()
+                : (await _userService.GetByIdsAsync(matchedUserIds, ct))
+                    .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
             var accountInfos = new List<WorkspaceAccountInfo>();
             var notPrimaryCount = 0;
 
             foreach (var account in accounts)
             {
-                var matchedEmail = allUserEmails.FirstOrDefault(ue =>
-                    string.Equals(ue.Email, account.PrimaryEmail, StringComparison.OrdinalIgnoreCase));
-
-                var isUsedAsPrimary = matchedEmail is { IsNotificationTarget: true };
+                matchByEmail.TryGetValue(account.PrimaryEmail, out var matched);
+                var isUsedAsPrimary = matched is { IsNotificationTarget: true };
 
                 // Count accounts that exist in the system but are not used as primary
-                if (matchedEmail is not null && !isUsedAsPrimary)
+                if (matched is not null && !isUsedAsPrimary)
                 {
                     notPrimaryCount++;
                 }
 
-                var matchedUser = matchedEmail is not null
-                    ? usersById.GetValueOrDefault(matchedEmail.UserId)
+                var matchedUser = matched is not null
+                    ? usersById.GetValueOrDefault(matched.UserId)
                     : null;
 
                 accountInfos.Add(new WorkspaceAccountInfo(
@@ -94,7 +96,7 @@ public class GoogleAdminService : IGoogleAdminService
                     IsSuspended: account.IsSuspended,
                     CreationTime: account.CreationTime,
                     LastLoginTime: account.LastLoginTime,
-                    MatchedUserId: matchedEmail?.UserId,
+                    MatchedUserId: matched?.UserId,
                     MatchedDisplayName: matchedUser?.DisplayName,
                     IsUsedAsPrimary: isUsedAsPrimary));
             }
@@ -140,8 +142,7 @@ public class GoogleAdminService : IGoogleAdminService
         // Check DB first: reject if the address is already tied to any human in our system.
         // Must run BEFORE the Workspace existence check so a stale/deleted Workspace account
         // cannot silently "move" the identity off its current human.
-        var emailInUse = await _dbContext.UserEmails
-            .AnyAsync(ue => string.Equals(ue.Email, fullEmail, StringComparison.OrdinalIgnoreCase), ct);
+        var emailInUse = await _userEmailService.IsEmailLinkedToAnyUserAsync(fullEmail, ct);
         if (emailInUse)
         {
             _logger.LogWarning(
@@ -151,10 +152,10 @@ public class GoogleAdminService : IGoogleAdminService
                 ErrorMessage: $"{fullEmail} is already in use by another human.");
         }
 
-        var googleEmailInUse = await _dbContext.Users
-            .AnyAsync(u => u.GoogleEmail != null
-                && string.Equals(u.GoogleEmail, fullEmail, StringComparison.OrdinalIgnoreCase), ct);
-        if (googleEmailInUse)
+        // Also reject if the address is set as a User.GoogleEmail (or User.Email) — the
+        // user_emails check covers verified/linked rows, this covers the User row itself.
+        var existingUser = await _userService.GetByEmailOrAlternateAsync(fullEmail, ct);
+        if (existingUser is not null)
         {
             _logger.LogWarning(
                 "Standalone provisioning rejected: {Email} is already set as GoogleEmail for a human",
@@ -166,11 +167,8 @@ public class GoogleAdminService : IGoogleAdminService
         // Reject if the prefix collides with a team's Google Group. Team groups live on
         // the same domain (@nobodies.team), so provisioning a user account with the same
         // address would cause mail-routing chaos and break group membership.
-        var conflictingTeamName = await _dbContext.Teams
-            .Where(t => t.GoogleGroupPrefix != null
-                && string.Equals(t.GoogleGroupPrefix, normalizedPrefix, StringComparison.OrdinalIgnoreCase))
-            .Select(t => t.Name)
-            .FirstOrDefaultAsync(ct);
+        var conflictingTeamName = await _teamService.GetTeamNameByGoogleGroupPrefixAsync(
+            normalizedPrefix, ct);
         if (conflictingTeamName is not null)
         {
             _logger.LogWarning(
@@ -195,8 +193,8 @@ public class GoogleAdminService : IGoogleAdminService
             await _workspaceUserService.ProvisionAccountAsync(
                 fullEmail, firstName.Trim(), lastName.Trim(), tempPassword, ct: ct);
 
-            await _dbContext.SaveChangesAsync(ct);
-
+            // Audit AFTER Google API success — business "save" here is the Workspace-side
+            // provision. No local DB write happens in this flow.
             await _auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountProvisioned,
                 "WorkspaceAccount", Guid.Empty,
@@ -223,8 +221,8 @@ public class GoogleAdminService : IGoogleAdminService
         {
             await _workspaceUserService.SuspendAccountAsync(email, ct);
 
-            await _dbContext.SaveChangesAsync(ct);
-
+            // Audit AFTER Google API success — the "business save" here is the
+            // Workspace-side suspend. No local DB write happens in this flow.
             await _auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountSuspended,
                 "WorkspaceAccount", Guid.Empty,
@@ -250,8 +248,8 @@ public class GoogleAdminService : IGoogleAdminService
         {
             await _workspaceUserService.ReactivateAccountAsync(email, ct);
 
-            await _dbContext.SaveChangesAsync(ct);
-
+            // Audit AFTER Google API success — the "business save" here is the
+            // Workspace-side reactivate. No local DB write happens in this flow.
             await _auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountReactivated,
                 "WorkspaceAccount", Guid.Empty,
@@ -278,8 +276,8 @@ public class GoogleAdminService : IGoogleAdminService
             var newPassword = PasswordGenerator.GenerateTemporary();
             await _workspaceUserService.ResetPasswordAsync(email, newPassword, ct);
 
-            await _dbContext.SaveChangesAsync(ct);
-
+            // Audit AFTER Google API success — the "business save" here is the
+            // Workspace-side password reset. No local DB write happens in this flow.
             await _auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountPasswordReset,
                 "WorkspaceAccount", Guid.Empty,
@@ -305,63 +303,36 @@ public class GoogleAdminService : IGoogleAdminService
     {
         try
         {
-            var user = await _dbContext.Users.FindAsync([userId], ct);
+            var user = await _userService.GetByIdAsync(userId, ct);
             if (user is null)
             {
                 return new WorkspaceAccountActionResult(false,
                     ErrorMessage: "Human not found.");
             }
 
-            // Check not already linked
-            var alreadyLinked = await _dbContext.UserEmails
-                .AnyAsync(ue => EF.Functions.ILike(ue.Email, email), ct);
+            // Check not already linked (case-insensitive, any user)
+            var alreadyLinked = await _userEmailService.IsEmailLinkedToAnyUserAsync(email, ct);
             if (alreadyLinked)
             {
                 return new WorkspaceAccountActionResult(false,
                     ErrorMessage: $"{email} is already linked to a human.");
             }
 
-            // Add as verified email (also sets notification target for @nobodies.team)
+            // Add as verified email (also sets notification target for @nobodies.team).
+            // Self-persists via IUserEmailRepository.
             await _userEmailService.AddVerifiedEmailAsync(userId, email, ct);
 
-            // Auto-set as Google service email and reset sync state
-            user.GoogleEmail = email;
-            user.GoogleEmailStatus = GoogleEmailStatus.Unknown;
-            await _dbContext.SaveChangesAsync(ct);
+            // Auto-set as Google service email and reset sync state (also invalidates
+            // FullProfile). Self-persists via IUserRepository.
+            await _userService.SetGoogleEmailAsync(userId, email, ct);
 
-            // Enqueue re-sync for all current team memberships
-            var memberships = await _dbContext.TeamMembers
-                .Where(tm => tm.UserId == userId && tm.LeftAt == null)
-                .Select(tm => new { tm.Id, tm.TeamId })
-                .ToListAsync(ct);
+            // Enqueue re-sync for all current team memberships — delegated to the
+            // Teams-owning service so google_sync_outbox_events writes stay
+            // colocated with the rest of the outbox flow. Self-persists.
+            await _teamService.EnqueueGoogleResyncForUserTeamsAsync(userId, ct);
 
-            var now = _clock.GetCurrentInstant();
-            foreach (var membership in memberships)
-            {
-                var dedupeKey = $"{membership.Id}:{GoogleSyncOutboxEventTypes.AddUserToTeamResources}:link:{now}";
-                _dbContext.GoogleSyncOutboxEvents.Add(new GoogleSyncOutboxEvent
-                {
-                    Id = Guid.NewGuid(),
-                    EventType = GoogleSyncOutboxEventTypes.AddUserToTeamResources,
-                    TeamId = membership.TeamId,
-                    UserId = userId,
-                    OccurredAt = now,
-                    DeduplicationKey = dedupeKey
-                });
-            }
-
-            if (memberships.Count > 0)
-            {
-                await _dbContext.SaveChangesAsync(ct);
-                _logger.LogInformation(
-                    "Enqueued {Count} re-sync events for user {UserId} after admin email link",
-                    memberships.Count, userId);
-            }
-
-            await _dbContext.SaveChangesAsync(ct);
-
-            // Audit AFTER every SaveChangesAsync in this method — a failing trailing
-            // save would otherwise leave a phantom "linked" audit row.
+            // Audit AFTER every business write completes so a failing upstream call
+            // never leaves a phantom "linked" audit row.
             await _auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountLinked,
                 "WorkspaceAccount", userId,
@@ -394,28 +365,13 @@ public class GoogleAdminService : IGoogleAdminService
 
             try
             {
-                var user = await _dbContext.Users
-                    .Include(u => u.UserEmails)
-                    .FirstOrDefaultAsync(u => u.Id == userId, ct);
+                var (wasUpdated, oldEmail) = await _userService.ApplyEmailBackfillAsync(
+                    userId, googleEmail, ct);
 
-                if (user is null)
+                if (!wasUpdated)
                 {
                     errors.Add($"User {userId} not found.");
                     continue;
-                }
-
-                var oldEmail = user.Email;
-
-                user.Email = googleEmail;
-                user.UserName = googleEmail;
-                user.NormalizedEmail = googleEmail.ToUpperInvariant();
-                user.NormalizedUserName = googleEmail.ToUpperInvariant();
-
-                // Update OAuth UserEmail record if it exists
-                var oauthEmail = user.UserEmails.FirstOrDefault(e => e.IsOAuth);
-                if (oauthEmail is not null)
-                {
-                    oauthEmail.Email = googleEmail;
                 }
 
                 _logger.LogInformation(
@@ -431,9 +387,6 @@ public class GoogleAdminService : IGoogleAdminService
             }
         }
 
-        if (updated > 0)
-            await _dbContext.SaveChangesAsync(ct);
-
         return new EmailBackfillActionResult(updated, errors);
     }
 
@@ -443,34 +396,35 @@ public class GoogleAdminService : IGoogleAdminService
     {
         try
         {
-            var team = await _dbContext.Teams.FindAsync([teamId], ct);
-            if (team is null)
+            var normalizedPrefix = groupPrefix.Trim().ToLowerInvariant();
+            var (updated, previousPrefix) = await _teamService.SetGoogleGroupPrefixAsync(
+                teamId, normalizedPrefix, ct);
+            if (!updated)
             {
                 return new GroupLinkActionResult(false, ErrorMessage: "Team not found.");
             }
 
-            var normalizedPrefix = groupPrefix.Trim().ToLowerInvariant();
-            var previousPrefix = team.GoogleGroupPrefix;
-            team.GoogleGroupPrefix = normalizedPrefix;
+            // Re-fetch for downstream messaging (name).
+            var team = await _teamService.GetTeamByIdAsync(teamId, ct);
+            var teamName = team?.Name ?? teamId.ToString();
 
-            var linkResult = await _googleSyncService.EnsureTeamGroupAsync(teamId);
+            var linkResult = await _googleSyncService.EnsureTeamGroupAsync(teamId, cancellationToken: ct);
             if (linkResult.RequiresConfirmation)
             {
-                await _dbContext.SaveChangesAsync(ct);
                 return new GroupLinkActionResult(true,
-                    InfoMessage: $"Linked group for team \"{team.Name}\". Note: {linkResult.WarningMessage}");
+                    InfoMessage: $"Linked group for team \"{teamName}\". Note: {linkResult.WarningMessage}");
             }
 
             if (linkResult.ErrorMessage is not null)
             {
-                team.GoogleGroupPrefix = previousPrefix;
+                // Revert the prefix on downstream-service failure.
+                await _teamService.SetGoogleGroupPrefixAsync(teamId, previousPrefix, ct);
                 return new GroupLinkActionResult(false,
                     ErrorMessage: $"Could not link group: {linkResult.ErrorMessage}");
             }
 
-            await _dbContext.SaveChangesAsync(ct);
             return new GroupLinkActionResult(true,
-                Message: $"Successfully linked {normalizedPrefix}@nobodies.team to team \"{team.Name}\".");
+                Message: $"Successfully linked {normalizedPrefix}@nobodies.team to team \"{teamName}\".");
         }
         catch (Exception ex)
         {
@@ -483,11 +437,10 @@ public class GoogleAdminService : IGoogleAdminService
     public async Task<IReadOnlyList<TeamSummary>> GetActiveTeamsAsync(
         CancellationToken ct = default)
     {
-        return await _dbContext.Teams
-            .Where(t => t.IsActive)
-            .OrderBy(t => t.Name)
-            .Select(t => new TeamSummary(t.Id, t.Name))
-            .ToListAsync(ct);
+        var options = await _teamService.GetActiveTeamOptionsAsync(ct);
+        return options
+            .Select(o => new TeamSummary(o.Id, o.Name))
+            .ToList();
     }
 
     public async Task<EmailRenameDetectionResult> DetectEmailRenamesAsync(
@@ -495,30 +448,29 @@ public class GoogleAdminService : IGoogleAdminService
     {
         try
         {
-            // Load all users with a @nobodies.team GoogleEmail
-            var usersWithGoogleEmail = await _dbContext.Users
-                .AsNoTracking()
-                .Where(u => u.GoogleEmail != null)
-                .Select(u => new { u.Id, u.DisplayName, u.GoogleEmail })
-                .ToListAsync(ct);
+            // Load all users, then filter to those with a @nobodies.team GoogleEmail.
+            var allUsers = await _userService.GetAllUsersAsync(ct);
 
-            var nobodiesUsers = usersWithGoogleEmail
-                .Where(u => u.GoogleEmail!.EndsWith($"@{NobodiesTeamDomain}", StringComparison.OrdinalIgnoreCase))
+            var nobodiesUsers = allUsers
+                .Where(u => u.GoogleEmail is not null &&
+                    u.GoogleEmail.EndsWith($"@{NobodiesTeamDomain}", StringComparison.OrdinalIgnoreCase))
+                .Select(u => new { u.Id, u.DisplayName, u.GoogleEmail })
                 .ToList();
 
             // Load resource counts per team for affected resource calculation
             var teamResourceCounts = await _teamResourceService.GetActiveResourceCountsByTeamAsync(ct);
 
-            // Load active team memberships per user
-            var userTeamIds = await _dbContext.TeamMembers
-                .Where(tm => tm.LeftAt == null)
-                .Where(tm => nobodiesUsers.Select(u => u.Id).Contains(tm.UserId))
-                .Select(tm => new { tm.UserId, tm.TeamId })
-                .ToListAsync(ct);
-
-            var userTeamLookup = userTeamIds
-                .GroupBy(x => x.UserId)
-                .ToDictionary(g => g.Key, g => g.Select(x => x.TeamId).ToList());
+            // Active team memberships per user — delegated to ITeamService so we
+            // never read team_members directly from here.
+            var userTeamNameLookup = new Dictionary<Guid, IReadOnlyList<Guid>>();
+            foreach (var u in nobodiesUsers)
+            {
+                var memberships = await _teamService.GetUserTeamsAsync(u.Id, ct);
+                userTeamNameLookup[u.Id] = memberships
+                    .Where(m => m.LeftAt == null)
+                    .Select(m => m.TeamId)
+                    .ToList();
+            }
 
             var renames = new List<EmailRenameInfo>();
 
@@ -538,7 +490,7 @@ public class GoogleAdminService : IGoogleAdminService
                     {
                         // Email was renamed
                         var affectedResources = 0;
-                        if (userTeamLookup.TryGetValue(user.Id, out var teamIds))
+                        if (userTeamNameLookup.TryGetValue(user.Id, out var teamIds))
                         {
                             affectedResources = teamIds.Sum(tid =>
                                 teamResourceCounts.TryGetValue(tid, out var count) ? count : 0);
@@ -584,10 +536,7 @@ public class GoogleAdminService : IGoogleAdminService
     {
         try
         {
-            var user = await _dbContext.Users
-                .Include(u => u.UserEmails)
-                .FirstOrDefaultAsync(u => u.Id == userId, ct);
-
+            var user = await _userService.GetByIdAsync(userId, ct);
             if (user is null)
             {
                 return new EmailRenameFixResult(false, ErrorMessage: "Human not found.");
@@ -601,25 +550,24 @@ public class GoogleAdminService : IGoogleAdminService
             }
 
             // Update User.GoogleEmail and reset sync status so reconciliation resumes
-            user.GoogleEmail = newEmail;
-            user.GoogleEmailStatus = GoogleEmailStatus.Unknown;
-
-            // Update the corresponding UserEmail record if one exists for the old email
-            var oldUserEmail = user.UserEmails.FirstOrDefault(ue =>
-                string.Equals(ue.Email, oldEmail, StringComparison.OrdinalIgnoreCase));
-
-            if (oldUserEmail is not null)
+            var updated = await _userService.SetGoogleEmailAsync(userId, newEmail, ct);
+            if (!updated)
             {
-                oldUserEmail.Email = newEmail;
-                oldUserEmail.UpdatedAt = _clock.GetCurrentInstant();
+                return new EmailRenameFixResult(false,
+                    ErrorMessage: "Human not found during update.");
             }
+
+            // Update the corresponding UserEmail row if one exists for the old email —
+            // delegated to the owning section so no user_emails writes happen here.
+            // Self-persists via IUserEmailRepository.
+            await _userEmailService.RewriteEmailAddressAsync(userId, oldEmail, newEmail, ct);
 
             _logger.LogInformation(
                 "Admin {AdminId} fixing email rename for user {UserId}: '{OldEmail}' -> '{NewEmail}'",
                 actorUserId, userId, oldEmail, newEmail);
 
-            await _dbContext.SaveChangesAsync(ct);
-
+            // Audit AFTER every business write completes so a failing upstream call
+            // never leaves a phantom rename audit row.
             await _auditLogService.LogAsync(
                 AuditAction.GoogleEmailRenamed,
                 "User", userId,

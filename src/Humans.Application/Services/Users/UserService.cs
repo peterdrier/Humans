@@ -31,13 +31,17 @@ public sealed class UserService : IUserService, IUserDataContributor
     private readonly IClock _clock;
     private readonly ILogger<UserService> _logger;
 
+    private readonly IUserEmailRepository _userEmailRepo;
+
     public UserService(
         IUserRepository repo,
+        IUserEmailRepository userEmailRepo,
         IFullProfileInvalidator fullProfileInvalidator,
         IClock clock,
         ILogger<UserService> logger)
     {
         _repo = repo;
+        _userEmailRepo = userEmailRepo;
         _fullProfileInvalidator = fullProfileInvalidator;
         _clock = clock;
         _logger = logger;
@@ -93,6 +97,20 @@ public sealed class UserService : IUserService, IUserDataContributor
         if (set)
             await _fullProfileInvalidator.InvalidateAsync(userId, ct);
         return set;
+    }
+
+    public async Task<(bool Updated, string? OldEmail)> ApplyEmailBackfillAsync(
+        Guid userId, string newEmail, CancellationToken ct = default)
+    {
+        var (updated, oldEmail) = await _repo.RewritePrimaryEmailAsync(userId, newEmail, ct);
+        if (!updated)
+            return (false, null);
+
+        // Keep the OAuth UserEmail row in lock-step so login against the new
+        // provider email continues to succeed (no-op if none exists).
+        await _userEmailRepo.RewriteOAuthEmailAsync(userId, newEmail, ct);
+        await _fullProfileInvalidator.InvalidateAsync(userId, ct);
+        return (true, oldEmail);
     }
 
     public async Task UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default)

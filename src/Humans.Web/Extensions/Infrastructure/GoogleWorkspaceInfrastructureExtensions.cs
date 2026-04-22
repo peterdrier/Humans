@@ -8,6 +8,7 @@ using Humans.Infrastructure.Services;
 using Humans.Infrastructure.Services.GoogleWorkspace;
 using GoogleWorkspaceUserService = Humans.Application.Services.GoogleIntegration.GoogleWorkspaceUserService;
 using GoogleDriveActivityMonitorService = Humans.Application.Services.GoogleIntegration.DriveActivityMonitorService;
+using GoogleAdminService = Humans.Application.Services.GoogleIntegration.GoogleAdminService;
 
 namespace Humans.Web.Extensions.Infrastructure;
 

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
@@ -174,6 +175,33 @@ public sealed class UserEmailRepository : IUserEmailRepository
         return true;
     }
 
+    public async Task<IReadOnlyList<UserEmail>> GetByEmailsAsync(
+        IReadOnlyCollection<string> emails, CancellationToken ct = default)
+    {
+        if (emails.Count == 0)
+            return [];
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        // Lower-case both sides for a case-insensitive IN comparison.
+        // UserEmail.Email is a plain text column; explicit invariant lowering
+        // keeps the translation provider-neutral. The .NET-side LINQ to Entities
+        // suppression (MA0011) is fine — we already normalize on save.
+#pragma warning disable MA0011 // Use a CultureInfo overload — EF translates ToLower to Postgres lower()
+        var lowered = emails.Select(e => e.ToLowerInvariant()).ToArray();
+        return await ctx.UserEmails
+            .AsNoTracking()
+            .Where(ue => lowered.Contains(ue.Email.ToLower()))
+            .ToListAsync(ct);
+#pragma warning restore MA0011
+    }
+
+    public async Task<bool> AnyWithEmailAsync(string email, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.UserEmails
+            .AnyAsync(ue => EF.Functions.ILike(ue.Email, email), ct);
+    }
+
     public async Task<Dictionary<Guid, string>> GetAllNotificationTargetEmailsAsync(
         CancellationToken ct = default)
     {
@@ -257,6 +285,37 @@ public sealed class UserEmailRepository : IUserEmailRepository
             .Where(ue => EF.Functions.ILike(ue.Email, escaped, "\\") && ue.UserId != excludeUserId)
             .Select(ue => (Guid?)ue.UserId)
             .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<bool> RewriteOAuthEmailAsync(
+        Guid userId, string newEmail, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var oauth = await ctx.UserEmails
+            .FirstOrDefaultAsync(e => e.UserId == userId && e.IsOAuth, ct);
+        if (oauth is null)
+            return false;
+
+        oauth.Email = newEmail;
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public async Task<bool> RewriteEmailAddressAsync(
+        Guid userId, string oldEmail, string newEmail, Instant updatedAt,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var row = await ctx.UserEmails
+            .FirstOrDefaultAsync(e => e.UserId == userId &&
+                EF.Functions.ILike(e.Email, oldEmail), ct);
+        if (row is null)
+            return false;
+
+        row.Email = newEmail;
+        row.UpdatedAt = updatedAt;
+        await ctx.SaveChangesAsync(ct);
+        return true;
     }
 
     public async Task AddAsync(UserEmail email, CancellationToken ct = default)

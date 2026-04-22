@@ -1,5 +1,6 @@
 using Humans.Application.DTOs;
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces;
 
@@ -152,7 +153,6 @@ public interface IUserEmailService
         IEnumerable<Guid> userIds,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
     /// Resolves the notification-target email for each requested user. The
     /// result is <c>UserEmail.Email</c> where <c>IsNotificationTarget</c> is
     /// true and the email is verified, falling back to <c>User.Email</c> when
@@ -218,4 +218,45 @@ public interface IUserEmailService
         string email,
         Guid excludeUserId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns true when any <see cref="Humans.Domain.Entities.UserEmail"/> row
+    /// exists whose <c>Email</c> matches <paramref name="email"/> case-insensitively,
+    /// irrespective of user. Used by admin account-linking flows to reject duplicate
+    /// links before mutating state.
+    /// </summary>
+    Task<bool> IsEmailLinkedToAnyUserAsync(
+        string email, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Rewrites the user's <see cref="Humans.Domain.Entities.UserEmail"/> row
+    /// whose address matches <paramref name="oldEmail"/> (case-insensitive) to
+    /// <paramref name="newEmail"/> and stamps <c>UpdatedAt</c>. Used by the
+    /// admin rename-fix flow. No-op if the user has no matching row.
+    /// </summary>
+    Task RewriteEmailAddressAsync(
+        Guid userId, string oldEmail, string newEmail,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns every <see cref="UserEmailMatch"/> whose address matches one of
+    /// <paramref name="emails"/> (case-insensitive). Used by the Google admin
+    /// workspace-accounts list to match Google-side accounts to humans without
+    /// loading the full <c>user_emails</c> table.
+    /// </summary>
+    Task<IReadOnlyList<UserEmailMatch>> MatchByEmailsAsync(
+        IReadOnlyCollection<string> emails,
+        CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// Narrow projection describing a <see cref="Humans.Domain.Entities.UserEmail"/>
+/// row used by admin cross-section matching. Avoids leaking the full entity
+/// outside the owning section.
+/// </summary>
+public record UserEmailMatch(
+    string Email,
+    Guid UserId,
+    bool IsNotificationTarget,
+    bool IsVerified,
+    Instant UpdatedAt);

@@ -110,6 +110,17 @@ public interface IUserRepository
     Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
 
     /// <summary>
+    /// Rewrites <c>User.Email</c>, <c>User.UserName</c>, <c>User.NormalizedEmail</c>,
+    /// and <c>User.NormalizedUserName</c> to the given <paramref name="newEmail"/>.
+    /// Used by the admin email-backfill workflow to repair OAuth identity after a
+    /// provider-side email change. Returns the previous <c>Email</c> value (may be
+    /// null) so callers can log the transition, or <c>(false, null)</c> if the user
+    /// does not exist.
+    /// </summary>
+    Task<(bool Updated, string? OldEmail)> RewritePrimaryEmailAsync(
+        Guid userId, string newEmail, CancellationToken ct = default);
+
+    /// <summary>
     /// Sets the deletion-pending fields on a user (<c>DeletionRequestedAt</c>,
     /// <c>DeletionScheduledFor</c>). Returns false if the user does not exist.
     /// </summary>

@@ -473,6 +473,29 @@ public sealed class UserEmailService : IUserEmailService
         string email, Guid excludeUserId, CancellationToken cancellationToken = default)
         => _repository.GetOtherUserIdHavingEmailAsync(email, excludeUserId, cancellationToken);
 
+    public Task<bool> IsEmailLinkedToAnyUserAsync(
+        string email, CancellationToken cancellationToken = default) =>
+        _repository.AnyWithEmailAsync(email, cancellationToken);
+
+    public async Task RewriteEmailAddressAsync(
+        Guid userId, string oldEmail, string newEmail,
+        CancellationToken cancellationToken = default)
+    {
+        await _repository.RewriteEmailAddressAsync(
+            userId, oldEmail, newEmail, _clock.GetCurrentInstant(), cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<UserEmailMatch>> MatchByEmailsAsync(
+        IReadOnlyCollection<string> emails, CancellationToken cancellationToken = default)
+    {
+        var rows = await _repository.GetByEmailsAsync(emails, cancellationToken);
+        return rows
+            .Select(r => new UserEmailMatch(
+                r.Email, r.UserId, r.IsNotificationTarget, r.IsVerified, r.UpdatedAt))
+            .ToList();
+    }
+
+
     private static List<ContactFieldVisibility> GetAllowedVisibilities(ContactFieldVisibility accessLevel) =>
         accessLevel switch
         {

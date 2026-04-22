@@ -95,6 +95,17 @@ public interface IUserService
     Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
 
     /// <summary>
+    /// Rewrites <c>User.Email</c>, <c>User.UserName</c>, and their normalized
+    /// counterparts to <paramref name="newEmail"/>. If the user has an
+    /// OAuth-sourced <see cref="Humans.Domain.Entities.UserEmail"/> row, it is
+    /// rewritten to match so login continues to succeed against the new email.
+    /// Invalidates the Profile cache on success. Returns the previous email on
+    /// success, or (<c>false</c>, <c>null</c>) if the user does not exist.
+    /// </summary>
+    Task<(bool Updated, string? OldEmail)> ApplyEmailBackfillAsync(
+        Guid userId, string newEmail, CancellationToken ct = default);
+
+    /// <summary>
     /// Updates <c>User.DisplayName</c>. No-op if the user does not exist.
     /// </summary>
     Task UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default);

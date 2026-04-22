@@ -296,6 +296,35 @@ public class TeamService : ITeamService, IUserDataContributor
         return teamIds;
     }
 
+    public async Task<(bool Updated, string? PreviousPrefix)> SetGoogleGroupPrefixAsync(
+        Guid teamId, string? prefix, CancellationToken cancellationToken = default)
+    {
+        var team = await _dbContext.Teams.FindAsync([teamId], cancellationToken);
+        if (team is null)
+            return (false, null);
+
+        var previous = team.GoogleGroupPrefix;
+        team.GoogleGroupPrefix = prefix;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        _cache.InvalidateActiveTeams();
+        return (true, previous);
+    }
+
+    public async Task<string?> GetTeamNameByGoogleGroupPrefixAsync(
+        string prefix, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(prefix))
+            return null;
+
+        var normalized = prefix.Trim().ToLowerInvariant();
+        return await _dbContext.Teams
+            .AsNoTracking()
+            .Where(t => t.GoogleGroupPrefix != null
+                && t.GoogleGroupPrefix.ToLower() == normalized)
+            .Select(t => t.Name)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<TeamDirectoryResult> GetTeamDirectoryAsync(
         Guid? userId,
         CancellationToken cancellationToken = default)

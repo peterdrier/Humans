@@ -1,6 +1,7 @@
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -103,6 +104,22 @@ public interface IUserEmailRepository
     Task<bool> RemoveByIdAsync(Guid emailId, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns every <see cref="UserEmail"/> row whose <c>Email</c> matches one
+    /// of <paramref name="emails"/> (case-insensitive). Read-only (AsNoTracking).
+    /// Used by the Google admin workspace-accounts list to match Google-side
+    /// accounts to human records without loading the full table.
+    /// </summary>
+    Task<IReadOnlyList<UserEmail>> GetByEmailsAsync(
+        IReadOnlyCollection<string> emails, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns true when any <see cref="UserEmail"/> row exists with
+    /// <c>Email</c> equal to <paramref name="email"/> (case-insensitive),
+    /// irrespective of user. Used by admin account-linking flows.
+    /// </summary>
+    Task<bool> AnyWithEmailAsync(string email, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns a mapping of userId → verified notification-target email for all users
     /// that have one. If a user has multiple verified notification-target emails,
     /// one is picked arbitrarily.
@@ -161,6 +178,25 @@ public interface IUserEmailRepository
     /// </summary>
     Task<Guid?> GetOtherUserIdHavingEmailAsync(
         string email, Guid excludeUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Rewrites the <c>Email</c> of the user's OAuth-sourced <see cref="UserEmail"/>
+    /// row (if one exists) to <paramref name="newEmail"/>. Used by the admin
+    /// email-backfill workflow. Returns true when a row was updated. No-op if the
+    /// user has no OAuth email row.
+    /// </summary>
+    Task<bool> RewriteOAuthEmailAsync(Guid userId, string newEmail, CancellationToken ct = default);
+
+    /// <summary>
+    /// Rewrites the <c>Email</c> of the user's existing <see cref="UserEmail"/> row
+    /// (case-insensitive match on <paramref name="oldEmail"/>) to
+    /// <paramref name="newEmail"/> and stamps <c>UpdatedAt</c> with
+    /// <paramref name="updatedAt"/>. Used by the admin rename-fix flow. Returns
+    /// true when a row was updated. No-op if no matching row exists.
+    /// </summary>
+    Task<bool> RewriteEmailAddressAsync(
+        Guid userId, string oldEmail, string newEmail, Instant updatedAt,
+        CancellationToken ct = default);
 
     Task AddAsync(UserEmail email, CancellationToken ct = default);
     Task RemoveAsync(UserEmail email, CancellationToken ct = default);
