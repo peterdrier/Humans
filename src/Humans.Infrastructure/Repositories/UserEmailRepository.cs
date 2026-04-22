@@ -308,6 +308,29 @@ public sealed class UserEmailRepository : IUserEmailRepository
             user.LastLoginAt);
     }
 
+    public async Task<UserEmail?> FindByNormalizedEmailAsync(
+        string normalizedEmail, string? alternateEmail,
+        CancellationToken ct = default)
+    {
+        // ILIKE treats '_' and '%' as wildcards, so an email like
+        // alex_smith@example.com would match alexXsmith@example.com without
+        // escaping. Escape the pattern and pass '\' as the escape character.
+        var escapedEmail = EscapeLikePattern(normalizedEmail);
+        var escapedAlternate = alternateEmail is null ? null : EscapeLikePattern(alternateEmail);
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return escapedAlternate is null
+            ? await ctx.UserEmails
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    e => EF.Functions.ILike(e.Email, escapedEmail, "\\"), ct)
+            : await ctx.UserEmails
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    e => EF.Functions.ILike(e.Email, escapedEmail, "\\") ||
+                         EF.Functions.ILike(e.Email, escapedAlternate, "\\"), ct);
+    }
+
     public async Task UpdateAsync(UserEmail email, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

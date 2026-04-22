@@ -14,6 +14,8 @@ using ProfilesCommunicationPreferenceService = Humans.Application.Services.Profi
 using ProfilesContactService = Humans.Application.Services.Profile.ContactService;
 using ProfilesAccountMergeService = Humans.Application.Services.Profile.AccountMergeService;
 using ProfilesDuplicateAccountService = Humans.Application.Services.Profile.DuplicateAccountService;
+using UsersAccountProvisioningService = Humans.Application.Services.Users.AccountProvisioningService;
+using UsersUnsubscribeService = Humans.Application.Services.Users.UnsubscribeService;
 
 namespace Humans.Web.Extensions.Sections;
 
@@ -33,7 +35,7 @@ internal static class ProfileSectionExtensions
         services.AddScoped<IUnsubscribeTokenProvider, UnsubscribeTokenProvider>();
 
         services.AddScoped<ICommunicationPreferenceService, ProfilesCommunicationPreferenceService>();
-        services.AddScoped<IUnsubscribeService, UnsubscribeService>();
+        services.AddScoped<IUnsubscribeService, UsersUnsubscribeService>();
 
         services.AddScoped<IContactFieldService, ProfilesContactFieldService>();
         services.AddScoped<IUserEmailService, ProfilesUserEmailService>();
@@ -45,7 +47,7 @@ internal static class ProfileSectionExtensions
 
         services.AddScoped<IDuplicateAccountService, ProfilesDuplicateAccountService>();
         services.AddScoped<IContactService, ProfilesContactService>();
-        services.AddScoped<IAccountProvisioningService, AccountProvisioningService>();
+        services.AddScoped<IAccountProvisioningService, UsersAccountProvisioningService>();
 
         // ProfileService (inner): Scoped — has many Scoped cross-section deps.
         // Registered under the keyed "profile-inner" key so CachingProfileService can
