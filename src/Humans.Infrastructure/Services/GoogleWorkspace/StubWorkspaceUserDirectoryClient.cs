@@ -1,18 +1,22 @@
 using Microsoft.Extensions.Logging;
 using Humans.Application.Interfaces;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Infrastructure.Services.GoogleWorkspace;
 
 /// <summary>
-/// Stub implementation for development environments without Google Admin SDK credentials.
-/// Returns fake data so the admin UI can be developed and tested locally.
+/// Stub implementation of <see cref="IWorkspaceUserDirectoryClient"/> for
+/// development environments without Google Admin SDK credentials. Returns
+/// fake data so the admin UI and higher-level workflows can be developed
+/// and tested locally. Per the §15 connector pattern, the real
+/// <see cref="Humans.Application.Services.GoogleIntegration.GoogleWorkspaceUserService"/>
+/// runs against this stub — there is no "stub service" variant.
 /// </summary>
-public class StubGoogleWorkspaceUserService : IGoogleWorkspaceUserService
+public sealed class StubWorkspaceUserDirectoryClient : IWorkspaceUserDirectoryClient
 {
-    private readonly ILogger<StubGoogleWorkspaceUserService> _logger;
+    private readonly ILogger<StubWorkspaceUserDirectoryClient> _logger;
     private readonly List<WorkspaceUserAccount> _accounts;
 
-    public StubGoogleWorkspaceUserService(ILogger<StubGoogleWorkspaceUserService> logger)
+    public StubWorkspaceUserDirectoryClient(ILogger<StubWorkspaceUserDirectoryClient> logger)
     {
         _logger = logger;
         _accounts =
@@ -35,13 +39,24 @@ public class StubGoogleWorkspaceUserService : IGoogleWorkspaceUserService
         return Task.FromResult<IReadOnlyList<WorkspaceUserAccount>>(_accounts.AsReadOnly());
     }
 
+    public Task<WorkspaceUserAccount?> GetAccountAsync(string primaryEmail, CancellationToken ct = default)
+    {
+        var account = _accounts.FirstOrDefault(a =>
+            string.Equals(a.PrimaryEmail, primaryEmail, StringComparison.OrdinalIgnoreCase));
+        return Task.FromResult(account);
+    }
+
     public Task<WorkspaceUserAccount> ProvisionAccountAsync(
-        string primaryEmail, string firstName, string lastName,
-        string temporaryPassword, string? recoveryEmail = null, CancellationToken ct = default)
+        string primaryEmail,
+        string firstName,
+        string lastName,
+        string temporaryPassword,
+        string? recoveryEmail,
+        CancellationToken ct = default)
     {
         _logger.LogInformation("[Stub] Provisioned fake account: {Email}", primaryEmail);
-        var account = new WorkspaceUserAccount(primaryEmail, firstName, lastName, false,
-            DateTime.UtcNow, null);
+        var account = new WorkspaceUserAccount(
+            primaryEmail, firstName, lastName, false, DateTime.UtcNow, null);
         _accounts.Add(account);
         return Task.FromResult(account);
     }
@@ -64,13 +79,6 @@ public class StubGoogleWorkspaceUserService : IGoogleWorkspaceUserService
     {
         _logger.LogInformation("[Stub] Reset password for fake account: {Email}", primaryEmail);
         return Task.CompletedTask;
-    }
-
-    public Task<WorkspaceUserAccount?> GetAccountAsync(string primaryEmail, CancellationToken ct = default)
-    {
-        var account = _accounts.FirstOrDefault(a =>
-            string.Equals(a.PrimaryEmail, primaryEmail, StringComparison.OrdinalIgnoreCase));
-        return Task.FromResult(account);
     }
 
     private void ReplaceAccount(string email, Func<WorkspaceUserAccount, WorkspaceUserAccount> transform)

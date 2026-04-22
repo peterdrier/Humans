@@ -2,6 +2,8 @@ using Humans.Application.Interfaces;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Services.GoogleWorkspace;
+using GoogleWorkspaceUserService = Humans.Application.Services.GoogleIntegration.GoogleWorkspaceUserService;
 
 namespace Humans.Web.Extensions.Infrastructure;
 
@@ -25,6 +27,11 @@ internal static class GoogleWorkspaceInfrastructureExtensions
             services.AddScoped<ITeamResourceService, TeamResourceService>();
             services.AddScoped<IDriveActivityMonitorService, DriveActivityMonitorService>();
 
+            // Google Integration §15 migration (issue #554) — workspace users.
+            // Application-layer service depends only on the shape-neutral
+            // IWorkspaceUserDirectoryClient connector; the real and stub
+            // implementations live in Humans.Infrastructure.
+            services.AddScoped<IWorkspaceUserDirectoryClient, WorkspaceUserDirectoryClient>();
             services.AddScoped<IGoogleWorkspaceUserService, GoogleWorkspaceUserService>();
         }
         else if (environment.IsProduction())
@@ -38,7 +45,9 @@ internal static class GoogleWorkspaceInfrastructureExtensions
             services.AddScoped<IGoogleSyncService, StubGoogleSyncService>();
             services.AddScoped<ITeamResourceService, StubTeamResourceService>();
             services.AddScoped<IDriveActivityMonitorService, StubDriveActivityMonitorService>();
-            services.AddScoped<IGoogleWorkspaceUserService, StubGoogleWorkspaceUserService>();
+
+            services.AddScoped<IWorkspaceUserDirectoryClient, StubWorkspaceUserDirectoryClient>();
+            services.AddScoped<IGoogleWorkspaceUserService, GoogleWorkspaceUserService>();
         }
 
         services.AddScoped<IGoogleAdminService, GoogleAdminService>();

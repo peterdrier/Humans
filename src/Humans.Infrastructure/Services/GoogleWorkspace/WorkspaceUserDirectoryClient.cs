@@ -2,30 +2,26 @@ using Google.Apis.Admin.Directory.directory_v1;
 using Google.Apis.Admin.Directory.directory_v1.Data;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Humans.Application.Interfaces;
 using Humans.Infrastructure.Configuration;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Infrastructure.Services.GoogleWorkspace;
 
 /// <summary>
-/// Manages @nobodies.team user accounts via Google Workspace Admin SDK (Directory API).
-/// The service account authenticates as itself (no delegation or impersonation)
-/// and must be assigned the User Management Admin role in Google Workspace Admin Console.
+/// Real Google-backed implementation of <see cref="IWorkspaceUserDirectoryClient"/>.
+/// Talks to the Google Workspace Admin SDK (Directory API) using the configured
+/// service account. This is the only file that imports <c>Google.Apis.*</c> for
+/// user-account management; the Application-layer service never sees SDK types.
 /// </summary>
-public class GoogleWorkspaceUserService : IGoogleWorkspaceUserService
+public sealed class WorkspaceUserDirectoryClient : IWorkspaceUserDirectoryClient
 {
     private readonly GoogleWorkspaceSettings _settings;
-    private readonly ILogger<GoogleWorkspaceUserService> _logger;
     private DirectoryService? _directoryService;
 
-    public GoogleWorkspaceUserService(
-        IOptions<GoogleWorkspaceSettings> settings,
-        ILogger<GoogleWorkspaceUserService> logger)
+    public WorkspaceUserDirectoryClient(IOptions<GoogleWorkspaceSettings> settings)
     {
         _settings = settings.Value;
-        _logger = logger;
     }
 
     private async Task<DirectoryService> GetDirectoryServiceAsync()
@@ -99,8 +95,24 @@ public class GoogleWorkspaceUserService : IGoogleWorkspaceUserService
             pageToken = response.NextPageToken;
         } while (!string.IsNullOrEmpty(pageToken));
 
-        _logger.LogInformation("Listed {Count} @{Domain} accounts", accounts.Count, _settings.Domain);
         return accounts;
+    }
+
+    public async Task<WorkspaceUserAccount?> GetAccountAsync(
+        string primaryEmail, CancellationToken ct = default)
+    {
+        // Users.Get() returns 403 for our service account, but Users.List() with
+        // a query filter works. Use that to check if an account exists.
+        var service = await GetDirectoryServiceAsync();
+
+        var request = service.Users.List();
+        request.Domain = _settings.Domain;
+        request.Query = $"email={primaryEmail}";
+        request.MaxResults = 1;
+
+        var response = await request.ExecuteAsync(ct);
+        var user = response.UsersValue?.FirstOrDefault();
+        return user is null ? null : MapToAccount(user);
     }
 
     public async Task<WorkspaceUserAccount> ProvisionAccountAsync(
@@ -108,14 +120,10 @@ public class GoogleWorkspaceUserService : IGoogleWorkspaceUserService
         string firstName,
         string lastName,
         string temporaryPassword,
-        string? recoveryEmail = null,
+        string? recoveryEmail,
         CancellationToken ct = default)
     {
         var service = await GetDirectoryServiceAsync();
-
-        if (string.IsNullOrWhiteSpace(lastName))
-            throw new InvalidOperationException(
-                $"Cannot provision account for {primaryEmail}: FamilyName is required but was empty. The user must have a last name in their profile.");
 
         var newUser = new User
         {
@@ -138,70 +146,33 @@ public class GoogleWorkspaceUserService : IGoogleWorkspaceUserService
         }
 
         var created = await service.Users.Insert(newUser).ExecuteAsync(ct);
-        _logger.LogInformation("Provisioned @{Domain} account: {Email} (recovery: {Recovery})",
-            _settings.Domain, primaryEmail, recoveryEmail ?? "none");
-
         return MapToAccount(created);
     }
 
     public async Task SuspendAccountAsync(string primaryEmail, CancellationToken ct = default)
     {
         var service = await GetDirectoryServiceAsync();
-
         var update = new User { Suspended = true };
         await service.Users.Update(update, primaryEmail).ExecuteAsync(ct);
-
-        _logger.LogInformation("Suspended @{Domain} account: {Email}", _settings.Domain, primaryEmail);
     }
 
     public async Task ReactivateAccountAsync(string primaryEmail, CancellationToken ct = default)
     {
         var service = await GetDirectoryServiceAsync();
-
         var update = new User { Suspended = false };
         await service.Users.Update(update, primaryEmail).ExecuteAsync(ct);
-
-        _logger.LogInformation("Reactivated @{Domain} account: {Email}", _settings.Domain, primaryEmail);
     }
 
     public async Task ResetPasswordAsync(
         string primaryEmail, string newPassword, CancellationToken ct = default)
     {
         var service = await GetDirectoryServiceAsync();
-
         var update = new User
         {
             Password = newPassword,
             ChangePasswordAtNextLogin = true
         };
         await service.Users.Update(update, primaryEmail).ExecuteAsync(ct);
-
-        _logger.LogInformation("Reset password for @{Domain} account: {Email}",
-            _settings.Domain, primaryEmail);
-    }
-
-    public async Task<WorkspaceUserAccount?> GetAccountAsync(
-        string primaryEmail, CancellationToken ct = default)
-    {
-        // Users.Get() returns 403 for our service account, but Users.List() with
-        // a query filter works. Use that to check if an account exists.
-        var service = await GetDirectoryServiceAsync();
-
-        var request = service.Users.List();
-        request.Domain = _settings.Domain;
-        request.Query = $"email={primaryEmail}";
-        request.MaxResults = 1;
-
-        var response = await request.ExecuteAsync(ct);
-        var user = response.UsersValue?.FirstOrDefault();
-
-        if (user is null)
-        {
-            _logger.LogDebug("Workspace account not found for email {Email}", primaryEmail);
-            return null;
-        }
-
-        return MapToAccount(user);
     }
 
     private static WorkspaceUserAccount MapToAccount(User user)
