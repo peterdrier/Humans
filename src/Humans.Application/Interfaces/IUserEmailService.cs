@@ -158,7 +158,7 @@ public interface IUserEmailService
     /// true and the email is verified, falling back to <c>User.Email</c> when
     /// no notification-target email exists. Users for whom no email can be
     /// resolved are omitted from the result. Used by cross-section callers
-    /// (Campaigns, future mass-mail pipelines) so they never navigate
+    /// (Feedback, Campaigns, future mass-mail pipelines) so they never navigate
     /// <c>User.UserEmails</c> directly.
     /// </summary>
     Task<IReadOnlyDictionary<Guid, string>> GetNotificationTargetEmailsAsync(
