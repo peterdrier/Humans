@@ -387,13 +387,18 @@ public sealed class OnboardingService : IOnboardingService
             await _applicationDecisionService.GetPendingApplicationCountAsync(ct);
         var appStats = await _applicationDecisionService.GetAdminStatsAsync(ct);
 
-        // Language distribution across approved, non-suspended humans. The
-        // membership partition's Active bucket already represents that slice
-        // (same predicate the admin dashboard used to filter on: IsApproved &&
-        // !IsSuspended). Pass it to the User section, which owns preferred
-        // language — no cross-domain join (design-rules §6).
+        // Language distribution across approved, non-suspended humans
+        // (IsApproved && !IsSuspended — same predicate the admin dashboard
+        // used pre-partition). The partition's Active bucket narrows further
+        // to "has all required consents", so we union Active + MissingConsents
+        // to recover the full approved-and-not-suspended slice. Pass to the
+        // User section, which owns preferred language — no cross-domain join
+        // (design-rules §6).
+        var approvedNotSuspended = partition.Active
+            .Concat(partition.MissingConsents)
+            .ToList();
         var rawLanguageDistribution = await _userService.GetLanguageDistributionForUserIdsAsync(
-            partition.Active, ct);
+            approvedNotSuspended, ct);
         var languageDistribution = rawLanguageDistribution
             .Select(x => new LanguageCount(x.Language, x.Count))
             .ToList();
