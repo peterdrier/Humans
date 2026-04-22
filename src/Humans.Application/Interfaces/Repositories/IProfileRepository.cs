@@ -71,6 +71,14 @@ public interface IProfileRepository
     Task<(int ColaboradorCount, int AsociadoCount)> GetTierCountsAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Returns the user ids of all profiles that are approved and not
+    /// suspended. Read-only (AsNoTracking). Used by notification fan-out
+    /// that previously read <c>_dbContext.Profiles</c> directly from
+    /// cross-section services (e.g. Legal document sync).
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the languages for a profile, ordered by proficiency descending
     /// then language code. Read-only.
     /// </summary>

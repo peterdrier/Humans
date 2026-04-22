@@ -372,6 +372,9 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
     public Task<(int ColaboradorCount, int AsociadoCount)> GetTierCountsAsync(CancellationToken ct = default) =>
         _profileRepository.GetTierCountsAsync(ct);
 
+    public Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default) =>
+        _profileRepository.GetActiveApprovedUserIdsAsync(ct);
+
     public Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
         GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default) =>
         _profileRepository.GetCustomPictureInfoByUserIdsAsync(userIds, ct);

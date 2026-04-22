@@ -10,15 +10,12 @@ public interface IAdminLegalDocumentService
 {
     /// <summary>
     /// Gets legal documents for admin listing, optionally filtered by team.
+    /// Team names are stitched in memory from <c>ITeamService</c> rather
+    /// than via a cross-domain <c>.Include(d => d.Team)</c>.
     /// </summary>
-    Task<IReadOnlyList<LegalDocument>> GetLegalDocumentsAsync(
+    Task<IReadOnlyList<AdminLegalDocumentListItem>> GetLegalDocumentsAsync(
         Guid? teamId,
         CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets active teams used by legal-document forms.
-    /// </summary>
-    Task<IReadOnlyList<Team>> GetActiveTeamsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets a single legal document with versions for edit/detail screens.

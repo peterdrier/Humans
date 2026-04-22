@@ -118,6 +118,16 @@ public sealed class ProfileRepository : IProfileRepository
         return (colaboradorCount, asociadoCount);
     }
 
+    public async Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Profiles
+            .AsNoTracking()
+            .Where(p => p.IsApproved && !p.IsSuspended)
+            .Select(p => p.UserId)
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<ProfileLanguage>> GetLanguagesAsync(
         Guid profileId, CancellationToken ct = default)
     {

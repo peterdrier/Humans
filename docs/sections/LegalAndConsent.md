@@ -49,55 +49,48 @@
 
 See `docs/architecture/design-rules.md` for the full rules.
 
-**Owning services:** `LegalDocumentService`, `AdminLegalDocumentService`, `ConsentService`
+**Owning services:** `LegalDocumentService`, `AdminLegalDocumentService`, `LegalDocumentSyncService` (document side, migrated 2026-04-22 in PR #547a), `ConsentService` (consent side, pending in sub-task #547b)
 **Owned tables:** `legal_documents`, `document_versions`, `consent_records`
 
 ## Target Architecture Direction
 
-> **Status:** This section currently follows the "services in Infrastructure, direct DbContext" model. It will be migrated to the repository/store/decorator pattern per [`../architecture/design-rules.md`](../architecture/design-rules.md). **Delete this block once the migration lands and this section's services live in `Humans.Application` with `*Repository.cs` impls in `Humans.Infrastructure/Repositories/`.**
+> **Status (2026-04-22):** **Document-side half done.** `LegalDocumentService`, `AdminLegalDocumentService`, and `LegalDocumentSyncService` migrated to `Humans.Application.Services.Legal` in PR #547a and share `ILegalDocumentRepository` for `legal_documents` + `document_versions`. GitHub I/O is delegated to `IGitHubLegalDocumentConnector` in Infrastructure. **Consent-side pending** — `ConsentService` still lives in `Humans.Infrastructure/Services` and owns `consent_records`; migration is tracked in sub-task #547b. The cross-aggregate nav `LegalDocument.Team` was intentionally left declared (not stripped) so ConsentService continues to read it from the same entity shape until #547b lands.
 
 ### Target repositories
 
-- **`ILegalDocumentRepository`** — owns `legal_documents`, `document_versions`
+- **`ILegalDocumentRepository`** — owns `legal_documents`, `document_versions` — **shipped in PR #547a**
   - Aggregate-local navs kept: `LegalDocument.Versions`, `DocumentVersion.LegalDocument`
-  - Cross-domain navs stripped: `LegalDocument.Team` (Teams section)
-- **`IConsentRepository`** — owns `consent_records`
+  - Cross-domain navs stripped: `LegalDocument.Team` (Teams section) — **deferred** until `ConsentService` migrates in #547b so the ConsentService nav read continues to work against the same entity shape.
+- **`IConsentRepository`** — owns `consent_records` — **pending in #547b**
   - Aggregate-local navs kept: (none — `ConsentRecord` is a flat record)
   - Cross-domain navs stripped: `ConsentRecord.User` (Users/Identity section), `ConsentRecord.DocumentVersion` (sibling `ILegalDocumentRepository` aggregate — callers that need version data should call `ILegalDocumentService`/`ILegalDocumentRepository` by `DocumentVersionId`)
   - Note: `consent_records` is append-only per §12 (DB triggers block UPDATE/DELETE) — repository exposes `AddAsync` and `GetXxxAsync` but no `UpdateAsync`/`DeleteAsync`.
 
-`LegalDocumentService` (the GitHub markdown fetcher) is not a data-owning service — it has zero `DbContext` usage and lives in Infrastructure as a GitHub content provider. It does not get a repository; its `IMemoryCache` usage (see below) should move into a caching decorator around `ILegalDocumentService` itself when this section migrates.
+`LegalDocumentService` (the GitHub markdown fetcher) has zero `DbContext` usage and post-#547a lives in `Humans.Application.Services.Legal`. GitHub I/O is delegated to `IGitHubLegalDocumentConnector` (Infrastructure); the `IMemoryCache` usage stays inline on the service for now and can move into a caching decorator around `ILegalDocumentService` in a follow-up if warranted.
 
-`LegalDocumentSyncService` is treated as an Infrastructure sync job. Once repositories exist it should consume `ILegalDocumentRepository` instead of `DbContext` directly; it does not own tables.
+`LegalDocumentSyncService` (post-#547a) lives in `Humans.Application.Services.Legal`, consumes `ILegalDocumentRepository`, and delegates all GitHub I/O to `IGitHubLegalDocumentConnector`. Notification fan-out routes `IsApproved && !IsSuspended` lookups through `IProfileService.GetActiveApprovedUserIdsAsync` instead of reading `_dbContext.Profiles` directly.
 
 ### Current violations
 
-Observed in this section's service code as of 2026-04-15:
+Document-side violations cleared in PR #547a. Remaining pending items observed as of 2026-04-22 (all consent-side, migrating in #547b):
 
 - **Cross-domain `.Include()` calls:**
-  - `AdminLegalDocumentService.cs:41` — `.Include(d => d.Team)` (Teams section)
-  - `ConsentService.cs:59` — `.Include(d => d.Team)` (Teams section)
-  - `ConsentService.cs:65` — `.Include(c => c.DocumentVersion)` (cross-aggregate within section: consent records → legal document aggregate)
-  - `ConsentService.cs:181` — `.Include(c => c.DocumentVersion)` (cross-aggregate within section)
+  - `ConsentService.cs:61` — `.Include(d => d.Team)` (Teams section)
+  - `ConsentService.cs:67-68` — `.Include(c => c.DocumentVersion).ThenInclude(v => v.LegalDocument)` (cross-aggregate within section; should call `ILegalDocumentRepository` by `DocumentVersionId`)
+  - `ConsentService.cs:183-184` — same cross-aggregate shape
 - **Cross-section direct DbContext reads:**
-  - `AdminLegalDocumentService.cs:58` — reads `_dbContext.Teams` (Teams section; should call `ITeamService`)
-  - `ConsentService.cs:108` — reads `_dbContext.Profiles` (Profiles section; should call `IProfileService`)
-- **Within-section cross-service direct DbContext reads:**
-  - `ConsentService.cs:57` — reads `_dbContext.LegalDocuments` (owned by `AdminLegalDocumentService` / `LegalDocumentSyncService`; should call `ILegalDocumentService` or the future `ILegalDocumentRepository`)
-  - `LegalDocumentSyncService.cs:66,94,113,150,164,196` — reads `_dbContext.LegalDocuments` directly; `:184` — reads `_dbContext.DocumentVersions` directly. Sync job should go through `ILegalDocumentRepository` once it exists.
-- **Inline `IMemoryCache` usage in service methods:**
-  - `LegalDocumentService.cs:44,62,69` — inline `_cache.TryGetValue` / `_cache.Set` around the GitHub fetch. Must move into a caching decorator (`CachingLegalDocumentService`) wrapping `ILegalDocumentService` per §4/§5.
+  - `ConsentService.cs:110` — reads `_dbContext.Profiles` (Profiles section; should call `IProfileService`)
+- **Within-section cross-aggregate direct DbContext reads:**
+  - `ConsentService.cs:59` — reads `_dbContext.LegalDocuments` (should call `ILegalDocumentRepository` / `ILegalDocumentSyncService`)
 - **Cross-domain nav properties on this section's entities:**
-  - `LegalDocument.Team` (→ `Teams`, Teams section) — strip when introducing `ILegalDocumentRepository`.
+  - `LegalDocument.Team` (→ `Teams`, Teams section) — still declared; strip scheduled for #547b once `ConsentService` stops navigating it.
   - `ConsentRecord.User` (→ `User`, Users/Identity section) — strip when introducing `IConsentRepository`.
   - `ConsentRecord.DocumentVersion` (→ `DocumentVersion`, sibling aggregate) — strip; callers join by `DocumentVersionId` through `ILegalDocumentRepository`.
 
 ### Touch-and-clean guidance
 
-Until this section is migrated end-to-end, when touching its code:
+Until `ConsentService` migrates in #547b, when touching its code:
 
-- When editing `ConsentService.cs:108`, replace the direct `_dbContext.Profiles` read with an `IProfileService` call (e.g., `GetProfileByUserIdAsync`) — do not propagate the cross-section read further.
-- When editing `ConsentService.cs:57` or any `LegalDocuments` read in `ConsentService`, route through `ILegalDocumentSyncService`/`ILegalDocumentService` rather than adding another `_dbContext.LegalDocuments` query.
-- When editing `AdminLegalDocumentService.cs:58`, stop reading `_dbContext.Teams`; call `ITeamService` for team lookups and do not add new `.Include(d => d.Team)` calls.
-- When editing `LegalDocumentService.cs` GitHub fetch logic, do not add more inline `IMemoryCache` calls — leave the existing three in place as the only caching site so the future `CachingLegalDocumentService` decorator has a single seam to replace.
+- When editing `ConsentService.cs:110`, replace the direct `_dbContext.Profiles` read with an `IProfileService` call.
+- When editing `ConsentService.cs:59` or any `LegalDocuments` read in `ConsentService`, route through `ILegalDocumentSyncService`/`ILegalDocumentRepository` rather than adding another `_dbContext.LegalDocuments` query.
 - Never add `UpdateAsync`/`DeleteAsync` paths for `consent_records` — §12 DB triggers will reject them at runtime. Only `AddAsync` and `GetXxxAsync` are valid on the consent side.

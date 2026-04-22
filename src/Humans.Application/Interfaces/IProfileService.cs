@@ -59,6 +59,14 @@ public interface IProfileService
 
     Task<(int ColaboradorCount, int AsociadoCount)> GetTierCountsAsync(CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns the user ids of all profiles that are approved and not suspended.
+    /// Used by cross-section notification fan-out (e.g. Legal document sync) that
+    /// needs to target active members without reading the <c>profiles</c> table
+    /// directly.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default);
+
     Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
         GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default);
 

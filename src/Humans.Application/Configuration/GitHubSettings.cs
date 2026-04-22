@@ -1,4 +1,4 @@
-namespace Humans.Infrastructure.Configuration;
+namespace Humans.Application.Configuration;
 
 /// <summary>
 /// Configuration for GitHub repository containing legal documents.

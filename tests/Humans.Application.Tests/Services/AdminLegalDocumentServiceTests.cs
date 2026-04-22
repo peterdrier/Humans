@@ -3,13 +3,16 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
+using NSubstitute;
+using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Services.Legal;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Repositories;
 using Xunit;
 
 namespace Humans.Application.Tests.Services;
@@ -17,8 +20,11 @@ namespace Humans.Application.Tests.Services;
 public class AdminLegalDocumentServiceTests : IDisposable
 {
     private readonly HumansDbContext _dbContext;
+    private readonly IDbContextFactory<HumansDbContext> _factory;
+    private readonly ILegalDocumentRepository _repository;
     private readonly FakeClock _clock;
     private readonly FakeLegalDocumentSyncService _syncService;
+    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly AdminLegalDocumentService _service;
     private readonly Team _team;
 
@@ -29,18 +35,10 @@ public class AdminLegalDocumentServiceTests : IDisposable
             .Options;
 
         _dbContext = new HumansDbContext(options);
+        _factory = new FakeDbContextFactory(options);
+        _repository = new LegalDocumentRepository(_factory);
         _clock = new FakeClock(Instant.FromUtc(2026, 2, 15, 18, 0));
         _syncService = new FakeLegalDocumentSyncService();
-        _service = new AdminLegalDocumentService(
-            _dbContext,
-            _syncService,
-            Options.Create(new GitHubSettings
-            {
-                Owner = "owner",
-                Repository = "repo",
-                Branch = "main"
-            }),
-            _clock);
 
         _team = new Team
         {
@@ -55,6 +53,30 @@ public class AdminLegalDocumentServiceTests : IDisposable
 
         _dbContext.Teams.Add(_team);
         _dbContext.SaveChanges();
+
+        // Team-name stitch: return the seed team when queried.
+        _teamService
+            .GetByIdsWithParentsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var ids = ci.ArgAt<IReadOnlyCollection<Guid>>(0);
+                IReadOnlyDictionary<Guid, Team> map = ids.Contains(_team.Id)
+                    ? new Dictionary<Guid, Team> { [_team.Id] = _team }
+                    : new Dictionary<Guid, Team>();
+                return Task.FromResult(map);
+            });
+
+        _service = new AdminLegalDocumentService(
+            _repository,
+            _syncService,
+            _teamService,
+            Options.Create(new GitHubSettings
+            {
+                Owner = "owner",
+                Repository = "repo",
+                Branch = "main"
+            }),
+            _clock);
     }
 
     public void Dispose()
@@ -99,7 +121,7 @@ public class AdminLegalDocumentServiceTests : IDisposable
 
         document.Name.Should().Be("Privacy Policy");
         documents.Should().ContainSingle();
-        documents[0].Team.Name.Should().Be("Volunteers");
+        documents[0].TeamName.Should().Be("Volunteers");
         documents[0].GitHubFolderPath.Should().Be("privacy/");
     }
 
@@ -116,18 +138,23 @@ public class AdminLegalDocumentServiceTests : IDisposable
             VersionNumber = "v1",
             CommitSha = "abc123",
             EffectiveFrom = _clock.GetCurrentInstant(),
-            CreatedAt = _clock.GetCurrentInstant(),
-            LegalDocument = document
+            CreatedAt = _clock.GetCurrentInstant()
         });
         await _dbContext.SaveChangesAsync();
 
         var updated = await _service.UpdateVersionSummaryAsync(document.Id, versionId, "  Clarified scope  ");
-        var version = await _dbContext.DocumentVersions.FindAsync(versionId);
+
+        // Repository created its own DbContext via the factory; read the
+        // refreshed value through a fresh context rather than the test's
+        // change-tracker-polluted one.
+        await using var verifyCtx = _factory.CreateDbContext();
+        var version = await verifyCtx.DocumentVersions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(v => v.Id == versionId);
 
         updated.Should().BeTrue();
         version.Should().NotBeNull();
-        version.Should().NotBeNull();
-        version.ChangesSummary.Should().Be("Clarified scope");
+        version!.ChangesSummary.Should().Be("Clarified scope");
     }
 
     [Fact]
@@ -163,15 +190,20 @@ public class AdminLegalDocumentServiceTests : IDisposable
         return document;
     }
 
+    private sealed class FakeDbContextFactory : IDbContextFactory<HumansDbContext>
+    {
+        private readonly DbContextOptions<HumansDbContext> _options;
+        public FakeDbContextFactory(DbContextOptions<HumansDbContext> options) { _options = options; }
+        public HumansDbContext CreateDbContext() => new HumansDbContext(_options);
+    }
+
     private sealed class FakeLegalDocumentSyncService : ILegalDocumentSyncService
     {
         public Guid? LastSyncedDocumentId { get; private set; }
         public string? SyncResult { get; set; }
 
         public Task<IReadOnlyList<LegalDocument>> SyncAllDocumentsAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<LegalDocument>>(Array.Empty<LegalDocument>());
-        }
+            => Task.FromResult<IReadOnlyList<LegalDocument>>(Array.Empty<LegalDocument>());
 
         public Task<string?> SyncDocumentAsync(Guid documentId, CancellationToken cancellationToken = default)
         {
@@ -180,24 +212,16 @@ public class AdminLegalDocumentServiceTests : IDisposable
         }
 
         public Task<IReadOnlyList<LegalDocument>> CheckForUpdatesAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<LegalDocument>>(Array.Empty<LegalDocument>());
-        }
+            => Task.FromResult<IReadOnlyList<LegalDocument>>(Array.Empty<LegalDocument>());
 
         public Task<IReadOnlyList<LegalDocument>> GetActiveDocumentsAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<LegalDocument>>(Array.Empty<LegalDocument>());
-        }
+            => Task.FromResult<IReadOnlyList<LegalDocument>>(Array.Empty<LegalDocument>());
 
         public Task<IReadOnlyList<DocumentVersion>> GetRequiredVersionsAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<IReadOnlyList<DocumentVersion>>(Array.Empty<DocumentVersion>());
-        }
+            => Task.FromResult<IReadOnlyList<DocumentVersion>>(Array.Empty<DocumentVersion>());
 
         public Task<DocumentVersion?> GetVersionByIdAsync(Guid versionId, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<DocumentVersion?>(null);
-        }
+            => Task.FromResult<DocumentVersion?>(null);
 
         public Task<IReadOnlyList<DocumentVersion>> GetRequiredDocumentVersionsForTeamAsync(Guid teamId, CancellationToken cancellationToken = default)
         {
