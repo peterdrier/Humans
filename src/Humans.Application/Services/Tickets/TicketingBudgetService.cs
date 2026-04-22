@@ -1,35 +1,49 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
+using Microsoft.Extensions.Logging;
+using NodaTime;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Application.Services.Tickets;
 
 /// <summary>
-/// Orchestrator between ticket sales data (owned by the Tickets section) and the
-/// ticketing budget group (owned by the Budget section). Queries TicketOrders —
-/// which this service co-owns as part of the Tickets section — aggregates them
-/// into completed ISO weeks, and delegates all BudgetLineItem / TicketingProjection
-/// mutations to <see cref="IBudgetService"/>.
+/// Application-layer implementation of <see cref="ITicketingBudgetService"/>.
+/// Bridges the Tickets section (ticket_orders / ticket_attendees) into the
+/// Budget section (budget_line_items / ticketing_projections). Goes through
+/// <see cref="ITicketingBudgetRepository"/> for ticket reads and delegates all
+/// Budget-owned mutations to <see cref="IBudgetService"/> — this type never
+/// imports <c>Microsoft.EntityFrameworkCore</c>, enforced by
+/// <c>Humans.Application.csproj</c>'s reference graph.
 /// </summary>
-public class TicketingBudgetService : ITicketingBudgetService
+/// <remarks>
+/// <para>
+/// <b>Section ownership.</b> <c>TicketingBudgetService</c> is a co-owner of the
+/// Tickets section, alongside <c>TicketQueryService</c> and
+/// <c>TicketSyncService</c> (both pending their own §15 migrations in
+/// sub-tasks #545a and #545c). It is the Tickets-owned gateway for feeding
+/// completed-week sales into Budget.
+/// </para>
+/// <para>
+/// <b>ticketing_projections ownership.</b> Remains Budget-owned per
+/// design-rules §8. All projection reads/writes route through
+/// <see cref="IBudgetService"/> — this service never touches that table.
+/// </para>
+/// </remarks>
+public sealed class TicketingBudgetService : ITicketingBudgetService
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly ITicketingBudgetRepository _ticketRepo;
     private readonly IBudgetService _budgetService;
     private readonly IClock _clock;
     private readonly ILogger<TicketingBudgetService> _logger;
 
     public TicketingBudgetService(
-        HumansDbContext dbContext,
+        ITicketingBudgetRepository ticketRepo,
         IBudgetService budgetService,
         IClock clock,
         ILogger<TicketingBudgetService> logger)
     {
-        _dbContext = dbContext;
+        _ticketRepo = ticketRepo;
         _budgetService = budgetService;
         _clock = clock;
         _logger = logger;
@@ -39,30 +53,15 @@ public class TicketingBudgetService : ITicketingBudgetService
     {
         try
         {
-            // Read ticket sales (TicketOrders is co-owned by the Tickets section,
-            // of which this service is a member) and aggregate them per ISO week.
-            var orders = await _dbContext.TicketOrders
-                .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
-                .Select(o => new
-                {
-                    o.PurchasedAt,
-                    o.TotalAmount,
-                    o.StripeFee,
-                    o.ApplicationFee,
-                    TicketCount = o.Attendees.Count(a =>
-                        a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn)
-                })
-                .ToListAsync(ct);
+            // Read paid ticket sales through the narrow Tickets-owned repository.
+            // TicketCount is already pre-computed server-side (valid + checked-in only).
+            var orders = await _ticketRepo.GetPaidOrderSummariesAsync(ct);
 
             var today = _clock.GetCurrentInstant().InUtc().Date;
             var currentWeekMonday = GetIsoMonday(today);
 
             var weeklyActuals = orders
-                .GroupBy(o =>
-                {
-                    var date = o.PurchasedAt.InUtc().Date;
-                    return GetIsoMonday(date);
-                })
+                .GroupBy(o => GetIsoMonday(o.PurchasedAt.InUtc().Date))
                 .Where(g => g.Key < currentWeekMonday)
                 .OrderBy(g => g.Key)
                 .Select(g =>
@@ -114,9 +113,9 @@ public class TicketingBudgetService : ITicketingBudgetService
         return _budgetService.GetActualTicketsSold(ticketingGroup);
     }
 
+    // NodaTime IsoDayOfWeek: Monday=1, Sunday=7.
     private static LocalDate GetIsoMonday(LocalDate date)
     {
-        // NodaTime IsoDayOfWeek: Monday=1, Sunday=7
         var dayOfWeek = (int)date.DayOfWeek;
         return date.PlusDays(-(dayOfWeek - 1));
     }

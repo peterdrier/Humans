@@ -76,7 +76,7 @@ Observed in this section's service code as of 2026-04-15:
   - `BudgetService.cs:922` — `_dbContext.TeamMembers` in `GetEffectiveCoordinatorTeamIdsAsync` (Teams section)
   - `BudgetService.cs:930` — `_dbContext.Set<TeamRoleAssignment>()` with deep `.TeamMember` / `.TeamRoleDefinition.Team` nav traversal in `GetEffectiveCoordinatorTeamIdsAsync` (Teams section)
   - `BudgetService.cs:945` — `_dbContext.Teams.Where(t => t.ParentTeamId != null ...)` for child-team expansion (Teams section)
-  - `TicketingBudgetService.cs:44` — `_dbContext.TicketOrders` (Tickets section)
+  - ~~`TicketingBudgetService.cs:44` — `_dbContext.TicketOrders` (Tickets section)~~ **Resolved in PR #545b (2026-04-22):** `TicketingBudgetService` moved to `Humans.Application.Services.Tickets` and now reads paid orders via the Tickets-owned `ITicketingBudgetRepository`. Budget no longer has a code path that reads Tickets tables directly.
 - **Within-section cross-service direct DbContext reads:** None found.
 - **Inline `IMemoryCache` usage in service methods:** None found.
 - **Cross-domain nav properties on this section's entities:**

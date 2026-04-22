@@ -4,6 +4,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using BudgetBudgetService = Humans.Application.Services.Budget.BudgetService;
+using TicketsTicketingBudgetService = Humans.Application.Services.Tickets.TicketingBudgetService;
 
 namespace Humans.Web.Extensions.Sections;
 
@@ -21,7 +22,12 @@ internal static class BudgetSectionExtensions
         services.AddScoped<IBudgetService>(sp => sp.GetRequiredService<BudgetBudgetService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<BudgetBudgetService>());
 
-        services.AddScoped<ITicketingBudgetService, TicketingBudgetService>();
+        // TicketingBudgetService (§15 Part 1 — Tickets bridge, issue #545)
+        // Application-layer service goes through the narrow ITicketingBudgetRepository
+        // for paid-order reads and delegates all Budget-owned mutations to IBudgetService.
+        // Repository is Singleton (IDbContextFactory-based) per design-rules §15b.
+        services.AddSingleton<ITicketingBudgetRepository, TicketingBudgetRepository>();
+        services.AddScoped<ITicketingBudgetService, TicketsTicketingBudgetService>();
 
         return services;
     }

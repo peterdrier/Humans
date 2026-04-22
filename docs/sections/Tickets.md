@@ -79,7 +79,7 @@ Observed in this section's service code as of 2026-04-15:
   - `TicketSyncService.cs:440` — `_dbContext.EventSettings` (Shifts section)
   - `TicketSyncService.cs:449,481` — `_dbContext.EventParticipations` (Shifts section)
 - **Within-section cross-service direct DbContext reads:**
-  - `TicketingBudgetService.cs:44` — reads `_dbContext.TicketOrders` directly. From Tickets' perspective this is a Budget-owned service reaching into Tickets tables; should go through `ITicketRepository` / `ITicketQueryService`. (From Budget's perspective this is a cross-section read into Tickets.)
+  - ~~`TicketingBudgetService.cs:44` — reads `_dbContext.TicketOrders` directly.~~ **Resolved in PR #545b (2026-04-22):** `TicketingBudgetService` was migrated to `Humans.Application.Services.Tickets` and now reads paid orders through the narrow `ITicketingBudgetRepository` (Tickets-side). No cross-section DbContext reads remain on the Budget→Tickets bridge.
 - **Inline `IMemoryCache` usage in service methods:**
   - `TicketQueryService.cs:38,42` — direct `_cache.TryGetExistingValue` / `_cache.Set` around ticket counts
   - `TicketQueryService.cs:81` — `_cache.GetOrCreateAsync(CacheKeys.UserIdsWithTickets, ...)`
@@ -96,4 +96,4 @@ Until this section is migrated end-to-end, when touching its code:
 - When touching participation/event logic in `TicketQueryService.cs:584-588` or `TicketSyncService.cs:440,449,481`, route through a Shifts-owned interface (`IEventSettingsService` / `IEventParticipationService`) rather than adding more `_dbContext.EventSettings` / `_dbContext.EventParticipations` reads.
 - When touching code tracking (`TicketQueryService.GetCodeTrackingDataAsync`, ~line 337), do not deepen the `Campaign` / `Grants` / `User` include chain; call `ICampaignService` for campaign + grant data and correlate with local ticket orders in memory.
 - When touching cache logic around ticket counts (`TicketQueryService.cs:38-42,81,132-133`), keep cache calls confined to this service — do not push `IMemoryCache` into controllers or view components — and prefer adding to `CacheKeys.InvalidateTicketCaches()` over sprinkling new `_cache.Remove` sites, so the eventual caching decorator has a single seam to replace.
-- When touching `TicketingBudgetService.cs:44`, do not add further direct reads of `ticket_orders` / `ticket_attendees`; expose what Budget needs as a method on `ITicketQueryService` and call that instead.
+- When extending `TicketingBudgetService`, add new Tickets-side read methods to `ITicketingBudgetRepository` (narrow, Tickets-owned) rather than reaching into `HumansDbContext`. Projection/line-item writes remain Budget-owned and must route through `IBudgetService`.
