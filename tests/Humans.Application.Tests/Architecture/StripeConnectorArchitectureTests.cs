@@ -57,13 +57,35 @@ public class StripeConnectorArchitectureTests
             .Select(p => p.PropertyType);
 
         var allTypes = methodTypes.Concat(propertyTypes)
-            .Select(t => Nullable.GetUnderlyingType(t) ?? t)
-            .SelectMany(t => t.IsGenericType ? t.GetGenericArguments().Prepend(t) : [t])
+            .SelectMany(WalkTypes)
             .Distinct();
 
         allTypes.Should().NotContain(
             t => (t.Namespace ?? string.Empty).StartsWith("Stripe", StringComparison.Ordinal),
             because: "IStripeService is the bridge — SDK types must stay on the Infrastructure side of the seam (design-rules §15i)");
+    }
+
+    // Recursively expose every type referenced by a surface type — unwrapping
+    // Nullable<>, arrays/by-ref/pointers, and all generic arguments (at any depth)
+    // so a nested leak like Task<List<Stripe.X>> cannot bypass the guard.
+    private static IEnumerable<Type> WalkTypes(Type type)
+    {
+        var seen = new HashSet<Type>();
+        var stack = new Stack<Type>();
+        stack.Push(type);
+        while (stack.Count > 0)
+        {
+            var popped = stack.Pop();
+            var current = Nullable.GetUnderlyingType(popped) ?? popped;
+            if (!seen.Add(current)) continue;
+            yield return current;
+
+            if (current.HasElementType && current.GetElementType() is { } element)
+                stack.Push(element);
+            if (current.IsGenericType)
+                foreach (var arg in current.GetGenericArguments())
+                    stack.Push(arg);
+        }
     }
 
     [Fact]
