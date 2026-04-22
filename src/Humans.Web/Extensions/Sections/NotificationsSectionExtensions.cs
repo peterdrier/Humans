@@ -19,6 +19,11 @@ internal static class NotificationsSectionExtensions
         // services can inject it directly.
         services.AddSingleton<INotificationRepository, NotificationRepository>();
 
+        // Resolver breaks the circular DI graph between INotificationService and
+        // ITeamService/IRoleAssignmentService (which inject INotificationService
+        // back). Only NotificationService depends on the resolver.
+        services.AddScoped<INotificationRecipientResolver, NotificationRecipientResolver>();
+
         services.AddScoped<INotificationService, NotificationService>();
 
         services.AddScoped<NotificationInboxService>();

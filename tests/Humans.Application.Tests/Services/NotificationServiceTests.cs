@@ -24,8 +24,7 @@ public class NotificationServiceTests : IDisposable
     private readonly NotificationRepository _repo;
     private readonly NotificationService _service;
     private readonly ICommunicationPreferenceService _preferenceService = Substitute.For<ICommunicationPreferenceService>();
-    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
-    private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
+    private readonly INotificationRecipientResolver _recipientResolver = Substitute.For<INotificationRecipientResolver>();
 
     public NotificationServiceTests()
     {
@@ -53,7 +52,7 @@ public class NotificationServiceTests : IDisposable
             });
 
         _service = new NotificationService(
-            _repo, _teamService, _roleAssignmentService, _preferenceService,
+            _repo, _recipientResolver, _preferenceService,
             _clock, _cache, NullLogger<NotificationService>.Instance);
     }
 
@@ -191,15 +190,8 @@ public class NotificationServiceTests : IDisposable
         var user1 = Guid.NewGuid();
         var user2 = Guid.NewGuid();
 
-        var team = new Team { Id = teamId, Name = "Logistics", Slug = "logistics" };
-        _teamService.GetTeamByIdAsync(teamId, Arg.Any<CancellationToken>())
-            .Returns(team);
-        _teamService.GetTeamMembersAsync(teamId, Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<TeamMember>)
-            [
-                new TeamMember { Id = Guid.NewGuid(), TeamId = teamId, UserId = user1, Role = TeamMemberRole.Member },
-                new TeamMember { Id = Guid.NewGuid(), TeamId = teamId, UserId = user2, Role = TeamMemberRole.Member },
-            ]);
+        _recipientResolver.GetTeamNotificationInfoAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(new TeamNotificationInfo(teamId, "Logistics", [user1, user2]));
 
         await _service.SendToTeamAsync(
             NotificationSource.ShiftCoverageGap,
@@ -227,7 +219,7 @@ public class NotificationServiceTests : IDisposable
         var user1 = Guid.NewGuid();
         var user2 = Guid.NewGuid();
 
-        _roleAssignmentService.GetActiveUserIdsForRoleAsync("Board", Arg.Any<CancellationToken>())
+        _recipientResolver.GetActiveUserIdsForRoleAsync("Board", Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<Guid>)[user1, user2]);
 
         await _service.SendToRoleAsync(

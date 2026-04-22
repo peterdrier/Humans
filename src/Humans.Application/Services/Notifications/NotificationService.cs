@@ -32,8 +32,7 @@ namespace Humans.Application.Services.Notifications;
 public sealed class NotificationService : INotificationService
 {
     private readonly INotificationRepository _repo;
-    private readonly ITeamService _teamService;
-    private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly INotificationRecipientResolver _recipientResolver;
     private readonly ICommunicationPreferenceService _preferenceService;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
@@ -41,16 +40,14 @@ public sealed class NotificationService : INotificationService
 
     public NotificationService(
         INotificationRepository repo,
-        ITeamService teamService,
-        IRoleAssignmentService roleAssignmentService,
+        INotificationRecipientResolver recipientResolver,
         ICommunicationPreferenceService preferenceService,
         IClock clock,
         IMemoryCache cache,
         ILogger<NotificationService> logger)
     {
         _repo = repo;
-        _teamService = teamService;
-        _roleAssignmentService = roleAssignmentService;
+        _recipientResolver = recipientResolver;
         _preferenceService = preferenceService;
         _clock = clock;
         _cache = cache;
@@ -145,15 +142,14 @@ public sealed class NotificationService : INotificationService
         string? actionLabel = null,
         CancellationToken cancellationToken = default)
     {
-        var team = await _teamService.GetTeamByIdAsync(teamId, cancellationToken);
+        var team = await _recipientResolver.GetTeamNotificationInfoAsync(teamId, cancellationToken);
         if (team is null)
         {
             _logger.LogWarning("SendToTeamAsync: team {TeamId} not found", teamId);
             return;
         }
 
-        var members = await _teamService.GetTeamMembersAsync(teamId, cancellationToken);
-        var memberUserIds = members.Select(m => m.UserId).ToList();
+        var memberUserIds = team.MemberUserIds;
         if (memberUserIds.Count == 0)
         {
             _logger.LogWarning("SendToTeamAsync: team {TeamId} has no members", teamId);
@@ -222,7 +218,7 @@ public sealed class NotificationService : INotificationService
     {
         var now = _clock.GetCurrentInstant();
 
-        var roleUserIds = await _roleAssignmentService.GetActiveUserIdsForRoleAsync(roleName, cancellationToken);
+        var roleUserIds = await _recipientResolver.GetActiveUserIdsForRoleAsync(roleName, cancellationToken);
         if (roleUserIds.Count == 0)
         {
             _logger.LogWarning("SendToRoleAsync: no active users found for role '{RoleName}'", roleName);

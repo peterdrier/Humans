@@ -53,15 +53,20 @@ public class NotificationsArchitectureTests
     }
 
     [Fact]
-    public void NotificationService_TakesCrossSectionInterfaces_NotDbContext()
+    public void NotificationService_TakesRecipientResolver_NotDbContext()
     {
-        // The new NotificationService reaches teams and role holders via their
-        // owning section services, not via direct queries.
+        // The NotificationService reaches teams and role holders via a thin
+        // recipient-resolver adapter rather than directly injecting
+        // ITeamService/IRoleAssignmentService — those services inject
+        // INotificationService in the other direction, so a direct dependency
+        // here closes a circular DI graph that trips ValidateOnBuild at
+        // startup. The resolver exists solely to break that cycle.
         var ctor = typeof(NotificationService).GetConstructors().Single();
         var paramTypeNames = ctor.GetParameters().Select(p => p.ParameterType.Name).ToList();
 
-        paramTypeNames.Should().Contain("ITeamService");
-        paramTypeNames.Should().Contain("IRoleAssignmentService");
+        paramTypeNames.Should().Contain("INotificationRecipientResolver");
+        paramTypeNames.Should().NotContain("ITeamService");
+        paramTypeNames.Should().NotContain("IRoleAssignmentService");
     }
 
     // ── NotificationInboxService ─────────────────────────────────────────────
