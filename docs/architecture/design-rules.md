@@ -191,15 +191,21 @@ Not every crosscut belongs in a decorator. The decorator pattern works only for 
 | Metrics / timing | Decorator ✅ | Mechanical, context-free |
 | Retry / circuit breaker (external calls) | Decorator ✅ | Mechanical, context-free |
 | Access logging (GDPR "who viewed what") | Decorator ✅ | Mechanical, context-free |
-| **Domain audit** (suspended, approved, tier changed) | **In-service** | Needs actor, before/after state, semantic intent, same transaction as the write |
+| **Domain audit** (suspended, approved, tier changed) | **In-service**, self-persisting | Needs actor, before/after state, semantic intent |
 | **Authorization** | **In-controller** (resource-based handlers, §11) | Needs HTTP identity + resource context |
-| **Transactions / unit of work** | **In-service** | Must wrap the whole business operation |
+| **Transactions / unit of work** | **In-repository method** | One repository method = one `SaveChangesAsync`. Compound writes belong in a single repo method, not a service orchestrating multiple repo calls. |
 
-### 7a. Audit Is In-Service
+### 7a. Audit Is In-Service and Self-Persisting
 
-Domain audit events — "user X suspended user Y for reason Z" — need the actor, the before/after state, the semantic intent, and must commit in the same unit of work as the mutation. A decorator wrapping `SuspendAsync(userId)` has none of that context: it does not know the actor (unless plumbed in), it does not know the old state (unless it re-reads, which is wasteful), and it cannot distinguish a name edit from a suspension from a tier change.
+Domain audit events — "user X suspended user Y for reason Z" — need the actor, the before/after state, and the semantic intent. A decorator wrapping `SuspendAsync(userId)` has none of that context: it does not know the actor (unless plumbed in), it does not know the old state (unless it re-reads, which is wasteful), and it cannot distinguish a name edit from a suspension from a tier change. So audit stays in-service — the service calls `IAuditLogService.LogAsync(...)` explicitly.
 
-Services call `IAuditLogService.LogAsync(...)` explicitly inside the business method:
+**`IAuditLogService` persists its own entries.** Each `LogAsync` call opens a fresh `DbContext` via `IDbContextFactory`, adds the entry, and calls `SaveChangesAsync`. Audit is **best-effort**: save failures are logged at error level and swallowed so an audit hiccup never fails the business operation that called it.
+
+Consequences:
+
+1. **Call audit *after* the business save**, not before. A business rollback never leaves a ghost audit row because audit hasn't written yet. If the audit save fails after a successful business save, the business change is preserved and the log line explains the missing row.
+2. **Audit commits separately from the business change.** The rare failure mode is "business saved, audit did not" — logged loudly, detectable by reconciling row counts, and strictly better than the prior "audit silently vanishes" mode that happened when services moved to repository+factory writes.
+3. **Callers do not need to call `SaveChangesAsync`** to flush audit. They also must not expect audit to roll back if a later business step fails.
 
 ```csharp
 public async Task SuspendAsync(Guid userId, Guid actorId, string reason, CancellationToken ct)
@@ -209,18 +215,17 @@ public async Task SuspendAsync(Guid userId, Guid actorId, string reason, Cancell
 
     var wasAlreadySuspended = profile.IsSuspended;
     profile.IsSuspended = true;
-    await _repo.UpdateAsync(profile, ct);
+    await _repo.UpdateAsync(profile, ct);   // business save first
     _store.Upsert(profile);
 
-    await _auditLog.LogAsync(new AuditEntry(
-        Actor:   actorId,
-        Subject: userId,
-        Action:  "ProfileSuspended",
-        Before:  wasAlreadySuspended,
-        After:   true,
-        Reason:  reason), ct);
+    await _auditLog.LogAsync(               // then audit (self-persisting)
+        AuditAction.ProfileSuspended, nameof(User), userId,
+        $"Suspended (was={wasAlreadySuspended}): {reason}",
+        actorId);
 }
 ```
+
+**Compound writes that must be atomic** (e.g., season rename + historical-name insert) belong in a single repository method that performs both mutations and one `SaveChangesAsync`. Do not orchestrate multiple repo calls in the service and hope partial failure doesn't strand rows.
 
 If audit calls become noisy across many methods inside one service, the next evolution is **domain events** raised from the entity and handled in Infrastructure — not a decorator.
 

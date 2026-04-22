@@ -11,28 +11,31 @@ using Humans.Infrastructure.Data;
 namespace Humans.Infrastructure.Services;
 
 /// <summary>
-/// Records audit log entries by adding them to the DbContext.
-/// Entries are NOT saved here — the caller's SaveChangesAsync persists them
-/// atomically with the business operation.
+/// Records audit log entries. Each LogAsync call persists its entry in its own
+/// unit of work (a fresh context from <see cref="IDbContextFactory{TContext}"/>).
+/// Save failures are logged at error level and swallowed — audit is best-effort
+/// and must not break the business operation that invoked it. Callers should
+/// invoke audit <em>after</em> the business save, so a business rollback never
+/// leaves a ghost audit row.
 /// </summary>
 public class AuditLogService : IAuditLogService, IUserDataContributor
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly IDbContextFactory<HumansDbContext> _factory;
     private readonly IClock _clock;
     private readonly ILogger<AuditLogService> _logger;
 
     public AuditLogService(
-        HumansDbContext dbContext,
+        IDbContextFactory<HumansDbContext> factory,
         IClock clock,
         ILogger<AuditLogService> logger)
     {
-        _dbContext = dbContext;
+        _factory = factory;
         _clock = clock;
         _logger = logger;
     }
 
     /// <inheritdoc />
-    public Task LogAsync(AuditAction action, string entityType, Guid entityId,
+    public async Task LogAsync(AuditAction action, string entityType, Guid entityId,
         string description, string jobName,
         Guid? relatedEntityId = null, string? relatedEntityType = null)
     {
@@ -49,16 +52,14 @@ public class AuditLogService : IAuditLogService, IUserDataContributor
             RelatedEntityType = relatedEntityType
         };
 
-        _dbContext.AuditLogEntries.Add(entry);
+        await PersistAsync(entry);
 
         _logger.LogInformation("Audit: {Action} on {EntityType} {EntityId} by {Actor} — {Description}",
             action, entityType, entityId, jobName, description);
-
-        return Task.CompletedTask;
     }
 
     /// <inheritdoc />
-    public Task LogAsync(AuditAction action, string entityType, Guid entityId,
+    public async Task LogAsync(AuditAction action, string entityType, Guid entityId,
         string description, Guid actorUserId,
         Guid? relatedEntityId = null, string? relatedEntityType = null)
     {
@@ -75,16 +76,14 @@ public class AuditLogService : IAuditLogService, IUserDataContributor
             RelatedEntityType = relatedEntityType
         };
 
-        _dbContext.AuditLogEntries.Add(entry);
+        await PersistAsync(entry);
 
         _logger.LogInformation("Audit: {Action} on {EntityType} {EntityId} by user {ActorUserId} — {Description}",
             action, entityType, entityId, actorUserId, description);
-
-        return Task.CompletedTask;
     }
 
     /// <inheritdoc />
-    public Task LogGoogleSyncAsync(AuditAction action, Guid resourceId,
+    public async Task LogGoogleSyncAsync(AuditAction action, Guid resourceId,
         string description, string jobName,
         string userEmail, string role, GoogleSyncSource source, bool success,
         string? errorMessage = null,
@@ -109,19 +108,36 @@ public class AuditLogService : IAuditLogService, IUserDataContributor
             UserEmail = userEmail
         };
 
-        _dbContext.AuditLogEntries.Add(entry);
+        await PersistAsync(entry);
 
         _logger.LogInformation(
             "Audit: {Action} {Role} for {Email} on resource {ResourceId} ({Source}, Success={Success})",
             action, role, userEmail, resourceId, source, success);
+    }
 
-        return Task.CompletedTask;
+    private async Task PersistAsync(AuditLogEntry entry)
+    {
+        try
+        {
+            await using var ctx = await _factory.CreateDbContextAsync();
+            ctx.AuditLogEntries.Add(entry);
+            await ctx.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            // Audit is best-effort. A save failure must not propagate into the
+            // business operation that invoked it — log loudly and move on.
+            _logger.LogError(ex,
+                "Failed to persist audit entry {EntryId} ({Action} on {EntityType} {EntityId})",
+                entry.Id, entry.Action, entry.EntityType, entry.EntityId);
+        }
     }
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<AuditLogEntry>> GetByResourceAsync(Guid resourceId)
     {
-        return await _dbContext.AuditLogEntries
+        await using var ctx = await _factory.CreateDbContextAsync();
+        return await ctx.AuditLogEntries
             .AsNoTracking()
             .Where(e => e.ResourceId == resourceId)
             .OrderByDescending(e => e.OccurredAt)
@@ -132,7 +148,8 @@ public class AuditLogService : IAuditLogService, IUserDataContributor
     /// <inheritdoc />
     public async Task<IReadOnlyList<AuditLogEntry>> GetGoogleSyncByUserAsync(Guid userId)
     {
-        return await _dbContext.AuditLogEntries
+        await using var ctx = await _factory.CreateDbContextAsync();
+        return await ctx.AuditLogEntries
             .AsNoTracking()
             .Include(e => e.Resource)
             .Where(e => e.ResourceId != null && e.RelatedEntityId == userId)
@@ -143,7 +160,8 @@ public class AuditLogService : IAuditLogService, IUserDataContributor
 
     public async Task<IReadOnlyList<AuditLogEntry>> GetRecentAsync(int count, CancellationToken ct = default)
     {
-        return await _dbContext.AuditLogEntries
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.AuditLogEntries
             .AsNoTracking()
             .OrderByDescending(e => e.OccurredAt)
             .Take(count)
@@ -153,7 +171,8 @@ public class AuditLogService : IAuditLogService, IUserDataContributor
     public async Task<(IReadOnlyList<AuditLogEntry> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
         string? actionFilter, int page, int pageSize, CancellationToken ct = default)
     {
-        var query = _dbContext.AuditLogEntries.AsNoTracking().AsQueryable();
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var query = ctx.AuditLogEntries.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(actionFilter) && Enum.TryParse<AuditAction>(actionFilter, ignoreCase: true, out var actionEnum))
         {
@@ -168,7 +187,7 @@ public class AuditLogService : IAuditLogService, IUserDataContributor
             .Take(pageSize)
             .ToListAsync(ct);
 
-        var anomalyCount = await _dbContext.AuditLogEntries
+        var anomalyCount = await ctx.AuditLogEntries
             .AsNoTracking()
             .CountAsync(e => e.Action == AuditAction.AnomalousPermissionDetected, ct);
 
@@ -177,7 +196,8 @@ public class AuditLogService : IAuditLogService, IUserDataContributor
 
     public async Task<IReadOnlyList<AuditLogEntry>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default)
     {
-        return await _dbContext.AuditLogEntries
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.AuditLogEntries
             .AsNoTracking()
             .Where(e =>
                 (e.EntityType == "User" && e.EntityId == userId) ||
@@ -230,7 +250,8 @@ public class AuditLogService : IAuditLogService, IUserDataContributor
         int limit = 20,
         CancellationToken ct = default)
     {
-        var query = _dbContext.AuditLogEntries.AsNoTracking().AsQueryable();
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var query = ctx.AuditLogEntries.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrEmpty(entityType))
             query = query.Where(e => e.EntityType == entityType);
@@ -259,7 +280,8 @@ public class AuditLogService : IAuditLogService, IUserDataContributor
         if (userIds.Count == 0)
             return new Dictionary<Guid, string>();
 
-        return await _dbContext.Users.AsNoTracking()
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Users.AsNoTracking()
             .Where(u => userIds.Contains(u.Id))
             .ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
     }
@@ -270,14 +292,16 @@ public class AuditLogService : IAuditLogService, IUserDataContributor
         if (teamIds.Count == 0)
             return new Dictionary<Guid, (string Name, string Slug)>();
 
-        return await _dbContext.Teams.AsNoTracking()
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Teams.AsNoTracking()
             .Where(t => teamIds.Contains(t.Id))
             .ToDictionaryAsync(t => t.Id, t => (t.Name, t.Slug), ct);
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var entries = await _dbContext.AuditLogEntries
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var entries = await ctx.AuditLogEntries
             .AsNoTracking()
             .Where(a => a.EntityId == userId || a.RelatedEntityId == userId || a.ActorUserId == userId)
             .OrderByDescending(a => a.OccurredAt)

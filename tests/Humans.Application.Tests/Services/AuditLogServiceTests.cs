@@ -24,8 +24,9 @@ public class AuditLogServiceTests : IDisposable
             .Options;
 
         _dbContext = new HumansDbContext(options);
+        var factory = new SharedOptionsDbContextFactory(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
-        _service = new AuditLogService(_dbContext, _clock, NullLogger<AuditLogService>.Instance);
+        _service = new AuditLogService(factory, _clock, NullLogger<AuditLogService>.Instance);
     }
 
     public void Dispose()
@@ -35,7 +36,7 @@ public class AuditLogServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task LogAsync_JobOverload_AddsEntryToChangeTracker()
+    public async Task LogAsync_JobOverload_PersistsEntry()
     {
         var entityId = Guid.NewGuid();
 
@@ -43,15 +44,14 @@ public class AuditLogServiceTests : IDisposable
             AuditAction.VolunteerApproved, nameof(User), entityId,
             "Auto-approved", "SystemTeamSyncJob");
 
-        _dbContext.ChangeTracker.Entries<Domain.Entities.AuditLogEntry>().Should().HaveCount(1);
-        var tracked = _dbContext.ChangeTracker.Entries<Domain.Entities.AuditLogEntry>().Single();
-        tracked.State.Should().Be(EntityState.Added);
-        // Not saved yet
-        _dbContext.AuditLogEntries.Count().Should().Be(0);
+        var entry = _dbContext.AuditLogEntries.Single();
+        entry.Action.Should().Be(AuditAction.VolunteerApproved);
+        entry.EntityId.Should().Be(entityId);
+        entry.ActorUserId.Should().BeNull();
     }
 
     [Fact]
-    public async Task LogAsync_HumanOverload_AddsEntryWithActorFields()
+    public async Task LogAsync_HumanOverload_PersistsEntryWithActorFields()
     {
         var entityId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
@@ -59,8 +59,6 @@ public class AuditLogServiceTests : IDisposable
         await _service.LogAsync(
             AuditAction.MemberSuspended, nameof(User), entityId,
             "Suspended for inactivity", actorId);
-
-        await _dbContext.SaveChangesAsync();
 
         var entry = _dbContext.AuditLogEntries.Single();
         entry.ActorUserId.Should().Be(actorId);
@@ -72,7 +70,7 @@ public class AuditLogServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task LogAsync_DoesNotCallSaveChanges()
+    public async Task LogAsync_PersistsWithoutCallerSave()
     {
         var entityId = Guid.NewGuid();
 
@@ -80,15 +78,12 @@ public class AuditLogServiceTests : IDisposable
             AuditAction.RoleAssigned, nameof(User), entityId,
             "Assigned Board role", "TestJob");
 
-        _dbContext.AuditLogEntries.Count().Should().Be(0);
-
-        await _dbContext.SaveChangesAsync();
-
+        // No SaveChangesAsync on the test's context — service persisted on its own.
         _dbContext.AuditLogEntries.Count().Should().Be(1);
     }
 
     [Fact]
-    public async Task LogGoogleSyncAsync_AddsEntryWithSyncFields()
+    public async Task LogGoogleSyncAsync_PersistsEntryWithSyncFields()
     {
         var resourceId = Guid.NewGuid();
         var relatedId = Guid.NewGuid();
@@ -104,8 +99,6 @@ public class AuditLogServiceTests : IDisposable
             success: true,
             relatedEntityId: relatedId,
             relatedEntityType: "User");
-
-        await _dbContext.SaveChangesAsync();
 
         var entry = _dbContext.AuditLogEntries.Single();
         entry.ResourceId.Should().Be(resourceId);
@@ -399,5 +392,23 @@ public class AuditLogServiceTests : IDisposable
         };
         _dbContext.AuditLogEntries.Add(entry);
         return entry;
+    }
+
+    /// <summary>
+    /// Minimal <see cref="IDbContextFactory{TContext}"/> that shares
+    /// <see cref="DbContextOptions"/> with the test's assertion context.
+    /// The in-memory provider is keyed by database name, so every produced
+    /// context reads and writes the same store.
+    /// </summary>
+    private sealed class SharedOptionsDbContextFactory : IDbContextFactory<HumansDbContext>
+    {
+        private readonly DbContextOptions<HumansDbContext> _options;
+
+        public SharedOptionsDbContextFactory(DbContextOptions<HumansDbContext> options)
+        {
+            _options = options;
+        }
+
+        public HumansDbContext CreateDbContext() => new(_options);
     }
 }
