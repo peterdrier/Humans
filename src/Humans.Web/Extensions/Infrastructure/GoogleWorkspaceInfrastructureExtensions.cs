@@ -7,6 +7,7 @@ using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using Humans.Infrastructure.Services.GoogleWorkspace;
 using GoogleWorkspaceUserService = Humans.Application.Services.GoogleIntegration.GoogleWorkspaceUserService;
+using GoogleDriveActivityMonitorService = Humans.Application.Services.GoogleIntegration.DriveActivityMonitorService;
 
 namespace Humans.Web.Extensions.Infrastructure;
 
@@ -37,11 +38,19 @@ internal static class GoogleWorkspaceInfrastructureExtensions
         // service-account credentials are configured (dev only).
         services.AddScoped<ITeamResourceService, TeamResourceService>();
 
+        // Google Integration §15 migration (issue #554) — Drive activity monitor.
+        // Repository is Singleton (IDbContextFactory-based); the service lives in
+        // Humans.Application and depends only on IGoogleDriveActivityClient and
+        // the repository, so it stays free of Google SDK / EF imports. The
+        // connector client has real and stub implementations.
+        services.AddSingleton<IDriveActivityMonitorRepository, DriveActivityMonitorRepository>();
+        services.AddScoped<IDriveActivityMonitorService, GoogleDriveActivityMonitorService>();
+
         if (hasGoogleCredentials)
         {
             services.AddScoped<IGoogleSyncService, GoogleWorkspaceSyncService>();
             services.AddScoped<ITeamResourceGoogleClient, TeamResourceGoogleClient>();
-            services.AddScoped<IDriveActivityMonitorService, DriveActivityMonitorService>();
+            services.AddScoped<IGoogleDriveActivityClient, GoogleDriveActivityClient>();
 
             // Google Integration §15 migration (issue #554) — workspace users.
             // Application-layer service depends only on the shape-neutral
@@ -60,7 +69,7 @@ internal static class GoogleWorkspaceInfrastructureExtensions
         {
             services.AddScoped<IGoogleSyncService, StubGoogleSyncService>();
             services.AddScoped<ITeamResourceGoogleClient, StubTeamResourceGoogleClient>();
-            services.AddScoped<IDriveActivityMonitorService, StubDriveActivityMonitorService>();
+            services.AddScoped<IGoogleDriveActivityClient, StubGoogleDriveActivityClient>();
 
             services.AddScoped<IWorkspaceUserDirectoryClient, StubWorkspaceUserDirectoryClient>();
             services.AddScoped<IGoogleWorkspaceUserService, GoogleWorkspaceUserService>();
