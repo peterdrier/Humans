@@ -312,18 +312,34 @@ public sealed class UserEmailRepository : IUserEmailRepository
         string normalizedEmail, string? alternateEmail,
         CancellationToken ct = default)
     {
+        // ILIKE treats '_' and '%' as wildcards, so an email like
+        // alex_smith@example.com would match alexXsmith@example.com without
+        // escaping. Escape the pattern and pass '\' as the escape character.
+        var escapedEmail = EscapeLikePattern(normalizedEmail);
+        var escapedAlternate = alternateEmail is null ? null : EscapeLikePattern(alternateEmail);
+
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return alternateEmail is null
+        return escapedAlternate is null
             ? await ctx.UserEmails
                 .AsNoTracking()
                 .FirstOrDefaultAsync(
-                    e => EF.Functions.ILike(e.Email, normalizedEmail), ct)
+                    e => EF.Functions.ILike(e.Email, escapedEmail, "\\"), ct)
             : await ctx.UserEmails
                 .AsNoTracking()
                 .FirstOrDefaultAsync(
-                    e => EF.Functions.ILike(e.Email, normalizedEmail) ||
-                         EF.Functions.ILike(e.Email, alternateEmail), ct);
+                    e => EF.Functions.ILike(e.Email, escapedEmail, "\\") ||
+                         EF.Functions.ILike(e.Email, escapedAlternate, "\\"), ct);
     }
+
+    /// <summary>
+    /// Escapes LIKE/ILIKE wildcard metacharacters so a literal match is performed.
+    /// Must be used with an explicit escape clause (e.g. <c>EF.Functions.ILike(x, pattern, "\\")</c>).
+    /// </summary>
+    private static string EscapeLikePattern(string value)
+        => value
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
 
     public async Task UpdateAsync(UserEmail email, CancellationToken ct = default)
     {
