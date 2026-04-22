@@ -169,7 +169,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
         // address would cause mail-routing chaos and break group membership.
         var conflictingTeamName = await _teamService.GetTeamNameByGoogleGroupPrefixAsync(
             normalizedPrefix, ct);
-        if (conflictingTeamName is not null)
+        if (!string.IsNullOrEmpty(conflictingTeamName))
         {
             _logger.LogWarning(
                 "Standalone provisioning rejected: {Email} is the Google Group address for team '{TeamName}'",

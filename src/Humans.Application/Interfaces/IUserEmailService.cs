@@ -153,6 +153,7 @@ public interface IUserEmailService
         IEnumerable<Guid> userIds,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
     /// Resolves the notification-target email for each requested user. The
     /// result is <c>UserEmail.Email</c> where <c>IsNotificationTarget</c> is
     /// true and the email is verified, falling back to <c>User.Email</c> when

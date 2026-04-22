@@ -316,11 +316,11 @@ public class TeamService : ITeamService, IUserDataContributor
         if (string.IsNullOrWhiteSpace(prefix))
             return null;
 
-        var normalized = prefix.Trim().ToLowerInvariant();
+        var normalized = prefix.Trim();
         return await _dbContext.Teams
             .AsNoTracking()
             .Where(t => t.GoogleGroupPrefix != null
-                && t.GoogleGroupPrefix.ToLower() == normalized)
+                && EF.Functions.ILike(t.GoogleGroupPrefix, normalized))
             .Select(t => t.Name)
             .FirstOrDefaultAsync(cancellationToken);
     }
