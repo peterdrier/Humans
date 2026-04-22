@@ -6,24 +6,15 @@ namespace Humans.Application.Interfaces;
 /// Dispatches in-app notifications to users. Handles recipient materialization,
 /// preference checks, and optional email queuing.
 /// </summary>
-public interface INotificationService
+/// <remarks>
+/// Extends <see cref="INotificationEmitter"/> with team- and role-based
+/// dispatch methods. Callers that already know their recipients should
+/// depend on <see cref="INotificationEmitter"/> instead — that narrower
+/// interface avoids the DI cycle through
+/// <see cref="INotificationRecipientResolver"/>.
+/// </remarks>
+public interface INotificationService : INotificationEmitter
 {
-    /// <summary>
-    /// Sends a notification to specific individual users.
-    /// Creates one notification per user (individual resolution scope).
-    /// </summary>
-    Task SendAsync(
-        NotificationSource source,
-        NotificationClass notificationClass,
-        NotificationPriority priority,
-        string title,
-        IReadOnlyList<Guid> recipientUserIds,
-        string? body = null,
-        string? actionUrl = null,
-        string? actionLabel = null,
-        string? targetGroupName = null,
-        CancellationToken cancellationToken = default);
-
     /// <summary>
     /// Sends a single shared notification to all members of a team.
     /// Group resolution: when any recipient resolves, it resolves for all.

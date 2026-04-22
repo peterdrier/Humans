@@ -24,7 +24,13 @@ internal static class NotificationsSectionExtensions
         // back). Only NotificationService depends on the resolver.
         services.AddScoped<INotificationRecipientResolver, NotificationRecipientResolver>();
 
-        services.AddScoped<INotificationService, NotificationService>();
+        // Register NotificationService under both INotificationService and the
+        // narrower INotificationEmitter. TeamService and RoleAssignmentService
+        // depend on INotificationEmitter to avoid the cycle through
+        // INotificationRecipientResolver (which transitively injects them).
+        services.AddScoped<NotificationService>();
+        services.AddScoped<INotificationService>(sp => sp.GetRequiredService<NotificationService>());
+        services.AddScoped<INotificationEmitter>(sp => sp.GetRequiredService<NotificationService>());
 
         services.AddScoped<NotificationInboxService>();
         services.AddScoped<INotificationInboxService>(sp => sp.GetRequiredService<NotificationInboxService>());

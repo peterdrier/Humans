@@ -25,7 +25,7 @@ public class TeamService : ITeamService, IUserDataContributor
     private readonly HumansDbContext _dbContext;
     private readonly IAuditLogService _auditLogService;
     private readonly IEmailService _emailService;
-    private readonly INotificationService _notificationService;
+    private readonly INotificationEmitter _notificationService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IShiftManagementService _shiftManagementService;
     private readonly ISystemTeamSync _systemTeamSync;
@@ -43,7 +43,7 @@ public class TeamService : ITeamService, IUserDataContributor
         HumansDbContext dbContext,
         IAuditLogService auditLogService,
         IEmailService emailService,
-        INotificationService notificationService,
+        INotificationEmitter notificationService,
         IRoleAssignmentService roleAssignmentService,
         IShiftManagementService shiftManagementService,
         ISystemTeamSync systemTeamSync,

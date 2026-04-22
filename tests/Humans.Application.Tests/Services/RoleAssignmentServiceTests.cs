@@ -58,7 +58,7 @@ public class RoleAssignmentServiceTests : IDisposable
             _repository,
             _userService,
             Substitute.For<IAuditLogService>(),
-            Substitute.For<INotificationService>(),
+            Substitute.For<INotificationEmitter>(),
             Substitute.For<ISystemTeamSync>(),
             _navBadge,
             _claimsInvalidator,
