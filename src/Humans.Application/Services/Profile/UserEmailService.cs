@@ -469,6 +469,10 @@ public sealed class UserEmailService : IUserEmailService
         string searchTerm, CancellationToken cancellationToken = default)
         => _repository.SearchUserIdsByVerifiedEmailAsync(searchTerm, cancellationToken);
 
+    public Task<Guid?> GetOtherUserIdHavingEmailAsync(
+        string email, Guid excludeUserId, CancellationToken cancellationToken = default)
+        => _repository.GetOtherUserIdHavingEmailAsync(email, excludeUserId, cancellationToken);
+
     private static List<ContactFieldVisibility> GetAllowedVisibilities(ContactFieldVisibility accessLevel) =>
         accessLevel switch
         {

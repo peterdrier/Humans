@@ -1,45 +1,54 @@
 using System.Globalization;
 using System.Text;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Humans.Application.Helpers;
 using Humans.Application.Interfaces;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Application.Services.GoogleIntegration;
 
 /// <summary>
 /// Encapsulates the 4-step @nobodies.team email provisioning flow.
 /// Used by both HumanController (Admin) and TeamAdminController (Coordinators).
+/// Part of the Google Integration §15 migration tracked under issue #554 —
+/// PR #284 shipped <c>SyncSettingsService</c> first; this is the second
+/// Google Integration service to move to the Application layer.
 /// </summary>
-public class EmailProvisioningService : IEmailProvisioningService
+/// <remarks>
+/// All DbContext access has been pushed behind the cross-section service
+/// interfaces (<see cref="IUserService"/>, <see cref="IProfileService"/>,
+/// <see cref="IUserEmailService"/>). The Google Workspace Users API bridge
+/// is <see cref="IGoogleWorkspaceUserService"/>. Audit and notification
+/// calls go through their existing interfaces unchanged.
+/// </remarks>
+public sealed class EmailProvisioningService : IEmailProvisioningService
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly UserManager<User> _userManager;
+    private readonly IUserService _userService;
+    private readonly IProfileService _profileService;
     private readonly IGoogleWorkspaceUserService _workspaceUserService;
     private readonly IUserEmailService _userEmailService;
+    private readonly ITeamService _teamService;
     private readonly IEmailService _emailService;
     private readonly INotificationService _notificationService;
     private readonly IAuditLogService _auditLogService;
     private readonly ILogger<EmailProvisioningService> _logger;
 
     public EmailProvisioningService(
-        HumansDbContext dbContext,
-        UserManager<User> userManager,
+        IUserService userService,
+        IProfileService profileService,
         IGoogleWorkspaceUserService workspaceUserService,
         IUserEmailService userEmailService,
+        ITeamService teamService,
         IEmailService emailService,
         INotificationService notificationService,
         IAuditLogService auditLogService,
         ILogger<EmailProvisioningService> logger)
     {
-        _dbContext = dbContext;
-        _userManager = userManager;
+        _userService = userService;
+        _profileService = profileService;
         _workspaceUserService = workspaceUserService;
         _userEmailService = userEmailService;
+        _teamService = teamService;
         _emailService = emailService;
         _notificationService = notificationService;
         _auditLogService = auditLogService;
@@ -51,11 +60,7 @@ public class EmailProvisioningService : IEmailProvisioningService
         string emailPrefix,
         Guid provisionedByUserId)
     {
-        var user = await _dbContext.Users
-            .Include(u => u.UserEmails)
-            .Include(u => u.Profile)
-            .FirstOrDefaultAsync(u => u.Id == userId);
-
+        var user = await _userService.GetByIdAsync(userId);
         if (user is null)
             return new EmailProvisioningResult(false, ErrorMessage: "User not found.");
 
@@ -71,13 +76,12 @@ public class EmailProvisioningService : IEmailProvisioningService
             // Must run BEFORE the Workspace existence check so a stale/deleted Workspace account
             // cannot silently "move" the identity off its current human.
             //
-            // Filter UserId != userId inside the query (not after FirstOrDefault) so duplicate
-            // rows with mixed case or historical drift can't mask a real cross-user conflict.
-            var conflictingEmailUserId = await _dbContext.UserEmails
-                .Where(ue => string.Equals(ue.Email, fullEmail, StringComparison.OrdinalIgnoreCase)
-                    && ue.UserId != userId)
-                .Select(ue => (Guid?)ue.UserId)
-                .FirstOrDefaultAsync();
+            // Cross-section reads — route through the owning services rather than
+            // touching _dbContext directly (design-rules §6). Each service filters
+            // UserId != userId inside the query so duplicate rows (mixed case or
+            // historical drift) can't mask a real cross-user conflict.
+            var conflictingEmailUserId =
+                await _userEmailService.GetOtherUserIdHavingEmailAsync(fullEmail, userId);
             if (conflictingEmailUserId is not null)
             {
                 _logger.LogWarning(
@@ -87,12 +91,8 @@ public class EmailProvisioningService : IEmailProvisioningService
                     ErrorMessage: $"{fullEmail} is already in use by another human.");
             }
 
-            var conflictingGoogleEmailUserId = await _dbContext.Users
-                .Where(u => u.GoogleEmail != null
-                    && string.Equals(u.GoogleEmail, fullEmail, StringComparison.OrdinalIgnoreCase)
-                    && u.Id != userId)
-                .Select(u => (Guid?)u.Id)
-                .FirstOrDefaultAsync();
+            var conflictingGoogleEmailUserId =
+                await _userService.GetOtherUserIdHavingGoogleEmailAsync(fullEmail, userId);
             if (conflictingGoogleEmailUserId is not null)
             {
                 _logger.LogWarning(
@@ -105,11 +105,8 @@ public class EmailProvisioningService : IEmailProvisioningService
             // Reject if the prefix collides with a team's Google Group. Team groups
             // live on the same domain (@nobodies.team), so a user account with the
             // same address would cause mail-routing chaos and break group membership.
-            var conflictingTeamName = await _dbContext.Teams
-                .Where(t => t.GoogleGroupPrefix != null
-                    && string.Equals(t.GoogleGroupPrefix, sanitizedPrefix, StringComparison.OrdinalIgnoreCase))
-                .Select(t => t.Name)
-                .FirstOrDefaultAsync();
+            var conflictingTeamName =
+                await _teamService.GetTeamNameByGoogleGroupPrefixAsync(sanitizedPrefix);
             if (conflictingTeamName is not null)
             {
                 _logger.LogWarning(
@@ -124,9 +121,12 @@ public class EmailProvisioningService : IEmailProvisioningService
             if (existing is not null)
                 return new EmailProvisioningResult(false, fullEmail, ErrorMessage: $"Account {fullEmail} already exists in Google Workspace.");
 
-            // Use real name from profile, not display/burner name
-            var firstName = user.Profile?.FirstName;
-            var lastName = user.Profile?.LastName;
+            // Use real name from profile, not display/burner name.
+            // Cross-section read — route through IProfileService rather than a
+            // cross-domain .Include (design-rules §6).
+            var profile = await _profileService.GetProfileAsync(userId);
+            var firstName = profile?.FirstName;
+            var lastName = profile?.LastName;
             if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName))
                 return new EmailProvisioningResult(false, fullEmail, ErrorMessage: "Cannot provision account: the human must have a first and last name in their profile.");
 
@@ -150,9 +150,9 @@ public class EmailProvisioningService : IEmailProvisioningService
             // ──────────────────────────────────────────────────────────────
 
             // Step 1: Capture recovery email BEFORE the notification target changes.
-            var recoveryEmail = user.GetEffectiveEmail();
-            if (recoveryEmail?.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase) == true)
-                recoveryEmail = user.Email; // fall back to OAuth email
+            // Cross-section read — route through IUserEmailService rather than a
+            // cross-domain .Include on User.UserEmails (design-rules §6).
+            var recoveryEmail = await ResolveRecoveryEmailAsync(userId, user.Email);
 
             // Step 2: Generate temp password and provision in Google Workspace.
             var tempPassword = PasswordGenerator.GenerateTemporary();
@@ -161,13 +161,9 @@ public class EmailProvisioningService : IEmailProvisioningService
                 recoveryEmail);
 
             // Step 3: Link the new email — this changes the notification target
-            // to @nobodies.team. Do NOT move this above step 1.
+            // to @nobodies.team AND sets User.GoogleEmail (IUserEmailService owns
+            // both mutations internally). Do NOT move this above step 1.
             await _userEmailService.AddVerifiedEmailAsync(userId, fullEmail);
-
-            user.GoogleEmail = fullEmail;
-            await _userManager.UpdateAsync(user);
-
-            await _dbContext.SaveChangesAsync();
 
             // Audit
             await _auditLogService.LogAsync(
@@ -211,6 +207,24 @@ public class EmailProvisioningService : IEmailProvisioningService
             _logger.LogError(ex, "Failed to provision @nobodies.team account {Email} for user {UserId}", fullEmail, userId);
             return new EmailProvisioningResult(false, fullEmail, ErrorMessage: $"Failed to provision {fullEmail}. Check logs for details.");
         }
+    }
+
+    /// <summary>
+    /// Resolves the user's personal recovery email — the verified notification-target
+    /// email, or the OAuth email as fallback. If the notification target is already
+    /// @nobodies.team, fall back to the OAuth email so credentials don't land in a
+    /// mailbox the user can't yet reach.
+    /// </summary>
+    private async Task<string?> ResolveRecoveryEmailAsync(Guid userId, string? oauthEmail)
+    {
+        var emails = await _userEmailService.GetUserEmailsAsync(userId);
+        var target = emails.FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified);
+        var candidate = target?.Email ?? oauthEmail;
+
+        if (candidate?.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase) == true)
+            return oauthEmail;
+
+        return candidate;
     }
 
     /// <summary>

@@ -206,4 +206,16 @@ public interface IUserEmailService
     Task<IReadOnlyList<Guid>> SearchUserIdsByVerifiedEmailAsync(
         string searchTerm,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the id of any user, other than <paramref name="excludeUserId"/>,
+    /// whose user_emails rows contain the given address (case-insensitive), or
+    /// null if no other user owns it. Used by @nobodies.team provisioning so
+    /// the Application-layer service can detect cross-user conflicts without
+    /// touching the database directly.
+    /// </summary>
+    Task<Guid?> GetOtherUserIdHavingEmailAsync(
+        string email,
+        Guid excludeUserId,
+        CancellationToken cancellationToken = default);
 }

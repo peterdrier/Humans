@@ -153,6 +153,15 @@ public interface IUserEmailRepository
     Task<Guid?> GetUserIdByVerifiedEmailAsync(
         string email, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns the id of any user, other than <paramref name="excludeUserId"/>,
+    /// whose <c>user_emails</c> rows contain the given address (case-insensitive).
+    /// Used by @nobodies.team provisioning to block a prefix that is already
+    /// attached to another human regardless of verification state.
+    /// </summary>
+    Task<Guid?> GetOtherUserIdHavingEmailAsync(
+        string email, Guid excludeUserId, CancellationToken ct = default);
+
     Task AddAsync(UserEmail email, CancellationToken ct = default);
     Task RemoveAsync(UserEmail email, CancellationToken ct = default);
     Task RemoveAllForUserAsync(Guid userId, CancellationToken ct = default);

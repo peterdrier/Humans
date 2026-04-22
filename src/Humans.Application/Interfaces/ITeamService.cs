@@ -147,6 +147,16 @@ public interface ITeamService
     Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns the display name of the team whose <c>GoogleGroupPrefix</c> matches
+    /// <paramref name="googleGroupPrefix"/> (case-insensitive), or null if no team
+    /// uses that prefix. Used by @nobodies.team provisioning to block personal
+    /// prefixes that would collide with a team group on the same domain.
+    /// </summary>
+    Task<string?> GetTeamNameByGoogleGroupPrefixAsync(
+        string googleGroupPrefix,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Resolves a set of team IDs to their display names WITHOUT filtering by
     /// <see cref="Team.IsActive"/>. Used by the GDPR export, where historical
     /// records (shift signups, audit entries) may reference teams that have

@@ -145,6 +145,20 @@ public sealed class UserRepository : IUserRepository
             .ToListAsync(ct);
     }
 
+    public async Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
+        string email, Guid excludeUserId, CancellationToken ct = default)
+    {
+        var normalized = email.ToLowerInvariant();
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Users
+            .AsNoTracking()
+            .Where(u => u.GoogleEmail != null
+                        && u.GoogleEmail.ToLower() == normalized
+                        && u.Id != excludeUserId)
+            .Select(u => (Guid?)u.Id)
+            .FirstOrDefaultAsync(ct);
+    }
+
     // ==========================================================================
     // Writes — User (atomic field updates)
     // ==========================================================================

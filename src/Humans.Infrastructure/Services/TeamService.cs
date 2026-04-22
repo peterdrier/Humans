@@ -178,6 +178,21 @@ public class TeamService : ITeamService, IUserDataContributor
             .FirstOrDefaultAsync(t => t.Id == teamId, cancellationToken);
     }
 
+    public async Task<string?> GetTeamNameByGoogleGroupPrefixAsync(
+        string googleGroupPrefix, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(googleGroupPrefix))
+            return null;
+
+        var normalized = googleGroupPrefix.ToLowerInvariant();
+        return await _dbContext.Teams
+            .AsNoTracking()
+            .Where(t => t.GoogleGroupPrefix != null
+                        && t.GoogleGroupPrefix.ToLower() == normalized)
+            .Select(t => t.Name)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyDictionary<Guid, string>> GetTeamNamesByIdsAsync(
         IReadOnlyCollection<Guid> teamIds,
         CancellationToken cancellationToken = default)

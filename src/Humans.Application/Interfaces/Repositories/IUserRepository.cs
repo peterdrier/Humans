@@ -76,6 +76,15 @@ public interface IUserRepository
     Task<IReadOnlyList<Instant>> GetLoginTimestampsInWindowAsync(
         Instant fromInclusive, Instant toExclusive, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns the id of any user, other than <paramref name="excludeUserId"/>,
+    /// whose <c>GoogleEmail</c> matches the given address (case-insensitive),
+    /// or null if no such user exists. Used by @nobodies.team provisioning to
+    /// block a prefix that is already attached to another human.
+    /// </summary>
+    Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
+        string email, Guid excludeUserId, CancellationToken ct = default);
+
     // ==========================================================================
     // Writes — User (atomic field updates)
     // ==========================================================================

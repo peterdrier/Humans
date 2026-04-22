@@ -71,6 +71,10 @@ public sealed class UserService : IUserService, IUserDataContributor
         Instant fromInclusive, Instant toExclusive, CancellationToken ct = default) =>
         _repo.GetLoginTimestampsInWindowAsync(fromInclusive, toExclusive, ct);
 
+    public Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
+        string email, Guid excludeUserId, CancellationToken ct = default) =>
+        _repo.GetOtherUserIdHavingGoogleEmailAsync(email, excludeUserId, ct);
+
     // ==========================================================================
     // User writes
     // ==========================================================================

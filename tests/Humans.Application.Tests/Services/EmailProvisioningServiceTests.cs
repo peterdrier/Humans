@@ -1,10 +1,8 @@
 using AwesomeAssertions;
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
+using Humans.Application.Services.GoogleIntegration;
 using Humans.Domain.Entities;
-using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
@@ -80,81 +78,76 @@ public class EmailProvisioningServiceTests
         EmailProvisioningService.SanitizeEmailPrefix("te\tst").Should().BeNull();
     }
 
-    // --- ProvisionNobodiesEmailAsync: DB conflict checks ---
+    // --- ProvisionNobodiesEmailAsync: cross-user conflict checks ---
     // These tests verify that provisioning rejects prefixes already in use
     // by another human in our system BEFORE calling Workspace or writing DB.
+    // All DB state is mocked at the IUserService / IUserEmailService / ITeamService
+    // boundary — the Application-layer service no longer touches DbContext.
 
     private sealed record ProvisioningFixture(
         EmailProvisioningService Service,
-        HumansDbContext DbContext,
+        IUserService UserService,
+        IProfileService ProfileService,
         IGoogleWorkspaceUserService WorkspaceUserService,
         IUserEmailService UserEmailService,
+        ITeamService TeamService,
         IEmailService EmailService,
         INotificationService NotificationService,
         IAuditLogService AuditLogService);
 
     private static ProvisioningFixture BuildFixture()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        var db = new HumansDbContext(options);
-
-        var store = Substitute.For<IUserStore<User>>();
-        var userManager = Substitute.For<UserManager<User>>(
-            store, null, null, null, null, null, null, null, null);
-
+        var userService = Substitute.For<IUserService>();
+        var profileService = Substitute.For<IProfileService>();
         var workspace = Substitute.For<IGoogleWorkspaceUserService>();
         var userEmail = Substitute.For<IUserEmailService>();
+        var teamService = Substitute.For<ITeamService>();
         var email = Substitute.For<IEmailService>();
         var notify = Substitute.For<INotificationService>();
         var audit = Substitute.For<IAuditLogService>();
 
         var service = new EmailProvisioningService(
-            db, userManager, workspace, userEmail, email, notify, audit,
+            userService, profileService, workspace, userEmail, teamService,
+            email, notify, audit,
             NullLogger<EmailProvisioningService>.Instance);
 
-        return new ProvisioningFixture(service, db, workspace, userEmail, email, notify, audit);
+        return new ProvisioningFixture(
+            service, userService, profileService, workspace, userEmail,
+            teamService, email, notify, audit);
+    }
+
+    private static void StubTargetUser(ProvisioningFixture f, Guid userId, string? oauthEmail = "target@example.com")
+    {
+        f.UserService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new User
+            {
+                Id = userId,
+                Email = oauthEmail,
+                DisplayName = "Target",
+            });
+        f.ProfileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new Profile { FirstName = "Target", LastName = "Two" });
     }
 
     [Fact]
     public async Task ProvisionNobodiesEmailAsync_RejectsWhenEmailBelongsToAnotherUserEmail()
     {
         var f = BuildFixture();
-        using var _ = f.DbContext;
 
         var ownerId = Guid.NewGuid();
         var targetId = Guid.NewGuid();
 
-        f.DbContext.Users.Add(new User
-        {
-            Id = ownerId,
-            Email = "owner@example.com",
-            DisplayName = "Owner",
-            Profile = new Profile { FirstName = "Owner", LastName = "One" },
-        });
-        f.DbContext.Users.Add(new User
-        {
-            Id = targetId,
-            Email = "target@example.com",
-            DisplayName = "Target",
-            Profile = new Profile { FirstName = "Target", LastName = "Two" },
-        });
-        f.DbContext.UserEmails.Add(new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = ownerId,
-            Email = "alice@nobodies.team",
-            IsVerified = true,
-        });
-        await f.DbContext.SaveChangesAsync();
+        StubTargetUser(f, targetId);
+        f.UserEmailService.GetOtherUserIdHavingEmailAsync(
+                "alice@nobodies.team", targetId, Arg.Any<CancellationToken>())
+            .Returns(ownerId);
 
         var result = await f.Service.ProvisionNobodiesEmailAsync(targetId, "alice", targetId);
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Contain("already in use by another human");
 
-        // No Workspace call, no DB mutation
+        // No Workspace call, no email link
         await f.WorkspaceUserService.DidNotReceive().GetAccountAsync(
             Arg.Any<string>(), Arg.Any<CancellationToken>());
         await f.WorkspaceUserService.DidNotReceive().ProvisionAccountAsync(
@@ -162,37 +155,20 @@ public class EmailProvisioningServiceTests
             Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
         await f.UserEmailService.DidNotReceive().AddVerifiedEmailAsync(
             Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
-
-        // Target's GoogleEmail was NOT mutated
-        var target = await f.DbContext.Users.FindAsync(targetId);
-        target!.GoogleEmail.Should().BeNull();
     }
 
     [Fact]
     public async Task ProvisionNobodiesEmailAsync_RejectsWhenEmailBelongsToAnotherGoogleEmail()
     {
         var f = BuildFixture();
-        using var _ = f.DbContext;
 
         var ownerId = Guid.NewGuid();
         var targetId = Guid.NewGuid();
 
-        f.DbContext.Users.Add(new User
-        {
-            Id = ownerId,
-            Email = "owner@example.com",
-            DisplayName = "Owner",
-            GoogleEmail = "alice@nobodies.team",
-            Profile = new Profile { FirstName = "Owner", LastName = "One" },
-        });
-        f.DbContext.Users.Add(new User
-        {
-            Id = targetId,
-            Email = "target@example.com",
-            DisplayName = "Target",
-            Profile = new Profile { FirstName = "Target", LastName = "Two" },
-        });
-        await f.DbContext.SaveChangesAsync();
+        StubTargetUser(f, targetId);
+        f.UserService.GetOtherUserIdHavingGoogleEmailAsync(
+                "alice@nobodies.team", targetId, Arg.Any<CancellationToken>())
+            .Returns(ownerId);
 
         var result = await f.Service.ProvisionNobodiesEmailAsync(targetId, "alice", targetId);
 
@@ -206,88 +182,18 @@ public class EmailProvisioningServiceTests
             Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
         await f.UserEmailService.DidNotReceive().AddVerifiedEmailAsync(
             Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
-
-        var target = await f.DbContext.Users.FindAsync(targetId);
-        target!.GoogleEmail.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task ProvisionNobodiesEmailAsync_RejectsWhenTargetAlsoHasRowForSameEmail()
-    {
-        // Regression for the FirstOrDefault-then-compare bug: if the target user
-        // has a row for the same email AND another user also has one, the original
-        // code could return the target's row and miss the cross-user conflict.
-        // Filtering UserId != userId inside the query is deterministic.
-        var f = BuildFixture();
-        using var _ = f.DbContext;
-
-        var ownerId = Guid.NewGuid();
-        var targetId = Guid.NewGuid();
-
-        f.DbContext.Users.Add(new User
-        {
-            Id = ownerId,
-            Email = "owner@example.com",
-            DisplayName = "Owner",
-            Profile = new Profile { FirstName = "Owner", LastName = "One" },
-        });
-        f.DbContext.Users.Add(new User
-        {
-            Id = targetId,
-            Email = "target@example.com",
-            DisplayName = "Target",
-            Profile = new Profile { FirstName = "Target", LastName = "Two" },
-        });
-        // Target's row goes in FIRST so it's more likely to be returned by FirstOrDefault
-        f.DbContext.UserEmails.Add(new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = targetId,
-            Email = "alice@nobodies.team",
-            IsVerified = true,
-        });
-        f.DbContext.UserEmails.Add(new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = ownerId,
-            Email = "alice@nobodies.team",
-            IsVerified = true,
-        });
-        await f.DbContext.SaveChangesAsync();
-
-        var result = await f.Service.ProvisionNobodiesEmailAsync(targetId, "alice", targetId);
-
-        result.Success.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("already in use by another human");
-
-        await f.WorkspaceUserService.DidNotReceive().ProvisionAccountAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task ProvisionNobodiesEmailAsync_RejectsWhenPrefixCollidesWithTeamGoogleGroup()
     {
         var f = BuildFixture();
-        using var _ = f.DbContext;
 
         var userId = Guid.NewGuid();
-        f.DbContext.Users.Add(new User
-        {
-            Id = userId,
-            Email = "person@example.com",
-            DisplayName = "Person",
-            Profile = new Profile { FirstName = "Person", LastName = "Test" },
-        });
-        f.DbContext.Teams.Add(new Team
-        {
-            Id = Guid.NewGuid(),
-            Name = "Communications",
-            Slug = "communications",
-            IsActive = true,
-            GoogleGroupPrefix = "comms",
-        });
-        await f.DbContext.SaveChangesAsync();
+        StubTargetUser(f, userId);
+        f.TeamService.GetTeamNameByGoogleGroupPrefixAsync(
+                "comms", Arg.Any<CancellationToken>())
+            .Returns("Communications");
 
         var result = await f.Service.ProvisionNobodiesEmailAsync(userId, "comms", userId);
 
@@ -295,7 +201,7 @@ public class EmailProvisioningServiceTests
         result.ErrorMessage.Should().Contain("Google Group");
         result.ErrorMessage.Should().Contain("Communications");
 
-        // No Workspace call, no DB mutation
+        // No Workspace call, no email link
         await f.WorkspaceUserService.DidNotReceive().GetAccountAsync(
             Arg.Any<string>(), Arg.Any<CancellationToken>());
         await f.WorkspaceUserService.DidNotReceive().ProvisionAccountAsync(
@@ -309,17 +215,13 @@ public class EmailProvisioningServiceTests
     public async Task ProvisionNobodiesEmailAsync_AllowsWhenPrefixIsFree()
     {
         var f = BuildFixture();
-        using var _ = f.DbContext;
 
         var userId = Guid.NewGuid();
-        f.DbContext.Users.Add(new User
-        {
-            Id = userId,
-            Email = "person@example.com",
-            DisplayName = "Person",
-            Profile = new Profile { FirstName = "Person", LastName = "Test" },
-        });
-        await f.DbContext.SaveChangesAsync();
+        StubTargetUser(f, userId, oauthEmail: "person@example.com");
+        f.ProfileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new Profile { FirstName = "Person", LastName = "Test" });
+        f.UserEmailService.GetUserEmailsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmailEditDto>());
 
         f.WorkspaceUserService.GetAccountAsync(
                 Arg.Any<string>(), Arg.Any<CancellationToken>())

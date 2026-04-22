@@ -127,4 +127,16 @@ public interface IUserService
         Instant fromInclusive,
         Instant toExclusive,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the id of any user, other than <paramref name="excludeUserId"/>,
+    /// whose <c>GoogleEmail</c> matches <paramref name="email"/> (case-insensitive),
+    /// or null if no such user exists. Used by @nobodies.team provisioning so
+    /// the Application-layer service can detect cross-user conflicts without
+    /// touching the database directly.
+    /// </summary>
+    Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
+        string email,
+        Guid excludeUserId,
+        CancellationToken ct = default);
 }
