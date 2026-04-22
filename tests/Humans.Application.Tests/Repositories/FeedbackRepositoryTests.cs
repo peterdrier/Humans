@@ -117,15 +117,27 @@ public sealed class FeedbackRepositoryTests : IDisposable
         await _dbContext.FeedbackReports.AddRangeAsync(
             new FeedbackReport
             {
-                Id = Guid.NewGuid(), UserId = user, Category = FeedbackCategory.Bug,
-                Description = "a", PageUrl = "/a", Status = FeedbackStatus.Open,
-                AssignedToTeamId = teamA, CreatedAt = now, UpdatedAt = now
+                Id = Guid.NewGuid(),
+                UserId = user,
+                Category = FeedbackCategory.Bug,
+                Description = "a",
+                PageUrl = "/a",
+                Status = FeedbackStatus.Open,
+                AssignedToTeamId = teamA,
+                CreatedAt = now,
+                UpdatedAt = now
             },
             new FeedbackReport
             {
-                Id = Guid.NewGuid(), UserId = user, Category = FeedbackCategory.Bug,
-                Description = "b", PageUrl = "/b", Status = FeedbackStatus.Open,
-                AssignedToTeamId = teamB, CreatedAt = now + Duration.FromMinutes(1), UpdatedAt = now
+                Id = Guid.NewGuid(),
+                UserId = user,
+                Category = FeedbackCategory.Bug,
+                Description = "b",
+                PageUrl = "/b",
+                Status = FeedbackStatus.Open,
+                AssignedToTeamId = teamB,
+                CreatedAt = now + Duration.FromMinutes(1),
+                UpdatedAt = now
             });
         await _dbContext.SaveChangesAsync();
 
@@ -147,15 +159,26 @@ public sealed class FeedbackRepositoryTests : IDisposable
         await _dbContext.FeedbackReports.AddRangeAsync(
             new FeedbackReport
             {
-                Id = Guid.NewGuid(), UserId = user, Category = FeedbackCategory.Bug,
-                Description = "unassigned", PageUrl = "/", Status = FeedbackStatus.Open,
-                CreatedAt = now, UpdatedAt = now
+                Id = Guid.NewGuid(),
+                UserId = user,
+                Category = FeedbackCategory.Bug,
+                Description = "unassigned",
+                PageUrl = "/",
+                Status = FeedbackStatus.Open,
+                CreatedAt = now,
+                UpdatedAt = now
             },
             new FeedbackReport
             {
-                Id = Guid.NewGuid(), UserId = user, Category = FeedbackCategory.Bug,
-                Description = "assigned", PageUrl = "/", Status = FeedbackStatus.Open,
-                AssignedToTeamId = Guid.NewGuid(), CreatedAt = now, UpdatedAt = now
+                Id = Guid.NewGuid(),
+                UserId = user,
+                Category = FeedbackCategory.Bug,
+                Description = "assigned",
+                PageUrl = "/",
+                Status = FeedbackStatus.Open,
+                AssignedToTeamId = Guid.NewGuid(),
+                CreatedAt = now,
+                UpdatedAt = now
             });
         await _dbContext.SaveChangesAsync();
 
@@ -181,23 +204,39 @@ public sealed class FeedbackRepositoryTests : IDisposable
         await _dbContext.FeedbackReports.AddRangeAsync(
             new FeedbackReport  // Open, no admin reply -> actionable
             {
-                Id = Guid.NewGuid(), UserId = user, Category = FeedbackCategory.Bug,
-                Description = "a", PageUrl = "/a", Status = FeedbackStatus.Open,
-                CreatedAt = now, UpdatedAt = now
+                Id = Guid.NewGuid(),
+                UserId = user,
+                Category = FeedbackCategory.Bug,
+                Description = "a",
+                PageUrl = "/a",
+                Status = FeedbackStatus.Open,
+                CreatedAt = now,
+                UpdatedAt = now
             },
             new FeedbackReport  // Reporter replied after admin -> actionable
             {
-                Id = Guid.NewGuid(), UserId = user, Category = FeedbackCategory.Bug,
-                Description = "b", PageUrl = "/b", Status = FeedbackStatus.Acknowledged,
-                CreatedAt = now, UpdatedAt = now,
+                Id = Guid.NewGuid(),
+                UserId = user,
+                Category = FeedbackCategory.Bug,
+                Description = "b",
+                PageUrl = "/b",
+                Status = FeedbackStatus.Acknowledged,
+                CreatedAt = now,
+                UpdatedAt = now,
                 LastAdminMessageAt = now,
                 LastReporterMessageAt = now + Duration.FromMinutes(5)
             },
             new FeedbackReport  // Resolved -> not actionable
             {
-                Id = Guid.NewGuid(), UserId = user, Category = FeedbackCategory.Bug,
-                Description = "c", PageUrl = "/c", Status = FeedbackStatus.Resolved,
-                CreatedAt = now, UpdatedAt = now, ResolvedAt = now
+                Id = Guid.NewGuid(),
+                UserId = user,
+                Category = FeedbackCategory.Bug,
+                Description = "c",
+                PageUrl = "/c",
+                Status = FeedbackStatus.Resolved,
+                CreatedAt = now,
+                UpdatedAt = now,
+                ResolvedAt = now
             });
         await _dbContext.SaveChangesAsync();
 
@@ -284,9 +323,14 @@ public sealed class FeedbackRepositoryTests : IDisposable
         var now = _clock.GetCurrentInstant();
         _dbContext.FeedbackReports.Add(new FeedbackReport
         {
-            Id = reportId, UserId = Guid.NewGuid(), Category = FeedbackCategory.Bug,
-            Description = "d", PageUrl = "/", Status = FeedbackStatus.Open,
-            CreatedAt = now, UpdatedAt = now
+            Id = reportId,
+            UserId = Guid.NewGuid(),
+            Category = FeedbackCategory.Bug,
+            Description = "d",
+            PageUrl = "/",
+            Status = FeedbackStatus.Open,
+            CreatedAt = now,
+            UpdatedAt = now
         });
         await _dbContext.FeedbackMessages.AddRangeAsync(
             new FeedbackMessage { Id = Guid.NewGuid(), FeedbackReportId = reportId, Content = "second", CreatedAt = now + Duration.FromMinutes(2) },
@@ -312,15 +356,25 @@ public sealed class FeedbackRepositoryTests : IDisposable
         var now = _clock.GetCurrentInstant();
         var myReport = new FeedbackReport
         {
-            Id = Guid.NewGuid(), UserId = me, Category = FeedbackCategory.Bug,
-            Description = "mine", PageUrl = "/", Status = FeedbackStatus.Open,
-            CreatedAt = now, UpdatedAt = now
+            Id = Guid.NewGuid(),
+            UserId = me,
+            Category = FeedbackCategory.Bug,
+            Description = "mine",
+            PageUrl = "/",
+            Status = FeedbackStatus.Open,
+            CreatedAt = now,
+            UpdatedAt = now
         };
         var otherReport = new FeedbackReport
         {
-            Id = Guid.NewGuid(), UserId = other, Category = FeedbackCategory.Bug,
-            Description = "theirs", PageUrl = "/", Status = FeedbackStatus.Open,
-            CreatedAt = now, UpdatedAt = now
+            Id = Guid.NewGuid(),
+            UserId = other,
+            Category = FeedbackCategory.Bug,
+            Description = "theirs",
+            PageUrl = "/",
+            Status = FeedbackStatus.Open,
+            CreatedAt = now,
+            UpdatedAt = now
         };
         await _dbContext.FeedbackReports.AddRangeAsync(myReport, otherReport);
         _dbContext.FeedbackMessages.Add(new FeedbackMessage

@@ -345,21 +345,36 @@ public class FeedbackServiceTests : IDisposable
         var now = _clock.GetCurrentInstant();
         _dbContext.FeedbackReports.Add(new FeedbackReport
         {
-            Id = Guid.NewGuid(), UserId = bobId, Category = FeedbackCategory.Bug,
-            Description = "b", PageUrl = "/b", Status = FeedbackStatus.Open,
-            CreatedAt = now, UpdatedAt = now
+            Id = Guid.NewGuid(),
+            UserId = bobId,
+            Category = FeedbackCategory.Bug,
+            Description = "b",
+            PageUrl = "/b",
+            Status = FeedbackStatus.Open,
+            CreatedAt = now,
+            UpdatedAt = now
         });
         _dbContext.FeedbackReports.Add(new FeedbackReport
         {
-            Id = Guid.NewGuid(), UserId = bobId, Category = FeedbackCategory.Bug,
-            Description = "b2", PageUrl = "/b2", Status = FeedbackStatus.Open,
-            CreatedAt = now, UpdatedAt = now
+            Id = Guid.NewGuid(),
+            UserId = bobId,
+            Category = FeedbackCategory.Bug,
+            Description = "b2",
+            PageUrl = "/b2",
+            Status = FeedbackStatus.Open,
+            CreatedAt = now,
+            UpdatedAt = now
         });
         _dbContext.FeedbackReports.Add(new FeedbackReport
         {
-            Id = Guid.NewGuid(), UserId = aliceId, Category = FeedbackCategory.Bug,
-            Description = "a", PageUrl = "/a", Status = FeedbackStatus.Open,
-            CreatedAt = now, UpdatedAt = now
+            Id = Guid.NewGuid(),
+            UserId = aliceId,
+            Category = FeedbackCategory.Bug,
+            Description = "a",
+            PageUrl = "/a",
+            Status = FeedbackStatus.Open,
+            CreatedAt = now,
+            UpdatedAt = now
         });
         await _dbContext.SaveChangesAsync();
 

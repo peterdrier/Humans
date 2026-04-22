@@ -247,11 +247,22 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor
         }
 
         report.UpdatedAt = now;
+
+        // Admin replies: send the response email BEFORE persisting. If SMTP
+        // throws, the new message and LastAdminMessageAt timestamp are never
+        // committed, so the request returns an error and can be safely retried
+        // without duplicating the admin message. The in-app notification stays
+        // post-save as a best-effort side effect.
+        if (isAdmin)
+        {
+            await SendAdminResponseEmailAsync(report, content, cancellationToken);
+        }
+
         await _repository.AddMessageAndSaveReportAsync(message, report, cancellationToken);
 
         if (isAdmin)
         {
-            await SendAdminReplySideEffectsAsync(report, content, cancellationToken);
+            await DispatchAdminReplyNotificationAsync(report, cancellationToken);
         }
 
         _navBadge.Invalidate();
@@ -261,7 +272,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor
         return message;
     }
 
-    private async Task SendAdminReplySideEffectsAsync(
+    private async Task SendAdminResponseEmailAsync(
         FeedbackReport report, string content, CancellationToken ct)
     {
         var reportLink = $"/Feedback/{report.Id}";
@@ -286,8 +297,13 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor
                 "Skipping feedback response email for report {ReportId} because user {UserId} has no effective email",
                 report.Id, report.UserId);
         }
+    }
 
-        // In-app notification to the original submitter (best-effort).
+    private async Task DispatchAdminReplyNotificationAsync(
+        FeedbackReport report, CancellationToken ct)
+    {
+        var reportLink = $"/Feedback/{report.Id}";
+
         try
         {
             await _notificationService.SendAsync(
