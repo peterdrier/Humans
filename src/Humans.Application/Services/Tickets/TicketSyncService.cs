@@ -1,23 +1,49 @@
+using Humans.Application;
+using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
-using Humans.Application;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
-using Humans.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Application.Services.Tickets;
 
-public class TicketSyncService : ITicketSyncService
+/// <summary>
+/// Application-layer implementation of <see cref="ITicketSyncService"/>.
+/// Owns domain-persistence for the Tickets section's sync pipeline: upsert
+/// vendor orders and attendees into <c>ticket_orders</c>/<c>ticket_attendees</c>,
+/// match buyers and attendees to users by email, compute VAT, enrich with
+/// Stripe fee data, and reconcile event participation.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Split vs Ticket Tailor connector (per PR #545c / umbrella #545):</b>
+/// This service never calls the vendor API directly — it delegates to
+/// <see cref="ITicketVendorService"/>, whose implementation
+/// (<c>TicketTailorService</c> or <c>StubTicketVendorService</c>) stays in
+/// Infrastructure as the HTTP/vendor connector. All DB access goes through
+/// <see cref="ITicketRepository"/> — this type never imports
+/// <c>Microsoft.EntityFrameworkCore</c>, enforced by
+/// <c>Humans.Application.csproj</c>'s reference graph.
+/// </para>
+/// <para>
+/// <b>Cross-section calls.</b> <c>event_participations</c> writes route
+/// through <see cref="IUserService"/> (per the User section's PR #243 — the
+/// User section owns that table). <c>EventSettings</c> reads route through
+/// <see cref="IShiftManagementService"/>. <c>CampaignGrants</c> redemption
+/// updates route through <see cref="ICampaignService"/>.
+/// </para>
+/// </remarks>
+public sealed class TicketSyncService : ITicketSyncService
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly ITicketRepository _ticketRepository;
     private readonly ITicketVendorService _vendorService;
     private readonly IStripeService _stripeService;
     private readonly IClock _clock;
@@ -25,10 +51,11 @@ public class TicketSyncService : ITicketSyncService
     private readonly IMemoryCache _cache;
     private readonly IUserService _userService;
     private readonly ICampaignService _campaignService;
+    private readonly IShiftManagementService _shiftManagementService;
     private readonly ILogger<TicketSyncService> _logger;
 
     public TicketSyncService(
-        HumansDbContext dbContext,
+        ITicketRepository ticketRepository,
         ITicketVendorService vendorService,
         IStripeService stripeService,
         IClock clock,
@@ -36,9 +63,10 @@ public class TicketSyncService : ITicketSyncService
         ILogger<TicketSyncService> logger,
         IMemoryCache cache,
         IUserService userService,
-        ICampaignService campaignService)
+        ICampaignService campaignService,
+        IShiftManagementService shiftManagementService)
     {
-        _dbContext = dbContext;
+        _ticketRepository = ticketRepository;
         _vendorService = vendorService;
         _stripeService = stripeService;
         _clock = clock;
@@ -46,6 +74,7 @@ public class TicketSyncService : ITicketSyncService
         _cache = cache;
         _userService = userService;
         _campaignService = campaignService;
+        _shiftManagementService = shiftManagementService;
         _logger = logger;
     }
 
@@ -59,7 +88,7 @@ public class TicketSyncService : ITicketSyncService
 
         var eventId = _settings.EventId;
 
-        var syncState = await _dbContext.TicketSyncStates.FindAsync([1], ct)
+        var syncState = await _ticketRepository.GetSyncStateAsync(ct)
             ?? throw new InvalidOperationException("TicketSyncState seed row missing");
 
         var now = _clock.GetCurrentInstant();
@@ -67,66 +96,80 @@ public class TicketSyncService : ITicketSyncService
         syncState.SyncStatus = TicketSyncStatus.Running;
         syncState.StatusChangedAt = now;
         syncState.VendorEventId = eventId;
-        await _dbContext.SaveChangesAsync(ct);
+        await _ticketRepository.PersistSyncStateAsync(syncState, ct);
 
         try
         {
             var orders = await _vendorService.GetOrdersAsync(syncState.LastSyncAt, eventId, ct);
             var tickets = await _vendorService.GetIssuedTicketsAsync(syncState.LastSyncAt, eventId, ct);
 
-            // Build email → UserId lookup from UserEmails table
+            // Build email → UserId lookup from UserEmails table.
             var emailLookup = await BuildEmailLookupAsync(ct);
 
-            var ordersSynced = 0;
-            var attendeesSynced = 0;
-            var ordersMatched = 0;
-            var attendeesMatched = 0;
+            // Build entity list for orders — existing rows keep their Id so the repo
+            // upsert recognises them; new rows get a freshly-minted Guid.
+            var existingOrdersByVendorId = await _ticketRepository
+                .GetOrdersByVendorIdsAsync(orders.Select(o => o.VendorOrderId).ToList(), ct);
 
-            foreach (var orderDto in orders)
+            var ordersToUpsert = new List<TicketOrder>(orders.Count);
+            var ordersMatched = 0;
+            foreach (var dto in orders)
             {
-                var order = await UpsertOrderAsync(orderDto, eventId, emailLookup, now, ct);
-                ordersSynced++;
+                var order = BuildOrderEntity(dto, eventId, emailLookup, now,
+                    existingOrdersByVendorId.GetValueOrDefault(dto.VendorOrderId));
+                ordersToUpsert.Add(order);
                 if (order.MatchedUserId.HasValue)
                     ordersMatched++;
             }
 
-            // IMPORTANT: Save orders before processing attendees so that
-            // UpsertAttendeeAsync can find parent orders via DB query.
-            // Without this, newly added orders are only in the Change Tracker
-            // and FirstOrDefaultAsync won't see them.
-            await _dbContext.SaveChangesAsync(ct);
+            await _ticketRepository.UpsertOrdersAsync(ordersToUpsert, ct);
+            var ordersSynced = ordersToUpsert.Count;
 
-            // Enrich orders with Stripe fee/payment method data
+            // Enrich orders with Stripe fee/payment method data.
             await EnrichOrdersWithStripeDataAsync(ct);
 
-            // Sync all tickets (not grouped by order — we match by VendorTicketId)
-            foreach (var ticketDto in tickets)
+            // Build attendee entities. Parent orders must exist by now (just upserted).
+            var orderIdByVendorId = await _ticketRepository.GetOrderIdsByVendorIdAsync(ct);
+            var existingAttendeesByVendorId = await _ticketRepository
+                .GetAttendeesByVendorIdsAsync(tickets.Select(t => t.VendorTicketId).ToList(), ct);
+
+            var attendeesToUpsert = new List<TicketAttendee>(tickets.Count);
+            var attendeesMatched = 0;
+            foreach (var dto in tickets)
             {
-                var attendee = await UpsertAttendeeAsync(ticketDto, eventId, emailLookup, now, ct);
-                if (attendee is null) continue; // Skipped — parent order not found
-                attendeesSynced++;
+                if (!orderIdByVendorId.TryGetValue(dto.VendorOrderId, out var parentOrderId))
+                {
+                    _logger.LogWarning(
+                        "Attendee {VendorTicketId} references unknown order {VendorOrderId}, skipping",
+                        dto.VendorTicketId, dto.VendorOrderId);
+                    continue;
+                }
+
+                var attendee = BuildAttendeeEntity(dto, eventId, emailLookup, now, parentOrderId,
+                    existingAttendeesByVendorId.GetValueOrDefault(dto.VendorTicketId));
+                attendeesToUpsert.Add(attendee);
                 if (attendee.MatchedUserId.HasValue)
                     attendeesMatched++;
             }
 
-            await _dbContext.SaveChangesAsync(ct);
+            await _ticketRepository.UpsertAttendeesAsync(attendeesToUpsert, ct);
+            var attendeesSynced = attendeesToUpsert.Count;
 
-            // Compute VAT for all orders using VIP split logic on attendee prices
+            // Compute VAT for all orders using VIP split logic on attendee prices.
             await ComputeVatForOrdersAsync(ct);
-            await _dbContext.SaveChangesAsync(ct);
 
-            // Match discount codes to campaign grants
+            // Match discount codes to campaign grants.
             var codesRedeemed = await MatchDiscountCodesAsync(ct);
 
-            // Sync event participation records
+            // Sync event participation records.
             await SyncEventParticipationsAsync(ct);
 
-            // Update sync state
+            // Update sync state.
             syncState.SyncStatus = TicketSyncStatus.Idle;
             syncState.StatusChangedAt = _clock.GetCurrentInstant();
             syncState.LastSyncAt = now;
             syncState.LastError = null;
-            await _dbContext.SaveChangesAsync(ct);
+            await _ticketRepository.PersistSyncStateAsync(syncState, ct);
 
             // Invalidate all ticket-related caches after successful sync.
             _cache.Remove(CacheKeys.TicketEventSummary(eventId));
@@ -153,7 +196,7 @@ public class TicketSyncService : ITicketSyncService
 
             syncState.SyncStatus = TicketSyncStatus.Idle;
             syncState.StatusChangedAt = _clock.GetCurrentInstant();
-            await _dbContext.SaveChangesAsync(CancellationToken.None);
+            await _ticketRepository.PersistSyncStateAsync(syncState, CancellationToken.None);
 
             return new TicketSyncResult(0, 0, 0, 0, 0);
         }
@@ -164,27 +207,32 @@ public class TicketSyncService : ITicketSyncService
             syncState.SyncStatus = TicketSyncStatus.Error;
             syncState.StatusChangedAt = _clock.GetCurrentInstant();
             syncState.LastError = ex.Message;
-            await _dbContext.SaveChangesAsync(CancellationToken.None);
+            await _ticketRepository.PersistSyncStateAsync(syncState, CancellationToken.None);
 
             throw;
         }
     }
 
+    public async Task ResetSyncStateForFullResyncAsync()
+    {
+        await _ticketRepository.ResetSyncStateLastSyncAsync();
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
     private async Task<Dictionary<string, Guid>> BuildEmailLookupAsync(CancellationToken ct)
     {
-        // Match against ALL user emails (OAuth, verified, unverified)
+        // Match against ALL user emails (OAuth, verified, unverified).
         // Normalize for comparison so gmail/googlemail aliases resolve to the same human.
-        // If multiple users share same email, prefer the one where it's the OAuth email
-        var userEmails = await _dbContext.Set<UserEmail>()
-            .Select(ue => new { ue.Email, ue.UserId, ue.IsOAuth })
-            .ToListAsync(ct);
+        // If multiple users share same email, prefer the one where it's the OAuth email.
+        var entries = await _ticketRepository.GetAllUserEmailLookupEntriesAsync(ct);
 
         var lookup = new Dictionary<string, Guid>(NormalizingEmailComparer.Instance);
-        var grouped = userEmails.GroupBy(e => e.Email, NormalizingEmailComparer.Instance);
+        var grouped = entries.GroupBy(e => e.Email, NormalizingEmailComparer.Instance);
         foreach (var group in grouped)
         {
-            var entries = group.ToList();
-            var distinctUserIds = entries.Select(e => e.UserId).Distinct().ToList();
+            var groupEntries = group.ToList();
+            var distinctUserIds = groupEntries.Select(e => e.UserId).Distinct().ToList();
 
             if (distinctUserIds.Count == 1)
             {
@@ -192,15 +240,16 @@ public class TicketSyncService : ITicketSyncService
             }
             else
             {
-                // Multiple users share this email — prefer OAuth
-                var oauthEntry = entries.FirstOrDefault(e => e.IsOAuth);
+                // Multiple users share this email — prefer OAuth.
+                var oauthEntry = groupEntries.FirstOrDefault(e => e.IsOAuth);
                 if (oauthEntry is not null)
                 {
                     lookup[group.Key] = oauthEntry.UserId;
                 }
                 else
                 {
-                    _logger.LogWarning("Email {Email} shared by {Count} users with no OAuth owner, leaving unmatched",
+                    _logger.LogWarning(
+                        "Email {Email} shared by {Count} users with no OAuth owner, leaving unmatched",
                         group.Key, distinctUserIds.Count);
                 }
             }
@@ -209,34 +258,20 @@ public class TicketSyncService : ITicketSyncService
         return lookup;
     }
 
-    private async Task<TicketOrder> UpsertOrderAsync(
-        VendorOrderDto dto, string eventId,
-        Dictionary<string, Guid> emailLookup, Instant now,
-        CancellationToken ct)
+    private TicketOrder BuildOrderEntity(
+        VendorOrderDto dto,
+        string eventId,
+        Dictionary<string, Guid> emailLookup,
+        Instant now,
+        TicketOrder? existing)
     {
-        var existing = await _dbContext.TicketOrders
-            .FirstOrDefaultAsync(o => o.VendorOrderId == dto.VendorOrderId, ct);
+        var id = existing?.Id ?? Guid.NewGuid();
 
-        if (existing is not null)
+        // Preserve Stripe-enrichment fields on existing rows (they're filled in
+        // by a separate pass and the vendor DTO doesn't carry them).
+        return new TicketOrder
         {
-            existing.BuyerName = dto.BuyerName;
-            existing.BuyerEmail = dto.BuyerEmail;
-            existing.TotalAmount = dto.TotalAmount;
-            existing.Currency = dto.Currency;
-            existing.DiscountCode = dto.DiscountCode;
-            existing.PaymentStatus = ParsePaymentStatus(dto.PaymentStatus);
-            existing.VendorDashboardUrl = dto.VendorDashboardUrl;
-            existing.SyncedAt = now;
-            existing.MatchedUserId = LookupUserId(emailLookup, dto.BuyerEmail);
-            existing.StripePaymentIntentId = dto.StripePaymentIntentId;
-            existing.DiscountAmount = dto.DiscountAmount;
-            existing.DonationAmount = dto.DonationAmount;
-            return existing;
-        }
-
-        var order = new TicketOrder
-        {
-            Id = Guid.NewGuid(),
+            Id = id,
             VendorOrderId = dto.VendorOrderId,
             BuyerName = dto.BuyerName,
             BuyerEmail = dto.BuyerEmail,
@@ -252,52 +287,34 @@ public class TicketSyncService : ITicketSyncService
             StripePaymentIntentId = dto.StripePaymentIntentId,
             DiscountAmount = dto.DiscountAmount,
             DonationAmount = dto.DonationAmount,
+            // Stripe enrichment + VAT are computed in later passes; preserve any
+            // prior values so the upsert doesn't stomp them back to null/0.
+            PaymentMethod = existing?.PaymentMethod,
+            PaymentMethodDetail = existing?.PaymentMethodDetail,
+            StripeFee = existing?.StripeFee,
+            ApplicationFee = existing?.ApplicationFee,
+            VatAmount = existing?.VatAmount ?? 0m,
         };
-
-        _dbContext.TicketOrders.Add(order);
-        return order;
     }
 
-    private async Task<TicketAttendee?> UpsertAttendeeAsync(
-        VendorTicketDto dto, string eventId,
-        Dictionary<string, Guid> emailLookup, Instant now,
-        CancellationToken ct)
+    private TicketAttendee BuildAttendeeEntity(
+        VendorTicketDto dto,
+        string eventId,
+        Dictionary<string, Guid> emailLookup,
+        Instant now,
+        Guid parentOrderId,
+        TicketAttendee? existing)
     {
-        var existing = await _dbContext.TicketAttendees
-            .FirstOrDefaultAsync(a => a.VendorTicketId == dto.VendorTicketId, ct);
-
-        Guid? matchedUserId = dto.AttendeeEmail is not null
+        var id = existing?.Id ?? Guid.NewGuid();
+        var matchedUserId = dto.AttendeeEmail is not null
             ? LookupUserId(emailLookup, dto.AttendeeEmail)
             : null;
 
-        if (existing is not null)
+        return new TicketAttendee
         {
-            existing.AttendeeName = dto.AttendeeName;
-            existing.AttendeeEmail = dto.AttendeeEmail;
-            existing.TicketTypeName = dto.TicketTypeName;
-            existing.Price = dto.Price;
-            existing.Status = ParseAttendeeStatus(dto.Status);
-            existing.SyncedAt = now;
-            existing.MatchedUserId = matchedUserId;
-            return existing;
-        }
-
-        // Resolve parent order FK via VendorOrderId from the ticket DTO
-        var parentOrder = await _dbContext.TicketOrders
-            .FirstOrDefaultAsync(o => o.VendorOrderId == dto.VendorOrderId, ct);
-
-        if (parentOrder is null)
-        {
-            _logger.LogWarning("Attendee {VendorTicketId} references unknown order {VendorOrderId}, skipping",
-                dto.VendorTicketId, dto.VendorOrderId);
-            return null;
-        }
-
-        var attendee = new TicketAttendee
-        {
-            Id = Guid.NewGuid(),
+            Id = id,
             VendorTicketId = dto.VendorTicketId,
-            TicketOrderId = parentOrder.Id,
+            TicketOrderId = parentOrderId,
             AttendeeName = dto.AttendeeName,
             AttendeeEmail = dto.AttendeeEmail,
             TicketTypeName = dto.TicketTypeName,
@@ -307,22 +324,15 @@ public class TicketSyncService : ITicketSyncService
             SyncedAt = now,
             MatchedUserId = matchedUserId,
         };
-
-        _dbContext.TicketAttendees.Add(attendee);
-        return attendee;
     }
 
     private async Task<int> MatchDiscountCodesAsync(CancellationToken ct)
     {
-        var ordersWithCodes = await _dbContext.TicketOrders
-            .Where(o => o.DiscountCode != null)
-            .Select(o => new { Code = o.DiscountCode!, o.PurchasedAt })
-            .ToListAsync(ct);
+        var rows = await _ticketRepository.GetOrderDiscountCodesAsync(ct);
+        if (rows.Count == 0) return 0;
 
-        if (ordersWithCodes.Count == 0) return 0;
-
-        var redemptions = ordersWithCodes
-            .Select(o => new DiscountCodeRedemption(o.Code, o.PurchasedAt))
+        var redemptions = rows
+            .Select(r => new DiscountCodeRedemption(r.Code, r.PurchasedAt))
             .ToList();
 
         // Delegate to CampaignService — CampaignGrants is owned by the Campaigns section.
@@ -337,15 +347,14 @@ public class TicketSyncService : ITicketSyncService
             return;
         }
 
-        // Find orders that have a Stripe PI but no fee data yet
-        var ordersToEnrich = await _dbContext.TicketOrders
-            .Where(o => o.StripePaymentIntentId != null && o.StripeFee == null)
-            .ToListAsync(ct);
+        var ordersToEnrich = await _ticketRepository
+            .GetOrdersNeedingStripeEnrichmentAsync(ct);
 
         if (ordersToEnrich.Count == 0) return;
 
         _logger.LogInformation("Enriching {Count} orders with Stripe fee data", ordersToEnrich.Count);
 
+        var updated = new List<TicketOrder>(ordersToEnrich.Count);
         foreach (var order in ordersToEnrich)
         {
             try
@@ -357,15 +366,17 @@ public class TicketSyncService : ITicketSyncService
                 order.PaymentMethodDetail = details.PaymentMethodDetail;
                 order.StripeFee = details.StripeFee;
                 order.ApplicationFee = details.ApplicationFee;
+                updated.Add(order);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to fetch Stripe data for order {OrderId} (PI: {PaymentIntentId})",
+                _logger.LogWarning(ex,
+                    "Failed to fetch Stripe data for order {OrderId} (PI: {PaymentIntentId})",
                     order.VendorOrderId, order.StripePaymentIntentId);
             }
         }
 
-        await _dbContext.SaveChangesAsync(ct);
+        await _ticketRepository.UpdateOrderStripeEnrichmentAsync(updated, ct);
     }
 
     /// <summary>
@@ -376,14 +387,12 @@ public class TicketSyncService : ITicketSyncService
     /// </summary>
     private async Task ComputeVatForOrdersAsync(CancellationToken ct)
     {
-        var orders = await _dbContext.TicketOrders
-            .Include(o => o.Attendees)
-            .ToListAsync(ct);
+        var orders = await _ticketRepository.GetAllOrdersWithAttendeesAsync(ct);
+        var updates = orders
+            .Select(o => (o.Id, VatAmount: ComputeOrderVat(o)))
+            .ToList();
 
-        foreach (var order in orders)
-        {
-            order.VatAmount = ComputeOrderVat(order);
-        }
+        await _ticketRepository.UpdateOrderVatAmountsAsync(updates, ct);
     }
 
     /// <summary>
@@ -419,16 +428,6 @@ public class TicketSyncService : ITicketSyncService
     private static bool IsRevenueAttendee(TicketAttendee attendee) =>
         attendee.Status == TicketAttendeeStatus.Valid || attendee.Status == TicketAttendeeStatus.CheckedIn;
 
-    public async Task ResetSyncStateForFullResyncAsync()
-    {
-        var syncState = await _dbContext.TicketSyncStates.FindAsync(1);
-        if (syncState is not null)
-        {
-            syncState.LastSyncAt = null;
-            await _dbContext.SaveChangesAsync();
-        }
-    }
-
     /// <summary>
     /// Derive EventParticipation records from current ticket data.
     /// For each matched user: 1+ valid tickets → Ticketed, any checked-in → Attended.
@@ -436,29 +435,24 @@ public class TicketSyncService : ITicketSyncService
     /// </summary>
     private async Task SyncEventParticipationsAsync(CancellationToken ct)
     {
-        // Determine the event year from EventSettings
-        var activeEvent = await _dbContext.EventSettings
-            .FirstOrDefaultAsync(e => e.IsActive, ct);
-
+        var activeEvent = await _shiftManagementService.GetActiveAsync();
         if (activeEvent is null || activeEvent.Year == 0)
             return;
 
         var year = activeEvent.Year;
 
-        // Get attendees matched to users for the active vendor event only
-        var matchedAttendees = await _dbContext.TicketAttendees
-            .Where(a => a.MatchedUserId != null && a.VendorEventId == _settings.EventId)
-            .Select(a => new { a.MatchedUserId, a.Status })
-            .ToListAsync(ct);
+        // Get matched attendees for the active vendor event only.
+        var matchedAttendees = await _ticketRepository
+            .GetMatchedAttendeesForEventAsync(_settings.EventId, ct);
 
-        // Group by user
+        // Group by user.
         var userTicketStatuses = matchedAttendees
-            .GroupBy(a => a.MatchedUserId!.Value)
+            .GroupBy(a => a.MatchedUserId)
             .ToDictionary(
                 g => g.Key,
                 g => g.Select(a => a.Status).ToList());
 
-        // Process users with tickets
+        // Process users with tickets.
         foreach (var (userId, statuses) in userTicketStatuses)
         {
             var hasCheckedIn = statuses.Any(s => s == TicketAttendeeStatus.CheckedIn);
@@ -468,33 +462,33 @@ public class TicketSyncService : ITicketSyncService
             if (hasCheckedIn)
             {
                 await _userService.SetParticipationFromTicketSyncAsync(
-                    userId, year, ParticipationStatus.Attended);
+                    userId, year, ParticipationStatus.Attended, ct);
             }
             else if (hasValidTicket)
             {
                 await _userService.SetParticipationFromTicketSyncAsync(
-                    userId, year, ParticipationStatus.Ticketed);
+                    userId, year, ParticipationStatus.Ticketed, ct);
             }
         }
 
-        // Handle users who previously had tickets but no longer do
-        var existingTicketSyncParticipations = await _dbContext.EventParticipations
-            .Where(ep => ep.Year == year
-                && ep.Source == ParticipationSource.TicketSync
-                && ep.Status == ParticipationStatus.Ticketed)
-            .ToListAsync(ct);
+        // Handle users who previously had tickets but no longer do. Pull all
+        // participation records for the year and filter to TicketSync+Ticketed
+        // in memory — at ~500 users this is cheap and avoids adding a tightly
+        // scoped read method to IUserService.
+        var allParticipations = await _userService.GetAllParticipationsForYearAsync(year, ct);
+        var stalePreviousTicketed = allParticipations
+            .Where(ep => ep.Source == ParticipationSource.TicketSync
+                && ep.Status == ParticipationStatus.Ticketed);
 
-        foreach (var ep in existingTicketSyncParticipations)
+        foreach (var ep in stalePreviousTicketed)
         {
-            if (!userTicketStatuses.ContainsKey(ep.UserId) ||
-                !userTicketStatuses[ep.UserId].Any(s =>
+            if (!userTicketStatuses.TryGetValue(ep.UserId, out var statuses) ||
+                !statuses.Any(s =>
                     s == TicketAttendeeStatus.Valid || s == TicketAttendeeStatus.CheckedIn))
             {
-                await _userService.RemoveTicketSyncParticipationAsync(ep.UserId, year);
+                await _userService.RemoveTicketSyncParticipationAsync(ep.UserId, year, ct);
             }
         }
-
-        await _dbContext.SaveChangesAsync(ct);
     }
 
     private static Guid? LookupUserId(Dictionary<string, Guid> lookup, string? email) =>

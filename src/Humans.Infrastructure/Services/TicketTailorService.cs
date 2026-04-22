@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Humans.Application;
+using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
@@ -12,21 +13,6 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 
 namespace Humans.Infrastructure.Services;
-
-public class TicketVendorSettings
-{
-    public const string SectionName = "TicketVendor";
-
-    public string Provider { get; set; } = "TicketTailor";
-    public string EventId { get; set; } = string.Empty;
-    public int SyncIntervalMinutes { get; set; } = 15;
-    public int BreakEvenTarget { get; set; }
-    /// <summary>API key — populated from TICKET_VENDOR_API_KEY env var at DI registration time.
-    /// Not stored in appsettings (sensitive). Accessible in settings for testability.</summary>
-    public string ApiKey { get; set; } = string.Empty;
-
-    public bool IsConfigured => !string.IsNullOrEmpty(EventId) && !string.IsNullOrEmpty(ApiKey);
-}
 
 /// <summary>
 /// TicketTailor API client implementing the vendor-agnostic interface.
