@@ -6,6 +6,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Humans.Domain.ValueObjects;
+using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
@@ -106,7 +107,7 @@ public class CampController : HumansCampControllerBase
 
     [AllowAnonymous]
     [HttpGet("{slug}")]
-    public async Task<IActionResult> Details(string slug)
+    public async Task<IActionResult> Details(string slug, CancellationToken cancellationToken)
     {
         var campDetail = await _campService.GetCampDetailAsync(slug);
         if (campDetail is null)
@@ -117,13 +118,14 @@ public class CampController : HumansCampControllerBase
             return NotFound();
 
         var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp);
+        await PopulateCityPlanningViewBagAsync(cancellationToken);
 
         return View(MapCampDetailViewModel(campDetail, isLead, isCampAdmin));
     }
 
     [AllowAnonymous]
     [HttpGet("{slug}/Season/{year:int}")]
-    public async Task<IActionResult> SeasonDetails(string slug, int year)
+    public async Task<IActionResult> SeasonDetails(string slug, int year, CancellationToken cancellationToken)
     {
         var campDetail = await _campService.GetCampDetailAsync(
             slug,
@@ -137,6 +139,7 @@ public class CampController : HumansCampControllerBase
             return NotFound();
 
         var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp);
+        await PopulateCityPlanningViewBagAsync(cancellationToken);
 
         return View(nameof(Details), MapCampDetailViewModel(campDetail, isLead, isCampAdmin));
     }
@@ -707,6 +710,23 @@ public class CampController : HumansCampControllerBase
     // ======================================================================
     // Helper methods
     // ======================================================================
+
+    private async Task PopulateCityPlanningViewBagAsync(CancellationToken cancellationToken)
+    {
+        var user = await GetCurrentUserAsync();
+        var isCityPlanningMember = user is not null &&
+            (RoleChecks.IsCampAdmin(User) ||
+             await _cityPlanningService.IsCityPlanningTeamMemberAsync(user.Id, cancellationToken));
+
+        ViewBag.IsCityPlanningTeamMember = isCityPlanningMember;
+
+        if (!isCityPlanningMember) return;
+
+        var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
+        ViewBag.PlacementIsOpen = settings.IsPlacementOpen;
+        ViewBag.PlacementOpensAt = settings.PlacementOpensAt;
+        ViewBag.PlacementClosesAt = settings.PlacementClosesAt;
+    }
 
     private static CampSeasonData MapToSeasonData(CampRegisterViewModel model)
     {
