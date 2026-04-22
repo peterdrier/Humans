@@ -31,12 +31,20 @@ public sealed class StubTeamResourceGoogleClient : ITeamResourceGoogleClient
         // the pre-migration StubTeamResourceService behavior by fabricating a
         // response whose type matches the caller's intent — the service's MIME
         // check then passes and the original dev-time linking flow succeeds
-        // without a round-trip.
+        // without a round-trip. Synthesize a plausible WebViewLink so the
+        // persisted GoogleResource.Url is clickable in dev/QA (the pre-
+        // migration StubTeamResourceService kept the user-submitted URL; we
+        // can't plumb that here so we build one that matches real Drive URL
+        // shape for the caller's expected item kind).
+        var webViewLink = expectFolder
+            ? $"https://drive.google.com/drive/folders/{itemId}"
+            : $"https://drive.google.com/file/d/{itemId}/view";
+
         return Task.FromResult(new DriveLookupResult(
             new DriveItem(
                 Id: itemId,
                 Name: itemId,
-                WebViewLink: null,
+                WebViewLink: webViewLink,
                 IsFolder: expectFolder,
                 FullPath: itemId),
             Error: null));
