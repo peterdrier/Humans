@@ -92,16 +92,25 @@ public class ProcessAccountDeletionsJob : IRecurringJob
                     var originalEmail = user.GetEffectiveEmail();
                     var originalName = user.DisplayName;
 
-                    await AnonymizeUserAsync(user, now, cancellationToken);
+                    var cancelledSignupIds = await AnonymizeUserAsync(user, now, cancellationToken);
 
+                    // Save atomically per user so a failure in one doesn't leave others
+                    // in a partially-persisted state
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+
+                    // Audit AFTER the business save has succeeded, per design-rules §7a.
                     await _auditLogService.LogAsync(
                         AuditAction.AccountAnonymized, nameof(User), user.Id,
                         $"Account anonymized (was {originalName})",
                         nameof(ProcessAccountDeletionsJob));
 
-                    // Save atomically per user so a failure in one doesn't leave others
-                    // in a partially-persisted state
-                    await _dbContext.SaveChangesAsync(cancellationToken);
+                    foreach (var (signupId, shiftId) in cancelledSignupIds)
+                    {
+                        await _auditLogService.LogAsync(
+                            AuditAction.ShiftSignupCancelled, nameof(ShiftSignup), signupId,
+                            $"Cancelled signup (account deletion) for shift {shiftId}",
+                            nameof(ProcessAccountDeletionsJob));
+                    }
 
                     processedUserIds.Add(user.Id);
 
@@ -156,7 +165,7 @@ public class ProcessAccountDeletionsJob : IRecurringJob
         }
     }
 
-    private async Task AnonymizeUserAsync(
+    private async Task<List<(Guid SignupId, Guid ShiftId)>> AnonymizeUserAsync(
         Domain.Entities.User user,
         Instant now,
         CancellationToken cancellationToken)
@@ -253,13 +262,11 @@ public class ProcessAccountDeletionsJob : IRecurringJob
                         (d.Status == SignupStatus.Confirmed || d.Status == SignupStatus.Pending))
             .ToListAsync(cancellationToken);
 
+        var cancelledSignupIds = new List<(Guid SignupId, Guid ShiftId)>();
         foreach (var signup in activeSignups)
         {
             signup.Cancel(_clock, "Account deletion");
-            await _auditLogService.LogAsync(
-                AuditAction.ShiftSignupCancelled, nameof(ShiftSignup), signup.Id,
-                $"Cancelled signup (account deletion) for shift {signup.ShiftId}",
-                nameof(ProcessAccountDeletionsJob));
+            cancelledSignupIds.Add((signup.Id, signup.ShiftId));
         }
 
         // Clear iCal token
@@ -273,5 +280,7 @@ public class ProcessAccountDeletionsJob : IRecurringJob
 
         // Note: We keep consent records and applications for GDPR audit trail
         // These are already anonymized via the user record anonymization
+
+        return cancelledSignupIds;
     }
 }

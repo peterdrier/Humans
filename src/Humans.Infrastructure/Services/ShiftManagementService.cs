@@ -241,13 +241,13 @@ public class ShiftManagementService : IShiftManagementService
         rota.TeamId = targetTeamId;
         rota.UpdatedAt = _clock.GetCurrentInstant();
 
+        await _dbContext.SaveChangesAsync();
+
         await _auditLogService.LogAsync(
             AuditAction.RotaMovedToTeam, nameof(Rota), rota.Id,
             $"Moved rota '{rota.Name}' from '{oldTeamName}' to '{targetTeam.Name}'",
             actorUserId,
             relatedEntityId: targetTeamId, relatedEntityType: nameof(Team));
-
-        await _dbContext.SaveChangesAsync();
     }
 
     public async Task DeleteRotaAsync(Guid rotaId)

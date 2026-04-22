@@ -144,12 +144,13 @@ public class RoleAssignmentService : IRoleAssignmentService, IUserDataContributo
 
         _dbContext.RoleAssignments.Add(roleAssignment);
 
+        await _dbContext.SaveChangesAsync(ct);
+
         await _auditLogService.LogAsync(
             AuditAction.RoleAssigned, nameof(User), userId,
             $"Role '{roleName}' assigned",
             assignerId);
 
-        await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
         _cache.InvalidateRoleAssignmentClaims(userId);
 
@@ -208,12 +209,13 @@ public class RoleAssignmentService : IRoleAssignmentService, IUserDataContributo
                 : $"{roleAssignment.Notes} | Ended: {notes}";
         }
 
+        await _dbContext.SaveChangesAsync(ct);
+
         await _auditLogService.LogAsync(
             AuditAction.RoleEnded, nameof(User), roleAssignment.UserId,
             $"Role '{roleAssignment.RoleName}' ended",
             enderId);
 
-        await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
         _cache.InvalidateRoleAssignmentClaims(roleAssignment.UserId);
 

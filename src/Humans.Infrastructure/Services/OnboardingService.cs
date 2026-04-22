@@ -250,12 +250,13 @@ public class OnboardingService : IOnboardingService
         profile.IsApproved = true;
         profile.UpdatedAt = now;
 
+        await _dbContext.SaveChangesAsync(ct);
+
         await _auditLogService.LogAsync(
             AuditAction.ConsentCheckCleared, nameof(Profile), userId,
             $"Consent check cleared",
             reviewerId);
 
-        await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
         _cache.InvalidateNotificationMeters();
 
@@ -303,12 +304,13 @@ public class OnboardingService : IOnboardingService
         profile.IsApproved = false;
         profile.UpdatedAt = now;
 
+        await _dbContext.SaveChangesAsync(ct);
+
         await _auditLogService.LogAsync(
             AuditAction.ConsentCheckFlagged, nameof(Profile), userId,
             $"Consent check flagged: {notes}",
             reviewerId);
 
-        await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
         _cache.InvalidateNotificationMeters();
 
@@ -393,12 +395,13 @@ public class OnboardingService : IOnboardingService
         profile.IsApproved = false;
         profile.UpdatedAt = now;
 
+        await _dbContext.SaveChangesAsync(ct);
+
         await _auditLogService.LogAsync(
             AuditAction.SignupRejected, nameof(Profile), userId,
             $"Signup rejected{(string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}")}",
             reviewerId);
 
-        await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
         _cache.InvalidateNotificationMeters();
 
@@ -464,12 +467,12 @@ public class OnboardingService : IOnboardingService
         user.Profile.IsApproved = true;
         user.Profile.UpdatedAt = now;
 
+        await _dbContext.SaveChangesAsync(ct);
+
         await _auditLogService.LogAsync(
             AuditAction.VolunteerApproved, nameof(User), userId,
             "Approved as volunteer",
             adminId);
-
-        await _dbContext.SaveChangesAsync(ct);
 
         // FIX: cache eviction was missing in AdminController
         _cache.InvalidateNavBadgeCounts();
@@ -520,12 +523,12 @@ public class OnboardingService : IOnboardingService
         user.Profile.AdminNotes = notes;
         user.Profile.UpdatedAt = _clock.GetCurrentInstant();
 
+        await _dbContext.SaveChangesAsync(ct);
+
         await _auditLogService.LogAsync(
             AuditAction.MemberSuspended, nameof(User), userId,
             $"Suspended{(string.IsNullOrWhiteSpace(notes) ? "" : $": {notes}")}",
             adminId);
-
-        await _dbContext.SaveChangesAsync(ct);
 
         // Refresh FullProfile dict entry with suspended state
         await _fullProfileInvalidator.InvalidateAsync(userId, ct);
@@ -570,12 +573,12 @@ public class OnboardingService : IOnboardingService
         user.Profile.IsSuspended = false;
         user.Profile.UpdatedAt = _clock.GetCurrentInstant();
 
+        await _dbContext.SaveChangesAsync(ct);
+
         await _auditLogService.LogAsync(
             AuditAction.MemberUnsuspended, nameof(User), userId,
             "Unsuspended",
             adminId);
-
-        await _dbContext.SaveChangesAsync(ct);
 
         // Refresh FullProfile dict entry with unsuspended state
         await _fullProfileInvalidator.InvalidateAsync(userId, ct);

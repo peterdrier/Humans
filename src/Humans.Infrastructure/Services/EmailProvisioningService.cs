@@ -115,13 +115,14 @@ public class EmailProvisioningService : IEmailProvisioningService
             user.GoogleEmail = fullEmail;
             await _userManager.UpdateAsync(user);
 
+            await _dbContext.SaveChangesAsync();
+
             // Audit
             await _auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountProvisioned,
                 "WorkspaceAccount", userId,
                 $"Provisioned and linked @nobodies.team account: {fullEmail}",
                 provisionedByUserId);
-            await _dbContext.SaveChangesAsync();
 
             // Step 4: Send credentials to the PERSONAL email captured in step 1.
             if (!string.IsNullOrEmpty(recoveryEmail))

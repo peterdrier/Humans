@@ -189,6 +189,8 @@ public class FeedbackService : IFeedbackService, IUserDataContributor
             report.ResolvedByUserId = null;
         }
 
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
         if (actorUserId.HasValue)
         {
             await _auditLogService.LogAsync(
@@ -204,7 +206,6 @@ public class FeedbackService : IFeedbackService, IUserDataContributor
                 "API");
         }
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
         _cache.InvalidateNavBadgeCounts();
     }
 
@@ -351,6 +352,8 @@ public class FeedbackService : IFeedbackService, IUserDataContributor
 
         report.UpdatedAt = _clock.GetCurrentInstant();
 
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
         var description = $"Feedback {id} assignment changed: {string.Join("; ", changes)}";
         if (actorUserId.HasValue)
         {
@@ -365,7 +368,6 @@ public class FeedbackService : IFeedbackService, IUserDataContributor
                 description, "API");
         }
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Feedback {ReportId} assignment updated by {ActorId}: {Changes}", id, actorUserId?.ToString() ?? "API", string.Join("; ", changes));
     }
 

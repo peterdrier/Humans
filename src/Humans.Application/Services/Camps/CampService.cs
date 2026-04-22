@@ -134,12 +134,13 @@ public sealed class CampService : ICampService, IUserDataContributor
             }).ToList();
         }
 
+        await _repo.CreateCampAsync(camp, season, lead, historicalNameEntities, cancellationToken);
+
         await _auditLog.LogAsync(
             AuditAction.CampCreated, nameof(Camp), camp.Id,
             $"Registered camp '{name}' for {year}",
             createdByUserId);
 
-        await _repo.CreateCampAsync(camp, season, lead, historicalNameEntities, cancellationToken);
         await _systemTeamSync.SyncBarrioLeadsMembershipForUserAsync(createdByUserId, cancellationToken);
         InvalidateCache(year);
 

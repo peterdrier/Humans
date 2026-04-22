@@ -141,15 +141,16 @@ public class AccountMergeService : IAccountMergeService, IUserDataContributor
         request.ResolvedByUserId = adminUserId;
         request.AdminNotes = notes;
 
-        // 9. Audit log
+        await _dbContext.SaveChangesAsync(ct);
+
+        // Audit AFTER the save — IAuditLogService self-persists, so logging
+        // before SaveChangesAsync would leave a ghost row on a failed merge.
         await _auditLogService.LogAsync(
             AuditAction.AccountMergeAccepted,
             nameof(AccountMergeRequest), request.Id,
             $"Merged account (source: {sourceUser.Id}) into (target: {targetUser.Id}) — email: {request.Email}",
             adminUserId,
             relatedEntityId: targetUser.Id, relatedEntityType: nameof(User));
-
-        await _dbContext.SaveChangesAsync(ct);
 
         // Invalidate caches
         await _fullProfileInvalidator.InvalidateAsync(sourceUser.Id, ct);
@@ -185,13 +186,13 @@ public class AccountMergeService : IAccountMergeService, IUserDataContributor
         request.ResolvedByUserId = adminUserId;
         request.AdminNotes = notes;
 
+        await _dbContext.SaveChangesAsync(ct);
+
         await _auditLogService.LogAsync(
             AuditAction.AccountMergeRejected,
             nameof(AccountMergeRequest), request.Id,
             $"Rejected merge request for email {request.Email} (target: {request.TargetUserId}, source: {request.SourceUserId})",
             adminUserId);
-
-        await _dbContext.SaveChangesAsync(ct);
     }
 
     private async Task AnonymizeSourceAccountAsync(User sourceUser, Instant now, CancellationToken ct)

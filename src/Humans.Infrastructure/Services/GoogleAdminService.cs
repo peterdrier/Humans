@@ -568,13 +568,13 @@ public class GoogleAdminService : IGoogleAdminService
                 "Admin {AdminId} fixing email rename for user {UserId}: '{OldEmail}' -> '{NewEmail}'",
                 actorUserId, userId, oldEmail, newEmail);
 
+            await _dbContext.SaveChangesAsync(ct);
+
             await _auditLogService.LogAsync(
                 AuditAction.GoogleEmailRenamed,
                 "User", userId,
                 $"Fixed email rename: {oldEmail} -> {newEmail}",
                 actorUserId);
-
-            await _dbContext.SaveChangesAsync(ct);
 
             return new EmailRenameFixResult(true,
                 Message: $"Updated email for {user.DisplayName}: {oldEmail} -> {newEmail}");

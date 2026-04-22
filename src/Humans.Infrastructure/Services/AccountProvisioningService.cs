@@ -129,13 +129,13 @@ public class AccountProvisioningService : IAccountProvisioningService
         };
         _dbContext.UserEmails.Add(userEmail);
 
+        await _dbContext.SaveChangesAsync(ct);
+
         await _auditLogService.LogAsync(
             AuditAction.ContactCreated,
             nameof(User), newUser.Id,
             $"Account pre-created from {source} — {email}",
             nameof(AccountProvisioningService));
-
-        await _dbContext.SaveChangesAsync(ct);
 
         _logger.LogInformation(
             "Created new account {UserId} for {Email} (source: {Source}, displayName: {DisplayName})",

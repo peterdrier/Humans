@@ -332,13 +332,13 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
         _dbContext.GoogleResources.Add(resource);
 
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
         await _auditLogService.LogAsync(
             AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), resource.Id,
             $"Provisioned Drive folder '{folder.Name}' for team",
             nameof(GoogleWorkspaceSyncService),
             relatedEntityId: teamId, relatedEntityType: nameof(Team));
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
 
         return resource;
     }
@@ -405,13 +405,13 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
         _dbContext.GoogleResources.Add(resource);
 
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
         await _auditLogService.LogAsync(
             AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), resource.Id,
             $"Provisioned Google Group '{groupName}' ({groupEmail}) for team",
             nameof(GoogleWorkspaceSyncService),
             relatedEntityId: teamId, relatedEntityType: nameof(Team));
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
 
         return resource;
     }
@@ -1734,13 +1734,13 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 _logger.LogInformation("Deactivated Group resource {ResourceId} for team {TeamId} (prefix cleared)",
                     existingGroup.Id, teamId);
 
+                await _dbContext.SaveChangesAsync(cancellationToken);
+
                 await _auditLogService.LogAsync(
                     AuditAction.GoogleResourceDeactivated, nameof(GoogleResource), existingGroup.Id,
                     "Deactivated Google Group resource (prefix cleared)",
                     nameof(GoogleWorkspaceSyncService),
                     relatedEntityId: teamId, relatedEntityType: nameof(Team));
-
-                await _dbContext.SaveChangesAsync(cancellationToken);
             }
             else
             {
@@ -1794,13 +1794,15 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             inactiveForTeam.IsActive = true;
             inactiveForTeam.LastSyncedAt = _clock.GetCurrentInstant();
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
             await _auditLogService.LogAsync(
                 AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), inactiveForTeam.Id,
                 "Reactivated Google Group resource for team",
                 nameof(GoogleWorkspaceSyncService),
                 relatedEntityId: teamId, relatedEntityType: nameof(Team));
 
-            await _dbContext.SaveChangesAsync(cancellationToken);
             return GroupLinkResult.Ok();
         }
 
@@ -1809,13 +1811,13 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             existingGroup.IsActive = false;
 
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
             await _auditLogService.LogAsync(
                 AuditAction.GoogleResourceDeactivated, nameof(GoogleResource), existingGroup.Id,
                 $"Deactivated Google Group resource (prefix changed to '{team.GoogleGroupPrefix}')",
                 nameof(GoogleWorkspaceSyncService),
                 relatedEntityId: teamId, relatedEntityType: nameof(Team));
-
-            await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
         var now = _clock.GetCurrentInstant();
@@ -1845,13 +1847,13 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
             _dbContext.GoogleResources.Add(resource);
 
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
             await _auditLogService.LogAsync(
                 AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), resource.Id,
                 $"Linked existing Google Group '{team.Name}' ({email}) for team",
                 nameof(GoogleWorkspaceSyncService),
                 relatedEntityId: teamId, relatedEntityType: nameof(Team));
-
-            await _dbContext.SaveChangesAsync(cancellationToken);
         }
         catch (Google.GoogleApiException ex) when (ex.Error?.Code is 404 or 403)
         {
@@ -2078,12 +2080,12 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             var request = groupssettingsService.Groups.Update(settings, groupEmail);
             await request.ExecuteAsync(cancellationToken);
 
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
             await _auditLogService.LogAsync(
                 AuditAction.GoogleResourceSettingsRemediated, nameof(GoogleResource), Guid.Empty,
                 $"Remediated settings for Google Group '{groupEmail}'",
                 nameof(GoogleWorkspaceSyncService));
-
-            await _dbContext.SaveChangesAsync(cancellationToken);
 
             return true;
         }

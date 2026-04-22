@@ -283,16 +283,17 @@ public class DuplicateAccountService : IDuplicateAccountService
         // 6. Anonymize the source account
         await AnonymizeSourceAccountAsync(sourceUser, ct);
 
-        // 7. Audit log
+        await _dbContext.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+
+        // Audit AFTER the transaction commits — IAuditLogService self-persists,
+        // so logging before commit would leave a ghost row on a rollback.
         await _auditLogService.LogAsync(
             AuditAction.AccountMergeAccepted,
             nameof(User), sourceUserId,
             $"Duplicate resolved: archived source ({sourceUserId}), kept target ({targetUserId}). Notes: {notes ?? "(none)"}",
             adminUserId,
             relatedEntityId: targetUserId, relatedEntityType: nameof(User));
-
-        await _dbContext.SaveChangesAsync(ct);
-        await transaction.CommitAsync(ct);
 
         // Invalidate caches
         await _fullProfileInvalidator.InvalidateAsync(sourceUserId, ct);
