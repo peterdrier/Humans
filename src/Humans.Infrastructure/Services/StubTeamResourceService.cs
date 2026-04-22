@@ -298,11 +298,16 @@ public class StubTeamResourceService : ITeamResourceService
             return;
         }
 
-        var auditLogService = _serviceProvider.GetRequiredService<IAuditLogService>();
-
         foreach (var resource in resources)
         {
             resource.IsActive = false;
+        }
+
+        await _dbContext.SaveChangesAsync(ct);
+
+        var auditLogService = _serviceProvider.GetRequiredService<IAuditLogService>();
+        foreach (var resource in resources)
+        {
             await auditLogService.LogAsync(
                 AuditAction.GoogleResourceDeactivated,
                 nameof(GoogleResource),
@@ -311,7 +316,6 @@ public class StubTeamResourceService : ITeamResourceService
                 nameof(StubTeamResourceService));
         }
 
-        await _dbContext.SaveChangesAsync(ct);
         _logger.LogInformation(
             "[STUB] Deactivated {Count} Google resources (type={ResourceType}) for soft-deleted team {TeamId}",
             resources.Count, resourceType?.ToString() ?? "all", teamId);

@@ -245,12 +245,13 @@ public class CalendarService : ICalendarService
             throw new InvalidOperationException("CalendarEvent is invalid: " + string.Join("; ", errors));
 
         _db.CalendarEvents.Add(ev);
+        await _db.SaveChangesAsync(ct);
+
         await _audit.LogAsync(
             AuditAction.CalendarEventCreated, nameof(CalendarEvent), ev.Id,
             $"Created calendar event '{ev.Title}'",
             createdByUserId,
             relatedEntityId: ev.OwningTeamId, relatedEntityType: nameof(Team));
-        await _db.SaveChangesAsync(ct);
 
         InvalidateCache();
         return ev;
@@ -355,12 +356,14 @@ public class CalendarService : ICalendarService
         if (errors.Count > 0)
             throw new InvalidOperationException("CalendarEvent is invalid: " + string.Join("; ", errors));
 
+        await _db.SaveChangesAsync(ct);
+
         await _audit.LogAsync(
             AuditAction.CalendarEventUpdated, nameof(CalendarEvent), ev.Id,
             $"Updated calendar event '{ev.Title}'",
             updatedByUserId,
             relatedEntityId: ev.OwningTeamId, relatedEntityType: nameof(Team));
-        await _db.SaveChangesAsync(ct);
+
         InvalidateCache();
         return ev;
     }
@@ -371,12 +374,15 @@ public class CalendarService : ICalendarService
         if (ev is null) return;
         ev.DeletedAt = _clock.GetCurrentInstant();
         ev.UpdatedAt = ev.DeletedAt.Value;
+
+        await _db.SaveChangesAsync(ct);
+
         await _audit.LogAsync(
             AuditAction.CalendarEventDeleted, nameof(CalendarEvent), ev.Id,
             $"Deleted calendar event '{ev.Title}'",
             deletedByUserId,
             relatedEntityId: ev.OwningTeamId, relatedEntityType: nameof(Team));
-        await _db.SaveChangesAsync(ct);
+
         InvalidateCache();
     }
 
@@ -442,11 +448,13 @@ public class CalendarService : ICalendarService
         if (errors.Count > 0)
             throw new InvalidOperationException("Exception is invalid: " + string.Join("; ", errors));
 
+        await _db.SaveChangesAsync(ct);
+
         await _audit.LogAsync(
             auditAction, nameof(CalendarEvent), eventId,
             auditDescription,
             userId);
-        await _db.SaveChangesAsync(ct);
+
         InvalidateCache();
     }
 }
