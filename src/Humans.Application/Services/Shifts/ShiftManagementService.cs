@@ -319,6 +319,37 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 #pragma warning restore CS0618
             }
         }
+
+        // Stitch signup.User via IUserService — the repo deliberately does not
+        // .Include(s => s.User) (§15 no cross-domain navs). ShiftAdmin Index
+        // view reads signup.User.DisplayName / ProfilePictureUrl.
+        var userIds = rotas
+            .SelectMany(r => r.Shifts)
+            .SelectMany(s => s.ShiftSignups)
+            .Select(su => su.UserId)
+            .Distinct()
+            .ToList();
+
+        if (userIds.Count > 0)
+        {
+            var userLookup = await UserService.GetByIdsAsync(userIds);
+            foreach (var rota in rotas)
+            {
+                foreach (var shift in rota.Shifts)
+                {
+                    foreach (var signup in shift.ShiftSignups)
+                    {
+                        if (userLookup.TryGetValue(signup.UserId, out var user))
+                        {
+#pragma warning disable CS0618 // Obsolete: cross-domain nav, stitched in memory
+                            signup.User = user;
+#pragma warning restore CS0618
+                        }
+                    }
+                }
+            }
+        }
+
         return rotas;
     }
 
