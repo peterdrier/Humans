@@ -10,6 +10,8 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Caching;
+using Humans.Application.Services.Shifts;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
@@ -49,8 +51,9 @@ public class TeamRoleServiceTests : IDisposable
             .GetTeamResourceSummariesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamResourceSummary>());
         serviceProvider.GetService(typeof(ITeamResourceService)).Returns(teamResourceService);
+        var shiftRepo = new ShiftManagementRepository(new TestDbContextFactory(options));
         var shiftManagementService = new ShiftManagementService(
-            _dbContext,
+            shiftRepo,
             Substitute.For<IAuditLogService>(),
             roleAssignmentService,
             serviceProvider,

@@ -389,11 +389,11 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         if (result.Success)
         {
             await RefreshEntryAsync(userId, ct);
-            // TODO(§15 NEW-B): ShiftAuthorization cache (shift-auth:{userId}, 60s TTL) is
-            // no longer invalidated here. Tolerable at ~500-user scale given the short TTL
-            // and that the user is being deleted. When Shifts migrates to the §15 pattern,
-            // it should subscribe to IFullProfileInvalidator or equivalent to clear its
-            // own cache on deletion.
+            // §15 NEW-B resolved in issue #541a: Shifts now exposes
+            // IShiftAuthorizationInvalidator, so the 60s shift-auth:{userId}
+            // entry drops immediately on deletion.
+            var shiftAuthInvalidator = scope.ServiceProvider.GetRequiredService<IShiftAuthorizationInvalidator>();
+            shiftAuthInvalidator.Invalidate(userId);
         }
         return result;
     }

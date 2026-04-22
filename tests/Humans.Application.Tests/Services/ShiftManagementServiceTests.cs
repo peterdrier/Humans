@@ -1,9 +1,11 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
+using Humans.Application.Services.Shifts;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +22,7 @@ public class ShiftManagementServiceTests : IDisposable
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly ITeamService _teamService;
+    private readonly IUserService _userService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly ShiftManagementService _service;
 
@@ -34,13 +37,44 @@ public class ShiftManagementServiceTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(TestNow);
         _teamService = Substitute.For<ITeamService>();
+        _userService = Substitute.For<IUserService>();
         _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
+
+        // Default: users looked up by id resolve to the entities seeded in _dbContext
+        // so the cross-section signup stitching in GetBrowseShiftsAsync returns the
+        // correct DisplayName.
+        _userService.GetByIdsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var ids = ci.Arg<IReadOnlyCollection<Guid>>();
+                return Task.FromResult<IReadOnlyDictionary<Guid, User>>(
+                    _dbContext.Users
+                        .Where(u => ids.Contains(u.Id))
+                        .AsEnumerable()
+                        .ToDictionary(u => u.Id));
+            });
+
+        _teamService.GetByIdsWithParentsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var ids = ci.Arg<IReadOnlyCollection<Guid>>();
+                return Task.FromResult<IReadOnlyDictionary<Guid, Team>>(
+                    _dbContext.Teams
+                        .Where(t => ids.Contains(t.Id))
+                        .AsEnumerable()
+                        .ToDictionary(t => t.Id));
+            });
 
         var serviceProvider = Substitute.For<IServiceProvider>();
         serviceProvider.GetService(typeof(ITeamService)).Returns(_teamService);
+        serviceProvider.GetService(typeof(IUserService)).Returns(_userService);
+
+        var repo = new ShiftManagementRepository(new TestDbContextFactory(options));
 
         _service = new ShiftManagementService(
-            _dbContext,
+            repo,
             Substitute.For<IAuditLogService>(),
             _roleAssignmentService,
             serviceProvider,
