@@ -100,8 +100,12 @@ public class UserEmailServiceTests
         _repository.GetByIdAndUserIdAsync(emailId, userId, Arg.Any<CancellationToken>())
             .Returns(new UserEmail
             {
-                Id = emailId, UserId = userId, Email = "secondary@example.com",
-                IsOAuth = false, IsVerified = true, IsNotificationTarget = false
+                Id = emailId,
+                UserId = userId,
+                Email = "secondary@example.com",
+                IsOAuth = false,
+                IsVerified = true,
+                IsNotificationTarget = false
             });
 
         await _service.DeleteEmailAsync(userId, emailId);
@@ -118,8 +122,12 @@ public class UserEmailServiceTests
         _repository.GetByIdAndUserIdAsync(emailId, userId, Arg.Any<CancellationToken>())
             .Returns(new UserEmail
             {
-                Id = emailId, UserId = userId, Email = "signin@example.com",
-                IsOAuth = true, IsVerified = true, IsNotificationTarget = true
+                Id = emailId,
+                UserId = userId,
+                Email = "signin@example.com",
+                IsOAuth = true,
+                IsVerified = true,
+                IsNotificationTarget = true
             });
 
         var act = async () => await _service.DeleteEmailAsync(userId, emailId);
