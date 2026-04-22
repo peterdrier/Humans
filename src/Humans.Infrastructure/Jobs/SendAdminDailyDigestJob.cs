@@ -8,6 +8,11 @@ using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 
+// RoleAssignment.User cross-domain nav is [Obsolete] (design-rules §6c). This job
+// still reads RoleAssignments directly; migration to IRoleAssignmentService +
+// IUserService.GetByIdsAsync is tracked as a §15h touch-and-clean follow-up.
+#pragma warning disable CS0618
+
 namespace Humans.Infrastructure.Jobs;
 
 /// <summary>

@@ -1,70 +1,67 @@
-using System.Security.Cryptography;
-using Humans.Application;
-using Humans.Application.Interfaces;
-using Humans.Domain.Entities;
-using Humans.Infrastructure.Configuration;
-using Humans.Infrastructure.Data;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using NodaTime;
-using Humans.Application.Extensions;
+using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Domain.Entities;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Application.Services.Auth;
 
-public class MagicLinkService : IMagicLinkService
+/// <summary>
+/// Application-layer implementation of <see cref="IMagicLinkService"/>.
+/// MagicLinkService is special-cased under §15: it owns no tables (its only
+/// persistent state is the per-user <c>MagicLinkSentAt</c> column on
+/// <c>User</c>, updated via <see cref="UserManager{User}"/>). Data-protection
+/// token generation/validation and URL construction are abstracted into
+/// <see cref="IMagicLinkUrlBuilder"/> and rate-limit / replay state into
+/// <see cref="IMagicLinkRateLimiter"/> — both Infrastructure concerns — so
+/// this service has no <c>HumansDbContext</c>, <c>EmailSettings</c>, or
+/// <c>IMemoryCache</c> dependency (same shape as
+/// <c>CommunicationPreferenceService</c> + <c>IUnsubscribeTokenProvider</c>).
+/// </summary>
+/// <remarks>
+/// Verified-email lookup goes through <see cref="IUserEmailService.FindVerifiedEmailWithUserAsync"/>
+/// instead of raw <c>DbContext.UserEmails</c> queries.
+/// </remarks>
+public sealed class MagicLinkService : IMagicLinkService
 {
-    private const string LoginProtectorPurpose = "MagicLinkLogin";
-    private const string SignupProtectorPurpose = "MagicLinkSignup";
     private static readonly Duration RateLimitCooldown = Duration.FromSeconds(60);
     private static readonly TimeSpan TokenLifetime = TimeSpan.FromMinutes(15);
+    private static readonly TimeSpan SignupCooldown = TimeSpan.FromSeconds(60);
 
-    private readonly HumansDbContext _dbContext;
     private readonly UserManager<User> _userManager;
+    private readonly IUserEmailService _userEmailService;
+    private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
-    private readonly ITimeLimitedDataProtector _loginProtector;
-    private readonly ITimeLimitedDataProtector _signupProtector;
-    private readonly IMemoryCache _memoryCache;
+    private readonly IMagicLinkUrlBuilder _urlBuilder;
+    private readonly IMagicLinkRateLimiter _rateLimiter;
     private readonly IClock _clock;
     private readonly ILogger<MagicLinkService> _logger;
-    private readonly EmailSettings _emailSettings;
 
     public MagicLinkService(
-        HumansDbContext dbContext,
         UserManager<User> userManager,
+        IUserEmailService userEmailService,
+        IUserRepository userRepository,
         IEmailService emailService,
-        IDataProtectionProvider dataProtectionProvider,
-        IMemoryCache memoryCache,
+        IMagicLinkUrlBuilder urlBuilder,
+        IMagicLinkRateLimiter rateLimiter,
         IClock clock,
-        IOptions<EmailSettings> emailSettings,
         ILogger<MagicLinkService> logger)
     {
-        _dbContext = dbContext;
         _userManager = userManager;
+        _userEmailService = userEmailService;
+        _userRepository = userRepository;
         _emailService = emailService;
-        _loginProtector = dataProtectionProvider
-            .CreateProtector(LoginProtectorPurpose)
-            .ToTimeLimitedDataProtector();
-        _signupProtector = dataProtectionProvider
-            .CreateProtector(SignupProtectorPurpose)
-            .ToTimeLimitedDataProtector();
-        _memoryCache = memoryCache;
+        _urlBuilder = urlBuilder;
+        _rateLimiter = rateLimiter;
         _clock = clock;
-        _emailSettings = emailSettings.Value;
         _logger = logger;
     }
 
     public async Task SendMagicLinkAsync(string email, string? returnUrl, CancellationToken ct = default)
     {
         // 1. Look up by verified UserEmail first (supports all verified addresses)
-#pragma warning disable MA0011, RCS1155 // EF Core can only translate parameterless ToUpper()
-        var userEmail = await _dbContext.UserEmails
-            .FirstOrDefaultAsync(ue => ue.IsVerified &&
-                ue.Email.ToUpper() == email.ToUpper(), ct);
-#pragma warning restore MA0011, RCS1155
+        var userEmail = await _userEmailService.FindVerifiedEmailWithUserAsync(email, ct);
 
         if (userEmail is not null)
         {
@@ -90,8 +87,6 @@ public class MagicLinkService : IMagicLinkService
 
     public async Task<User?> VerifyLoginTokenAsync(Guid userId, string token, CancellationToken ct = default)
     {
-        // Check if this token was already consumed
-        var cacheKey = CacheKeys.MagicLinkUsed(token[..Math.Min(token.Length, 32)]);
         var user = await _userManager.FindByIdAsync(userId.ToString());
         if (user is null)
         {
@@ -100,12 +95,8 @@ public class MagicLinkService : IMagicLinkService
         }
 
         // Verify DataProtection token — payload is the user ID
-        string? payload;
-        try
-        {
-            payload = _loginProtector.Unprotect(token);
-        }
-        catch (CryptographicException)
+        var payload = _urlBuilder.UnprotectLoginToken(token);
+        if (payload is null)
         {
             _logger.LogInformation("Magic link login: invalid or expired token for user {UserId}", userId);
             return null;
@@ -118,7 +109,7 @@ public class MagicLinkService : IMagicLinkService
         }
 
         // Mark token as consumed (cache for token lifetime to prevent replay)
-        if (!await _memoryCache.TryReserveAsync(cacheKey, TokenLifetime))
+        if (!await _rateLimiter.TryConsumeLoginTokenAsync(token, TokenLifetime))
         {
             _logger.LogInformation("Magic link login: token already used for user {UserId}", userId);
             return null;
@@ -129,27 +120,19 @@ public class MagicLinkService : IMagicLinkService
 
     public string? VerifySignupToken(string token, string? expectedEmail = null)
     {
-        try
-        {
-            return _signupProtector.Unprotect(token);
-        }
-        catch (CryptographicException)
+        var payload = _urlBuilder.UnprotectSignupToken(token);
+        if (payload is null)
         {
             _logger.LogInformation("Magic link signup: invalid or expired token for email {Email}",
                 expectedEmail ?? "unknown");
-            return null;
         }
+
+        return payload;
     }
 
     public async Task<User?> FindUserByVerifiedEmailAsync(string email, CancellationToken ct = default)
     {
-#pragma warning disable MA0011, RCS1155 // EF Core can only translate parameterless ToUpper()
-        var userEmail = await _dbContext.UserEmails
-            .AsNoTracking()
-            .FirstOrDefaultAsync(ue => ue.IsVerified &&
-                ue.Email.ToUpper() == email.ToUpper(), ct);
-#pragma warning restore MA0011, RCS1155
-
+        var userEmail = await _userEmailService.FindVerifiedEmailWithUserAsync(email, ct);
         if (userEmail is not null)
         {
             return await _userManager.FindByIdAsync(userEmail.UserId.ToString());
@@ -169,9 +152,12 @@ public class MagicLinkService : IMagicLinkService
         // We intentionally skip unverified UserEmail rows — those are in a "pending
         // verification/merge review" state and auto-linking would bypass the
         // AccountMergeRequest admin review gate.
+        //
+        // The Application layer does not reference EF Core, so the async query
+        // runs through IUserRepository (which threads the cancellation token);
+        // this replaces a blocking synchronous IQueryable.FirstOrDefault().
         var normalizedEmail = _userManager.NormalizeEmail(email);
-        return await _userManager.Users
-            .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail, ct);
+        return await _userRepository.GetByNormalizedEmailAsync(normalizedEmail, ct);
     }
 
     private async Task SendLoginLinkAsync(User user, string sendToEmail, string? returnUrl, CancellationToken ct)
@@ -185,12 +171,7 @@ public class MagicLinkService : IMagicLinkService
             return; // Silently skip — same "check your email" message shown to user
         }
 
-        // DataProtection token with user ID as payload, 15-minute expiry
-        var token = _loginProtector.Protect(user.Id.ToString(), TokenLifetime);
-
-        var encodedToken = Uri.EscapeDataString(token);
-        var returnUrlParam = string.IsNullOrEmpty(returnUrl) ? "" : $"&returnUrl={Uri.EscapeDataString(returnUrl)}";
-        var magicLinkUrl = $"{_emailSettings.BaseUrl}/Account/MagicLinkConfirm?userId={user.Id}&token={encodedToken}{returnUrlParam}";
+        var magicLinkUrl = _urlBuilder.BuildLoginUrl(user.Id, returnUrl);
 
         var displayName = string.IsNullOrWhiteSpace(user.DisplayName) ? sendToEmail : user.DisplayName;
 
@@ -206,8 +187,7 @@ public class MagicLinkService : IMagicLinkService
     private async Task SendSignupLinkAsync(string email, string? returnUrl, CancellationToken ct)
     {
         // Rate limit signup emails: one per 60 seconds per email address
-        var cacheKey = CacheKeys.MagicLinkSignupRateLimit(email.ToUpperInvariant());
-        if (!await _memoryCache.TryReserveAsync(cacheKey, TimeSpan.FromSeconds(60)))
+        if (!await _rateLimiter.TryReserveSignupSendAsync(email, SignupCooldown))
         {
             _logger.LogDebug("Magic link signup rate-limited for {Email}", email);
             return;
@@ -215,11 +195,7 @@ public class MagicLinkService : IMagicLinkService
 
         try
         {
-            var token = _signupProtector.Protect(email, TokenLifetime);
-            var encodedToken = Uri.EscapeDataString(token);
-            var returnUrlParam = string.IsNullOrEmpty(returnUrl) ? "" : $"&returnUrl={Uri.EscapeDataString(returnUrl)}";
-            var encodedEmail = Uri.EscapeDataString(email);
-            var magicLinkUrl = $"{_emailSettings.BaseUrl}/Account/MagicLinkSignup?token={encodedToken}&email={encodedEmail}{returnUrlParam}";
+            var magicLinkUrl = _urlBuilder.BuildSignupUrl(email, returnUrl);
 
             await _emailService.SendMagicLinkSignupAsync(email, magicLinkUrl, ct: ct);
 
@@ -227,7 +203,7 @@ public class MagicLinkService : IMagicLinkService
         }
         catch
         {
-            _memoryCache.Remove(cacheKey);
+            _rateLimiter.ReleaseSignupReservation(email);
             throw;
         }
     }

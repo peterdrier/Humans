@@ -24,6 +24,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 
+// RoleAssignment cross-domain nav properties (User, CreatedByUser) are [Obsolete] —
+// RoleAssignmentService stitches them in memory from IUserService so controllers can
+// continue to read them for view-model shaping. Nav-strip follow-up tracked in
+// design-rules §15i.
+#pragma warning disable CS0618
+
 namespace Humans.Web.Controllers;
 
 [Authorize]

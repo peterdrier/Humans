@@ -11,9 +11,12 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Application.Interfaces.Caching;
 using Humans.Infrastructure.Data;
+using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using Xunit;
+using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
 
 namespace Humans.Application.Tests.Services;
 
@@ -34,12 +37,14 @@ public class TeamServiceTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         _roleAssignmentService = new RoleAssignmentService(
-            _dbContext,
+            new RoleAssignmentRepository(_dbContext),
+            Substitute.For<IUserService>(),
             Substitute.For<IAuditLogService>(),
             Substitute.For<INotificationService>(),
             Substitute.For<ISystemTeamSync>(),
+            Substitute.For<INavBadgeCacheInvalidator>(),
+            Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
             _clock,
-            _cache,
             NullLogger<RoleAssignmentService>.Instance);
         var serviceProvider = Substitute.For<IServiceProvider>();
         serviceProvider.GetService(typeof(ITeamService)).Returns(Substitute.For<ITeamService>());
