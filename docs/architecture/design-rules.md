@@ -577,7 +577,7 @@ Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`
 
 ### 15i. Known Current Violations (as of 2026-04-22)
 
-- **~24 services** still live in `Humans.Infrastructure/Services/` and inject `HumansDbContext` directly. Target: 0. Migration progress by section:
+- **~25 services** still live in `Humans.Infrastructure/Services/` and inject `HumansDbContext` directly. Target: 0. Migration progress by section:
   - **Governance** — migrated 2026-04-15 in PR #503.
   - **Profiles** — fully migrated 2026-04-20 in PR #235 — `ProfileService`, `ContactFieldService`, `ContactService`, `UserEmailService`, `CommunicationPreferenceService` now live in `Humans.Application.Services.Profile`. (`VolunteerHistoryService` was folded into `ProfileService`/`IProfileRepository`; it no longer exists as a separate service.)
   - **User** — migrated 2026-04-21 in PR #243 — `UserService` now lives in `Humans.Application.Services.Users`, goes through `IUserRepository`, and invalidates `IFullProfileInvalidator` on writes that change FullProfile-visible fields. **No caching decorator** was added for the User section: User is ~500 rows with no hot bulk-read path, so a dict cache isn't warranted (same rationale as Governance's decorator removal in #242). Option A is documented in `docs/superpowers/specs/2026-04-21-issue-511-user-migration.md`.
@@ -590,8 +590,7 @@ Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`
   - **Feedback** — migrated 2026-04-22 in issue #549 — `FeedbackService` now lives in `Humans.Application.Services.Feedback`, goes through `IFeedbackRepository`, and resolves reporter / assignee / resolver display names + effective email via `IUserService`, `IUserEmailService.GetNotificationTargetEmailsAsync`, and `ITeamService.GetTeamNamesByIdsAsync`. Cross-domain `.Include()` chains on `FeedbackReport.User`, `.ResolvedByUser`, `.AssignedToUser`, `.AssignedToTeam`, and `FeedbackMessage.SenderUser` are gone from the service (4→0). Navs are `[Obsolete]`-marked and populated in-memory by the service (§6b "in-memory join") so controllers and views continue to read `report.User.DisplayName` etc. under `#pragma warning disable CS0618`. Nav-strip follow-up lands as part of the wider User-entity nav cleanup. No caching decorator — Feedback is admin-review-only and low-traffic.
   - **Auth** — migrated 2026-04-22 in issue #551 — `RoleAssignmentService` and `MagicLinkService` now live in `Humans.Application.Services.Auth`. `RoleAssignmentService` goes through `IRoleAssignmentRepository`, stitches assignee / creator display names via `IUserService`, and invalidates the per-user claims cache via `IRoleAssignmentClaimsCacheInvalidator` + the nav-badge cache via `INavBadgeCacheInvalidator`. `MagicLinkService` owns no tables; verified-email lookup routes through `IUserEmailService.FindVerifiedEmailWithUserAsync`, and Data-Protection / URL / replay / signup-cooldown state sits behind Infrastructure-side `IMagicLinkUrlBuilder` + `IMagicLinkRateLimiter` (same shape as `CommunicationPreferenceService` + `IUnsubscribeTokenProvider`). Cross-domain navs on `RoleAssignment` (`User`, `CreatedByUser`) are `[Obsolete]`-marked and populated in-memory; controllers + the two daily-digest jobs that still read them do so under `#pragma warning disable CS0618`. No caching decorator — Auth writes are rare (handful of admin events per month).
   - **Teams (partial)** — `TeamPageService` migrated 2026-04-22 under umbrella #540 (sub-task #540b) — it now lives in `Humans.Application.Services.Teams` and owns no tables (pure composer over `ITeamService`, `IProfileService`, `ITeamResourceService`, `IShiftManagementService`, `IUserService`). A new `IShiftManagementService.GetTeamIdsWithShiftsInEventAsync` method replaced the direct `Rotas`/`Shifts` query. `TeamService` (2,698 LOC), `TeamResourceService` (883 LOC), and `StubTeamResourceService` (368 LOC) remain in `Humans.Infrastructure/Services/` pending sub-tasks #540a and #540c.
-  - **Tickets (partial — domain-persistence side)** — `TicketSyncService` migrated 2026-04-22 in PR #545c (umbrella #545) — now lives in `Humans.Application.Services.Tickets`, goes through the newly introduced `ITicketRepository` for all DB access, delegates vendor I/O to the existing `ITicketVendorService` connector (still Infrastructure: `TicketTailorService` / `StubTicketVendorService`), routes `event_participations` writes through `IUserService`, and routes `EventSettings` reads through `IShiftManagementService`. **No caching decorator** — TicketSync runs on a 15-minute Hangfire schedule, not request-path. `TicketQueryService` and the Ticket Tailor connector migration (domain-side vendor client extraction) remain outstanding (#545a, #555). `TicketingBudgetService` migration landed separately in PR #545b.
-- **~19 cross-domain `.Include()` calls** across **~11 services**. Biggest offenders: `OnboardingService` (7), `GoogleWorkspaceSyncService` (4). Target: 0.
+- **~20 cross-domain `.Include()` calls** across **~12 services**. Biggest offenders: `OnboardingService` (7), `GoogleWorkspaceSyncService` (4). Target: 0.
   - Includes fully removed from the service layer in these sections:
     - Profile
     - Governance
@@ -601,9 +600,8 @@ Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`
     - Feedback
     - Auth
     - Teams (TeamPageService only — `TeamService` and `TeamResourceService` still in Infrastructure)
-    - Tickets (TicketSyncService only — `TicketQueryService` still in Infrastructure)
   - **User section's PR #243 landed the Application-layer move but deferred the nav-strip** — cross-domain nav reads via `user.UserEmails`, `user.Profile`, `user.TeamMemberships`, `user.GetEffectiveEmail()` still exist in `TicketQueryService`, `TeamService`, `GoogleWorkspaceSyncService`, `SendBoardDailyDigestJob`, `SyncLegalDocumentsJob`, `SystemTeamSyncJob`, `SuspendNonCompliantMembersJob`, `ProfileController`. Tracked as a follow-up.
-- **15 repositories** exist today. Target: one per domain (~20 total):
+- **14 repositories** exist today. Target: one per domain (~20 total):
   - `ApplicationRepository`
   - `ProfileRepository`
   - `ContactFieldRepository`
@@ -618,7 +616,6 @@ Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`
   - `EmailOutboxRepository`
   - `FeedbackRepository`
   - `RoleAssignmentRepository`
-  - `TicketRepository`
 - **0 stores** exist today. `IApplicationStore` was retired when Governance dropped its caching layer (issue #533). Target: replaced by §15 `ConcurrentDictionary`-in-decorator where a cache is warranted; no separate store type.
 - **1 caching decorator** exists today (`CachingProfileService` — §15 pattern). Governance, User, and Camps sections operate without one. Target: every migrated section that needs caching uses the §15 pattern. Not every section needs caching.
 - **Inline `IMemoryCache.GetOrCreateAsync`** still scattered across services for non-profile caches (nav badge, notification meter, role-assignment claims, shift auth, camps-for-year, camp settings). These are short-TTL request-acceleration caches, not canonical domain data caches, and are appropriate for `IMemoryCache`. Canonical domain data caches (full entity projections) must use the §15 pattern.
