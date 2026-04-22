@@ -632,170 +632,232 @@ public sealed class CampService : ICampService, IUserDataContributor
     public async Task UpdateSeasonAsync(
         Guid seasonId, CampSeasonData data, CancellationToken cancellationToken = default)
     {
-        var season = await _repo.GetSeasonForMutationAsync(seasonId, cancellationToken)
-            ?? throw new InvalidOperationException("Season not found.");
-
         var now = _clock.GetCurrentInstant();
-        season.BlurbLong = data.BlurbLong;
-        season.BlurbShort = data.BlurbShort;
-        season.Languages = data.Languages;
-        season.AcceptingMembers = data.AcceptingMembers;
-        season.KidsWelcome = data.KidsWelcome;
-        season.KidsVisiting = data.KidsVisiting;
-        season.KidsAreaDescription = data.KidsAreaDescription;
-        season.HasPerformanceSpace = data.HasPerformanceSpace;
-        season.PerformanceTypes = data.PerformanceTypes;
-        season.Vibes = new List<CampVibe>(data.Vibes);
-        season.AdultPlayspace = data.AdultPlayspace;
-        season.MemberCount = data.MemberCount;
-        season.SpaceRequirement = data.SpaceRequirement;
-        season.SoundZone = data.SoundZone;
-        season.ContainerCount = data.ContainerCount;
-        season.ContainerNotes = data.ContainerNotes;
-        season.ElectricalGrid = data.ElectricalGrid;
-        season.UpdatedAt = now;
+        var year = 0;
+        var campId = Guid.Empty;
 
-        await _repo.UpdateSeasonAsync(season, cancellationToken);
+        var found = await _repo.UpdateSeasonAsync(seasonId, season =>
+        {
+            season.BlurbLong = data.BlurbLong;
+            season.BlurbShort = data.BlurbShort;
+            season.Languages = data.Languages;
+            season.AcceptingMembers = data.AcceptingMembers;
+            season.KidsWelcome = data.KidsWelcome;
+            season.KidsVisiting = data.KidsVisiting;
+            season.KidsAreaDescription = data.KidsAreaDescription;
+            season.HasPerformanceSpace = data.HasPerformanceSpace;
+            season.PerformanceTypes = data.PerformanceTypes;
+            season.Vibes = new List<CampVibe>(data.Vibes);
+            season.AdultPlayspace = data.AdultPlayspace;
+            season.MemberCount = data.MemberCount;
+            season.SpaceRequirement = data.SpaceRequirement;
+            season.SoundZone = data.SoundZone;
+            season.ContainerCount = data.ContainerCount;
+            season.ContainerNotes = data.ContainerNotes;
+            season.ElectricalGrid = data.ElectricalGrid;
+            season.UpdatedAt = now;
+
+            year = season.Year;
+            campId = season.CampId;
+        }, cancellationToken);
+
+        if (!found)
+        {
+            throw new InvalidOperationException("Season not found.");
+        }
 
         await _auditLog.LogAsync(
             AuditAction.CampUpdated, nameof(CampSeason), seasonId,
-            $"Updated season {season.Year} details",
+            $"Updated season {year} details",
             "CampService",
-            relatedEntityId: season.CampId, relatedEntityType: nameof(Camp));
+            relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
-        InvalidateCache(season.Year);
+        InvalidateCache(year);
     }
 
     public async Task ApproveSeasonAsync(
         Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken = default)
     {
-        var season = await _repo.GetSeasonForMutationAsync(seasonId, cancellationToken)
-            ?? throw new InvalidOperationException("Season not found.");
-        if (season.Status != CampSeasonStatus.Pending)
-        {
-            throw new InvalidOperationException($"Cannot approve a season with status {season.Status}.");
-        }
-
         var now = _clock.GetCurrentInstant();
-        season.Status = CampSeasonStatus.Active;
-        season.ReviewedByUserId = reviewedByUserId;
-        season.ReviewNotes = notes;
-        season.ResolvedAt = now;
-        season.UpdatedAt = now;
+        var year = 0;
+        var campId = Guid.Empty;
 
-        await _repo.UpdateSeasonAsync(season, cancellationToken);
+        var found = await _repo.UpdateSeasonAsync(seasonId, season =>
+        {
+            if (season.Status != CampSeasonStatus.Pending)
+            {
+                throw new InvalidOperationException($"Cannot approve a season with status {season.Status}.");
+            }
+
+            season.Status = CampSeasonStatus.Active;
+            season.ReviewedByUserId = reviewedByUserId;
+            season.ReviewNotes = notes;
+            season.ResolvedAt = now;
+            season.UpdatedAt = now;
+
+            year = season.Year;
+            campId = season.CampId;
+        }, cancellationToken);
+
+        if (!found)
+        {
+            throw new InvalidOperationException("Season not found.");
+        }
 
         await _auditLog.LogAsync(
             AuditAction.CampSeasonApproved, nameof(CampSeason), seasonId,
-            $"Approved season {season.Year}",
+            $"Approved season {year}",
             reviewedByUserId,
-            relatedEntityId: season.CampId, relatedEntityType: nameof(Camp));
+            relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
-        InvalidateCache(season.Year);
+        InvalidateCache(year);
     }
 
     public async Task RejectSeasonAsync(
         Guid seasonId, Guid reviewedByUserId, string notes, CancellationToken cancellationToken = default)
     {
-        var season = await _repo.GetSeasonForMutationAsync(seasonId, cancellationToken)
-            ?? throw new InvalidOperationException("Season not found.");
-        if (season.Status != CampSeasonStatus.Pending)
-        {
-            throw new InvalidOperationException($"Cannot reject a season with status {season.Status}.");
-        }
-
         var now = _clock.GetCurrentInstant();
-        season.Status = CampSeasonStatus.Rejected;
-        season.ReviewedByUserId = reviewedByUserId;
-        season.ReviewNotes = notes;
-        season.ResolvedAt = now;
-        season.UpdatedAt = now;
+        var year = 0;
+        var campId = Guid.Empty;
 
-        await _repo.UpdateSeasonAsync(season, cancellationToken);
+        var found = await _repo.UpdateSeasonAsync(seasonId, season =>
+        {
+            if (season.Status != CampSeasonStatus.Pending)
+            {
+                throw new InvalidOperationException($"Cannot reject a season with status {season.Status}.");
+            }
+
+            season.Status = CampSeasonStatus.Rejected;
+            season.ReviewedByUserId = reviewedByUserId;
+            season.ReviewNotes = notes;
+            season.ResolvedAt = now;
+            season.UpdatedAt = now;
+
+            year = season.Year;
+            campId = season.CampId;
+        }, cancellationToken);
+
+        if (!found)
+        {
+            throw new InvalidOperationException("Season not found.");
+        }
 
         await _auditLog.LogAsync(
             AuditAction.CampSeasonRejected, nameof(CampSeason), seasonId,
-            $"Rejected season {season.Year}: {notes}",
+            $"Rejected season {year}: {notes}",
             reviewedByUserId,
-            relatedEntityId: season.CampId, relatedEntityType: nameof(Camp));
+            relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
-        InvalidateCache(season.Year);
+        InvalidateCache(year);
     }
 
     public async Task WithdrawSeasonAsync(Guid seasonId, CancellationToken cancellationToken = default)
     {
-        var season = await _repo.GetSeasonForMutationAsync(seasonId, cancellationToken)
-            ?? throw new InvalidOperationException("Season not found.");
-        if (season.Status != CampSeasonStatus.Pending && season.Status != CampSeasonStatus.Active)
-        {
-            throw new InvalidOperationException($"Cannot withdraw a season with status {season.Status}.");
-        }
-
         var now = _clock.GetCurrentInstant();
-        season.Status = CampSeasonStatus.Withdrawn;
-        season.UpdatedAt = now;
+        var year = 0;
+        var campId = Guid.Empty;
 
-        await _repo.UpdateSeasonAsync(season, cancellationToken);
+        var found = await _repo.UpdateSeasonAsync(seasonId, season =>
+        {
+            if (season.Status != CampSeasonStatus.Pending && season.Status != CampSeasonStatus.Active)
+            {
+                throw new InvalidOperationException($"Cannot withdraw a season with status {season.Status}.");
+            }
+
+            season.Status = CampSeasonStatus.Withdrawn;
+            season.UpdatedAt = now;
+
+            year = season.Year;
+            campId = season.CampId;
+        }, cancellationToken);
+
+        if (!found)
+        {
+            throw new InvalidOperationException("Season not found.");
+        }
 
         await _auditLog.LogAsync(
             AuditAction.CampSeasonWithdrawn, nameof(CampSeason), seasonId,
-            $"Withdrew from season {season.Year}",
+            $"Withdrew from season {year}",
             "CampService",
-            relatedEntityId: season.CampId, relatedEntityType: nameof(Camp));
+            relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
-        InvalidateCache(season.Year);
+        InvalidateCache(year);
     }
 
     public async Task SetSeasonFullAsync(Guid seasonId, CancellationToken cancellationToken = default)
     {
-        var season = await _repo.GetSeasonForMutationAsync(seasonId, cancellationToken)
-            ?? throw new InvalidOperationException("Season not found.");
-        if (season.Status != CampSeasonStatus.Active)
-        {
-            throw new InvalidOperationException($"Cannot set full on a season with status {season.Status}.");
-        }
-
         var now = _clock.GetCurrentInstant();
-        season.Status = CampSeasonStatus.Full;
-        season.UpdatedAt = now;
+        var year = 0;
+        var campId = Guid.Empty;
 
-        await _repo.UpdateSeasonAsync(season, cancellationToken);
+        var found = await _repo.UpdateSeasonAsync(seasonId, season =>
+        {
+            if (season.Status != CampSeasonStatus.Active)
+            {
+                throw new InvalidOperationException($"Cannot set full on a season with status {season.Status}.");
+            }
+
+            season.Status = CampSeasonStatus.Full;
+            season.UpdatedAt = now;
+
+            year = season.Year;
+            campId = season.CampId;
+        }, cancellationToken);
+
+        if (!found)
+        {
+            throw new InvalidOperationException("Season not found.");
+        }
 
         await _auditLog.LogAsync(
             AuditAction.CampSeasonStatusChanged, nameof(CampSeason), seasonId,
-            $"Season {season.Year} marked as full",
+            $"Season {year} marked as full",
             "CampService",
-            relatedEntityId: season.CampId, relatedEntityType: nameof(Camp));
+            relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
-        InvalidateCache(season.Year);
+        InvalidateCache(year);
     }
 
     public async Task ReactivateSeasonAsync(Guid seasonId, CancellationToken cancellationToken = default)
     {
-        var season = await _repo.GetSeasonForMutationAsync(seasonId, cancellationToken)
-            ?? throw new InvalidOperationException("Season not found.");
-        if (season.Status != CampSeasonStatus.Full && season.Status != CampSeasonStatus.Withdrawn)
-        {
-            throw new InvalidOperationException($"Cannot reactivate a season with status {season.Status}.");
-        }
-
         var now = _clock.GetCurrentInstant();
-        // Withdrawn camps go back to Pending for re-approval; Full camps go back to Active
-        var previousStatus = season.Status;
-        season.Status = season.Status == CampSeasonStatus.Withdrawn
-            ? CampSeasonStatus.Pending
-            : CampSeasonStatus.Active;
-        season.UpdatedAt = now;
+        var year = 0;
+        var campId = Guid.Empty;
+        var previousStatus = CampSeasonStatus.Pending;
+        var newStatus = CampSeasonStatus.Pending;
 
-        await _repo.UpdateSeasonAsync(season, cancellationToken);
+        var found = await _repo.UpdateSeasonAsync(seasonId, season =>
+        {
+            if (season.Status != CampSeasonStatus.Full && season.Status != CampSeasonStatus.Withdrawn)
+            {
+                throw new InvalidOperationException($"Cannot reactivate a season with status {season.Status}.");
+            }
+
+            // Withdrawn camps go back to Pending for re-approval; Full camps go back to Active
+            previousStatus = season.Status;
+            newStatus = season.Status == CampSeasonStatus.Withdrawn
+                ? CampSeasonStatus.Pending
+                : CampSeasonStatus.Active;
+            season.Status = newStatus;
+            season.UpdatedAt = now;
+
+            year = season.Year;
+            campId = season.CampId;
+        }, cancellationToken);
+
+        if (!found)
+        {
+            throw new InvalidOperationException("Season not found.");
+        }
 
         await _auditLog.LogAsync(
             AuditAction.CampSeasonStatusChanged, nameof(CampSeason), seasonId,
-            $"Season {season.Year} status changed from {previousStatus} to {season.Status}",
+            $"Season {year} status changed from {previousStatus} to {newStatus}",
             "CampService",
-            relatedEntityId: season.CampId, relatedEntityType: nameof(Camp));
+            relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
-        InvalidateCache(season.Year);
+        InvalidateCache(year);
     }
 
     // ==========================================================================
@@ -1129,53 +1191,63 @@ public sealed class CampService : ICampService, IUserDataContributor
     public async Task ChangeSeasonNameAsync(
         Guid seasonId, string newName, CancellationToken cancellationToken = default)
     {
-        var season = await _repo.GetSeasonForMutationAsync(seasonId, cancellationToken)
-            ?? throw new InvalidOperationException("Season not found.");
+        var now = _clock.GetCurrentInstant();
+        var today = now.InUtc().Date;
 
-        // Check name lock
-        if (season.NameLockDate.HasValue)
+        string? oldName = null;
+        var campId = Guid.Empty;
+        var year = 0;
+
+        var found = await _repo.ApplyNameChangeAsync(seasonId, season =>
         {
-            var today = _clock.GetCurrentInstant().InUtc().Date;
-            if (today >= season.NameLockDate.Value)
+            if (season.NameLockDate.HasValue && today >= season.NameLockDate.Value)
             {
                 throw new InvalidOperationException("Season name is locked and cannot be changed.");
             }
+
+            if (string.Equals(season.Name, newName, StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            oldName = season.Name;
+            campId = season.CampId;
+            year = season.Year;
+
+            var historyEntry = new CampHistoricalName
+            {
+                Id = Guid.NewGuid(),
+                CampId = season.CampId,
+                Name = season.Name,
+                Year = season.Year,
+                Source = CampNameSource.NameChange,
+                CreatedAt = now
+            };
+
+            season.Name = newName;
+            season.UpdatedAt = now;
+
+            return historyEntry;
+        }, cancellationToken);
+
+        if (!found)
+        {
+            throw new InvalidOperationException("Season not found.");
         }
 
-        var oldName = season.Name;
-        if (string.Equals(oldName, newName, StringComparison.Ordinal))
+        if (oldName is null)
         {
+            // No-op: same name.
             return;
         }
-
-        var now = _clock.GetCurrentInstant();
-
-        // Log old name to history
-        var historyEntry = new CampHistoricalName
-        {
-            Id = Guid.NewGuid(),
-            CampId = season.CampId,
-            Name = oldName,
-            Year = season.Year,
-            Source = CampNameSource.NameChange,
-            CreatedAt = now
-        };
-
-        season.Name = newName;
-        season.UpdatedAt = now;
-
-        // Persist both changes: season update + new historical name row.
-        // Two calls, no transaction — matches original behavior (SaveChanges once per unit).
-        await _repo.AddHistoricalNameAsync(historyEntry, cancellationToken);
-        await _repo.UpdateSeasonAsync(season, cancellationToken);
 
         await _auditLog.LogAsync(
             AuditAction.CampNameChanged, nameof(CampSeason), seasonId,
             $"Name changed from '{oldName}' to '{newName}'",
             "CampService",
-            relatedEntityId: season.CampId, relatedEntityType: nameof(Camp));
+            relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
-        InvalidateCache(season.Year);
+        InvalidateCache(year);
     }
 
     // ==========================================================================

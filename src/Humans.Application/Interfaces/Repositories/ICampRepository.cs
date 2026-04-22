@@ -134,16 +134,31 @@ public interface ICampRepository
     // ==========================================================================
 
     /// <summary>
-    /// Load a season for mutation (tracked). Returns null if not found.
+    /// Loads the season tracked inside a short-lived save context, applies
+    /// <paramref name="mutate"/> to the tracked entity, and saves. EF's change
+    /// tracker detects only the fields the lambda actually changed, so the
+    /// <c>UPDATE</c> statement touches only those columns — unrelated concurrent
+    /// edits to other fields are preserved. Returns false if not found.
+    /// Validation that must block the write (e.g. wrong status) should throw
+    /// from inside the lambda; the save is skipped when the exception bubbles.
     /// </summary>
-    Task<CampSeason?> GetSeasonForMutationAsync(Guid seasonId, CancellationToken ct = default);
+    Task<bool> UpdateSeasonAsync(
+        Guid seasonId,
+        Action<CampSeason> mutate,
+        CancellationToken ct = default);
 
     /// <summary>
-    /// Save changes against a season previously loaded via
-    /// <see cref="GetSeasonForMutationAsync"/>. The repository re-attaches the
-    /// entity to a fresh context and commits.
+    /// Atomic season rename: persists the mutation applied to the tracked
+    /// season <em>and</em> the <see cref="CampHistoricalName"/> returned by
+    /// <paramref name="mutate"/> in a single <c>SaveChangesAsync</c>. Return
+    /// <c>null</c> from the lambda to signal a no-op (no history row added,
+    /// season fields still saved if mutated). Throw from the lambda to block
+    /// the save. Returns false if the season was not found.
     /// </summary>
-    Task UpdateSeasonAsync(CampSeason season, CancellationToken ct = default);
+    Task<bool> ApplyNameChangeAsync(
+        Guid seasonId,
+        Func<CampSeason, CampHistoricalName?> mutate,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Returns true if a season exists for the given camp/year.

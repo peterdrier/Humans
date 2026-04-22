@@ -244,25 +244,43 @@ public sealed class CampRepository : ICampRepository
     // Writes — Season
     // ==========================================================================
 
-    public async Task<CampSeason?> GetSeasonForMutationAsync(
-        Guid seasonId, CancellationToken ct = default)
+    public async Task<bool> UpdateSeasonAsync(
+        Guid seasonId,
+        Action<CampSeason> mutate,
+        CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var season = await ctx.CampSeasons.FindAsync([seasonId], ct);
         if (season is null)
         {
-            return null;
+            return false;
         }
 
-        ctx.Entry(season).State = EntityState.Detached;
-        return season;
+        mutate(season);
+        await ctx.SaveChangesAsync(ct);
+        return true;
     }
 
-    public async Task UpdateSeasonAsync(CampSeason season, CancellationToken ct = default)
+    public async Task<bool> ApplyNameChangeAsync(
+        Guid seasonId,
+        Func<CampSeason, CampHistoricalName?> mutate,
+        CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        ctx.CampSeasons.Update(season);
+        var season = await ctx.CampSeasons.FindAsync([seasonId], ct);
+        if (season is null)
+        {
+            return false;
+        }
+
+        var historyEntry = mutate(season);
+        if (historyEntry is not null)
+        {
+            ctx.CampHistoricalNames.Add(historyEntry);
+        }
+
         await ctx.SaveChangesAsync(ct);
+        return true;
     }
 
     public async Task<bool> SeasonExistsAsync(
