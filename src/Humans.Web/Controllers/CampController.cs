@@ -113,11 +113,11 @@ public class CampController : HumansCampControllerBase
         if (campDetail is null)
             return NotFound();
 
-        var camp = await GetCampBySlugAsync(slug);
+        var camp = await GetCampBySlugAsync(slug, cancellationToken);
         if (camp is null)
             return NotFound();
 
-        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp);
+        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp, cancellationToken);
         await PopulateCityPlanningViewBagAsync(cancellationToken);
 
         return View(MapCampDetailViewModel(campDetail, isLead, isCampAdmin));
@@ -135,11 +135,11 @@ public class CampController : HumansCampControllerBase
         if (campDetail is null)
             return NotFound();
 
-        var camp = await GetCampBySlugAsync(slug);
+        var camp = await GetCampBySlugAsync(slug, cancellationToken);
         if (camp is null)
             return NotFound();
 
-        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp);
+        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp, cancellationToken);
         await PopulateCityPlanningViewBagAsync(cancellationToken);
 
         return View(nameof(Details), MapCampDetailViewModel(campDetail, isLead, isCampAdmin));
