@@ -1,33 +1,57 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Application.Services.Governance;
 
 /// <summary>
-/// Service for computing membership status.
+/// Pure orchestrator that computes membership status (Volunteer / Colaborador /
+/// Asociado tier, Active / Inactive / Suspended / Pending state) from the data
+/// owned by other sections: profiles, team memberships, role assignments,
+/// users, legal documents, and consent records. Owns no tables of its own —
+/// every read goes through the corresponding section service interface per
+/// design-rules §9. Writes are delegated to those services.
+///
+/// <para>
+/// Moved from <c>Humans.Infrastructure.Services</c> to
+/// <c>Humans.Application.Services.Governance</c> alongside
+/// <see cref="ApplicationDecisionService"/> as part of the §15 migration
+/// (issue #559).
+/// </para>
 /// </summary>
-public class MembershipCalculator : IMembershipCalculator
+public sealed class MembershipCalculator : IMembershipCalculator
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IProfileService _profileService;
+    private readonly ITeamService _teamService;
+    private readonly IUserService _userService;
+    private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly ILegalDocumentSyncService _legalDocumentSyncService;
+
+    // ConsentService is resolved lazily via IServiceProvider to break the
+    // cyclic registration: ConsentService depends on IMembershipCalculator
+    // (for GetRequiredTeamIdsForUserAsync), and MembershipCalculator needs
+    // consent data. Both live in the same scope, so a lazy lookup is safe.
+    private readonly IServiceProvider _serviceProvider;
     private readonly IClock _clock;
 
     public MembershipCalculator(
-        HumansDbContext dbContext,
-        IServiceProvider serviceProvider,
+        IProfileService profileService,
+        ITeamService teamService,
+        IUserService userService,
+        IRoleAssignmentService roleAssignmentService,
         ILegalDocumentSyncService legalDocumentSyncService,
+        IServiceProvider serviceProvider,
         IClock clock)
     {
-        _dbContext = dbContext;
-        _serviceProvider = serviceProvider;
+        _profileService = profileService;
+        _teamService = teamService;
+        _userService = userService;
+        _roleAssignmentService = roleAssignmentService;
         _legalDocumentSyncService = legalDocumentSyncService;
+        _serviceProvider = serviceProvider;
         _clock = clock;
     }
 
@@ -37,9 +61,7 @@ public class MembershipCalculator : IMembershipCalculator
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var profile = await _dbContext.Profiles
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
+        var profile = await _profileService.GetProfileAsync(userId, cancellationToken);
 
         if (profile is null)
         {
@@ -59,13 +81,8 @@ public class MembershipCalculator : IMembershipCalculator
         // A user is considered active if they have governance role assignments
         // OR are a member of the Volunteers team (i.e., a plain volunteer).
         var hasActiveRoles = await HasActiveRolesAsync(userId, cancellationToken);
-        var isVolunteerMember = await _dbContext.TeamMembers
-            .AsNoTracking()
-            .AnyAsync(tm =>
-                tm.UserId == userId &&
-                tm.TeamId == SystemTeamIds.Volunteers &&
-                tm.LeftAt == null,
-                cancellationToken);
+        var isVolunteerMember = await _teamService.IsUserMemberOfTeamAsync(
+            SystemTeamIds.Volunteers, userId, cancellationToken);
 
         if (!hasActiveRoles && !isVolunteerMember)
         {
@@ -105,13 +122,8 @@ public class MembershipCalculator : IMembershipCalculator
             .Where(id => !consentedVersionIds.Contains(id))
             .ToList();
 
-        var isVolunteerMember = await _dbContext.TeamMembers
-            .AsNoTracking()
-            .AnyAsync(tm =>
-                tm.UserId == userId &&
-                tm.TeamId == SystemTeamIds.Volunteers &&
-                tm.LeftAt == null,
-                cancellationToken);
+        var isVolunteerMember = await _teamService.IsUserMemberOfTeamAsync(
+            SystemTeamIds.Volunteers, userId, cancellationToken);
 
         return new MembershipSnapshot(
             status,
@@ -189,28 +201,14 @@ public class MembershipCalculator : IMembershipCalculator
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var now = _clock.GetCurrentInstant();
-
-        return await _dbContext.RoleAssignments
-            .AnyAsync(
-                ra => ra.UserId == userId &&
-                      ra.ValidFrom <= now &&
-                      (ra.ValidTo == null || ra.ValidTo > now),
-                cancellationToken);
+        return await _roleAssignmentService.HasAnyActiveAssignmentAsync(userId, cancellationToken);
     }
 
     public async Task<IReadOnlyList<Guid>> GetUsersRequiringStatusUpdateAsync(
         CancellationToken cancellationToken = default)
     {
         // Get all users with active roles
-        var now = _clock.GetCurrentInstant();
-
-        var usersWithActiveRoles = await _dbContext.RoleAssignments
-            .AsNoTracking()
-            .Where(ra => ra.ValidFrom <= now && (ra.ValidTo == null || ra.ValidTo > now))
-            .Select(ra => ra.UserId)
-            .Distinct()
-            .ToListAsync(cancellationToken);
+        var usersWithActiveRoles = await _roleAssignmentService.GetUserIdsWithActiveAssignmentsAsync(cancellationToken);
 
         // Use batch method to avoid N+1 queries
         var usersWithAnyExpiredConsents = await GetUsersWithAnyExpiredConsentsAsync(usersWithActiveRoles, cancellationToken);
@@ -317,11 +315,12 @@ public class MembershipCalculator : IMembershipCalculator
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        // Start with current team memberships
-        var teamIds = await _dbContext.TeamMembers
-            .Where(tm => tm.UserId == userId && tm.LeftAt == null)
-            .Select(tm => tm.TeamId)
-            .ToListAsync(cancellationToken);
+        // Start with current team memberships. GetUserTeamsAsync loads
+        // TeamMember rows with Team navigation pre-populated so we can
+        // inspect SystemTeamType for the Coordinator-of-user-team check
+        // below without a second query.
+        var memberships = await _teamService.GetUserTeamsAsync(userId, cancellationToken);
+        var teamIds = memberships.Select(m => m.TeamId).ToList();
 
         // Always include Volunteers (global docs apply to everyone)
         if (!teamIds.Contains(SystemTeamIds.Volunteers))
@@ -332,13 +331,9 @@ public class MembershipCalculator : IMembershipCalculator
         // Include Coordinators if user is Coordinator of any user-created team
         if (!teamIds.Contains(SystemTeamIds.Coordinators))
         {
-            var isCoordinatorAnywhere = await _dbContext.TeamMembers
-                .AnyAsync(tm =>
-                    tm.UserId == userId &&
-                    tm.LeftAt == null &&
-                    tm.Role == TeamMemberRole.Coordinator &&
-                    tm.Team.SystemTeamType == SystemTeamType.None,
-                    cancellationToken);
+            var isCoordinatorAnywhere = memberships.Any(m =>
+                m.Role == TeamMemberRole.Coordinator &&
+                m.Team.SystemTeamType == SystemTeamType.None);
 
             if (isCoordinatorAnywhere)
             {
@@ -354,28 +349,22 @@ public class MembershipCalculator : IMembershipCalculator
     {
         var allIds = userIds.ToList();
 
+        // Pull users and profiles through their owning services — no direct
+        // DbContext access. Missing entities are simply absent from the maps.
+        var usersById = await _userService.GetByIdsAsync(allIds, ct);
+        var profilesByUserId = await _profileService.GetByUserIdsAsync(allIds, ct);
+
         // 1. PendingDeletion — DeletionRequestedAt is not null (highest priority)
-        var pendingDeletionIds = await _dbContext.Users
-            .AsNoTracking()
-            .Where(u => allIds.Contains(u.Id) && u.DeletionRequestedAt != null)
-            .Select(u => u.Id)
-            .ToListAsync(ct);
-        var pendingDeletion = pendingDeletionIds.ToHashSet();
+        var pendingDeletion = allIds
+            .Where(id => usersById.TryGetValue(id, out var u) && u.DeletionRequestedAt != null)
+            .ToHashSet();
 
-        // 2. Load remaining users with profiles
+        // 2. IncompleteSignup — no Profile entity
         var remaining = allIds.Where(id => !pendingDeletion.Contains(id)).ToList();
-        var usersWithProfiles = await _dbContext.Users
-            .AsNoTracking()
-            .Include(u => u.Profile)
-            .Where(u => remaining.Contains(u.Id))
-            .ToListAsync(ct);
-        var profileByUserId = usersWithProfiles.ToDictionary(u => u.Id, u => u.Profile);
-
-        // 3. IncompleteSignup — no Profile entity
         var incompleteSignup = new HashSet<Guid>();
         foreach (var id in remaining)
         {
-            if (!profileByUserId.TryGetValue(id, out var profile) || profile is null)
+            if (!profilesByUserId.ContainsKey(id))
             {
                 incompleteSignup.Add(id);
             }
@@ -383,11 +372,11 @@ public class MembershipCalculator : IMembershipCalculator
 
         remaining = remaining.Where(id => !incompleteSignup.Contains(id)).ToList();
 
-        // 4. Suspended — Profile.IsSuspended
+        // 3. Suspended — Profile.IsSuspended
         var suspended = new HashSet<Guid>();
         foreach (var id in remaining)
         {
-            if (profileByUserId[id]!.IsSuspended)
+            if (profilesByUserId[id].IsSuspended)
             {
                 suspended.Add(id);
             }
@@ -395,13 +384,13 @@ public class MembershipCalculator : IMembershipCalculator
 
         remaining = remaining.Where(id => !suspended.Contains(id)).ToList();
 
-        // 5. PendingApproval — !Profile.IsApproved (rejected users go to IncompleteSignup)
+        // 4. PendingApproval — !Profile.IsApproved (rejected users go to IncompleteSignup)
         var pendingApproval = new HashSet<Guid>();
         foreach (var id in remaining)
         {
-            if (!profileByUserId[id]!.IsApproved)
+            if (!profilesByUserId[id].IsApproved)
             {
-                if (profileByUserId[id]!.RejectedAt is not null)
+                if (profilesByUserId[id].RejectedAt is not null)
                 {
                     incompleteSignup.Add(id);
                 }
@@ -414,7 +403,7 @@ public class MembershipCalculator : IMembershipCalculator
 
         remaining = remaining.Where(id => !pendingApproval.Contains(id) && !incompleteSignup.Contains(id)).ToList();
 
-        // 6. Active vs MissingConsents — approved, not suspended
+        // 5. Active vs MissingConsents — approved, not suspended
         var usersWithConsents = await GetUsersWithAllRequiredConsentsForTeamAsync(remaining, SystemTeamIds.Volunteers, ct);
         var active = remaining.Where(id => usersWithConsents.Contains(id)).ToHashSet();
         var missingConsents = remaining.Where(id => !usersWithConsents.Contains(id)).ToHashSet();
@@ -427,5 +416,4 @@ public class MembershipCalculator : IMembershipCalculator
             suspended,
             pendingDeletion);
     }
-
 }

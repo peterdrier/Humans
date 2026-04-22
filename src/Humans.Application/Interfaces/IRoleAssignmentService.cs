@@ -52,6 +52,22 @@ public interface IRoleAssignmentService
     Task<bool> HasActiveRoleAsync(Guid userId, string roleName, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns true if the user has any active role assignment (regardless of role name).
+    /// Used by the membership calculator to distinguish governance members from
+    /// plain volunteers.
+    /// </summary>
+    Task<bool> HasAnyActiveAssignmentAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the distinct set of user IDs that have at least one active
+    /// role assignment at the current instant. Used by batch jobs
+    /// (e.g., membership status reconciliation) that need to enumerate every
+    /// governance-active user without reading the role assignments table
+    /// themselves.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetUserIdsWithActiveAssignmentsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Ends all active governance role assignments for a user by setting
     /// <c>ValidTo</c> to now. Returns the count of ended assignments.
     /// Used during account deletion.

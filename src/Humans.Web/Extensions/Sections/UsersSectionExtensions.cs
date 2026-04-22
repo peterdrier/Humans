@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
+using GovernanceMembershipCalculator = Humans.Application.Services.Governance.MembershipCalculator;
 using UsersUserService = Humans.Application.Services.Users.UserService;
 
 namespace Humans.Web.Extensions.Sections;
@@ -21,7 +22,7 @@ internal static class UsersSectionExtensions
         services.AddScoped<IUserService>(sp => sp.GetRequiredService<UsersUserService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<UsersUserService>());
 
-        services.AddScoped<IMembershipCalculator, MembershipCalculator>();
+        services.AddScoped<IMembershipCalculator, GovernanceMembershipCalculator>();
         services.AddScoped<IDashboardService, DashboardService>();
 
         return services;
