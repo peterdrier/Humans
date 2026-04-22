@@ -1,6 +1,9 @@
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Services.Teams;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Jobs;
+using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using Humans.Infrastructure.Services.GoogleWorkspace;
 using GoogleWorkspaceUserService = Humans.Application.Services.GoogleIntegration.GoogleWorkspaceUserService;
@@ -15,16 +18,29 @@ internal static class GoogleWorkspaceInfrastructureExtensions
         IHostEnvironment environment)
     {
         services.Configure<GoogleWorkspaceSettings>(configuration.GetSection(GoogleWorkspaceSettings.SectionName));
-        services.Configure<TeamResourceManagementSettings>(configuration.GetSection(TeamResourceManagementSettings.SectionName));
+        services.AddSingleton(sp =>
+        {
+            var opts = new TeamResourceManagementOptions();
+            configuration.GetSection(TeamResourceManagementOptions.SectionName).Bind(opts);
+            return opts;
+        });
 
         var googleWorkspaceConfig = configuration.GetSection(GoogleWorkspaceSettings.SectionName);
         var hasGoogleCredentials = !string.IsNullOrEmpty(googleWorkspaceConfig["ServiceAccountKeyPath"]) ||
                                    !string.IsNullOrEmpty(googleWorkspaceConfig["ServiceAccountKeyJson"]);
 
+        // Team-resource repository is Singleton (IDbContextFactory-based per §15b).
+        services.AddSingleton<IGoogleResourceRepository, GoogleResourceRepository>();
+
+        // Application-layer service uses the same repo + one of the two Google
+        // connector implementations below. Stub connector is used when no
+        // service-account credentials are configured (dev only).
+        services.AddScoped<ITeamResourceService, TeamResourceService>();
+
         if (hasGoogleCredentials)
         {
             services.AddScoped<IGoogleSyncService, GoogleWorkspaceSyncService>();
-            services.AddScoped<ITeamResourceService, TeamResourceService>();
+            services.AddScoped<ITeamResourceGoogleClient, TeamResourceGoogleClient>();
             services.AddScoped<IDriveActivityMonitorService, DriveActivityMonitorService>();
 
             // Google Integration §15 migration (issue #554) — workspace users.
@@ -43,7 +59,7 @@ internal static class GoogleWorkspaceInfrastructureExtensions
         else
         {
             services.AddScoped<IGoogleSyncService, StubGoogleSyncService>();
-            services.AddScoped<ITeamResourceService, StubTeamResourceService>();
+            services.AddScoped<ITeamResourceGoogleClient, StubTeamResourceGoogleClient>();
             services.AddScoped<IDriveActivityMonitorService, StubDriveActivityMonitorService>();
 
             services.AddScoped<IWorkspaceUserDirectoryClient, StubWorkspaceUserDirectoryClient>();

@@ -19,9 +19,10 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
 # Files that are allowed to touch the DbSet<GoogleResource> directly.
+# After the §15 Teams sub-task #540c migration the only owner is the
+# Application-layer service's repository in Humans.Infrastructure.Repositories.
 ALLOWED=(
-  "src/Humans.Infrastructure/Services/TeamResourceService.cs"
-  "src/Humans.Infrastructure/Services/StubTeamResourceService.cs"
+  "src/Humans.Infrastructure/Repositories/GoogleResourceRepository.cs"
   "src/Humans.Infrastructure/Data/Configurations/TeamConfiguration.cs"
   "src/Humans.Infrastructure/Data/HumansDbContext.cs"
 )
@@ -57,7 +58,8 @@ if [[ -n "$MATCHES" ]]; then
   echo "error: google_resources direct access outside TeamResourceService:" >&2
   echo "$MATCHES" >&2
   echo >&2
-  echo "google_resources is owned by TeamResourceService. Use one of its read" >&2
+  echo "google_resources is owned by TeamResourceService (which reads/writes" >&2
+  echo "through IGoogleResourceRepository). Use one of the service's read" >&2
   echo "methods (GetTeamResourcesAsync, GetResourcesByTeamIdsAsync," >&2
   echo "GetTeamResourceSummariesAsync, GetActiveResourceCountsByTeamAsync," >&2
   echo "GetUserTeamResourcesAsync, GetActiveDriveFoldersAsync, GetResourceCountAsync)" >&2
