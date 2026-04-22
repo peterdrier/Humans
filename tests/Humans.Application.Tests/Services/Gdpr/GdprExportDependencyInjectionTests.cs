@@ -10,6 +10,7 @@ using Xunit;
 using ApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
 using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
 using UsersUserService = Humans.Application.Services.Users.UserService;
+using AuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
 
 namespace Humans.Application.Tests.Services.Gdpr;
 

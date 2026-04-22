@@ -21,6 +21,7 @@ using ProfilesCommunicationPreferenceService = Humans.Application.Services.Profi
 using ProfilesContactService = Humans.Application.Services.Profile.ContactService;
 using UsersUserService = Humans.Application.Services.Users.UserService;
 using CityPlanningCityPlanningService = Humans.Application.Services.CityPlanning.CityPlanningService;
+using AuditLogAuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
 
 namespace Humans.Web.Extensions;
 
@@ -197,9 +198,16 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IRoleAssignmentService>(sp => sp.GetRequiredService<RoleAssignmentService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<RoleAssignmentService>());
 
-        services.AddScoped<AuditLogService>();
-        services.AddScoped<IAuditLogService>(sp => sp.GetRequiredService<AuditLogService>());
-        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<AuditLogService>());
+        // Audit Log section — §15 repository pattern (issue #552).
+        // Append-only per design-rules §12. No decorator — writes are scattered
+        // across every section and reads are admin-only, so a cache is not
+        // warranted (same rationale as Governance/User/Budget/City Planning).
+        // IAuditLogRepository is Singleton (IDbContextFactory-based) so the
+        // service can inject it directly.
+        services.AddSingleton<IAuditLogRepository, AuditLogRepository>();
+        services.AddScoped<AuditLogAuditLogService>();
+        services.AddScoped<IAuditLogService>(sp => sp.GetRequiredService<AuditLogAuditLogService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<AuditLogAuditLogService>());
 
         services.AddScoped<AccountMergeService>();
         services.AddScoped<IAccountMergeService>(sp => sp.GetRequiredService<AccountMergeService>());
