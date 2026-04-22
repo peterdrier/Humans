@@ -17,6 +17,7 @@ using CampService = Humans.Application.Services.Camps.CampService;
 using FeedbackService = Humans.Application.Services.Feedback.FeedbackService;
 using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
 using ConsentService = Humans.Application.Services.Consent.ConsentService;
+using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
 
 namespace Humans.Application.Tests.Services.Gdpr;
 

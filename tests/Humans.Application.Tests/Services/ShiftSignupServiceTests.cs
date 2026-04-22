@@ -16,6 +16,7 @@ using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using Xunit;
+using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
 
 namespace Humans.Application.Tests.Services;
 
@@ -25,6 +26,7 @@ public class ShiftSignupServiceTests : IDisposable
     private readonly FakeClock _clock;
     private readonly IAuditLogService _auditLog;
     private readonly ShiftManagementService _shiftMgmt;
+    private readonly ShiftSignupRepository _repo;
     private readonly ShiftSignupService _service;
 
     // Fixed test time: 2026-06-15 12:00 UTC
@@ -56,8 +58,9 @@ public class ShiftSignupServiceTests : IDisposable
             _clock,
             NullLogger<ShiftManagementService>.Instance);
 
+        _repo = new ShiftSignupRepository(_dbContext);
         _service = new ShiftSignupService(
-            _dbContext,
+            _repo,
             _shiftMgmt,
             _auditLog,
             Substitute.For<INotificationService>(),

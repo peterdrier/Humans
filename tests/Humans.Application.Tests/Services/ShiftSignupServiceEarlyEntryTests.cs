@@ -15,6 +15,7 @@ using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using Xunit;
+using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
 
 namespace Humans.Application.Tests.Services;
 
@@ -24,6 +25,7 @@ public class ShiftSignupServiceEarlyEntryTests : IDisposable
     private readonly FakeClock _clock;
     private readonly IAuditLogService _auditLog;
     private readonly ShiftManagementService _shiftMgmt;
+    private readonly ShiftSignupRepository _repo;
     private readonly ShiftSignupService _service;
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
@@ -54,8 +56,9 @@ public class ShiftSignupServiceEarlyEntryTests : IDisposable
             _clock,
             NullLogger<ShiftManagementService>.Instance);
 
+        _repo = new ShiftSignupRepository(_dbContext);
         _service = new ShiftSignupService(
-            _dbContext,
+            _repo,
             _shiftMgmt,
             _auditLog,
             Substitute.For<INotificationService>(),

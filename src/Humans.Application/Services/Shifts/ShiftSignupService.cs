@@ -1,22 +1,48 @@
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Application.Services.Shifts;
 
 /// <summary>
+/// Application-layer implementation of <see cref="IShiftSignupService"/>.
 /// Manages the shift signup state machine with invariant enforcement.
 /// </summary>
-public class ShiftSignupService : IShiftSignupService, IUserDataContributor
+/// <remarks>
+/// <para>
+/// Goes through <see cref="IShiftSignupRepository"/> for all data access —
+/// this type never imports <c>Microsoft.EntityFrameworkCore</c>, enforced
+/// by <c>Humans.Application.csproj</c>'s reference graph.
+/// </para>
+/// <para>
+/// No caching decorator (§15 Option A). Shift signup reads are request-scoped
+/// (a user's own signups, a shift's pending approvals) and don't benefit from
+/// a dict cache. Same rationale as Users (#243), Governance (#242), Feedback
+/// (#549), and Auth (#551).
+/// </para>
+/// <para>
+/// Scope note: <c>ShiftManagementService</c> (#541a) and
+/// <c>GeneralAvailabilityService</c> (#541c) are migrated in separate PRs.
+/// Until #541a lands, this service's within-section cross-service reads on
+/// <c>rotas</c> / <c>shifts</c> live in <see cref="IShiftSignupRepository"/>.
+/// See <c>docs/sections/Shifts.md</c>.
+/// </para>
+/// <para>
+/// §15 NEW-B (ShiftAuthorization cache staleness on Profile mutations) is
+/// NOT wired in this PR — the <c>shift-auth</c> cache lives in
+/// <see cref="IShiftManagementService"/>, not this service. The invalidator
+/// belongs with the #541a migration. See <c>design-rules.md</c> §15g.
+/// </para>
+/// </remarks>
+public sealed class ShiftSignupService : IShiftSignupService, IUserDataContributor
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly IShiftSignupRepository _repo;
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IAuditLogService _auditLogService;
     private readonly INotificationService _notificationService;
@@ -24,11 +50,12 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
     private readonly IClock _clock;
     private readonly ILogger<ShiftSignupService> _logger;
 
-    // Lazy-resolved for consistency with ShiftManagementService pattern (used only for notification coordinator lookups)
+    // Lazy-resolved for consistency with ShiftManagementService pattern
+    // (used only for notification coordinator / team-name lookups).
     private ITeamService TeamService => _serviceProvider.GetRequiredService<ITeamService>();
 
     public ShiftSignupService(
-        HumansDbContext dbContext,
+        IShiftSignupRepository repo,
         IShiftManagementService shiftMgmt,
         IAuditLogService auditLogService,
         INotificationService notificationService,
@@ -36,7 +63,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
         IClock clock,
         ILogger<ShiftSignupService> logger)
     {
-        _dbContext = dbContext;
+        _repo = repo;
         _shiftMgmt = shiftMgmt;
         _auditLogService = auditLogService;
         _notificationService = notificationService;
@@ -48,18 +75,11 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
     public async Task<SignupResult> SignUpAsync(Guid userId, Guid shiftId, Guid? actorUserId = null, bool isPrivileged = false)
     {
         // Prevent duplicate signups for the same shift
-        var existingSignup = await _dbContext.ShiftSignups
-            .AnyAsync(s => s.UserId == userId && s.ShiftId == shiftId &&
-                           (s.Status == SignupStatus.Pending || s.Status == SignupStatus.Confirmed));
+        var existingSignup = await _repo.HasActiveSignupAsync(userId, shiftId);
         if (existingSignup)
             return SignupResult.Fail("Already signed up for this shift.");
 
-        var shift = await _dbContext.Shifts
-            .Include(s => s.Rota).ThenInclude(r => r.EventSettings)
-            .Include(s => s.Rota).ThenInclude(r => r.Team)
-            .Include(s => s.ShiftSignups)
-            .FirstOrDefaultAsync(s => s.Id == shiftId);
-
+        var shift = await _repo.GetShiftWithContextAsync(shiftId);
         if (shift is null) return SignupResult.Fail("Shift not found.");
 
         var es = shift.Rota.EventSettings;
@@ -117,9 +137,9 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
             signup.ReviewedAt = now;
         }
 
-        _dbContext.ShiftSignups.Add(signup);
+        _repo.Add(signup);
 
-        await _dbContext.SaveChangesAsync();
+        await _repo.SaveChangesAsync();
 
         if (autoConfirm)
         {
@@ -128,7 +148,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
                 $"Auto-confirmed signup for shift '{shift.Rota.Name}'",
                 userId);
 
-            await DispatchSignupChangeNotificationAsync(signup,
+            await DispatchSignupChangeNotificationAsync(signup, shift,
                 $"New confirmed signup for '{shift.Rota.Name}' on day {shift.DayOffset}.");
         }
 
@@ -137,7 +157,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
 
     public async Task<SignupResult> ApproveAsync(Guid signupId, Guid reviewerUserId)
     {
-        var signup = await GetSignupWithShiftAsync(signupId);
+        var signup = await _repo.GetByIdForMutationAsync(signupId);
         if (signup is null) return SignupResult.Fail("Signup not found.");
 
         if (signup.Status != SignupStatus.Pending)
@@ -175,14 +195,14 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
 
         signup.Confirm(reviewerUserId, _clock);
 
-        await _dbContext.SaveChangesAsync();
+        await _repo.SaveChangesAsync();
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupConfirmed, nameof(ShiftSignup), signup.Id,
             $"Approved signup for shift '{signup.Shift.Rota.Name}'",
             reviewerUserId);
 
-        await DispatchSignupChangeNotificationAsync(signup,
+        await DispatchSignupChangeNotificationAsync(signup, signup.Shift,
             $"Signup approved for '{signup.Shift.Rota.Name}' on day {signup.Shift.DayOffset}.");
 
         return SignupResult.Ok(signup, warning);
@@ -190,19 +210,19 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
 
     public async Task<SignupResult> RefuseAsync(Guid signupId, Guid reviewerUserId, string? reason)
     {
-        var signup = await GetSignupWithShiftAsync(signupId);
+        var signup = await _repo.GetByIdForMutationAsync(signupId);
         if (signup is null) return SignupResult.Fail("Signup not found.");
 
         signup.Refuse(reviewerUserId, _clock, reason);
 
-        await _dbContext.SaveChangesAsync();
+        await _repo.SaveChangesAsync();
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupRefused, nameof(ShiftSignup), signup.Id,
             $"Refused signup for shift '{signup.Shift.Rota.Name}'" + (reason is not null ? $": {reason}" : ""),
             reviewerUserId);
 
-        await DispatchSignupChangeNotificationAsync(signup,
+        await DispatchSignupChangeNotificationAsync(signup, signup.Shift,
             $"Signup refused for '{signup.Shift.Rota.Name}' on day {signup.Shift.DayOffset}.");
 
         return SignupResult.Ok(signup);
@@ -210,7 +230,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
 
     public async Task<SignupResult> BailAsync(Guid signupId, Guid actorUserId, string? reason)
     {
-        var signup = await GetSignupWithShiftAsync(signupId);
+        var signup = await _repo.GetByIdForMutationAsync(signupId);
         if (signup is null) return SignupResult.Fail("Signup not found.");
 
         var es = signup.Shift.Rota.EventSettings;
@@ -228,18 +248,18 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
 
         signup.Bail(actorUserId, _clock, reason);
 
-        await _dbContext.SaveChangesAsync();
+        await _repo.SaveChangesAsync();
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupBailed, nameof(ShiftSignup), signup.Id,
             $"Bailed from shift '{signup.Shift.Rota.Name}'" + (reason is not null ? $": {reason}" : ""),
             actorUserId);
 
-        await DispatchSignupChangeNotificationAsync(signup,
+        await DispatchSignupChangeNotificationAsync(signup, signup.Shift,
             $"Volunteer bailed from '{signup.Shift.Rota.Name}' on day {signup.Shift.DayOffset}.");
 
         // Check for coverage gap after bail
-        await CheckAndNotifyCoverageGapAsync(signup);
+        await CheckAndNotifyCoverageGapAsync(signup, signup.Shift);
 
         return SignupResult.Ok(signup);
     }
@@ -247,17 +267,11 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
     public async Task<SignupResult> VoluntellAsync(Guid userId, Guid shiftId, Guid enrollerUserId)
     {
         // Prevent duplicate signups for the same shift
-        var existingSignup = await _dbContext.ShiftSignups
-            .AnyAsync(s => s.UserId == userId && s.ShiftId == shiftId &&
-                           (s.Status == SignupStatus.Pending || s.Status == SignupStatus.Confirmed));
+        var existingSignup = await _repo.HasActiveSignupAsync(userId, shiftId);
         if (existingSignup)
             return SignupResult.Fail("Already signed up for this shift.");
 
-        var shift = await _dbContext.Shifts
-            .Include(s => s.Rota).ThenInclude(r => r.EventSettings)
-            .Include(s => s.ShiftSignups)
-            .FirstOrDefaultAsync(s => s.Id == shiftId);
-
+        var shift = await _repo.GetShiftWithContextAsync(shiftId);
         if (shift is null) return SignupResult.Fail("Shift not found.");
 
         var es = shift.Rota.EventSettings;
@@ -287,9 +301,9 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
             UpdatedAt = now
         };
 
-        _dbContext.ShiftSignups.Add(signup);
+        _repo.Add(signup);
 
-        await _dbContext.SaveChangesAsync();
+        await _repo.SaveChangesAsync();
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupVoluntold, nameof(ShiftSignup), signup.Id,
@@ -297,7 +311,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
             enrollerUserId,
             userId, nameof(User));
 
-        await DispatchSignupChangeNotificationAsync(signup,
+        await DispatchSignupChangeNotificationAsync(signup, shift,
             $"Voluntold for '{shift.Rota.Name}' on day {shift.DayOffset}.");
 
         // In-app notification to the assigned volunteer (best-effort)
@@ -322,11 +336,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
 
     public async Task<SignupResult> VoluntellRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid enrollerUserId)
     {
-        var rota = await _dbContext.Rotas
-            .Include(r => r.EventSettings)
-            .Include(r => r.Shifts)
-            .FirstOrDefaultAsync(r => r.Id == rotaId);
-
+        var rota = await _repo.GetRotaWithShiftsAsync(rotaId);
         if (rota is null) return SignupResult.Fail("Rota not found.");
 
         // Find all-day shifts in the range
@@ -340,11 +350,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
 
         // Check for existing signups to skip (Confirmed or Pending)
         var shiftIdsInRange = shiftsInRange.Select(s => s.Id).ToHashSet();
-        var existingShiftIds = await _dbContext.ShiftSignups
-            .Where(s => s.UserId == userId && shiftIdsInRange.Contains(s.ShiftId) &&
-                         (s.Status == SignupStatus.Pending || s.Status == SignupStatus.Confirmed))
-            .Select(s => s.ShiftId)
-            .ToHashSetAsync();
+        var existingShiftIds = await _repo.GetActiveShiftIdsForUserAsync(userId, shiftIdsInRange);
 
         var shiftsToAssign = shiftsInRange
             .Where(s => !existingShiftIds.Contains(s.Id))
@@ -371,11 +377,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
 
         // Capacity check — skip shifts that are at capacity (DB query, not navigation property)
         var assignableIds = assignable.Select(s => s.Id).ToHashSet();
-        var signupCounts = await _dbContext.ShiftSignups
-            .Where(s => assignableIds.Contains(s.ShiftId) && s.Status == SignupStatus.Confirmed)
-            .GroupBy(s => s.ShiftId)
-            .Select(g => new { ShiftId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(g => g.ShiftId, g => g.Count);
+        var signupCounts = await _repo.GetConfirmedCountsByShiftAsync(assignableIds);
 
         var skippedCapacity = new List<int>();
         var capacityFiltered = new List<Shift>();
@@ -421,12 +423,12 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
                 UpdatedAt = now
             };
 
-            _dbContext.ShiftSignups.Add(signup);
+            _repo.Add(signup);
             firstSignup ??= signup;
             voluntoldForAudit.Add((signup, shift.DayOffset));
         }
 
-        await _dbContext.SaveChangesAsync();
+        await _repo.SaveChangesAsync();
 
         foreach (var (auditedSignup, dayOffset) in voluntoldForAudit)
         {
@@ -437,7 +439,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
                 userId, nameof(User));
         }
 
-        await DispatchSignupChangeNotificationAsync(firstSignup!,
+        await DispatchSignupChangeNotificationAsync(firstSignup!, assignable[0], rota,
             $"Voluntold range for '{rota.Name}' ({assignable.Count} shifts).");
 
         // In-app notification to the assigned volunteer (best-effort)
@@ -462,7 +464,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
 
     public async Task<SignupResult> MarkNoShowAsync(Guid signupId, Guid reviewerUserId)
     {
-        var signup = await GetSignupWithShiftAsync(signupId);
+        var signup = await _repo.GetByIdForMutationAsync(signupId);
         if (signup is null) return SignupResult.Fail("Signup not found.");
 
         var es = signup.Shift.Rota.EventSettings;
@@ -474,7 +476,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
 
         signup.MarkNoShow(reviewerUserId, _clock);
 
-        await _dbContext.SaveChangesAsync();
+        await _repo.SaveChangesAsync();
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupNoShow, nameof(ShiftSignup), signup.Id,
@@ -486,7 +488,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
 
     public async Task<SignupResult> RemoveSignupAsync(Guid signupId, Guid removedByUserId, string? reason)
     {
-        var signup = await GetSignupWithShiftAsync(signupId);
+        var signup = await _repo.GetByIdForMutationAsync(signupId);
         if (signup is null) return SignupResult.Fail("Signup not found.");
 
         if (signup.Status != SignupStatus.Confirmed)
@@ -494,7 +496,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
 
         signup.Remove(removedByUserId, _clock, reason);
 
-        await _dbContext.SaveChangesAsync();
+        await _repo.SaveChangesAsync();
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupCancelled, nameof(ShiftSignup), signup.Id,
@@ -502,20 +504,16 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
             (reason is not null ? $": {reason}" : ""),
             removedByUserId);
 
-        await DispatchSignupChangeNotificationAsync(signup,
+        await DispatchSignupChangeNotificationAsync(signup, signup.Shift,
             $"Removed from '{signup.Shift.Rota.Name}' on day {signup.Shift.DayOffset}.");
-        await CheckAndNotifyCoverageGapAsync(signup);
+        await CheckAndNotifyCoverageGapAsync(signup, signup.Shift);
 
         return SignupResult.Ok(signup);
     }
 
     public async Task<SignupResult> SignUpRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid? actorUserId = null, bool isPrivileged = false)
     {
-        var rota = await _dbContext.Rotas
-            .Include(r => r.EventSettings)
-            .Include(r => r.Shifts)
-            .FirstOrDefaultAsync(r => r.Id == rotaId);
-
+        var rota = await _repo.GetRotaWithShiftsAsync(rotaId);
         if (rota is null) return SignupResult.Fail("Rota not found.");
 
         var es = rota.EventSettings;
@@ -545,18 +543,12 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
 
         // Duplicate signup check — reject if user already has Pending/Confirmed on any shift in range (Fix #1)
         var shiftIdsInRange = shiftsInRange.Select(s => s.Id).ToHashSet();
-        var hasDuplicate = await _dbContext.ShiftSignups
-            .AnyAsync(s => s.UserId == userId && shiftIdsInRange.Contains(s.ShiftId) &&
-                           (s.Status == SignupStatus.Pending || s.Status == SignupStatus.Confirmed));
-        if (hasDuplicate)
+        var activeShiftIds = await _repo.GetActiveShiftIdsForUserAsync(userId, shiftIdsInRange);
+        if (activeShiftIds.Count > 0)
             return SignupResult.Fail("Already signed up for one or more shifts in this range.");
 
         // Check overlap for each day (include Pending signups too)
-        var existingSignups = await _dbContext.ShiftSignups
-            .Include(s => s.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
-            .Where(s => s.UserId == userId &&
-                        (s.Status == SignupStatus.Confirmed || s.Status == SignupStatus.Pending))
-            .ToListAsync();
+        var existingSignups = await _repo.GetActiveSignupsForUserAsync(userId);
 
         var conflictingDays = new List<int>();
         foreach (var shift in shiftsInRange)
@@ -587,11 +579,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
 
         // Capacity check — hard block: exclude full shifts from the range
         string? warning = null;
-        var signupCounts = await _dbContext.ShiftSignups
-            .Where(s => shiftIdsInRange.Contains(s.ShiftId) && s.Status == SignupStatus.Confirmed)
-            .GroupBy(s => s.ShiftId)
-            .Select(g => new { ShiftId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(g => g.ShiftId, g => g.Count);
+        var signupCounts = await _repo.GetConfirmedCountsByShiftAsync(shiftIdsInRange);
         var fullDays = shiftsInRange
             .Where(s => signupCounts.GetValueOrDefault(s.Id) >= s.MaxVolunteers)
             .Select(s => s.DayOffset)
@@ -661,12 +649,12 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
                 signup.ReviewedAt = now;
             }
 
-            _dbContext.ShiftSignups.Add(signup);
+            _repo.Add(signup);
             lastSignup = signup;
             rangeSignupsForAudit.Add((signup, shift.DayOffset));
         }
 
-        await _dbContext.SaveChangesAsync();
+        await _repo.SaveChangesAsync();
 
         if (autoConfirm)
         {
@@ -679,7 +667,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
                     userId);
             }
 
-            await DispatchSignupChangeNotificationAsync(lastSignup!,
+            await DispatchSignupChangeNotificationAsync(lastSignup!, availableShifts[^1], rota,
                 $"Range signup for '{rota.Name}' ({shiftsInRange.Count} shifts, confirmed).");
         }
 
@@ -688,12 +676,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
 
     public async Task<SignupResult> ApproveRangeAsync(Guid signupBlockId, Guid reviewerUserId)
     {
-        var signups = await _dbContext.ShiftSignups
-            .Include(s => s.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
-            .Include(s => s.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.Team)
-            .Include(s => s.Shift).ThenInclude(s => s.ShiftSignups)
-            .Where(s => s.SignupBlockId == signupBlockId && s.Status == SignupStatus.Pending)
-            .ToListAsync();
+        var signups = await _repo.GetBlockForMutationAsync(signupBlockId, includeConfirmed: false);
 
         if (signups.Count == 0) return SignupResult.Fail("No pending signups found for this block.");
 
@@ -751,7 +734,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
             // Still need to persist the auto-refused signups
             if (skippedAtCapacity.Count > 0)
             {
-                await _dbContext.SaveChangesAsync();
+                await _repo.SaveChangesAsync();
 
                 foreach (var skipped in skippedAtCapacity)
                 {
@@ -764,7 +747,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
             return SignupResult.Fail("Cannot approve: all shifts in this range are at capacity.");
         }
 
-        await _dbContext.SaveChangesAsync();
+        await _repo.SaveChangesAsync();
 
         foreach (var approvedSignup in approved)
         {
@@ -782,7 +765,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
                 reviewerUserId);
         }
 
-        await DispatchSignupChangeNotificationAsync(approved[0],
+        await DispatchSignupChangeNotificationAsync(approved[0], approved[0].Shift,
             $"Range approved ({approved.Count} shifts) for '{approved[0].Shift.Rota.Name}'.");
 
         var warning = warnings.Count > 0 ? string.Join(" ", warnings.Distinct(StringComparer.Ordinal)) : null;
@@ -791,10 +774,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
 
     public async Task<SignupResult> RefuseRangeAsync(Guid signupBlockId, Guid reviewerUserId, string? reason)
     {
-        var signups = await _dbContext.ShiftSignups
-            .Include(s => s.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
-            .Where(s => s.SignupBlockId == signupBlockId && s.Status == SignupStatus.Pending)
-            .ToListAsync();
+        var signups = await _repo.GetBlockForMutationAsync(signupBlockId, includeConfirmed: false);
 
         if (signups.Count == 0) return SignupResult.Fail("No pending signups found for this block.");
 
@@ -803,7 +783,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
             signup.Refuse(reviewerUserId, _clock, reason);
         }
 
-        await _dbContext.SaveChangesAsync();
+        await _repo.SaveChangesAsync();
 
         foreach (var signup in signups)
         {
@@ -814,7 +794,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
                 reviewerUserId);
         }
 
-        await DispatchSignupChangeNotificationAsync(signups[0],
+        await DispatchSignupChangeNotificationAsync(signups[0], signups[0].Shift,
             $"Range refused ({signups.Count} shifts) for '{signups[0].Shift.Rota.Name}'.");
 
         return SignupResult.Ok(signups[0]);
@@ -822,13 +802,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
 
     public async Task BailRangeAsync(Guid signupBlockId, Guid actorUserId, string? reason = null)
     {
-        var signups = await _dbContext.ShiftSignups
-            .Include(s => s.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
-            .Include(s => s.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.Team)
-            .Include(s => s.Shift).ThenInclude(s => s.ShiftSignups)
-            .Where(s => s.SignupBlockId == signupBlockId &&
-                        (s.Status == SignupStatus.Confirmed || s.Status == SignupStatus.Pending))
-            .ToListAsync();
+        var signups = await _repo.GetBlockForMutationAsync(signupBlockId, includeConfirmed: true);
 
         if (signups.Count == 0) return;
 
@@ -850,7 +824,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
             signup.Bail(actorUserId, _clock, reason);
         }
 
-        await _dbContext.SaveChangesAsync();
+        await _repo.SaveChangesAsync();
 
         foreach (var signup in signups)
         {
@@ -861,80 +835,36 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
                 actorUserId);
         }
 
-        await DispatchSignupChangeNotificationAsync(firstSignup,
+        await DispatchSignupChangeNotificationAsync(firstSignup, firstSignup.Shift,
             $"Range bail from '{firstSignup.Shift.Rota.Name}' ({signups.Count} shifts).");
 
         // Check coverage gaps for each bailed shift
         foreach (var signup in signups)
         {
-            await CheckAndNotifyCoverageGapAsync(signup);
+            await CheckAndNotifyCoverageGapAsync(signup, signup.Shift);
         }
     }
 
-    public async Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null)
-    {
-        var query = _dbContext.ShiftSignups
-            .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.Team)
-            .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
-            .Where(d => d.UserId == userId);
+    public Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null) =>
+        _repo.GetByUserAsync(userId, eventSettingsId);
 
-        if (eventSettingsId.HasValue)
-            query = query.Where(d => d.Shift.Rota.EventSettingsId == eventSettingsId.Value);
+    public Task<ShiftSignup?> GetByIdAsync(Guid signupId) =>
+        _repo.GetByIdAsync(signupId);
 
-        return await query.OrderBy(d => d.Shift.DayOffset).ThenBy(d => d.Shift.StartTime).ToListAsync();
-    }
+    public Task<ShiftSignup?> GetByBlockIdFirstAsync(Guid signupBlockId) =>
+        _repo.GetByBlockIdFirstAsync(signupBlockId);
 
-    public async Task<ShiftSignup?> GetByIdAsync(Guid signupId)
-    {
-        return await _dbContext.ShiftSignups
-            .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.Team)
-            .FirstOrDefaultAsync(d => d.Id == signupId);
-    }
+    public Task<IReadOnlyList<ShiftSignup>> GetByShiftAsync(Guid shiftId) =>
+        _repo.GetByShiftAsync(shiftId);
 
-    public async Task<ShiftSignup?> GetByBlockIdFirstAsync(Guid signupBlockId)
-    {
-        return await _dbContext.ShiftSignups
-            .Include(s => s.Shift).ThenInclude(s => s.Rota)
-            .FirstOrDefaultAsync(s => s.SignupBlockId == signupBlockId);
-    }
-
-    public async Task<IReadOnlyList<ShiftSignup>> GetByShiftAsync(Guid shiftId)
-    {
-        return await _dbContext.ShiftSignups
-            .Include(d => d.User)
-            .Include(d => d.Shift)
-                .ThenInclude(s => s.Rota)
-            .Where(d => d.ShiftId == shiftId)
-            .OrderBy(d => d.CreatedAt)
-            .ToListAsync();
-    }
-
-    public async Task<IReadOnlyList<ShiftSignup>> GetNoShowHistoryAsync(Guid userId)
-    {
-        return await _dbContext.ShiftSignups
-            .AsNoTracking()
-            .Include(s => s.Shift).ThenInclude(sh => sh.Rota).ThenInclude(r => r.Team)
-            .Include(s => s.Shift).ThenInclude(sh => sh.Rota).ThenInclude(r => r.EventSettings)
-            .Include(s => s.ReviewedByUser)
-            .Where(s => s.UserId == userId && s.Status == SignupStatus.NoShow)
-            .OrderByDescending(s => s.ReviewedAt)
-            .ToListAsync();
-    }
+    public Task<IReadOnlyList<ShiftSignup>> GetNoShowHistoryAsync(Guid userId) =>
+        _repo.GetNoShowHistoryAsync(userId);
 
     public async Task<(HashSet<Guid> ShiftIds, Dictionary<Guid, SignupStatus> Statuses)> GetActiveSignupStatusesAsync(
         Guid userId, Guid eventSettingsId)
     {
-        var signups = await GetByUserAsync(userId, eventSettingsId);
+        var signups = await _repo.GetByUserAsync(userId, eventSettingsId);
         return ShiftSignupHelper.ResolveActiveStatuses(signups);
-    }
-
-    private async Task<ShiftSignup?> GetSignupWithShiftAsync(Guid signupId)
-    {
-        return await _dbContext.ShiftSignups
-            .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
-            .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.Team)
-            .Include(d => d.Shift).ThenInclude(s => s.ShiftSignups)
-            .FirstOrDefaultAsync(d => d.Id == signupId);
     }
 
     private async Task<string?> CheckOverlapAsync(Guid userId, Shift targetShift, EventSettings es)
@@ -942,16 +872,13 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
         var targetStart = targetShift.GetAbsoluteStart(es);
         var targetEnd = targetShift.GetAbsoluteEnd(es);
 
-        var userSignups = await _dbContext.ShiftSignups
-            .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
-            .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.Team)
-            .Where(d => d.UserId == userId &&
-                        d.ShiftId != targetShift.Id &&
-                        d.Status == SignupStatus.Confirmed)
-            .ToListAsync();
+        var userSignups = await _repo.GetActiveSignupsForUserAsync(userId);
 
         foreach (var existing in userSignups)
         {
+            if (existing.ShiftId == targetShift.Id) continue;
+            if (existing.Status != SignupStatus.Confirmed) continue;
+
             var existingEs = existing.Shift.Rota.EventSettings;
             var existingStart = existing.Shift.GetAbsoluteStart(existingEs);
             var existingEnd = existing.Shift.GetAbsoluteEnd(existingEs);
@@ -974,13 +901,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
         if (availableSlots <= 0)
             return "Early entry capacity reached for this day.";
 
-        var currentEeCount = await _dbContext.ShiftSignups
-            .Where(d => d.Status == SignupStatus.Confirmed &&
-                        d.Shift.Rota.EventSettingsId == es.Id &&
-                        d.Shift.DayOffset == dayOffset)
-            .Select(d => d.UserId)
-            .Distinct()
-            .CountAsync();
+        var currentEeCount = await _repo.GetDistinctEeUsersOnDayAsync(es.Id, dayOffset);
 
         if (currentEeCount >= availableSlots)
             return "Early entry capacity reached.";
@@ -997,11 +918,10 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
     /// Checks if a bail created a coverage gap (confirmed count below MinVolunteers)
     /// and notifies team coordinators if so.
     /// </summary>
-    private async Task CheckAndNotifyCoverageGapAsync(ShiftSignup signup)
+    private async Task CheckAndNotifyCoverageGapAsync(ShiftSignup signup, Shift shift)
     {
         try
         {
-            var shift = signup.Shift;
             if (shift.MinVolunteers <= 0)
                 return;
 
@@ -1023,7 +943,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
                 coordinatorIds,
                 body: $"Only {confirmedCount}/{shift.MinVolunteers} volunteers confirmed.",
                 actionUrl: $"/Shifts?departmentId={teamId}",
-                actionLabel: "Find cover \u2192");
+                actionLabel: "Find cover →");
         }
         catch (Exception ex)
         {
@@ -1035,12 +955,13 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
     /// Dispatches a ShiftSignupChange notification to the team coordinators of the shift's department.
     /// Fire-and-forget style — failures are logged but do not affect the signup operation.
     /// </summary>
-    private async Task DispatchSignupChangeNotificationAsync(ShiftSignup signup, string changeDescription)
+    private Task DispatchSignupChangeNotificationAsync(ShiftSignup signup, Shift shift, string changeDescription) =>
+        DispatchSignupChangeNotificationAsync(signup, shift, shift.Rota, changeDescription);
+
+    private async Task DispatchSignupChangeNotificationAsync(ShiftSignup signup, Shift shift, Rota rota, string changeDescription)
     {
         try
         {
-            var shift = signup.Shift;
-            var rota = shift.Rota;
             var teamId = rota.TeamId;
             var rotaName = rota.Name;
 
@@ -1063,7 +984,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
                 coordinatorIds,
                 body: enrichedDescription,
                 actionUrl: $"/Shifts?departmentId={teamId}",
-                actionLabel: "View \u2192");
+                actionLabel: "View →");
         }
         catch (Exception ex)
         {
@@ -1084,14 +1005,7 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
         // the Teams section, not Shifts, so the Department name must come
         // through ITeamService instead of a join. The Rota's TeamId is already
         // a scalar FK on the Rota entity (no navigation needed for the ID).
-        var signups = await _dbContext.ShiftSignups
-            .AsNoTracking()
-            .Include(ss => ss.Shift)
-                .ThenInclude(s => s.Rota)
-                    .ThenInclude(r => r.EventSettings)
-            .Where(ss => ss.UserId == userId)
-            .OrderByDescending(ss => ss.CreatedAt)
-            .ToListAsync(ct);
+        var signups = await _repo.GetForGdprExportAsync(userId, ct);
 
         // Resolve TeamId → Team.Name through the owning section's service.
         // Explicitly NOT GetAllTeamsAsync — that filters to IsActive, which
@@ -1104,22 +1018,9 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
             .ToList();
         var teamNamesById = await TeamService.GetTeamNamesByIdsAsync(referencedTeamIds, ct);
 
-        var volunteerEventProfiles = await _dbContext.VolunteerEventProfiles
-            .AsNoTracking()
-            .Where(vep => vep.UserId == userId)
-            .ToListAsync(ct);
-
-        var generalAvailability = await _dbContext.GeneralAvailability
-            .AsNoTracking()
-            .Include(ga => ga.EventSettings)
-            .Where(ga => ga.UserId == userId)
-            .ToListAsync(ct);
-
-        var tagPreferences = await _dbContext.VolunteerTagPreferences
-            .AsNoTracking()
-            .Include(vtp => vtp.ShiftTag)
-            .Where(vtp => vtp.UserId == userId)
-            .ToListAsync(ct);
+        var volunteerEventProfiles = await _repo.GetVolunteerEventProfilesForUserAsync(userId, ct);
+        var generalAvailability = await _repo.GetGeneralAvailabilityForUserAsync(userId, ct);
+        var tagPreferences = await _repo.GetVolunteerTagPreferencesForUserAsync(userId, ct);
 
         var signupSlice = new UserDataSlice(GdprExportSections.ShiftSignups, signups.Select(ss => new
         {
