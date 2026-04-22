@@ -248,17 +248,6 @@ public sealed class UserEmailRepository : IUserEmailRepository
             .ToListAsync(ct);
     }
 
-    /// <summary>
-    /// Escapes LIKE/ILIKE wildcard metacharacters so a literal match is
-    /// performed. Must be used with an explicit escape clause, e.g.
-    /// <c>EF.Functions.ILike(x, pattern, "\\")</c>.
-    /// </summary>
-    private static string EscapeLikePattern(string value)
-        => value
-            .Replace("\\", "\\\\")
-            .Replace("%", "\\%")
-            .Replace("_", "\\_");
-
     public async Task<string?> GetVerifiedEmailAddressAsync(
         Guid userId, Guid emailId, CancellationToken ct = default)
     {

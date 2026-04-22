@@ -179,6 +179,8 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task<(bool Updated, string? OldEmail)> RewritePrimaryEmailAsync(Guid userId, string newEmail, CancellationToken ct = default) =>
+            throw new NotSupportedException();
     }
 
     private sealed class FakeUserEmailRepository : IUserEmailRepository
@@ -256,6 +258,16 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<Guid?> GetOtherUserIdHavingEmailAsync(
             string email, Guid excludeUserId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<UserEmail>> GetByEmailsAsync(
+            IReadOnlyCollection<string> emails, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> AnyWithEmailAsync(string email, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> RewriteOAuthEmailAsync(Guid userId, string newEmail, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> RewriteEmailAddressAsync(
+            Guid userId, string oldEmail, string newEmail, Instant now, CancellationToken ct = default) =>
             throw new NotSupportedException();
     }
 
