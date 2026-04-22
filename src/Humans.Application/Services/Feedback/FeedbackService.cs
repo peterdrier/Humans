@@ -187,6 +187,9 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor
             report.ResolvedByUserId = null;
         }
 
+        await _repository.SaveTrackedReportAsync(report, cancellationToken);
+
+        // Audit after the business save so a rollback never leaves a ghost audit row.
         if (actorUserId.HasValue)
         {
             await _auditLogService.LogAsync(
@@ -202,7 +205,6 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor
                 "API");
         }
 
-        await _repository.SaveTrackedReportAsync(report, cancellationToken);
         _navBadge.Invalidate();
     }
 
@@ -375,6 +377,9 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor
 
         report.UpdatedAt = _clock.GetCurrentInstant();
 
+        await _repository.SaveTrackedReportAsync(report, cancellationToken);
+
+        // Audit after the business save so a rollback never leaves a ghost audit row.
         var description = $"Feedback {id} assignment changed: {string.Join("; ", changes)}";
         if (actorUserId.HasValue)
         {
@@ -389,7 +394,6 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor
                 description, "API");
         }
 
-        await _repository.SaveTrackedReportAsync(report, cancellationToken);
         _logger.LogInformation(
             "Feedback {ReportId} assignment updated by {ActorId}: {Changes}",
             id, actorUserId?.ToString() ?? "API", string.Join("; ", changes));
