@@ -188,6 +188,19 @@ public sealed class UserRepository : IUserRepository
         return true;
     }
 
+    public async Task<bool> SetGoogleEmailAsync(
+        Guid userId, string email, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var user = await ctx.Users.FindAsync([userId], ct);
+        if (user is null)
+            return false;
+
+        user.GoogleEmail = email;
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
     public async Task<bool> SetDeletionPendingAsync(
         Guid userId, Instant requestedAt, Instant scheduledFor, CancellationToken ct = default)
     {

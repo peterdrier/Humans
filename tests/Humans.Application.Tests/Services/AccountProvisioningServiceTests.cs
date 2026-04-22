@@ -174,6 +174,11 @@ public class AccountProvisioningServiceTests
         public Task MigrateExternalLoginsAsync(
             Guid sourceUserId, Guid targetUserId, CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
+            string email, Guid excludeUserId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default) =>
+            throw new NotSupportedException();
     }
 
     private sealed class FakeUserEmailRepository : IUserEmailRepository
@@ -248,6 +253,9 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> SearchUserIdsByVerifiedEmailAsync(
             string searchTerm, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<Guid?> GetOtherUserIdHavingEmailAsync(
+            string email, Guid excludeUserId, CancellationToken ct = default) =>
             throw new NotSupportedException();
     }
 

@@ -84,6 +84,17 @@ public interface IUserService
     Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
 
     /// <summary>
+    /// Unconditionally sets <c>User.GoogleEmail</c>, overwriting any existing
+    /// value. Used by <c>EmailProvisioningService</c> after a successful
+    /// Google Workspace provisioning, where the new <c>@nobodies.team</c>
+    /// address must become the authoritative Google identity even if the
+    /// user previously signed in with a personal Google account. Returns
+    /// true if the user exists and the value was written, false if the user
+    /// does not exist.
+    /// </summary>
+    Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
+
+    /// <summary>
     /// Updates <c>User.DisplayName</c>. No-op if the user does not exist.
     /// </summary>
     Task UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default);

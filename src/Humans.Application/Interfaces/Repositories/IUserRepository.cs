@@ -102,6 +102,14 @@ public interface IUserRepository
     Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
 
     /// <summary>
+    /// Unconditionally sets <c>User.GoogleEmail</c>, overwriting any existing
+    /// value. Used by the Workspace provisioning path after a successful
+    /// Google account creation. Returns true if the user exists and the
+    /// value was written, false if the user does not exist.
+    /// </summary>
+    Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
+
+    /// <summary>
     /// Sets the deletion-pending fields on a user (<c>DeletionRequestedAt</c>,
     /// <c>DeletionScheduledFor</c>). Returns false if the user does not exist.
     /// </summary>

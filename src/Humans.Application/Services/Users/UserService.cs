@@ -87,6 +87,14 @@ public sealed class UserService : IUserService, IUserDataContributor
         return set;
     }
 
+    public async Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default)
+    {
+        var set = await _repo.SetGoogleEmailAsync(userId, email, ct);
+        if (set)
+            await _fullProfileInvalidator.InvalidateAsync(userId, ct);
+        return set;
+    }
+
     public async Task UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default)
     {
         var updated = await _repo.UpdateDisplayNameAsync(userId, displayName, ct);

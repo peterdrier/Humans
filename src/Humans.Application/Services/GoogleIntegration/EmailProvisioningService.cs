@@ -168,11 +168,12 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
             // Belt-and-suspenders: if the UserEmail row already existed for this
             // user (e.g. a prior half-completed provisioning attempt), the call
             // above short-circuits on its ExistsForUserAsync guard and does NOT
-            // touch User.GoogleEmail. Set it explicitly so Google sync uses the
-            // provisioned @nobodies.team address instead of the OAuth email.
-            // TrySetGoogleEmailAsync is a no-op when GoogleEmail is already set,
-            // so this is safe to call unconditionally.
-            await _userService.TrySetGoogleEmailAsync(userId, fullEmail);
+            // touch User.GoogleEmail. Force-set it here so Google sync targets
+            // the provisioned @nobodies.team address even when the user
+            // previously signed in with a personal Google account
+            // (TrySetGoogleEmailAsync would silently no-op in that case and
+            // leave sync pointing at the wrong mailbox).
+            await _userService.SetGoogleEmailAsync(userId, fullEmail);
 
             // Audit
             await _auditLogService.LogAsync(
