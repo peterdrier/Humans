@@ -128,12 +128,16 @@ public class EmailProvisioningServiceTests
 
         f.DbContext.Users.Add(new User
         {
-            Id = ownerId, Email = "owner@example.com", DisplayName = "Owner",
+            Id = ownerId,
+            Email = "owner@example.com",
+            DisplayName = "Owner",
             Profile = new Profile { FirstName = "Owner", LastName = "One" },
         });
         f.DbContext.Users.Add(new User
         {
-            Id = targetId, Email = "target@example.com", DisplayName = "Target",
+            Id = targetId,
+            Email = "target@example.com",
+            DisplayName = "Target",
             Profile = new Profile { FirstName = "Target", LastName = "Two" },
         });
         f.DbContext.UserEmails.Add(new UserEmail
@@ -175,13 +179,17 @@ public class EmailProvisioningServiceTests
 
         f.DbContext.Users.Add(new User
         {
-            Id = ownerId, Email = "owner@example.com", DisplayName = "Owner",
+            Id = ownerId,
+            Email = "owner@example.com",
+            DisplayName = "Owner",
             GoogleEmail = "alice@nobodies.team",
             Profile = new Profile { FirstName = "Owner", LastName = "One" },
         });
         f.DbContext.Users.Add(new User
         {
-            Id = targetId, Email = "target@example.com", DisplayName = "Target",
+            Id = targetId,
+            Email = "target@example.com",
+            DisplayName = "Target",
             Profile = new Profile { FirstName = "Target", LastName = "Two" },
         });
         await f.DbContext.SaveChangesAsync();
@@ -218,12 +226,16 @@ public class EmailProvisioningServiceTests
 
         f.DbContext.Users.Add(new User
         {
-            Id = ownerId, Email = "owner@example.com", DisplayName = "Owner",
+            Id = ownerId,
+            Email = "owner@example.com",
+            DisplayName = "Owner",
             Profile = new Profile { FirstName = "Owner", LastName = "One" },
         });
         f.DbContext.Users.Add(new User
         {
-            Id = targetId, Email = "target@example.com", DisplayName = "Target",
+            Id = targetId,
+            Email = "target@example.com",
+            DisplayName = "Target",
             Profile = new Profile { FirstName = "Target", LastName = "Two" },
         });
         // Target's row goes in FIRST so it's more likely to be returned by FirstOrDefault
@@ -262,7 +274,9 @@ public class EmailProvisioningServiceTests
         var userId = Guid.NewGuid();
         f.DbContext.Users.Add(new User
         {
-            Id = userId, Email = "person@example.com", DisplayName = "Person",
+            Id = userId,
+            Email = "person@example.com",
+            DisplayName = "Person",
             Profile = new Profile { FirstName = "Person", LastName = "Test" },
         });
         f.DbContext.Teams.Add(new Team
@@ -300,7 +314,9 @@ public class EmailProvisioningServiceTests
         var userId = Guid.NewGuid();
         f.DbContext.Users.Add(new User
         {
-            Id = userId, Email = "person@example.com", DisplayName = "Person",
+            Id = userId,
+            Email = "person@example.com",
+            DisplayName = "Person",
             Profile = new Profile { FirstName = "Person", LastName = "Test" },
         });
         await f.DbContext.SaveChangesAsync();
