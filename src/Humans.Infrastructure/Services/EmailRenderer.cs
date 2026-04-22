@@ -331,4 +331,23 @@ public class EmailRenderer : IEmailRenderer
     {
         return System.Net.WebUtility.HtmlEncode(text);
     }
+
+    public EmailContent RenderCampaignCode(string subject, string markdownBody, string code, string recipientName)
+    {
+        // HTML-encode the substitutions so malicious codes/names cannot inject markup.
+        var encodedCode = HtmlEncode(code);
+        var encodedName = HtmlEncode(recipientName);
+
+        var markdown = markdownBody
+            .Replace("{{Code}}", encodedCode, StringComparison.Ordinal)
+            .Replace("{{Name}}", encodedName, StringComparison.Ordinal);
+        var renderedBody = Markdig.Markdown.ToHtml(markdown);
+
+        // Subject is a plain-text field; no HTML encoding required.
+        var renderedSubject = subject
+            .Replace("{{Code}}", code, StringComparison.Ordinal)
+            .Replace("{{Name}}", recipientName, StringComparison.Ordinal);
+
+        return new EmailContent(renderedSubject, renderedBody);
+    }
 }

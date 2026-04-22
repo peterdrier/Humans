@@ -1,31 +1,42 @@
 using AwesomeAssertions;
-using Hangfire;
+using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Services.Email;
+using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Application.Interfaces;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Configuration;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Jobs;
-using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Repositories;
 using Xunit;
 
 namespace Humans.Application.Tests.Services;
 
-public class OutboxEmailServiceTests : IDisposable
+/// <summary>
+/// Service-level tests for the Application-layer <see cref="OutboxEmailService"/>
+/// (Email §15 migration, issue #548). Uses a real
+/// <see cref="EmailOutboxRepository"/> backed by the EF InMemory provider so the
+/// enqueue path is exercised end-to-end; cross-section abstractions
+/// (<see cref="IUserEmailService"/>, <see cref="ICommunicationPreferenceService"/>)
+/// and Infrastructure connectors (<see cref="IEmailBodyComposer"/>,
+/// <see cref="IImmediateOutboxProcessor"/>) are NSubstitute fakes so the Application
+/// service stays free of Infrastructure dependencies.
+/// </summary>
+public sealed class OutboxEmailServiceTests : IDisposable
 {
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly OutboxEmailService _service;
     private readonly IEmailRenderer _renderer = Substitute.For<IEmailRenderer>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
-    private readonly IBackgroundJobClient _backgroundJobClient = Substitute.For<IBackgroundJobClient>();
+    private readonly IImmediateOutboxProcessor _immediate = Substitute.For<IImmediateOutboxProcessor>();
     private readonly ICommunicationPreferenceService _commPrefService = Substitute.For<ICommunicationPreferenceService>();
+    private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
+    private readonly IEmailBodyComposer _bodyComposer = Substitute.For<IEmailBodyComposer>();
 
     public OutboxEmailServiceTests()
     {
@@ -36,24 +47,21 @@ public class OutboxEmailServiceTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
 
-        var hostEnvironment = Substitute.For<IHostEnvironment>();
-        hostEnvironment.EnvironmentName.Returns("Production");
+        // Default composer stub: returns the input HTML plus a stub plain text.
+        _bodyComposer.Compose(Arg.Any<string>(), Arg.Any<string?>())
+            .Returns(ci => ((string)ci[0], "plain-text-stub"));
 
-        var emailSettings = Options.Create(new EmailSettings
-        {
-            BaseUrl = "https://humans.nobodies.team",
-            FromAddress = "humans@nobodies.team",
-            FromName = "Nobodies Collective"
-        });
+        var factory = new TestDbContextFactory(options);
+        var repo = new EmailOutboxRepository(factory);
 
         _service = new OutboxEmailService(
-            _dbContext,
+            repo,
+            _userEmailService,
             _renderer,
+            _bodyComposer,
+            _immediate,
             _metrics,
             _clock,
-            hostEnvironment,
-            emailSettings,
-            _backgroundJobClient,
             _commPrefService,
             NullLogger<OutboxEmailService>.Instance);
     }
@@ -80,7 +88,7 @@ public class OutboxEmailServiceTests : IDisposable
         msg.RecipientName.Should().Be("Alice");
         msg.Subject.Should().Be("Welcome!");
         msg.HtmlBody.Should().Contain("<p>Hello Alice</p>");
-        msg.PlainTextBody.Should().NotBeNullOrEmpty();
+        msg.PlainTextBody.Should().Be("plain-text-stub");
         msg.TemplateName.Should().Be("welcome");
         msg.Status.Should().Be(EmailOutboxStatus.Queued);
         msg.CreatedAt.Should().Be(_clock.GetCurrentInstant());
@@ -98,7 +106,7 @@ public class OutboxEmailServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task SendEmailVerificationAsync_CreatesOutboxRowAndEnqueuesHangfireJob()
+    public async Task SendEmailVerificationAsync_CreatesOutboxRowAndTriggersImmediate()
     {
         _renderer.RenderEmailVerification("Bob", "bob@example.com", "https://verify", false, "en")
             .Returns(new EmailContent("Verify Email", "<p>Click to verify</p>"));
@@ -112,10 +120,8 @@ public class OutboxEmailServiceTests : IDisposable
         msg.TemplateName.Should().Be("email_verification");
         msg.Status.Should().Be(EmailOutboxStatus.Queued);
 
-        // Verify Hangfire job was enqueued
-        _backgroundJobClient.Received(1).Create(
-            Arg.Any<Hangfire.Common.Job>(),
-            Arg.Any<Hangfire.States.IState>());
+        // Verify immediate processor was triggered
+        _immediate.Received(1).TriggerImmediate();
     }
 
     [Fact]
@@ -164,7 +170,7 @@ public class OutboxEmailServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task SendWelcomeEmailAsync_DoesNotEnqueueHangfireJob()
+    public async Task SendWelcomeEmailAsync_DoesNotTriggerImmediate()
     {
         _renderer.RenderWelcome("Alice", "en")
             .Returns(new EmailContent("Welcome!", "<p>Hello</p>"));
@@ -172,25 +178,15 @@ public class OutboxEmailServiceTests : IDisposable
         await _service.SendWelcomeEmailAsync("alice@example.com", "Alice", "en");
 
         // Welcome email should NOT trigger immediate processing
-        _backgroundJobClient.DidNotReceive().Create(
-            Arg.Any<Hangfire.Common.Job>(),
-            Arg.Any<Hangfire.States.IState>());
+        _immediate.DidNotReceive().TriggerImmediate();
     }
 
     [Fact]
     public async Task EnqueueAsync_WhenUserOptedOutOfCategory_DoesNotCreateOutboxRow()
     {
         var userId = Guid.NewGuid();
-        _dbContext.UserEmails.Add(new Humans.Domain.Entities.UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Email = "charlie@example.com",
-            IsVerified = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant(),
-        });
-        await _dbContext.SaveChangesAsync();
+        _userEmailService.GetUserIdByVerifiedEmailAsync("charlie@example.com", Arg.Any<CancellationToken>())
+            .Returns(userId);
 
         _commPrefService.IsOptedOutAsync(userId, MessageCategory.TeamUpdates, Arg.Any<CancellationToken>())
             .Returns(true);
@@ -215,16 +211,8 @@ public class OutboxEmailServiceTests : IDisposable
     public async Task EnqueueAsync_WhenUserOptedInToCategory_CreatesOutboxRow()
     {
         var userId = Guid.NewGuid();
-        _dbContext.UserEmails.Add(new Humans.Domain.Entities.UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Email = "dana@example.com",
-            IsVerified = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant(),
-        });
-        await _dbContext.SaveChangesAsync();
+        _userEmailService.GetUserIdByVerifiedEmailAsync("dana@example.com", Arg.Any<CancellationToken>())
+            .Returns(userId);
 
         _commPrefService.IsOptedOutAsync(userId, MessageCategory.TeamUpdates, Arg.Any<CancellationToken>())
             .Returns(false);
@@ -245,5 +233,42 @@ public class OutboxEmailServiceTests : IDisposable
         messages.Should().HaveCount(1, "opted-in user should receive the email");
         messages[0].RecipientEmail.Should().Be("dana@example.com");
         messages[0].TemplateName.Should().Be("added_to_team");
+        messages[0].UserId.Should().Be(userId);
+    }
+
+    [Fact]
+    public async Task SendCampaignCodeAsync_UsesRendererAndStampsFullRow()
+    {
+        var userId = Guid.NewGuid();
+        var grantId = Guid.NewGuid();
+
+        _renderer.RenderCampaignCode("Subject {{Name}}", "Hello {{Name}}! Your code is {{Code}}.", "ABC123", "Zoe")
+            .Returns(new EmailContent("Subject Zoe", "<p>Hello Zoe! Your code is ABC123.</p>"));
+
+        _commPrefService.GenerateUnsubscribeHeaders(userId, MessageCategory.CampaignCodes)
+            .Returns(new Dictionary<string, string>(StringComparer.Ordinal) { ["List-Unsubscribe"] = "<mailto:x>" });
+        _commPrefService.GenerateBrowserUnsubscribeUrl(userId, MessageCategory.CampaignCodes)
+            .Returns("https://example.com/unsub");
+
+        await _service.SendCampaignCodeAsync(new CampaignCodeEmailRequest(
+            UserId: userId,
+            CampaignGrantId: grantId,
+            RecipientEmail: "zoe@example.com",
+            RecipientName: "Zoe",
+            Subject: "Subject {{Name}}",
+            MarkdownBody: "Hello {{Name}}! Your code is {{Code}}.",
+            Code: "ABC123",
+            ReplyTo: "reply@example.com"));
+
+        var msg = await _dbContext.EmailOutboxMessages.SingleAsync();
+        msg.RecipientEmail.Should().Be("zoe@example.com");
+        msg.Subject.Should().Be("Subject Zoe");
+        msg.HtmlBody.Should().Contain("Hello Zoe! Your code is ABC123.");
+        msg.TemplateName.Should().Be("campaign_code");
+        msg.UserId.Should().Be(userId);
+        msg.CampaignGrantId.Should().Be(grantId);
+        msg.ReplyTo.Should().Be("reply@example.com");
+        msg.ExtraHeaders.Should().NotBeNull();
+        _metrics.Received(1).RecordEmailQueued("campaign_code");
     }
 }

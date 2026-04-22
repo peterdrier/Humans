@@ -8,11 +8,13 @@ using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
+using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using Xunit;
 
@@ -20,20 +22,22 @@ namespace Humans.Application.Tests.Jobs;
 
 public class ProcessEmailOutboxJobTests : IDisposable
 {
+    private readonly DbContextOptions<HumansDbContext> _options;
     private readonly HumansDbContext _dbContext;
     private readonly IEmailTransport _transport;
     private readonly FakeClock _clock;
     private readonly HumansMetricsService _metrics;
     private readonly IOptions<EmailSettings> _settings;
+    private readonly EmailOutboxRepository _repo;
     private readonly ProcessEmailOutboxJob _job;
 
     public ProcessEmailOutboxJobTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
+        _options = new DbContextOptionsBuilder<HumansDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        _dbContext = new HumansDbContext(options);
+        _dbContext = new HumansDbContext(_options);
         _transport = Substitute.For<IEmailTransport>();
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 14, 12, 0));
         _metrics = new HumansMetricsService(
@@ -41,8 +45,9 @@ public class ProcessEmailOutboxJobTests : IDisposable
             Substitute.For<ILogger<HumansMetricsService>>());
         _settings = Options.Create(new EmailSettings { OutboxBatchSize = 10, OutboxMaxRetries = 10 });
         var logger = Substitute.For<ILogger<ProcessEmailOutboxJob>>();
+        _repo = new EmailOutboxRepository(new TestDbContextFactory(_options));
 
-        _job = new ProcessEmailOutboxJob(_dbContext, _transport, _metrics, _clock, _settings, logger);
+        _job = new ProcessEmailOutboxJob(_dbContext, _repo, _transport, _metrics, _clock, _settings, logger);
     }
 
     public void Dispose()
@@ -69,7 +74,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
             Arg.Any<IDictionary<string, string>?>(),
             Arg.Any<CancellationToken>());
 
-        var updated = await _dbContext.EmailOutboxMessages.SingleAsync();
+        var updated = await FreshQuery().SingleAsync();
         updated.Status.Should().Be(EmailOutboxStatus.Sent);
         updated.SentAt.Should().Be(_clock.GetCurrentInstant());
         updated.PickedUpAt.Should().BeNull();
@@ -89,7 +94,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
 
         await _job.ExecuteAsync();
 
-        var updated = await _dbContext.EmailOutboxMessages.SingleAsync();
+        var updated = await FreshQuery().SingleAsync();
         updated.Status.Should().Be(EmailOutboxStatus.Failed);
         updated.RetryCount.Should().Be(1);
         updated.LastError.Should().Contain("SMTP timeout");
@@ -109,7 +114,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
 
         var batchSettings = Options.Create(new EmailSettings { OutboxBatchSize = 10, OutboxMaxRetries = 10 });
         var job = new ProcessEmailOutboxJob(
-            _dbContext, _transport, _metrics, _clock, batchSettings,
+            _dbContext, _repo, _transport, _metrics, _clock, batchSettings,
             Substitute.For<ILogger<ProcessEmailOutboxJob>>());
 
         await job.ExecuteAsync();
@@ -155,7 +160,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
             Arg.Any<string?>(), Arg.Any<IDictionary<string, string>?>(),
             Arg.Any<CancellationToken>());
 
-        var updated = await _dbContext.EmailOutboxMessages.SingleAsync();
+        var updated = await FreshQuery().SingleAsync();
         updated.Status.Should().Be(EmailOutboxStatus.Sent);
         updated.SentAt.Should().Be(_clock.GetCurrentInstant());
     }
@@ -196,7 +201,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
             Arg.Any<string?>(), Arg.Any<IDictionary<string, string>?>(),
             Arg.Any<CancellationToken>());
 
-        var updated = await _dbContext.EmailOutboxMessages.SingleAsync();
+        var updated = await FreshQuery().SingleAsync();
         updated.Status.Should().Be(EmailOutboxStatus.Sent);
         updated.SentAt.Should().Be(_clock.GetCurrentInstant());
     }
@@ -217,6 +222,17 @@ public class ProcessEmailOutboxJobTests : IDisposable
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(),
             Arg.Any<string?>(), Arg.Any<IDictionary<string, string>?>(),
             Arg.Any<CancellationToken>());
+    }
+
+    // The repository uses IDbContextFactory to create short-lived contexts that
+    // commit changes to the shared InMemory store; the long-lived _dbContext
+    // here still tracks the seeded entity and returns its stale state on a
+    // straight `ToListAsync`. Route post-job asserts through AsNoTracking on a
+    // fresh context from the same factory so we read the updated row.
+    private IQueryable<EmailOutboxMessage> FreshQuery()
+    {
+        var ctx = new HumansDbContext(_options);
+        return ctx.EmailOutboxMessages.AsNoTracking();
     }
 
     private async Task<EmailOutboxMessage> SeedMessageAsync(EmailOutboxStatus status)

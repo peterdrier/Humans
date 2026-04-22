@@ -31,7 +31,11 @@ public class EmailOutboxMessageConfiguration : IEntityTypeConfiguration<EmailOut
         // Campaign grant tracking
         builder.HasIndex(e => e.CampaignGrantId);
 
-        builder.HasOne(e => e.User)
+        // FK-only reference into the Users section (no navigation property on
+        // EmailOutboxMessage per design-rules §6c). The shadow relationship
+        // still produces the foreign-key column and ON DELETE SET NULL cascade
+        // exactly as the old HasOne(e => e.User).WithMany() configuration did.
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(e => e.UserId)
             .OnDelete(DeleteBehavior.SetNull);
