@@ -210,6 +210,33 @@ public class GoogleAdminServiceTests : IDisposable
             Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task ProvisionStandaloneAccountAsync_RejectsWhenPrefixCollidesWithTeamGoogleGroup()
+    {
+        _dbContext.Teams.Add(new Team
+        {
+            Id = Guid.NewGuid(),
+            Name = "Communications",
+            Slug = "communications",
+            IsActive = true,
+            GoogleGroupPrefix = "comms",
+        });
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.ProvisionStandaloneAccountAsync(
+            "comms", "Any", "Name", _actorUserId);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Google Group");
+        result.ErrorMessage.Should().Contain("Communications");
+
+        await _workspaceUserService.DidNotReceive().GetAccountAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _workspaceUserService.DidNotReceive().ProvisionAccountAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
     // --- SuspendAccountAsync ---
 
     [Fact]

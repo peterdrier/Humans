@@ -134,7 +134,8 @@ public class GoogleAdminService : IGoogleAdminService
         Guid actorUserId,
         CancellationToken ct = default)
     {
-        var fullEmail = $"{emailPrefix.Trim().ToLowerInvariant()}@{NobodiesTeamDomain}";
+        var normalizedPrefix = emailPrefix.Trim().ToLowerInvariant();
+        var fullEmail = $"{normalizedPrefix}@{NobodiesTeamDomain}";
 
         // Check DB first: reject if the address is already tied to any human in our system.
         // Must run BEFORE the Workspace existence check so a stale/deleted Workspace account
@@ -160,6 +161,23 @@ public class GoogleAdminService : IGoogleAdminService
                 fullEmail);
             return new WorkspaceAccountActionResult(false,
                 ErrorMessage: $"{fullEmail} is already in use by another human.");
+        }
+
+        // Reject if the prefix collides with a team's Google Group. Team groups live on
+        // the same domain (@nobodies.team), so provisioning a user account with the same
+        // address would cause mail-routing chaos and break group membership.
+        var conflictingTeamName = await _dbContext.Teams
+            .Where(t => t.GoogleGroupPrefix != null
+                && string.Equals(t.GoogleGroupPrefix, normalizedPrefix, StringComparison.OrdinalIgnoreCase))
+            .Select(t => t.Name)
+            .FirstOrDefaultAsync(ct);
+        if (conflictingTeamName is not null)
+        {
+            _logger.LogWarning(
+                "Standalone provisioning rejected: {Email} is the Google Group address for team '{TeamName}'",
+                fullEmail, conflictingTeamName);
+            return new WorkspaceAccountActionResult(false,
+                ErrorMessage: $"{fullEmail} is the Google Group address for team \"{conflictingTeamName}\" and cannot be used as a personal account.");
         }
 
         // Check if account already exists
