@@ -89,6 +89,20 @@ public sealed class LegalDocumentRepository : ILegalDocumentRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<LegalDocument>> GetActiveRequiredDocumentsForTeamsAsync(
+        IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default)
+    {
+        if (teamIds.Count == 0) return [];
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.LegalDocuments
+            .AsNoTracking()
+            .Where(d => d.IsActive && d.IsRequired && teamIds.Contains(d.TeamId))
+            .Include(d => d.Team)
+            .Include(d => d.Versions)
+            .ToListAsync(ct);
+    }
+
     // ==========================================================================
     // Reads — DocumentVersion
     // ==========================================================================

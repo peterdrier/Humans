@@ -165,6 +165,10 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
             .ToList();
     }
 
+    public Task<IReadOnlyList<LegalDocument>> GetActiveRequiredDocumentsForTeamsAsync(
+        IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default) =>
+        _repository.GetActiveRequiredDocumentsForTeamsAsync(teamIds, cancellationToken);
+
     private async Task<string?> SyncSingleDocumentAsync(
         LegalDocument document,
         CancellationToken cancellationToken)

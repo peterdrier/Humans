@@ -68,6 +68,13 @@ public interface ILegalDocumentRepository
     Task<IReadOnlyList<LegalDocument>> GetActiveRequiredDocumentsForTeamAsync(
         Guid teamId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns active, required legal documents for any of the given teams with
+    /// <c>Team</c> and <c>Versions</c> included. Read-only (AsNoTracking).
+    /// </summary>
+    Task<IReadOnlyList<LegalDocument>> GetActiveRequiredDocumentsForTeamsAsync(
+        IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default);
+
     // ==========================================================================
     // Reads — DocumentVersion
     // ==========================================================================
