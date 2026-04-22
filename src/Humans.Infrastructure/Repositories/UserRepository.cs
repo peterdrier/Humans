@@ -62,15 +62,22 @@ public sealed class UserRepository : IUserRepository
     public async Task<User?> GetByEmailOrAlternateAsync(
         string normalizedEmail, string? alternateEmail, CancellationToken ct = default)
     {
+        // ILIKE without escape treats '_' and '%' in the input as wildcards,
+        // so alex_smith@example.com would also match alexXsmith@example.com.
+        // Escape the pattern and pass '\' as the explicit escape character for
+        // literal (case-insensitive) matching.
+        var escapedEmail = EscapeLikePattern(normalizedEmail);
+        var escapedAlternate = alternateEmail is null ? null : EscapeLikePattern(alternateEmail);
+
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
-        if (alternateEmail is null)
+        if (escapedAlternate is null)
         {
             return await ctx.Users
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u =>
-                    (u.Email != null && EF.Functions.ILike(u.Email, normalizedEmail)) ||
-                    (u.GoogleEmail != null && EF.Functions.ILike(u.GoogleEmail, normalizedEmail)),
+                    (u.Email != null && EF.Functions.ILike(u.Email, escapedEmail, "\\")) ||
+                    (u.GoogleEmail != null && EF.Functions.ILike(u.GoogleEmail, escapedEmail, "\\")),
                     ct);
         }
 
@@ -78,13 +85,19 @@ public sealed class UserRepository : IUserRepository
             .AsNoTracking()
             .FirstOrDefaultAsync(u =>
                 (u.Email != null && (
-                    EF.Functions.ILike(u.Email, normalizedEmail) ||
-                    EF.Functions.ILike(u.Email, alternateEmail))) ||
+                    EF.Functions.ILike(u.Email, escapedEmail, "\\") ||
+                    EF.Functions.ILike(u.Email, escapedAlternate, "\\"))) ||
                 (u.GoogleEmail != null && (
-                    EF.Functions.ILike(u.GoogleEmail, normalizedEmail) ||
-                    EF.Functions.ILike(u.GoogleEmail, alternateEmail))),
+                    EF.Functions.ILike(u.GoogleEmail, escapedEmail, "\\") ||
+                    EF.Functions.ILike(u.GoogleEmail, escapedAlternate, "\\"))),
                 ct);
     }
+
+    private static string EscapeLikePattern(string value)
+        => value
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
 
     public async Task<User?> GetByNormalizedEmailAsync(
         string? normalizedEmail, CancellationToken ct = default)

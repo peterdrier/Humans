@@ -167,6 +167,13 @@ public class AccountProvisioningServiceTests
             int year, IReadOnlyList<(Guid UserId, ParticipationStatus Status)> entries,
             CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task<bool> AnonymizeForMergeAsync(Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task RemoveExternalLoginsAsync(Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task MigrateExternalLoginsAsync(
+            Guid sourceUserId, Guid targetUserId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
     }
 
     private sealed class FakeUserEmailRepository : IUserEmailRepository
@@ -230,6 +237,17 @@ public class AccountProvisioningServiceTests
         public Task UpdateBatchAsync(IReadOnlyList<UserEmail> emails, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<Guid?> GetUserIdByVerifiedEmailAsync(string email, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<UserEmail>> GetAllAsync(CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task RemoveAllForUserAndSaveAsync(Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> MarkVerifiedAsync(Guid emailId, Instant now, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> RemoveByIdAsync(Guid emailId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<Guid>> SearchUserIdsByVerifiedEmailAsync(
+            string searchTerm, CancellationToken ct = default) =>
             throw new NotSupportedException();
     }
 
