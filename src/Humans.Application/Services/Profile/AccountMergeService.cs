@@ -1,3 +1,4 @@
+using System.Transactions;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Extensions;
@@ -165,25 +166,38 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
 
         var now = _clock.GetCurrentInstant();
 
-        // Remove the pending (unverified) email from the target user's account.
-        // MarkVerified may already be a no-op if the email vanished; we just
-        // best-effort remove.
-        await _userEmailRepository.RemoveByIdAsync(request.PendingEmailId, ct);
+        // Ambient transaction so the pending-email delete and the request
+        // status update commit together. Without this, a failed status write
+        // would leave the request Pending with a dangling PendingEmailId,
+        // blocking any later AcceptAsync call.
+        using (var scope = new TransactionScope(
+            TransactionScopeOption.Required,
+            new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+            TransactionScopeAsyncFlowOption.Enabled))
+        {
+            // Remove the pending (unverified) email from the target user's
+            // account. MarkVerified may already be a no-op if the email
+            // vanished; we just best-effort remove.
+            await _userEmailRepository.RemoveByIdAsync(request.PendingEmailId, ct);
 
-        request.Status = AccountMergeRequestStatus.Rejected;
-        request.ResolvedAt = now;
-        request.ResolvedByUserId = adminUserId;
-        request.AdminNotes = notes;
-        await _mergeRepository.UpdateAsync(request, ct);
+            request.Status = AccountMergeRequestStatus.Rejected;
+            request.ResolvedAt = now;
+            request.ResolvedByUserId = adminUserId;
+            request.AdminNotes = notes;
+            await _mergeRepository.UpdateAsync(request, ct);
 
-        await _auditLogService.LogAsync(
-            AuditAction.AccountMergeRejected,
-            nameof(AccountMergeRequest), request.Id,
-            $"Rejected merge request for email {request.Email} (target: {request.TargetUserId}, source: {request.SourceUserId})",
-            adminUserId);
+            await _auditLogService.LogAsync(
+                AuditAction.AccountMergeRejected,
+                nameof(AccountMergeRequest), request.Id,
+                $"Rejected merge request for email {request.Email} (target: {request.TargetUserId}, source: {request.SourceUserId})",
+                adminUserId);
+
+            scope.Complete();
+        }
 
         // Invalidate the target's FullProfile so the removed pending email
-        // disappears from the cached view.
+        // disappears from the cached view. Runs after commit so cache-aside
+        // reads don't repopulate from an uncommitted state.
         await _fullProfileInvalidator.InvalidateAsync(request.TargetUserId, ct);
     }
 

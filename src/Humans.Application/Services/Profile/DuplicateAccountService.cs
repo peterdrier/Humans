@@ -1,3 +1,4 @@
+using System.Transactions;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
@@ -195,74 +196,87 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
             "Admin {AdminId} resolving duplicate: archiving {SourceUserId} ({SourceName}), keeping {TargetUserId} ({TargetName})",
             adminUserId, sourceUserId, sourceUser.DisplayName, targetUserId, targetUser.DisplayName);
 
-        // 1. Re-link external logins from source to target (same-provider
-        //    dupes are dropped rather than duplicated).
-        await _userRepository.MigrateExternalLoginsAsync(sourceUserId, targetUserId, ct);
-
-        // 2. Add target to any non-system teams the source is in, preserving
-        //    coordinator role from the source membership.
-        var sourceTeams = await _teamService.GetUserTeamsAsync(sourceUserId, ct);
-        var targetTeams = await _teamService.GetUserTeamsAsync(targetUserId, ct);
-        var targetTeamIds = targetTeams.Select(m => m.TeamId).ToHashSet();
-
-        foreach (var membership in sourceTeams.Where(m => !m.Team.IsSystemTeam && !targetTeamIds.Contains(m.TeamId)))
+        // Ambient transaction so the cross-repository writes below either all
+        // commit or all roll back. Each repository creates its own short-lived
+        // DbContext via IDbContextFactory; Npgsql enlists those connections
+        // in this scope automatically. AsyncFlowOption.Enabled is mandatory
+        // for scopes containing await — without it the transaction doesn't
+        // flow across continuations.
+        using (var scope = new TransactionScope(
+            TransactionScopeOption.Required,
+            new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+            TransactionScopeAsyncFlowOption.Enabled))
         {
-            var newMember = await _teamService.AddMemberToTeamAsync(
-                membership.TeamId, targetUserId, adminUserId, ct);
+            // 1. Re-link external logins from source to target (same-provider
+            //    dupes are dropped rather than duplicated).
+            await _userRepository.MigrateExternalLoginsAsync(sourceUserId, targetUserId, ct);
 
-            if (membership.Role == TeamMemberRole.Coordinator)
+            // 2. Add target to any non-system teams the source is in, preserving
+            //    coordinator role from the source membership.
+            var sourceTeams = await _teamService.GetUserTeamsAsync(sourceUserId, ct);
+            var targetTeams = await _teamService.GetUserTeamsAsync(targetUserId, ct);
+            var targetTeamIds = targetTeams.Select(m => m.TeamId).ToHashSet();
+
+            foreach (var membership in sourceTeams.Where(m => !m.Team.IsSystemTeam && !targetTeamIds.Contains(m.TeamId)))
             {
-                await _teamService.SetMemberRoleAsync(
-                    membership.TeamId, targetUserId, TeamMemberRole.Coordinator, adminUserId, ct);
+                var newMember = await _teamService.AddMemberToTeamAsync(
+                    membership.TeamId, targetUserId, adminUserId, ct);
+
+                if (membership.Role == TeamMemberRole.Coordinator)
+                {
+                    await _teamService.SetMemberRoleAsync(
+                        membership.TeamId, targetUserId, TeamMemberRole.Coordinator, adminUserId, ct);
+                }
             }
+
+            // 3. Remove source from all non-system teams
+            foreach (var membership in sourceTeams.Where(m => !m.Team.IsSystemTeam))
+            {
+                await _teamService.RemoveMemberAsync(membership.TeamId, sourceUserId, adminUserId, ct);
+            }
+
+            // 4. Migrate source's active governance role assignments to target
+            //    (skip any the target already has). Then revoke the source's
+            //    active roles.
+            var targetActiveRoleNames = (await _roleAssignmentService.GetByUserIdAsync(targetUserId, ct))
+                .Where(r => r.ValidTo == null)
+                .Select(r => r.RoleName)
+                .ToHashSet(StringComparer.Ordinal);
+
+            var sourceActiveRoles = (await _roleAssignmentService.GetByUserIdAsync(sourceUserId, ct))
+                .Where(r => r.ValidTo == null)
+                .ToList();
+
+            foreach (var role in sourceActiveRoles.Where(r => !targetActiveRoleNames.Contains(r.RoleName)))
+            {
+                await _roleAssignmentService.AssignRoleAsync(
+                    targetUserId, role.RoleName, adminUserId,
+                    $"Migrated from merged account {sourceUserId}", ct);
+            }
+
+            await _roleAssignmentService.RevokeAllActiveAsync(sourceUserId, ct);
+
+            // 5. Delete source's email rows
+            await _userEmailRepository.RemoveAllForUserAndSaveAsync(sourceUserId, ct);
+
+            // 6. Anonymize the source account
+            await _profileRepository.AnonymizeForMergeByUserIdAsync(sourceUserId, ct);
+            await _userRepository.AnonymizeForMergeAsync(sourceUserId, ct);
+
+            // 7. Audit inside the same scope so a rolled-back merge doesn't
+            //    leave a ghost audit row.
+            await _auditLogService.LogAsync(
+                AuditAction.AccountMergeAccepted,
+                nameof(User), sourceUserId,
+                $"Duplicate resolved: archived source ({sourceUserId}), kept target ({targetUserId}). Notes: {notes ?? "(none)"}",
+                adminUserId,
+                relatedEntityId: targetUserId, relatedEntityType: nameof(User));
+
+            scope.Complete();
         }
 
-        // 3. Remove source from all non-system teams
-        foreach (var membership in sourceTeams.Where(m => !m.Team.IsSystemTeam))
-        {
-            await _teamService.RemoveMemberAsync(membership.TeamId, sourceUserId, adminUserId, ct);
-        }
-
-        // 4. Migrate source's active governance role assignments to target
-        //    (skip any the target already has). Then revoke the source's
-        //    active roles.
-        var targetActiveRoleNames = (await _roleAssignmentService.GetByUserIdAsync(targetUserId, ct))
-            .Where(r => r.ValidTo == null)
-            .Select(r => r.RoleName)
-            .ToHashSet(StringComparer.Ordinal);
-
-        var sourceActiveRoles = (await _roleAssignmentService.GetByUserIdAsync(sourceUserId, ct))
-            .Where(r => r.ValidTo == null)
-            .ToList();
-
-        foreach (var role in sourceActiveRoles.Where(r => !targetActiveRoleNames.Contains(r.RoleName)))
-        {
-            await _roleAssignmentService.AssignRoleAsync(
-                targetUserId, role.RoleName, adminUserId,
-                $"Migrated from merged account {sourceUserId}", ct);
-        }
-
-        await _roleAssignmentService.RevokeAllActiveAsync(sourceUserId, ct);
-
-        // 5. Delete source's email rows
-        await _userEmailRepository.RemoveAllForUserAndSaveAsync(sourceUserId, ct);
-
-        // 6. Anonymize the source account
-        await _profileRepository.AnonymizeForMergeByUserIdAsync(sourceUserId, ct);
-        await _userRepository.AnonymizeForMergeAsync(sourceUserId, ct);
-
-        // 7. Audit AFTER the business writes above — each repository operation
-        //    self-saves (no shared DbContext at this layer), so audit emitted
-        //    here only fires once the preceding work has persisted. Logging
-        //    before would leave a ghost row on any failure.
-        await _auditLogService.LogAsync(
-            AuditAction.AccountMergeAccepted,
-            nameof(User), sourceUserId,
-            $"Duplicate resolved: archived source ({sourceUserId}), kept target ({targetUserId}). Notes: {notes ?? "(none)"}",
-            adminUserId,
-            relatedEntityId: targetUserId, relatedEntityType: nameof(User));
-
-        // Invalidate caches
+        // Cache invalidation runs AFTER the transaction commits, so cache-aside
+        // readers don't re-populate from rows that might still roll back.
         await _fullProfileInvalidator.InvalidateAsync(sourceUserId, ct);
         await _fullProfileInvalidator.InvalidateAsync(targetUserId, ct);
         _teamService.RemoveMemberFromAllTeamsCache(sourceUserId);
