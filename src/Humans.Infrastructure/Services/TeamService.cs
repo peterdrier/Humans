@@ -316,14 +316,23 @@ public class TeamService : ITeamService, IUserDataContributor
         if (string.IsNullOrWhiteSpace(prefix))
             return null;
 
-        var normalized = prefix.Trim();
+        // Case-insensitive exact match: use ILIKE with an explicit escape so
+        // literal '_' / '%' in the prefix don't act as wildcards and match an
+        // unrelated team.
+        var escaped = EscapeLikePattern(prefix.Trim());
         return await _dbContext.Teams
             .AsNoTracking()
             .Where(t => t.GoogleGroupPrefix != null
-                && EF.Functions.ILike(t.GoogleGroupPrefix, normalized))
+                && EF.Functions.ILike(t.GoogleGroupPrefix, escaped, "\\"))
             .Select(t => t.Name)
             .FirstOrDefaultAsync(cancellationToken);
     }
+
+    private static string EscapeLikePattern(string value)
+        => value
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
 
     public async Task<TeamDirectoryResult> GetTeamDirectoryAsync(
         Guid? userId,

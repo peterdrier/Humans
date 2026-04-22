@@ -197,10 +197,20 @@ public sealed class UserEmailRepository : IUserEmailRepository
 
     public async Task<bool> AnyWithEmailAsync(string email, CancellationToken ct = default)
     {
+        // Escape '_' and '%' in the input so ILIKE treats them as literals,
+        // otherwise the collision check can report false positives
+        // (e.g. john_doe@... matching johnXdoe@...).
+        var escaped = EscapeLikePattern(email);
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.UserEmails
-            .AnyAsync(ue => EF.Functions.ILike(ue.Email, email), ct);
+            .AnyAsync(ue => EF.Functions.ILike(ue.Email, escaped, "\\"), ct);
     }
+
+    private static string EscapeLikePattern(string value)
+        => value
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
 
     public async Task<Dictionary<Guid, string>> GetAllNotificationTargetEmailsAsync(
         CancellationToken ct = default)
