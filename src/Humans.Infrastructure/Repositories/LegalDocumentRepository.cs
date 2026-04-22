@@ -35,14 +35,6 @@ public sealed class LegalDocumentRepository : ILegalDocumentRepository
             .FirstOrDefaultAsync(d => d.Id == documentId, ct);
     }
 
-    public async Task<LegalDocument?> GetByIdForMutationAsync(Guid documentId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.LegalDocuments
-            .Include(d => d.Versions)
-            .FirstOrDefaultAsync(d => d.Id == documentId, ct);
-    }
-
     public async Task<IReadOnlyList<LegalDocument>> GetDocumentsAsync(
         Guid? teamId, CancellationToken ct = default)
     {

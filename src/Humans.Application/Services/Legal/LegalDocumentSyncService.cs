@@ -252,7 +252,19 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
             ChangesSummary = commitMessage ?? (isNew ? "Initial version" : "Updated from GitHub")
         };
 
-        await _repository.AddVersionAsync(document.Id, newVersion, commitSha, now, cancellationToken);
+        var persisted = await _repository.AddVersionAsync(
+            document.Id, newVersion, commitSha, now, cancellationToken);
+
+        if (!persisted)
+        {
+            // Document row vanished between the read above and the write —
+            // skip the in-memory mutation, success log, and notification
+            // fan-out so we don't advertise a sync that didn't happen.
+            _logger.LogWarning(
+                "Skipped version add for document {Name} ({DocumentId}): document row not found during persist.",
+                document.Name, document.Id);
+            return null;
+        }
 
         // Mirror the write back onto the in-memory aggregate so callers of
         // SyncAllDocumentsAsync observe the same shape they used to get when

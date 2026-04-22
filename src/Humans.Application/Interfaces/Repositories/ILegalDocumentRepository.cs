@@ -39,19 +39,6 @@ public interface ILegalDocumentRepository
     Task<LegalDocument?> GetByIdAsync(Guid documentId, CancellationToken ct = default);
 
     /// <summary>
-    /// Loads a single legal document for mutation. The returned entity is
-    /// tracked by the repository's short-lived context — use only alongside
-    /// <see cref="UpdateAsync"/> on the same repository within the same
-    /// method. Returns null if the document does not exist.
-    /// </summary>
-    /// <remarks>
-    /// This shape is kept internal to the repository in the sense that the
-    /// service calls the repo again (via <see cref="UpdateAsync"/>) rather
-    /// than mutating the entity then relying on attached tracking.
-    /// </remarks>
-    Task<LegalDocument?> GetByIdForMutationAsync(Guid documentId, CancellationToken ct = default);
-
-    /// <summary>
     /// Loads legal documents, optionally filtered by team id. Includes
     /// aggregate-local <c>Versions</c>. Read-only (AsNoTracking).
     /// Ordered by document name — callers that need per-team grouping should
