@@ -74,6 +74,35 @@ public interface IUserEmailRepository
         CancellationToken ct = default);
 
     /// <summary>
+    /// Returns every user email, read-only. Used by the duplicate-account
+    /// scan to detect overlapping addresses across users. Trivial to load in
+    /// full at ~500-user scale.
+    /// </summary>
+    Task<IReadOnlyList<UserEmail>> GetAllAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Removes every <see cref="UserEmail"/> row for the given user. Used
+    /// during account merge/duplicate-resolve to wipe the source's addresses
+    /// before anonymization.
+    /// </summary>
+    Task RemoveAllForUserAndSaveAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Marks a single email as verified and bumps <see cref="UserEmail.UpdatedAt"/>
+    /// to <paramref name="now"/>. Returns false if the email does not exist.
+    /// Used by <c>AccountMergeService.AcceptAsync</c> to complete a merge.
+    /// </summary>
+    Task<bool> MarkVerifiedAsync(
+        Guid emailId, NodaTime.Instant now, CancellationToken ct = default);
+
+    /// <summary>
+    /// Removes a single email by id. Returns false if the email does not
+    /// exist. Used by <c>AccountMergeService.RejectAsync</c> to clear the
+    /// pending unverified address on rejection.
+    /// </summary>
+    Task<bool> RemoveByIdAsync(Guid emailId, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns a mapping of userId → verified notification-target email for all users
     /// that have one. If a user has multiple verified notification-target emails,
     /// one is picked arbitrarily.

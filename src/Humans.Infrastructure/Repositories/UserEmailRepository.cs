@@ -126,6 +126,54 @@ public sealed class UserEmailRepository : IUserEmailRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<UserEmail>> GetAllAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.UserEmails
+            .AsNoTracking()
+            .ToListAsync(ct);
+    }
+
+    public async Task RemoveAllForUserAndSaveAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var emails = await ctx.UserEmails
+            .Where(e => e.UserId == userId)
+            .ToListAsync(ct);
+
+        if (emails.Count == 0)
+            return;
+
+        ctx.UserEmails.RemoveRange(emails);
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<bool> MarkVerifiedAsync(
+        Guid emailId, NodaTime.Instant now, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var email = await ctx.UserEmails.FirstOrDefaultAsync(e => e.Id == emailId, ct);
+        if (email is null)
+            return false;
+
+        email.IsVerified = true;
+        email.UpdatedAt = now;
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public async Task<bool> RemoveByIdAsync(Guid emailId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var email = await ctx.UserEmails.FirstOrDefaultAsync(e => e.Id == emailId, ct);
+        if (email is null)
+            return false;
+
+        ctx.UserEmails.Remove(email);
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
     public async Task<Dictionary<Guid, string>> GetAllNotificationTargetEmailsAsync(
         CancellationToken ct = default)
     {

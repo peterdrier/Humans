@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Application.Interfaces.Repositories;
@@ -187,6 +188,93 @@ public sealed class UserRepository : IUserRepository
         user.DeletionEligibleAfter = null;
         await ctx.SaveChangesAsync(ct);
         return true;
+    }
+
+    public async Task<bool> AnonymizeForMergeAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var user = await ctx.Users.FindAsync([userId], ct);
+        if (user is null)
+            return false;
+
+        var anonymizedId = $"merged-{user.Id:N}";
+
+        user.DisplayName = "Merged User";
+        user.Email = $"{anonymizedId}@merged.local";
+        user.NormalizedEmail = user.Email.ToUpperInvariant();
+        user.UserName = anonymizedId;
+        user.NormalizedUserName = anonymizedId.ToUpperInvariant();
+        user.ProfilePictureUrl = null;
+        user.PhoneNumber = null;
+        user.PhoneNumberConfirmed = false;
+
+        // Clear any deletion request fields — this account is being archived
+        // through the merge flow, not the deletion flow.
+        user.DeletionRequestedAt = null;
+        user.DeletionScheduledFor = null;
+        user.DeletionEligibleAfter = null;
+
+        // Disable login
+        user.LockoutEnabled = true;
+        user.LockoutEnd = DateTimeOffset.MaxValue;
+        user.SecurityStamp = Guid.NewGuid().ToString();
+
+        // Clear iCal token so any saved calendar subscription links stop working
+        user.ICalToken = null;
+
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public async Task RemoveExternalLoginsAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var logins = await ctx.Set<IdentityUserLogin<Guid>>()
+            .Where(l => l.UserId == userId)
+            .ToListAsync(ct);
+
+        if (logins.Count == 0)
+            return;
+
+        ctx.Set<IdentityUserLogin<Guid>>().RemoveRange(logins);
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task MigrateExternalLoginsAsync(
+        Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        var sourceLogins = await ctx.Set<IdentityUserLogin<Guid>>()
+            .Where(l => l.UserId == sourceUserId)
+            .ToListAsync(ct);
+
+        if (sourceLogins.Count == 0)
+            return;
+
+        var targetProviders = await ctx.Set<IdentityUserLogin<Guid>>()
+            .Where(l => l.UserId == targetUserId)
+            .Select(l => l.LoginProvider)
+            .ToListAsync(ct);
+        var targetProviderSet = targetProviders.ToHashSet(StringComparer.Ordinal);
+
+        foreach (var login in sourceLogins)
+        {
+            ctx.Set<IdentityUserLogin<Guid>>().Remove(login);
+
+            if (!targetProviderSet.Contains(login.LoginProvider))
+            {
+                ctx.Set<IdentityUserLogin<Guid>>().Add(new IdentityUserLogin<Guid>
+                {
+                    LoginProvider = login.LoginProvider,
+                    ProviderKey = login.ProviderKey,
+                    ProviderDisplayName = login.ProviderDisplayName,
+                    UserId = targetUserId
+                });
+            }
+        }
+
+        await ctx.SaveChangesAsync(ct);
     }
 
     // ==========================================================================

@@ -96,6 +96,22 @@ public interface IProfileRepository
     Task UpdateAsync(Profile profile, CancellationToken ct = default);
 
     /// <summary>
+    /// Clears identifying fields on the profile (name, location, bio,
+    /// emergency contacts, pronouns, birthday, profile picture, board notes,
+    /// admin notes, contribution interests) and removes every
+    /// <see cref="ContactField"/> and <see cref="VolunteerHistoryEntry"/>
+    /// row for the profile in a single <c>SaveChangesAsync</c> call. Used by
+    /// <c>AccountMergeService</c> and <c>DuplicateAccountService</c> when
+    /// archiving a source account.
+    /// </summary>
+    /// <remarks>
+    /// No-op if the user has no profile. Returns true when a profile existed
+    /// and was anonymized. Language rows (<see cref="ProfileLanguage"/>) are
+    /// intentionally left as-is; they are not personally identifying.
+    /// </remarks>
+    Task<bool> AnonymizeForMergeByUserIdAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// Reconciles the CV-entry collection for the given profile with the
     /// provided set, keyed by <see cref="CVEntry.Id"/>:
     /// <list type="bullet">

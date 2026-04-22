@@ -12,6 +12,8 @@ using ProfilesContactFieldService = Humans.Application.Services.Profile.ContactF
 using ProfilesUserEmailService = Humans.Application.Services.Profile.UserEmailService;
 using ProfilesCommunicationPreferenceService = Humans.Application.Services.Profile.CommunicationPreferenceService;
 using ProfilesContactService = Humans.Application.Services.Profile.ContactService;
+using ProfilesAccountMergeService = Humans.Application.Services.Profile.AccountMergeService;
+using ProfilesDuplicateAccountService = Humans.Application.Services.Profile.DuplicateAccountService;
 
 namespace Humans.Web.Extensions.Sections;
 
@@ -26,6 +28,7 @@ internal static class ProfileSectionExtensions
         services.AddSingleton<IContactFieldRepository, ContactFieldRepository>();
         services.AddSingleton<IUserEmailRepository, UserEmailRepository>();
         services.AddSingleton<ICommunicationPreferenceRepository, CommunicationPreferenceRepository>();
+        services.AddSingleton<IAccountMergeRepository, AccountMergeRepository>();
 
         services.AddScoped<IUnsubscribeTokenProvider, UnsubscribeTokenProvider>();
 
@@ -36,11 +39,11 @@ internal static class ProfileSectionExtensions
         services.AddScoped<IUserEmailService, ProfilesUserEmailService>();
         services.AddScoped<IEmailProvisioningService, EmailProvisioningService>();
 
-        services.AddScoped<AccountMergeService>();
-        services.AddScoped<IAccountMergeService>(sp => sp.GetRequiredService<AccountMergeService>());
-        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<AccountMergeService>());
+        services.AddScoped<ProfilesAccountMergeService>();
+        services.AddScoped<IAccountMergeService>(sp => sp.GetRequiredService<ProfilesAccountMergeService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ProfilesAccountMergeService>());
 
-        services.AddScoped<IDuplicateAccountService, DuplicateAccountService>();
+        services.AddScoped<IDuplicateAccountService, ProfilesDuplicateAccountService>();
         services.AddScoped<IContactService, ProfilesContactService>();
         services.AddScoped<IAccountProvisioningService, AccountProvisioningService>();
 

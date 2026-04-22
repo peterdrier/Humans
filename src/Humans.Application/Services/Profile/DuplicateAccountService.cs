@@ -1,40 +1,54 @@
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
-using Humans.Infrastructure.Data;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Application.Services.Profile;
 
 /// <summary>
 /// Detects and resolves duplicate user accounts where the same email
-/// address appears on multiple User records (across User.Email and UserEmail.Email).
+/// address appears on multiple User records (across <c>User.Email</c> and
+/// <c>UserEmail.Email</c>).
 /// </summary>
-public class DuplicateAccountService : IDuplicateAccountService
+/// <remarks>
+/// Moved from <c>Humans.Infrastructure.Services</c> to
+/// <c>Humans.Application.Services.Profile</c> in PR #557. All data access
+/// flows through repository and service interfaces; this type never injects
+/// <c>HumansDbContext</c>.
+/// </remarks>
+public sealed class DuplicateAccountService : IDuplicateAccountService
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly IUserRepository _userRepository;
+    private readonly IUserEmailRepository _userEmailRepository;
+    private readonly IProfileRepository _profileRepository;
     private readonly IAuditLogService _auditLogService;
     private readonly IFullProfileInvalidator _fullProfileInvalidator;
     private readonly ITeamService _teamService;
+    private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly ILogger<DuplicateAccountService> _logger;
     private readonly IClock _clock;
 
     public DuplicateAccountService(
-        HumansDbContext dbContext,
+        IUserRepository userRepository,
+        IUserEmailRepository userEmailRepository,
+        IProfileRepository profileRepository,
         IAuditLogService auditLogService,
         IFullProfileInvalidator fullProfileInvalidator,
         ITeamService teamService,
+        IRoleAssignmentService roleAssignmentService,
         ILogger<DuplicateAccountService> logger,
         IClock clock)
     {
-        _dbContext = dbContext;
+        _userRepository = userRepository;
+        _userEmailRepository = userEmailRepository;
+        _profileRepository = profileRepository;
         _auditLogService = auditLogService;
         _fullProfileInvalidator = fullProfileInvalidator;
         _teamService = teamService;
+        _roleAssignmentService = roleAssignmentService;
         _logger = logger;
         _clock = clock;
     }
@@ -43,25 +57,19 @@ public class DuplicateAccountService : IDuplicateAccountService
     {
         // At ~500 users, loading all data into memory is cheap and avoids
         // complex SQL for gmail/googlemail equivalence.
-        var users = await _dbContext.Users
-            .AsNoTracking()
-            .Where(u => u.Email != null && !EF.Functions.ILike(u.Email!, "%@merged.local"))
-            .Select(u => new UserProjection(
-                u.Id, u.Email!, u.DisplayName, u.ProfilePictureUrl, u.LastLoginAt, u.CreatedAt))
-            .ToListAsync(ct);
-
-        var userEmails = await _dbContext.UserEmails
-            .AsNoTracking()
-            .Select(ue => new UserEmailProjection(ue.UserId, ue.Email, ue.IsVerified, ue.IsOAuth))
-            .ToListAsync(ct);
+        var allUsers = await _userRepository.GetAllAsync(ct);
+        var users = allUsers
+            .Where(u => !string.IsNullOrEmpty(u.Email) &&
+                        !u.Email!.EndsWith("@merged.local", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var userEmails = await _userEmailRepository.GetAllAsync(ct);
 
         // Build map: normalized email -> list of (userId, source description)
         var emailToUsers = new Dictionary<string, List<(Guid UserId, string Source)>>(StringComparer.Ordinal);
 
         foreach (var u in users)
         {
-            if (string.IsNullOrEmpty(u.Email)) continue;
-            var normalized = EmailNormalization.NormalizeForComparison(u.Email);
+            var normalized = EmailNormalization.NormalizeForComparison(u.Email!);
             if (!emailToUsers.TryGetValue(normalized, out var list))
             {
                 list = [];
@@ -96,32 +104,27 @@ public class DuplicateAccountService : IDuplicateAccountService
         var involvedUserIds = conflicts
             .SelectMany(c => c.Value.Select(x => x.UserId))
             .Distinct()
-            .ToHashSet();
+            .ToList();
+        var involvedUserSet = involvedUserIds.ToHashSet();
 
-        var userMap = users.Where(u => involvedUserIds.Contains(u.Id))
+        var userMap = users.Where(u => involvedUserSet.Contains(u.Id))
             .ToDictionary(u => u.Id);
 
-        var profiles = await _dbContext.Profiles
-            .AsNoTracking()
-            .Where(p => involvedUserIds.Contains(p.UserId))
-            .Select(p => new ProfileProjection(
-                p.UserId, p.MembershipTier, p.IsApproved, p.IsSuspended,
-                p.FirstName, p.LastName))
-            .ToDictionaryAsync(p => p.UserId, ct);
+        var profiles = await _profileRepository.GetByUserIdsAsync(involvedUserIds, ct);
 
-        var teamCounts = await _dbContext.Set<TeamMember>()
-            .AsNoTracking()
-            .Where(tm => involvedUserIds.Contains(tm.UserId) && tm.LeftAt == null)
-            .GroupBy(tm => tm.UserId)
-            .Select(g => new { UserId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.UserId, x => x.Count, ct);
+        // Per-user team membership counts (active only). Few involved users;
+        // per-user calls are trivial at this scale.
+        var teamCounts = new Dictionary<Guid, int>();
+        var roleAssignmentCounts = new Dictionary<Guid, int>();
+        foreach (var userId in involvedUserIds)
+        {
+            // GetUserTeamsAsync already filters to active memberships (LeftAt == null).
+            var memberships = await _teamService.GetUserTeamsAsync(userId, ct);
+            teamCounts[userId] = memberships.Count;
 
-        var roleAssignmentCounts = await _dbContext.Set<RoleAssignment>()
-            .AsNoTracking()
-            .Where(ra => involvedUserIds.Contains(ra.UserId) && ra.ValidTo == null)
-            .GroupBy(ra => ra.UserId)
-            .Select(g => new { UserId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.UserId, x => x.Count, ct);
+            var roles = await _roleAssignmentService.GetByUserIdAsync(userId, ct);
+            roleAssignmentCounts[userId] = roles.Count(r => r.ValidTo == null);
+        }
 
         foreach (var (normalizedEmail, entries) in conflicts)
         {
@@ -181,65 +184,36 @@ public class DuplicateAccountService : IDuplicateAccountService
         Guid sourceUserId, Guid targetUserId, Guid adminUserId,
         string? notes = null, CancellationToken ct = default)
     {
-        var sourceUser = await _dbContext.Users
-            .Include(u => u.RoleAssignments)
-            .FirstOrDefaultAsync(u => u.Id == sourceUserId, ct)
+        var sourceUser = await _userRepository.GetByIdAsync(sourceUserId, ct)
             ?? throw new InvalidOperationException("Source user not found.");
-
-        var targetUser = await _dbContext.Users
-            .FirstOrDefaultAsync(u => u.Id == targetUserId, ct)
+        var targetUser = await _userRepository.GetByIdAsync(targetUserId, ct)
             ?? throw new InvalidOperationException("Target user not found.");
 
         var now = _clock.GetCurrentInstant();
-        var sourceDisplayName = sourceUser.DisplayName;
 
         _logger.LogInformation(
             "Admin {AdminId} resolving duplicate: archiving {SourceUserId} ({SourceName}), keeping {TargetUserId} ({TargetName})",
-            adminUserId, sourceUserId, sourceDisplayName, targetUserId, targetUser.DisplayName);
+            adminUserId, sourceUserId, sourceUser.DisplayName, targetUserId, targetUser.DisplayName);
 
-        await using var transaction = await _dbContext.Database.BeginTransactionAsync(ct);
+        // 1. Re-link external logins from source to target (same-provider
+        //    dupes are dropped rather than duplicated).
+        await _userRepository.MigrateExternalLoginsAsync(sourceUserId, targetUserId, ct);
 
-        // 1. Re-link external logins from source to target
-        var sourceLogins = await _dbContext.Set<IdentityUserLogin<Guid>>()
-            .Where(l => l.UserId == sourceUserId)
-            .ToListAsync(ct);
-
-        foreach (var login in sourceLogins)
-        {
-            var targetHasProvider = await _dbContext.Set<IdentityUserLogin<Guid>>()
-                .AnyAsync(l => l.UserId == targetUserId &&
-                    l.LoginProvider == login.LoginProvider, ct);
-
-            _dbContext.Set<IdentityUserLogin<Guid>>().Remove(login);
-
-            if (!targetHasProvider)
-            {
-                _dbContext.Set<IdentityUserLogin<Guid>>().Add(new IdentityUserLogin<Guid>
-                {
-                    LoginProvider = login.LoginProvider,
-                    ProviderKey = login.ProviderKey,
-                    ProviderDisplayName = login.ProviderDisplayName,
-                    UserId = targetUserId
-                });
-            }
-        }
-
-        await _dbContext.SaveChangesAsync(ct);
-
-        // 2. Add target to any non-system teams the source is in, preserving coordinator role
+        // 2. Add target to any non-system teams the source is in, preserving
+        //    coordinator role from the source membership.
         var sourceTeams = await _teamService.GetUserTeamsAsync(sourceUserId, ct);
         var targetTeams = await _teamService.GetUserTeamsAsync(targetUserId, ct);
         var targetTeamIds = targetTeams.Select(m => m.TeamId).ToHashSet();
 
         foreach (var membership in sourceTeams.Where(m => !m.Team.IsSystemTeam && !targetTeamIds.Contains(m.TeamId)))
         {
-            var newMember = await _teamService.AddMemberToTeamAsync(membership.TeamId, targetUserId, adminUserId, ct);
+            var newMember = await _teamService.AddMemberToTeamAsync(
+                membership.TeamId, targetUserId, adminUserId, ct);
 
-            // Preserve coordinator role from source
             if (membership.Role == TeamMemberRole.Coordinator)
             {
-                newMember.Role = TeamMemberRole.Coordinator;
-                await _dbContext.SaveChangesAsync(ct);
+                await _teamService.SetMemberRoleAsync(
+                    membership.TeamId, targetUserId, TeamMemberRole.Coordinator, adminUserId, ct);
             }
         }
 
@@ -249,45 +223,38 @@ public class DuplicateAccountService : IDuplicateAccountService
             await _teamService.RemoveMemberAsync(membership.TeamId, sourceUserId, adminUserId, ct);
         }
 
-        // 4. Migrate source's active global role assignments to target (if target doesn't already have them)
-        var targetRoleNames = await _dbContext.Set<RoleAssignment>()
-            .Where(r => r.UserId == targetUserId && r.ValidTo == null)
+        // 4. Migrate source's active governance role assignments to target
+        //    (skip any the target already has). Then revoke the source's
+        //    active roles.
+        var targetActiveRoleNames = (await _roleAssignmentService.GetByUserIdAsync(targetUserId, ct))
+            .Where(r => r.ValidTo == null)
             .Select(r => r.RoleName)
-            .ToHashSetAsync(ct);
+            .ToHashSet(StringComparer.Ordinal);
 
-        foreach (var role in sourceUser.RoleAssignments.Where(r => r.ValidTo == null))
+        var sourceActiveRoles = (await _roleAssignmentService.GetByUserIdAsync(sourceUserId, ct))
+            .Where(r => r.ValidTo == null)
+            .ToList();
+
+        foreach (var role in sourceActiveRoles.Where(r => !targetActiveRoleNames.Contains(r.RoleName)))
         {
-            if (!targetRoleNames.Contains(role.RoleName))
-            {
-                _dbContext.Set<RoleAssignment>().Add(new RoleAssignment
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = targetUserId,
-                    RoleName = role.RoleName,
-                    ValidFrom = now,
-                    Notes = $"Migrated from merged account {sourceUserId}",
-                    CreatedAt = now,
-                    CreatedByUserId = adminUserId
-                });
-            }
-
-            role.ValidTo = now;
+            await _roleAssignmentService.AssignRoleAsync(
+                targetUserId, role.RoleName, adminUserId,
+                $"Migrated from merged account {sourceUserId}", ct);
         }
 
+        await _roleAssignmentService.RevokeAllActiveAsync(sourceUserId, ct);
+
         // 5. Delete source's email rows
-        var sourceEmails = await _dbContext.UserEmails
-            .Where(e => e.UserId == sourceUserId)
-            .ToListAsync(ct);
-        _dbContext.UserEmails.RemoveRange(sourceEmails);
+        await _userEmailRepository.RemoveAllForUserAndSaveAsync(sourceUserId, ct);
 
         // 6. Anonymize the source account
-        await AnonymizeSourceAccountAsync(sourceUser, ct);
+        await _profileRepository.AnonymizeForMergeByUserIdAsync(sourceUserId, ct);
+        await _userRepository.AnonymizeForMergeAsync(sourceUserId, ct);
 
-        await _dbContext.SaveChangesAsync(ct);
-        await transaction.CommitAsync(ct);
-
-        // Audit AFTER the transaction commits — IAuditLogService self-persists,
-        // so logging before commit would leave a ghost row on a rollback.
+        // 7. Audit AFTER the business writes above — each repository operation
+        //    self-saves (no shared DbContext at this layer), so audit emitted
+        //    here only fires once the preceding work has persisted. Logging
+        //    before would leave a ghost row on any failure.
         await _auditLogService.LogAsync(
             AuditAction.AccountMergeAccepted,
             nameof(User), sourceUserId,
@@ -297,6 +264,7 @@ public class DuplicateAccountService : IDuplicateAccountService
 
         // Invalidate caches
         await _fullProfileInvalidator.InvalidateAsync(sourceUserId, ct);
+        await _fullProfileInvalidator.InvalidateAsync(targetUserId, ct);
         _teamService.RemoveMemberFromAllTeamsCache(sourceUserId);
 
         _logger.LogInformation(
@@ -307,8 +275,8 @@ public class DuplicateAccountService : IDuplicateAccountService
     private static DuplicateAccountInfo BuildAccountInfo(
         Guid userId,
         List<string> emailSources,
-        Dictionary<Guid, UserProjection> userMap,
-        Dictionary<Guid, ProfileProjection> profiles,
+        Dictionary<Guid, User> userMap,
+        IReadOnlyDictionary<Guid, Domain.Entities.Profile> profiles,
         Dictionary<Guid, int> teamCounts,
         Dictionary<Guid, int> roleAssignmentCounts)
     {
@@ -346,74 +314,4 @@ public class DuplicateAccountService : IDuplicateAccountService
             EmailSources = emailSources
         };
     }
-
-    private async Task AnonymizeSourceAccountAsync(User sourceUser, CancellationToken ct)
-    {
-        var anonymizedId = $"merged-{sourceUser.Id:N}";
-
-        sourceUser.DisplayName = "Merged User";
-        sourceUser.Email = $"{anonymizedId}@merged.local";
-        sourceUser.NormalizedEmail = sourceUser.Email.ToUpperInvariant();
-        sourceUser.UserName = anonymizedId;
-        sourceUser.NormalizedUserName = anonymizedId.ToUpperInvariant();
-        sourceUser.ProfilePictureUrl = null;
-        sourceUser.PhoneNumber = null;
-        sourceUser.PhoneNumberConfirmed = false;
-
-        sourceUser.DeletionRequestedAt = null;
-        sourceUser.DeletionScheduledFor = null;
-
-        sourceUser.LockoutEnabled = true;
-        sourceUser.LockoutEnd = DateTimeOffset.MaxValue;
-        sourceUser.SecurityStamp = Guid.NewGuid().ToString();
-
-        sourceUser.ICalToken = null;
-
-        var profile = await _dbContext.Profiles
-            .FirstOrDefaultAsync(p => p.UserId == sourceUser.Id, ct);
-
-        if (profile is not null)
-        {
-            profile.FirstName = "Merged";
-            profile.LastName = "User";
-            profile.BurnerName = string.Empty;
-            profile.Bio = null;
-            profile.City = null;
-            profile.CountryCode = null;
-            profile.Latitude = null;
-            profile.Longitude = null;
-            profile.PlaceId = null;
-            profile.AdminNotes = null;
-            profile.Pronouns = null;
-            profile.DateOfBirth = null;
-            profile.ProfilePictureData = null;
-            profile.ProfilePictureContentType = null;
-            profile.EmergencyContactName = null;
-            profile.EmergencyContactPhone = null;
-            profile.EmergencyContactRelationship = null;
-            profile.ContributionInterests = null;
-            profile.BoardNotes = null;
-
-            var contactFields = await _dbContext.ContactFields
-                .Where(cf => cf.ProfileId == profile.Id)
-                .ToListAsync(ct);
-            _dbContext.ContactFields.RemoveRange(contactFields);
-
-            var volunteerHistory = await _dbContext.VolunteerHistoryEntries
-                .Where(vh => vh.ProfileId == profile.Id)
-                .ToListAsync(ct);
-            _dbContext.VolunteerHistoryEntries.RemoveRange(volunteerHistory);
-        }
-    }
-
-    // Internal projection records for typed data access
-    private sealed record UserProjection(
-        Guid Id, string Email, string DisplayName,
-        string? ProfilePictureUrl, Instant? LastLoginAt, Instant CreatedAt);
-
-    private sealed record UserEmailProjection(Guid UserId, string Email, bool IsVerified, bool IsOAuth);
-
-    private sealed record ProfileProjection(
-        Guid UserId, MembershipTier MembershipTier, bool IsApproved, bool IsSuspended,
-        string? FirstName, string? LastName);
 }

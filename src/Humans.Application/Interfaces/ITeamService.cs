@@ -391,6 +391,20 @@ public interface ITeamService
         Guid actorUserId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Sets the <see cref="TeamMember.Role"/> for an active membership to the
+    /// given value. Used by <c>DuplicateAccountService.ResolveAsync</c> to
+    /// preserve a coordinator role when migrating the membership from the
+    /// archived source account to the target. No-op if the user has no active
+    /// membership on the team.
+    /// </summary>
+    Task SetMemberRoleAsync(
+        Guid teamId,
+        Guid userId,
+        TeamMemberRole role,
+        Guid actorUserId,
+        CancellationToken cancellationToken = default);
+
     // ==========================================================================
     // Team Page Content
     // ==========================================================================

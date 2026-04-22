@@ -11,6 +11,7 @@ using ApplicationDecisionService = Humans.Application.Services.Governance.Applic
 using BudgetService = Humans.Application.Services.Budget.BudgetService;
 using CampaignService = Humans.Application.Services.Campaigns.CampaignService;
 using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
+using ProfilesAccountMergeService = Humans.Application.Services.Profile.AccountMergeService;
 using UsersUserService = Humans.Application.Services.Users.UserService;
 using AuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
 using CampService = Humans.Application.Services.Camps.CampService;
@@ -67,7 +68,7 @@ public class GdprExportDependencyInjectionTests
     [
         typeof(ProfilesProfileService),
         typeof(UsersUserService),
-        typeof(AccountMergeService),
+        typeof(ProfilesAccountMergeService),
         typeof(ApplicationDecisionService),
         typeof(ConsentService),
         typeof(TeamService),

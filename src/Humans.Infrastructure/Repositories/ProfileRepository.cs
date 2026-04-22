@@ -163,6 +163,49 @@ public sealed class ProfileRepository : IProfileRepository
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task<bool> AnonymizeForMergeByUserIdAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var profile = await ctx.Profiles
+            .FirstOrDefaultAsync(p => p.UserId == userId, ct);
+
+        if (profile is null)
+            return false;
+
+        profile.FirstName = "Merged";
+        profile.LastName = "User";
+        profile.BurnerName = string.Empty;
+        profile.Bio = null;
+        profile.City = null;
+        profile.CountryCode = null;
+        profile.Latitude = null;
+        profile.Longitude = null;
+        profile.PlaceId = null;
+        profile.AdminNotes = null;
+        profile.Pronouns = null;
+        profile.DateOfBirth = null;
+        profile.ProfilePictureData = null;
+        profile.ProfilePictureContentType = null;
+        profile.EmergencyContactName = null;
+        profile.EmergencyContactPhone = null;
+        profile.EmergencyContactRelationship = null;
+        profile.ContributionInterests = null;
+        profile.BoardNotes = null;
+
+        var contactFields = await ctx.ContactFields
+            .Where(cf => cf.ProfileId == profile.Id)
+            .ToListAsync(ct);
+        ctx.ContactFields.RemoveRange(contactFields);
+
+        var volunteerHistory = await ctx.VolunteerHistoryEntries
+            .Where(vh => vh.ProfileId == profile.Id)
+            .ToListAsync(ct);
+        ctx.VolunteerHistoryEntries.RemoveRange(volunteerHistory);
+
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
     public async Task ReconcileCVEntriesAsync(
         Guid profileId,
         IReadOnlyList<CVEntry> entries,

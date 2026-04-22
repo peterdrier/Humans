@@ -106,6 +106,34 @@ public interface IUserRepository
     /// </summary>
     Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Anonymizes the identity portion of a user record for the account-merge
+    /// / duplicate-resolve flow: display name, username, email fields, phone,
+    /// profile picture URL, deletion fields, security stamp, iCal token, and
+    /// lockout. The source account is set to <c>"Merged User"</c> with a
+    /// synthetic <c>@merged.local</c> email and a lockout end of
+    /// <see cref="DateTimeOffset.MaxValue"/> so it cannot be logged into.
+    /// Returns false if the user does not exist.
+    /// </summary>
+    Task<bool> AnonymizeForMergeAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Removes every <c>AspNetUserLogins</c> row for the given user. Used by
+    /// <c>AccountMergeService.AcceptAsync</c> to prevent the anonymized
+    /// source account from being logged into via its OAuth providers.
+    /// </summary>
+    Task RemoveExternalLoginsAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Migrates every external-login row from <paramref name="sourceUserId"/>
+    /// to <paramref name="targetUserId"/>. If the target already has a login
+    /// with the same <c>LoginProvider</c>, the source's row is dropped rather
+    /// than duplicated. Used by <c>DuplicateAccountService.ResolveAsync</c>
+    /// to re-link sign-in credentials before archiving the source account.
+    /// </summary>
+    Task MigrateExternalLoginsAsync(
+        Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
+
     // ==========================================================================
     // Reads — EventParticipation
     // ==========================================================================
