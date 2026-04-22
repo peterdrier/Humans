@@ -185,65 +185,65 @@
             @if (Model.IsCurrentUserLead || Model.IsCurrentUserCampAdmin || isCityPlanningMember)
             {
                 var isPlacementOpen = ViewBag.PlacementIsOpen as bool? ?? false;
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span><i class="fa-solid fa-map-location-dot me-1"></i> Placement</span>
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="text-muted small">Placement phase:</span>
-                        @if (isPlacementOpen)
-                        {
-                            <span class="badge bg-success">Open</span>
-                            <a href="/CityPlanning" class="btn btn-sm btn-outline-primary">
-                                <i class="fa-solid fa-map me-1"></i> Go to placement map
-                            </a>
-                        }
-                        else
-                        {
-                            <span class="badge bg-secondary">Closed</span>
-                        }
-                        <button type="button" class="btn btn-link btn-sm p-0"
-                                data-bs-toggle="modal" data-bs-target="#placement-help-modal"
-                                title="Placement phase info">
-                            <i class="fa-solid fa-circle-info text-muted"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <dl>
-                                @if (season.SoundZone.HasValue)
-                                {
-                                    <dt>Sound Zone</dt>
-                                    <dd><span class="badge bg-info">@season.SoundZone</span></dd>
-                                }
-                                @if (season.SpaceRequirement.HasValue)
-                                {
-                                    <dt>Space Requirement</dt>
-                                    <dd>@season.SpaceRequirement</dd>
-                                }
-                                <dt>Containers</dt>
-                                <dd>@season.ContainerCount</dd>
-                            </dl>
-                        </div>
-                        <div class="col-md-6">
-                            <dl>
-                                @if (!string.IsNullOrEmpty(season.ContainerNotes))
-                                {
-                                    <dt>Container Notes</dt>
-                                    <dd>@season.ContainerNotes</dd>
-                                }
-                                @if (season.ElectricalGrid.HasValue)
-                                {
-                                    <dt>Electrical Grid</dt>
-                                    <dd>@season.ElectricalGrid</dd>
-                                }
-                            </dl>
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="fa-solid fa-map-location-dot me-1"></i> Placement</span>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="text-muted small">@Localizer["CityPlanning_PlacementPhase"]:</span>
+                            @if (isPlacementOpen)
+                            {
+                                <span class="badge bg-success">@Localizer["CityPlanning_StatusOpen"]</span>
+                                <a asp-controller="CityPlanning" asp-action="Index" class="btn btn-sm btn-outline-primary">
+                                    <i class="fa-solid fa-map me-1"></i> @Localizer["CityPlanning_GoToPlacementMap"]
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">@Localizer["CityPlanning_StatusClosed"]</span>
+                            }
+                            <button type="button" class="btn btn-link btn-sm p-0"
+                                    data-bs-toggle="modal" data-bs-target="#placement-help-modal"
+                                    title="@Localizer["CityPlanning_PlacementPhaseInfo"]">
+                                <i class="fa-solid fa-circle-info text-muted"></i>
+                            </button>
                         </div>
                     </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <dl>
+                                    @if (season.SoundZone.HasValue)
+                                    {
+                                        <dt>Sound Zone</dt>
+                                        <dd><span class="badge bg-info">@season.SoundZone</span></dd>
+                                    }
+                                    @if (season.SpaceRequirement.HasValue)
+                                    {
+                                        <dt>Space Requirement</dt>
+                                        <dd>@season.SpaceRequirement</dd>
+                                    }
+                                    <dt>Containers</dt>
+                                    <dd>@season.ContainerCount</dd>
+                                </dl>
+                            </div>
+                            <div class="col-md-6">
+                                <dl>
+                                    @if (!string.IsNullOrEmpty(season.ContainerNotes))
+                                    {
+                                        <dt>Container Notes</dt>
+                                        <dd>@season.ContainerNotes</dd>
+                                    }
+                                    @if (season.ElectricalGrid.HasValue)
+                                    {
+                                        <dt>Electrical Grid</dt>
+                                        <dd>@season.ElectricalGrid</dd>
+                                    }
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            @await Html.PartialAsync("~/Views/CityPlanning/_PlacementHelpModal.cshtml")
+                @await Html.PartialAsync("~/Views/CityPlanning/_PlacementHelpModal.cshtml")
             }
         }
     </div>

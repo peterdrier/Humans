@@ -117,8 +117,9 @@ public class CampController : HumansCampControllerBase
         if (camp is null)
             return NotFound();
 
-        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp, cancellationToken);
-        await PopulateCityPlanningViewBagAsync(cancellationToken);
+        var currentUser = await GetCurrentUserAsync();
+        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp, currentUser, cancellationToken);
+        await PopulateCityPlanningViewBagAsync(currentUser, cancellationToken);
 
         return View(MapCampDetailViewModel(campDetail, isLead, isCampAdmin));
     }
@@ -139,8 +140,9 @@ public class CampController : HumansCampControllerBase
         if (camp is null)
             return NotFound();
 
-        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp, cancellationToken);
-        await PopulateCityPlanningViewBagAsync(cancellationToken);
+        var currentUser = await GetCurrentUserAsync();
+        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp, currentUser, cancellationToken);
+        await PopulateCityPlanningViewBagAsync(currentUser, cancellationToken);
 
         return View(nameof(Details), MapCampDetailViewModel(campDetail, isLead, isCampAdmin));
     }
@@ -712,12 +714,13 @@ public class CampController : HumansCampControllerBase
     // Helper methods
     // ======================================================================
 
-    private async Task PopulateCityPlanningViewBagAsync(CancellationToken cancellationToken)
+    private async Task PopulateCityPlanningViewBagAsync(User? currentUser, CancellationToken cancellationToken)
     {
-        var user = await GetCurrentUserAsync();
-        var isCityPlanningMember = user is not null &&
-            (RoleChecks.IsCampAdmin(User) ||
-             await _cityPlanningService.IsCityPlanningTeamMemberAsync(user.Id, cancellationToken));
+        if (User.Identity?.IsAuthenticated != true)
+            return;
+
+        var isCityPlanningMember = currentUser is not null &&
+            await _cityPlanningService.IsCityPlanningTeamMemberAsync(currentUser.Id, cancellationToken);
 
         ViewBag.IsCityPlanningTeamMember = isCityPlanningMember;
 
