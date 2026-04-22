@@ -50,9 +50,23 @@ public class GoogleController : HumansControllerBase
 
     [HttpGet("SyncSettings")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
-    public async Task<IActionResult> SyncSettings([FromServices] ISyncSettingsService syncSettingsService)
+    public async Task<IActionResult> SyncSettings(
+        [FromServices] ISyncSettingsService syncSettingsService,
+        [FromServices] IUserService userService)
     {
         var settings = await syncSettingsService.GetAllAsync();
+
+        // In-memory join: resolve UpdatedByUser display names via IUserService
+        // rather than an EF .Include across the section boundary (design-rules §6).
+        var updatedByUserIds = settings
+            .Select(s => s.UpdatedByUserId)
+            .OfType<Guid>()
+            .Distinct()
+            .ToList();
+        var updatedByUsers = updatedByUserIds.Count > 0
+            ? await userService.GetByIdsAsync(updatedByUserIds)
+            : new Dictionary<Guid, User>();
+
         var viewModel = new SyncSettingsViewModel
         {
             Settings = settings.Select(s => new SyncServiceSettingViewModel
@@ -61,7 +75,9 @@ public class GoogleController : HumansControllerBase
                 ServiceName = FormatServiceName(s.ServiceType),
                 CurrentMode = s.SyncMode,
                 UpdatedAt = s.UpdatedAt.ToDateTimeUtc(),
-                UpdatedByName = s.UpdatedByUser?.DisplayName
+                UpdatedByName = s.UpdatedByUserId is { } uid && updatedByUsers.TryGetValue(uid, out var u)
+                    ? u.DisplayName
+                    : null
             }).ToList()
         };
         return View(viewModel);
