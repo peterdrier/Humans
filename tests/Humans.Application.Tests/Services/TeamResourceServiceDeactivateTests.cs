@@ -1,13 +1,14 @@
 using AwesomeAssertions;
+using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Services.Teams;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -17,17 +18,18 @@ namespace Humans.Application.Tests.Services;
 
 /// <summary>
 /// Coverage for <see cref="ITeamResourceService.DeactivateResourcesForTeamAsync"/> — the
-/// side of #494 that actually flips <c>IsActive</c> and writes audit entries. Uses
-/// <see cref="StubTeamResourceService"/> so the test doesn't need real Google credentials;
-/// the relevant method body (deactivation + audit) is logically identical to
-/// <see cref="TeamResourceService"/>.
+/// side of #494 that flips <c>IsActive</c> and writes audit entries. After the
+/// <c>#540c</c> migration there is a single <see cref="TeamResourceService"/>
+/// implementation in the Application layer; this test drives it through an
+/// <see cref="IDbContextFactory{HumansDbContext}"/>-backed repository and a
+/// stubbed <see cref="ITeamResourceGoogleClient"/>.
 /// </summary>
 public class TeamResourceServiceDeactivateTests : IDisposable
 {
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly IAuditLogService _auditLogService;
-    private readonly StubTeamResourceService _service;
+    private readonly TeamResourceService _service;
 
     public TeamResourceServiceDeactivateTests()
     {
@@ -38,17 +40,19 @@ public class TeamResourceServiceDeactivateTests : IDisposable
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 15, 12, 0));
         _auditLogService = Substitute.For<IAuditLogService>();
 
-        var serviceProvider = Substitute.For<IServiceProvider>();
-        serviceProvider.GetService(typeof(IAuditLogService)).Returns(_auditLogService);
-        serviceProvider.GetService(typeof(ITeamService)).Returns(Substitute.For<ITeamService>());
+        var factory = new SingleContextFactory(options);
+        IGoogleResourceRepository repository = new GoogleResourceRepository(factory);
 
-        _service = new StubTeamResourceService(
-            _dbContext,
-            Options.Create(new TeamResourceManagementSettings()),
-            serviceProvider,
-            Substitute.For<IRoleAssignmentService>(),
-            _clock,
-            NullLogger<StubTeamResourceService>.Instance);
+        _service = new TeamResourceService(
+            repository,
+            googleClient: Substitute.For<ITeamResourceGoogleClient>(),
+            googleSyncService: Substitute.For<IGoogleSyncService>(),
+            teamService: Substitute.For<ITeamService>(),
+            roleAssignmentService: Substitute.For<IRoleAssignmentService>(),
+            auditLogService: _auditLogService,
+            resourceOptions: new TeamResourceManagementOptions(),
+            clock: _clock,
+            logger: NullLogger<TeamResourceService>.Instance);
     }
 
     public void Dispose()
@@ -166,5 +170,24 @@ public class TeamResourceServiceDeactivateTests : IDisposable
             IsActive = isActive,
             ProvisionedAt = _clock.GetCurrentInstant()
         });
+    }
+
+    /// <summary>
+    /// Minimal <see cref="IDbContextFactory{HumansDbContext}"/> that reuses a
+    /// single in-memory DB across contexts. Each <c>CreateDbContextAsync</c>
+    /// returns a fresh <see cref="HumansDbContext"/> over the same
+    /// <see cref="DbContextOptions"/>, matching the production behavior where
+    /// the repository tears its context down per call.
+    /// </summary>
+    private sealed class SingleContextFactory : IDbContextFactory<HumansDbContext>
+    {
+        private readonly DbContextOptions<HumansDbContext> _options;
+
+        public SingleContextFactory(DbContextOptions<HumansDbContext> options) => _options = options;
+
+        public HumansDbContext CreateDbContext() => new(_options);
+
+        public Task<HumansDbContext> CreateDbContextAsync(CancellationToken ct = default) =>
+            Task.FromResult(new HumansDbContext(_options));
     }
 }

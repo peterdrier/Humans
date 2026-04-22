@@ -73,7 +73,7 @@ See `docs/architecture/design-rules.md` for the full rules.
 
 ## Target Architecture Direction
 
-> **Status:** This section currently follows the "services in Infrastructure, direct DbContext" model. It will be migrated to the repository/store/decorator pattern per [`../architecture/design-rules.md`](../architecture/design-rules.md). **Delete this block once the migration lands and this section's services live in `Humans.Application` with `*Repository.cs` impls in `Humans.Infrastructure/Repositories/`.**
+> **Status:** **Partially migrated** (2026-04-22). `TeamPageService` lives in `Humans.Application.Services.Teams` (PR #270, pure composer — no repo needed). `TeamResourceService` also lives in `Humans.Application.Services.Teams` and is backed by `IGoogleResourceRepository` (`Humans.Application.Interfaces.Repositories`) + `ITeamResourceGoogleClient` connector (implementations: `TeamResourceGoogleClient` / `StubTeamResourceGoogleClient` in `Humans.Infrastructure/Services/GoogleWorkspace/`). `StubTeamResourceService` no longer exists as a separate service — dev mode is now selected at the connector layer. **`TeamService` (2,698 LOC) is still the "services in Infrastructure, direct DbContext" model** and is pending sub-task #540a. Delete this block once that migration lands.
 
 ### Target repositories
 
@@ -83,9 +83,10 @@ See `docs/architecture/design-rules.md` for the full rules.
 - **`ITeamPageRepository`** — owns `team_pages`
   - Aggregate-local navs kept: `TeamPage.Team` (back-ref within Teams section)
   - Cross-domain navs stripped: none
-- **`ITeamResourceRepository`** — owns `google_resources` (Team Resources subsection)
-  - Aggregate-local navs kept: `GoogleResource.Team` (back-ref within Teams section)
-  - Cross-domain navs stripped: none
+- **`IGoogleResourceRepository`** (landed 2026-04-22, PR for #540c) — owns `google_resources` (Team Resources subsection).
+  - Aggregate-local navs kept: `GoogleResource.Team` back-ref is still declared but never `Include`-d by the repository (the one consumer, `GoogleController`, only reads `resource.Name`).
+  - Cross-domain navs stripped: none.
+  - Companion connector: `ITeamResourceGoogleClient` encapsulates Drive/Cloud-Identity calls so the Application project stays free of `Google.Apis.*`.
 
 ### Current violations
 
@@ -109,8 +110,8 @@ Observed in this section's service code as of 2026-04-15:
   - `TeamPageService.cs:130` — `_dbContext.Users` in `GetPageContentUpdatedByDisplayNameAsync` (owned by Users/Identity)
   - `TeamPageService.cs:179` — `_dbContext.Rotas` in `GetShiftsSummaryAsync` (owned by Shifts)
 - **Within-section cross-service direct DbContext reads** (§2c — each service owns tables, not each section):
-  - `TeamResourceService.cs:149` — `_dbContext.TeamMembers` in `GetUserTeamResourcesAsync` (owned by sibling `TeamService`)
-  - `TeamResourceService.cs:151` — `_dbContext.Teams` join in `GetUserTeamResourcesAsync` (owned by sibling `TeamService`)
+  - ~~`TeamResourceService.cs:149` — `_dbContext.TeamMembers` in `GetUserTeamResourcesAsync`~~ — resolved 2026-04-22 (PR for #540c): the migrated service calls `ITeamService.GetUserTeamsAsync` and stitches in memory.
+  - ~~`TeamResourceService.cs:151` — `_dbContext.Teams` join in `GetUserTeamResourcesAsync`~~ — same fix as above.
 - **Inline `IMemoryCache` usage in service methods:**
   - `TeamService.cs:2154` — `_cache.GetOrCreateAsync(CacheKeys.ActiveTeams, …)` in `GetCachedTeamsAsync` (cache load with cross-domain `.Include` at line 2160)
   - `TeamService.cs:2302` — `_cache.TryUpdateExistingValue<...>(CacheKeys.ActiveTeams, mutate)` in `TryUpdateCachedTeam` (inline dictionary mutation)
@@ -132,5 +133,5 @@ Until this section is migrated end-to-end, when touching its code:
 - When a Team service method needs a User entity to populate a cached projection (lines 783, 929, 1278, 1830 in `TeamService.cs`), call `IUserService` rather than `_dbContext.Users.FindAsync()`. Same for the email-path read at line 1911 and the outbox guard at line 1955 — route through `IUserService`.
 - When touching `GetCachedTeamsAsync` at `TeamService.cs:2154` or `TryUpdateCachedTeam` at line 2302, do not add new fields to the cached projection and do not add new `_cache.*` call sites. Both get replaced by a `TeamStore` + `CachingTeamService` decorator per §4–§5 — keep the current call small so the migration is mechanical.
 - When `GetAdminTeamListAsync` at `TeamService.cs:2083` or `GetShiftsSummaryAsync` at `TeamPageService.cs:179` is touched, replace the `_dbContext.EventSettings` / `_dbContext.Rotas` reads with `IShiftManagementService` calls. Do not add new Shifts-domain reads from Teams services.
-- When `GetUserTeamResourcesAsync` at `TeamResourceService.cs:148–156` is touched, replace the in-query join on `_dbContext.TeamMembers` / `_dbContext.Teams` with an `ITeamService` call (e.g., fetch the user's team IDs, then load `GoogleResources` by those IDs). Per §2c each service owns its own tables even within the same section.
+- ~~When `GetUserTeamResourcesAsync` at `TeamResourceService.cs:148–156` is touched, replace the in-query join on `_dbContext.TeamMembers` / `_dbContext.Teams` with an `ITeamService` call.~~ Done in PR for #540c: `Humans.Application.Services.Teams.TeamResourceService.GetUserTeamResourcesAsync` calls `ITeamService.GetUserTeamsAsync` and stitches in memory.
 - When `EnqueueGoogleSyncOutboxEvent` at `TeamService.cs:1964` is touched, route the outbox write through an `IGoogleSyncOutbox` interface owned by Google Integration rather than writing `_dbContext.GoogleSyncOutboxEvents` directly from Teams.
