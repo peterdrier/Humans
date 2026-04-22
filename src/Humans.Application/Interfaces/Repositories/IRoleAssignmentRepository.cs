@@ -76,6 +76,27 @@ public interface IRoleAssignmentRepository
         CancellationToken ct = default);
 
     /// <summary>
+    /// Returns true if the user has any active role assignment at
+    /// <paramref name="now"/> (regardless of role name). Used by the
+    /// membership calculator to distinguish governance members from plain
+    /// volunteers.
+    /// </summary>
+    Task<bool> HasAnyActiveAssignmentAsync(
+        Guid userId,
+        Instant now,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the distinct set of user IDs that have at least one active
+    /// role assignment at <paramref name="now"/>. Used by batch jobs
+    /// (e.g., membership status reconciliation) that need to enumerate every
+    /// governance-active user.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetUserIdsWithActiveAssignmentsAsync(
+        Instant now,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// All currently-active assignments for the user, tracked for mutation.
     /// Used by <c>RevokeAllActiveAsync</c> to stamp <c>ValidTo</c> on each.
     /// </summary>
