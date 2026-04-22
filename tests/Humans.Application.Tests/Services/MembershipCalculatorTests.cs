@@ -16,9 +16,8 @@ public class MembershipCalculatorTests
     private readonly FakeClock _clock;
     private readonly MembershipCalculator _service;
     private readonly IProfileService _profileService = Substitute.For<IProfileService>();
-    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly IMembershipQuery _membershipQuery = Substitute.For<IMembershipQuery>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
     private readonly IConsentService _consentService = Substitute.For<IConsentService>();
     private readonly ILegalDocumentSyncService _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncService>();
 
@@ -38,9 +37,8 @@ public class MembershipCalculatorTests
 
         _service = new MembershipCalculator(
             _profileService,
-            _teamService,
+            _membershipQuery,
             _userService,
-            _roleAssignmentService,
             _legalDocumentSyncService,
             serviceProvider,
             _clock);
@@ -59,7 +57,7 @@ public class MembershipCalculatorTests
                 return Task.FromResult<IReadOnlyDictionary<Guid, Profile>>(map);
             });
 
-        _teamService.GetUserTeamsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _membershipQuery.GetUserTeamsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
                 var userId = ci.Arg<Guid>();
@@ -67,7 +65,7 @@ public class MembershipCalculatorTests
                 return Task.FromResult<IReadOnlyList<TeamMember>>(memberships);
             });
 
-        _teamService.IsUserMemberOfTeamAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _membershipQuery.IsUserMemberOfTeamAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
                 var teamId = ci.ArgAt<Guid>(0);
@@ -76,10 +74,10 @@ public class MembershipCalculatorTests
                 return Task.FromResult(memberships.Any(m => m.TeamId == teamId && m.LeftAt == null));
             });
 
-        _roleAssignmentService.HasAnyActiveAssignmentAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _membershipQuery.HasAnyActiveAssignmentAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(false));
 
-        _roleAssignmentService.GetUserIdsWithActiveAssignmentsAsync(Arg.Any<CancellationToken>())
+        _membershipQuery.GetUserIdsWithActiveAssignmentsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(new List<Guid>()));
 
         _legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(
@@ -771,7 +769,7 @@ public class MembershipCalculatorTests
 
     private void SeedActiveRole(Guid userId)
     {
-        _roleAssignmentService.HasAnyActiveAssignmentAsync(userId, Arg.Any<CancellationToken>())
+        _membershipQuery.HasAnyActiveAssignmentAsync(userId, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(true));
     }
 
@@ -780,7 +778,7 @@ public class MembershipCalculatorTests
     private void SeedActiveRoleInList(Guid userId)
     {
         _activeRoleUserIds.Add(userId);
-        _roleAssignmentService.GetUserIdsWithActiveAssignmentsAsync(Arg.Any<CancellationToken>())
+        _membershipQuery.GetUserIdsWithActiveAssignmentsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(_activeRoleUserIds));
     }
 

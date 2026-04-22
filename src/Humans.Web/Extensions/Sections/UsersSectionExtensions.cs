@@ -4,6 +4,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using GovernanceMembershipCalculator = Humans.Application.Services.Governance.MembershipCalculator;
+using GovernanceMembershipQuery = Humans.Application.Services.Governance.MembershipQuery;
 using UsersUserService = Humans.Application.Services.Users.UserService;
 
 namespace Humans.Web.Extensions.Sections;
@@ -22,6 +23,11 @@ internal static class UsersSectionExtensions
         services.AddScoped<IUserService>(sp => sp.GetRequiredService<UsersUserService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<UsersUserService>());
 
+        // Query adapter breaks the circular DI graph between IMembershipCalculator
+        // and ITeamService / IRoleAssignmentService (both of which inject
+        // ISystemTeamSync, whose implementation injects IMembershipCalculator back).
+        // Only MembershipCalculator depends on the query adapter.
+        services.AddScoped<IMembershipQuery, GovernanceMembershipQuery>();
         services.AddScoped<IMembershipCalculator, GovernanceMembershipCalculator>();
         services.AddScoped<IDashboardService, DashboardService>();
 

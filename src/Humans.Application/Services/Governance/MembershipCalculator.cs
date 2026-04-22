@@ -25,9 +25,13 @@ namespace Humans.Application.Services.Governance;
 public sealed class MembershipCalculator : IMembershipCalculator
 {
     private readonly IProfileService _profileService;
-    private readonly ITeamService _teamService;
+    // Team + role reads go through IMembershipQuery (not ITeamService /
+    // IRoleAssignmentService directly) to break a circular DI graph: both of
+    // those services inject ISystemTeamSync, whose implementation injects
+    // IMembershipCalculator. IMembershipQuery is a thin pass-through that
+    // depends on the team/role services but has no other dependents.
+    private readonly IMembershipQuery _membershipQuery;
     private readonly IUserService _userService;
-    private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly ILegalDocumentSyncService _legalDocumentSyncService;
 
     // ConsentService is resolved lazily via IServiceProvider to break the
@@ -39,17 +43,15 @@ public sealed class MembershipCalculator : IMembershipCalculator
 
     public MembershipCalculator(
         IProfileService profileService,
-        ITeamService teamService,
+        IMembershipQuery membershipQuery,
         IUserService userService,
-        IRoleAssignmentService roleAssignmentService,
         ILegalDocumentSyncService legalDocumentSyncService,
         IServiceProvider serviceProvider,
         IClock clock)
     {
         _profileService = profileService;
-        _teamService = teamService;
+        _membershipQuery = membershipQuery;
         _userService = userService;
-        _roleAssignmentService = roleAssignmentService;
         _legalDocumentSyncService = legalDocumentSyncService;
         _serviceProvider = serviceProvider;
         _clock = clock;
@@ -81,7 +83,7 @@ public sealed class MembershipCalculator : IMembershipCalculator
         // A user is considered active if they have governance role assignments
         // OR are a member of the Volunteers team (i.e., a plain volunteer).
         var hasActiveRoles = await HasActiveRolesAsync(userId, cancellationToken);
-        var isVolunteerMember = await _teamService.IsUserMemberOfTeamAsync(
+        var isVolunteerMember = await _membershipQuery.IsUserMemberOfTeamAsync(
             SystemTeamIds.Volunteers, userId, cancellationToken);
 
         if (!hasActiveRoles && !isVolunteerMember)
@@ -122,7 +124,7 @@ public sealed class MembershipCalculator : IMembershipCalculator
             .Where(id => !consentedVersionIds.Contains(id))
             .ToList();
 
-        var isVolunteerMember = await _teamService.IsUserMemberOfTeamAsync(
+        var isVolunteerMember = await _membershipQuery.IsUserMemberOfTeamAsync(
             SystemTeamIds.Volunteers, userId, cancellationToken);
 
         return new MembershipSnapshot(
@@ -201,14 +203,14 @@ public sealed class MembershipCalculator : IMembershipCalculator
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        return await _roleAssignmentService.HasAnyActiveAssignmentAsync(userId, cancellationToken);
+        return await _membershipQuery.HasAnyActiveAssignmentAsync(userId, cancellationToken);
     }
 
     public async Task<IReadOnlyList<Guid>> GetUsersRequiringStatusUpdateAsync(
         CancellationToken cancellationToken = default)
     {
         // Get all users with active roles
-        var usersWithActiveRoles = await _roleAssignmentService.GetUserIdsWithActiveAssignmentsAsync(cancellationToken);
+        var usersWithActiveRoles = await _membershipQuery.GetUserIdsWithActiveAssignmentsAsync(cancellationToken);
 
         // Use batch method to avoid N+1 queries
         var usersWithAnyExpiredConsents = await GetUsersWithAnyExpiredConsentsAsync(usersWithActiveRoles, cancellationToken);
@@ -319,7 +321,7 @@ public sealed class MembershipCalculator : IMembershipCalculator
         // TeamMember rows with Team navigation pre-populated so we can
         // inspect SystemTeamType for the Coordinator-of-user-team check
         // below without a second query.
-        var memberships = await _teamService.GetUserTeamsAsync(userId, cancellationToken);
+        var memberships = await _membershipQuery.GetUserTeamsAsync(userId, cancellationToken);
         var teamIds = memberships.Select(m => m.TeamId).ToList();
 
         // Always include Volunteers (global docs apply to everyone)

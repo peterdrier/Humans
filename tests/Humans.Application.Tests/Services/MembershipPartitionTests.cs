@@ -16,9 +16,8 @@ public class MembershipPartitionTests
     private readonly FakeClock _clock;
     private readonly MembershipCalculator _service;
     private readonly IProfileService _profileService = Substitute.For<IProfileService>();
-    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly IMembershipQuery _membershipQuery = Substitute.For<IMembershipQuery>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
     private readonly IConsentService _consentService = Substitute.For<IConsentService>();
     private readonly ILegalDocumentSyncService _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncService>();
 
@@ -36,9 +35,8 @@ public class MembershipPartitionTests
 
         _service = new MembershipCalculator(
             _profileService,
-            _teamService,
+            _membershipQuery,
             _userService,
-            _roleAssignmentService,
             _legalDocumentSyncService,
             serviceProvider,
             _clock);

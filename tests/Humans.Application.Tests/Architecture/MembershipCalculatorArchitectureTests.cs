@@ -75,21 +75,30 @@ public class MembershipCalculatorArchitectureTests
     }
 
     [Fact]
-    public void MembershipCalculator_TakesTeamService()
+    public void MembershipCalculator_TakesMembershipQuery()
     {
         var ctor = typeof(MembershipCalculator).GetConstructors().Single();
         ctor.GetParameters().Select(p => p.ParameterType)
-            .Should().Contain(typeof(ITeamService),
-                because: "team membership reads go through ITeamService per design-rules §9");
+            .Should().Contain(typeof(IMembershipQuery),
+                because: "team + role reads go through IMembershipQuery (a thin pass-through over ITeamService and IRoleAssignmentService) to break the circular DI graph caused by ISystemTeamSync — see PR #279");
     }
 
     [Fact]
-    public void MembershipCalculator_TakesRoleAssignmentService()
+    public void MembershipCalculator_DoesNotTakeTeamServiceDirectly()
     {
         var ctor = typeof(MembershipCalculator).GetConstructors().Single();
         ctor.GetParameters().Select(p => p.ParameterType)
-            .Should().Contain(typeof(IRoleAssignmentService),
-                because: "role assignment reads go through IRoleAssignmentService per design-rules §9");
+            .Should().NotContain(typeof(ITeamService),
+                because: "injecting ITeamService directly closes the DI cycle ITeamService -> ISystemTeamSync -> IMembershipCalculator — use IMembershipQuery instead");
+    }
+
+    [Fact]
+    public void MembershipCalculator_DoesNotTakeRoleAssignmentServiceDirectly()
+    {
+        var ctor = typeof(MembershipCalculator).GetConstructors().Single();
+        ctor.GetParameters().Select(p => p.ParameterType)
+            .Should().NotContain(typeof(IRoleAssignmentService),
+                because: "injecting IRoleAssignmentService directly closes the DI cycle IRoleAssignmentService -> ISystemTeamSync -> IMembershipCalculator — use IMembershipQuery instead");
     }
 
     [Fact]
