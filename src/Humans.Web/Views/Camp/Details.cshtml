@@ -225,9 +225,7 @@
             }
 
             @* Placement phase status (city planning team only) *@
-            @{
-                var isCityPlanningMember = ViewBag.IsCityPlanningTeamMember as bool? ?? false;
-            }
+            var isCityPlanningMember = ViewBag.IsCityPlanningTeamMember as bool? ?? false;
             @if (isCityPlanningMember)
             {
                 var isPlacementOpen = ViewBag.PlacementIsOpen as bool? ?? false;
