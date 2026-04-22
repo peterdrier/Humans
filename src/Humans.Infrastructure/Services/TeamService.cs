@@ -2715,6 +2715,8 @@ public class TeamService : ITeamService, IUserDataContributor
         });
     }
 
+    public void InvalidateActiveTeamsCache() => _cache.InvalidateActiveTeams();
+
     public async Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var now = _clock.GetCurrentInstant();

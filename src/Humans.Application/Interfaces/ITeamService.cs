@@ -604,6 +604,15 @@ public interface ITeamService
     void RemoveMemberFromAllTeamsCache(Guid userId);
 
     /// <summary>
+    /// Evicts the ActiveTeams master cache entry so the next read repopulates
+    /// from the database. Use when an orchestrator can't rely on the in-place
+    /// cache mutations the team service performs during writes — typically
+    /// after a transactional rollback, where the DB has reverted but the
+    /// in-memory mutations haven't.
+    /// </summary>
+    void InvalidateActiveTeamsCache();
+
+    /// <summary>
     /// Ends all active team memberships for a user, removes their team role assignments,
     /// and returns the count of ended memberships. Used during account deletion.
     /// </summary>
