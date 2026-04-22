@@ -76,8 +76,8 @@ Observed in this section's service code as of 2026-04-15:
   - `TicketQueryService.cs:569` — `_dbContext.Users` (Users/Identity section)
   - `TicketQueryService.cs:584` — `_dbContext.EventSettings` (Shifts section)
   - `TicketQueryService.cs:588` — `_dbContext.EventParticipations` (Shifts section)
-  - `TicketSyncService.cs:440` — `_dbContext.EventSettings` (Shifts section)
-  - `TicketSyncService.cs:449,481` — `_dbContext.EventParticipations` (Shifts section)
+  - ~~`TicketSyncService.cs:440` — `_dbContext.EventSettings` (Shifts section)~~ **Resolved in PR #545c (2026-04-22):** active-event lookup now routes through `IShiftManagementService.GetActiveAsync()`.
+  - ~~`TicketSyncService.cs:449,481` — `_dbContext.EventParticipations` (Shifts section)~~ **Resolved in PR #545c (2026-04-22):** participation reads/writes now route through `IUserService` (User section owns `event_participations` per PR #243).
 - **Within-section cross-service direct DbContext reads:**
   - ~~`TicketingBudgetService.cs:44` — reads `_dbContext.TicketOrders` directly.~~ **Resolved in PR #545b (2026-04-22):** `TicketingBudgetService` was migrated to `Humans.Application.Services.Tickets` and now reads paid orders through the narrow `ITicketingBudgetRepository` (Tickets-side). No cross-section DbContext reads remain on the Budget→Tickets bridge.
 - **Inline `IMemoryCache` usage in service methods:**
@@ -93,7 +93,7 @@ Observed in this section's service code as of 2026-04-15:
 Until this section is migrated end-to-end, when touching its code:
 
 - When touching `TicketQueryService` user-matching code (around lines 569-572, 697-699, 767-769), do not add new `.Include(... MatchedUser ...)` or new traversals off `User`. Fetch via `IUserService` / `IProfileService` and project into Ticket DTOs in-memory by `MatchedUserId`.
-- When touching participation/event logic in `TicketQueryService.cs:584-588` or `TicketSyncService.cs:440,449,481`, route through a Shifts-owned interface (`IEventSettingsService` / `IEventParticipationService`) rather than adding more `_dbContext.EventSettings` / `_dbContext.EventParticipations` reads.
+- When touching participation/event logic in `TicketQueryService.cs:584-588`, route through a Shifts-owned interface (`IEventSettingsService` / `IEventParticipationService`) rather than adding more `_dbContext.EventSettings` / `_dbContext.EventParticipations` reads. (`TicketSyncService` already routes these through `IShiftManagementService` / `IUserService` as of PR #545c.)
 - When touching code tracking (`TicketQueryService.GetCodeTrackingDataAsync`, ~line 337), do not deepen the `Campaign` / `Grants` / `User` include chain; call `ICampaignService` for campaign + grant data and correlate with local ticket orders in memory.
 - When touching cache logic around ticket counts (`TicketQueryService.cs:38-42,81,132-133`), keep cache calls confined to this service — do not push `IMemoryCache` into controllers or view components — and prefer adding to `CacheKeys.InvalidateTicketCaches()` over sprinkling new `_cache.Remove` sites, so the eventual caching decorator has a single seam to replace.
 - When extending `TicketingBudgetService`, add new Tickets-side read methods to `ITicketingBudgetRepository` (narrow, Tickets-owned) rather than reaching into `HumansDbContext`. Projection/line-item writes remain Budget-owned and must route through `IBudgetService`.
