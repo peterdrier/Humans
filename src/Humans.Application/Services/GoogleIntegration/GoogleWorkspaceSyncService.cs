@@ -663,16 +663,11 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         // (including soft-deleted) through the Teams service so we never touch
         // the team graph directly — the resource's Team nav is hydrated via
         // ITeamService.GetTeamByIdAsync / GetByIdsWithParentsAsync.
-        var allActive = await _resourceRepository.GetActiveDriveFoldersAsync(cancellationToken);
         IReadOnlyList<GoogleResource> resources;
         if (resourceType == GoogleResourceType.Group)
         {
-            // Drive folders-only read above covers the Drive path. For Groups we
-            // need a type-specific query — fall through to fetching via the
-            // per-team path using every team with at least one active Group
-            // resource. Simpler: fetch all active resources of any type via a
-            // one-shot union, then filter here — the repo exposes the
-            // per-team dictionary which is cheap to coalesce at ~500-user scale.
+            // No type-specific repo query for Groups; coalesce the per-team
+            // dictionary at ~500-user scale.
             var allCounts = await _resourceRepository.GetActiveResourceCountsByTeamAsync(cancellationToken);
             var teamIds = allCounts.Keys.ToList();
             var perTeam = await _resourceRepository.GetActiveByTeamIdsAsync(teamIds, cancellationToken);
@@ -682,6 +677,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         }
         else
         {
+            var allActive = await _resourceRepository.GetActiveDriveFoldersAsync(cancellationToken);
             resources = allActive.Where(r => r.ResourceType == resourceType && r.IsActive).ToList();
         }
 
@@ -1669,7 +1665,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         var expectedSettings = BuildExpectedSettingsDictionary();
 
         // Bounded concurrency for settings fetches.
-        var semaphore = new SemaphoreSlim(5);
+        using var semaphore = new SemaphoreSlim(5);
         var tasks = allGroups
             .Where(g => !string.IsNullOrEmpty(g.Email))
             .Select(async group =>
@@ -2029,14 +2025,9 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     private async Task<GoogleResource?> FindInactiveGroupForTeamByUrlAsync(
         Guid teamId, string expectedUrl, CancellationToken ct)
     {
-        // No repo surface for inactive+team+URL; filter in memory. Inactive group
-        // rows for a team are scarce at our scale.
-        var active = await _resourceRepository.GetActiveByTeamIdAsync(teamId, ct);
-        // Active hits are not what we want; fetch per-team including inactive is
-        // not directly exposed. Re-use FindInactiveGroupByCandidatesAsync as a
-        // best-effort lookup: it matches by GoogleId / email. We call it with
-        // the prefix@domain form so the email-based branch hits.
-        _ = active; // silence warning for the moment
+        // Re-use FindInactiveGroupByCandidatesAsync as a best-effort lookup:
+        // it matches by GoogleId / email, so feeding it the prefix@domain form
+        // lets the email-based branch hit.
         var email = ExtractGroupEmailFromUrl(expectedUrl);
         if (email is null) return null;
         return await _resourceRepository.FindInactiveGroupByCandidatesAsync(
