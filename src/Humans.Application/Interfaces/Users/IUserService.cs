@@ -132,13 +132,29 @@ public interface IUserService
 
     /// <summary>
     /// Sets <see cref="User.GoogleEmailStatus"/> to <paramref name="status"/>.
-    /// Used by <c>GoogleWorkspaceSyncService</c> to mark a user's Google email
-    /// as <see cref="GoogleEmailStatus.Rejected"/> after Google returns HTTP 403
-    /// during a group-add, indicating the email address is not associated with
-    /// a Google account. Returns true when a write occurred (user exists and
-    /// status actually changed), false otherwise.
+    /// Unconditional — used by operator-driven overrides (e.g. email-backfill
+    /// flows that promote a freshly-provisioned <c>@nobodies.team</c> address
+    /// back to <see cref="GoogleEmailStatus.Valid"/>). Sync-driven writes must
+    /// use <see cref="TrySetGoogleEmailStatusFromSyncAsync"/> so the
+    /// "Rejected is terminal" invariant is preserved in one place.
+    /// Returns true when a write occurred (user exists and status actually
+    /// changed), false otherwise.
     /// </summary>
     Task<bool> SetGoogleEmailStatusAsync(
+        Guid userId, GoogleEmailStatus status, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sync-driven <see cref="User.GoogleEmailStatus"/> write that preserves
+    /// the "Rejected is terminal" invariant: once flagged
+    /// <see cref="GoogleEmailStatus.Rejected"/> (Google HTTP 403 on a
+    /// group-add), a later successful sync MUST NOT flip the user back to
+    /// <see cref="GoogleEmailStatus.Valid"/> until they change their email.
+    /// Call this from any outbox-processor / reconciliation writer; the
+    /// invariant lives here so a future second caller cannot silently bypass
+    /// it. Returns true if a write occurred, false if short-circuited by
+    /// the rule or the user does not exist.
+    /// </summary>
+    Task<bool> TrySetGoogleEmailStatusFromSyncAsync(
         Guid userId, GoogleEmailStatus status, CancellationToken ct = default);
 
     /// <summary>

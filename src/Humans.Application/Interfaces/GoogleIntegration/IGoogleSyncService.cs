@@ -173,4 +173,14 @@ public interface IGoogleSyncService
     /// read <c>google_sync_outbox_events</c> directly (design-rules §2c).
     /// </summary>
     Task<int> GetFailedSyncEventCountAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the most recent Google sync outbox events for the admin
+    /// dashboard, ordered newest-first and capped by <paramref name="take"/>.
+    /// Keeps <c>google_sync_outbox_events</c> reads inside the owning service
+    /// (design-rules §2a/§2c) so callers do not reach past <see cref="IGoogleSyncService"/>
+    /// into the repository directly.
+    /// </summary>
+    Task<IReadOnlyList<GoogleSyncOutboxEvent>> GetRecentOutboxEventsAsync(
+        int take, CancellationToken cancellationToken = default);
 }

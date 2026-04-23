@@ -1932,6 +1932,11 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     public Task<int> GetFailedSyncEventCountAsync(CancellationToken cancellationToken = default)
         => _googleSyncOutboxRepository.CountFailedAsync(cancellationToken);
 
+    /// <inheritdoc />
+    public Task<IReadOnlyList<GoogleSyncOutboxEvent>> GetRecentOutboxEventsAsync(
+        int take, CancellationToken cancellationToken = default)
+        => _googleSyncOutboxRepository.GetRecentAsync(take, cancellationToken);
+
     // ==========================================================================
     // Private helpers — data loading / identity / permission helpers
     // ==========================================================================
