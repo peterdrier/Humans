@@ -66,6 +66,17 @@ internal static class GoogleWorkspaceInfrastructureExtensions
             // implementations live in Humans.Infrastructure.
             services.AddScoped<IWorkspaceUserDirectoryClient, WorkspaceUserDirectoryClient>();
             services.AddScoped<IGoogleWorkspaceUserService, GoogleWorkspaceUserService>();
+
+            // §15 Part 2a (issue #574) — SDK bridge interfaces for the
+            // GoogleWorkspaceSyncService migration in Part 2b (#575). These
+            // are registered alongside the existing SDK-direct service
+            // (dual-path during 2a → 2b transition). GoogleWorkspaceSyncService
+            // continues to import Google.Apis.* directly until Part 2b strips
+            // it; no Application-layer imports are added here.
+            services.AddScoped<IGoogleGroupMembershipClient, GoogleGroupMembershipClient>();
+            services.AddScoped<IGoogleGroupProvisioningClient, GoogleGroupProvisioningClient>();
+            services.AddScoped<IGoogleDrivePermissionsClient, GoogleDrivePermissionsClient>();
+            services.AddScoped<IGoogleDirectoryClient, GoogleDirectoryClient>();
         }
         else if (environment.IsProduction())
         {
@@ -81,6 +92,16 @@ internal static class GoogleWorkspaceInfrastructureExtensions
 
             services.AddScoped<IWorkspaceUserDirectoryClient, StubWorkspaceUserDirectoryClient>();
             services.AddScoped<IGoogleWorkspaceUserService, GoogleWorkspaceUserService>();
+
+            // §15 Part 2a (issue #574) — stub SDK bridge interfaces for dev
+            // environments without Google credentials. Registered as
+            // Singletons so each stub's in-memory state survives across
+            // scoped requests (matching the once-per-process behaviour of
+            // the real SDK client handles).
+            services.AddSingleton<IGoogleGroupMembershipClient, StubGoogleGroupMembershipClient>();
+            services.AddSingleton<IGoogleGroupProvisioningClient, StubGoogleGroupProvisioningClient>();
+            services.AddSingleton<IGoogleDrivePermissionsClient, StubGoogleDrivePermissionsClient>();
+            services.AddSingleton<IGoogleDirectoryClient, StubGoogleDirectoryClient>();
         }
 
         services.AddScoped<IGoogleAdminService, GoogleAdminService>();
