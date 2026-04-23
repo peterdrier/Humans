@@ -23,10 +23,12 @@ public class TeamJoinRequestStateHistoryConfiguration : IEntityTypeConfiguration
         builder.Property(sh => sh.Notes)
             .HasMaxLength(2000);
 
+#pragma warning disable CS0618 // Obsolete cross-domain nav kept so EF FK constraint stays modelled.
         builder.HasOne(sh => sh.ChangedByUser)
             .WithMany()
             .HasForeignKey(sh => sh.ChangedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
+#pragma warning restore CS0618
 
         builder.HasIndex(sh => sh.TeamJoinRequestId);
         builder.HasIndex(sh => sh.ChangedAt);

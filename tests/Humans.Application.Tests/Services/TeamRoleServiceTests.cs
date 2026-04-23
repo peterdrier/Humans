@@ -8,12 +8,15 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Caching;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Services.Shifts;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Repositories.Teams;
 using Xunit;
 using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
+using TeamService = Humans.Application.Services.Teams.TeamService;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Teams;
@@ -31,6 +34,7 @@ public class TeamRoleServiceTests : IDisposable
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly TeamService _service;
+    private readonly IShiftAuthorizationInvalidator _shiftAuthInvalidator;
 
     public TeamRoleServiceTests()
     {
@@ -70,14 +74,39 @@ public class TeamRoleServiceTests : IDisposable
             cache,
             _clock,
             NullLogger<ShiftManagementService>.Instance);
+        var teamRepo = new TeamRepository(new TestDbContextFactory(options));
+        var testUserService = Substitute.For<IUserService>();
+        testUserService
+            .GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
+                if (ids.Count == 0)
+                    return Task.FromResult<IReadOnlyDictionary<Guid, User>>(new Dictionary<Guid, User>());
+                using var db = new HumansDbContext(options);
+                var users = db.Users.AsNoTracking().Where(u => ids.Contains(u.Id)).ToList();
+                return Task.FromResult<IReadOnlyDictionary<Guid, User>>(users.ToDictionary(u => u.Id));
+            });
+        testUserService
+            .GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var id = callInfo.Arg<Guid>();
+                using var db = new HumansDbContext(options);
+                return Task.FromResult(db.Users.AsNoTracking().FirstOrDefault(u => u.Id == id));
+            });
+        serviceProvider.GetService(typeof(IUserService)).Returns(testUserService);
+        _shiftAuthInvalidator = Substitute.For<IShiftAuthorizationInvalidator>();
         _service = new TeamService(
-            _dbContext,
+            teamRepo,
             Substitute.For<IAuditLogService>(),
             Substitute.For<INotificationEmitter>(),
             shiftManagementService,
+            Substitute.For<INotificationMeterCacheInvalidator>(),
+            _shiftAuthInvalidator,
             serviceProvider,
-            _clock,
             cache,
+            _clock,
             NullLogger<TeamService>.Instance);
     }
 
@@ -215,6 +244,40 @@ public class TeamRoleServiceTests : IDisposable
         result.IsManagement.Should().BeTrue();
     }
 
+    /// <summary>
+    /// Regression: Codex PR#300 P1 — when <c>IsManagement</c> flips on a role
+    /// with existing assignments, the service must invalidate shift
+    /// authorization for every assignee's user id. The bug was that
+    /// <c>FindRoleDefinitionForMutationAsync</c> returned assignments without
+    /// <c>TeamMember</c> loaded, so the computed user-id set was empty and the
+    /// cache stayed stale. Repository now eager-loads
+    /// <c>Assignments.TeamMember</c>.
+    /// </summary>
+    [Fact]
+    public async Task UpdateRoleDefinitionAsync_FlipIsManagementWithAssignees_InvalidatesShiftAuthPerAssignee()
+    {
+        var admin = SeedUser("Admin");
+        SeedAdminRole(admin);
+        var team = SeedTeam("Test Team");
+        var user1 = SeedUser("U1");
+        var user2 = SeedUser("U2");
+        var role = SeedRoleDefinition(team, "Lead", slotCount: 2, sortOrder: 0);
+        var member1 = SeedMember(team, user1);
+        var member2 = SeedMember(team, user2);
+        SeedRoleAssignment(role, member1, slotIndex: 0);
+        SeedRoleAssignment(role, member2, slotIndex: 1);
+        await _dbContext.SaveChangesAsync();
+
+        // Flip IsManagement from false -> true while the role has assignees.
+        await _service.UpdateRoleDefinitionAsync(
+            role.Id, "Lead", null, 2,
+            [SlotPriority.Critical, SlotPriority.Critical], 0,
+            isManagement: true, RolePeriod.YearRound, admin.Id);
+
+        _shiftAuthInvalidator.Received(1).Invalidate(user1.Id);
+        _shiftAuthInvalidator.Received(1).Invalidate(user2.Id);
+    }
+
     // ==========================================================================
     // SetRoleIsManagementAsync
     // ==========================================================================
@@ -233,10 +296,12 @@ public class TeamRoleServiceTests : IDisposable
 
         await _service.SetRoleIsManagementAsync(mgmtRole.Id, false, admin.Id);
 
-        var roleInDb = await _dbContext.Set<TeamRoleDefinition>().FindAsync(mgmtRole.Id);
+        _dbContext.ChangeTracker.Clear();
+
+        var roleInDb = await _dbContext.Set<TeamRoleDefinition>().AsNoTracking().FirstOrDefaultAsync(r => r.Id == mgmtRole.Id);
         roleInDb!.IsManagement.Should().BeFalse();
 
-        var memberInDb = await _dbContext.TeamMembers.FindAsync(member.Id);
+        var memberInDb = await _dbContext.TeamMembers.AsNoTracking().FirstOrDefaultAsync(m => m.Id == member.Id);
         memberInDb!.Role.Should().Be(TeamMemberRole.Member);
     }
 
@@ -339,7 +404,9 @@ public class TeamRoleServiceTests : IDisposable
 
         await _service.AssignToRoleAsync(mgmtRole.Id, user.Id, admin.Id);
 
-        var memberInDb = await _dbContext.TeamMembers.FindAsync(member.Id);
+        _dbContext.ChangeTracker.Clear();
+
+        var memberInDb = await _dbContext.TeamMembers.AsNoTracking().FirstOrDefaultAsync(m => m.Id == member.Id);
         memberInDb!.Role.Should().Be(TeamMemberRole.Coordinator);
     }
 
@@ -381,7 +448,9 @@ public class TeamRoleServiceTests : IDisposable
 
         await _service.UnassignFromRoleAsync(mgmtRole.Id, member.Id, admin.Id);
 
-        var memberInDb = await _dbContext.TeamMembers.FindAsync(member.Id);
+        _dbContext.ChangeTracker.Clear();
+
+        var memberInDb = await _dbContext.TeamMembers.AsNoTracking().FirstOrDefaultAsync(m => m.Id == member.Id);
         memberInDb!.Role.Should().Be(TeamMemberRole.Member);
     }
 
@@ -404,14 +473,16 @@ public class TeamRoleServiceTests : IDisposable
         // Unassign from team1's management role — but still coordinator on team2
         await _service.UnassignFromRoleAsync(mgmtRole1.Id, member1.Id, admin.Id);
 
+        _dbContext.ChangeTracker.Clear();
+
         // member1's Role demotes because the demotion check uses TeamMemberId,
         // and member1 and member2 are different TeamMember entities.
         // member1 has no other management assignments → demotes.
-        var member1InDb = await _dbContext.TeamMembers.FindAsync(member1.Id);
+        var member1InDb = await _dbContext.TeamMembers.AsNoTracking().FirstOrDefaultAsync(m => m.Id == member1.Id);
         member1InDb!.Role.Should().Be(TeamMemberRole.Member);
 
         // member2 is unaffected
-        var member2InDb = await _dbContext.TeamMembers.FindAsync(member2.Id);
+        var member2InDb = await _dbContext.TeamMembers.AsNoTracking().FirstOrDefaultAsync(m => m.Id == member2.Id);
         member2InDb!.Role.Should().Be(TeamMemberRole.Coordinator);
     }
 
@@ -433,12 +504,17 @@ public class TeamRoleServiceTests : IDisposable
 
         await _service.LeaveTeamAsync(team.Id, user.Id);
 
+        // Service now persists via its own DbContext; detach the tracker so we
+        // re-read from the store rather than seeing the stale in-memory entity.
+        _dbContext.ChangeTracker.Clear();
+
         var assignments = await _dbContext.Set<TeamRoleAssignment>()
+            .AsNoTracking()
             .Where(a => a.TeamMemberId == member.Id)
             .ToListAsync();
         assignments.Should().BeEmpty();
 
-        var memberInDb = await _dbContext.TeamMembers.FindAsync(member.Id);
+        var memberInDb = await _dbContext.TeamMembers.AsNoTracking().FirstOrDefaultAsync(m => m.Id == member.Id);
         memberInDb!.LeftAt.Should().NotBeNull();
     }
 

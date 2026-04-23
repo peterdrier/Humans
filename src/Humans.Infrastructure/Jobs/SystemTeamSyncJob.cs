@@ -16,6 +16,13 @@ using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Governance;
 
+// Cross-domain nav reads (TeamMember.User, TeamJoinRequest.User, etc.) are
+// scheduled for removal per design-rules §6c, but SystemTeamSyncJob still
+// lives in Infrastructure and reads TeamMember.User directly (§15i — Google
+// Workspace / SystemTeamSync row). This file-wide pragma is cleared when the
+// job migrates to Application alongside the User-entity nav strip.
+#pragma warning disable CS0618
+
 namespace Humans.Infrastructure.Jobs;
 
 /// <summary>

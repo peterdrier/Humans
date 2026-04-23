@@ -20,10 +20,12 @@ public class TeamMemberConfiguration : IEntityTypeConfiguration<TeamMember>
         builder.Property(tm => tm.JoinedAt)
             .IsRequired();
 
+#pragma warning disable CS0618 // Obsolete cross-domain nav kept so EF FK constraint stays modelled.
         builder.HasOne(tm => tm.User)
             .WithMany()
             .HasForeignKey(tm => tm.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+#pragma warning restore CS0618
 
         builder.HasIndex(tm => new { tm.TeamId, tm.UserId });
         builder.HasIndex(tm => tm.UserId);

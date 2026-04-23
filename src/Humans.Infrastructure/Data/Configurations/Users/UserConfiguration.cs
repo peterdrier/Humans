@@ -63,10 +63,12 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasForeignKey(a => a.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+#pragma warning disable CS0618 // TeamMember.User is Obsolete per §6c; kept for EF FK + inverse nav.
         builder.HasMany(u => u.TeamMemberships)
             .WithOne(tm => tm.User)
             .HasForeignKey(tm => tm.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+#pragma warning restore CS0618
 
         builder.HasMany(u => u.UserEmails)
             .WithOne()
