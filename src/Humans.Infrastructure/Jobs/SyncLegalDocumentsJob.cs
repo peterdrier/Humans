@@ -1,22 +1,31 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Infrastructure.Data;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Legal;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Infrastructure.Jobs;
 
 /// <summary>
 /// Background job that syncs legal documents from the GitHub repository.
 /// </summary>
+/// <remarks>
+/// Reads active team member user ids via <see cref="ITeamService"/> and user
+/// display data via <see cref="IUserService"/> so the job never touches
+/// <see cref="Humans.Infrastructure.Data.HumansDbContext"/> directly
+/// (design-rules §2c). Consent lookups remain on <see cref="IConsentRepository"/>
+/// which is already the Legal &amp; Consent section's owned repository.
+/// </remarks>
 public class SyncLegalDocumentsJob : IRecurringJob
 {
     private readonly ILegalDocumentSyncService _syncService;
     private readonly IEmailService _emailService;
-    private readonly HumansDbContext _dbContext;
+    private readonly ITeamService _teamService;
+    private readonly IUserService _userService;
     private readonly IConsentRepository _consentRepository;
     private readonly IHumansMetrics _metrics;
     private readonly ILogger<SyncLegalDocumentsJob> _logger;
@@ -25,7 +34,8 @@ public class SyncLegalDocumentsJob : IRecurringJob
     public SyncLegalDocumentsJob(
         ILegalDocumentSyncService syncService,
         IEmailService emailService,
-        HumansDbContext dbContext,
+        ITeamService teamService,
+        IUserService userService,
         IConsentRepository consentRepository,
         IHumansMetrics metrics,
         ILogger<SyncLegalDocumentsJob> logger,
@@ -33,7 +43,8 @@ public class SyncLegalDocumentsJob : IRecurringJob
     {
         _syncService = syncService;
         _emailService = emailService;
-        _dbContext = dbContext;
+        _teamService = teamService;
+        _userService = userService;
         _consentRepository = consentRepository;
         _metrics = metrics;
         _logger = logger;
@@ -87,13 +98,16 @@ public class SyncLegalDocumentsJob : IRecurringJob
         // Get unique team IDs for updated docs
         var teamIds = updatedDocs.Select(d => d.TeamId).Distinct().ToList();
 
-        // Get active team members for affected teams
-        var activeUserIds = await _dbContext.TeamMembers
-            .AsNoTracking()
-            .Where(tm => tm.LeftAt == null && teamIds.Contains(tm.TeamId))
-            .Select(tm => tm.UserId)
-            .Distinct()
-            .ToListAsync(cancellationToken);
+        // Get active team members for affected teams (union across teams, de-duped).
+        var activeUserIds = new HashSet<Guid>();
+        foreach (var teamId in teamIds)
+        {
+            var members = await _teamService.GetActiveMemberUserIdsAsync(teamId, cancellationToken);
+            foreach (var userId in members)
+            {
+                activeUserIds.Add(userId);
+            }
+        }
 
         if (activeUserIds.Count == 0)
         {
@@ -107,14 +121,15 @@ public class SyncLegalDocumentsJob : IRecurringJob
             .Select(d => d.Versions.OrderByDescending(v => v.EffectiveFrom).First().Id)
             .ToList();
 
+        var activeUserIdList = activeUserIds.ToList();
         var consentPairs = await _consentRepository.GetPairsForUsersAndVersionsAsync(
-            activeUserIds, updatedDocVersionIds, cancellationToken);
+            activeUserIdList, updatedDocVersionIds, cancellationToken);
 
         var userConsents = consentPairs
             .GroupBy(c => c.UserId)
             .ToDictionary(g => g.Key, g => g.Select(c => c.DocumentVersionId).ToHashSet());
 
-        var usersToNotify = activeUserIds
+        var usersToNotify = activeUserIdList
             .Where(userId => !userConsents.TryGetValue(userId, out var consented) ||
                              !updatedDocVersionIds.All(id => consented.Contains(id)))
             .ToList();
@@ -125,17 +140,19 @@ public class SyncLegalDocumentsJob : IRecurringJob
             return;
         }
 
-        // Batch load user entities for display names and emails
-        var users = await _dbContext.Users
-            .AsNoTracking()
-            .Where(u => usersToNotify.Contains(u.Id))
-            .ToListAsync(cancellationToken);
+        // Batch load user entities for display names and emails via IUserService
+        var users = await _userService.GetByIdsAsync(usersToNotify, cancellationToken);
 
         var documentNames = updatedDocs.Where(d => d.IsRequired).Select(d => d.Name).ToList();
         var notificationCount = 0;
 
-        foreach (var user in users)
+        foreach (var userId in usersToNotify)
         {
+            if (!users.TryGetValue(userId, out var user))
+            {
+                continue;
+            }
+
             var effectiveEmail = user.GetEffectiveEmail();
             if (effectiveEmail is null)
             {

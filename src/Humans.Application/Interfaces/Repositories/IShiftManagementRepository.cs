@@ -342,4 +342,13 @@ public interface IShiftManagementRepository
 
     Task UpdateVolunteerEventProfileAsync(
         VolunteerEventProfile profile, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes every <c>VolunteerEventProfile</c> row belonging to
+    /// <paramref name="userId"/>. Returns the number of rows removed. Used by
+    /// the account anonymization flow so the Shifts section owns
+    /// <c>volunteer_event_profiles</c> writes (design-rules §2c).
+    /// </summary>
+    Task<int> DeleteVolunteerEventProfilesForUserAsync(
+        Guid userId, CancellationToken ct = default);
 }

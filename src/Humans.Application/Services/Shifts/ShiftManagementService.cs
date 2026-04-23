@@ -1396,4 +1396,8 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         return profile;
     }
+
+    public Task<int> DeleteShiftProfilesForUserAsync(
+        Guid userId, CancellationToken ct = default) =>
+        _repo.DeleteVolunteerEventProfilesForUserAsync(userId, ct);
 }

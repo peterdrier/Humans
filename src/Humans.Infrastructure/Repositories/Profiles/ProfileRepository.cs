@@ -218,7 +218,14 @@ public sealed class ProfileRepository : IProfileRepository
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<bool> AnonymizeForMergeByUserIdAsync(Guid userId, CancellationToken ct = default)
+    public Task<bool> AnonymizeForMergeByUserIdAsync(Guid userId, CancellationToken ct = default) =>
+        AnonymizeProfileInternalAsync(userId, "Merged", "User", ct);
+
+    public Task<bool> AnonymizeForDeletionByUserIdAsync(Guid userId, CancellationToken ct = default) =>
+        AnonymizeProfileInternalAsync(userId, "Deleted", "User", ct);
+
+    private async Task<bool> AnonymizeProfileInternalAsync(
+        Guid userId, string firstName, string lastName, CancellationToken ct)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var profile = await ctx.Profiles
@@ -227,8 +234,8 @@ public sealed class ProfileRepository : IProfileRepository
         if (profile is null)
             return false;
 
-        profile.FirstName = "Merged";
-        profile.LastName = "User";
+        profile.FirstName = firstName;
+        profile.LastName = lastName;
         profile.BurnerName = string.Empty;
         profile.Bio = null;
         profile.City = null;

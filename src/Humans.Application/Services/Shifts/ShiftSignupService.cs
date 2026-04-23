@@ -1068,4 +1068,8 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         return [signupSlice, vepSlice, availabilitySlice, tagPreferenceSlice];
     }
+
+    public Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
+        Guid userId, string reason, CancellationToken ct = default) =>
+        _repo.CancelActiveSignupsForUserAsync(userId, reason, ct);
 }

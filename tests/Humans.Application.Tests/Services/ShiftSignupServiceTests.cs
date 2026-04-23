@@ -61,7 +61,7 @@ public class ShiftSignupServiceTests : IDisposable
             _clock,
             NullLogger<ShiftManagementService>.Instance);
 
-        _repo = new ShiftSignupRepository(_dbContext);
+        _repo = new ShiftSignupRepository(_dbContext, _clock);
         _service = new ShiftSignupService(
             _repo,
             _shiftMgmt,

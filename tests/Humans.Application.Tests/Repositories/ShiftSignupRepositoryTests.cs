@@ -5,6 +5,7 @@ using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Shifts;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
+using NodaTime.Testing;
 using Xunit;
 
 namespace Humans.Application.Tests.Repositories;
@@ -28,7 +29,7 @@ public class ShiftSignupRepositoryTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _dbContext = new HumansDbContext(options);
-        _repo = new ShiftSignupRepository(_dbContext);
+        _repo = new ShiftSignupRepository(_dbContext, new FakeClock(TestNow));
     }
 
     public void Dispose()

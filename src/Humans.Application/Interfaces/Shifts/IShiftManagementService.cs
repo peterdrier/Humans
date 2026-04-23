@@ -290,6 +290,15 @@ public interface IShiftManagementService
     /// Gets a user's shift profile. Medical data included only when includeMedical=true.
     /// </summary>
     Task<VolunteerEventProfile?> GetShiftProfileAsync(Guid userId, bool includeMedical);
+
+    /// <summary>
+    /// Deletes every <c>VolunteerEventProfile</c> row owned by
+    /// <paramref name="userId"/>. Returns the number of rows removed. Used by
+    /// the account anonymization flow so the job does not write to
+    /// <c>volunteer_event_profiles</c> directly (design-rules §2c).
+    /// </summary>
+    Task<int> DeleteShiftProfilesForUserAsync(
+        Guid userId, CancellationToken ct = default);
 }
 
 /// <summary>

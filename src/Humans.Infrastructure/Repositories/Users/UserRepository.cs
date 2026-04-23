@@ -410,6 +410,89 @@ public sealed class UserRepository : IUserRepository
         return await ctx.Users.CountAsync(u => u.DeletionRequestedAt != null, ct);
     }
 
+    public async Task SetLastConsentReminderSentAsync(
+        Guid userId, Instant sentAt, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var user = await ctx.Users.FindAsync([userId], ct);
+        if (user is null)
+            return;
+
+        user.LastConsentReminderSentAt = sentAt;
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<int> GetRejectedGoogleEmailCountAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Users.CountAsync(u => u.GoogleEmailStatus == GoogleEmailStatus.Rejected, ct);
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
+        Instant now, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Users
+            .AsNoTracking()
+            .Where(u => u.DeletionScheduledFor != null
+                && u.DeletionScheduledFor <= now
+                && (u.DeletionEligibleAfter == null || u.DeletionEligibleAfter <= now))
+            .Select(u => u.Id)
+            .ToListAsync(ct);
+    }
+
+    public async Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var user = await ctx.Users
+            .Include(u => u.UserEmails)
+            .FirstOrDefaultAsync(u => u.Id == userId, ct);
+
+        if (user is null)
+            return null;
+
+        var originalEmail = user.GetEffectiveEmail();
+        var originalDisplayName = user.DisplayName;
+        var preferredLanguage = user.PreferredLanguage;
+
+        // Synthetic anonymized identifier derived from the user id so the
+        // collision surface for the sentinel email is zero (one per user).
+        var anonymizedId = $"deleted-{user.Id:N}";
+
+        user.DisplayName = "Deleted User";
+        user.Email = $"{anonymizedId}@deleted.local";
+        user.NormalizedEmail = user.Email.ToUpperInvariant();
+        user.UserName = anonymizedId;
+        user.NormalizedUserName = anonymizedId.ToUpperInvariant();
+        user.ProfilePictureUrl = null;
+        user.PhoneNumber = null;
+        user.PhoneNumberConfirmed = false;
+
+        // Remove all verified / unverified email addresses associated with the
+        // account so the unique index does not block future accounts from
+        // reusing the same addresses and so the anonymized row cannot be
+        // discovered by email lookup.
+        ctx.UserEmails.RemoveRange(user.UserEmails);
+
+        // Clear deletion request fields (deletion is now complete).
+        user.DeletionRequestedAt = null;
+        user.DeletionScheduledFor = null;
+        user.DeletionEligibleAfter = null;
+
+        // Permanently lock out the account.
+        user.LockoutEnabled = true;
+        user.LockoutEnd = DateTimeOffset.MaxValue;
+        user.SecurityStamp = Guid.NewGuid().ToString();
+
+        // Clear iCal token so old calendar feed URLs stop serving data.
+        user.ICalToken = null;
+
+        await ctx.SaveChangesAsync(ct);
+        return new ExpiredDeletionAnonymizationResult(
+            originalEmail, originalDisplayName, preferredLanguage);
+    }
+
     // ==========================================================================
     // Reads — EventParticipation
     // ==========================================================================

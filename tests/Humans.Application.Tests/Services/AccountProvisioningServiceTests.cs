@@ -191,6 +191,14 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<int> GetPendingDeletionCountAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task SetLastConsentReminderSentAsync(Guid userId, Instant sentAt, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<int> GetRejectedGoogleEmailCountAsync(CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(Instant now, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
     }
 
     private sealed class FakeUserEmailRepository : IUserEmailRepository

@@ -209,6 +209,41 @@ public interface IUserRepository
     /// </summary>
     Task<int> GetPendingDeletionCountAsync(CancellationToken ct = default);
 
+    /// <summary>
+    /// Sets <c>User.LastConsentReminderSentAt</c> to <paramref name="sentAt"/>.
+    /// No-op if the user does not exist.
+    /// </summary>
+    Task SetLastConsentReminderSentAsync(
+        Guid userId, Instant sentAt, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the count of users whose <c>GoogleEmailStatus</c> equals
+    /// <see cref="GoogleEmailStatus.Rejected"/>. Used by the admin digest.
+    /// </summary>
+    Task<int> GetRejectedGoogleEmailCountAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the ids of every user whose <c>DeletionScheduledFor</c> is at
+    /// or before <paramref name="now"/> and whose <c>DeletionEligibleAfter</c>
+    /// is either null or at or before <paramref name="now"/>. Used by the
+    /// account deletion job to enumerate expired candidates.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
+        Instant now, CancellationToken ct = default);
+
+    /// <summary>
+    /// Applies the identity-level fields of the GDPR expiry anonymization in
+    /// one atomic save: renames the user to <c>Deleted User</c> + sentinel
+    /// email, removes every <c>UserEmail</c> row, clears phone/picture/iCal
+    /// token, clears all deletion fields, sets the security stamp, and
+    /// permanently locks out the account. Returns a small summary of the
+    /// prior identity (effective email, display name, preferred language) or
+    /// <c>null</c> if the user does not exist. Used by the account deletion
+    /// job via <see cref="AnonymizeExpiredAccountAsync"/>.
+    /// </summary>
+    Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(
+        Guid userId, CancellationToken ct = default);
+
     // ==========================================================================
     // Reads — EventParticipation
     // ==========================================================================
@@ -274,3 +309,20 @@ public interface IUserRepository
         IReadOnlyList<(Guid UserId, ParticipationStatus Status)> entries,
         CancellationToken ct = default);
 }
+
+/// <summary>
+/// Slice returned from <see cref="IUserRepository.ApplyExpiredDeletionAnonymizationAsync"/>
+/// so the service layer can send the confirmation email and log audit entries
+/// without re-loading the (now anonymized) user.
+/// </summary>
+/// <param name="OriginalEmail">
+/// The effective email on the account before anonymization (preferring the
+/// verified notification-target <c>UserEmail</c> row, falling back to
+/// <c>User.Email</c>). May be null when the account never had an email.
+/// </param>
+/// <param name="OriginalDisplayName">Display name on the user before the write.</param>
+/// <param name="PreferredLanguage">Preferred language on the user before the write.</param>
+public record ExpiredDeletionAnonymizationResult(
+    string? OriginalEmail,
+    string OriginalDisplayName,
+    string PreferredLanguage);

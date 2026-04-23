@@ -151,6 +151,20 @@ public interface IProfileRepository
     Task<bool> AnonymizeForMergeByUserIdAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
+    /// Same set of writes as <see cref="AnonymizeForMergeByUserIdAsync"/>,
+    /// but labels the anonymized row as <c>"Deleted User"</c> instead of
+    /// <c>"Merged User"</c>. Used by the expired-deletion job path so the
+    /// post-anonymization audit log, profile view, etc. identify the record
+    /// as a GDPR-erasure outcome rather than an account merge.
+    /// </summary>
+    /// <remarks>
+    /// No-op if the user has no profile. Returns true when a profile existed
+    /// and was anonymized. Language rows (<see cref="ProfileLanguage"/>) are
+    /// intentionally left as-is; they are not personally identifying.
+    /// </remarks>
+    Task<bool> AnonymizeForDeletionByUserIdAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// Reconciles the CV-entry collection for the given profile with the
     /// provided set, keyed by <see cref="CVEntry.Id"/>:
     /// <list type="bullet">

@@ -997,6 +997,9 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         return true;
     }
 
+    public Task<bool> AnonymizeExpiredProfileAsync(Guid userId, CancellationToken ct = default) =>
+        _profileRepository.AnonymizeForDeletionByUserIdAsync(userId, ct);
+
     // ==========================================================================
     // Helpers
     // ==========================================================================

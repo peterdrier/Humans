@@ -572,4 +572,19 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         }
         return set;
     }
+
+    public async Task<bool> AnonymizeExpiredProfileAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        var anonymized = await inner.AnonymizeExpiredProfileAsync(userId, ct);
+        if (anonymized)
+        {
+            // The profile fields used by the FullProfile projection changed —
+            // refresh the cache entry so downstream readers see the anonymized
+            // view immediately.
+            await RefreshEntryAsync(userId, ct);
+        }
+        return anonymized;
+    }
 }

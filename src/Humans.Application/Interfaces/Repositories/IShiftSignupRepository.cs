@@ -221,4 +221,14 @@ public interface IShiftSignupRepository
     /// calls made in the same request.
     /// </summary>
     Task SaveChangesAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Cancels every <c>Confirmed</c> or <c>Pending</c> signup belonging to
+    /// <paramref name="userId"/>, stamping the supplied <paramref name="reason"/>
+    /// and persisting in one <c>SaveChangesAsync</c> call. Returns the id and
+    /// shift id of each signup that was cancelled so the caller can emit
+    /// per-signup audit entries.
+    /// </summary>
+    Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
+        Guid userId, string reason, CancellationToken ct = default);
 }

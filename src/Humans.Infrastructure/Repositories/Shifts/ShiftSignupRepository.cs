@@ -5,6 +5,7 @@ using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Auth;
 using Humans.Infrastructure.Repositories.Governance;
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
 
 namespace Humans.Infrastructure.Repositories.Shifts;
 
@@ -25,10 +26,12 @@ namespace Humans.Infrastructure.Repositories.Shifts;
 public sealed class ShiftSignupRepository : IShiftSignupRepository
 {
     private readonly HumansDbContext _dbContext;
+    private readonly IClock _clock;
 
-    public ShiftSignupRepository(HumansDbContext dbContext)
+    public ShiftSignupRepository(HumansDbContext dbContext, IClock clock)
     {
         _dbContext = dbContext;
+        _clock = clock;
     }
 
     // ============================================================
@@ -226,4 +229,27 @@ public sealed class ShiftSignupRepository : IShiftSignupRepository
     public void AddRange(IEnumerable<ShiftSignup> signups) => _dbContext.ShiftSignups.AddRange(signups);
 
     public Task SaveChangesAsync(CancellationToken ct = default) => _dbContext.SaveChangesAsync(ct);
+
+    public async Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
+        Guid userId, string reason, CancellationToken ct = default)
+    {
+        var activeSignups = await _dbContext.ShiftSignups
+            .Where(d => d.UserId == userId &&
+                        (d.Status == SignupStatus.Confirmed || d.Status == SignupStatus.Pending))
+            .ToListAsync(ct);
+
+        if (activeSignups.Count == 0)
+            return Array.Empty<(Guid, Guid)>();
+
+        var cancelled = new List<(Guid SignupId, Guid ShiftId)>(activeSignups.Count);
+        foreach (var signup in activeSignups)
+        {
+            signup.Cancel(_clock, reason);
+            cancelled.Add((signup.Id, signup.ShiftId));
+        }
+
+        await _dbContext.SaveChangesAsync(ct);
+        return cancelled;
+    }
+
 }

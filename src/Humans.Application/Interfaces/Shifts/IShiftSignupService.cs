@@ -104,6 +104,17 @@ public interface IShiftSignupService
     /// </summary>
     Task<(HashSet<Guid> ShiftIds, Dictionary<Guid, SignupStatus> Statuses)> GetActiveSignupStatusesAsync(
         Guid userId, Guid eventSettingsId);
+
+    /// <summary>
+    /// Cancels every Confirmed or Pending signup owned by
+    /// <paramref name="userId"/> with the supplied <paramref name="reason"/>,
+    /// in one atomic save. Returns the id + shift id of each signup that was
+    /// cancelled so callers (account deletion job) can emit per-signup audit
+    /// entries. Used by the account anonymization flow so the job does not
+    /// write to <c>shift_signups</c> directly (design-rules §2c).
+    /// </summary>
+    Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
+        Guid userId, string reason, CancellationToken ct = default);
 }
 
 /// <summary>

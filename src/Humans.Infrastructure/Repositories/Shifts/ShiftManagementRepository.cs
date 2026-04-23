@@ -716,4 +716,20 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
         ctx.VolunteerEventProfiles.Update(profile);
         await ctx.SaveChangesAsync(ct);
     }
+
+    public async Task<int> DeleteVolunteerEventProfilesForUserAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var profiles = await ctx.VolunteerEventProfiles
+            .Where(p => p.UserId == userId)
+            .ToListAsync(ct);
+
+        if (profiles.Count == 0)
+            return 0;
+
+        ctx.VolunteerEventProfiles.RemoveRange(profiles);
+        await ctx.SaveChangesAsync(ct);
+        return profiles.Count;
+    }
 }
