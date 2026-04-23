@@ -12,6 +12,9 @@ public class TeamJoinRequest
     public Guid TeamId { get; init; }
     public Team Team { get; set; } = null!;
     public Guid UserId { get; init; }
+    /// <summary>
+    /// Navigation property to the user who requested to join the team.
+    /// </summary>
     /// <remarks>
     /// Cross-domain nav into the Users section — will be removed per
     /// design-rules §6c once the User-entity nav strip follow-up lands.
@@ -24,6 +27,9 @@ public class TeamJoinRequest
     public Instant RequestedAt { get; init; }
     public Instant? ResolvedAt { get; set; }
     public Guid? ReviewedByUserId { get; set; }
+    /// <summary>
+    /// Navigation property to the user who reviewed the request (approver or rejecter).
+    /// </summary>
     /// <remarks>
     /// Cross-domain nav into the Users section — see <see cref="User"/>.
     /// </remarks>
