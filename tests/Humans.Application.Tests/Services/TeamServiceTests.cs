@@ -39,7 +39,7 @@ public class TeamServiceTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         _roleAssignmentService = new RoleAssignmentService(
-            new RoleAssignmentRepository(_dbContext),
+            new RoleAssignmentRepository(new TestDbContextFactory(options)),
             Substitute.For<IUserService>(),
             Substitute.For<IAuditLogService>(),
             Substitute.For<INotificationEmitter>(),

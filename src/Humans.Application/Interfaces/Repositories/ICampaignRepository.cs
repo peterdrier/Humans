@@ -23,13 +23,14 @@ public interface ICampaignRepository
     Task<Campaign?> GetByIdAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
-    /// Find a campaign for update — no navigation. Returns a tracked entity.
+    /// Load a campaign for update via <see cref="UpdateCampaignAsync"/> —
+    /// no navigation. Returns a detached entity.
     /// </summary>
     Task<Campaign?> FindForMutationAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
-    /// Find a campaign for update with its codes loaded (used during
-    /// activation and code import).
+    /// Load a campaign for update with its codes loaded (used during
+    /// activation and code import). Returns a detached entity.
     /// </summary>
     Task<Campaign?> FindForMutationWithCodesAsync(Guid id, CancellationToken ct = default);
 
@@ -55,15 +56,25 @@ public interface ICampaignRepository
     Task<IReadOnlyList<CampaignCodeTrackingGrantRow>> GetCodeTrackingGrantRowsAsync(
         CancellationToken ct = default);
 
-    /// <summary>Stage a new campaign in the change tracker.</summary>
-    void AddCampaign(Campaign campaign);
+    /// <summary>Persists a new campaign. Commits immediately.</summary>
+    Task AddCampaignAsync(Campaign campaign, CancellationToken ct = default);
+
+    /// <summary>
+    /// Persists changes to a mutated campaign (obtained via
+    /// <see cref="FindForMutationAsync"/> or <see cref="FindForMutationWithCodesAsync"/>).
+    /// Commits immediately.
+    /// </summary>
+    Task UpdateCampaignAsync(Campaign campaign, CancellationToken ct = default);
 
     // ==========================================================================
     // Campaign Codes
     // ==========================================================================
 
-    /// <summary>Stage a new campaign code in the change tracker.</summary>
-    void AddCampaignCode(CampaignCode code);
+    /// <summary>
+    /// Persists a batch of new campaign codes atomically. No-op when the list
+    /// is empty.
+    /// </summary>
+    Task AddCampaignCodesAsync(IReadOnlyList<CampaignCode> codes, CancellationToken ct = default);
 
     /// <summary>
     /// Returns available codes (not yet granted) for a campaign, ordered by
@@ -144,12 +155,6 @@ public interface ICampaignRepository
     Task<IReadOnlyList<GrantExportRow>> GetGrantsForUserExportAsync(
         Guid userId, CancellationToken ct = default);
 
-    // ==========================================================================
-    // Unit-of-work
-    // ==========================================================================
-
-    /// <summary>Commit staged changes in the change tracker.</summary>
-    Task SaveChangesAsync(CancellationToken ct = default);
 }
 
 /// <summary>

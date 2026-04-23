@@ -14,10 +14,9 @@ internal static class AuthSectionExtensions
     internal static IServiceCollection AddAuthSection(this IServiceCollection services)
     {
         // Auth section (§15 migration, issue #551) — repository + Application-
-        // layer service, no caching decorator. Auth writes are rare (handful of
-        // admin events per month); same Scoped + DbContext repository pattern
-        // as Governance.
-        services.AddScoped<IRoleAssignmentRepository, RoleAssignmentRepository>();
+        // layer service, no caching decorator. Singleton + IDbContextFactory
+        // pattern (§15b) so the repository owns context lifetime.
+        services.AddSingleton<IRoleAssignmentRepository, RoleAssignmentRepository>();
         services.AddScoped<IRoleAssignmentClaimsCacheInvalidator, RoleAssignmentClaimsCacheInvalidator>();
 
         services.AddScoped<RoleAssignmentService>();

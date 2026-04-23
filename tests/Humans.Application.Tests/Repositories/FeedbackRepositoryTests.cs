@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -23,7 +24,7 @@ public sealed class FeedbackRepositoryTests : IDisposable
             .Options;
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 18, 12, 0));
-        _repo = new FeedbackRepository(_dbContext);
+        _repo = new FeedbackRepository(new TestDbContextFactory(options));
     }
 
     public void Dispose()

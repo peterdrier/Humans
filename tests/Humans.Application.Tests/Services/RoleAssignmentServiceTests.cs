@@ -5,6 +5,7 @@ using NodaTime;
 using NodaTime.Testing;
 using Humans.Application;
 using Humans.Application.Interfaces;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Data;
@@ -36,7 +37,7 @@ public class RoleAssignmentServiceTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 2, 15, 15, 30));
 
-        _repository = new RoleAssignmentRepository(_dbContext);
+        _repository = new RoleAssignmentRepository(new TestDbContextFactory(options));
 
         _userService = Substitute.For<IUserService>();
         _userService

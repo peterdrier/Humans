@@ -188,7 +188,7 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
                 : $"{roleAssignment.Notes} | Ended: {notes}";
         }
 
-        await _repository.SaveTrackedAsync(ct);
+        await _repository.UpdateAsync(roleAssignment, ct);
 
         await _auditLogService.LogAsync(
             AuditAction.RoleEnded, nameof(User), roleAssignment.UserId,
@@ -260,7 +260,7 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
             role.ValidTo = now;
         }
 
-        await _repository.SaveTrackedAsync(ct);
+        await _repository.UpdateManyAsync(activeRoles, ct);
         _claimsInvalidator.Invalidate(userId);
 
         return activeRoles.Count;

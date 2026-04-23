@@ -35,7 +35,7 @@ public class TeamRoleServiceTests : IDisposable
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 11, 12, 0));
         var cache = new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
         var roleAssignmentService = new RoleAssignmentService(
-            new RoleAssignmentRepository(_dbContext),
+            new RoleAssignmentRepository(new TestDbContextFactory(options)),
             Substitute.For<IUserService>(),
             Substitute.For<IAuditLogService>(),
             Substitute.For<INotificationEmitter>(),

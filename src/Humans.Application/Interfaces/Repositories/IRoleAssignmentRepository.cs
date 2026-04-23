@@ -13,9 +13,8 @@ namespace Humans.Application.Interfaces.Repositories;
 /// in the Application layer stitch display data from <c>IUserService</c>.
 ///
 /// Auth is low-traffic (handful of admin writes per month, a few reads per
-/// day), so the repository uses the Scoped + <c>HumansDbContext</c> pattern
-/// (like <c>ApplicationRepository</c>) rather than the Singleton +
-/// <c>IDbContextFactory</c> pattern.
+/// day). The repository uses the Singleton + <c>IDbContextFactory</c> pattern
+/// so each method owns its own <c>HumansDbContext</c> lifetime.
 /// </remarks>
 public interface IRoleAssignmentRepository
 {
@@ -24,8 +23,9 @@ public interface IRoleAssignmentRepository
     // ==========================================================================
 
     /// <summary>
-    /// Loads a single role assignment by id, tracked for mutation. Cross-domain
-    /// navs are NOT populated. Returns null if the assignment does not exist.
+    /// Loads a single role assignment by id for mutation via
+    /// <see cref="UpdateAsync"/>. Cross-domain navs are NOT populated.
+    /// Returns null if the assignment does not exist.
     /// </summary>
     Task<RoleAssignment?> FindForMutationAsync(Guid assignmentId, CancellationToken ct = default);
 
@@ -107,8 +107,9 @@ public interface IRoleAssignmentRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// All currently-active assignments for the user, tracked for mutation.
-    /// Used by <c>RevokeAllActiveAsync</c> to stamp <c>ValidTo</c> on each.
+    /// All currently-active assignments for the user for mutation via
+    /// <see cref="UpdateManyAsync"/>. Used by <c>RevokeAllActiveAsync</c> to
+    /// stamp <c>ValidTo</c> on each.
     /// </summary>
     Task<IReadOnlyList<RoleAssignment>> GetActiveForUserForMutationAsync(
         Guid userId,
@@ -134,8 +135,15 @@ public interface IRoleAssignmentRepository
     Task AddAsync(RoleAssignment assignment, CancellationToken ct = default);
 
     /// <summary>
-    /// Persists changes to a tracked assignment (obtained via
-    /// <see cref="FindForMutationAsync"/> or <see cref="GetActiveForUserForMutationAsync"/>).
+    /// Persists changes to a mutated assignment (obtained via
+    /// <see cref="FindForMutationAsync"/>). Commits immediately.
     /// </summary>
-    Task SaveTrackedAsync(CancellationToken ct = default);
+    Task UpdateAsync(RoleAssignment assignment, CancellationToken ct = default);
+
+    /// <summary>
+    /// Persists changes to a list of mutated assignments (obtained via
+    /// <see cref="GetActiveForUserForMutationAsync"/>). Commits all in one
+    /// transaction. No-op when the list is empty.
+    /// </summary>
+    Task UpdateManyAsync(IReadOnlyList<RoleAssignment> assignments, CancellationToken ct = default);
 }

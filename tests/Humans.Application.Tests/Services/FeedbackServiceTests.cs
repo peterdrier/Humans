@@ -93,7 +93,7 @@ public class FeedbackServiceTests : IDisposable
         _notificationService = Substitute.For<INotificationService>();
         _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
 
-        _repository = new FeedbackRepository(_dbContext);
+        _repository = new FeedbackRepository(new TestDbContextFactory(options));
 
         _service = new FeedbackApplicationService(
             _repository, _userService, _userEmailService, _teamService,
