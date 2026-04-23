@@ -131,6 +131,17 @@ public interface IUserService
     Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
 
     /// <summary>
+    /// Sets <see cref="User.GoogleEmailStatus"/> to <paramref name="status"/>.
+    /// Used by <c>GoogleWorkspaceSyncService</c> to mark a user's Google email
+    /// as <see cref="GoogleEmailStatus.Rejected"/> after Google returns HTTP 403
+    /// during a group-add, indicating the email address is not associated with
+    /// a Google account. Returns true when a write occurred (user exists and
+    /// status actually changed), false otherwise.
+    /// </summary>
+    Task<bool> SetGoogleEmailStatusAsync(
+        Guid userId, GoogleEmailStatus status, CancellationToken ct = default);
+
+    /// <summary>
     /// Rewrites <c>User.Email</c>, <c>User.UserName</c>, and their normalized
     /// counterparts to <paramref name="newEmail"/>. If the user has an
     /// OAuth-sourced <see cref="UserEmail"/> row, it is

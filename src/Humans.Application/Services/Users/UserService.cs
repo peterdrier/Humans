@@ -169,6 +169,15 @@ public sealed class UserService : IUserService, IUserDataContributor
         return set;
     }
 
+    public async Task<bool> SetGoogleEmailStatusAsync(
+        Guid userId, GoogleEmailStatus status, CancellationToken ct = default)
+    {
+        var set = await _repo.SetGoogleEmailStatusAsync(userId, status, ct);
+        if (set)
+            await _fullProfileInvalidator.InvalidateAsync(userId, ct);
+        return set;
+    }
+
     public async Task<(bool Updated, string? OldEmail)> ApplyEmailBackfillAsync(
         Guid userId, string newEmail, CancellationToken ct = default)
     {

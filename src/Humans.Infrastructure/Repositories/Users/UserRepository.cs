@@ -246,6 +246,22 @@ public sealed class UserRepository : IUserRepository
         return true;
     }
 
+    public async Task<bool> SetGoogleEmailStatusAsync(
+        Guid userId, GoogleEmailStatus status, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var user = await ctx.Users.FindAsync([userId], ct);
+        if (user is null)
+            return false;
+
+        if (user.GoogleEmailStatus == status)
+            return false;
+
+        user.GoogleEmailStatus = status;
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
     public async Task<(bool Updated, string? OldEmail)> RewritePrimaryEmailAsync(
         Guid userId, string newEmail, CancellationToken ct = default)
     {

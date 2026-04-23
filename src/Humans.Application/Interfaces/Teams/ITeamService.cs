@@ -677,4 +677,29 @@ public interface ITeamService
     /// </summary>
     Task<IReadOnlyList<Guid>> GetActiveNonSystemTeamCoordinatorUserIdsAsync(
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns every active (<see cref="TeamMember.LeftAt"/> is null) team member
+    /// across the given team ids, with <see cref="TeamMember.Team"/> hydrated and
+    /// the cross-domain <see cref="TeamMember.User"/> nav stitched in-memory via
+    /// <see cref="Users.IUserService.GetByIdsAsync"/>. Used by the Google
+    /// Workspace reconciliation flow to resolve the expected membership of every
+    /// Google Drive / Group resource without touching <c>team_members</c>
+    /// directly (design-rules §2c, §6b).
+    /// </summary>
+    Task<IReadOnlyList<TeamMember>> GetActiveMembersForTeamsAsync(
+        IReadOnlyCollection<Guid> teamIds,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns every active (<see cref="TeamMember.LeftAt"/> is null) team member
+    /// whose team has a parent team id in <paramref name="parentTeamIds"/>.
+    /// The child team is hydrated on <see cref="TeamMember.Team"/>; the
+    /// <see cref="TeamMember.User"/> nav is stitched in-memory. Used by the
+    /// subteam rollup path in Google Workspace reconciliation — department
+    /// resources must grant access to every member of every child team.
+    /// </summary>
+    Task<IReadOnlyList<TeamMember>> GetActiveChildMembersByParentIdsAsync(
+        IReadOnlyCollection<Guid> parentTeamIds,
+        CancellationToken cancellationToken = default);
 }

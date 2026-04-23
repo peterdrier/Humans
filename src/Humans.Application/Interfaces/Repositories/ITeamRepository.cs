@@ -331,6 +331,28 @@ public interface ITeamRepository
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> GetActiveNonSystemTeamNamesByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
+    /// <summary>
+    /// Loads active (<see cref="TeamMember.LeftAt"/> is null) team members
+    /// for every requested team id. Returned rows have <see cref="TeamMember.Team"/>
+    /// hydrated via the aggregate-local nav, but the cross-domain
+    /// <see cref="TeamMember.User"/> nav is left unset — callers stitch via
+    /// <see cref="Users.IUserService"/>. Detached.
+    /// </summary>
+    Task<IReadOnlyList<TeamMember>> GetActiveMembersForTeamsAsync(
+        IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default);
+
+    /// <summary>
+    /// Loads active (<see cref="TeamMember.LeftAt"/> is null) team members
+    /// for every team whose <see cref="Team.ParentTeamId"/> is in
+    /// <paramref name="parentTeamIds"/>, limited to active parent-side teams.
+    /// Returned rows have <see cref="TeamMember.Team"/> hydrated (so callers
+    /// can read slug/name); the cross-domain <see cref="TeamMember.User"/>
+    /// nav is left unset for sibling stitching via
+    /// <see cref="Users.IUserService"/>. Detached.
+    /// </summary>
+    Task<IReadOnlyList<TeamMember>> GetActiveChildMembersByParentIdsAsync(
+        IReadOnlyCollection<Guid> parentTeamIds, CancellationToken ct = default);
+
     // ==========================================================================
     // TeamJoinRequest reads
     // ==========================================================================

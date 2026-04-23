@@ -1763,6 +1763,28 @@ public sealed class TeamService : ITeamService, IUserDataContributor
         CancellationToken cancellationToken = default) =>
         _repo.GetActiveNonSystemTeamCoordinatorUserIdsAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<TeamMember>> GetActiveMembersForTeamsAsync(
+        IReadOnlyCollection<Guid> teamIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (teamIds.Count == 0)
+            return [];
+        var members = await _repo.GetActiveMembersForTeamsAsync(teamIds, cancellationToken);
+        await StitchMemberUserSlicesAsync(members, cancellationToken);
+        return members;
+    }
+
+    public async Task<IReadOnlyList<TeamMember>> GetActiveChildMembersByParentIdsAsync(
+        IReadOnlyCollection<Guid> parentTeamIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (parentTeamIds.Count == 0)
+            return [];
+        var members = await _repo.GetActiveChildMembersByParentIdsAsync(parentTeamIds, cancellationToken);
+        await StitchMemberUserSlicesAsync(members, cancellationToken);
+        return members;
+    }
+
     public Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
         IEnumerable<Guid> teamIds,
         CancellationToken cancellationToken = default) =>

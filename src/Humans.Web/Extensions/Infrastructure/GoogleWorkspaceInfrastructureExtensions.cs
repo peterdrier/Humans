@@ -1,3 +1,4 @@
+using Humans.Application.Configuration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Teams;
 using Humans.Infrastructure.Configuration;
@@ -7,6 +8,7 @@ using Humans.Infrastructure.Services.GoogleWorkspace;
 using GoogleWorkspaceUserService = Humans.Application.Services.GoogleIntegration.GoogleWorkspaceUserService;
 using GoogleDriveActivityMonitorService = Humans.Application.Services.GoogleIntegration.DriveActivityMonitorService;
 using GoogleAdminService = Humans.Application.Services.GoogleIntegration.GoogleAdminService;
+using GoogleWorkspaceSyncService = Humans.Application.Services.GoogleIntegration.GoogleWorkspaceSyncService;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Teams;
 using Humans.Infrastructure.Repositories.GoogleIntegration;
@@ -21,6 +23,11 @@ internal static class GoogleWorkspaceInfrastructureExtensions
         IHostEnvironment environment)
     {
         services.Configure<GoogleWorkspaceSettings>(configuration.GetSection(GoogleWorkspaceSettings.SectionName));
+        // §15 Part 2b — Application-layer sync service reads non-sensitive
+        // fields (Domain, CustomerId, TeamFoldersParentId, Groups) through
+        // this Application-owned options type. Same appsettings section as
+        // GoogleWorkspaceSettings so a single config surface drives both.
+        services.Configure<GoogleWorkspaceOptions>(configuration.GetSection(GoogleWorkspaceOptions.SectionName));
         services.AddSingleton(sp =>
         {
             var opts = new TeamResourceManagementOptions();

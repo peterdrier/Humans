@@ -275,4 +275,99 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
         await ctx.SaveChangesAsync(ct);
         return rows;
     }
+
+    public async Task MarkSyncedAsync(Guid resourceId, Instant now, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var row = await ctx.GoogleResources.FindAsync([resourceId], ct);
+        if (row is null)
+        {
+            return;
+        }
+
+        row.LastSyncedAt = now;
+        row.ErrorMessage = null;
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task MarkSyncedManyAsync(
+        IReadOnlyCollection<Guid> resourceIds,
+        Instant now,
+        CancellationToken ct = default)
+    {
+        if (resourceIds.Count == 0)
+        {
+            return;
+        }
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var rows = await ctx.GoogleResources
+            .Where(r => resourceIds.Contains(r.Id))
+            .ToListAsync(ct);
+
+        if (rows.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var row in rows)
+        {
+            row.LastSyncedAt = now;
+            row.ErrorMessage = null;
+        }
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task SetErrorMessageManyAsync(
+        IReadOnlyCollection<Guid> resourceIds,
+        string errorMessage,
+        CancellationToken ct = default)
+    {
+        if (resourceIds.Count == 0)
+        {
+            return;
+        }
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var rows = await ctx.GoogleResources
+            .Where(r => resourceIds.Contains(r.Id))
+            .ToListAsync(ct);
+
+        if (rows.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var row in rows)
+        {
+            row.ErrorMessage = errorMessage;
+        }
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdateNameAsync(Guid resourceId, string name, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var row = await ctx.GoogleResources.FindAsync([resourceId], ct);
+        if (row is null)
+        {
+            return;
+        }
+
+        row.Name = name;
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task DeactivateAsync(Guid resourceId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var row = await ctx.GoogleResources.FindAsync([resourceId], ct);
+        if (row is null)
+        {
+            return;
+        }
+
+        row.IsActive = false;
+        await ctx.SaveChangesAsync(ct);
+    }
 }

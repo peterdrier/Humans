@@ -169,4 +169,57 @@ public interface IGoogleResourceRepository
         Guid teamId,
         GoogleResourceType? resourceType,
         CancellationToken ct = default);
+
+    // ==========================================================================
+    // §15 Part 2b — writes used by GoogleWorkspaceSyncService after the
+    // Application-layer migration (issue #575). These are narrow per-column
+    // mutations: the sync service no longer holds a tracked-entity graph, so
+    // the repo exposes an atomic update per field it needs to touch.
+    // ==========================================================================
+
+    /// <summary>
+    /// Stamps <see cref="GoogleResource.LastSyncedAt"/> and clears
+    /// <see cref="GoogleResource.ErrorMessage"/> on a single row. Used by
+    /// <c>GoogleWorkspaceSyncService</c> after a successful per-resource
+    /// reconciliation pass. No-op if the row is missing.
+    /// </summary>
+    Task MarkSyncedAsync(Guid resourceId, Instant now, CancellationToken ct = default);
+
+    /// <summary>
+    /// Stamps <see cref="GoogleResource.LastSyncedAt"/> and clears
+    /// <see cref="GoogleResource.ErrorMessage"/> on every row whose id is in
+    /// <paramref name="resourceIds"/>. Used after reconciling a group of
+    /// Drive resources that share the same <c>GoogleId</c> (each team's
+    /// resource row gets the same sync stamp).
+    /// </summary>
+    Task MarkSyncedManyAsync(
+        IReadOnlyCollection<Guid> resourceIds,
+        Instant now,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Writes <paramref name="errorMessage"/> into
+    /// <see cref="GoogleResource.ErrorMessage"/> on every row whose id is in
+    /// <paramref name="resourceIds"/>. Used when a per-resource reconciliation
+    /// fails (e.g. 404 from Google on a Group lookup) so the next tick can
+    /// surface the last error and the admin UI can show it.
+    /// </summary>
+    Task SetErrorMessageManyAsync(
+        IReadOnlyCollection<Guid> resourceIds,
+        string errorMessage,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Updates <see cref="GoogleResource.Name"/> on a single row. Used by the
+    /// drive-folder path-refresh pass so callers can rewrite the cached path
+    /// without loading a tracked entity graph. No-op if the row is missing.
+    /// </summary>
+    Task UpdateNameAsync(Guid resourceId, string name, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets <see cref="GoogleResource.IsActive"/> to false on a single row
+    /// without emitting any audit entry — the caller is expected to write
+    /// the audit entry separately. No-op if the row is missing.
+    /// </summary>
+    Task DeactivateAsync(Guid resourceId, CancellationToken ct = default);
 }
