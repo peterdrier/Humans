@@ -1,37 +1,61 @@
 using Humans.Application.DTOs.Calendar;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Calendar;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Ical.Net.DataTypes;
 using Ical.Net.Evaluation;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using IcalEvent = Ical.Net.CalendarComponents.CalendarEvent;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Application.Services.Calendar;
 
-public class CalendarService : ICalendarService
+/// <summary>
+/// Application-layer implementation of <see cref="ICalendarService"/>. Goes
+/// through <see cref="ICalendarRepository"/> for all data access — this type
+/// never imports <c>Microsoft.EntityFrameworkCore</c>, enforced by
+/// <c>Humans.Application.csproj</c>'s reference graph (design-rules §2b).
+/// </summary>
+/// <remarks>
+/// Cross-section interactions:
+/// <list type="bullet">
+///   <item><see cref="ITeamService"/> — resolves owning-team display names
+///     for the occurrence projection that previously loaded them via the
+///     <c>CalendarEvent.OwningTeam</c> cross-domain nav (design-rules §6b
+///     "in-memory join").</item>
+///   <item><see cref="IAuditLogService"/> — create / update / delete /
+///     occurrence-cancel / occurrence-override mutations are audited.</item>
+/// </list>
+/// Caching: the short-TTL <see cref="IMemoryCache"/> entry
+/// <c>calendar:active-events</c> is a request-acceleration marker rather
+/// than a canonical domain projection, so §15 transparent-cache rules do
+/// not apply (design-rules §15f). It stays in-service per the §569 scope.
+/// </remarks>
+public sealed class CalendarService : ICalendarService
 {
     private const string CacheKeyActiveEvents = "calendar:active-events";
 
-    private readonly HumansDbContext _db;
+    private readonly ICalendarRepository _repo;
+    private readonly ITeamService _teamService;
     private readonly IMemoryCache _cache;
     private readonly IClock _clock;
     private readonly IAuditLogService _audit;
     private readonly ILogger<CalendarService> _logger;
 
     public CalendarService(
-        HumansDbContext db,
+        ICalendarRepository repo,
+        ITeamService teamService,
         IMemoryCache cache,
         IClock clock,
         IAuditLogService audit,
         ILogger<CalendarService> logger)
     {
-        _db = db;
+        _repo = repo;
+        _teamService = teamService;
         _cache = cache;
         _clock = clock;
         _audit = audit;
@@ -41,22 +65,23 @@ public class CalendarService : ICalendarService
     public async Task<IReadOnlyList<CalendarOccurrence>> GetOccurrencesInWindowAsync(
         Instant from, Instant to, Guid? teamId = null, CancellationToken ct = default)
     {
-        var query = _db.CalendarEvents
-            .Include(e => e.OwningTeam)
-            .Include(e => e.Exceptions)
-            .AsQueryable();
+        var events = await _repo.GetEventsInWindowAsync(from, to, teamId, ct);
 
-        query = query.Where(e => e.StartUtc <= to
-            && (e.RecurrenceUntilUtc == null || e.RecurrenceUntilUtc >= from));
+        // In-memory join (§6b): resolve owning-team display names up front
+        // via ITeamService instead of .Include(e => e.OwningTeam).
+        var teamIds = events.Select(e => e.OwningTeamId).Distinct().ToList();
+        var teamNames = teamIds.Count == 0
+            ? (IReadOnlyDictionary<Guid, string>)new Dictionary<Guid, string>()
+            : await _teamService.GetTeamNamesByIdsAsync(teamIds, ct);
 
-        if (teamId is { } t)
-            query = query.Where(e => e.OwningTeamId == t);
-
-        var events = await query.ToListAsync(ct);
         var results = new List<CalendarOccurrence>();
 
         foreach (var e in events)
         {
+            var owningTeamName = teamNames.TryGetValue(e.OwningTeamId, out var name)
+                ? name
+                : string.Empty;
+
             if (string.IsNullOrWhiteSpace(e.RecurrenceRule))
             {
                 // Half-open window [from, to): event overlaps when end > from AND start < to.
@@ -73,7 +98,7 @@ public class CalendarService : ICalendarService
                     Location: e.Location,
                     LocationUrl: e.LocationUrl,
                     OwningTeamId: e.OwningTeamId,
-                    OwningTeamName: e.OwningTeam.Name,
+                    OwningTeamName: owningTeamName,
                     IsRecurring: false,
                     OriginalOccurrenceStartUtc: null));
             }
@@ -122,7 +147,7 @@ public class CalendarService : ICalendarService
                         Location: e.Location,
                         LocationUrl: e.LocationUrl,
                         OwningTeamId: e.OwningTeamId,
-                        OwningTeamName: e.OwningTeam.Name,
+                        OwningTeamName: owningTeamName,
                         IsRecurring: true,
                         OriginalOccurrenceStartUtc: startInstant));
                 }
@@ -178,6 +203,10 @@ public class CalendarService : ICalendarService
         // materialized them, so the override loop above didn't see them either).
         foreach (var ev in events)
         {
+            var owningTeamName = teamNames.TryGetValue(ev.OwningTeamId, out var name)
+                ? name
+                : string.Empty;
+
             foreach (var ex in ev.Exceptions)
             {
                 if (handledExceptionKeys.Contains((ev.Id, ex.OriginalOccurrenceStartUtc))) continue;
@@ -201,7 +230,7 @@ public class CalendarService : ICalendarService
                     Location: ex.OverrideLocation ?? ev.Location,
                     LocationUrl: ex.OverrideLocationUrl ?? ev.LocationUrl,
                     OwningTeamId: ev.OwningTeamId,
-                    OwningTeamName: ev.OwningTeam.Name,
+                    OwningTeamName: owningTeamName,
                     IsRecurring: true,
                     OriginalOccurrenceStartUtc: ex.OriginalOccurrenceStartUtc));
             }
@@ -210,13 +239,8 @@ public class CalendarService : ICalendarService
         return finalResults.OrderBy(o => o.OccurrenceStartUtc).ToList();
     }
 
-    public async Task<CalendarEvent?> GetEventByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        return await _db.CalendarEvents
-            .Include(e => e.OwningTeam)
-            .Include(e => e.Exceptions)
-            .FirstOrDefaultAsync(e => e.Id == id, ct);
-    }
+    public Task<CalendarEvent?> GetEventByIdAsync(Guid id, CancellationToken ct = default) =>
+        _repo.GetEventByIdAsync(id, ct);
 
     public async Task<CalendarEvent> CreateEventAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default)
     {
@@ -245,8 +269,7 @@ public class CalendarService : ICalendarService
         if (errors.Count > 0)
             throw new InvalidOperationException("CalendarEvent is invalid: " + string.Join("; ", errors));
 
-        _db.CalendarEvents.Add(ev);
-        await _db.SaveChangesAsync(ct);
+        await _repo.AddAsync(ev, ct);
 
         await _audit.LogAsync(
             AuditAction.CalendarEventCreated, nameof(CalendarEvent), ev.Id,
@@ -337,52 +360,55 @@ public class CalendarService : ICalendarService
 
     public async Task<CalendarEvent> UpdateEventAsync(Guid id, UpdateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
     {
-        var ev = await _db.CalendarEvents.FirstOrDefaultAsync(e => e.Id == id, ct)
-            ?? throw new InvalidOperationException($"CalendarEvent {id} not found.");
+        var now = _clock.GetCurrentInstant();
+        CalendarEvent? mutated = null;
 
-        ev.Title = dto.Title;
-        ev.Description = dto.Description;
-        ev.Location = dto.Location;
-        ev.LocationUrl = dto.LocationUrl;
-        ev.OwningTeamId = dto.OwningTeamId;
-        ev.StartUtc = dto.StartUtc;
-        ev.EndUtc = dto.EndUtc;
-        ev.IsAllDay = dto.IsAllDay;
-        ev.RecurrenceRule = dto.RecurrenceRule;
-        ev.RecurrenceTimezone = dto.RecurrenceTimezone;
-        ev.RecurrenceUntilUtc = ComputeRecurrenceUntilUtc(dto.RecurrenceRule, dto.RecurrenceTimezone, dto.StartUtc, dto.EndUtc);
-        ev.UpdatedAt = _clock.GetCurrentInstant();
+        var found = await _repo.UpdateAsync(id, ev =>
+        {
+            ev.Title = dto.Title;
+            ev.Description = dto.Description;
+            ev.Location = dto.Location;
+            ev.LocationUrl = dto.LocationUrl;
+            ev.OwningTeamId = dto.OwningTeamId;
+            ev.StartUtc = dto.StartUtc;
+            ev.EndUtc = dto.EndUtc;
+            ev.IsAllDay = dto.IsAllDay;
+            ev.RecurrenceRule = dto.RecurrenceRule;
+            ev.RecurrenceTimezone = dto.RecurrenceTimezone;
+            ev.RecurrenceUntilUtc = ComputeRecurrenceUntilUtc(dto.RecurrenceRule, dto.RecurrenceTimezone, dto.StartUtc, dto.EndUtc);
+            ev.UpdatedAt = now;
 
-        var errors = ev.Validate();
-        if (errors.Count > 0)
-            throw new InvalidOperationException("CalendarEvent is invalid: " + string.Join("; ", errors));
+            var errors = ev.Validate();
+            if (errors.Count > 0)
+                throw new InvalidOperationException("CalendarEvent is invalid: " + string.Join("; ", errors));
 
-        await _db.SaveChangesAsync(ct);
+            mutated = ev;
+        }, ct);
+
+        if (!found || mutated is null)
+            throw new InvalidOperationException($"CalendarEvent {id} not found.");
 
         await _audit.LogAsync(
-            AuditAction.CalendarEventUpdated, nameof(CalendarEvent), ev.Id,
-            $"Updated calendar event '{ev.Title}'",
+            AuditAction.CalendarEventUpdated, nameof(CalendarEvent), mutated.Id,
+            $"Updated calendar event '{mutated.Title}'",
             updatedByUserId,
-            relatedEntityId: ev.OwningTeamId, relatedEntityType: nameof(Team));
+            relatedEntityId: mutated.OwningTeamId, relatedEntityType: nameof(Team));
 
         InvalidateCache();
-        return ev;
+        return mutated;
     }
 
     public async Task DeleteEventAsync(Guid id, Guid deletedByUserId, CancellationToken ct = default)
     {
-        var ev = await _db.CalendarEvents.FirstOrDefaultAsync(e => e.Id == id, ct);
-        if (ev is null) return;
-        ev.DeletedAt = _clock.GetCurrentInstant();
-        ev.UpdatedAt = ev.DeletedAt.Value;
-
-        await _db.SaveChangesAsync(ct);
+        var now = _clock.GetCurrentInstant();
+        var result = await _repo.SoftDeleteAsync(id, now, ct);
+        if (result is null) return;
 
         await _audit.LogAsync(
-            AuditAction.CalendarEventDeleted, nameof(CalendarEvent), ev.Id,
-            $"Deleted calendar event '{ev.Title}'",
+            AuditAction.CalendarEventDeleted, nameof(CalendarEvent), id,
+            $"Deleted calendar event '{result.Value.Title}'",
             deletedByUserId,
-            relatedEntityId: ev.OwningTeamId, relatedEntityType: nameof(Team));
+            relatedEntityId: result.Value.OwningTeamId, relatedEntityType: nameof(Team));
 
         InvalidateCache();
     }
@@ -420,36 +446,15 @@ public class CalendarService : ICalendarService
         AuditAction auditAction, string auditDescription,
         CancellationToken ct)
     {
-        var existing = await _db.CalendarEventExceptions
-            .FirstOrDefaultAsync(x => x.EventId == eventId && x.OriginalOccurrenceStartUtc == originalUtc, ct);
-
         var now = _clock.GetCurrentInstant();
 
-        if (existing is null)
-        {
-            existing = new CalendarEventException
-            {
-                Id = Guid.NewGuid(),
-                EventId = eventId,
-                OriginalOccurrenceStartUtc = originalUtc,
-                CreatedByUserId = userId,
-                CreatedAt = now,
-                UpdatedAt = now,
-            };
-            _db.CalendarEventExceptions.Add(existing);
-        }
-        else
-        {
-            existing.UpdatedAt = now;
-        }
-
-        apply(existing);
-
-        var errors = existing.Validate();
-        if (errors.Count > 0)
-            throw new InvalidOperationException("Exception is invalid: " + string.Join("; ", errors));
-
-        await _db.SaveChangesAsync(ct);
+        await _repo.UpsertExceptionAsync(
+            eventId,
+            originalUtc,
+            createdByUserId: userId,
+            now: now,
+            apply: apply,
+            ct: ct);
 
         await _audit.LogAsync(
             auditAction, nameof(CalendarEvent), eventId,

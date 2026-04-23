@@ -19,10 +19,16 @@ public class CalendarEventConfiguration : IEntityTypeConfiguration<CalendarEvent
         b.Property(e => e.RecurrenceTimezone).HasMaxLength(100);
         b.Property(e => e.OwningTeamId).IsRequired();
 
+        // EF needs the nav ref to configure the cross-section FK + cascade
+        // behavior. The nav itself is [Obsolete] for the Application layer
+        // (design-rules §6c) — suppress the obsolete warning only for this
+        // wiring block.
+#pragma warning disable CS0618
         b.HasOne(e => e.OwningTeam)
          .WithMany()
          .HasForeignKey(e => e.OwningTeamId)
          .OnDelete(DeleteBehavior.Restrict);
+#pragma warning restore CS0618
 
         b.HasMany(e => e.Exceptions)
          .WithOne(x => x.Event)

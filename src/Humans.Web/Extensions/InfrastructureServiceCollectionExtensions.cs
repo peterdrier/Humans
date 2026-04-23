@@ -31,6 +31,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddCityPlanningSection(configuration);
         services.AddBudgetSection();
         services.AddShiftsSection();
+        services.AddCalendarSection();
         services.AddTicketsSection();
         services.AddFeedbackSection();
         services.AddNotificationsSection();

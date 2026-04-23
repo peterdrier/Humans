@@ -155,8 +155,13 @@ public class CalendarController : HumansControllerBase
             .Take(5)
             .ToList();
 
+        // Owning-team name resolved via ITeamService per design-rules §6b —
+        // CalendarEvent.OwningTeam nav is [Obsolete] and no longer .Include()d.
+        var owningTeam = await _teams.GetTeamByIdAsync(ev.OwningTeamId, ct);
+        var owningTeamName = owningTeam?.Name ?? string.Empty;
+
         // Any authenticated human can edit; changes are audited.
-        return View(new CalendarEventViewModel(ev, upcoming, CanEdit: true, zone.Id));
+        return View(new CalendarEventViewModel(ev, owningTeamName, upcoming, CanEdit: true, zone.Id));
     }
 
     [HttpGet("Event/Create")]

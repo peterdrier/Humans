@@ -5,6 +5,7 @@ namespace Humans.Web.Models.Calendar;
 
 public sealed record CalendarEventViewModel(
     CalendarEvent Event,
+    string OwningTeamName,
     IReadOnlyList<CalendarOccurrence> UpcomingOccurrences,
     bool CanEdit,
     string ViewerTimezoneLabel);
