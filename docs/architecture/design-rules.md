@@ -251,6 +251,7 @@ Each section's service owns these tables. Cross-service access goes through the 
 | **Team Resources** | `TeamResourceService` | `google_resources` |
 | **Google Integration** | `GoogleSyncService`, `GoogleAdminService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService` | `sync_service_settings` |
 | **Email** | `EmailOutboxService`, `EmailService` | `email_outbox_messages` |
+| **Calendar** | `CalendarService` | `calendar_events`, `calendar_event_exceptions` |
 | **Feedback** | `FeedbackService` | `feedback_reports`, `feedback_messages` |
 | **Notifications** | `NotificationService`, `NotificationInboxService` | *(in-memory / transient)* |
 | **Audit** | `AuditLogService` | `audit_log_entries` |
@@ -577,7 +578,7 @@ Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`
 
 ### 15i. Known Current Violations (as of 2026-04-23)
 
-- **4 business services** still live in `Humans.Infrastructure/Services/` and inject `HumansDbContext` directly: `TeamService`, `GoogleWorkspaceSyncService`, `CalendarService`, `HumansMetricsService`. All other files in that folder are connectors, stubs, or renderers that correctly stay in Infrastructure. Target: 0. Migration progress by section:
+- **3 business services** still live in `Humans.Infrastructure/Services/` and inject `HumansDbContext` directly: `TeamService`, `GoogleWorkspaceSyncService`, `HumansMetricsService`. All other files in that folder are connectors, stubs, or renderers that correctly stay in Infrastructure. Target: 0. Migration progress by section:
   - **Governance** — migrated 2026-04-15 in PR #503.
   - **Profiles** — fully migrated 2026-04-20 in PR #235 — `ProfileService`, `ContactFieldService`, `ContactService`, `UserEmailService`, `CommunicationPreferenceService` now live in `Humans.Application.Services.Profile`. (`VolunteerHistoryService` was folded into `ProfileService`/`IProfileRepository`; it no longer exists as a separate service.)
   - **User** — migrated 2026-04-21 in PR #243 — `UserService` now lives in `Humans.Application.Services.Users`, goes through `IUserRepository`, and invalidates `IFullProfileInvalidator` on writes that change FullProfile-visible fields. **No caching decorator** was added for the User section: User is ~500 rows with no hot bulk-read path, so a dict cache isn't warranted (same rationale as Governance's decorator removal in #242). Option A is documented in `docs/superpowers/specs/2026-04-21-issue-511-user-migration.md`.
@@ -595,6 +596,7 @@ Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`
   - **Shifts (partial, #541)** — `ShiftManagementService`, `ShiftSignupService`, and `GeneralAvailabilityService` now live in `Humans.Application.Services.Shifts`, going through `IShiftManagementRepository`, `IShiftSignupRepository`, and `IGeneralAvailabilityRepository`. §15 NEW-B (ShiftAuthorization cache invalidation on profile mutation) remains open — tracked in issue #541.
   - **Tickets (partial, #545)** — `TicketQueryService`, `TicketSyncService`, and `TicketingBudgetService` now live in `Humans.Application.Services.Tickets`, going through `ITicketRepository` and `ITicketingBudgetRepository`. The Ticket Tailor API side of `TicketSyncService` is structurally separated via the `ITicketVendorService` connector (PR #277). Pending upstream promotion to nobodies-collective/Humans.
   - **Google Workspace (partial, #554)** — `GoogleAdminService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, and `EmailProvisioningService` migrated in PR #267 (issue #289) and now live in `Humans.Application.Services.GoogleIntegration`. `GoogleWorkspaceSyncService` remains in `Humans.Infrastructure/Services/` (still injects `HumansDbContext` and `IDbContextFactory<HumansDbContext>` directly, plus imports `Google.Apis.*` SDK namespaces). **Part 1 of #554 (2026-04-23):** `IGoogleSyncOutboxRepository` extracted — `google_sync_outbox_events` now has a dedicated repository for the count queries used by `NotificationMeterProvider`, `HumansMetricsService`, `SendAdminDailyDigestJob`, and the notification-meter path in `GoogleWorkspaceSyncService.GetFailedSyncEventCountAsync`. **Part 2 (remaining):** split the Google SDK surface into bridges (`IGoogleDirectoryClient`, `IGoogleDriveClient`, `IGoogleGroupsClient`, `IGoogleGroupSettingsClient`); strip `HumansDbContext`/`IDbContextFactory` from `GoogleWorkspaceSyncService`; route cross-domain reads (`TeamMembers.Include(User)`, `Users`, `UserEmails`, `Teams`) through sibling service interfaces; move the service to `Humans.Application.Services.GoogleIntegration`. This is the largest remaining §15 migration in the codebase.
+  - **Calendar** — migrated 2026-04-23 for issue #569 — `CalendarService` now lives in `Humans.Application.Services.Calendar`, goes through `ICalendarRepository`, and routes owning-team display names through `ITeamService.GetTeamNamesByIdsAsync` (§6b in-memory join). Cross-domain `.Include(e => e.OwningTeam)` is gone; `CalendarEvent.OwningTeam` nav is `[Obsolete]`-marked and the EF configuration references it under `#pragma warning disable CS0618` to keep the FK + cascade behavior wired. **No caching decorator** — short-TTL `IMemoryCache` (`calendar:active-events`) stays in-service per §15f. The `calendar_events` / `calendar_event_exceptions` tables are now listed under a new **Calendar** row in §8.
 - **Cross-domain `.Include()` calls** remain concentrated in `TeamService` and `GoogleWorkspaceSyncService` (both still in Infrastructure). The Application layer is clean — 0 `.Include()` calls across all Application-layer services. Target: 0 everywhere.
   - Includes fully removed from the service layer in these sections:
     - Profile
@@ -610,12 +612,14 @@ Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`
     - Shifts
     - Tickets
     - Google Workspace (all Application-layer services; `GoogleWorkspaceSyncService` in Infrastructure still has includes)
+    - Calendar
   - **User section's PR #243 landed the Application-layer move but deferred the nav-strip** — cross-domain nav reads via `user.UserEmails`, `user.Profile`, `user.TeamMemberships`, `user.GetEffectiveEmail()` still exist in `TeamService`, `GoogleWorkspaceSyncService`, `SendBoardDailyDigestJob`, `SyncLegalDocumentsJob`, `SystemTeamSyncJob`, `SuspendNonCompliantMembersJob`, `ProfileController`. Tracked as a follow-up.
-- **27 repositories** exist today. Target: one per domain (~20 total, some sections need two):
+- **28 repositories** exist today. Target: one per domain (~20 total, some sections need two):
   - `AccountMergeRepository`
   - `ApplicationRepository`
   - `AuditLogRepository`
   - `BudgetRepository`
+  - `CalendarRepository`
   - `CampaignRepository`
   - `CampRepository`
   - `CityPlanningRepository`

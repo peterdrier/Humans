@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Ical.Net" />
     <PackageReference Include="NodaTime" />
   </ItemGroup>
 

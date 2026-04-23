@@ -13,6 +13,15 @@ public class CalendarEvent
     public string? Location { get; set; }
     public string? LocationUrl { get; set; }
     public Guid OwningTeamId { get; set; }
+
+    /// <summary>
+    /// Cross-domain navigation to the owning <see cref="Team"/>. Kept so that
+    /// the EF configuration can still declare the FK + cascade behavior, but
+    /// the Application-layer <c>CalendarService</c> stitches team display
+    /// names via <see cref="Team"/> lookups through <c>ITeamService</c>
+    /// rather than <c>.Include()</c>-ing this nav (design-rules §6).
+    /// </summary>
+    [Obsolete("Cross-domain nav — resolve via ITeamService.GetByIdsAsync instead of navigating CalendarEvent.OwningTeam. See design-rules §6c.")]
     public Team OwningTeam { get; set; } = null!;
     public Instant StartUtc { get; set; }
     public Instant? EndUtc { get; set; }
