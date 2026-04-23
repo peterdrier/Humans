@@ -152,4 +152,34 @@ public class StubGoogleDrivePermissionsClientTests
         result.Drive.Should().BeNull();
         result.Error!.StatusCode.Should().Be(404);
     }
+
+    [Fact]
+    public async Task ListPermissionsAsync_UnknownFile_Returns404()
+    {
+        // Mirrors the real Drive API which returns HTTP 404 for missing
+        // files rather than an empty permission list. Per Codex's P2
+        // review on PR #302 — returning empty-success would mask
+        // deleted / mistyped Google IDs during dev/QA.
+        var result = await _client.ListPermissionsAsync("nonexistent-file");
+
+        result.Permissions.Should().BeNull();
+        result.Error.Should().NotBeNull();
+        result.Error!.StatusCode.Should().Be(404);
+    }
+
+    [Fact]
+    public async Task CreatePermissionAsync_UnknownFile_ReturnsFailed()
+    {
+        // Mirrors the real Drive API which returns HTTP 404 when the file
+        // does not exist. Per Codex's P2 review on PR #302 — the stub
+        // previously auto-created a permissions bucket for unknown ids,
+        // which would let invalid / stale Google IDs pass dev/QA and only
+        // fail in production with the real client.
+        var result = await _client.CreatePermissionAsync(
+            "nonexistent-file", "alice@nobodies.team", "writer");
+
+        result.Outcome.Should().Be(DrivePermissionCreateOutcome.Failed);
+        result.Error.Should().NotBeNull();
+        result.Error!.StatusCode.Should().Be(404);
+    }
 }

@@ -53,6 +53,17 @@ public sealed class StubGoogleDrivePermissionsClient : IGoogleDrivePermissionsCl
 
         lock (_gate)
         {
+            // Mirror the real client: the Drive API returns HTTP 404 when
+            // the file does not exist. Returning an empty success list
+            // would let dev/QA silently pass with deleted or mistyped
+            // Google IDs that would fail in production.
+            if (!_filesById.ContainsKey(fileId))
+            {
+                return Task.FromResult(new DrivePermissionListResult(
+                    Permissions: null,
+                    Error: new GoogleClientError(404, "file not found")));
+            }
+
             if (!_permissionsByFile.TryGetValue(fileId, out var perms))
             {
                 return Task.FromResult(new DrivePermissionListResult(
@@ -75,6 +86,17 @@ public sealed class StubGoogleDrivePermissionsClient : IGoogleDrivePermissionsCl
 
         lock (_gate)
         {
+            // Mirror the real client: the Drive API returns HTTP 404 when
+            // the file does not exist. Auto-creating a permissions bucket
+            // for unknown ids would hide invalid / stale Google IDs in
+            // dev/QA that would fail in production with the real client.
+            if (!_filesById.ContainsKey(fileId))
+            {
+                return Task.FromResult(new DrivePermissionMutationResult(
+                    DrivePermissionCreateOutcome.Failed,
+                    Error: new GoogleClientError(404, "file not found")));
+            }
+
             if (!_permissionsByFile.TryGetValue(fileId, out var perms))
             {
                 perms = new List<DrivePermission>();
