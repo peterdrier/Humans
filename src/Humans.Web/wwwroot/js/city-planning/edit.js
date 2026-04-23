@@ -51,7 +51,7 @@ export function onCampPolygonClick(e) {
 
     if (appState.currentPopup) appState.currentPopup.remove();
     const nameHtml = props.campSlug
-        ? `<a href="/Barrios/${escHtml(props.campSlug)}" class="fw-bold text-decoration-none">${escHtml(props.campName || 'Camp')}</a>`
+        ? `<a href="/Barrios/${encodeURIComponent(props.campSlug)}" class="fw-bold text-decoration-none">${escHtml(props.campName || 'Camp')}</a>`
         : `<strong>${escHtml(props.campName || 'Camp')}</strong>`;
     appState.currentPopup = new maplibregl.Popup().setLngLat(e.lngLat)
         .setHTML(`<div>${nameHtml}</div>${area}${warning}${overlapWarn}${sizeWarn}${soundZoneWarn}<div class="d-flex flex-column gap-1 mt-1">${editBtn}${historyBtn}</div>`)

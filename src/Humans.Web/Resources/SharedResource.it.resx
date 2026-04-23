@@ -1413,6 +1413,7 @@
   <data name="CityPlanning_SaveButton" xml:space="preserve"><value>Salva</value></data>
   <data name="CityPlanning_HistoryButton" xml:space="preserve"><value>Cronologia</value></data>
   <data name="CityPlanning_AdminLink" xml:space="preserve"><value>Admin</value></data>
+  <data name="CityPlanning_GoToPlacementMap" xml:space="preserve"><value>Vai alla mappa di posizionamento</value></data>
   <data name="CityPlanning_Admin_Title" xml:space="preserve"><value>Admin Mappa Barrios</value></data>
   <data name="CityPlanning_Admin_ViewMap" xml:space="preserve"><value>Visualizza mappa</value></data>
   <data name="CityPlanning_Admin_PlacementPhaseCard" xml:space="preserve"><value>Fase di Posizionamento</value></data>
