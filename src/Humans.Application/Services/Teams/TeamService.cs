@@ -170,21 +170,21 @@ public sealed class TeamService : ITeamService, IUserDataContributor
                 UpdatedAt = now
             };
 
-            try
+            var persisted = await _repo.AddTeamWithRequiresApprovalOverrideAsync(team, requiresApproval, cancellationToken);
+            if (persisted)
             {
-                await _repo.AddTeamWithRequiresApprovalOverrideAsync(team, requiresApproval, cancellationToken);
-
                 UpsertCachedTeam(new CachedTeam(team.Id, team.Name, team.Description, team.Slug,
                     team.IsSystemTeam, team.SystemTeamType, team.RequiresApproval, team.IsPublicPage, team.IsHidden,
                     team.IsPromotedToDirectory, team.CreatedAt, [], ParentTeamId: parentTeamId));
                 _logger.LogInformation("Created team {TeamName} with slug {Slug}", name, slug);
                 return team;
             }
-            catch (InvalidOperationException ex) when (attempt < 9)
-            {
-                // Extremely rare race — slug collided after our pre-check. Retry.
-                _logger.LogDebug(ex, "Slug collision for '{Slug}' at persist, retrying (attempt {Attempt})", slug, attempt + 1);
-            }
+
+            // Unique-constraint race (slug or custom_slug collided after our pre-check).
+            // The repo translated Npgsql 23505 into `false`; retry with the next suffix.
+            _logger.LogDebug(
+                "Slug collision for '{Slug}' at persist, retrying (attempt {Attempt})",
+                slug, attempt + 1);
         }
 
         throw new InvalidOperationException($"Could not generate unique slug for team '{name}' after 10 attempts");

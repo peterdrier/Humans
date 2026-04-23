@@ -134,9 +134,13 @@ public interface ITeamRepository
     /// Creates a team and, in the same transaction, forces its
     /// <c>RequiresApproval</c> column to <paramref name="requiresApproval"/>
     /// after insert (works around the EF store-default sentinel).
-    /// Returns the inserted team, detached.
+    /// Returns <c>true</c> on success, or <c>false</c> when persistence
+    /// aborted because of a unique-constraint collision (typically a slug
+    /// race against a concurrent create). The service layer uses the
+    /// <c>false</c> result to drive its suffix-retry loop without needing
+    /// to catch EF Core exception types directly.
     /// </summary>
-    Task AddTeamWithRequiresApprovalOverrideAsync(
+    Task<bool> AddTeamWithRequiresApprovalOverrideAsync(
         Team team, bool requiresApproval, CancellationToken ct = default);
 
     /// <summary>
@@ -400,8 +404,12 @@ public interface ITeamRepository
     Task<IReadOnlyList<TeamRoleDefinition>> GetAllRoleDefinitionsAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Load a role definition (tracked) with Team + Assignments loaded, for
-    /// mutations like <c>UpdateRoleDefinitionAsync</c>.
+    /// Load a role definition (tracked) with Team + Assignments +
+    /// Assignments.TeamMember loaded, for mutations like
+    /// <c>UpdateRoleDefinitionAsync</c>. The nested <c>TeamMember</c> is
+    /// required because the service reads <c>TeamMember.UserId</c> off the
+    /// assignments to build the shift-authorization invalidation set when
+    /// <c>IsManagement</c> flips.
     /// </summary>
     Task<TeamRoleDefinition?> FindRoleDefinitionForMutationAsync(
         Guid roleDefinitionId, CancellationToken ct = default);

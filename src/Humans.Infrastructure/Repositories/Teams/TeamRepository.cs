@@ -258,12 +258,24 @@ public sealed class TeamRepository : ITeamRepository
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task AddTeamWithRequiresApprovalOverrideAsync(
+    public async Task<bool> AddTeamWithRequiresApprovalOverrideAsync(
         Team team, bool requiresApproval, CancellationToken ct = default)
     {
         await using var db = await _factory.CreateDbContextAsync(ct);
         db.Teams.Add(team);
-        await db.SaveChangesAsync(ct);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+        {
+            // Unique-constraint collision — typically a slug race against a
+            // concurrent create of the same name. Return false so the service
+            // can retry with the next suffix. Detach the tracked entity so the
+            // caller can reuse the context-free Team instance if needed.
+            db.Entry(team).State = EntityState.Detached;
+            return false;
+        }
 
         if (!requiresApproval)
         {
@@ -274,6 +286,8 @@ public sealed class TeamRepository : ITeamRepository
             entry.IsModified = true;
             await db.SaveChangesAsync(ct);
         }
+
+        return true;
     }
 
     public async Task<int> DeactivateTeamAsync(Guid teamId, Instant now, CancellationToken ct = default)
@@ -624,6 +638,7 @@ public sealed class TeamRepository : ITeamRepository
         return await db.Set<TeamRoleDefinition>()
             .Include(d => d.Team)
             .Include(d => d.Assignments)
+                .ThenInclude(a => a.TeamMember)
             .FirstOrDefaultAsync(d => d.Id == roleDefinitionId, ct);
     }
 

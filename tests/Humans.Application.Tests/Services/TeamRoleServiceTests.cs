@@ -34,6 +34,7 @@ public class TeamRoleServiceTests : IDisposable
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly TeamService _service;
+    private readonly IShiftAuthorizationInvalidator _shiftAuthInvalidator;
 
     public TeamRoleServiceTests()
     {
@@ -95,13 +96,14 @@ public class TeamRoleServiceTests : IDisposable
                 return Task.FromResult(db.Users.AsNoTracking().FirstOrDefault(u => u.Id == id));
             });
         serviceProvider.GetService(typeof(IUserService)).Returns(testUserService);
+        _shiftAuthInvalidator = Substitute.For<IShiftAuthorizationInvalidator>();
         _service = new TeamService(
             teamRepo,
             Substitute.For<IAuditLogService>(),
             Substitute.For<INotificationEmitter>(),
             shiftManagementService,
             Substitute.For<INotificationMeterCacheInvalidator>(),
-            Substitute.For<IShiftAuthorizationInvalidator>(),
+            _shiftAuthInvalidator,
             serviceProvider,
             cache,
             _clock,
@@ -240,6 +242,40 @@ public class TeamRoleServiceTests : IDisposable
             [SlotPriority.Critical], 0, true, RolePeriod.YearRound, admin.Id);
 
         result.IsManagement.Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Regression: Codex PR#300 P1 — when <c>IsManagement</c> flips on a role
+    /// with existing assignments, the service must invalidate shift
+    /// authorization for every assignee's user id. The bug was that
+    /// <c>FindRoleDefinitionForMutationAsync</c> returned assignments without
+    /// <c>TeamMember</c> loaded, so the computed user-id set was empty and the
+    /// cache stayed stale. Repository now eager-loads
+    /// <c>Assignments.TeamMember</c>.
+    /// </summary>
+    [Fact]
+    public async Task UpdateRoleDefinitionAsync_FlipIsManagementWithAssignees_InvalidatesShiftAuthPerAssignee()
+    {
+        var admin = SeedUser("Admin");
+        SeedAdminRole(admin);
+        var team = SeedTeam("Test Team");
+        var user1 = SeedUser("U1");
+        var user2 = SeedUser("U2");
+        var role = SeedRoleDefinition(team, "Lead", slotCount: 2, sortOrder: 0);
+        var member1 = SeedMember(team, user1);
+        var member2 = SeedMember(team, user2);
+        SeedRoleAssignment(role, member1, slotIndex: 0);
+        SeedRoleAssignment(role, member2, slotIndex: 1);
+        await _dbContext.SaveChangesAsync();
+
+        // Flip IsManagement from false -> true while the role has assignees.
+        await _service.UpdateRoleDefinitionAsync(
+            role.Id, "Lead", null, 2,
+            [SlotPriority.Critical, SlotPriority.Critical], 0,
+            isManagement: true, RolePeriod.YearRound, admin.Id);
+
+        _shiftAuthInvalidator.Received(1).Invalidate(user1.Id);
+        _shiftAuthInvalidator.Received(1).Invalidate(user2.Id);
     }
 
     // ==========================================================================
