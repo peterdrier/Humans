@@ -29,32 +29,30 @@ namespace Humans.Infrastructure.Jobs;
 /// <see cref="IRoleAssignmentService"/>, <see cref="ITeamResourceService"/>,
 /// <see cref="ICampRepository"/>) so the job never touches
 /// <see cref="Humans.Infrastructure.Data.HumansDbContext"/> directly
-/// (design-rules §2c). Cross-cutting cache invalidation routes through
-/// invalidator interfaces
-/// (<see cref="IActiveTeamsCacheInvalidator"/>,
-/// <see cref="IRoleAssignmentClaimsCacheInvalidator"/>) rather than
-/// IMemoryCache.
+/// (design-rules §2c). Cross-cutting cache invalidation that crosses a
+/// section boundary (claims principal refresh) routes through
+/// <see cref="IRoleAssignmentClaimsCacheInvalidator"/> rather than
+/// IMemoryCache; the ActiveTeams cache is owned and invalidated by
+/// <see cref="ITeamService"/> itself on every mutating write.
 /// </remarks>
 public class SystemTeamSyncJob : ISystemTeamSync
 {
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
-    private readonly IProfileService _profileService;
-    private readonly IApplicationDecisionService _applicationDecisionService;
-    private readonly IRoleAssignmentService _roleAssignmentService;
-    private readonly ITeamResourceService _teamResourceService;
     private readonly ICampRepository _campRepository;
-    // IMembershipCalculator is resolved lazily via IServiceProvider to break a
-    // DI cycle: TeamService and RoleAssignmentService inject ISystemTeamSync,
-    // and MembershipCalculator (transitively, via IMembershipQuery) depends on
-    // those same services. All calls below happen after DI has finished
-    // building the graph, so deferring the lookup is safe — same pattern
-    // MembershipCalculator uses for IConsentService.
+    // IApplicationDecisionService, IRoleAssignmentService, IProfileService,
+    // ITeamResourceService, and IMembershipCalculator are resolved lazily via
+    // IServiceProvider to break DI cycles: ApplicationDecisionService and
+    // RoleAssignmentService inject ISystemTeamSync directly, ProfileService
+    // injects both, TeamResourceService injects IRoleAssignmentService, and
+    // MembershipCalculator (via IMembershipQuery) depends on them. Direct
+    // ctor injection here would form an unresolvable cycle. All calls below
+    // happen after DI has finished building the graph, so deferring the
+    // lookup is safe — same pattern MembershipCalculator uses for IConsentService.
     private readonly IServiceProvider _serviceProvider;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IAuditLogService _auditLogService;
     private readonly IEmailService _emailService;
-    private readonly IActiveTeamsCacheInvalidator _activeTeamsInvalidator;
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator;
     private readonly IHumansMetrics _metrics;
     private readonly ILogger<SystemTeamSyncJob> _logger;
@@ -63,16 +61,11 @@ public class SystemTeamSyncJob : ISystemTeamSync
     public SystemTeamSyncJob(
         ITeamService teamService,
         IUserService userService,
-        IProfileService profileService,
-        IApplicationDecisionService applicationDecisionService,
-        IRoleAssignmentService roleAssignmentService,
-        ITeamResourceService teamResourceService,
         ICampRepository campRepository,
         IServiceProvider serviceProvider,
         IGoogleSyncService googleSyncService,
         IAuditLogService auditLogService,
         IEmailService emailService,
-        IActiveTeamsCacheInvalidator activeTeamsInvalidator,
         IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
         IHumansMetrics metrics,
         ILogger<SystemTeamSyncJob> logger,
@@ -80,21 +73,28 @@ public class SystemTeamSyncJob : ISystemTeamSync
     {
         _teamService = teamService;
         _userService = userService;
-        _profileService = profileService;
-        _applicationDecisionService = applicationDecisionService;
-        _roleAssignmentService = roleAssignmentService;
-        _teamResourceService = teamResourceService;
         _campRepository = campRepository;
         _serviceProvider = serviceProvider;
         _googleSyncService = googleSyncService;
         _auditLogService = auditLogService;
         _emailService = emailService;
-        _activeTeamsInvalidator = activeTeamsInvalidator;
         _roleAssignmentClaimsInvalidator = roleAssignmentClaimsInvalidator;
         _metrics = metrics;
         _logger = logger;
         _clock = clock;
     }
+
+    private IApplicationDecisionService ApplicationDecisionService =>
+        _serviceProvider.GetRequiredService<IApplicationDecisionService>();
+
+    private IRoleAssignmentService RoleAssignmentService =>
+        _serviceProvider.GetRequiredService<IRoleAssignmentService>();
+
+    private IProfileService ProfileService =>
+        _serviceProvider.GetRequiredService<IProfileService>();
+
+    private ITeamResourceService TeamResourceService =>
+        _serviceProvider.GetRequiredService<ITeamResourceService>();
 
     private IMembershipCalculator MembershipCalculator =>
         _serviceProvider.GetRequiredService<IMembershipCalculator>();
@@ -233,7 +233,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         }
 
         // All users with profiles that are approved and not suspended.
-        var allApprovedIds = await _profileService.GetActiveApprovedUserIdsAsync(cancellationToken);
+        var allApprovedIds = await ProfileService.GetActiveApprovedUserIdsAsync(cancellationToken);
 
         // Use shared partition to determine eligibility (Active = approved +
         // not suspended + all consents signed).
@@ -292,7 +292,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         }
 
         // Users with active Board role assignment (service reads the clock).
-        var boardMemberIds = await _roleAssignmentService.GetActiveUserIdsInRoleAsync(
+        var boardMemberIds = await RoleAssignmentService.GetActiveUserIdsInRoleAsync(
             RoleNames.Board, cancellationToken);
 
         // Additionally filter by Board-team-required consents.
@@ -333,11 +333,11 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
         var today = _clock.GetCurrentInstant().InUtc().Date;
 
-        var applicationUserIds = await _applicationDecisionService
+        var applicationUserIds = await ApplicationDecisionService
             .GetActiveApprovedTierUserIdsAsync(tier, today, cancellationToken);
 
         // Filter by profile status to match per-user sync behavior.
-        var allApprovedIds = await _profileService.GetActiveApprovedUserIdsAsync(cancellationToken);
+        var allApprovedIds = await ProfileService.GetActiveApprovedUserIdsAsync(cancellationToken);
         var approvedSet = allApprovedIds.ToHashSet();
         var userIds = applicationUserIds.Where(approvedSet.Contains).ToList();
 
@@ -350,10 +350,10 @@ public class SystemTeamSyncJob : ISystemTeamSync
         // Volunteer, check if the user holds an active application for the
         // OTHER higher tier.
         var todayInstant = _clock.GetCurrentInstant();
-        var otherTierByUser = await _applicationDecisionService
+        var otherTierByUser = await ApplicationDecisionService
             .GetOtherActiveTierAssignmentsAsync(tier, today, cancellationToken);
 
-        var downgrades = await _profileService.DowngradeTierForExpiredAsync(
+        var downgrades = await ProfileService.DowngradeTierForExpiredAsync(
             tier, applicationUserIds, otherTierByUser, todayInstant, cancellationToken);
 
         if (downgrades.Count > 0)
@@ -391,7 +391,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
             return;
         }
 
-        var profiles = await _profileService.GetByUserIdsAsync([userId], cancellationToken);
+        var profiles = await ProfileService.GetByUserIdsAsync([userId], cancellationToken);
         profiles.TryGetValue(userId, out var profile);
 
         var isEligible = profile is { IsApproved: true, IsSuspended: false }
@@ -447,10 +447,10 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
         var today = _clock.GetCurrentInstant().InUtc().Date;
 
-        var hasApprovedApp = await _applicationDecisionService
+        var hasApprovedApp = await ApplicationDecisionService
             .HasActiveApprovedTierAsync(userId, tier, today, cancellationToken);
 
-        var profiles = await _profileService.GetByUserIdsAsync([userId], cancellationToken);
+        var profiles = await ProfileService.GetByUserIdsAsync([userId], cancellationToken);
         profiles.TryGetValue(userId, out var profile);
 
         var isEligible = hasApprovedApp
@@ -630,7 +630,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         // Send "added to team" emails for newly added members (skip hidden teams).
         if (toAdd.Count > 0 && !team.IsHidden)
         {
-            var resources = await _teamResourceService.GetTeamResourcesAsync(team.Id, cancellationToken);
+            var resources = await TeamResourceService.GetTeamResourcesAsync(team.Id, cancellationToken);
             var resourceTuples = resources.Select(r => (r.Name, r.Url)).ToList();
 
             var addedUsersWithEmails = await _userService

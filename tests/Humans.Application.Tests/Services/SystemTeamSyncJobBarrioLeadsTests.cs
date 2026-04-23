@@ -40,15 +40,10 @@ public class SystemTeamSyncJobBarrioLeadsTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 15, 12, 0));
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
-    private readonly IApplicationDecisionService _applicationDecisionService = Substitute.For<IApplicationDecisionService>();
-    private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
-    private readonly ITeamResourceService _teamResourceService = Substitute.For<ITeamResourceService>();
     private readonly ICampRepository _campRepository = Substitute.For<ICampRepository>();
     private readonly IGoogleSyncService _googleSyncService = Substitute.For<IGoogleSyncService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
-    private readonly IActiveTeamsCacheInvalidator _activeTeamsInvalidator = Substitute.For<IActiveTeamsCacheInvalidator>();
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
 
@@ -61,16 +56,11 @@ public class SystemTeamSyncJobBarrioLeadsTests
         return new SystemTeamSyncJob(
             _teamService,
             _userService,
-            _profileService,
-            _applicationDecisionService,
-            _roleAssignmentService,
-            _teamResourceService,
             _campRepository,
             provider,
             _googleSyncService,
             _auditLogService,
             _emailService,
-            _activeTeamsInvalidator,
             _roleAssignmentClaimsInvalidator,
             _metrics,
             NullLogger<SystemTeamSyncJob>.Instance,
