@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Enums;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Mvc;

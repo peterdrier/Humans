@@ -1,4 +1,5 @@
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.CitiPlanning;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Microsoft.AspNetCore.Authorization;
@@ -14,11 +15,16 @@ namespace Humans.Web.Controllers;
 public class CityPlanningController : HumansControllerBase
 {
     private readonly ICityPlanningService _cityPlanningService;
+    private readonly ICampService _campService;
 
-    public CityPlanningController(ICityPlanningService cityPlanningService, UserManager<User> userManager)
+    public CityPlanningController(
+        ICityPlanningService cityPlanningService,
+        ICampService campService,
+        UserManager<User> userManager)
         : base(userManager)
     {
         _cityPlanningService = cityPlanningService;
+        _campService = campService;
     }
 
     private async Task<bool> IsMapAdminAsync(Guid userId, CancellationToken ct)
@@ -35,7 +41,7 @@ public class CityPlanningController : HumansControllerBase
 
         var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
         var isMapAdmin = await IsMapAdminAsync(user.Id, cancellationToken);
-        var userSeasonId = await _cityPlanningService.GetUserCampSeasonIdForYearAsync(user.Id, settings.Year, cancellationToken);
+        var userSeasonId = await _campService.GetCampLeadSeasonIdForYearAsync(user.Id, settings.Year, cancellationToken);
         var seasonsWithout = await _cityPlanningService.GetCampSeasonsWithoutCampPolygonAsync(settings.Year, cancellationToken);
 
         ViewBag.IsPlacementOpen = settings.IsPlacementOpen;

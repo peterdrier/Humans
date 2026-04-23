@@ -1,3 +1,8 @@
+// TeamMember.User / TeamJoinRequest.User are [Obsolete] cross-domain navs
+// (design-rules §6c). View-model constructors read from the in-memory-
+// populated graph returned by TeamService (§6b). This file-wide disable
+// is cleared when view models are built exclusively from service-layer DTOs.
+#pragma warning disable CS0618
 using System.ComponentModel.DataAnnotations;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;

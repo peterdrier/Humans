@@ -52,9 +52,9 @@ See `docs/architecture/design-rules.md` for the full rules.
 **Owning services:** `BudgetService`
 **Owned tables:** `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections`
 
-## Target Architecture Direction
+`BudgetService` (Application) and `BudgetRepository` (Infrastructure, §15b Singleton + `IDbContextFactory`) follow the canonical pattern. `IBudgetRepository` exposes atomic per-method operations — multi-entity mutations (e.g., creating a year with its default groups / categories / projection row, or syncing ticketing actuals + re-materializing projected line items) are single repository methods that do all their work inside one short-lived `DbContext`. No caching decorator: Budget pages are admin-only and low-traffic.
 
-> **Status:** This section currently follows the "services in Infrastructure, direct DbContext" model. It will be migrated to the repository/store/decorator pattern per [`../architecture/design-rules.md`](../architecture/design-rules.md). **Delete this block once the migration lands and this section's services live in `Humans.Application` with `*Repository.cs` impls in `Humans.Infrastructure/Repositories/`.**
+## Target Architecture Direction
 
 ### Target repositories
 
@@ -76,7 +76,7 @@ Observed in this section's service code as of 2026-04-15:
   - `BudgetService.cs:922` — `_dbContext.TeamMembers` in `GetEffectiveCoordinatorTeamIdsAsync` (Teams section)
   - `BudgetService.cs:930` — `_dbContext.Set<TeamRoleAssignment>()` with deep `.TeamMember` / `.TeamRoleDefinition.Team` nav traversal in `GetEffectiveCoordinatorTeamIdsAsync` (Teams section)
   - `BudgetService.cs:945` — `_dbContext.Teams.Where(t => t.ParentTeamId != null ...)` for child-team expansion (Teams section)
-  - `TicketingBudgetService.cs:44` — `_dbContext.TicketOrders` (Tickets section)
+  - ~~`TicketingBudgetService.cs:44` — `_dbContext.TicketOrders` (Tickets section)~~ **Resolved in PR #545b (2026-04-22):** `TicketingBudgetService` moved to `Humans.Application.Services.Tickets` and now reads paid orders via the Tickets-owned `ITicketingBudgetRepository`. Budget no longer has a code path that reads Tickets tables directly.
 - **Within-section cross-service direct DbContext reads:** None found.
 - **Inline `IMemoryCache` usage in service methods:** None found.
 - **Cross-domain nav properties on this section's entities:**

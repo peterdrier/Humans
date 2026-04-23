@@ -1,8 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
-using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
 using Humans.Web.Filters;
 using Humans.Web.Models;
+using Humans.Application.Interfaces.Feedback;
+
+// FeedbackReport / FeedbackMessage cross-domain nav properties (User, ResolvedByUser,
+// AssignedToUser, AssignedToTeam, SenderUser) are [Obsolete] — FeedbackService stitches
+// them in memory from IUserService / ITeamService so controllers can continue to read
+// them for response shaping. Nav-strip follow-up tracked in design-rules §15i.
+#pragma warning disable CS0618
 
 namespace Humans.Web.Controllers;
 

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.GoogleIntegration;
 
 namespace Humans.Infrastructure.Jobs;
 

@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization.Requirements;

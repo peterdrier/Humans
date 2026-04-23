@@ -12,12 +12,28 @@ public class TeamJoinRequest
     public Guid TeamId { get; init; }
     public Team Team { get; set; } = null!;
     public Guid UserId { get; init; }
+    /// <summary>
+    /// Navigation property to the user who requested to join the team.
+    /// </summary>
+    /// <remarks>
+    /// Cross-domain nav into the Users section — will be removed per
+    /// design-rules §6c once the User-entity nav strip follow-up lands.
+    /// New callers resolve user data via <c>IUserService.GetByIdAsync</c>.
+    /// </remarks>
+    [Obsolete("Cross-domain nav; resolve via IUserService.GetByIdAsync(UserId) instead. See design-rules §6c.")]
     public User User { get; set; } = null!;
     public TeamJoinRequestStatus Status { get; set; } = TeamJoinRequestStatus.Pending;
     public string? Message { get; set; }
     public Instant RequestedAt { get; init; }
     public Instant? ResolvedAt { get; set; }
     public Guid? ReviewedByUserId { get; set; }
+    /// <summary>
+    /// Navigation property to the user who reviewed the request (approver or rejecter).
+    /// </summary>
+    /// <remarks>
+    /// Cross-domain nav into the Users section — see <see cref="User"/>.
+    /// </remarks>
+    [Obsolete("Cross-domain nav; resolve via IUserService.GetByIdAsync(ReviewedByUserId) instead. See design-rules §6c.")]
     public User? ReviewedByUser { get; set; }
     public string? ReviewNotes { get; set; }
     public ICollection<TeamJoinRequestStateHistory> StateHistory { get; } = new List<TeamJoinRequestStateHistory>();

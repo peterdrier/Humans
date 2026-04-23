@@ -4,18 +4,26 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Application;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Repositories;
 using Xunit;
 using MemberApplication = Humans.Domain.Entities.Application;
 using ProfileService = Humans.Application.Services.Profile.ProfileService;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Campaigns;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Consent;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces.Auth;
+using Humans.Infrastructure.Repositories.Profiles;
+using Humans.Infrastructure.Repositories.Users;
 
 namespace Humans.Application.Tests.Services;
 
@@ -50,7 +58,7 @@ public class ProfileServiceTests : IDisposable
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
 
         // Real repositories backed by an IDbContextFactory wrapping the in-memory store.
-        var factory = new Humans.Application.Tests.Infrastructure.TestDbContextFactory(options);
+        var factory = new Infrastructure.TestDbContextFactory(options);
         _profileRepository = new ProfileRepository(factory, _clock);
         _userEmailRepository = new UserEmailRepository(factory);
         _contactFieldRepository = new ContactFieldRepository(factory);

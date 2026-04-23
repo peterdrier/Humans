@@ -7,7 +7,7 @@
     <div class="list-group list-group-flush">
         @foreach (var item in Model.Resources)
         {
-            var icon = item.Resource.ResourceType == Humans.Domain.Enums.GoogleResourceType.Group
+            var icon = item.Resource.ResourceType == GoogleResourceType.Group
                 ? "fa-solid fa-users"
                 : "fa-solid fa-folder";
 

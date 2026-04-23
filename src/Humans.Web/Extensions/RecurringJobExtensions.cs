@@ -1,6 +1,6 @@
 using Hangfire;
 using Humans.Application.Configuration;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Infrastructure.Jobs;
 
 namespace Humans.Web.Extensions;

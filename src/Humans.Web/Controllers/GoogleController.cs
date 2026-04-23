@@ -1,17 +1,18 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Web.Authorization;
 using Humans.Web.Constants;
 using Humans.Web.Models;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
@@ -50,9 +51,23 @@ public class GoogleController : HumansControllerBase
 
     [HttpGet("SyncSettings")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
-    public async Task<IActionResult> SyncSettings([FromServices] ISyncSettingsService syncSettingsService)
+    public async Task<IActionResult> SyncSettings(
+        [FromServices] ISyncSettingsService syncSettingsService,
+        [FromServices] IUserService userService)
     {
         var settings = await syncSettingsService.GetAllAsync();
+
+        // In-memory join: resolve UpdatedByUser display names via IUserService
+        // rather than an EF .Include across the section boundary (design-rules §6).
+        var updatedByUserIds = settings
+            .Select(s => s.UpdatedByUserId)
+            .OfType<Guid>()
+            .Distinct()
+            .ToList();
+        var updatedByUsers = updatedByUserIds.Count > 0
+            ? await userService.GetByIdsAsync(updatedByUserIds)
+            : new Dictionary<Guid, User>();
+
         var viewModel = new SyncSettingsViewModel
         {
             Settings = settings.Select(s => new SyncServiceSettingViewModel
@@ -61,7 +76,9 @@ public class GoogleController : HumansControllerBase
                 ServiceName = FormatServiceName(s.ServiceType),
                 CurrentMode = s.SyncMode,
                 UpdatedAt = s.UpdatedAt.ToDateTimeUtc(),
-                UpdatedByName = s.UpdatedByUser?.DisplayName
+                UpdatedByName = s.UpdatedByUserId is { } uid && updatedByUsers.TryGetValue(uid, out var u)
+                    ? u.DisplayName
+                    : null
             }).ToList()
         };
         return View(viewModel);
@@ -92,7 +109,7 @@ public class GoogleController : HumansControllerBase
     [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncSystemTeams(
-        [FromServices] Humans.Application.Interfaces.ISystemTeamSync systemTeamSyncJob)
+        [FromServices] ISystemTeamSync systemTeamSyncJob)
     {
         try
         {
@@ -717,31 +734,27 @@ public class GoogleController : HumansControllerBase
 
     [HttpGet("SyncOutbox")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
-    public async Task<IActionResult> SyncOutbox([FromServices] HumansDbContext dbContext)
+    public async Task<IActionResult> SyncOutbox(
+        [FromServices] IUserService userService,
+        [FromServices] ITeamService teamService)
     {
-        var events = await dbContext.GoogleSyncOutboxEvents
-            .OrderByDescending(e => e.OccurredAt)
-            .Take(200)
-            .ToListAsync();
+        var events = (await _googleSyncService.GetRecentOutboxEventsAsync(200)).ToList();
 
-        // Resolve display info for events
+        // Resolve display info for events via section-owned services (§15 Part 2c,
+        // design-rules §2a — controllers go through service interfaces, not repos).
         var userIds = events.Select(e => e.UserId).Distinct().ToList();
         var teamIds = events.Select(e => e.TeamId).Distinct().ToList();
-        var googleEmailLookup = await dbContext.Users
-            .Where(u => userIds.Contains(u.Id))
-            .ToDictionaryAsync(u => u.Id, u => u.GetGoogleServiceEmail() ?? "unknown");
-        var displayNameLookup = await dbContext.Users
-            .Where(u => userIds.Contains(u.Id))
-            .ToDictionaryAsync(u => u.Id, u => u.DisplayName);
-        var teamLookup = await dbContext.Teams
-            .Where(t => teamIds.Contains(t.Id))
-            .ToDictionaryAsync(t => t.Id, t => t.Name);
-        var resourceLookup = await dbContext.GoogleResources
-            .Where(r => teamIds.Contains(r.TeamId) && r.IsActive)
-            .GroupBy(r => r.TeamId)
-            .ToDictionaryAsync(
-                g => g.Key,
-                g => g.Select(r => $"{r.Name} ({r.ResourceType})").ToList());
+        var users = await userService.GetByIdsAsync(userIds);
+        var googleEmailLookup = users.ToDictionary(
+            kvp => kvp.Key, kvp => kvp.Value.GetGoogleServiceEmail() ?? "unknown");
+        var displayNameLookup = users.ToDictionary(
+            kvp => kvp.Key, kvp => kvp.Value.DisplayName);
+        var teamLookup = (await teamService.GetTeamNamesByIdsAsync(teamIds))
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        var resourcesByTeam = await _teamResourceService.GetResourcesByTeamIdsAsync(teamIds);
+        var resourceLookup = resourcesByTeam.ToDictionary(
+            kvp => kvp.Key,
+            kvp => kvp.Value.Select(r => $"{r.Name} ({r.ResourceType})").ToList());
 
         ViewBag.GoogleEmailLookup = googleEmailLookup;
         ViewBag.DisplayNameLookup = displayNameLookup;

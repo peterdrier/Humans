@@ -1,10 +1,16 @@
 using AwesomeAssertions;
 using Humans.Application.Enums;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.Shifts;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Repositories.Shifts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -33,16 +39,19 @@ public class ShiftDashboardMetricsTests : IDisposable
         // The dashboard compute methods now reach cross-domain data through
         // ITicketQueryService / ITeamService / IUserService. Wire thin fakes that
         // read from the same in-memory DbContext so existing DbContext-based
-        // test seed helpers still drive the scenarios end-to-end.
+        // test seed helpers still drive the scenarios end-to-end. The repository
+        // is backed by the same in-memory options via TestDbContextFactory.
         var serviceProvider = Substitute.For<IServiceProvider>();
         serviceProvider.GetService(typeof(ITeamService)).Returns(new FakeTeamService(_dbContext));
         serviceProvider.GetService(typeof(ITicketQueryService)).Returns(new FakeTicketQueryService(_dbContext));
         serviceProvider.GetService(typeof(IUserService)).Returns(new FakeUserService(_dbContext));
+        serviceProvider.GetService(typeof(IRoleAssignmentService)).Returns(Substitute.For<IRoleAssignmentService>());
+
+        var repo = new ShiftManagementRepository(new TestDbContextFactory(options));
 
         _service = new ShiftManagementService(
-            _dbContext,
+            repo,
             Substitute.For<IAuditLogService>(),
-            Substitute.For<IRoleAssignmentService>(),
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             _clock,
@@ -666,6 +675,13 @@ public class ShiftDashboardMetricsTests : IDisposable
             return users.ToDictionary(u => u.Id);
         }
 
+        public async Task<IReadOnlyDictionary<Guid, User>> GetByIdsWithEmailsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+        {
+            if (userIds.Count == 0) return new Dictionary<Guid, User>();
+            var users = await _db.Users.Include(u => u.UserEmails).Where(u => userIds.Contains(u.Id)).ToListAsync(ct);
+            return users.ToDictionary(u => u.Id);
+        }
+
         public async Task<IReadOnlyList<Instant>> GetLoginTimestampsInWindowAsync(Instant fromInclusive, Instant toExclusive, CancellationToken ct = default)
         {
             return await _db.Users
@@ -684,11 +700,24 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<int> BackfillParticipationsAsync(int year, List<(Guid UserId, Humans.Domain.Enums.ParticipationStatus Status)> entries, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default) => throw new NotSupportedException();
         public Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<bool> SetGoogleEmailStatusAsync(Guid userId, GoogleEmailStatus status, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<bool> TrySetGoogleEmailStatusFromSyncAsync(Guid userId, GoogleEmailStatus status, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<(bool Updated, string? OldEmail)> ApplyEmailBackfillAsync(Guid userId, string newEmail, CancellationToken ct = default) => throw new NotSupportedException();
         public Task UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<bool> SetDeletionPendingAsync(Guid userId, Instant requestedAt, Instant scheduledFor, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<User?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<User>> GetContactUsersAsync(string? search, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(string email, Guid excludeUserId, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<Guid>> GetAllUserIdsAsync(CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<(string Language, int Count)>> GetLanguageDistributionForUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<(bool Purged, string? DisplayName)> PurgeAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<int> GetPendingDeletionCountAsync(CancellationToken ct = default) => throw new NotSupportedException();
+        public Task SetLastConsentReminderSentAsync(Guid userId, Instant sentAt, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<int> GetRejectedGoogleEmailCountAsync(CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(Instant now, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<AnonymizedAccountSummary?> AnonymizeExpiredAccountAsync(Guid userId, Instant now, CancellationToken ct = default) => throw new NotSupportedException();
     }
 
     private sealed class FakeTeamService : ITeamService
@@ -728,6 +757,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<Team> CreateTeamAsync(string name, string? description, bool requiresApproval, Guid? parentTeamId = null, string? googleGroupPrefix = null, bool isHidden = false, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<Team?> GetTeamBySlugAsync(string slug, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<string?> GetTeamNameByGoogleGroupPrefixAsync(string googleGroupPrefix, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyDictionary<Guid, string>> GetTeamNamesByIdsAsync(IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<Team>> GetUserCreatedTeamsAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
@@ -755,10 +785,12 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(IEnumerable<Guid> teamIds, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyDictionary<Guid, List<string>>> GetNonSystemTeamNamesByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<TeamOptionDto>> GetActiveTeamOptionsAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<(bool Updated, string? PreviousPrefix)> SetGoogleGroupPrefixAsync(Guid teamId, string? prefix, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllTeamsForAdminAsync(int page, int pageSize, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<AdminTeamListResult> GetAdminTeamListAsync(int page, int pageSize, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<TeamRosterSlotSummary>> GetRosterAsync(string? priority, string? status, string? period, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<TeamMember> AddMemberToTeamAsync(Guid teamId, Guid targetUserId, Guid actorUserId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task SetMemberRoleAsync(Guid teamId, Guid userId, TeamMemberRole role, Guid actorUserId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task UpdateTeamPageContentAsync(Guid teamId, string? pageContent, List<Humans.Domain.ValueObjects.CallToAction> callsToAction, bool isPublicPage, bool showCoordinatorsOnPublicPage, Guid updatedByUserId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<TeamRoleDefinition> CreateRoleDefinitionAsync(Guid teamId, string name, string? description, int slotCount, List<Humans.Domain.Enums.SlotPriority> priorities, int sortOrder, Humans.Domain.Enums.RolePeriod period, Guid actorUserId, bool isPublic = true, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<TeamRoleDefinition> UpdateRoleDefinitionAsync(Guid roleDefinitionId, string name, string? description, int slotCount, List<Humans.Domain.Enums.SlotPriority> priorities, int sortOrder, bool isManagement, Humans.Domain.Enums.RolePeriod period, Guid actorUserId, bool isPublic = true, CancellationToken cancellationToken = default) => throw new NotSupportedException();
@@ -773,8 +805,17 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<TeamMember> AddSeededMemberAsync(Guid teamId, Guid userId, TeamMemberRole role, Instant joinedAt, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<int> HardDeleteSeededTeamsAsync(string nameSuffix, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public void RemoveMemberFromAllTeamsCache(Guid userId) => throw new NotSupportedException();
+        public void InvalidateActiveTeamsCache() => throw new NotSupportedException();
         public Task<IReadOnlyList<string>> GetActiveTeamNamesForUserAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task EnqueueGoogleResyncForUserTeamsAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<TeamOptionDto>> GetBudgetableTeamsAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<Guid>> GetActiveMemberUserIdsAsync(Guid teamId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> GetActiveNonSystemTeamNamesByUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<int> GetTotalPendingJoinRequestCountAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<Guid>> GetActiveNonSystemTeamCoordinatorUserIdsAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<TeamMember>> GetActiveMembersForTeamsAsync(IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<TeamMember>> GetActiveChildMembersByParentIdsAsync(IReadOnlyCollection<Guid> parentTeamIds, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 }

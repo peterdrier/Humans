@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Email;
 using Humans.Infrastructure.Configuration;
 using MailKit.Net.Smtp;
 using MailKit.Security;

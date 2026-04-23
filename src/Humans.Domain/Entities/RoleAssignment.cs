@@ -19,8 +19,14 @@ public class RoleAssignment
     public Guid UserId { get; init; }
 
     /// <summary>
-    /// Navigation property to the user.
+    /// Cross-domain navigation to the assignee's <see cref="User"/>.
+    /// Kept so controllers / views can still read
+    /// <c>ra.User.DisplayName</c> after the service populates the nav in
+    /// memory from <c>IUserService.GetByIdsAsync</c>. Repositories must not
+    /// <c>.Include()</c> this property (design-rules §6). Callers in new
+    /// code should resolve the user via <c>IUserService</c> directly.
     /// </summary>
+    [Obsolete("Cross-domain nav — resolve via IUserService instead of navigating RoleAssignment.User. See design-rules §6c.")]
     public User User { get; set; } = null!;
 
     /// <summary>
@@ -54,8 +60,11 @@ public class RoleAssignment
     public Guid CreatedByUserId { get; init; }
 
     /// <summary>
-    /// Navigation property to the user who created this assignment.
+    /// Cross-domain navigation to the user who created this assignment.
+    /// Service stitches this in memory when rendering assignments;
+    /// repositories must not <c>.Include()</c> it.
     /// </summary>
+    [Obsolete("Cross-domain nav — resolve via IUserService instead of navigating RoleAssignment.CreatedByUser. See design-rules §6c.")]
     public User? CreatedByUser { get; set; }
 
     /// <summary>

@@ -1,15 +1,17 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Repositories.Notifications;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
+using NSubstitute;
 using Xunit;
+using NotificationInboxService = Humans.Application.Services.Notifications.NotificationInboxService;
 
 namespace Humans.Application.Tests.Services;
 
@@ -18,6 +20,8 @@ public class NotificationInboxServiceTests : IDisposable
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly IMemoryCache _cache;
+    private readonly NotificationRepository _repo;
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly NotificationInboxService _service;
     private readonly Guid _userId = Guid.NewGuid();
 
@@ -30,8 +34,13 @@ public class NotificationInboxServiceTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 1, 12, 0));
         _cache = new MemoryCache(new MemoryCacheOptions());
-        _service = new NotificationInboxService(
-            _dbContext, _clock, _cache);
+        _repo = new NotificationRepository(new TestDbContextFactory(options));
+
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(
+                new Dictionary<Guid, User>()));
+
+        _service = new NotificationInboxService(_repo, _userService, _clock, _cache);
     }
 
     public void Dispose()
@@ -83,8 +92,8 @@ public class NotificationInboxServiceTests : IDisposable
 
         result.Success.Should().BeTrue();
 
-        var updated = await _dbContext.Notifications.FindAsync(notification.Id);
-        updated!.ResolvedAt.Should().NotBeNull();
+        var updated = await _dbContext.Notifications.AsNoTracking().FirstAsync(n => n.Id == notification.Id);
+        updated.ResolvedAt.Should().NotBeNull();
         updated.ResolvedByUserId.Should().Be(_userId);
     }
 
@@ -133,8 +142,8 @@ public class NotificationInboxServiceTests : IDisposable
 
         result.Success.Should().BeTrue();
 
-        var updated = await _dbContext.Notifications.FindAsync(notification.Id);
-        updated!.ResolvedAt.Should().NotBeNull();
+        var updated = await _dbContext.Notifications.AsNoTracking().FirstAsync(n => n.Id == notification.Id);
+        updated.ResolvedAt.Should().NotBeNull();
     }
 
     [Fact]
@@ -169,6 +178,7 @@ public class NotificationInboxServiceTests : IDisposable
         result.Success.Should().BeTrue();
 
         var recipient = await _dbContext.NotificationRecipients
+            .AsNoTracking()
             .FirstAsync(nr => nr.NotificationId == notification.Id && nr.UserId == _userId);
         recipient.ReadAt.Should().NotBeNull();
     }
@@ -195,6 +205,7 @@ public class NotificationInboxServiceTests : IDisposable
         await _service.MarkAllReadAsync(_userId);
 
         var unread = await _dbContext.NotificationRecipients
+            .AsNoTracking()
             .Where(nr => nr.UserId == _userId && nr.ReadAt == null)
             .CountAsync();
         unread.Should().Be(0);
@@ -211,6 +222,7 @@ public class NotificationInboxServiceTests : IDisposable
         await _service.BulkResolveAsync([n1.Id, n2.Id], _userId);
 
         var resolved = await _dbContext.Notifications
+            .AsNoTracking()
             .Where(n => n.ResolvedAt != null)
             .CountAsync();
         resolved.Should().Be(2);
@@ -224,11 +236,11 @@ public class NotificationInboxServiceTests : IDisposable
 
         await _service.BulkResolveAsync([actionable.Id, informational.Id], _userId);
 
-        var resolvedActionable = await _dbContext.Notifications.FindAsync(actionable.Id);
-        resolvedActionable!.ResolvedAt.Should().NotBeNull();
+        var resolvedActionable = await _dbContext.Notifications.AsNoTracking().FirstAsync(n => n.Id == actionable.Id);
+        resolvedActionable.ResolvedAt.Should().NotBeNull();
 
-        var unresolvedInfo = await _dbContext.Notifications.FindAsync(informational.Id);
-        unresolvedInfo!.ResolvedAt.Should().BeNull();
+        var unresolvedInfo = await _dbContext.Notifications.AsNoTracking().FirstAsync(n => n.Id == informational.Id);
+        unresolvedInfo.ResolvedAt.Should().BeNull();
     }
 
     // --- BulkDismissAsync ---
@@ -242,6 +254,7 @@ public class NotificationInboxServiceTests : IDisposable
         await _service.BulkDismissAsync([n1.Id, n2.Id], _userId);
 
         var resolved = await _dbContext.Notifications
+            .AsNoTracking()
             .Where(n => n.ResolvedAt != null)
             .CountAsync();
         resolved.Should().Be(2);
@@ -255,11 +268,11 @@ public class NotificationInboxServiceTests : IDisposable
 
         await _service.BulkDismissAsync([actionable.Id, informational.Id], _userId);
 
-        var unresolvedActionable = await _dbContext.Notifications.FindAsync(actionable.Id);
-        unresolvedActionable!.ResolvedAt.Should().BeNull();
+        var unresolvedActionable = await _dbContext.Notifications.AsNoTracking().FirstAsync(n => n.Id == actionable.Id);
+        unresolvedActionable.ResolvedAt.Should().BeNull();
 
-        var resolvedInfo = await _dbContext.Notifications.FindAsync(informational.Id);
-        resolvedInfo!.ResolvedAt.Should().NotBeNull();
+        var resolvedInfo = await _dbContext.Notifications.AsNoTracking().FirstAsync(n => n.Id == informational.Id);
+        resolvedInfo.ResolvedAt.Should().NotBeNull();
     }
 
     // --- ClickThroughAsync ---
@@ -274,6 +287,7 @@ public class NotificationInboxServiceTests : IDisposable
         url.Should().Be("/test");
 
         var recipient = await _dbContext.NotificationRecipients
+            .AsNoTracking()
             .FirstAsync(nr => nr.NotificationId == notification.Id && nr.UserId == _userId);
         recipient.ReadAt.Should().NotBeNull();
     }

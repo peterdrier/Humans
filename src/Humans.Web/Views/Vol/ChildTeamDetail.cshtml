@@ -1,6 +1,9 @@
 @model Humans.Web.Models.Vol.ChildTeamDetailViewModel
-
+@* TeamMember.User / TeamJoinRequest.User are Obsolete cross-domain navs (§6c);
+   TeamService populates them in-memory (§6b). Cleared when this view reads
+   pre-projected DisplayName from a service-side DTO. *@
 @{
+#pragma warning disable CS0618
     ViewData["Title"] = Model.ChildTeam.Name;
     ViewData["VolActiveTab"] = "Teams";
 }

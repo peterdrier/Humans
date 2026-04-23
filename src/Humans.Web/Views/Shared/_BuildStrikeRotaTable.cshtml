@@ -46,13 +46,13 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
     </div>
 }
 @{
-    var dateRanges = new List<List<Humans.Web.Models.ShiftDisplayItem>>();
-    List<Humans.Web.Models.ShiftDisplayItem>? currentRange = null;
+    var dateRanges = new List<List<ShiftDisplayItem>>();
+    List<ShiftDisplayItem>? currentRange = null;
     foreach (var s in allDayShifts)
     {
         if (currentRange == null || s.Shift.DayOffset != currentRange.Last().Shift.DayOffset + 1)
         {
-            currentRange = new List<Humans.Web.Models.ShiftDisplayItem> { s };
+            currentRange = new List<ShiftDisplayItem> { s };
             dateRanges.Add(currentRange);
         }
         else

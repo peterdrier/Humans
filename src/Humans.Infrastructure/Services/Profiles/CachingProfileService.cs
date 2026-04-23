@@ -4,13 +4,17 @@ using NodaTime;
 using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using MemberApplication = Humans.Domain.Entities.Application;
 using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Infrastructure.Services.Profiles;
 
@@ -251,6 +255,27 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         return await inner.GetTierCountsAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.GetActiveApprovedUserIdsAsync(ct);
+    }
+
+    public async Task<int> GetConsentReviewPendingCountAsync(CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.GetConsentReviewPendingCountAsync(ct);
+    }
+
+    public async Task<int> GetNotApprovedAndNotSuspendedCountAsync(CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.GetNotApprovedAndNotSuspendedCountAsync(ct);
+    }
+
     public async Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
         GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default)
     {
@@ -389,11 +414,11 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         if (result.Success)
         {
             await RefreshEntryAsync(userId, ct);
-            // TODO(§15 NEW-B): ShiftAuthorization cache (shift-auth:{userId}, 60s TTL) is
-            // no longer invalidated here. Tolerable at ~500-user scale given the short TTL
-            // and that the user is being deleted. When Shifts migrates to the §15 pattern,
-            // it should subscribe to IFullProfileInvalidator or equivalent to clear its
-            // own cache on deletion.
+            // §15 NEW-B resolved in issue #541a: Shifts now exposes
+            // IShiftAuthorizationInvalidator, so the 60s shift-auth:{userId}
+            // entry drops immediately on deletion.
+            var shiftAuthInvalidator = scope.ServiceProvider.GetRequiredService<IShiftAuthorizationInvalidator>();
+            shiftAuthInvalidator.Invalidate(userId);
         }
         return result;
     }
@@ -414,5 +439,152 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
         await inner.SaveCVEntriesAsync(userId, entries, ct);
         await RefreshEntryAsync(userId, ct);
+    }
+
+    // ==========================================================================
+    // Onboarding-section writes — delegate to inner, then invalidate cross-cutting
+    // caches (nav badge, notification meter) and refresh the FullProfile entry.
+    // ==========================================================================
+
+    public async Task<IReadOnlyList<Profile>> GetReviewableProfilesAsync(CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.GetReviewableProfilesAsync(ct);
+    }
+
+    public async Task<int> GetPendingReviewCountAsync(CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.GetPendingReviewCountAsync(ct);
+    }
+
+    public async Task<OnboardingResult> ClearConsentCheckAsync(
+        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        var navBadge = scope.ServiceProvider.GetRequiredService<INavBadgeCacheInvalidator>();
+        var notificationMeter = scope.ServiceProvider.GetRequiredService<INotificationMeterCacheInvalidator>();
+
+        var result = await inner.ClearConsentCheckAsync(userId, reviewerId, notes, ct);
+        if (result.Success)
+        {
+            navBadge.Invalidate();
+            notificationMeter.Invalidate();
+            await RefreshEntryAsync(userId, ct);
+        }
+        return result;
+    }
+
+    public async Task<OnboardingResult> FlagConsentCheckAsync(
+        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        var navBadge = scope.ServiceProvider.GetRequiredService<INavBadgeCacheInvalidator>();
+        var notificationMeter = scope.ServiceProvider.GetRequiredService<INotificationMeterCacheInvalidator>();
+
+        var result = await inner.FlagConsentCheckAsync(userId, reviewerId, notes, ct);
+        if (result.Success)
+        {
+            navBadge.Invalidate();
+            notificationMeter.Invalidate();
+            await RefreshEntryAsync(userId, ct);
+        }
+        return result;
+    }
+
+    public async Task<OnboardingResult> RejectSignupAsync(
+        Guid userId, Guid reviewerId, string? reason, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        var navBadge = scope.ServiceProvider.GetRequiredService<INavBadgeCacheInvalidator>();
+        var notificationMeter = scope.ServiceProvider.GetRequiredService<INotificationMeterCacheInvalidator>();
+
+        var result = await inner.RejectSignupAsync(userId, reviewerId, reason, ct);
+        if (result.Success)
+        {
+            navBadge.Invalidate();
+            notificationMeter.Invalidate();
+            await RefreshEntryAsync(userId, ct);
+        }
+        return result;
+    }
+
+    public async Task<OnboardingResult> ApproveVolunteerAsync(
+        Guid userId, Guid adminId, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        var navBadge = scope.ServiceProvider.GetRequiredService<INavBadgeCacheInvalidator>();
+        var notificationMeter = scope.ServiceProvider.GetRequiredService<INotificationMeterCacheInvalidator>();
+
+        var result = await inner.ApproveVolunteerAsync(userId, adminId, ct);
+        if (result.Success)
+        {
+            navBadge.Invalidate();
+            notificationMeter.Invalidate();
+            await RefreshEntryAsync(userId, ct);
+        }
+        return result;
+    }
+
+    public async Task<OnboardingResult> SuspendAsync(
+        Guid userId, Guid adminId, string? notes, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+
+        var result = await inner.SuspendAsync(userId, adminId, notes, ct);
+        if (result.Success)
+            await RefreshEntryAsync(userId, ct);
+        return result;
+    }
+
+    public async Task<OnboardingResult> UnsuspendAsync(
+        Guid userId, Guid adminId, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+
+        var result = await inner.UnsuspendAsync(userId, adminId, ct);
+        if (result.Success)
+            await RefreshEntryAsync(userId, ct);
+        return result;
+    }
+
+    public async Task<bool> SetConsentCheckPendingAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        var navBadge = scope.ServiceProvider.GetRequiredService<INavBadgeCacheInvalidator>();
+        var notificationMeter = scope.ServiceProvider.GetRequiredService<INotificationMeterCacheInvalidator>();
+
+        var set = await inner.SetConsentCheckPendingAsync(userId, ct);
+        if (set)
+        {
+            navBadge.Invalidate();
+            notificationMeter.Invalidate();
+            await RefreshEntryAsync(userId, ct);
+        }
+        return set;
+    }
+
+    public async Task<bool> AnonymizeExpiredProfileAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        var anonymized = await inner.AnonymizeExpiredProfileAsync(userId, ct);
+        if (anonymized)
+        {
+            // The profile fields used by the FullProfile projection changed —
+            // refresh the cache entry so downstream readers see the anonymized
+            // view immediately.
+            await RefreshEntryAsync(userId, ct);
+        }
+        return anonymized;
     }
 }

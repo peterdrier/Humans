@@ -16,7 +16,16 @@ public class BudgetCategory
     public decimal AllocatedAmount { get; set; }
     public ExpenditureType ExpenditureType { get; set; } = ExpenditureType.OpEx;
     public Guid? TeamId { get; set; }
+
+    /// <summary>
+    /// Cross-domain navigation to the owning team. Do not use — callers resolve
+    /// team names via <see cref="Humans.Application.Interfaces.ITeamService"/>,
+    /// keyed off <see cref="TeamId"/>. Retained only so EF's configured
+    /// relationship keeps the FK constraint.
+    /// </summary>
+    [Obsolete("Cross-domain nav. Use TeamId + ITeamService to resolve the team.")]
     public Team? Team { get; set; }
+
     public int SortOrder { get; set; }
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }

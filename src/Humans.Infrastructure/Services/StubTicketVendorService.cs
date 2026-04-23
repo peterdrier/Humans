@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Tickets;
 using NodaTime;
 
 namespace Humans.Infrastructure.Services;

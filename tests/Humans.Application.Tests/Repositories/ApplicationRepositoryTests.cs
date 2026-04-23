@@ -4,9 +4,9 @@ using NodaTime;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Repositories;
 using Xunit;
 using MemberApplication = Humans.Domain.Entities.Application;
+using Humans.Infrastructure.Repositories.Governance;
 
 namespace Humans.Application.Tests.Repositories;
 

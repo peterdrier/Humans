@@ -37,8 +37,6 @@ All profile-related functionality lives under `/Profile`:
 
 External contacts are managed separately at `/Contacts` (ContactsController).
 
-Old `/Human/*` routes redirect permanently to their `/Profile/*` equivalents.
-
 ## Actors & Roles
 
 | Actor | Capabilities |

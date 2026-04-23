@@ -7,11 +7,12 @@
 # outside the allowlisted owner files. Migration files and the DbContext
 # itself are always allowed.
 #
-# Phase 2 exceptions: GoogleWorkspaceSyncService, SystemTeamSyncJob,
-# ProcessGoogleSyncOutboxJob, and GoogleController still touch the table
-# directly — they are tracked as temporary exceptions while the remainder
-# of the Google sync service is decomposed. Remove entries from
-# PHASE2_EXCEPTIONS as each caller migrates to ITeamResourceService reads.
+# Phase 2 exceptions: SystemTeamSyncJob still touches the table directly —
+# tracked as a temporary exception while the job migrates to the Google
+# sync service. GoogleWorkspaceSyncService moved to Application in §15
+# Part 2b (#575) and now routes all writes through IGoogleResourceRepository.
+# ProcessGoogleSyncOutboxJob and GoogleController migrated in §15 Part 2c
+# (#576). Remove entries from PHASE2_EXCEPTIONS as each caller migrates.
 
 set -euo pipefail
 
@@ -19,9 +20,10 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
 # Files that are allowed to touch the DbSet<GoogleResource> directly.
+# After the §15 Teams sub-task #540c migration the only owner is the
+# Application-layer service's repository in Humans.Infrastructure.Repositories.
 ALLOWED=(
-  "src/Humans.Infrastructure/Services/TeamResourceService.cs"
-  "src/Humans.Infrastructure/Services/StubTeamResourceService.cs"
+  "src/Humans.Infrastructure/Repositories/GoogleResourceRepository.cs"
   "src/Humans.Infrastructure/Data/Configurations/TeamConfiguration.cs"
   "src/Humans.Infrastructure/Data/HumansDbContext.cs"
 )
@@ -29,10 +31,7 @@ ALLOWED=(
 # Phase 2: still-pending migrations to services that own writes here.
 # Track the upstream issue before adding anything to this list.
 PHASE2_EXCEPTIONS=(
-  "src/Humans.Infrastructure/Services/GoogleWorkspaceSyncService.cs"
   "src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs"
-  "src/Humans.Infrastructure/Jobs/ProcessGoogleSyncOutboxJob.cs"
-  "src/Humans.Web/Controllers/GoogleController.cs"
 )
 
 build_exclude_args() {
@@ -57,7 +56,8 @@ if [[ -n "$MATCHES" ]]; then
   echo "error: google_resources direct access outside TeamResourceService:" >&2
   echo "$MATCHES" >&2
   echo >&2
-  echo "google_resources is owned by TeamResourceService. Use one of its read" >&2
+  echo "google_resources is owned by TeamResourceService (which reads/writes" >&2
+  echo "through IGoogleResourceRepository). Use one of the service's read" >&2
   echo "methods (GetTeamResourcesAsync, GetResourcesByTeamIdsAsync," >&2
   echo "GetTeamResourceSummariesAsync, GetActiveResourceCountsByTeamAsync," >&2
   echo "GetUserTeamResourcesAsync, GetActiveDriveFoldersAsync, GetResourceCountAsync)" >&2

@@ -1,5 +1,6 @@
 using Humans.Application.DTOs.Calendar;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Calendar;
+using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 using Humans.Web.Models.Calendar;
 using Microsoft.AspNetCore.Authorization;
@@ -154,8 +155,17 @@ public class CalendarController : HumansControllerBase
             .Take(5)
             .ToList();
 
+        // Owning-team name resolved via ITeamService per design-rules §6b —
+        // CalendarEvent.OwningTeam nav is [Obsolete] and no longer .Include()d.
+        // Use the lightweight name-only lookup so we don't hydrate the entire
+        // team aggregate (members + users) just to render a display string.
+        var teamNames = await _teams.GetTeamNamesByIdsAsync([ev.OwningTeamId], ct);
+        var owningTeamName = teamNames.TryGetValue(ev.OwningTeamId, out var name)
+            ? name
+            : string.Empty;
+
         // Any authenticated human can edit; changes are audited.
-        return View(new CalendarEventViewModel(ev, upcoming, CanEdit: true, zone.Id));
+        return View(new CalendarEventViewModel(ev, owningTeamName, upcoming, CanEdit: true, zone.Id));
     }
 
     [HttpGet("Event/Create")]

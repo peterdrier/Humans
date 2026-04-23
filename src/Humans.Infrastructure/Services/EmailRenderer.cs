@@ -1,6 +1,6 @@
 using System.Globalization;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Email;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Microsoft.Extensions.Localization;
@@ -330,5 +330,24 @@ public class EmailRenderer : IEmailRenderer
     private static string HtmlEncode(string text)
     {
         return System.Net.WebUtility.HtmlEncode(text);
+    }
+
+    public EmailContent RenderCampaignCode(string subject, string markdownBody, string code, string recipientName)
+    {
+        // HTML-encode the substitutions so malicious codes/names cannot inject markup.
+        var encodedCode = HtmlEncode(code);
+        var encodedName = HtmlEncode(recipientName);
+
+        var markdown = markdownBody
+            .Replace("{{Code}}", encodedCode, StringComparison.Ordinal)
+            .Replace("{{Name}}", encodedName, StringComparison.Ordinal);
+        var renderedBody = Markdig.Markdown.ToHtml(markdown);
+
+        // Subject is a plain-text field; no HTML encoding required.
+        var renderedSubject = subject
+            .Replace("{{Code}}", code, StringComparison.Ordinal)
+            .Replace("{{Name}}", recipientName, StringComparison.Ordinal);
+
+        return new EmailContent(renderedSubject, renderedBody);
     }
 }

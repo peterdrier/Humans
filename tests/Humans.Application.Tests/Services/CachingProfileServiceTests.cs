@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Application;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
@@ -10,6 +9,8 @@ using Humans.Infrastructure.Services.Profiles;
 using NodaTime;
 using NSubstitute;
 using Xunit;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Tests.Services;
 

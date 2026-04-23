@@ -1,5 +1,5 @@
 using Humans.Application;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Profiles;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 

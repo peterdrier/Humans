@@ -163,7 +163,6 @@ Generated 2026-04-03. Covers every `[Authorize(Roles)]`, `RoleChecks.*`, `ShiftR
 |---|---|---|---|
 | `ConsentController` | Class | `[Authorize]` (authenticated) | — |
 | `NotificationController` | Class | `[Authorize]` (authenticated) | — |
-| `HumanRedirectController` | Class | `[Authorize]` (authenticated) | — |
 | `ProfileApiController` | Class | `[Authorize]` (authenticated) | — |
 | `LegalController` | Class | `AllowAnonymous` | — |
 | `CampApiController` | Class | `AllowAnonymous` | — |

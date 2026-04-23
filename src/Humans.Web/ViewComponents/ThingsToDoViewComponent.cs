@@ -1,10 +1,12 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
-using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Models;
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Web.ViewComponents;
 

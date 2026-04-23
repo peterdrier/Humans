@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Camps;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

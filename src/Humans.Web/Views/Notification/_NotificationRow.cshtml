@@ -1,5 +1,5 @@
 @model Humans.Web.Models.NotificationRowViewModel
-@inject Microsoft.Extensions.Localization.IStringLocalizer<Humans.Web.SharedResource> Localizer
+@inject IStringLocalizer<SharedResource> Localizer
 
 @{
     // Left border accent color
@@ -99,7 +99,7 @@
 </div>
 
 @functions {
-    static string TimeAgo(DateTime utcTime, Microsoft.Extensions.Localization.IStringLocalizer localizer)
+    static string TimeAgo(DateTime utcTime, IStringLocalizer localizer)
     {
         var span = DateTime.UtcNow - utcTime;
         if (span.TotalMinutes < 1) return localizer["Notification_TimeAgo_JustNow"].Value;

@@ -3,7 +3,7 @@
     var isPlacementOpen = (bool)ViewBag.IsPlacementOpen;
     var isMapAdmin = (bool)ViewBag.IsMapAdmin;
     var userCampSeasonId = (string)ViewBag.UserCampSeasonId;
-    var seasonsWithout = (List<Humans.Application.Interfaces.CampSeasonSummaryDto>)ViewBag.SeasonsWithoutCampPolygon;
+    var seasonsWithout = (List<Humans.Application.Interfaces.CitiPlanning.CampSeasonSummaryDto>)ViewBag.SeasonsWithoutCampPolygon;
     var showMainToolbar = isMapAdmin && seasonsWithout.Any();
     var placementOpensAt = ViewBag.PlacementOpensAt as NodaTime.LocalDateTime?;
     var placementClosesAt = ViewBag.PlacementClosesAt as NodaTime.LocalDateTime?;

@@ -155,14 +155,14 @@
                         <text>@Localizer["Emails_GoogleAutoNobodies"]</text>
                     }
                 </p>
-                @if (Model.GoogleEmailStatus == Humans.Domain.Enums.GoogleEmailStatus.Rejected)
+                @if (Model.GoogleEmailStatus == GoogleEmailStatus.Rejected)
                 {
                     <div class="alert alert-danger mb-3">
                         <i class="fa-solid fa-triangle-exclamation me-1"></i>
                         @Localizer["Emails_GoogleRejected"]
                     </div>
                 }
-                else if (Model.GoogleEmailStatus == Humans.Domain.Enums.GoogleEmailStatus.Valid)
+                else if (Model.GoogleEmailStatus == GoogleEmailStatus.Valid)
                 {
                     <div class="alert alert-success mb-3 py-2">
                         <i class="fa-solid fa-circle-check me-1"></i>
@@ -182,7 +182,7 @@
                             {
                                 <span class="badge bg-info text-dark ms-2">@Localizer["Emails_AutoSelected"]</span>
                             }
-                            @if (Model.GoogleEmailStatus == Humans.Domain.Enums.GoogleEmailStatus.Rejected && !Model.HasNobodiesTeamEmail)
+                            @if (Model.GoogleEmailStatus == GoogleEmailStatus.Rejected && !Model.HasNobodiesTeamEmail)
                             {
                                 <span class="badge bg-danger ms-2">@Localizer["Emails_GoogleRejectedBadge"]</span>
                             }

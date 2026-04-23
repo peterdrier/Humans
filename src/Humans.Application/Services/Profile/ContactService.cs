@@ -2,10 +2,12 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Services.Profile;
 

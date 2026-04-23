@@ -1,5 +1,13 @@
 // @e2e: shifts.spec.ts
-using Humans.Application.Interfaces;
+// TeamMember.User / TeamJoinRequest.User / TeamRoleAssignment.AssignedByUser
+// are [Obsolete] cross-domain navs (design-rules §6c). The Teams service
+// populates them in-memory (§6b) before returning the entity graph, so the
+// view-model projections here are safe reads — but the compiler still warns
+// and TreatWarningsAsErrors promotes to error. This file-wide disable is
+// cleared when the controller projects directly from service-layer DTOs.
+#pragma warning disable CS0618
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;

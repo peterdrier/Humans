@@ -1,9 +1,8 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -11,6 +10,11 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
+using NotificationService = Humans.Application.Services.Notifications.NotificationService;
+using NotificationEmitter = Humans.Application.Services.Notifications.NotificationEmitter;
+using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Profiles;
+using Humans.Infrastructure.Repositories.Notifications;
 
 namespace Humans.Application.Tests.Services;
 
@@ -19,8 +23,10 @@ public class NotificationServiceTests : IDisposable
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly IMemoryCache _cache;
+    private readonly NotificationRepository _repo;
     private readonly NotificationService _service;
     private readonly ICommunicationPreferenceService _preferenceService = Substitute.For<ICommunicationPreferenceService>();
+    private readonly INotificationRecipientResolver _recipientResolver = Substitute.For<INotificationRecipientResolver>();
 
     public NotificationServiceTests()
     {
@@ -31,8 +37,9 @@ public class NotificationServiceTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 1, 12, 0));
         _cache = new MemoryCache(new MemoryCacheOptions());
+        _repo = new NotificationRepository(new TestDbContextFactory(options));
 
-        // Delegate to in-memory DB so seeded preferences are respected
+        // Delegate to in-memory DB so seeded preferences are respected.
         _preferenceService.GetUsersWithInboxDisabledAsync(
             Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<MessageCategory>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
@@ -46,7 +53,12 @@ public class NotificationServiceTests : IDisposable
                 return Task.FromResult<IReadOnlySet<Guid>>(disabledIds);
             });
 
-        _service = new NotificationService(_dbContext, _preferenceService, _clock, _cache, NullLogger<NotificationService>.Instance);
+        var emitter = new NotificationEmitter(
+            _repo, _preferenceService, _clock, _cache,
+            NullLogger<NotificationEmitter>.Instance);
+        _service = new NotificationService(
+            emitter, _repo, _recipientResolver, _preferenceService,
+            _clock, _cache, NullLogger<NotificationService>.Instance);
     }
 
     public void Dispose()
@@ -100,11 +112,11 @@ public class NotificationServiceTests : IDisposable
             NotificationPriority.High,
             "Coverage gap",
             [userId],
-            actionLabel: "Find cover \u2192",
+            actionLabel: "Find cover →",
             targetGroupName: "Coordinators");
 
         var notification = await _dbContext.Notifications.SingleAsync();
-        notification.ActionLabel.Should().Be("Find cover \u2192");
+        notification.ActionLabel.Should().Be("Find cover →");
         notification.TargetGroupName.Should().Be("Coordinators");
     }
 
@@ -127,7 +139,6 @@ public class NotificationServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
 
-        // Create preference with InboxEnabled = false
         _dbContext.CommunicationPreferences.Add(new CommunicationPreference
         {
             Id = Guid.NewGuid(),
@@ -155,7 +166,6 @@ public class NotificationServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
 
-        // Create preference with InboxEnabled = false
         _dbContext.CommunicationPreferences.Add(new CommunicationPreference
         {
             Id = Guid.NewGuid(),
@@ -185,10 +195,8 @@ public class NotificationServiceTests : IDisposable
         var user1 = Guid.NewGuid();
         var user2 = Guid.NewGuid();
 
-        _dbContext.Teams.Add(new Team { Id = teamId, Name = "Logistics", Slug = "logistics" });
-        _dbContext.TeamMembers.Add(new TeamMember { Id = Guid.NewGuid(), TeamId = teamId, UserId = user1, Role = TeamMemberRole.Member });
-        _dbContext.TeamMembers.Add(new TeamMember { Id = Guid.NewGuid(), TeamId = teamId, UserId = user2, Role = TeamMemberRole.Member });
-        await _dbContext.SaveChangesAsync();
+        _recipientResolver.GetTeamNotificationInfoAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(new TeamNotificationInfo(teamId, "Logistics", [user1, user2]));
 
         await _service.SendToTeamAsync(
             NotificationSource.ShiftCoverageGap,
@@ -202,7 +210,6 @@ public class NotificationServiceTests : IDisposable
             .Include(n => n.Recipients)
             .ToListAsync();
 
-        // One shared notification for the team
         notifications.Should().HaveCount(1);
         var notification = notifications.Single();
         notification.TargetGroupName.Should().Be("Logistics");
@@ -216,38 +223,9 @@ public class NotificationServiceTests : IDisposable
     {
         var user1 = Guid.NewGuid();
         var user2 = Guid.NewGuid();
-        var now = _clock.GetCurrentInstant();
 
-        _dbContext.RoleAssignments.Add(new RoleAssignment
-        {
-            Id = Guid.NewGuid(),
-            UserId = user1,
-            RoleName = "Board",
-            ValidFrom = now - Duration.FromDays(30),
-            CreatedAt = now,
-            CreatedByUserId = Guid.NewGuid()
-        });
-        _dbContext.RoleAssignments.Add(new RoleAssignment
-        {
-            Id = Guid.NewGuid(),
-            UserId = user2,
-            RoleName = "Board",
-            ValidFrom = now - Duration.FromDays(30),
-            CreatedAt = now,
-            CreatedByUserId = Guid.NewGuid()
-        });
-        // Expired role - should NOT be included
-        _dbContext.RoleAssignments.Add(new RoleAssignment
-        {
-            Id = Guid.NewGuid(),
-            UserId = Guid.NewGuid(),
-            RoleName = "Board",
-            ValidFrom = now - Duration.FromDays(60),
-            ValidTo = now - Duration.FromDays(10),
-            CreatedAt = now,
-            CreatedByUserId = Guid.NewGuid()
-        });
-        await _dbContext.SaveChangesAsync();
+        _recipientResolver.GetActiveUserIdsForRoleAsync("Board", Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<Guid>)[user1, user2]);
 
         await _service.SendToRoleAsync(
             NotificationSource.ApplicationSubmitted,
@@ -272,7 +250,6 @@ public class NotificationServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
 
-        // Seed the per-user notification badge cache
         _cache.Set(CacheKeys.NotificationBadgeCounts(userId), new { ActionableUnreadCount = 0, InformationalUnreadCount = 0 });
 
         await _service.SendAsync(
@@ -282,10 +259,9 @@ public class NotificationServiceTests : IDisposable
             "Test",
             [userId]);
 
-        // Per-user cache should be evicted
         _cache.TryGetValue(CacheKeys.NotificationBadgeCounts(userId), out _).Should().BeFalse();
 
-        // Global NavBadgeCounts should NOT be affected (it's for admin queues, not notifications)
+        // Global NavBadgeCounts should NOT be affected (it's for admin queues, not notifications).
         _cache.Set(CacheKeys.NavBadgeCounts, (Review: 1, Voting: 2, Feedback: 0));
         await _service.SendAsync(
             NotificationSource.TeamMemberAdded,

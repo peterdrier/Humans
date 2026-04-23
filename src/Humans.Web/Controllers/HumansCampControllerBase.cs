@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Camps;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;

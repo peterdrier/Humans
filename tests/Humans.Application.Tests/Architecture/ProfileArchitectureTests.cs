@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Services.Profiles;
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +7,9 @@ using ProfileService = Humans.Application.Services.Profile.ProfileService;
 using ContactFieldService = Humans.Application.Services.Profile.ContactFieldService;
 using UserEmailService = Humans.Application.Services.Profile.UserEmailService;
 using CommunicationPreferenceService = Humans.Application.Services.Profile.CommunicationPreferenceService;
+using AccountMergeService = Humans.Application.Services.Profile.AccountMergeService;
+using DuplicateAccountService = Humans.Application.Services.Profile.DuplicateAccountService;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Tests.Architecture;
 
@@ -199,4 +201,62 @@ public class ProfileArchitectureTests
             because: "caching is the decorator's concern (design-rules §5), not the service's");
     }
 
+    // ── AccountMergeService (issue #557 — Profile §15 Part 1) ─────────────────
+
+    [Fact]
+    public void AccountMergeService_LivesInHumansApplicationServicesProfileNamespace()
+    {
+        typeof(AccountMergeService).Namespace
+            .Should().Be("Humans.Application.Services.Profile",
+                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
+    }
+
+    [Fact]
+    public void AccountMergeService_HasNoDbContextConstructorParameter()
+    {
+        var ctor = typeof(AccountMergeService).GetConstructors().Single();
+        ctor.GetParameters()
+            .Should().NotContain(
+                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
+                because: "services in Humans.Application must never take DbContext — use IAccountMergeRepository / IUserRepository / IUserEmailRepository / IProfileRepository instead (design-rules §3)");
+    }
+
+    [Fact]
+    public void AccountMergeService_TakesAccountMergeRepository()
+    {
+        var ctor = typeof(AccountMergeService).GetConstructors().Single();
+        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
+
+        paramTypes.Should().Contain(typeof(IAccountMergeRepository));
+    }
+
+    // ── DuplicateAccountService (issue #557 — Profile §15 Part 1) ─────────────
+
+    [Fact]
+    public void DuplicateAccountService_LivesInHumansApplicationServicesProfileNamespace()
+    {
+        typeof(DuplicateAccountService).Namespace
+            .Should().Be("Humans.Application.Services.Profile",
+                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
+    }
+
+    [Fact]
+    public void DuplicateAccountService_HasNoDbContextConstructorParameter()
+    {
+        var ctor = typeof(DuplicateAccountService).GetConstructors().Single();
+        ctor.GetParameters()
+            .Should().NotContain(
+                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
+                because: "services in Humans.Application must never take DbContext — go through repository and service interfaces (design-rules §3, §9)");
+    }
+
+    // ── IAccountMergeRepository ───────────────────────────────────────────────
+
+    [Fact]
+    public void IAccountMergeRepository_LivesInApplicationInterfacesRepositoriesNamespace()
+    {
+        typeof(IAccountMergeRepository).Namespace
+            .Should().Be("Humans.Application.Interfaces.Repositories",
+                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
+    }
 }

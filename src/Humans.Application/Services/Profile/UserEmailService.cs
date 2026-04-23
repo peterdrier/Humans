@@ -1,12 +1,14 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Services.Profile;
 
@@ -18,29 +20,33 @@ namespace Humans.Application.Services.Profile;
 public sealed class UserEmailService : IUserEmailService
 {
     private readonly IUserEmailRepository _repository;
-    private readonly IAccountMergeService _mergeService;
     private readonly IUserService _userService;
     private readonly UserManager<User> _userManager;
     private readonly IClock _clock;
     private readonly IFullProfileInvalidator _fullProfileInvalidator;
+    private readonly IServiceProvider _serviceProvider;
 
     private const string EmailVerificationTokenPurpose = "UserEmailVerification";
 
     public UserEmailService(
         IUserEmailRepository repository,
-        IAccountMergeService mergeService,
         IUserService userService,
         UserManager<User> userManager,
         IClock clock,
-        IFullProfileInvalidator fullProfileInvalidator)
+        IFullProfileInvalidator fullProfileInvalidator,
+        IServiceProvider serviceProvider)
     {
         _repository = repository;
-        _mergeService = mergeService;
         _userService = userService;
         _userManager = userManager;
         _clock = clock;
         _fullProfileInvalidator = fullProfileInvalidator;
+        _serviceProvider = serviceProvider;
     }
+
+    // Lazy to break the DI cycle:
+    // TeamService -> IEmailService -> IUserEmailService -> IAccountMergeService -> ITeamService.
+    private IAccountMergeService MergeService => _serviceProvider.GetRequiredService<IAccountMergeService>();
 
     public async Task<IReadOnlyList<UserEmailEditDto>> GetUserEmailsAsync(
         Guid userId, CancellationToken cancellationToken = default)
@@ -49,7 +55,7 @@ public sealed class UserEmailService : IUserEmailService
 
         // Check which emails have pending merge requests (cross-section → IAccountMergeService)
         var emailIds = emails.Select(e => e.Id).ToList();
-        var mergePendingSet = await _mergeService.GetPendingEmailIdsAsync(emailIds, cancellationToken);
+        var mergePendingSet = await MergeService.GetPendingEmailIdsAsync(emailIds, cancellationToken);
 
         return emails.Select(e => new UserEmailEditDto(
             e.Id,
@@ -100,7 +106,7 @@ public sealed class UserEmailService : IUserEmailService
             throw new ValidationException("This email address is already in your account.");
 
         // Check pending merge (cross-section → IAccountMergeService)
-        if (await _mergeService.HasPendingForUserAndEmailAsync(
+        if (await MergeService.HasPendingForUserAndEmailAsync(
                 userId, normalizedEmail, alternateEmail, cancellationToken))
             throw new ValidationException("A merge request is already pending for this email address.");
 
@@ -171,7 +177,7 @@ public sealed class UserEmailService : IUserEmailService
         if (conflictingEmail is not null)
         {
             // Check for existing pending merge (avoid duplicates from link prefetch/double-click)
-            if (!await _mergeService.HasPendingForEmailIdAsync(pendingEmail.Id, cancellationToken))
+            if (!await MergeService.HasPendingForEmailIdAsync(pendingEmail.Id, cancellationToken))
             {
                 var now = _clock.GetCurrentInstant();
                 var mergeRequest = new AccountMergeRequest
@@ -185,7 +191,7 @@ public sealed class UserEmailService : IUserEmailService
                     CreatedAt = now
                 };
 
-                await _mergeService.CreateAsync(mergeRequest, cancellationToken);
+                await MergeService.CreateAsync(mergeRequest, cancellationToken);
             }
 
             return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: true);
@@ -399,6 +405,38 @@ public sealed class UserEmailService : IUserEmailService
                     .First().Email);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, string>> GetNotificationTargetEmailsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<Guid, string>();
+
+        // Start with users who have a verified IsNotificationTarget row.
+        var allNotificationTargets = await _repository.GetAllNotificationTargetEmailsAsync(cancellationToken);
+
+        var result = new Dictionary<Guid, string>(userIds.Count);
+        foreach (var userId in userIds)
+        {
+            if (allNotificationTargets.TryGetValue(userId, out var email))
+                result[userId] = email;
+        }
+
+        // For users without a notification-target row, fall back to User.Email
+        // (the Identity email). Single-batch round-trip via IUserService.
+        var missing = userIds.Where(id => !result.ContainsKey(id)).ToList();
+        if (missing.Count > 0)
+        {
+            var users = await _userService.GetByIdsAsync(missing, cancellationToken);
+            foreach (var userId in missing)
+            {
+                if (users.TryGetValue(userId, out var user) && !string.IsNullOrEmpty(user.Email))
+                    result[userId] = user.Email;
+            }
+        }
+
+        return result;
+    }
+
     public async Task<UserEmailWithUser?> FindVerifiedEmailWithUserAsync(
         string email, CancellationToken cancellationToken = default)
     {
@@ -406,6 +444,63 @@ public sealed class UserEmailService : IUserEmailService
         var alternateEmail = GetAlternateComparableEmail(normalizedEmail);
         return await _repository.FindVerifiedWithUserAsync(normalizedEmail, alternateEmail, cancellationToken);
     }
+
+    public Task<Guid?> GetUserIdByVerifiedEmailAsync(
+        string email, CancellationToken cancellationToken = default) =>
+        _repository.GetUserIdByVerifiedEmailAsync(email, cancellationToken);
+
+    public async Task<IReadOnlyList<string>> GetVerifiedEmailsForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        var emails = await _repository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
+        return emails
+            .Where(e => e.IsVerified)
+            .Select(e => e.Email)
+            .ToList();
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, string>> GetNotificationEmailsByUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<Guid, string>();
+
+        var all = await _repository.GetAllNotificationTargetEmailsAsync(cancellationToken);
+        return all
+            .Where(kv => userIds.Contains(kv.Key))
+            .ToDictionary(kv => kv.Key, kv => kv.Value);
+    }
+
+    public Task<IReadOnlyList<Guid>> SearchUserIdsByVerifiedEmailAsync(
+        string searchTerm, CancellationToken cancellationToken = default)
+        => _repository.SearchUserIdsByVerifiedEmailAsync(searchTerm, cancellationToken);
+
+    public Task<Guid?> GetOtherUserIdHavingEmailAsync(
+        string email, Guid excludeUserId, CancellationToken cancellationToken = default)
+        => _repository.GetOtherUserIdHavingEmailAsync(email, excludeUserId, cancellationToken);
+
+    public Task<bool> IsEmailLinkedToAnyUserAsync(
+        string email, CancellationToken cancellationToken = default) =>
+        _repository.AnyWithEmailAsync(email, cancellationToken);
+
+    public async Task RewriteEmailAddressAsync(
+        Guid userId, string oldEmail, string newEmail,
+        CancellationToken cancellationToken = default)
+    {
+        await _repository.RewriteEmailAddressAsync(
+            userId, oldEmail, newEmail, _clock.GetCurrentInstant(), cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<UserEmailMatch>> MatchByEmailsAsync(
+        IReadOnlyCollection<string> emails, CancellationToken cancellationToken = default)
+    {
+        var rows = await _repository.GetByEmailsAsync(emails, cancellationToken);
+        return rows
+            .Select(r => new UserEmailMatch(
+                r.Email, r.UserId, r.IsNotificationTarget, r.IsVerified, r.UpdatedAt))
+            .ToList();
+    }
+
 
     private static List<ContactFieldVisibility> GetAllowedVisibilities(ContactFieldVisibility accessLevel) =>
         accessLevel switch

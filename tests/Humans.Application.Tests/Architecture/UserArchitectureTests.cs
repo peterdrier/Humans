@@ -1,9 +1,12 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using UserService = Humans.Application.Services.Users.UserService;
+using AccountProvisioningService = Humans.Application.Services.Users.AccountProvisioningService;
+using UnsubscribeService = Humans.Application.Services.Users.UnsubscribeService;
+using Humans.Infrastructure.Repositories.Users;
 
 namespace Humans.Application.Tests.Architecture;
 
@@ -104,11 +107,70 @@ public class UserArchitectureTests
         // extend or override the EF-backed data access.
         var repoType = typeof(IUserRepository).Assembly
             .GetExportedTypes()
-            .Concat(typeof(Humans.Infrastructure.Repositories.UserRepository).Assembly.GetExportedTypes())
+            .Concat(typeof(UserRepository).Assembly.GetExportedTypes())
             .Single(t => string.Equals(t.Name, "UserRepository", StringComparison.Ordinal)
                          && typeof(IUserRepository).IsAssignableFrom(t));
 
         repoType.IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
+    }
+
+    // ── AccountProvisioningService ───────────────────────────────────────────
+
+    [Fact]
+    public void AccountProvisioningService_LivesInHumansApplicationServicesUsersNamespace()
+    {
+        typeof(AccountProvisioningService).Namespace
+            .Should().Be("Humans.Application.Services.Users",
+                because: "AccountProvisioningService is part of the User section (issue #558) and must live with UserService in Application (design-rules §15i)");
+    }
+
+    [Fact]
+    public void AccountProvisioningService_HasNoDbContextConstructorParameter()
+    {
+        var ctor = typeof(AccountProvisioningService).GetConstructors().Single();
+        ctor.GetParameters()
+            .Should().NotContain(
+                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
+                because: "services in Humans.Application must never take DbContext — use IUserRepository / IUserEmailRepository (design-rules §3)");
+    }
+
+    [Fact]
+    public void AccountProvisioningService_TakesRepositoryAndUserEmailRepository()
+    {
+        var ctor = typeof(AccountProvisioningService).GetConstructors().Single();
+        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
+
+        paramTypes.Should().Contain(typeof(IUserRepository));
+        paramTypes.Should().Contain(typeof(IUserEmailRepository));
+    }
+
+    // ── UnsubscribeService ───────────────────────────────────────────────────
+
+    [Fact]
+    public void UnsubscribeService_LivesInHumansApplicationServicesUsersNamespace()
+    {
+        typeof(UnsubscribeService).Namespace
+            .Should().Be("Humans.Application.Services.Users",
+                because: "UnsubscribeService operates on User state and is part of the User section (issue #558, design-rules §8 — Unsubscribe row)");
+    }
+
+    [Fact]
+    public void UnsubscribeService_HasNoDbContextConstructorParameter()
+    {
+        var ctor = typeof(UnsubscribeService).GetConstructors().Single();
+        ctor.GetParameters()
+            .Should().NotContain(
+                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
+                because: "services in Humans.Application must never take DbContext — use IUserRepository (design-rules §3)");
+    }
+
+    [Fact]
+    public void UnsubscribeService_TakesRepository()
+    {
+        var ctor = typeof(UnsubscribeService).GetConstructors().Single();
+        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
+
+        paramTypes.Should().Contain(typeof(IUserRepository));
     }
 }

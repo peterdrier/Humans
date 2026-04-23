@@ -37,10 +37,36 @@ public interface IUserRepository
         CancellationToken ct = default);
 
     /// <summary>
+    /// Same as <see cref="GetByIdsAsync"/> but includes each user's
+    /// <see cref="User.UserEmails"/> collection so callers can resolve
+    /// <see cref="User.GetEffectiveEmail"/> correctly. Read-only (AsNoTracking).
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, User>> GetByIdsWithEmailsAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Loads every user, read-only (AsNoTracking). Used by admin list views
     /// that must include profileless users. Trivial at ~500-user scale.
     /// </summary>
     Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the ids of every user in the system, read-only. Used by the
+    /// admin dashboard to partition all users into status buckets without
+    /// loading the full User graph.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetAllUserIdsAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the language distribution of the given user ids, grouped by
+    /// <see cref="User.PreferredLanguage"/>. Used by the admin dashboard to
+    /// render language stats for approved humans after the caller has
+    /// resolved the approved user id set from the Profile section.
+    /// </summary>
+    Task<IReadOnlyList<(string Language, int Count)>>
+        GetLanguageDistributionForUserIdsAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     /// <summary>
     /// Finds a user whose <c>Email</c> or <c>GoogleEmail</c> matches the given
@@ -50,6 +76,16 @@ public interface IUserRepository
     /// </summary>
     Task<User?> GetByEmailOrAlternateAsync(
         string normalizedEmail, string? alternateEmail, CancellationToken ct = default);
+
+    /// <summary>
+    /// Finds a user whose <c>NormalizedEmail</c> exactly matches the supplied
+    /// value. The caller is responsible for normalizing the input (Identity's
+    /// <c>UserManager.NormalizeEmail</c>). Read-only (AsNoTracking). Used by
+    /// <c>MagicLinkService.FindUserByAnyEmailAsync</c> as the fallback lookup
+    /// when no verified UserEmail row exists.
+    /// </summary>
+    Task<User?> GetByNormalizedEmailAsync(
+        string? normalizedEmail, CancellationToken ct = default);
 
     /// <summary>
     /// Returns all contact users (ContactSource != null, LastLoginAt == null),
@@ -65,6 +101,15 @@ public interface IUserRepository
     /// </summary>
     Task<IReadOnlyList<Instant>> GetLoginTimestampsInWindowAsync(
         Instant fromInclusive, Instant toExclusive, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the id of any user, other than <paramref name="excludeUserId"/>,
+    /// whose <c>GoogleEmail</c> matches the given address (case-insensitive),
+    /// or null if no such user exists. Used by @nobodies.team provisioning to
+    /// block a prefix that is already attached to another human.
+    /// </summary>
+    Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
+        string email, Guid excludeUserId, CancellationToken ct = default);
 
     // ==========================================================================
     // Writes — User (atomic field updates)
@@ -83,6 +128,37 @@ public interface IUserRepository
     Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
 
     /// <summary>
+    /// Unconditionally sets <c>User.GoogleEmail</c>, overwriting any existing
+    /// value. Used by the Workspace provisioning path after a successful
+    /// Google account creation. Returns true if the user exists and the
+    /// value was written, false if the user does not exist.
+    /// </summary>
+    Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
+
+    /// <summary>
+    /// Updates <see cref="User.GoogleEmailStatus"/> to
+    /// <paramref name="status"/> for the given user. No-op if the user does
+    /// not exist or the status is already the requested value. Returns true
+    /// when a write occurred, false otherwise. Used by
+    /// <c>GoogleWorkspaceSyncService</c> to mark a user's Google email as
+    /// <see cref="GoogleEmailStatus.Rejected"/> after a Google 403 indicates
+    /// the address has no Google account behind it.
+    /// </summary>
+    Task<bool> SetGoogleEmailStatusAsync(
+        Guid userId, GoogleEmailStatus status, CancellationToken ct = default);
+
+    /// <summary>
+    /// Rewrites <c>User.Email</c>, <c>User.UserName</c>, <c>User.NormalizedEmail</c>,
+    /// and <c>User.NormalizedUserName</c> to the given <paramref name="newEmail"/>.
+    /// Used by the admin email-backfill workflow to repair OAuth identity after a
+    /// provider-side email change. Returns the previous <c>Email</c> value (may be
+    /// null) so callers can log the transition, or <c>(false, null)</c> if the user
+    /// does not exist.
+    /// </summary>
+    Task<(bool Updated, string? OldEmail)> RewritePrimaryEmailAsync(
+        Guid userId, string newEmail, CancellationToken ct = default);
+
+    /// <summary>
     /// Sets the deletion-pending fields on a user (<c>DeletionRequestedAt</c>,
     /// <c>DeletionScheduledFor</c>). Returns false if the user does not exist.
     /// </summary>
@@ -95,6 +171,99 @@ public interface IUserRepository
     /// Returns false if the user does not exist.
     /// </summary>
     Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Anonymizes the identity portion of a user record for the account-merge
+    /// / duplicate-resolve flow: display name, username, email fields, phone,
+    /// profile picture URL, deletion fields, security stamp, iCal token, and
+    /// lockout. The source account is set to <c>"Merged User"</c> with a
+    /// synthetic <c>@merged.local</c> email and a lockout end of
+    /// <see cref="DateTimeOffset.MaxValue"/> so it cannot be logged into.
+    /// Returns false if the user does not exist.
+    /// </summary>
+    Task<bool> AnonymizeForMergeAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Removes every <c>AspNetUserLogins</c> row for the given user. Used by
+    /// <c>AccountMergeService.AcceptAsync</c> to prevent the anonymized
+    /// source account from being logged into via its OAuth providers.
+    /// </summary>
+    Task RemoveExternalLoginsAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Migrates every external-login row from <paramref name="sourceUserId"/>
+    /// to <paramref name="targetUserId"/>. If the target already has a login
+    /// with the same <c>LoginProvider</c>, the source's row is dropped rather
+    /// than duplicated. Used by <c>DuplicateAccountService.ResolveAsync</c>
+    /// to re-link sign-in credentials before archiving the source account.
+    /// </summary>
+    Task MigrateExternalLoginsAsync(
+        Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets <see cref="User.ContactSource"/> if and only if it is currently
+    /// <c>null</c>. No-op if the user already has a <c>ContactSource</c> set
+    /// or the user does not exist. Returns true when the source was set.
+    /// </summary>
+    Task<bool> SetContactSourceIfNullAsync(
+        Guid userId, ContactSource source, CancellationToken ct = default);
+
+    /// <summary>
+    /// Purges (anonymizes + locks out) a user: removes all UserEmail rows for
+    /// the user, overwrites <c>Email</c>/<c>NormalizedEmail</c>/<c>UserName</c>/
+    /// <c>NormalizedUserName</c> with a sentinel <c>purged-{guid}@deleted.local</c>
+    /// address, prepends "Purged" to the display name, and permanently locks
+    /// out the account. Atomic: email removal and user anonymization happen in
+    /// one <c>SaveChangesAsync</c>. Returns the original display name if the
+    /// user was purged; null if the user did not exist.
+    /// </summary>
+    /// <remarks>
+    /// Used by <c>IUserService.PurgeAsync</c>. Removes <c>UserEmail</c> rows so
+    /// the unique-index constraint does not block a future account creation
+    /// reusing the same email. Does not touch Profile or other section-owned
+    /// rows — those are either retained (audit) or removed by cascades.
+    /// </remarks>
+    Task<string?> PurgeAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the count of users with a non-null <c>DeletionRequestedAt</c>.
+    /// </summary>
+    Task<int> GetPendingDeletionCountAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets <c>User.LastConsentReminderSentAt</c> to <paramref name="sentAt"/>.
+    /// No-op if the user does not exist.
+    /// </summary>
+    Task SetLastConsentReminderSentAsync(
+        Guid userId, Instant sentAt, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the count of users whose <c>GoogleEmailStatus</c> equals
+    /// <see cref="GoogleEmailStatus.Rejected"/>. Used by the admin digest.
+    /// </summary>
+    Task<int> GetRejectedGoogleEmailCountAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the ids of every user whose <c>DeletionScheduledFor</c> is at
+    /// or before <paramref name="now"/> and whose <c>DeletionEligibleAfter</c>
+    /// is either null or at or before <paramref name="now"/>. Used by the
+    /// account deletion job to enumerate expired candidates.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
+        Instant now, CancellationToken ct = default);
+
+    /// <summary>
+    /// Applies the identity-level fields of the GDPR expiry anonymization in
+    /// one atomic save: renames the user to <c>Deleted User</c> + sentinel
+    /// email, removes every <c>UserEmail</c> row, clears phone/picture/iCal
+    /// token, clears all deletion fields, sets the security stamp, and
+    /// permanently locks out the account. Returns a small summary of the
+    /// prior identity (effective email, display name, preferred language) or
+    /// <c>null</c> if the user does not exist. Used by the account deletion
+    /// job via <see cref="AnonymizeExpiredAccountAsync"/>.
+    /// </summary>
+    Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(
+        Guid userId, CancellationToken ct = default);
 
     // ==========================================================================
     // Reads — EventParticipation
@@ -161,3 +330,20 @@ public interface IUserRepository
         IReadOnlyList<(Guid UserId, ParticipationStatus Status)> entries,
         CancellationToken ct = default);
 }
+
+/// <summary>
+/// Slice returned from <see cref="IUserRepository.ApplyExpiredDeletionAnonymizationAsync"/>
+/// so the service layer can send the confirmation email and log audit entries
+/// without re-loading the (now anonymized) user.
+/// </summary>
+/// <param name="OriginalEmail">
+/// The effective email on the account before anonymization (preferring the
+/// verified notification-target <c>UserEmail</c> row, falling back to
+/// <c>User.Email</c>). May be null when the account never had an email.
+/// </param>
+/// <param name="OriginalDisplayName">Display name on the user before the write.</param>
+/// <param name="PreferredLanguage">Preferred language on the user before the write.</param>
+public record ExpiredDeletionAnonymizationResult(
+    string? OriginalEmail,
+    string OriginalDisplayName,
+    string PreferredLanguage);

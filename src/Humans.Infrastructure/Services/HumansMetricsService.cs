@@ -4,8 +4,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Governance;
 
 namespace Humans.Infrastructure.Services;
 
@@ -302,9 +305,11 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
             var applicationsSubmitted = await db.Applications
                 .CountAsync(a => a.Status == ApplicationStatus.Submitted);
 
-            // google_sync_outbox_pending
-            var pendingOutboxEvents = await db.GoogleSyncOutboxEvents
-                .CountAsync(e => !e.ProcessedAt.HasValue);
+            // google_sync_outbox_pending — goes through the repository so this
+            // service doesn't read google_sync_outbox_events directly (issue #554
+            // Part 1, design-rules §2c).
+            var outboxRepo = scope.ServiceProvider.GetRequiredService<IGoogleSyncOutboxRepository>();
+            var pendingOutboxEvents = await outboxRepo.CountPendingAsync();
 
             _snapshot = new GaugeSnapshot
             {

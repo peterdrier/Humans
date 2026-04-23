@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using Humans.Application.Interfaces;
 using Humans.Web.Controllers;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Web.Helpers;
 

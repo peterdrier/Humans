@@ -1,11 +1,18 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Governance;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
+using Humans.Infrastructure.Repositories.Camps;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -34,9 +41,17 @@ public class SystemTeamSyncJobBarrioLeadsTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 15, 12, 0));
 
+        var factory = new TestDbContextFactory(options);
+        var campRepo = new CampRepository(factory);
+
+        var services = new ServiceCollection();
+        services.AddSingleton(Substitute.For<IMembershipCalculator>());
+        var provider = services.BuildServiceProvider();
+
         _job = new SystemTeamSyncJob(
             _dbContext,
-            Substitute.For<IMembershipCalculator>(),
+            campRepo,
+            provider,
             Substitute.For<IGoogleSyncService>(),
             Substitute.For<IAuditLogService>(),
             Substitute.For<IEmailService>(),

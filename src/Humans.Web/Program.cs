@@ -60,10 +60,10 @@ Log.Logger = logConfig.CreateLogger();
 
 builder.Host.UseSerilog();
 
-// Validate the DI container at startup so cycles and captive dependencies
-// fail the process fast instead of manifesting as silent hangs at first request.
-// (The runtime cycle check can't see through factory-lambda registrations; ValidateOnBuild
-// eagerly resolves every service through its real constructor graph.)
+// Validate the DI container at startup so obvious cycles and captive
+// dependencies fail fast instead of surfacing on first request. Factory-lambda
+// registrations still need explicit smoke coverage because the container can't
+// inspect arbitrary factory bodies until resolve time.
 builder.Host.UseDefaultServiceProvider(options =>
 {
     options.ValidateOnBuild = true;
@@ -259,7 +259,7 @@ builder.Services.AddHangfire((sp, config) =>
             options.UseNpgsqlConnection(
                 sp.GetRequiredService<IConfiguration>()
                     .GetConnectionString("DefaultConnection")!),
-            new Hangfire.PostgreSql.PostgreSqlStorageOptions
+            new PostgreSqlStorageOptions
             {
                 DistributedLockTimeout = TimeSpan.FromSeconds(5)
             });
@@ -340,6 +340,12 @@ builder.Services.AddRateLimiter(options =>
 
         // Exclude profile picture requests — list pages legitimately load ~30 images at once
         if (context.Request.Path.StartsWithSegments("/Profile/Picture", StringComparison.OrdinalIgnoreCase))
+            return RateLimitPartition.GetNoLimiter(string.Empty);
+
+        // Exclude SignalR hubs — long-polling fallback sends one POST per invoke,
+        // which trivially exceeds the global 100/min cap during active use.
+        // SignalR manages its own backpressure; abuse is handled via auth on the hub.
+        if (context.Request.Path.StartsWithSegments("/hubs", StringComparison.OrdinalIgnoreCase))
             return RateLimitPartition.GetNoLimiter(string.Empty);
 
         // Exclude local network — e2e tests and internal tooling run from 192.168.*

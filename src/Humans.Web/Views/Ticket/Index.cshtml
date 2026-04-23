@@ -234,7 +234,7 @@
                                 </a>
                             </li>
                         }
-                        @if (Model.SyncStatus == Humans.Domain.Enums.TicketSyncStatus.Error)
+                        @if (Model.SyncStatus == TicketSyncStatus.Error)
                         {
                             <li class="mb-2">
                                 <span class="badge bg-danger">Error</span>
@@ -325,11 +325,11 @@
                 {
                     <text>Never synced</text>
                 }
-                @if (Model.SyncStatus == Humans.Domain.Enums.TicketSyncStatus.Running)
+                @if (Model.SyncStatus == TicketSyncStatus.Running)
                 {
                     <span class="badge bg-primary ms-2"><i class="fa-solid fa-sync fa-spin"></i> Syncing...</span>
                 }
-                else if (Model.SyncStatus == Humans.Domain.Enums.TicketSyncStatus.Error)
+                else if (Model.SyncStatus == TicketSyncStatus.Error)
                 {
                     <span class="badge bg-danger ms-2">Error</span>
                 }

@@ -1,8 +1,10 @@
 using AwesomeAssertions;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
+using Humans.Infrastructure.Repositories.Notifications;
 using Humans.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,7 +35,8 @@ public class CleanupNotificationsJobTests : IDisposable
         var metrics = new HumansMetricsService(
             Substitute.For<IServiceScopeFactory>(),
             Substitute.For<ILogger<HumansMetricsService>>());
-        _job = new CleanupNotificationsJob(_dbContext, _clock, metrics, NullLogger<CleanupNotificationsJob>.Instance);
+        var repo = new NotificationRepository(new TestDbContextFactory(options));
+        _job = new CleanupNotificationsJob(repo, _clock, metrics, NullLogger<CleanupNotificationsJob>.Instance);
     }
 
     public void Dispose()

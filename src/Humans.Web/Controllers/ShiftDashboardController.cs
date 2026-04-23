@@ -1,5 +1,5 @@
 using Humans.Application.Enums;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;

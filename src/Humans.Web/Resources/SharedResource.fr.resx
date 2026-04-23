@@ -531,6 +531,10 @@
   <data name="Teams_NoOtherTeams" xml:space="preserve"><value>Aucune autre &#xE9;quipe disponible.</value></data>
   <data name="Teams_System" xml:space="preserve"><value>Syst&#xE8;me</value></data>
 
+  <!-- Vol/Teams landing: Browse Shifts CTA (#534) -->
+  <data name="VolTeams_BrowseShiftsBanner" xml:space="preserve"><value>Vous cherchez des cr&#xE9;neaux&#xA0;? Parcourez-les tous ici, ou choisissez une &#xE9;quipe ci-dessous.</value></data>
+  <data name="VolTeams_BrowseShiftsButton" xml:space="preserve"><value>Voir les cr&#xE9;neaux</value></data>
+
   <!-- Team Detail View -->
   <data name="TeamDetail_NoDescription" xml:space="preserve"><value>Aucune description fournie.</value></data>
   <data name="TeamDetail_SystemTeamInfo" xml:space="preserve"><value>Ceci est une &#xE9;quipe g&#xE9;r&#xE9;e par le syst&#xE8;me. L'adh&#xE9;sion est automatiquement synchronis&#xE9;e selon les crit&#xE8;res de {0}.</value><comment>{0} = system team type</comment></data>
@@ -842,6 +846,13 @@
   <data name="AdminAddRole_NoInfoAdminDesc" xml:space="preserve"><value>Approuver les inscriptions aux créneaux, voir les données médicales</value></data>
   <data name="AdminAddRole_NotesLabel" xml:space="preserve"><value>Notes (facultatif)</value></data>
   <data name="AdminAddRole_NotesPlaceholder" xml:space="preserve"><value>Motif de l'attribution</value></data>
+
+  <!-- ======================== -->
+  <!-- Google Accounts View     -->
+  <!-- ======================== -->
+  <data name="GoogleAccounts_Actions" xml:space="preserve"><value>Actions</value></data>
+  <data name="GoogleAccounts_ResetPassword" xml:space="preserve"><value>R&#xE9;initialiser le mot de passe</value></data>
+  <data name="GoogleAccounts_ResetPasswordConfirm" xml:space="preserve"><value>R&#xE9;initialiser le mot de passe pour {0}&#xA0;? Un nouveau mot de passe temporaire sera g&#xE9;n&#xE9;r&#xE9; et affich&#xE9; &#xE0; l'&#xE9;cran. Le human devra le changer &#xE0; sa prochaine connexion.</value><comment>{0} = email</comment></data>
 
   <!-- ======================== -->
   <!-- Google Sync View         -->

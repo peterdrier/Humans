@@ -1,10 +1,18 @@
 using AwesomeAssertions;
+using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Campaigns;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.Tickets;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Repositories.Tickets;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -20,10 +28,14 @@ namespace Humans.Application.Tests.Services;
 public class TicketSyncServiceTests : IDisposable
 {
     private readonly HumansDbContext _dbContext;
+    private readonly TestDbContextFactory _factory;
     private readonly FakeClock _clock;
     private readonly ITicketVendorService _vendorService;
     private readonly IStripeService _stripeService;
     private readonly ICampaignService _campaignService;
+    private readonly IUserService _userService;
+    private readonly IShiftManagementService _shiftManagementService;
+    private readonly ITicketRepository _ticketRepository;
     private readonly TicketSyncService _service;
 
     public TicketSyncServiceTests()
@@ -32,7 +44,8 @@ public class TicketSyncServiceTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        _dbContext = new HumansDbContext(options);
+        _factory = new TestDbContextFactory(options);
+        _dbContext = _factory.CreateDbContext();
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         _vendorService = Substitute.For<ITicketVendorService>();
 
@@ -44,18 +57,25 @@ public class TicketSyncServiceTests : IDisposable
         });
 
         _stripeService = Substitute.For<IStripeService>();
-        var userService = Substitute.For<IUserService>();
+        _userService = Substitute.For<IUserService>();
+        _userService.GetAllParticipationsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new List<EventParticipation>());
         _campaignService = Substitute.For<ICampaignService>();
+        _shiftManagementService = Substitute.For<IShiftManagementService>();
+
+        _ticketRepository = new TicketRepository(_factory);
+
         _service = new TicketSyncService(
-            _dbContext,
+            _ticketRepository,
             _vendorService,
             _stripeService,
             _clock,
             settings,
             NullLogger<TicketSyncService>.Instance,
             new MemoryCache(new MemoryCacheOptions()),
-            userService,
-            _campaignService);
+            _userService,
+            _campaignService,
+            _shiftManagementService);
 
         // Seed the singleton TicketSyncState row
         _dbContext.TicketSyncStates.Add(new TicketSyncState
@@ -218,8 +238,9 @@ public class TicketSyncServiceTests : IDisposable
         var result = await _service.SyncOrdersAndAttendeesAsync();
 
         result.OrdersSynced.Should().Be(0);
-        var syncState = await _dbContext.TicketSyncStates.FindAsync(1);
-        syncState!.SyncStatus.Should().Be(TicketSyncStatus.Idle);
+        var syncState = await _dbContext.TicketSyncStates.AsNoTracking()
+            .FirstAsync(s => s.Id == 1);
+        syncState.SyncStatus.Should().Be(TicketSyncStatus.Idle);
         syncState.LastError.Should().BeNull();
     }
 
@@ -233,8 +254,9 @@ public class TicketSyncServiceTests : IDisposable
 
         await act.Should().ThrowAsync<HttpRequestException>();
 
-        var syncState = await _dbContext.TicketSyncStates.FindAsync(1);
-        syncState!.SyncStatus.Should().Be(TicketSyncStatus.Error);
+        var syncState = await _dbContext.TicketSyncStates.AsNoTracking()
+            .FirstAsync(s => s.Id == 1);
+        syncState.SyncStatus.Should().Be(TicketSyncStatus.Error);
         syncState.LastError.Should().Be("Unauthorized");
     }
 
@@ -254,7 +276,7 @@ public class TicketSyncServiceTests : IDisposable
         });
 
         var service = new TicketSyncService(
-            _dbContext,
+            _ticketRepository,
             _vendorService,
             _stripeService,
             _clock,
@@ -262,7 +284,8 @@ public class TicketSyncServiceTests : IDisposable
             NullLogger<TicketSyncService>.Instance,
             new MemoryCache(new MemoryCacheOptions()),
             Substitute.For<IUserService>(),
-            Substitute.For<ICampaignService>());
+            Substitute.For<ICampaignService>(),
+            Substitute.For<IShiftManagementService>());
 
         var result = await service.SyncOrdersAndAttendeesAsync();
 
@@ -403,8 +426,9 @@ public class TicketSyncServiceTests : IDisposable
         dbAttendees.Should().Be(700);
 
         // Sync state should be Idle after success
-        var syncState = await _dbContext.TicketSyncStates.FindAsync(1);
-        syncState!.SyncStatus.Should().Be(TicketSyncStatus.Idle);
+        var syncState = await _dbContext.TicketSyncStates.AsNoTracking()
+            .FirstAsync(s => s.Id == 1);
+        syncState.SyncStatus.Should().Be(TicketSyncStatus.Idle);
         syncState.LastSyncAt.Should().NotBeNull();
     }
 

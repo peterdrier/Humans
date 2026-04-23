@@ -1,37 +1,57 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Repositories.Budget;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using NodaTime;
 using NodaTime.Testing;
+using NSubstitute;
 using Xunit;
+using BudgetServiceImpl = Humans.Application.Services.Budget.BudgetService;
 
 namespace Humans.Application.Tests.Services;
 
-public class BudgetServiceTests : IDisposable
+public class BudgetServiceTests : IAsyncLifetime
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly BudgetService _service;
+    private readonly ServiceProvider _provider;
+    private readonly IDbContextFactory<HumansDbContext> _factory;
+    private readonly BudgetRepository _repository;
+    private readonly ITeamService _teamService;
+    private readonly FakeClock _clock;
+    private readonly BudgetServiceImpl _service;
+    private readonly Guid _yearId = Guid.NewGuid();
 
     public BudgetServiceTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var services = new ServiceCollection();
+        services.AddDbContextFactory<HumansDbContext>(options =>
+            options.UseInMemoryDatabase(Guid.NewGuid().ToString()));
+        _provider = services.BuildServiceProvider();
 
-        _dbContext = new HumansDbContext(options);
-        _service = new BudgetService(
-            _dbContext,
-            new FakeClock(NodaTime.Instant.FromUtc(2026, 3, 31, 12, 0)),
-            NullLogger<BudgetService>.Instance);
+        _factory = _provider.GetRequiredService<IDbContextFactory<HumansDbContext>>();
+        _repository = new BudgetRepository(_factory, NullLogger<BudgetRepository>.Instance);
+        _teamService = Substitute.For<ITeamService>();
+        _clock = new FakeClock(Instant.FromUtc(2026, 3, 31, 12, 0));
+
+        _service = new BudgetServiceImpl(
+            _repository,
+            _teamService,
+            _clock,
+            NullLogger<BudgetServiceImpl>.Instance);
     }
 
-    public void Dispose()
+    public Task InitializeAsync() => Task.CompletedTask;
+
+    public async Task DisposeAsync()
     {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
+        await _provider.DisposeAsync();
     }
+
+    // ─── VAT rate validation ─────────────────────────────────────────────────
 
     [Theory]
     [InlineData(-1)]
@@ -68,8 +88,12 @@ public class BudgetServiceTests : IDisposable
             Amount = 100m,
             VatRate = 0
         };
-        _dbContext.BudgetLineItems.Add(lineItem);
-        await _dbContext.SaveChangesAsync();
+
+        await using (var ctx = await _factory.CreateDbContextAsync())
+        {
+            ctx.BudgetLineItems.Add(lineItem);
+            await ctx.SaveChangesAsync();
+        }
 
         var act = () => _service.UpdateLineItemAsync(
             lineItem.Id,
@@ -84,6 +108,354 @@ public class BudgetServiceTests : IDisposable
         await act.Should().ThrowAsync<ArgumentOutOfRangeException>()
             .WithMessage("*between 0 and 21*");
     }
+
+    // ─── CreateYearAsync with scaffold ──────────────────────────────────────
+
+    [Fact]
+    public async Task CreateYearAsync_seeds_department_and_ticketing_groups_atomically()
+    {
+        IReadOnlyList<TeamOptionDto> teams =
+        [
+            new(Guid.NewGuid(), "Kitchen"),
+            new(Guid.NewGuid(), "Site Ops")
+        ];
+        _teamService.GetBudgetableTeamsAsync().Returns(teams);
+
+        var year = await _service.CreateYearAsync("2026", "Budget 2026", Guid.NewGuid());
+
+        year.Year.Should().Be("2026");
+        year.Name.Should().Be("Budget 2026");
+        year.Status.Should().Be(BudgetYearStatus.Draft);
+
+        await using var ctx = await _factory.CreateDbContextAsync();
+        var persistedYear = await ctx.BudgetYears
+            .Include(y => y.Groups)
+                .ThenInclude(g => g.Categories)
+            .Include(y => y.Groups)
+                .ThenInclude(g => g.TicketingProjection)
+            .FirstAsync(y => y.Id == year.Id);
+
+        persistedYear.Groups.Should().HaveCount(2);
+
+        var deptGroup = persistedYear.Groups.Single(g => g.IsDepartmentGroup);
+        deptGroup.Categories.Should().HaveCount(2);
+        deptGroup.Categories.Select(c => c.Name).Should().BeEquivalentTo("Kitchen", "Site Ops");
+
+        var ticketingGroup = persistedYear.Groups.Single(g => g.IsTicketingGroup);
+        ticketingGroup.TicketingProjection.Should().NotBeNull();
+        ticketingGroup.Categories.Select(c => c.Name).Should()
+            .BeEquivalentTo("Ticket Revenue", "Processing Fees");
+
+        // Single audit log entry for the year creation.
+        var auditEntries = await ctx.BudgetAuditLogs
+            .Where(a => a.BudgetYearId == year.Id)
+            .ToListAsync();
+        auditEntries.Should().ContainSingle()
+            .Which.Description.Should().Contain("Created budget year");
+    }
+
+    // ─── UpdateYearStatusAsync auto-closes previously active years ──────────
+
+    [Fact]
+    public async Task UpdateYearStatusAsync_activating_closes_other_active_years()
+    {
+        await using (var ctx = await _factory.CreateDbContextAsync())
+        {
+            ctx.BudgetYears.Add(new BudgetYear
+            {
+                Id = Guid.NewGuid(),
+                Year = "2025",
+                Name = "Budget 2025",
+                Status = BudgetYearStatus.Active
+            });
+            ctx.BudgetYears.Add(new BudgetYear
+            {
+                Id = _yearId,
+                Year = "2026",
+                Name = "Budget 2026",
+                Status = BudgetYearStatus.Draft
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        await _service.UpdateYearStatusAsync(_yearId, BudgetYearStatus.Active, Guid.NewGuid());
+
+        await using var ctx2 = await _factory.CreateDbContextAsync();
+        var years = await ctx2.BudgetYears.ToListAsync();
+
+        years.Single(y => string.Equals(y.Year, "2025", StringComparison.Ordinal)).Status
+            .Should().Be(BudgetYearStatus.Closed);
+        years.Single(y => string.Equals(y.Year, "2026", StringComparison.Ordinal)).Status
+            .Should().Be(BudgetYearStatus.Active);
+
+        // Both status transitions audited.
+        var auditEntries = await ctx2.BudgetAuditLogs
+            .Where(a => a.FieldName == nameof(BudgetYear.Status))
+            .ToListAsync();
+        auditEntries.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task UpdateYearStatusAsync_missing_year_throws()
+    {
+        var act = () => _service.UpdateYearStatusAsync(Guid.NewGuid(), BudgetYearStatus.Active, Guid.NewGuid());
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not found*");
+    }
+
+    // ─── UpdateYearAsync writes field audits only for changes ────────────────
+
+    [Fact]
+    public async Task UpdateYearAsync_writes_field_audit_only_for_changed_fields()
+    {
+        await using (var ctx = await _factory.CreateDbContextAsync())
+        {
+            ctx.BudgetYears.Add(new BudgetYear
+            {
+                Id = _yearId,
+                Year = "2026",
+                Name = "Budget 2026",
+                Status = BudgetYearStatus.Draft
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        await _service.UpdateYearAsync(_yearId, "2026", "Budget Twenty Twenty Six", Guid.NewGuid());
+
+        await using var ctx2 = await _factory.CreateDbContextAsync();
+        var auditEntries = await ctx2.BudgetAuditLogs
+            .Where(a => a.BudgetYearId == _yearId)
+            .ToListAsync();
+
+        auditEntries.Should().ContainSingle(a => a.FieldName == nameof(BudgetYear.Name));
+        auditEntries.Should().NotContain(a => a.FieldName == nameof(BudgetYear.Year));
+    }
+
+    // ─── DeleteYearAsync refuses active ─────────────────────────────────────
+
+    [Fact]
+    public async Task DeleteYearAsync_refuses_when_year_is_active()
+    {
+        await using (var ctx = await _factory.CreateDbContextAsync())
+        {
+            ctx.BudgetYears.Add(new BudgetYear
+            {
+                Id = _yearId,
+                Year = "2026",
+                Name = "Budget 2026",
+                Status = BudgetYearStatus.Active
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        var act = () => _service.DeleteYearAsync(_yearId, Guid.NewGuid());
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*active*");
+    }
+
+    [Fact]
+    public async Task DeleteYearAsync_soft_deletes_when_draft()
+    {
+        await using (var ctx = await _factory.CreateDbContextAsync())
+        {
+            ctx.BudgetYears.Add(new BudgetYear
+            {
+                Id = _yearId,
+                Year = "2026",
+                Name = "Budget 2026",
+                Status = BudgetYearStatus.Draft
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        await _service.DeleteYearAsync(_yearId, Guid.NewGuid());
+
+        await using var ctx2 = await _factory.CreateDbContextAsync();
+        var year = await ctx2.BudgetYears.SingleAsync(y => y.Id == _yearId);
+        year.IsDeleted.Should().BeTrue();
+        year.DeletedAt.Should().NotBeNull();
+        year.Status.Should().Be(BudgetYearStatus.Closed);
+    }
+
+    // ─── Closed year blocks edits ──────────────────────────────────────────
+
+    [Fact]
+    public async Task CreateGroupAsync_refuses_when_year_is_closed()
+    {
+        await using (var ctx = await _factory.CreateDbContextAsync())
+        {
+            ctx.BudgetYears.Add(new BudgetYear
+            {
+                Id = _yearId,
+                Year = "2026",
+                Name = "Budget 2026",
+                Status = BudgetYearStatus.Closed
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        var act = () => _service.CreateGroupAsync(_yearId, "Logistics", false, Guid.NewGuid());
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*closed*");
+    }
+
+    // ─── SyncTicketingActuals materializes projections inside one save ─────
+
+    [Fact]
+    public async Task SyncTicketingActualsAsync_upserts_weekly_actuals_and_updates_projection_params()
+    {
+        var (groupId, projectionId, revenueCatId, feesCatId) = await SeedTicketingYearAsync();
+
+        var actuals = new List<DTOs.TicketingWeeklyActuals>
+        {
+            new(Monday: new LocalDate(2026, 3, 2),
+                Sunday: new LocalDate(2026, 3, 8),
+                WeekLabel: "Mar 2–Mar 8",
+                TicketCount: 10,
+                Revenue: 500m,
+                StripeFees: 15m,
+                TicketTailorFees: 5m)
+        };
+
+        var changed = await _service.SyncTicketingActualsAsync(_yearId, actuals);
+
+        changed.Should().BeGreaterThan(0);
+
+        await using var ctx = await _factory.CreateDbContextAsync();
+        var revenueItems = await ctx.BudgetLineItems
+            .Where(li => li.BudgetCategoryId == revenueCatId)
+            .ToListAsync();
+        revenueItems.Should().Contain(li => li.Description.StartsWith("Week of"));
+
+        var feeItems = await ctx.BudgetLineItems
+            .Where(li => li.BudgetCategoryId == feesCatId)
+            .ToListAsync();
+        feeItems.Should().Contain(li => li.Description.StartsWith("Stripe fees:"));
+        feeItems.Should().Contain(li => li.Description.StartsWith("TT fees:"));
+
+        var projection = await ctx.TicketingProjections.SingleAsync(p => p.Id == projectionId);
+        projection.AverageTicketPrice.Should().Be(50m); // 500 / 10
+    }
+
+    [Fact]
+    public async Task SyncTicketingActualsAsync_is_noop_when_no_ticketing_group()
+    {
+        await using (var ctx = await _factory.CreateDbContextAsync())
+        {
+            ctx.BudgetYears.Add(new BudgetYear
+            {
+                Id = _yearId,
+                Year = "2026",
+                Name = "Budget 2026",
+                Status = BudgetYearStatus.Draft
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        var result = await _service.SyncTicketingActualsAsync(
+            _yearId,
+            new List<DTOs.TicketingWeeklyActuals>());
+
+        result.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task RefreshTicketingProjectionsAsync_materializes_projected_weeks_when_projection_is_valid()
+    {
+        var (groupId, _, revenueCatId, feesCatId) = await SeedTicketingYearAsync();
+        await ConfigureProjectionAsync(groupId,
+            startDate: new LocalDate(2026, 3, 15),
+            eventDate: new LocalDate(2026, 4, 15),
+            averageTicketPrice: 100m,
+            dailySalesRate: 5m);
+
+        var created = await _service.RefreshTicketingProjectionsAsync(_yearId);
+
+        created.Should().BeGreaterThan(0);
+
+        await using var ctx = await _factory.CreateDbContextAsync();
+        var projectedRevenueItems = await ctx.BudgetLineItems
+            .Where(li => li.BudgetCategoryId == revenueCatId
+                && li.Description.StartsWith("Projected:"))
+            .ToListAsync();
+        projectedRevenueItems.Should().NotBeEmpty();
+    }
+
+    // Regression test for Codex P1 (PR #298 review): projected line items were
+    // being computed from stale projection parameters because the plan was
+    // pre-built in the service before UpdateProjectionFromActuals ran in the
+    // repo. The fix moves materialization into the repo atomic op AFTER the
+    // projection is updated from actuals, so projected items reflect the
+    // newly-learned average price / fee percentages in the same sync.
+    [Fact]
+    public async Task SyncTicketingActualsAsync_projected_items_use_post_update_avg_price_not_pre_sync_value()
+    {
+        var (groupId, _, revenueCatId, _) = await SeedTicketingYearAsync();
+
+        // Projection configured with AverageTicketPrice=100. After the sync,
+        // actuals (20 tickets, 1000 revenue) will re-learn AverageTicketPrice=50.
+        // The Projected: revenue line items must use 50, not 100.
+        await ConfigureProjectionAsync(groupId,
+            startDate: new LocalDate(2026, 4, 6), // Monday after the FakeClock today (2026-03-31).
+            eventDate: new LocalDate(2026, 5, 4),
+            averageTicketPrice: 100m,
+            dailySalesRate: 5m);
+
+        var actuals = new List<DTOs.TicketingWeeklyActuals>
+        {
+            new(Monday: new LocalDate(2026, 3, 16),
+                Sunday: new LocalDate(2026, 3, 22),
+                WeekLabel: "Mar 16–Mar 22",
+                TicketCount: 20,
+                Revenue: 1000m,
+                StripeFees: 0m,
+                TicketTailorFees: 0m)
+        };
+
+        await _service.SyncTicketingActualsAsync(_yearId, actuals);
+
+        await using var ctx = await _factory.CreateDbContextAsync();
+
+        // The projection was updated in-place before materialization.
+        var projection = await ctx.TicketingProjections.SingleAsync(p => p.BudgetGroupId == groupId);
+        projection.AverageTicketPrice.Should().Be(50m);
+
+        // Projected: revenue items must reflect the new AvgPrice of 50.
+        // Given 5 tickets/day * 7 days = 35 tickets/week at 50 = 1750/week.
+        // The first projected week includes an initial burst if start date hadn't passed,
+        // but in this setup the projection start (Apr 6) is the current-week Monday
+        // (Apr 6 is after today 2026-03-31), so the initial burst IS included.
+        // To keep the test precise and independent of burst math, just assert that
+        // every projected week's revenue divides evenly by 50 (the new learned price).
+        var projectedItems = await ctx.BudgetLineItems
+            .Where(li => li.BudgetCategoryId == revenueCatId
+                && li.Description.StartsWith("Projected:"))
+            .ToListAsync();
+
+        projectedItems.Should().NotBeEmpty("projection is valid and covers multiple weeks before event");
+
+        foreach (var item in projectedItems)
+        {
+            // Revenue = tickets * 50 (new price). If stale 100 was used, it'd be tickets * 100.
+            // Parse ticket count from notes "~N tickets" and verify amount == count * 50.
+            item.Notes.Should().NotBeNullOrEmpty();
+            var notesClean = item.Notes!.TrimStart('~');
+            var spaceIdx = notesClean.IndexOf(' ', StringComparison.Ordinal);
+            spaceIdx.Should().BeGreaterThan(0);
+            var ticketCount = int.Parse(
+                notesClean[..spaceIdx],
+                System.Globalization.CultureInfo.InvariantCulture);
+
+            item.Amount.Should().Be(
+                ticketCount * 50m,
+                because: $"projected revenue must use post-sync learned price (50), not pre-sync value (100); item '{item.Description}' had {ticketCount} tickets");
+        }
+    }
+
+    // ─── Seeding helpers ────────────────────────────────────────────────────
 
     private async Task<BudgetCategory> SeedCategoryAsync()
     {
@@ -108,11 +480,78 @@ public class BudgetServiceTests : IDisposable
             Name = "Operations"
         };
 
-        _dbContext.BudgetYears.Add(year);
-        _dbContext.BudgetGroups.Add(group);
-        _dbContext.BudgetCategories.Add(category);
-        await _dbContext.SaveChangesAsync();
+        await using var ctx = await _factory.CreateDbContextAsync();
+        ctx.BudgetYears.Add(year);
+        ctx.BudgetGroups.Add(group);
+        ctx.BudgetCategories.Add(category);
+        await ctx.SaveChangesAsync();
 
         return category;
+    }
+
+    private async Task<(Guid GroupId, Guid ProjectionId, Guid RevenueCatId, Guid FeesCatId)>
+        SeedTicketingYearAsync()
+    {
+        var groupId = Guid.NewGuid();
+        var projectionId = Guid.NewGuid();
+        var revenueCatId = Guid.NewGuid();
+        var feesCatId = Guid.NewGuid();
+
+        await using var ctx = await _factory.CreateDbContextAsync();
+        ctx.BudgetYears.Add(new BudgetYear
+        {
+            Id = _yearId,
+            Year = "2026",
+            Name = "Budget 2026",
+            Status = BudgetYearStatus.Active
+        });
+
+        ctx.BudgetGroups.Add(new BudgetGroup
+        {
+            Id = groupId,
+            BudgetYearId = _yearId,
+            Name = "Ticketing",
+            IsTicketingGroup = true
+        });
+
+        ctx.BudgetCategories.Add(new BudgetCategory
+        {
+            Id = revenueCatId,
+            BudgetGroupId = groupId,
+            Name = "Ticket Revenue"
+        });
+
+        ctx.BudgetCategories.Add(new BudgetCategory
+        {
+            Id = feesCatId,
+            BudgetGroupId = groupId,
+            Name = "Processing Fees"
+        });
+
+        ctx.TicketingProjections.Add(new TicketingProjection
+        {
+            Id = projectionId,
+            BudgetGroupId = groupId
+        });
+
+        await ctx.SaveChangesAsync();
+
+        return (groupId, projectionId, revenueCatId, feesCatId);
+    }
+
+    private async Task ConfigureProjectionAsync(
+        Guid groupId,
+        LocalDate startDate,
+        LocalDate eventDate,
+        decimal averageTicketPrice,
+        decimal dailySalesRate)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync();
+        var projection = await ctx.TicketingProjections.SingleAsync(p => p.BudgetGroupId == groupId);
+        projection.StartDate = startDate;
+        projection.EventDate = eventDate;
+        projection.AverageTicketPrice = averageTicketPrice;
+        projection.DailySalesRate = dailySalesRate;
+        await ctx.SaveChangesAsync();
     }
 }

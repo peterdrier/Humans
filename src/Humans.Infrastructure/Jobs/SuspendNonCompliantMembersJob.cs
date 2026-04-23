@@ -7,6 +7,13 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Infrastructure.Jobs;
 
@@ -156,11 +163,6 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                     }
                 }
 
-                await _auditLogService.LogAsync(
-                    AuditAction.MemberSuspended, nameof(User), user.Id,
-                    $"{user.DisplayName} suspended for missing required document consent (grace period expired)",
-                    nameof(SuspendNonCompliantMembersJob));
-
                 _logger.LogWarning(
                     "User {UserId} ({Email}) suspended and removed from {Count} teams",
                     user.Id, effectiveEmail, user.TeamMemberships.Count);
@@ -176,6 +178,11 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
 
                 foreach (var suspendedUser in users.Where(u => suspendedUserIds.Contains(u.Id)))
                 {
+                    await _auditLogService.LogAsync(
+                        AuditAction.MemberSuspended, nameof(User), suspendedUser.Id,
+                        $"{suspendedUser.DisplayName} suspended for missing required document consent (grace period expired)",
+                        nameof(SuspendNonCompliantMembersJob));
+
                     await _fullProfileInvalidator.InvalidateAsync(suspendedUser.Id, cancellationToken);
                     _cache.InvalidateRoleAssignmentClaims(suspendedUser.Id);
                     _cache.InvalidateShiftAuthorization(suspendedUser.Id);

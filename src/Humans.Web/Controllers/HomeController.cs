@@ -2,11 +2,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Application.Configuration;
-using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Services;
 using Humans.Web.Models;
+using Humans.Application.Interfaces.Dashboard;
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 

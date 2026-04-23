@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
