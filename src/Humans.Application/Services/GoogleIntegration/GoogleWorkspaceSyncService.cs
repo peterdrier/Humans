@@ -1975,7 +1975,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             if (cm.Team.ParentTeamId is { } parentId && result.ContainsKey(parentId))
             {
-                var list = result[parentId] as List<TeamMember> ?? [..result[parentId]];
+                var list = result[parentId] as List<TeamMember> ?? [.. result[parentId]];
                 list.Add(cm);
                 result[parentId] = list;
             }
