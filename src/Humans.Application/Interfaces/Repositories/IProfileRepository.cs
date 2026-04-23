@@ -1,5 +1,6 @@
 using Humans.Domain.Entities;
 using Humans.Application;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -163,6 +164,19 @@ public interface IProfileRepository
     /// intentionally left as-is; they are not personally identifying.
     /// </remarks>
     Task<bool> AnonymizeForDeletionByUserIdAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets <see cref="Profile.IsSuspended"/> to true and stamps
+    /// <see cref="Profile.UpdatedAt"/> for every profile whose <c>UserId</c>
+    /// is in <paramref name="userIds"/> and that is not already suspended.
+    /// Persists in a single SaveChanges and returns the set of user ids
+    /// whose profile was actually mutated. Used by the non-compliant
+    /// suspension job — the caller writes the audit log separately.
+    /// </summary>
+    Task<IReadOnlySet<Guid>> SuspendManyAsync(
+        IReadOnlyCollection<Guid> userIds,
+        Instant now,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Reconciles the CV-entry collection for the given profile with the

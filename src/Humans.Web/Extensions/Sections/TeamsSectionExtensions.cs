@@ -1,7 +1,9 @@
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
+using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Teams;
 using TeamsTeamPageService = Humans.Application.Services.Teams.TeamPageService;
@@ -36,6 +38,12 @@ internal static class TeamsSectionExtensions
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<TeamsTeamService>());
 
         services.AddScoped<ITeamPageService, TeamsTeamPageService>();
+
+        // Cross-cutting invalidator for the ActiveTeams cache entry (§15
+        // design-rules). Registered alongside the Teams section — Teams
+        // owns the cache, external callers (e.g. SystemTeamSyncJob) inject
+        // IActiveTeamsCacheInvalidator rather than IMemoryCache.
+        services.AddScoped<IActiveTeamsCacheInvalidator, ActiveTeamsCacheInvalidator>();
 
         services.AddScoped<ISystemTeamSync, SystemTeamSyncJob>();
 

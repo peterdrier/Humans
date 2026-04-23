@@ -206,4 +206,24 @@ public interface IProfileService
     /// <see cref="Users.IUserService.AnonymizeExpiredAccountAsync"/>.
     /// </summary>
     Task<bool> AnonymizeExpiredProfileAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets <see cref="Profile.IsSuspended"/> to true and stamps
+    /// <see cref="Profile.UpdatedAt"/> for users whose consent grace period has
+    /// expired. Unlike <see cref="SuspendAsync"/>, this variant does not
+    /// require an admin actor, skip-list already-suspended profiles (so the
+    /// caller can pre-filter with the returned set), and does not write an
+    /// audit log entry — the caller is expected to emit the
+    /// <see cref="Humans.Domain.Enums.AuditAction.MemberSuspended"/> entry
+    /// itself so it can include job-specific context.
+    /// Returns the set of user ids whose profile was actually mutated (i.e.
+    /// those who had a profile and were not already suspended).
+    /// No-op (absent from the returned set) for users without a profile or
+    /// already suspended. Used by the SuspendNonCompliantMembersJob so the
+    /// Profile section owns the write (design-rules §2c).
+    /// </summary>
+    Task<IReadOnlySet<Guid>> SuspendForMissingConsentAsync(
+        IReadOnlyCollection<Guid> userIds,
+        Instant now,
+        CancellationToken ct = default);
 }

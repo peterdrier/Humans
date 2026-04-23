@@ -224,6 +224,34 @@ public sealed class ProfileRepository : IProfileRepository
     public Task<bool> AnonymizeForDeletionByUserIdAsync(Guid userId, CancellationToken ct = default) =>
         AnonymizeProfileInternalAsync(userId, "Deleted", "User", ct);
 
+    public async Task<IReadOnlySet<Guid>> SuspendManyAsync(
+        IReadOnlyCollection<Guid> userIds,
+        Instant now,
+        CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return new HashSet<Guid>();
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var userIdList = userIds is IList<Guid> list ? list : userIds.ToList();
+        var profiles = await ctx.Profiles
+            .Where(p => userIdList.Contains(p.UserId) && !p.IsSuspended)
+            .ToListAsync(ct);
+
+        foreach (var profile in profiles)
+        {
+            profile.IsSuspended = true;
+            profile.UpdatedAt = now;
+        }
+
+        if (profiles.Count > 0)
+        {
+            await ctx.SaveChangesAsync(ct);
+        }
+
+        return profiles.Select(p => p.UserId).ToHashSet();
+    }
+
     private async Task<bool> AnonymizeProfileInternalAsync(
         Guid userId, string firstName, string lastName, CancellationToken ct)
     {

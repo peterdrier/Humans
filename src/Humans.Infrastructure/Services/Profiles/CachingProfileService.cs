@@ -587,4 +587,22 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         }
         return anonymized;
     }
+
+    public async Task<IReadOnlySet<Guid>> SuspendForMissingConsentAsync(
+        IReadOnlyCollection<Guid> userIds,
+        Instant now,
+        CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        var suspendedIds = await inner.SuspendForMissingConsentAsync(userIds, now, ct);
+        // IsSuspended is part of the FullProfile projection — refresh the
+        // cache entry for every user that was actually mutated so downstream
+        // readers see the suspended view immediately.
+        foreach (var userId in suspendedIds)
+        {
+            await RefreshEntryAsync(userId, ct);
+        }
+        return suspendedIds;
+    }
 }

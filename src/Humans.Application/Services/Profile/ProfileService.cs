@@ -1000,6 +1000,12 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
     public Task<bool> AnonymizeExpiredProfileAsync(Guid userId, CancellationToken ct = default) =>
         _profileRepository.AnonymizeForDeletionByUserIdAsync(userId, ct);
 
+    public Task<IReadOnlySet<Guid>> SuspendForMissingConsentAsync(
+        IReadOnlyCollection<Guid> userIds,
+        Instant now,
+        CancellationToken ct = default) =>
+        _profileRepository.SuspendManyAsync(userIds, now, ct);
+
     // ==========================================================================
     // Helpers
     // ==========================================================================

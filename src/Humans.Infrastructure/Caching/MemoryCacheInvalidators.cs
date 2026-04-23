@@ -39,3 +39,10 @@ public sealed class RoleAssignmentClaimsCacheInvalidator : IRoleAssignmentClaims
     public RoleAssignmentClaimsCacheInvalidator(IMemoryCache cache) => _cache = cache;
     public void Invalidate(Guid userId) => _cache.InvalidateRoleAssignmentClaims(userId);
 }
+
+public sealed class ActiveTeamsCacheInvalidator : IActiveTeamsCacheInvalidator
+{
+    private readonly IMemoryCache _cache;
+    public ActiveTeamsCacheInvalidator(IMemoryCache cache) => _cache = cache;
+    public void Invalidate() => _cache.InvalidateActiveTeams();
+}
