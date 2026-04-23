@@ -997,7 +997,7 @@ public sealed class BudgetRepository : IBudgetRepository
     public async Task<int> SyncTicketingActualsAsync(
         Guid budgetYearId,
         IReadOnlyList<TicketingWeeklyActualsInput> weeklyActuals,
-        TicketingProjectionMaterializationPlan materializationPlan,
+        LocalDate today,
         Instant now,
         CancellationToken ct = default)
     {
@@ -1039,6 +1039,10 @@ public sealed class BudgetRepository : IBudgetRepository
                     -week.TicketTailorFees, week.Monday, TicketingFeeVatRate, false, null, now);
         }
 
+        // Refresh the projection's learned parameters from the new actuals
+        // BEFORE materializing the projected-week schedule, so projected
+        // items reflect the updated average price / fee percentages in the
+        // same atomic op rather than lagging one sync behind.
         if (weeklyActuals.Count > 0 && ticketingGroup.TicketingProjection is not null)
         {
             var totalRevenue = weeklyActuals.Sum(w => w.Revenue);
@@ -1051,7 +1055,8 @@ public sealed class BudgetRepository : IBudgetRepository
                 totalRevenue, totalStripeFees, totalTtFees, totalTickets, now);
         }
 
-        lineItemsChanged += ApplyMaterializationPlan(ctx, revenueCategory, feesCategory, materializationPlan, now);
+        lineItemsChanged += MaterializeProjectedWeeks(
+            ctx, ticketingGroup.TicketingProjection, revenueCategory, feesCategory, today, now);
 
         if (ctx.ChangeTracker.HasChanges())
             await ctx.SaveChangesAsync(ct);
@@ -1061,7 +1066,7 @@ public sealed class BudgetRepository : IBudgetRepository
 
     public async Task<int> RefreshTicketingProjectionsAsync(
         Guid budgetYearId,
-        TicketingProjectionMaterializationPlan materializationPlan,
+        LocalDate today,
         Instant now,
         CancellationToken ct = default)
     {
@@ -1079,7 +1084,8 @@ public sealed class BudgetRepository : IBudgetRepository
         if (revenueCategory is null || feesCategory is null)
             return 0;
 
-        var created = ApplyMaterializationPlan(ctx, revenueCategory, feesCategory, materializationPlan, now);
+        var created = MaterializeProjectedWeeks(
+            ctx, ticketingGroup.TicketingProjection, revenueCategory, feesCategory, today, now);
 
         if (ctx.ChangeTracker.HasChanges())
             await ctx.SaveChangesAsync(ct);
@@ -1167,39 +1173,110 @@ public sealed class BudgetRepository : IBudgetRepository
         projection.UpdatedAt = now;
     }
 
-    private static int ApplyMaterializationPlan(
+    /// <summary>
+    /// Removes stale projected line items and re-materializes the projected-
+    /// week schedule from the <em>current</em> <see cref="TicketingProjection"/>
+    /// state inside this <c>DbContext</c>. Critically, this runs AFTER the
+    /// caller has updated projection parameters from actuals (so the
+    /// Projected: items reflect the new average price / fee percentages
+    /// rather than the pre-sync values).
+    /// </summary>
+    private static int MaterializeProjectedWeeks(
         HumansDbContext ctx,
+        TicketingProjection? projection,
         BudgetCategory revenueCategory,
         BudgetCategory feesCategory,
-        TicketingProjectionMaterializationPlan plan,
+        LocalDate today,
         Instant now)
     {
-        // Always clear stale projected items first (stable behavior whether the plan is valid or not).
+        // Always clear stale projected items first (stable behavior whether the projection is valid or not).
         RemoveProjectedItems(ctx, revenueCategory);
         RemoveProjectedItems(ctx, feesCategory);
 
-        if (!plan.HasValidProjection)
+        if (projection is null
+            || projection.StartDate is null
+            || projection.EventDate is null
+            || projection.AverageTicketPrice == 0)
+        {
+            return 0;
+        }
+
+        var currentWeekMonday = GetTicketingIsoMonday(today);
+        var eventDate = projection.EventDate.Value;
+
+        var projectionStart = currentWeekMonday > projection.StartDate.Value
+            ? currentWeekMonday
+            : GetTicketingIsoMonday(projection.StartDate.Value);
+
+        if (projectionStart >= eventDate)
             return 0;
 
+        var dailyRate = projection.DailySalesRate;
+        var initialBurst = projection.InitialSalesCount;
+        var isFirstWeek = true;
         var created = 0;
-        foreach (var week in plan.Weeks)
+        var weekStart = projectionStart;
+
+        while (weekStart < eventDate)
         {
+            var weekEnd = weekStart.PlusDays(6);
+            if (weekEnd > eventDate) weekEnd = eventDate;
+
+            var daysInWeek = Period.Between(weekStart, weekEnd.PlusDays(1), PeriodUnits.Days).Days;
+
+            var weekTickets = (int)Math.Round(dailyRate * daysInWeek);
+            if (isFirstWeek && projectionStart <= projection.StartDate.Value)
+            {
+                weekTickets += initialBurst;
+                isFirstWeek = false;
+            }
+            else
+            {
+                isFirstWeek = false;
+            }
+
+            if (weekTickets <= 0) weekTickets = 1;
+
+            var weekRevenue = weekTickets * projection.AverageTicketPrice;
+            var stripeFees = weekRevenue * projection.StripeFeePercent / 100m
+                + weekTickets * projection.StripeFeeFixed;
+            var ttFees = weekRevenue * projection.TicketTailorFeePercent / 100m;
+
+            var weekLabel = FormatTicketingWeekLabel(weekStart, weekEnd);
+
             created += UpsertTicketingLineItem(ctx, revenueCategory,
-                $"{TicketingProjectedPrefix}Week of {week.WeekLabel}",
-                week.RevenueAmount, week.WeekStart, week.RevenueVatRate, false, week.RevenueNotes, now);
+                $"{TicketingProjectedPrefix}Week of {weekLabel}",
+                Math.Round(weekRevenue, 2), weekStart, projection.VatRate, false,
+                $"~{weekTickets} tickets", now);
 
-            if (week.StripeFeeAmount > 0)
+            if (stripeFees > 0)
                 created += UpsertTicketingLineItem(ctx, feesCategory,
-                    $"{TicketingProjectedPrefix}Stripe fees: {week.WeekLabel}",
-                    -week.StripeFeeAmount, week.WeekStart, week.StripeFeeVatRate, false, null, now);
+                    $"{TicketingProjectedPrefix}Stripe fees: {weekLabel}",
+                    -Math.Round(stripeFees, 2), weekStart, TicketingFeeVatRate, false, null, now);
 
-            if (week.TicketTailorFeeAmount > 0)
+            if (ttFees > 0)
                 created += UpsertTicketingLineItem(ctx, feesCategory,
-                    $"{TicketingProjectedPrefix}TT fees: {week.WeekLabel}",
-                    -week.TicketTailorFeeAmount, week.WeekStart, week.TicketTailorFeeVatRate, false, null, now);
+                    $"{TicketingProjectedPrefix}TT fees: {weekLabel}",
+                    -Math.Round(ttFees, 2), weekStart, TicketingFeeVatRate, false, null, now);
+
+            weekStart = weekEnd.PlusDays(1);
+            weekStart = GetTicketingIsoMonday(weekStart);
+            if (weekStart <= weekEnd) weekStart = weekEnd.PlusDays(1);
         }
 
         return created;
+    }
+
+    private static LocalDate GetTicketingIsoMonday(LocalDate date)
+    {
+        // NodaTime IsoDayOfWeek: Monday=1, Sunday=7.
+        var dayOfWeek = (int)date.DayOfWeek;
+        return date.PlusDays(-(dayOfWeek - 1));
+    }
+
+    private static string FormatTicketingWeekLabel(LocalDate monday, LocalDate sunday)
+    {
+        return $"{monday.ToString("MMM d", null)}–{sunday.ToString("MMM d", null)}";
     }
 
     private static void RemoveProjectedItems(HumansDbContext ctx, BudgetCategory category)

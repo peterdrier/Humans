@@ -321,30 +321,41 @@ public interface IBudgetRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Runs the ticketing actuals sync for a budget year: upserts
-    /// auto-generated line items for each completed week (revenue + fees),
-    /// refreshes the projection's learned parameters (avg ticket price,
-    /// fee percentages) from those actuals, removes stale projected line
-    /// items, and re-materializes projected line items for future weeks.
-    /// All writes commit inside a single <c>DbContext</c>/<c>SaveChanges</c>.
+    /// Runs the ticketing actuals sync for a budget year in a single
+    /// transaction: upserts auto-generated line items for each completed
+    /// week (revenue + fees), refreshes the projection's learned parameters
+    /// (avg ticket price, fee percentages) from those actuals, then removes
+    /// stale projected line items and re-materializes projected line items
+    /// for future weeks using the <em>freshly updated</em> projection. All
+    /// writes commit inside a single <c>DbContext</c>/<c>SaveChanges</c>.
     /// Returns the number of line items created or updated.
     /// </summary>
+    /// <remarks>
+    /// The repository owns the projected-week schedule computation so it
+    /// runs against the post-update projection parameters. <paramref name="today"/>
+    /// defines the current ISO-week Monday cut-over (passed in so the
+    /// repository stays <c>IClock</c>-free).
+    /// </remarks>
     Task<int> SyncTicketingActualsAsync(
         Guid budgetYearId,
         IReadOnlyList<TicketingWeeklyActualsInput> weeklyActuals,
-        TicketingProjectionMaterializationPlan materializationPlan,
+        LocalDate today,
         Instant now,
         CancellationToken ct = default);
 
     /// <summary>
     /// Re-materializes projected ticketing line items for a year (no actuals
     /// sync). Removes stale projected line items and writes new ones from
-    /// the supplied plan in a single transaction. Returns the number of
-    /// projected line items created.
+    /// the current projection parameters in a single transaction. Returns
+    /// the number of projected line items created.
     /// </summary>
+    /// <remarks>
+    /// <paramref name="today"/> defines the current ISO-week Monday cut-over;
+    /// passed in so the repository stays <c>IClock</c>-free.
+    /// </remarks>
     Task<int> RefreshTicketingProjectionsAsync(
         Guid budgetYearId,
-        TicketingProjectionMaterializationPlan materializationPlan,
+        LocalDate today,
         Instant now,
         CancellationToken ct = default);
 
@@ -442,27 +453,3 @@ public sealed record TicketingWeeklyActualsInput(
     decimal Revenue,
     decimal StripeFees,
     decimal TicketTailorFees);
-
-/// <summary>
-/// Pre-computed plan for materializing projected ticketing line items inside
-/// the repository. The service computes the week schedule from the current
-/// projection parameters (in memory) and passes this plan into the repository
-/// so the repo stays free of projection math.
-/// </summary>
-public sealed record TicketingProjectionMaterializationPlan(
-    bool HasValidProjection,
-    IReadOnlyList<ProjectedTicketingWeek> Weeks);
-
-/// <summary>
-/// One week of the projected ticketing schedule.
-/// </summary>
-public sealed record ProjectedTicketingWeek(
-    string WeekLabel,
-    LocalDate WeekStart,
-    decimal RevenueAmount,
-    int RevenueVatRate,
-    string RevenueNotes,
-    decimal StripeFeeAmount,
-    int StripeFeeVatRate,
-    decimal TicketTailorFeeAmount,
-    int TicketTailorFeeVatRate);

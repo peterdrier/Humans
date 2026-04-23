@@ -384,6 +384,77 @@ public class BudgetServiceTests : IAsyncLifetime
         projectedRevenueItems.Should().NotBeEmpty();
     }
 
+    // Regression test for Codex P1 (PR #298 review): projected line items were
+    // being computed from stale projection parameters because the plan was
+    // pre-built in the service before UpdateProjectionFromActuals ran in the
+    // repo. The fix moves materialization into the repo atomic op AFTER the
+    // projection is updated from actuals, so projected items reflect the
+    // newly-learned average price / fee percentages in the same sync.
+    [Fact]
+    public async Task SyncTicketingActualsAsync_projected_items_use_post_update_avg_price_not_pre_sync_value()
+    {
+        var (groupId, _, revenueCatId, _) = await SeedTicketingYearAsync();
+
+        // Projection configured with AverageTicketPrice=100. After the sync,
+        // actuals (20 tickets, 1000 revenue) will re-learn AverageTicketPrice=50.
+        // The Projected: revenue line items must use 50, not 100.
+        await ConfigureProjectionAsync(groupId,
+            startDate: new LocalDate(2026, 4, 6), // Monday after the FakeClock today (2026-03-31).
+            eventDate: new LocalDate(2026, 5, 4),
+            averageTicketPrice: 100m,
+            dailySalesRate: 5m);
+
+        var actuals = new List<DTOs.TicketingWeeklyActuals>
+        {
+            new(Monday: new LocalDate(2026, 3, 16),
+                Sunday: new LocalDate(2026, 3, 22),
+                WeekLabel: "Mar 16–Mar 22",
+                TicketCount: 20,
+                Revenue: 1000m,
+                StripeFees: 0m,
+                TicketTailorFees: 0m)
+        };
+
+        await _service.SyncTicketingActualsAsync(_yearId, actuals);
+
+        await using var ctx = await _factory.CreateDbContextAsync();
+
+        // The projection was updated in-place before materialization.
+        var projection = await ctx.TicketingProjections.SingleAsync(p => p.BudgetGroupId == groupId);
+        projection.AverageTicketPrice.Should().Be(50m);
+
+        // Projected: revenue items must reflect the new AvgPrice of 50.
+        // Given 5 tickets/day * 7 days = 35 tickets/week at 50 = 1750/week.
+        // The first projected week includes an initial burst if start date hadn't passed,
+        // but in this setup the projection start (Apr 6) is the current-week Monday
+        // (Apr 6 is after today 2026-03-31), so the initial burst IS included.
+        // To keep the test precise and independent of burst math, just assert that
+        // every projected week's revenue divides evenly by 50 (the new learned price).
+        var projectedItems = await ctx.BudgetLineItems
+            .Where(li => li.BudgetCategoryId == revenueCatId
+                && li.Description.StartsWith("Projected:"))
+            .ToListAsync();
+
+        projectedItems.Should().NotBeEmpty("projection is valid and covers multiple weeks before event");
+
+        foreach (var item in projectedItems)
+        {
+            // Revenue = tickets * 50 (new price). If stale 100 was used, it'd be tickets * 100.
+            // Parse ticket count from notes "~N tickets" and verify amount == count * 50.
+            item.Notes.Should().NotBeNullOrEmpty();
+            var notesClean = item.Notes!.TrimStart('~');
+            var spaceIdx = notesClean.IndexOf(' ', StringComparison.Ordinal);
+            spaceIdx.Should().BeGreaterThan(0);
+            var ticketCount = int.Parse(
+                notesClean[..spaceIdx],
+                System.Globalization.CultureInfo.InvariantCulture);
+
+            item.Amount.Should().Be(
+                ticketCount * 50m,
+                because: $"projected revenue must use post-sync learned price (50), not pre-sync value (100); item '{item.Description}' had {ticketCount} tickets");
+        }
+    }
+
     // ─── Seeding helpers ────────────────────────────────────────────────────
 
     private async Task<BudgetCategory> SeedCategoryAsync()

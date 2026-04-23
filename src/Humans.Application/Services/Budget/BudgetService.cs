@@ -542,13 +542,10 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
 
     // ───────────────────────── Ticketing Budget Sync ─────────────────────────
     //
-    // The service plans the projected-week schedule from the current projection
-    // parameters (pure in-memory math) and hands the plan to the repository,
-    // which materializes line items atomically inside one DbContext/SaveChanges.
-    // The service does not hold tracked entities across the call.
-
-    // Spanish IVA rate applied to Stripe and TicketTailor processing fees.
-    private const int TicketingFeeVatRate = 21;
+    // The service shapes DTOs and hands them to the repository. Projected-week
+    // materialization lives inside the repository so it runs AFTER projection
+    // parameters have been refreshed from actuals (same DbContext/SaveChanges),
+    // preventing the projected-items-lag-one-sync bug the pre-plan design had.
 
     public async Task<int> SyncTicketingActualsAsync(
         Guid budgetYearId,
@@ -556,13 +553,7 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
         CancellationToken ct = default)
     {
         var now = _clock.GetCurrentInstant();
-
-        var plan = await BuildMaterializationPlanAsync(budgetYearId, ct);
-        if (plan is null)
-        {
-            _logger.LogDebug("No ticketing group found for budget year {YearId}", budgetYearId);
-            return 0;
-        }
+        var today = now.InUtc().Date;
 
         var actualsInputs = weeklyActuals
             .Select(w => new TicketingWeeklyActualsInput(
@@ -575,7 +566,7 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
             .ToList();
 
         var changed = await _repository.SyncTicketingActualsAsync(
-            budgetYearId, actualsInputs, plan, now, ct);
+            budgetYearId, actualsInputs, today, now, ct);
 
         _logger.LogInformation(
             "Ticketing budget sync: {Created} line items created/updated for {Weeks} actual weeks + projections",
@@ -587,118 +578,12 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
     public async Task<int> RefreshTicketingProjectionsAsync(Guid budgetYearId, CancellationToken ct = default)
     {
         var now = _clock.GetCurrentInstant();
+        var today = now.InUtc().Date;
 
-        var plan = await BuildMaterializationPlanAsync(budgetYearId, ct);
-        if (plan is null) return 0;
-
-        var created = await _repository.RefreshTicketingProjectionsAsync(budgetYearId, plan, now, ct);
+        var created = await _repository.RefreshTicketingProjectionsAsync(budgetYearId, today, now, ct);
 
         _logger.LogInformation("Ticketing projections refreshed: {Count} line items", created);
         return created;
-    }
-
-    /// <summary>
-    /// Builds the projection-materialization plan for a year's ticketing group.
-    /// Returns <c>null</c> when the year has no ticketing group at all — the
-    /// caller treats that as a no-op. When the group exists but the projection
-    /// is not configured, returns a plan with <c>HasValidProjection=false</c> so
-    /// the repository still clears stale projected line items.
-    /// </summary>
-    private async Task<TicketingProjectionMaterializationPlan?> BuildMaterializationPlanAsync(
-        Guid budgetYearId, CancellationToken ct)
-    {
-        // Read the year's groups + projection to find the ticketing group id.
-        var year = await _repository.GetYearByIdAsync(budgetYearId, ct);
-        if (year is null)
-            return null;
-
-        var ticketingGroup = year.Groups.FirstOrDefault(g => g.IsTicketingGroup);
-        if (ticketingGroup is null)
-            return null;
-
-        var projection = ticketingGroup.TicketingProjection;
-        if (projection is null
-            || projection.StartDate is null
-            || projection.EventDate is null
-            || projection.AverageTicketPrice == 0)
-        {
-            return new TicketingProjectionMaterializationPlan(
-                HasValidProjection: false,
-                Weeks: []);
-        }
-
-        var today = _clock.GetCurrentInstant().InUtc().Date;
-        var currentWeekMonday = GetTicketingIsoMonday(today);
-        var eventDate = projection.EventDate.Value;
-
-        var projectionStart = currentWeekMonday > projection.StartDate.Value
-            ? currentWeekMonday
-            : GetTicketingIsoMonday(projection.StartDate.Value);
-
-        if (projectionStart >= eventDate)
-        {
-            return new TicketingProjectionMaterializationPlan(
-                HasValidProjection: true,
-                Weeks: []);
-        }
-
-        var weeks = BuildProjectedWeeks(projection, projectionStart, eventDate);
-        return new TicketingProjectionMaterializationPlan(
-            HasValidProjection: true,
-            Weeks: weeks);
-    }
-
-    private static List<ProjectedTicketingWeek> BuildProjectedWeeks(
-        TicketingProjection projection, LocalDate projectionStart, LocalDate eventDate)
-    {
-        var weeks = new List<ProjectedTicketingWeek>();
-        var dailyRate = projection.DailySalesRate;
-        var initialBurst = projection.InitialSalesCount;
-        var isFirstWeek = true;
-        var weekStart = projectionStart;
-
-        while (weekStart < eventDate)
-        {
-            var weekEnd = weekStart.PlusDays(6);
-            if (weekEnd > eventDate) weekEnd = eventDate;
-
-            var daysInWeek = Period.Between(weekStart, weekEnd.PlusDays(1), PeriodUnits.Days).Days;
-
-            var weekTickets = (int)Math.Round(dailyRate * daysInWeek);
-            if (isFirstWeek && projectionStart <= projection.StartDate!.Value)
-            {
-                weekTickets += initialBurst;
-                isFirstWeek = false;
-            }
-            else
-            {
-                isFirstWeek = false;
-            }
-
-            if (weekTickets <= 0) weekTickets = 1;
-
-            var weekRevenue = weekTickets * projection.AverageTicketPrice;
-            var stripeFees = weekRevenue * projection.StripeFeePercent / 100m
-                + weekTickets * projection.StripeFeeFixed;
-            var ttFees = weekRevenue * projection.TicketTailorFeePercent / 100m;
-
-            weeks.Add(new ProjectedTicketingWeek(
-                WeekLabel: FormatTicketingWeekLabel(weekStart, weekEnd),
-                WeekStart: weekStart,
-                RevenueAmount: Math.Round(weekRevenue, 2),
-                RevenueVatRate: projection.VatRate,
-                RevenueNotes: $"~{weekTickets} tickets",
-                StripeFeeAmount: Math.Round(stripeFees, 2),
-                StripeFeeVatRate: TicketingFeeVatRate,
-                TicketTailorFeeAmount: Math.Round(ttFees, 2),
-                TicketTailorFeeVatRate: TicketingFeeVatRate));
-
-            weekStart = weekEnd.PlusDays(1);
-            weekStart = GetTicketingIsoMonday(weekStart);
-            if (weekStart <= weekEnd) weekStart = weekEnd.PlusDays(1);
-        }
-
-        return weeks;
     }
 
     public async Task<IReadOnlyList<TicketingWeekProjection>> GetTicketingProjectionEntriesAsync(
