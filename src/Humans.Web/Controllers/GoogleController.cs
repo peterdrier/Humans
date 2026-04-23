@@ -1,18 +1,17 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Web.Authorization;
 using Humans.Web.Constants;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 
@@ -736,31 +735,29 @@ public class GoogleController : HumansControllerBase
 
     [HttpGet("SyncOutbox")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
-    public async Task<IActionResult> SyncOutbox([FromServices] HumansDbContext dbContext)
+    public async Task<IActionResult> SyncOutbox(
+        [FromServices] IGoogleSyncOutboxRepository outboxRepository,
+        [FromServices] IGoogleResourceRepository resourceRepository,
+        [FromServices] IUserService userService,
+        [FromServices] ITeamService teamService)
     {
-        var events = await dbContext.GoogleSyncOutboxEvents
-            .OrderByDescending(e => e.OccurredAt)
-            .Take(200)
-            .ToListAsync();
+        var events = (await outboxRepository.GetRecentAsync(200)).ToList();
 
-        // Resolve display info for events
+        // Resolve display info for events via section-owned services / repos
+        // (§15 Part 2c, issue #576 — no direct DbContext access in controllers).
         var userIds = events.Select(e => e.UserId).Distinct().ToList();
         var teamIds = events.Select(e => e.TeamId).Distinct().ToList();
-        var googleEmailLookup = await dbContext.Users
-            .Where(u => userIds.Contains(u.Id))
-            .ToDictionaryAsync(u => u.Id, u => u.GetGoogleServiceEmail() ?? "unknown");
-        var displayNameLookup = await dbContext.Users
-            .Where(u => userIds.Contains(u.Id))
-            .ToDictionaryAsync(u => u.Id, u => u.DisplayName);
-        var teamLookup = await dbContext.Teams
-            .Where(t => teamIds.Contains(t.Id))
-            .ToDictionaryAsync(t => t.Id, t => t.Name);
-        var resourceLookup = await dbContext.GoogleResources
-            .Where(r => teamIds.Contains(r.TeamId) && r.IsActive)
-            .GroupBy(r => r.TeamId)
-            .ToDictionaryAsync(
-                g => g.Key,
-                g => g.Select(r => $"{r.Name} ({r.ResourceType})").ToList());
+        var users = await userService.GetByIdsAsync(userIds);
+        var googleEmailLookup = users.ToDictionary(
+            kvp => kvp.Key, kvp => kvp.Value.GetGoogleServiceEmail() ?? "unknown");
+        var displayNameLookup = users.ToDictionary(
+            kvp => kvp.Key, kvp => kvp.Value.DisplayName);
+        var teamLookup = (await teamService.GetTeamNamesByIdsAsync(teamIds))
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        var resourcesByTeam = await resourceRepository.GetActiveByTeamIdsAsync(teamIds);
+        var resourceLookup = resourcesByTeam.ToDictionary(
+            kvp => kvp.Key,
+            kvp => kvp.Value.Select(r => $"{r.Name} ({r.ResourceType})").ToList());
 
         ViewBag.GoogleEmailLookup = googleEmailLookup;
         ViewBag.DisplayNameLookup = displayNameLookup;

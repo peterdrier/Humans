@@ -7,11 +7,12 @@
 # outside the allowlisted owner files. Migration files and the DbContext
 # itself are always allowed.
 #
-# Phase 2 exceptions: GoogleWorkspaceSyncService, SystemTeamSyncJob,
-# ProcessGoogleSyncOutboxJob, and GoogleController still touch the table
-# directly — they are tracked as temporary exceptions while the remainder
-# of the Google sync service is decomposed. Remove entries from
-# PHASE2_EXCEPTIONS as each caller migrates to ITeamResourceService reads.
+# Phase 2 exceptions: SystemTeamSyncJob still touches the table directly —
+# tracked as a temporary exception while the job migrates to the Google
+# sync service. GoogleWorkspaceSyncService moved to Application in §15
+# Part 2b (#575) and now routes all writes through IGoogleResourceRepository.
+# ProcessGoogleSyncOutboxJob and GoogleController migrated in §15 Part 2c
+# (#576). Remove entries from PHASE2_EXCEPTIONS as each caller migrates.
 
 set -euo pipefail
 
@@ -30,10 +31,7 @@ ALLOWED=(
 # Phase 2: still-pending migrations to services that own writes here.
 # Track the upstream issue before adding anything to this list.
 PHASE2_EXCEPTIONS=(
-  "src/Humans.Infrastructure/Services/GoogleWorkspaceSyncService.cs"
   "src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs"
-  "src/Humans.Infrastructure/Jobs/ProcessGoogleSyncOutboxJob.cs"
-  "src/Humans.Web/Controllers/GoogleController.cs"
 )
 
 build_exclude_args() {
