@@ -113,32 +113,39 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         ArgumentNullException.ThrowIfNull(client);
         ArgumentException.ThrowIfNullOrEmpty(personaSlug);
 
+        // Normalize slug to lowercase: DevLoginController matches personas
+        // case-insensitively, but we query the seeded user below by the
+        // case-sensitive Postgres varchar email column. Mirror the email
+        // convention used by DevLoginController ($"dev-{slug}@localhost", all
+        // lowercase) so "Volunteer"/"ADMIN"/etc. still resolve.
+        var slug = personaSlug.ToLowerInvariant();
+
         // 1) Hit the dev-login endpoint. This seeds the User + Profile +
         //    RoleAssignments + TeamMembers for the persona (idempotent) and
         //    issues the Identity auth cookie on the 302 response. Cookies are
         //    captured by WebApplicationFactory's default CookieContainer even
         //    with AllowAutoRedirect=false.
-        var loginResp = await client.GetAsync($"/dev/login/{personaSlug}");
+        var loginResp = await client.GetAsync($"/dev/login/{slug}");
         if (loginResp.StatusCode is not (HttpStatusCode.Redirect
             or HttpStatusCode.Found
             or HttpStatusCode.OK))
         {
             throw new InvalidOperationException(
-                $"Dev login for persona '{personaSlug}' failed: {(int)loginResp.StatusCode} {loginResp.StatusCode}");
+                $"Dev login for persona '{slug}' failed: {(int)loginResp.StatusCode} {loginResp.StatusCode}");
         }
 
         // 2) Resolve the seeded user id by email convention used in DevLoginController.
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
-        var email = $"dev-{personaSlug}@localhost";
+        var email = $"dev-{slug}@localhost";
         var user = await db.Users
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Email == email)
             ?? throw new InvalidOperationException(
-                $"Persona '{personaSlug}' was not found after dev login (email {email}).");
+                $"Persona '{slug}' was not found after dev login (email {email}).");
 
-        // 3) Seed ConsentRecord for every published, required document version the
+        // 3) Seed ConsentRecord for every current required document version the
         //    user hasn't already consented to. ConsentRecord is append-only
         //    (DB triggers block UPDATE/DELETE) — INSERT is the only mutation
         //    allowed here.
@@ -149,14 +156,27 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
 
     private static async Task SeedMissingConsentsAsync(HumansDbContext db, Guid userId)
     {
-        var requiredVersions = await db.DocumentVersions
+        var now = SystemClock.Instance.GetCurrentInstant();
+
+        // Match LegalDocumentSyncService.GetRequiredVersionsAsync: one row per
+        // required+active document, picking the latest already-effective version
+        // (EffectiveFrom <= now). Seeding *every* version would give the user
+        // consent to future-effective docs and hide re-consent regressions.
+        var documentGroups = await db.DocumentVersions
             .AsNoTracking()
-            .Where(v => v.LegalDocument.IsRequired && v.LegalDocument.IsActive)
-            .Select(v => new { v.Id, CanonicalContent = v.Content })
+            .Where(v => v.LegalDocument.IsRequired
+                     && v.LegalDocument.IsActive
+                     && v.EffectiveFrom <= now)
+            .Select(v => new { v.Id, v.LegalDocumentId, v.EffectiveFrom, Content = v.Content })
             .ToListAsync();
 
-        if (requiredVersions.Count == 0)
+        if (documentGroups.Count == 0)
             return;
+
+        var currentVersions = documentGroups
+            .GroupBy(v => v.LegalDocumentId)
+            .Select(g => g.OrderByDescending(v => v.EffectiveFrom).First())
+            .ToList();
 
         var alreadyConsentedIds = await db.ConsentRecords
             .AsNoTracking()
@@ -165,15 +185,14 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
             .ToListAsync();
         var alreadyConsented = alreadyConsentedIds.ToHashSet();
 
-        var now = SystemClock.Instance.GetCurrentInstant();
-        foreach (var version in requiredVersions)
+        foreach (var version in currentVersions)
         {
             if (alreadyConsented.Contains(version.Id))
                 continue;
 
             // Mirror ConsentService.SubmitConsentAsync: hash the canonical ("es")
             // content so ContentHash matches what production would produce.
-            var canonical = version.CanonicalContent.GetValueOrDefault("es", string.Empty);
+            var canonical = version.Content.GetValueOrDefault("es", string.Empty);
             var contentHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical)))
                 .ToLowerInvariant();
 
