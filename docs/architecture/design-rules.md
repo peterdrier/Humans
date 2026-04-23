@@ -613,7 +613,7 @@ Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`
     - Tickets
     - Google Workspace (all services — `GoogleWorkspaceSyncService` moved to the Application layer in §15 Part 2b / #575; cross-domain includes retired in favour of sibling-service batched reads)
     - Calendar
-  - **User section's PR #243 landed the Application-layer move but deferred the nav-strip** — cross-domain nav reads via `user.UserEmails`, `user.Profile`, `user.TeamMemberships`, `user.GetEffectiveEmail()` still exist in `TeamService`, `GoogleWorkspaceSyncService`, `SendBoardDailyDigestJob`, `SyncLegalDocumentsJob`, `SystemTeamSyncJob`, `SuspendNonCompliantMembersJob`, `ProfileController`. Tracked as a follow-up.
+  - **User section's PR #243 landed the Application-layer move but deferred the nav-strip** — cross-domain nav reads via `user.UserEmails`, `user.Profile`, `user.TeamMemberships`, `user.GetEffectiveEmail()` still exist in `TeamService`, `GoogleWorkspaceSyncService` (Application layer; reads `TeamMember.User` after `ITeamService` stitches it in-memory, under `#pragma warning disable CS0618`), `SendBoardDailyDigestJob`, `SyncLegalDocumentsJob`, `SystemTeamSyncJob`, `SuspendNonCompliantMembersJob`, `ProfileController`. Tracked as a follow-up.
 - **29 repositories** exist today. Target: one per domain (~20 total, some sections need two):
   - `AccountMergeRepository`
   - `ApplicationRepository`
