@@ -52,9 +52,9 @@ See `docs/architecture/design-rules.md` for the full rules.
 **Owning services:** `BudgetService`
 **Owned tables:** `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections`
 
-## Target Architecture Direction
+`BudgetService` (Application) and `BudgetRepository` (Infrastructure, §15b Singleton + `IDbContextFactory`) follow the canonical pattern. `IBudgetRepository` exposes atomic per-method operations — multi-entity mutations (e.g., creating a year with its default groups / categories / projection row, or syncing ticketing actuals + re-materializing projected line items) are single repository methods that do all their work inside one short-lived `DbContext`. No caching decorator: Budget pages are admin-only and low-traffic.
 
-> **Status:** This section currently follows the "services in Infrastructure, direct DbContext" model. It will be migrated to the repository/store/decorator pattern per [`../architecture/design-rules.md`](../architecture/design-rules.md). **Delete this block once the migration lands and this section's services live in `Humans.Application` with `*Repository.cs` impls in `Humans.Infrastructure/Repositories/`.**
+## Target Architecture Direction
 
 ### Target repositories
 

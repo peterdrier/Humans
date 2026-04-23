@@ -1,5 +1,6 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -7,23 +8,29 @@ namespace Humans.Application.Interfaces.Repositories;
 /// Repository for the Budget section's tables: <c>budget_years</c>,
 /// <c>budget_groups</c>, <c>budget_categories</c>, <c>budget_line_items</c>,
 /// <c>budget_audit_logs</c>, and <c>ticketing_projections</c>. The only
-/// non-test file that writes to these DbSets after the Budget migration lands.
+/// non-test file that writes to these DbSets.
 /// </summary>
 /// <remarks>
-/// <c>budget_audit_logs</c> is append-only by convention — only
-/// <see cref="AddAuditLogAsync"/> and <see cref="GetAuditLogAsync"/> are
-/// exposed. Budget pages are admin-only and low-traffic, so the repository
-/// uses the Scoped + <c>HumansDbContext</c> pattern (like
-/// <c>ApplicationRepository</c>) rather than the Singleton +
-/// <c>IDbContextFactory</c> pattern. Aggregate loads return tracked
-/// entities when mutations are expected so the service can commit coherent
-/// multi-entity changes through a single <c>SaveChanges</c> on the
-/// repository.
+/// Follows the §15b Singleton + <c>IDbContextFactory</c> pattern: every method
+/// opens its own short-lived <c>DbContext</c>, performs its work, and saves
+/// atomically within that context's lifetime. There is no cross-method unit of
+/// work — callers can no longer stage writes through the repository and then
+/// flush with a shared <c>SaveChanges</c>. Multi-entity operations that must
+/// be atomic (e.g., creating a year with its default groups and categories)
+/// are exposed as single high-level repository methods that do the whole
+/// materialization inside one <c>DbContext</c>.
+/// <para>
+/// <c>budget_audit_logs</c> is append-only per §12 — only
+/// <see cref="AddAuditLogAsync"/>, <see cref="GetAuditLogAsync"/>, and
+/// <see cref="GetAuditLogEntriesForUserAsync"/> are exposed. Audit entries are
+/// written via dedicated repository methods alongside the business mutation so
+/// both commit inside the same <c>SaveChanges</c>.
+/// </para>
 /// </remarks>
 public interface IBudgetRepository
 {
     // ==========================================================================
-    // Budget Years
+    // Budget Years — reads
     // ==========================================================================
 
     /// <summary>
@@ -34,7 +41,7 @@ public interface IBudgetRepository
 
     /// <summary>
     /// Returns the full year graph (groups → categories → line items, plus
-    /// ticketing projection and team navigation) for read-only display.
+    /// ticketing projection) for read-only display. Detached entities.
     /// </summary>
     Task<BudgetYear?> GetYearByIdAsync(Guid id, CancellationToken ct = default);
 
@@ -44,138 +51,247 @@ public interface IBudgetRepository
     Task<BudgetYear?> GetActiveYearAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns a single budget year (tracked, without navigation), used by
-    /// mutating operations.
-    /// </summary>
-    Task<BudgetYear?> FindYearForMutationAsync(Guid id, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns every budget year currently in <see cref="BudgetYearStatus.Active"/>
-    /// status whose id does not match <paramref name="excludingId"/>. Tracked.
-    /// </summary>
-    Task<IReadOnlyList<BudgetYear>> FindActiveYearsExcludingAsync(
-        Guid excludingId, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns true if the given year exists and is in
     /// <see cref="BudgetYearStatus.Closed"/> status.
     /// </summary>
     Task<bool> IsYearClosedAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>
-    /// Persist a new budget year. Does NOT call <c>SaveChanges</c> — the
-    /// service is expected to call <see cref="SaveChangesAsync"/> after
-    /// staging all related entities (groups, categories, audit log).
-    /// </summary>
-    void AddYear(BudgetYear year);
-
     // ==========================================================================
-    // Budget Groups
+    // Budget Years — atomic mutations
     // ==========================================================================
 
     /// <summary>
-    /// Returns a tracked budget group (no navigation) for updates.
+    /// Creates a new budget year and seeds it with the standard scaffolding:
+    /// a "Departments" group plus one category per budgetable team, a
+    /// "Ticketing" group with its projection record plus "Ticket Revenue" /
+    /// "Processing Fees" categories, and the matching audit log entry. All
+    /// writes commit inside a single <c>DbContext</c>/<c>SaveChanges</c> so
+    /// the year cannot exist without its scaffold.
     /// </summary>
-    Task<BudgetGroup?> FindGroupForMutationAsync(Guid groupId, CancellationToken ct = default);
+    Task CreateYearWithScaffoldAsync(BudgetYearDraft draft, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the department group for a year (tracked, with categories).
+    /// Updates the free-text fields on a budget year (<c>Year</c>, <c>Name</c>)
+    /// and appends field-level audit entries for any that changed. Atomic.
+    /// Returns <c>true</c> if the year existed, <c>false</c> otherwise.
     /// </summary>
-    Task<BudgetGroup?> GetDepartmentGroupForMutationAsync(Guid budgetYearId, CancellationToken ct = default);
+    Task<bool> UpdateYearAsync(
+        Guid yearId,
+        string year,
+        string name,
+        Guid actorUserId,
+        Instant now,
+        CancellationToken ct = default);
 
     /// <summary>
-    /// Returns true if the year already has a ticketing group.
+    /// Transitions a budget year to a new status. If the new status is
+    /// <see cref="BudgetYearStatus.Active"/>, every other currently-active
+    /// year is closed in the same transaction. Writes a field-level audit
+    /// entry for the target year's status change plus one for each
+    /// auto-closed year. Atomic. Returns <c>true</c> if the year existed.
     /// </summary>
-    Task<bool> HasTicketingGroupAsync(Guid budgetYearId, CancellationToken ct = default);
+    Task<bool> UpdateYearStatusAsync(
+        Guid yearId,
+        BudgetYearStatus status,
+        Guid actorUserId,
+        Instant now,
+        CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the max <see cref="BudgetGroup.SortOrder"/> for a year, or
-    /// <c>-1</c> when no groups exist.
+    /// Soft-deletes a budget year (marks <c>IsDeleted</c>, sets
+    /// <c>DeletedAt</c>, moves status to Closed) and writes the archive
+    /// audit entry. Throws <see cref="InvalidOperationException"/> if the
+    /// year is currently Active — callers must close it first. Returns
+    /// <c>true</c> if the year existed.
     /// </summary>
-    Task<int> GetMaxGroupSortOrderAsync(Guid budgetYearId, CancellationToken ct = default);
+    Task<bool> SoftDeleteYearAsync(
+        Guid yearId,
+        Guid actorUserId,
+        Instant now,
+        CancellationToken ct = default);
 
     /// <summary>
-    /// Stage a new budget group in the change tracker.
+    /// Reverses a soft-delete: clears <c>IsDeleted</c>/<c>DeletedAt</c>,
+    /// moves status back to Draft, and writes the restore audit entry. No-op
+    /// (returns <c>false</c>) if the year is not soft-deleted. Returns
+    /// <c>true</c> if a restore actually occurred.
     /// </summary>
-    void AddGroup(BudgetGroup group);
+    Task<bool> RestoreYearAsync(
+        Guid yearId,
+        Guid actorUserId,
+        Instant now,
+        CancellationToken ct = default);
 
     /// <summary>
-    /// Remove a budget group from the change tracker.
+    /// Ensures every team in <paramref name="budgetableTeams"/> has a
+    /// department category in the year's Departments group, appending one
+    /// category per missing team and writing an audit entry for each. Throws
+    /// if the year is closed or lacks a Departments group. Returns the
+    /// number of categories created.
     /// </summary>
-    void RemoveGroup(BudgetGroup group);
+    Task<int> SyncDepartmentCategoriesAsync(
+        Guid budgetYearId,
+        IReadOnlyList<BudgetableTeamRef> budgetableTeams,
+        Guid actorUserId,
+        Instant now,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Adds the Ticketing group (with its projection row and two default
+    /// categories) to the year if it does not already have one. Throws if
+    /// the year is closed. Returns <c>true</c> if the group was created,
+    /// <c>false</c> if it already existed.
+    /// </summary>
+    Task<bool> EnsureTicketingGroupAsync(
+        Guid budgetYearId,
+        Guid actorUserId,
+        Instant now,
+        CancellationToken ct = default);
 
     // ==========================================================================
-    // Budget Categories
+    // Budget Groups — atomic mutations
+    // ==========================================================================
+
+    /// <summary>
+    /// Creates a non-scaffold budget group, writes the create audit entry,
+    /// and returns the persisted group. Throws if the year is closed or does
+    /// not exist.
+    /// </summary>
+    Task<BudgetGroup> CreateGroupAsync(
+        Guid budgetYearId,
+        string name,
+        bool isRestricted,
+        Guid actorUserId,
+        Instant now,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Updates a budget group's name, sort order, and restricted flag,
+    /// appending field-level audit entries for each changed field. Throws if
+    /// the year is closed. Returns <c>true</c> if the group existed.
+    /// </summary>
+    Task<bool> UpdateGroupAsync(
+        Guid groupId,
+        string name,
+        int sortOrder,
+        bool isRestricted,
+        Guid actorUserId,
+        Instant now,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes a budget group and writes the delete audit entry. Refuses to
+    /// delete the auto-generated Departments group. Throws if the year is
+    /// closed. Returns <c>true</c> if the group existed.
+    /// </summary>
+    Task<bool> DeleteGroupAsync(
+        Guid groupId,
+        Guid actorUserId,
+        Instant now,
+        CancellationToken ct = default);
+
+    // ==========================================================================
+    // Budget Categories — reads
     // ==========================================================================
 
     /// <summary>
     /// Returns a single category with its full detail graph (group, year,
-    /// team, line items + responsible team) for read-only display.
+    /// line items) for read-only display. Detached.
     /// </summary>
     Task<BudgetCategory?> GetCategoryByIdAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns a tracked category (with group → year for year-closed checks)
-    /// for updates.
-    /// </summary>
-    Task<BudgetCategory?> FindCategoryForMutationAsync(Guid categoryId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the max <see cref="BudgetCategory.SortOrder"/> for a group,
-    /// or <c>-1</c> when no categories exist.
-    /// </summary>
-    Task<int> GetMaxCategorySortOrderAsync(Guid budgetGroupId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Stage a new category in the change tracker.
-    /// </summary>
-    void AddCategory(BudgetCategory category);
-
-    /// <summary>
-    /// Remove a category from the change tracker.
-    /// </summary>
-    void RemoveCategory(BudgetCategory category);
-
     // ==========================================================================
-    // Budget Line Items
+    // Budget Categories — atomic mutations
     // ==========================================================================
 
     /// <summary>
-    /// Returns a single line item (tracked or detached — callers should not
-    /// mutate; use <see cref="FindLineItemForMutationAsync"/> for updates).
+    /// Creates a category in a budget group, writes the create audit entry,
+    /// and returns the persisted category. Throws if the year is closed or
+    /// the group does not exist.
+    /// </summary>
+    Task<BudgetCategory> CreateCategoryAsync(
+        Guid budgetGroupId,
+        string name,
+        decimal allocatedAmount,
+        ExpenditureType expenditureType,
+        Guid? teamId,
+        Guid actorUserId,
+        Instant now,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Updates a category's name, allocation, and expenditure type with
+    /// field-level audit entries. Throws if the year is closed. Returns
+    /// <c>true</c> if the category existed.
+    /// </summary>
+    Task<bool> UpdateCategoryAsync(
+        Guid categoryId,
+        string name,
+        decimal allocatedAmount,
+        ExpenditureType expenditureType,
+        Guid actorUserId,
+        Instant now,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes a category (cascades to its line items) and writes the delete
+    /// audit entry. Throws if the year is closed. Returns <c>true</c> if the
+    /// category existed.
+    /// </summary>
+    Task<bool> DeleteCategoryAsync(
+        Guid categoryId,
+        Guid actorUserId,
+        Instant now,
+        CancellationToken ct = default);
+
+    // ==========================================================================
+    // Budget Line Items — reads
+    // ==========================================================================
+
+    /// <summary>
+    /// Returns a single line item (detached), or null.
     /// </summary>
     Task<BudgetLineItem?> GetLineItemByIdAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns a tracked line item with category → group → year so the
-    /// service can perform year-closed checks.
-    /// </summary>
-    Task<BudgetLineItem?> FindLineItemForMutationAsync(Guid lineItemId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the max <see cref="BudgetLineItem.SortOrder"/> for a
-    /// category, or <c>-1</c> when no items exist.
-    /// </summary>
-    Task<int> GetMaxLineItemSortOrderAsync(Guid budgetCategoryId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Stage a new line item in the change tracker.
-    /// </summary>
-    void AddLineItem(BudgetLineItem lineItem);
-
-    /// <summary>
-    /// Remove a line item from the change tracker.
-    /// </summary>
-    void RemoveLineItem(BudgetLineItem lineItem);
-
     // ==========================================================================
-    // Ticketing Projection
+    // Budget Line Items — atomic mutations
     // ==========================================================================
 
     /// <summary>
-    /// Stage a new ticketing projection in the change tracker.
+    /// Creates a line item under a category, writes the create audit entry,
+    /// and returns the persisted line item. Throws if the category's year is
+    /// closed or the category does not exist.
     /// </summary>
-    void AddTicketingProjection(TicketingProjection projection);
+    Task<BudgetLineItem> CreateLineItemAsync(
+        BudgetLineItemDraft draft,
+        Guid actorUserId,
+        Instant now,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Updates a line item's editable fields with field-level audit entries
+    /// for every change. Throws if the year is closed. Returns <c>true</c>
+    /// if the line item existed.
+    /// </summary>
+    Task<bool> UpdateLineItemAsync(
+        BudgetLineItemUpdate update,
+        Guid actorUserId,
+        Instant now,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes a line item and writes the delete audit entry. Throws if the
+    /// year is closed. Returns <c>true</c> if the line item existed.
+    /// </summary>
+    Task<bool> DeleteLineItemAsync(
+        Guid lineItemId,
+        Guid actorUserId,
+        Instant now,
+        CancellationToken ct = default);
+
+    // ==========================================================================
+    // Ticketing Projection — reads
+    // ==========================================================================
 
     /// <summary>
     /// Returns the ticketing projection for a budget group (read-only).
@@ -183,33 +299,62 @@ public interface IBudgetRepository
     Task<TicketingProjection?> GetTicketingProjectionAsync(Guid budgetGroupId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns a tracked ticketing projection with its owning group so the
-    /// service can validate and mutate atomically.
+    /// Returns a budget group (detached, no navs). Used by callers that need
+    /// just flags (e.g., <c>IsTicketingGroup</c>) without the full graph.
     /// </summary>
-    Task<TicketingProjection?> FindTicketingProjectionForMutationAsync(
-        Guid budgetGroupId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the ticketing group (tracked, with categories → line items
-    /// and projection) for a budget year. Used by the ticketing sync /
-    /// projection-materialization flow.
-    /// </summary>
-    Task<BudgetGroup?> GetTicketingGroupForMutationAsync(Guid budgetYearId, CancellationToken ct = default);
+    Task<BudgetGroup?> GetGroupByIdAsync(Guid groupId, CancellationToken ct = default);
 
     // ==========================================================================
-    // Audit Log (append-only)
+    // Ticketing Projection — atomic mutations
     // ==========================================================================
 
     /// <summary>
-    /// Stage a new budget audit log entry in the change tracker. Append-only —
-    /// there is intentionally no <c>UpdateAuditLog</c> or <c>RemoveAuditLog</c>.
+    /// Updates every projection parameter on a ticketing group's projection
+    /// row and writes one audit entry. Throws if the target group is not a
+    /// ticketing group, if it has no projection row, or if its year is
+    /// closed. Returns <c>true</c> if the update succeeded.
     /// </summary>
-    void AddAuditLog(BudgetAuditLog entry);
+    Task<bool> UpdateTicketingProjectionAsync(
+        TicketingProjectionUpdate update,
+        Guid actorUserId,
+        Instant now,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Runs the ticketing actuals sync for a budget year: upserts
+    /// auto-generated line items for each completed week (revenue + fees),
+    /// refreshes the projection's learned parameters (avg ticket price,
+    /// fee percentages) from those actuals, removes stale projected line
+    /// items, and re-materializes projected line items for future weeks.
+    /// All writes commit inside a single <c>DbContext</c>/<c>SaveChanges</c>.
+    /// Returns the number of line items created or updated.
+    /// </summary>
+    Task<int> SyncTicketingActualsAsync(
+        Guid budgetYearId,
+        IReadOnlyList<TicketingWeeklyActualsInput> weeklyActuals,
+        TicketingProjectionMaterializationPlan materializationPlan,
+        Instant now,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Re-materializes projected ticketing line items for a year (no actuals
+    /// sync). Removes stale projected line items and writes new ones from
+    /// the supplied plan in a single transaction. Returns the number of
+    /// projected line items created.
+    /// </summary>
+    Task<int> RefreshTicketingProjectionsAsync(
+        Guid budgetYearId,
+        TicketingProjectionMaterializationPlan materializationPlan,
+        Instant now,
+        CancellationToken ct = default);
+
+    // ==========================================================================
+    // Audit Log — reads (append-only; no update/delete per §12)
+    // ==========================================================================
 
     /// <summary>
     /// Returns the most recent 500 audit log entries, optionally filtered by
-    /// budget year. Includes the actor user for display (cross-domain nav —
-    /// will be replaced by service-layer stitching during nav-strip phase).
+    /// budget year.
     /// </summary>
     Task<IReadOnlyList<BudgetAuditLog>> GetAuditLogAsync(
         Guid? budgetYearId, CancellationToken ct = default);
@@ -220,22 +365,104 @@ public interface IBudgetRepository
     /// </summary>
     Task<IReadOnlyList<BudgetAuditLog>> GetAuditLogEntriesForUserAsync(
         Guid userId, CancellationToken ct = default);
-
-    // ==========================================================================
-    // Unit-of-work
-    // ==========================================================================
-
-    /// <summary>
-    /// Commit all staged changes. The service calls this exactly once per
-    /// public operation so multi-entity mutations (e.g., create year +
-    /// default groups + audit log) commit atomically.
-    /// </summary>
-    Task SaveChangesAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns true if there are pending changes in the change tracker.
-    /// Used by the ticketing sync path to skip redundant <c>SaveChanges</c>
-    /// calls when no actuals were produced.
-    /// </summary>
-    bool HasPendingChanges();
 }
+
+// ==========================================================================
+// Input DTOs for atomic mutations
+// ==========================================================================
+
+/// <summary>
+/// Input for <see cref="IBudgetRepository.CreateYearWithScaffoldAsync"/>.
+/// Carries the new year's identity/metadata and the list of budgetable
+/// teams whose department categories should be auto-created.
+/// </summary>
+public sealed record BudgetYearDraft(
+    Guid Id,
+    string Year,
+    string Name,
+    IReadOnlyList<BudgetableTeamRef> BudgetableTeams,
+    Guid ActorUserId,
+    Instant Now);
+
+/// <summary>
+/// Minimal team reference for budget scaffolding. The Budget section reads
+/// team identities through <see cref="Humans.Application.Interfaces.Teams.ITeamService"/>
+/// — this record is the in-memory snapshot passed into repository-side mutations
+/// so the repository never has to cross the Teams section's ownership boundary.
+/// </summary>
+public sealed record BudgetableTeamRef(Guid Id, string Name);
+
+/// <summary>
+/// Input for <see cref="IBudgetRepository.CreateLineItemAsync"/>.
+/// </summary>
+public sealed record BudgetLineItemDraft(
+    Guid BudgetCategoryId,
+    string Description,
+    decimal Amount,
+    Guid? ResponsibleTeamId,
+    string? Notes,
+    LocalDate? ExpectedDate,
+    int VatRate);
+
+/// <summary>
+/// Input for <see cref="IBudgetRepository.UpdateLineItemAsync"/>.
+/// </summary>
+public sealed record BudgetLineItemUpdate(
+    Guid LineItemId,
+    string Description,
+    decimal Amount,
+    Guid? ResponsibleTeamId,
+    string? Notes,
+    LocalDate? ExpectedDate,
+    int VatRate);
+
+/// <summary>
+/// Input for <see cref="IBudgetRepository.UpdateTicketingProjectionAsync"/>.
+/// </summary>
+public sealed record TicketingProjectionUpdate(
+    Guid BudgetGroupId,
+    LocalDate? StartDate,
+    LocalDate? EventDate,
+    int InitialSalesCount,
+    decimal DailySalesRate,
+    decimal AverageTicketPrice,
+    int VatRate,
+    decimal StripeFeePercent,
+    decimal StripeFeeFixed,
+    decimal TicketTailorFeePercent);
+
+/// <summary>
+/// Input row for <see cref="IBudgetRepository.SyncTicketingActualsAsync"/>.
+/// One completed ISO week of aggregated actuals from the Tickets side.
+/// </summary>
+public sealed record TicketingWeeklyActualsInput(
+    string WeekLabel,
+    LocalDate Monday,
+    int TicketCount,
+    decimal Revenue,
+    decimal StripeFees,
+    decimal TicketTailorFees);
+
+/// <summary>
+/// Pre-computed plan for materializing projected ticketing line items inside
+/// the repository. The service computes the week schedule from the current
+/// projection parameters (in memory) and passes this plan into the repository
+/// so the repo stays free of projection math.
+/// </summary>
+public sealed record TicketingProjectionMaterializationPlan(
+    bool HasValidProjection,
+    IReadOnlyList<ProjectedTicketingWeek> Weeks);
+
+/// <summary>
+/// One week of the projected ticketing schedule.
+/// </summary>
+public sealed record ProjectedTicketingWeek(
+    string WeekLabel,
+    LocalDate WeekStart,
+    decimal RevenueAmount,
+    int RevenueVatRate,
+    string RevenueNotes,
+    decimal StripeFeeAmount,
+    int StripeFeeVatRate,
+    decimal TicketTailorFeeAmount,
+    int TicketTailorFeeVatRate);
