@@ -46,5 +46,5 @@ public sealed class NotificationRecipientResolver : INotificationRecipientResolv
     public Task<IReadOnlyList<Guid>> GetActiveUserIdsForRoleAsync(
         string roleName,
         CancellationToken cancellationToken = default) =>
-        _roleAssignmentService.GetActiveUserIdsForRoleAsync(roleName, cancellationToken);
+        _roleAssignmentService.GetActiveUserIdsInRoleAsync(roleName, cancellationToken);
 }

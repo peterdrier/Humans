@@ -13,6 +13,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
 using NotificationService = Humans.Application.Services.Notifications.NotificationService;
+using NotificationEmitter = Humans.Application.Services.Notifications.NotificationEmitter;
 
 namespace Humans.Application.Tests.Services;
 
@@ -51,8 +52,11 @@ public class NotificationServiceTests : IDisposable
                 return Task.FromResult<IReadOnlySet<Guid>>(disabledIds);
             });
 
+        var emitter = new NotificationEmitter(
+            _repo, _preferenceService, _clock, _cache,
+            NullLogger<NotificationEmitter>.Instance);
         _service = new NotificationService(
-            _repo, _recipientResolver, _preferenceService,
+            emitter, _repo, _recipientResolver, _preferenceService,
             _clock, _cache, NullLogger<NotificationService>.Instance);
     }
 

@@ -201,7 +201,7 @@ public sealed class NotificationMeterProvider : INotificationMeterProvider
         {
             entry.AbsoluteExpirationRelativeToNow = CacheDuration;
             return await _applicationDecisionService
-                .GetPendingVoteCountForBoardMemberAsync(boardMemberUserId, cancellationToken);
+                .GetUnvotedApplicationCountAsync(boardMemberUserId, cancellationToken);
         });
     }
 

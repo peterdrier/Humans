@@ -19,18 +19,15 @@ internal static class NotificationsSectionExtensions
         // services can inject it directly.
         services.AddSingleton<INotificationRepository, NotificationRepository>();
 
-        // Resolver breaks the circular DI graph between INotificationService and
-        // ITeamService/IRoleAssignmentService (which inject INotificationService
-        // back). Only NotificationService depends on the resolver.
+        // DI cycle break: NotificationEmitter is a distinct type from
+        // NotificationService. TeamService and RoleAssignmentService depend on
+        // INotificationEmitter (= NotificationEmitter, no resolver dependency),
+        // which does NOT inject INotificationRecipientResolver. The resolver
+        // (which depends on ITeamService + IRoleAssignmentService) is only
+        // pulled in by NotificationService, so no edge closes the cycle.
+        services.AddScoped<INotificationEmitter, NotificationEmitter>();
         services.AddScoped<INotificationRecipientResolver, NotificationRecipientResolver>();
-
-        // Register NotificationService under both INotificationService and the
-        // narrower INotificationEmitter. TeamService and RoleAssignmentService
-        // depend on INotificationEmitter to avoid the cycle through
-        // INotificationRecipientResolver (which transitively injects them).
-        services.AddScoped<NotificationService>();
-        services.AddScoped<INotificationService>(sp => sp.GetRequiredService<NotificationService>());
-        services.AddScoped<INotificationEmitter>(sp => sp.GetRequiredService<NotificationService>());
+        services.AddScoped<INotificationService, NotificationService>();
 
         services.AddScoped<NotificationInboxService>();
         services.AddScoped<INotificationInboxService>(sp => sp.GetRequiredService<NotificationInboxService>());

@@ -52,7 +52,7 @@ public class NotificationMeterProviderTests : IDisposable
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _teamService.GetTotalPendingJoinRequestCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
-        _applicationDecisionService.GetPendingVoteCountForBoardMemberAsync(
+        _applicationDecisionService.GetUnvotedApplicationCountAsync(
             Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(0);
 
         var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.Board));
@@ -125,7 +125,7 @@ public class NotificationMeterProviderTests : IDisposable
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _teamService.GetTotalPendingJoinRequestCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
-        _applicationDecisionService.GetPendingVoteCountForBoardMemberAsync(
+        _applicationDecisionService.GetUnvotedApplicationCountAsync(
             boardUserId, Arg.Any<CancellationToken>()).Returns(4);
 
         var principal = CreatePrincipalWithId(boardUserId, RoleNames.Board);

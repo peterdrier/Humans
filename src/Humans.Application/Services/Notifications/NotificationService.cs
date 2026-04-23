@@ -31,6 +31,7 @@ namespace Humans.Application.Services.Notifications;
 /// </remarks>
 public sealed class NotificationService : INotificationService
 {
+    private readonly INotificationEmitter _emitter;
     private readonly INotificationRepository _repo;
     private readonly INotificationRecipientResolver _recipientResolver;
     private readonly ICommunicationPreferenceService _preferenceService;
@@ -39,6 +40,7 @@ public sealed class NotificationService : INotificationService
     private readonly ILogger<NotificationService> _logger;
 
     public NotificationService(
+        INotificationEmitter emitter,
         INotificationRepository repo,
         INotificationRecipientResolver recipientResolver,
         ICommunicationPreferenceService preferenceService,
@@ -46,6 +48,7 @@ public sealed class NotificationService : INotificationService
         IMemoryCache cache,
         ILogger<NotificationService> logger)
     {
+        _emitter = emitter;
         _repo = repo;
         _recipientResolver = recipientResolver;
         _preferenceService = preferenceService;
@@ -54,7 +57,7 @@ public sealed class NotificationService : INotificationService
         _logger = logger;
     }
 
-    public async Task SendAsync(
+    public Task SendAsync(
         NotificationSource source,
         NotificationClass notificationClass,
         NotificationPriority priority,
@@ -64,72 +67,10 @@ public sealed class NotificationService : INotificationService
         string? actionUrl = null,
         string? actionLabel = null,
         string? targetGroupName = null,
-        CancellationToken cancellationToken = default)
-    {
-        if (recipientUserIds.Count == 0)
-        {
-            _logger.LogWarning("SendAsync called with empty recipient list for source {Source}, title '{Title}'",
-                source, title);
-            return;
-        }
-
-        var now = _clock.GetCurrentInstant();
-        var category = source.ToMessageCategory();
-
-        // Load inbox-disabled users for the category via the preference service.
-        var inboxDisabled = await _preferenceService.GetUsersWithInboxDisabledAsync(
-            recipientUserIds, category, cancellationToken);
-
-        var notifications = new List<Notification>(recipientUserIds.Count);
-        foreach (var userId in recipientUserIds)
-        {
-            // Check InboxEnabled preference — informational can be suppressed.
-            if (notificationClass == NotificationClass.Informational && inboxDisabled.Contains(userId))
-            {
-                _logger.LogDebug(
-                    "Skipping informational notification for user {UserId} — InboxEnabled=false for {Category}",
-                    userId, category);
-                continue;
-            }
-
-            var notification = new Notification
-            {
-                Id = Guid.NewGuid(),
-                Title = title,
-                Body = body,
-                ActionUrl = actionUrl,
-                ActionLabel = actionLabel,
-                Priority = priority,
-                Source = source,
-                Class = notificationClass,
-                TargetGroupName = targetGroupName,
-                CreatedAt = now,
-            };
-
-            notification.Recipients.Add(new NotificationRecipient
-            {
-                NotificationId = notification.Id,
-                UserId = userId,
-            });
-
-            notifications.Add(notification);
-        }
-
-        if (notifications.Count == 0)
-        {
-            _logger.LogInformation(
-                "SendAsync: all {Count} recipient(s) suppressed notification for source {Source}",
-                recipientUserIds.Count, source);
-            return;
-        }
-
-        await _repo.AddRangeAsync(notifications, cancellationToken);
-        InvalidateBadgeCaches(notifications.Select(n => n.Recipients.Single().UserId));
-
-        _logger.LogInformation(
-            "Dispatched {Source} notification '{Title}' to {Count} individual recipient(s)",
-            source, title, notifications.Count);
-    }
+        CancellationToken cancellationToken = default) =>
+        _emitter.SendAsync(
+            source, notificationClass, priority, title, recipientUserIds,
+            body, actionUrl, actionLabel, targetGroupName, cancellationToken);
 
     public async Task SendToTeamAsync(
         NotificationSource source,

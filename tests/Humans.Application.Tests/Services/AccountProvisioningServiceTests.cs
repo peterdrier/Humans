@@ -189,6 +189,8 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<string?> PurgeAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task<int> GetPendingDeletionCountAsync(CancellationToken ct = default) =>
+            throw new NotSupportedException();
     }
 
     private sealed class FakeUserEmailRepository : IUserEmailRepository
