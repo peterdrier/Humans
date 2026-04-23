@@ -144,6 +144,20 @@ public sealed class RoleAssignmentRepository : IRoleAssignmentRepository
                          (ra.ValidTo == null || ra.ValidTo > now))
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<Guid>> GetActiveUserIdsInRoleAsync(
+        string roleName,
+        Instant now,
+        CancellationToken ct = default) =>
+        await _dbContext.RoleAssignments
+            .AsNoTracking()
+            .Where(ra =>
+                ra.RoleName == roleName &&
+                ra.ValidFrom <= now &&
+                (ra.ValidTo == null || ra.ValidTo > now))
+            .Select(ra => ra.UserId)
+            .Distinct()
+            .ToListAsync(ct);
+
     // ==========================================================================
     // Writes
     // ==========================================================================

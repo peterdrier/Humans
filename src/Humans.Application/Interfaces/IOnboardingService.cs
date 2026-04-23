@@ -7,7 +7,7 @@ namespace Humans.Application.Interfaces;
 
 public record OnboardingResult(bool Success, string? ErrorKey = null);
 
-public interface IOnboardingService
+public interface IOnboardingService : IOnboardingEligibilityQuery
 {
     // --- Queries ---
     Task<DTOs.ReviewQueueData> GetReviewQueueAsync(CancellationToken ct = default);
@@ -39,9 +39,6 @@ public interface IOnboardingService
         Guid userId, Guid adminId, string? notes, CancellationToken ct = default);
     Task<OnboardingResult> UnsuspendAsync(
         Guid userId, Guid adminId, CancellationToken ct = default);
-
-    // --- Shared: consent-check pending (used by ConsentController + ProfileController) ---
-    Task<bool> SetConsentCheckPendingIfEligibleAsync(Guid userId, CancellationToken ct = default);
 
     // --- Badge counts ---
     /// <summary>

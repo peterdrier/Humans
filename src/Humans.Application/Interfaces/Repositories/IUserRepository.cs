@@ -43,6 +43,23 @@ public interface IUserRepository
     Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Returns the ids of every user in the system, read-only. Used by the
+    /// admin dashboard to partition all users into status buckets without
+    /// loading the full User graph.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetAllUserIdsAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the language distribution of the given user ids, grouped by
+    /// <see cref="User.PreferredLanguage"/>. Used by the admin dashboard to
+    /// render language stats for approved humans after the caller has
+    /// resolved the approved user id set from the Profile section.
+    /// </summary>
+    Task<IReadOnlyList<(string Language, int Count)>>
+        GetLanguageDistributionForUserIdsAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
+
+    /// <summary>
     /// Finds a user whose <c>Email</c> or <c>GoogleEmail</c> matches the given
     /// normalized address (case-insensitive). If <paramref name="alternateEmail"/>
     /// is non-null, also matches users whose email matches the alternate form
@@ -169,6 +186,23 @@ public interface IUserRepository
     /// </summary>
     Task<bool> SetContactSourceIfNullAsync(
         Guid userId, ContactSource source, CancellationToken ct = default);
+
+    /// <summary>
+    /// Purges (anonymizes + locks out) a user: removes all UserEmail rows for
+    /// the user, overwrites <c>Email</c>/<c>NormalizedEmail</c>/<c>UserName</c>/
+    /// <c>NormalizedUserName</c> with a sentinel <c>purged-{guid}@deleted.local</c>
+    /// address, prepends "Purged" to the display name, and permanently locks
+    /// out the account. Atomic: email removal and user anonymization happen in
+    /// one <c>SaveChangesAsync</c>. Returns the original display name if the
+    /// user was purged; null if the user did not exist.
+    /// </summary>
+    /// <remarks>
+    /// Used by <c>IUserService.PurgeAsync</c>. Removes <c>UserEmail</c> rows so
+    /// the unique-index constraint does not block a future account creation
+    /// reusing the same email. Does not touch Profile or other section-owned
+    /// rows — those are either retained (audit) or removed by cascades.
+    /// </remarks>
+    Task<string?> PurgeAsync(Guid userId, CancellationToken ct = default);
 
     // ==========================================================================
     // Reads — EventParticipation

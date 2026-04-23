@@ -105,6 +105,15 @@ public interface IRoleAssignmentRepository
         Instant now,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Distinct user ids that hold an active assignment for the given role at
+    /// <paramref name="now"/>. Read-only, cross-domain navs not populated.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetActiveUserIdsInRoleAsync(
+        string roleName,
+        Instant now,
+        CancellationToken ct = default);
+
     // ==========================================================================
     // Writes
     // ==========================================================================

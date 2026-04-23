@@ -33,6 +33,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     private readonly INavBadgeCacheInvalidator _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
     private readonly INotificationMeterCacheInvalidator _notificationMeter = Substitute.For<INotificationMeterCacheInvalidator>();
     private readonly IVotingBadgeCacheInvalidator _votingBadge = Substitute.For<IVotingBadgeCacheInvalidator>();
+    private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
     private readonly ApplicationDecisionService _service;
 
     public ApplicationDecisionServiceTests()
@@ -55,6 +56,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             _repository,
             _userService,
             _profileService,
+            _roleAssignmentService,
             _auditLogService,
             _emailService,
             _notificationService,

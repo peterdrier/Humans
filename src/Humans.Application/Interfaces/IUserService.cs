@@ -74,6 +74,29 @@ public interface IUserService
     /// </summary>
     Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns the ids of every user in the system, read-only. Used by the
+    /// admin dashboard to partition all users without loading the full graph.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetAllUserIdsAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the language distribution for the given user ids, grouped by
+    /// <see cref="User.PreferredLanguage"/>. Used by the admin dashboard
+    /// to render language stats for approved humans.
+    /// </summary>
+    Task<IReadOnlyList<(string Language, int Count)>>
+        GetLanguageDistributionForUserIdsAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
+
+    /// <summary>
+    /// Purges a human: removes all UserEmail rows for the user, anonymizes the
+    /// email/display name, and permanently locks out the account. Returns
+    /// false if the user did not exist. Invalidates the FullProfile cache on
+    /// success so downstream consumers see the purged view.
+    /// </summary>
+    Task<(bool Purged, string? DisplayName)> PurgeAsync(Guid userId, CancellationToken ct = default);
+
     // ---- Methods added for Profile-section migration (§15 Step 0) ----
 
     /// <summary>

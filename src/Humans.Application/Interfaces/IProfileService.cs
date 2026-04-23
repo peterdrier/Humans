@@ -105,4 +105,75 @@ public interface IProfileService
     /// </summary>
     Task SaveProfileLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default);
 
+    // ==========================================================================
+    // Onboarding-section support methods — exposed so OnboardingService can
+    // coordinate profile mutations without touching the Profile section's
+    // DbSet directly (design-rules §2c). Each method owns its own cache
+    // invalidation (FullProfile refresh, nav-badge, notification meter) so the
+    // Onboarding orchestrator has no cache responsibilities (§15i goal).
+    // ==========================================================================
+
+    /// <summary>
+    /// Returns the review queue (profiles that are not approved and not
+    /// rejected), ordered by creation time ascending. Used by the onboarding
+    /// review queue for Consent Coordinators.
+    /// </summary>
+    Task<IReadOnlyList<Profile>> GetReviewableProfilesAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the count of profiles in the review queue (not approved, not
+    /// rejected). Used by the nav badge for Consent Coordinators.
+    /// </summary>
+    Task<int> GetPendingReviewCountAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Clears the consent check for the given user (marks cleared + approved).
+    /// Error keys: <c>NotFound</c>, <c>AlreadyRejected</c>.
+    /// </summary>
+    Task<OnboardingResult> ClearConsentCheckAsync(
+        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default);
+
+    /// <summary>
+    /// Flags the consent check for the given user (marks flagged + unapproved).
+    /// Error keys: <c>NotFound</c>.
+    /// </summary>
+    Task<OnboardingResult> FlagConsentCheckAsync(
+        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default);
+
+    /// <summary>
+    /// Rejects a signup (records rejection reason, sets RejectedAt).
+    /// Error keys: <c>NotFound</c>, <c>AlreadyRejected</c>.
+    /// </summary>
+    Task<OnboardingResult> RejectSignupAsync(
+        Guid userId, Guid reviewerId, string? reason, CancellationToken ct = default);
+
+    /// <summary>
+    /// Approves a profile as volunteer (sets IsApproved).
+    /// Error keys: <c>NotFound</c>.
+    /// </summary>
+    Task<OnboardingResult> ApproveVolunteerAsync(
+        Guid userId, Guid adminId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Suspends the human (sets IsSuspended). Admin notes saved on the profile.
+    /// Error keys: <c>NotFound</c>.
+    /// </summary>
+    Task<OnboardingResult> SuspendAsync(
+        Guid userId, Guid adminId, string? notes, CancellationToken ct = default);
+
+    /// <summary>
+    /// Unsuspends the human (clears IsSuspended).
+    /// Error keys: <c>NotFound</c>.
+    /// </summary>
+    Task<OnboardingResult> UnsuspendAsync(
+        Guid userId, Guid adminId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets a profile's consent check status to <c>Pending</c> and bumps
+    /// <c>UpdatedAt</c>. Returns false if no profile exists. The caller is
+    /// expected to have verified eligibility (all required consents signed,
+    /// not approved, no existing status); this method performs the write and
+    /// cache refresh.
+    /// </summary>
+    Task<bool> SetConsentCheckPendingAsync(Guid userId, CancellationToken ct = default);
 }

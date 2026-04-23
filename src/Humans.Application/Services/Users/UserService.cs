@@ -28,6 +28,7 @@ public sealed class UserService : IUserService, IUserDataContributor
 {
     private readonly IUserRepository _repo;
     private readonly IFullProfileInvalidator _fullProfileInvalidator;
+    private readonly ITeamService _teamService;
     private readonly IClock _clock;
     private readonly ILogger<UserService> _logger;
 
@@ -37,12 +38,14 @@ public sealed class UserService : IUserService, IUserDataContributor
         IUserRepository repo,
         IUserEmailRepository userEmailRepo,
         IFullProfileInvalidator fullProfileInvalidator,
+        ITeamService teamService,
         IClock clock,
         ILogger<UserService> logger)
     {
         _repo = repo;
         _userEmailRepo = userEmailRepo;
         _fullProfileInvalidator = fullProfileInvalidator;
+        _teamService = teamService;
         _clock = clock;
         _logger = logger;
     }
@@ -60,6 +63,36 @@ public sealed class UserService : IUserService, IUserDataContributor
 
     public Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default) =>
         _repo.GetAllAsync(ct);
+
+    public Task<IReadOnlyList<Guid>> GetAllUserIdsAsync(CancellationToken ct = default) =>
+        _repo.GetAllUserIdsAsync(ct);
+
+    public Task<IReadOnlyList<(string Language, int Count)>>
+        GetLanguageDistributionForUserIdsAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
+        _repo.GetLanguageDistributionForUserIdsAsync(userIds, ct);
+
+    public async Task<(bool Purged, string? DisplayName)> PurgeAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var displayName = await _repo.PurgeAsync(userId, ct);
+        if (displayName is null)
+            return (false, null);
+
+        // The purge renames the user + removes UserEmail rows. The FullProfile
+        // cache entry must refresh so downstream consumers see the purged view.
+        await _fullProfileInvalidator.InvalidateAsync(userId, ct);
+
+        // Team summaries cache member DisplayName/ProfilePictureUrl; drop the
+        // ActiveTeams cache so consumers don't keep exposing the pre-purge
+        // identity until the 10-minute TTL expires. Matches the pre-#553
+        // purge path and AccountMergeService/DuplicateAccountService.
+        _teamService.InvalidateActiveTeamsCache();
+
+        _logger.LogWarning("Purged human {DisplayName} ({HumanId})", displayName, userId);
+
+        return (true, displayName);
+    }
 
     public Task<User?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default)
     {
