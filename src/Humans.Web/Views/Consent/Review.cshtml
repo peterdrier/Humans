@@ -6,7 +6,7 @@
         .OrderByDisplayLanguage(canonicalFirst: true)
         .ToList();
     var defaultLang = Model.Content.GetDefaultDocumentLanguage();
-    var documentTabs = new Humans.Web.Models.TabbedMarkdownDocumentsViewModel
+    var documentTabs = new TabbedMarkdownDocumentsViewModel
     {
         Documents = orderedLanguages,
         TabsId = "contentTabs",

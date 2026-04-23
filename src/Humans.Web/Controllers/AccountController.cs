@@ -2,8 +2,9 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
-using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Auth;
 
 namespace Humans.Web.Controllers;
 

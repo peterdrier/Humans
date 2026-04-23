@@ -6,7 +6,6 @@ using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Configuration;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Legal;
 using Humans.Domain.Entities;
@@ -14,6 +13,8 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories;
 using Xunit;
+using Humans.Application.Interfaces.Legal;
+using Humans.Application.Interfaces.Teams;
 
 namespace Humans.Application.Tests.Services;
 

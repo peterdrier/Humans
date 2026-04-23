@@ -1,5 +1,6 @@
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories;

@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Octokit;
 using Humans.Application.Configuration;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Legal;
 
 namespace Humans.Infrastructure.Services;
 

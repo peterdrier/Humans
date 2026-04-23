@@ -1,6 +1,6 @@
 using System.Reflection;
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Tickets;
 using Xunit;
 
 namespace Humans.Application.Tests.Architecture;

@@ -1,5 +1,9 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Governance;
 using Microsoft.EntityFrameworkCore;
 using Xunit;

@@ -1,5 +1,6 @@
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;

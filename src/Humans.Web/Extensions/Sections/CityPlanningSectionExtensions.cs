@@ -1,5 +1,5 @@
 using Humans.Application.Configuration;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.CitiPlanning;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories;
 using CityPlanningCityPlanningService = Humans.Application.Services.CityPlanning.CityPlanningService;

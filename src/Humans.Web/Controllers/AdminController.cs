@@ -8,6 +8,7 @@ using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Infrastructure.Data;
 using Humans.Web.Models;
+using Humans.Application.Interfaces.Onboarding;
 
 namespace Humans.Web.Controllers;
 
@@ -103,7 +104,7 @@ public class AdminController : HumansControllerBase
     public IActionResult Logs(int count = 200)
     {
         count = Math.Clamp(count, 1, 200);
-        var sink = Web.Infrastructure.InMemoryLogSink.Instance;
+        var sink = Infrastructure.InMemoryLogSink.Instance;
         var events = sink.GetEvents(count);
         ViewBag.LifetimeCounts = sink.GetLifetimeCounts();
         return View(events);

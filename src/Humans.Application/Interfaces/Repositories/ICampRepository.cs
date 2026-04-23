@@ -17,7 +17,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// context so callers never have to reason about the EF context lifetime.
 /// Cross-domain navigation (<c>CampLead.User</c>) is not resolved by this
 /// repository; the application service stitches display names from
-/// <see cref="Humans.Application.Interfaces.IUserService"/> per design-rules §6.
+/// <see cref="Users.IUserService"/> per design-rules §6.
 /// </remarks>
 public interface ICampRepository
 {

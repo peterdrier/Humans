@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Campaigns;
 using Humans.Domain.Entities;
 using NodaTime;
 

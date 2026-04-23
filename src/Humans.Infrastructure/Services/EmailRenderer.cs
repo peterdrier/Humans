@@ -1,6 +1,6 @@
 using System.Globalization;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Email;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Microsoft.Extensions.Localization;

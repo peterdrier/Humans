@@ -5,6 +5,8 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Notifications;
 
 namespace Humans.Infrastructure.Jobs;
 

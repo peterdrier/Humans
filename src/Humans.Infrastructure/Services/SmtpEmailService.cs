@@ -9,6 +9,7 @@ using MimeKit;
 using Humans.Application.Interfaces;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Helpers;
+using Humans.Application.Interfaces.Email;
 
 namespace Humans.Infrastructure.Services;
 

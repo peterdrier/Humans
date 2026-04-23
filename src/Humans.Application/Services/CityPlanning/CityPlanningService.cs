@@ -1,6 +1,10 @@
 using Humans.Application.Configuration;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.CitiPlanning;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Options;

@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.CitiPlanning;
 using Humans.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;

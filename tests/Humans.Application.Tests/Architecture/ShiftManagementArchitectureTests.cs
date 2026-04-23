@@ -1,6 +1,6 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Shifts;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using ShiftManagementService = Humans.Application.Services.Shifts.ShiftManagementService;

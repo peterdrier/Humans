@@ -1,6 +1,7 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Users;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using EmailOutboxService = Humans.Application.Services.Email.EmailOutboxService;

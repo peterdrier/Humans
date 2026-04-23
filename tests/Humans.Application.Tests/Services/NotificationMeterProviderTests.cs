@@ -1,7 +1,11 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;

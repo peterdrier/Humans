@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 using Humans.Application;
 using Humans.Application.Configuration;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Tickets;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

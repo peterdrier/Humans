@@ -3,9 +3,10 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Application.Configuration;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
+using Humans.Application.Interfaces.Legal;
+using Humans.Application.Interfaces.Teams;
 
 namespace Humans.Application.Services.Legal;
 

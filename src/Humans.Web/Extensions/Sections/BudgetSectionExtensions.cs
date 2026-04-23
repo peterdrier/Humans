@@ -1,6 +1,7 @@
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using BudgetBudgetService = Humans.Application.Services.Budget.BudgetService;

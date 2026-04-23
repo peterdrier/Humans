@@ -14,6 +14,12 @@ using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories;
 using Xunit;
 using ConsentService = Humans.Application.Services.Consent.ConsentService;
+using Humans.Application.Interfaces.Legal;
+using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Tests.Services;
 

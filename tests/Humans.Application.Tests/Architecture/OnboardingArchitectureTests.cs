@@ -1,6 +1,7 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces.Profiles;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using OnboardingService = Humans.Application.Services.Onboarding.OnboardingService;

@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -17,6 +16,13 @@ using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using Xunit;
 using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Auth;
 
 namespace Humans.Application.Tests.Services;
 

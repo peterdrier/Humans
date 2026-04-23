@@ -7,13 +7,19 @@ using NodaTime;
 using Humans.Application;
 using Humans.Application.Extensions;
 using Humans.Application.Helpers;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
 using Humans.Infrastructure.Data;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Auth;
 
 namespace Humans.Infrastructure.Services;
 

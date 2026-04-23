@@ -1,0 +1,315 @@
+using Humans.Application.DTOs;
+using Humans.Domain.Enums;
+
+namespace Humans.Application.Interfaces.Email;
+
+/// <summary>
+/// Service for sending email notifications.
+/// </summary>
+public interface IEmailService
+{
+    /// <summary>
+    /// Sends an application approved notification to the applicant.
+    /// </summary>
+    /// <param name="userEmail">The applicant's email.</param>
+    /// <param name="userName">The applicant's name.</param>
+    /// <param name="culture">The recipient's preferred culture (ISO code, e.g. "es").</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task SendApplicationApprovedAsync(
+        string userEmail,
+        string userName,
+        MembershipTier tier,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends an application rejected notification to the applicant.
+    /// </summary>
+    /// <param name="userEmail">The applicant's email.</param>
+    /// <param name="userName">The applicant's name.</param>
+    /// <param name="tier">The membership tier applied for.</param>
+    /// <param name="reason">The reason for rejection.</param>
+    /// <param name="culture">The recipient's preferred culture (ISO code, e.g. "es").</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task SendApplicationRejectedAsync(
+        string userEmail,
+        string userName,
+        MembershipTier tier,
+        string reason,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a legal document updated notification requiring re-consent.
+    /// </summary>
+    /// <param name="userEmail">The user's email.</param>
+    /// <param name="userName">The user's name.</param>
+    /// <param name="documentName">The document name.</param>
+    /// <param name="culture">The recipient's preferred culture (ISO code, e.g. "es").</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task SendReConsentRequiredAsync(
+        string userEmail,
+        string userName,
+        string documentName,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a notification for multiple legal document updates requiring re-consent.
+    /// </summary>
+    /// <param name="userEmail">The user's email.</param>
+    /// <param name="userName">The user's name.</param>
+    /// <param name="documentNames">The names of updated documents.</param>
+    /// <param name="culture">The recipient's preferred culture (ISO code, e.g. "es").</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task SendReConsentsRequiredAsync(
+        string userEmail,
+        string userName,
+        IEnumerable<string> documentNames,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a re-consent reminder before access is suspended.
+    /// </summary>
+    /// <param name="userEmail">The user's email.</param>
+    /// <param name="userName">The user's name.</param>
+    /// <param name="documentNames">Names of documents requiring consent.</param>
+    /// <param name="daysRemaining">Days remaining before suspension.</param>
+    /// <param name="culture">The recipient's preferred culture (ISO code, e.g. "es").</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task SendReConsentReminderAsync(
+        string userEmail,
+        string userName,
+        IEnumerable<string> documentNames,
+        int daysRemaining,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a welcome email to a new member.
+    /// </summary>
+    /// <param name="userEmail">The user's email.</param>
+    /// <param name="userName">The user's name.</param>
+    /// <param name="culture">The recipient's preferred culture (ISO code, e.g. "es").</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task SendWelcomeEmailAsync(
+        string userEmail,
+        string userName,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends an access suspended notification.
+    /// </summary>
+    /// <param name="userEmail">The user's email.</param>
+    /// <param name="userName">The user's name.</param>
+    /// <param name="reason">The reason for suspension.</param>
+    /// <param name="culture">The recipient's preferred culture (ISO code, e.g. "es").</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task SendAccessSuspendedAsync(
+        string userEmail,
+        string userName,
+        string reason,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends an email verification link.
+    /// </summary>
+    /// <param name="toEmail">The email address to verify.</param>
+    /// <param name="userName">The user's name.</param>
+    /// <param name="verificationUrl">The URL to verify the email.</param>
+    /// <param name="isConflict">True if this email belongs to another account and verifying will trigger a merge request.</param>
+    /// <param name="culture">The recipient's preferred culture (ISO code, e.g. "es").</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task SendEmailVerificationAsync(
+        string toEmail,
+        string userName,
+        string verificationUrl,
+        bool isConflict = false,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends confirmation that account deletion has been requested.
+    /// </summary>
+    /// <param name="userEmail">The user's email.</param>
+    /// <param name="userName">The user's name.</param>
+    /// <param name="deletionDate">When the account will be deleted.</param>
+    /// <param name="culture">The recipient's preferred culture (ISO code, e.g. "es").</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task SendAccountDeletionRequestedAsync(
+        string userEmail,
+        string userName,
+        DateTime deletionDate,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends confirmation that account has been deleted.
+    /// </summary>
+    /// <param name="userEmail">The user's email.</param>
+    /// <param name="userName">The user's name.</param>
+    /// <param name="culture">The recipient's preferred culture (ISO code, e.g. "es").</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task SendAccountDeletedAsync(
+        string userEmail,
+        string userName,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a notification that the user has been added to a team.
+    /// </summary>
+    /// <param name="userEmail">The user's email.</param>
+    /// <param name="userName">The user's name.</param>
+    /// <param name="teamName">The team name.</param>
+    /// <param name="teamSlug">The team's URL slug (used to construct the team page link).</param>
+    /// <param name="resources">Google resources associated with the team (name + URL pairs).</param>
+    /// <param name="culture">The recipient's preferred culture (ISO code, e.g. "es").</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task SendAddedToTeamAsync(
+        string userEmail,
+        string userName,
+        string teamName,
+        string teamSlug,
+        IEnumerable<(string Name, string? Url)> resources,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a signup rejection notification to the user.
+    /// This is for rejecting a human's signup/profile (not an Asociado application).
+    /// </summary>
+    /// <param name="userEmail">The user's email.</param>
+    /// <param name="userName">The user's display name.</param>
+    /// <param name="reason">The reason for rejection.</param>
+    /// <param name="culture">The recipient's preferred culture (ISO code, e.g. "es").</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task SendSignupRejectedAsync(
+        string userEmail,
+        string userName,
+        string? reason,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a term renewal reminder to a Colaborador or Asociado whose term is expiring soon.
+    /// </summary>
+    /// <param name="userEmail">The user's email.</param>
+    /// <param name="userName">The user's display name.</param>
+    /// <param name="tierName">The membership tier name (e.g. "Colaborador", "Asociado").</param>
+    /// <param name="expiresAt">The term expiry date.</param>
+    /// <param name="culture">The recipient's preferred culture (ISO code, e.g. "es").</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task SendTermRenewalReminderAsync(
+        string userEmail,
+        string userName,
+        string tierName,
+        string expiresAt,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a Board daily digest email summarizing new approvals and outstanding items.
+    /// </summary>
+    /// <param name="email">The Board member's email.</param>
+    /// <param name="name">The Board member's display name.</param>
+    /// <param name="date">The date being summarized (e.g. "2026-02-22").</param>
+    /// <param name="groups">Tier groups with approved display names.</param>
+    /// <param name="outstandingCounts">Outstanding item counts (personalized per board member).</param>
+    /// <param name="culture">The recipient's preferred culture (ISO code, e.g. "es").</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task SendBoardDailyDigestAsync(
+        string email,
+        string name,
+        string date,
+        IReadOnlyList<BoardDigestTierGroup> groups,
+        BoardDigestOutstandingCounts? outstandingCounts = null,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends an Admin daily digest email summarizing system health and pending actions.
+    /// </summary>
+    Task SendAdminDailyDigestAsync(
+        string email,
+        string name,
+        string date,
+        AdminDigestCounts counts,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a feedback response notification to the reporter.
+    /// </summary>
+    Task SendFeedbackResponseAsync(
+        string userEmail, string userName, string originalDescription,
+        string responseMessage, string reportLink, string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a facilitated message from one volunteer to another.
+    /// </summary>
+    Task SendFacilitatedMessageAsync(
+        string recipientEmail,
+        string recipientName,
+        string senderName,
+        string messageText,
+        bool includeContactInfo,
+        string? senderEmail,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a magic link login email to an existing user.
+    /// </summary>
+    Task SendMagicLinkLoginAsync(
+        string toEmail,
+        string displayName,
+        string magicLinkUrl,
+        string? culture = null,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Sends a magic link signup email to a new user.
+    /// </summary>
+    Task SendMagicLinkSignupAsync(
+        string toEmail,
+        string magicLinkUrl,
+        string? culture = null,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Sends workspace credentials to the user's recovery email after provisioning a @nobodies.team account.
+    /// </summary>
+    Task SendWorkspaceCredentialsAsync(
+        string recoveryEmail,
+        string userName,
+        string workspaceEmail,
+        string tempPassword,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Enqueue a campaign code email to a recipient. Campaign content (subject and
+    /// markdown body with {{Code}}/{{Name}} placeholders) is rendered and wrapped in
+    /// the system email template by the outbox service, then linked to the grant
+    /// via <see cref="CampaignCodeEmailRequest.CampaignGrantId"/> for status tracking.
+    /// </summary>
+    Task SendCampaignCodeAsync(CampaignCodeEmailRequest request, CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// Payload for enqueuing a campaign-code email.
+/// </summary>
+public record CampaignCodeEmailRequest(
+    Guid UserId,
+    Guid CampaignGrantId,
+    string RecipientEmail,
+    string RecipientName,
+    string Subject,
+    string MarkdownBody,
+    string Code,
+    string? ReplyTo);

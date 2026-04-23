@@ -4,13 +4,17 @@ using NodaTime;
 using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using MemberApplication = Humans.Domain.Entities.Application;
 using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Infrastructure.Services.Profiles;
 

@@ -6,6 +6,13 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Governance;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Services.Onboarding;
 

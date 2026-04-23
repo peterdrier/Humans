@@ -1,6 +1,7 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Teams;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using TeamResourceService = Humans.Application.Services.Teams.TeamResourceService;

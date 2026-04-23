@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;

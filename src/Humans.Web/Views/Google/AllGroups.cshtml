@@ -1,5 +1,5 @@
 @model Humans.Application.DTOs.AllGroupsResult
-@using Humans.Application.Interfaces
+@using Humans.Application.Interfaces.GoogleIntegration
 @{
     ViewData["Title"] = "All Domain Groups";
     var teams = ViewBag.Teams as IReadOnlyList<TeamSummary> ?? [];

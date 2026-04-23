@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Camps;
 
 namespace Humans.Application.Tests.Infrastructure;
 

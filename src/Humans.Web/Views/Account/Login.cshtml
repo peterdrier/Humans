@@ -1,5 +1,5 @@
-@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment HostEnv
-@inject Microsoft.Extensions.Configuration.IConfiguration Config
+@inject IWebHostEnvironment HostEnv
+@inject IConfiguration Config
 @{
     ViewData["Title"] = Localizer["Login_Title"].Value;
     var devAuthEnabled = !HostEnv.IsProduction() && Config.GetValue<bool>("DevAuth:Enabled");

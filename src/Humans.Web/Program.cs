@@ -259,7 +259,7 @@ builder.Services.AddHangfire((sp, config) =>
             options.UseNpgsqlConnection(
                 sp.GetRequiredService<IConfiguration>()
                     .GetConnectionString("DefaultConnection")!),
-            new Hangfire.PostgreSql.PostgreSqlStorageOptions
+            new PostgreSqlStorageOptions
             {
                 DistributedLockTimeout = TimeSpan.FromSeconds(5)
             });

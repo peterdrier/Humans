@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using System;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Profile;
 using Humans.Domain.Entities;
@@ -9,6 +8,8 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Tests.Services;
 

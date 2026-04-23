@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Xunit;

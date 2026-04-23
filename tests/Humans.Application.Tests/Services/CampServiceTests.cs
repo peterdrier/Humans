@@ -1,5 +1,8 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Camps;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;

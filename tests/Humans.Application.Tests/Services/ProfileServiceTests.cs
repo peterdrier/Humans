@@ -6,7 +6,6 @@ using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
@@ -16,6 +15,15 @@ using Humans.Infrastructure.Repositories;
 using Xunit;
 using MemberApplication = Humans.Domain.Entities.Application;
 using ProfileService = Humans.Application.Services.Profile.ProfileService;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Campaigns;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Consent;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces.Auth;
 
 namespace Humans.Application.Tests.Services;
 

@@ -7,6 +7,13 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Infrastructure.Jobs;
 

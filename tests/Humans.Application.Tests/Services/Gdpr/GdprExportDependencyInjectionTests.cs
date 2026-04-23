@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;

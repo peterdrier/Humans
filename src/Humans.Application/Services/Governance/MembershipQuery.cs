@@ -1,4 +1,6 @@
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 
 namespace Humans.Application.Services.Governance;

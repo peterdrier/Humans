@@ -1,6 +1,9 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Interfaces.Users;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using TicketSyncService = Humans.Application.Services.Tickets.TicketSyncService;

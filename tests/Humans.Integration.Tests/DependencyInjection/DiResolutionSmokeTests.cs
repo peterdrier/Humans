@@ -1,5 +1,5 @@
 using System.Text;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Email;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;

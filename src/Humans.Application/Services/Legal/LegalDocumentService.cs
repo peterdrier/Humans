@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Legal;
 
 namespace Humans.Application.Services.Legal;
 

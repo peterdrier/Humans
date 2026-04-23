@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -6,6 +5,10 @@ using Humans.Application.Extensions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Services.Notifications;
 

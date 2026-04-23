@@ -1,5 +1,6 @@
 using Humans.Application.DTOs.Calendar;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Calendar;
+using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 using Humans.Web.Models.Calendar;
 using Microsoft.AspNetCore.Authorization;

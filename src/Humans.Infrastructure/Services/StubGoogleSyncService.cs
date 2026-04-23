@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Application.Interfaces.GoogleIntegration;
 
 namespace Humans.Infrastructure.Services;
 

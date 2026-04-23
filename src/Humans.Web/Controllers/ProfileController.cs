@@ -12,7 +12,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Humans.Application;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -23,6 +22,16 @@ using Humans.Web.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Campaigns;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Profiles;
 
 // RoleAssignment cross-domain nav properties (User, CreatedByUser) are [Obsolete] —
 // RoleAssignmentService stitches them in memory from IUserService so controllers can

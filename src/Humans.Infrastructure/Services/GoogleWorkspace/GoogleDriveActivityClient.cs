@@ -7,8 +7,8 @@ using Google.Apis.DriveActivity.v2.Data;
 using Google.Apis.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Humans.Application.Interfaces;
 using Humans.Infrastructure.Configuration;
+using Humans.Application.Interfaces.GoogleIntegration;
 
 namespace Humans.Infrastructure.Services.GoogleWorkspace;
 

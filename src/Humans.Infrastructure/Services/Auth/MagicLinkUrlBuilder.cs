@@ -2,8 +2,8 @@ using System.Security.Cryptography;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Humans.Application.Interfaces;
 using Humans.Infrastructure.Configuration;
+using Humans.Application.Interfaces.Auth;
 
 namespace Humans.Infrastructure.Services.Auth;
 

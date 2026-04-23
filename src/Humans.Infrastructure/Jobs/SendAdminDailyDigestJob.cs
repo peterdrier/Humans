@@ -7,6 +7,8 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Governance;
 
 // RoleAssignment.User cross-domain nav is [Obsolete] (design-rules §6c). This job
 // still reads RoleAssignments directly; migration to IRoleAssignmentService +

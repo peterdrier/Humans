@@ -129,7 +129,7 @@
 
     @await Component.InvokeAsync("AuditLog", new
     {
-        entityType = nameof(Humans.Domain.Entities.CalendarEvent),
+        entityType = nameof(CalendarEvent),
         entityId = Model.Event.Id,
         title = "Change history",
         limit = 50

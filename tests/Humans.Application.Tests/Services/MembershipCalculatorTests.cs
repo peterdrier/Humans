@@ -2,12 +2,16 @@ using AwesomeAssertions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Application.Interfaces;
 using Humans.Application.Services.Governance;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Xunit;
+using Humans.Application.Interfaces.Consent;
+using Humans.Application.Interfaces.Legal;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Tests.Services;
 

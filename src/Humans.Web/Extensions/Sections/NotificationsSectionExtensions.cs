@@ -1,5 +1,5 @@
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Notifications;
 using Humans.Infrastructure.Jobs;

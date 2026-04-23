@@ -1,5 +1,5 @@
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;

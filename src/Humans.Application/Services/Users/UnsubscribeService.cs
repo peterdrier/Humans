@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Logging;

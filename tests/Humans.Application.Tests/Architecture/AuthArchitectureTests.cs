@@ -1,7 +1,8 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Users;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using MagicLinkService = Humans.Application.Services.Auth.MagicLinkService;

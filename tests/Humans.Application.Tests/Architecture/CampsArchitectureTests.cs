@@ -1,6 +1,7 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Users;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using CampService = Humans.Application.Services.Camps.CampService;

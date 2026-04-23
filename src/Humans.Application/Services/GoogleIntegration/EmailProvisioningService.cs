@@ -2,8 +2,14 @@ using System.Globalization;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Humans.Application.Helpers;
-using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Services.GoogleIntegration;
 

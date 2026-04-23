@@ -1,5 +1,5 @@
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 using NodaTime;
 

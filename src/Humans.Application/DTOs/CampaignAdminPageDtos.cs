@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces.Campaigns;
 using Humans.Domain.Entities;
 
 namespace Humans.Application.DTOs;
@@ -22,7 +23,7 @@ public record CampaignSendWavePageDto(
     Campaign Campaign,
     IReadOnlyList<CampaignTeamOptionDto> Teams,
     Guid? SelectedTeamId,
-    Interfaces.WaveSendPreview? Preview);
+    WaveSendPreview? Preview);
 
 /// <summary>
 /// Aggregated code-tracking data sourced from the Campaigns section.

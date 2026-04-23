@@ -1,6 +1,8 @@
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories;
 using DashboardDashboardService = Humans.Application.Services.Dashboard.DashboardService;
 using GovernanceMembershipCalculator = Humans.Application.Services.Governance.MembershipCalculator;

@@ -4,7 +4,6 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -12,6 +11,8 @@ using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories;
 using Xunit;
 using ContactFieldService = Humans.Application.Services.Profile.ContactFieldService;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Auth;
 
 namespace Humans.Application.Tests.Services;
 

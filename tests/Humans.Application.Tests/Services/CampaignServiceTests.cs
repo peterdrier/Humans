@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Application.Interfaces;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -12,6 +11,11 @@ using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories;
 using Xunit;
 using CampaignServiceImpl = Humans.Application.Services.Campaigns.CampaignService;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Tests.Services;
 

@@ -6,6 +6,8 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Notifications;
 
 namespace Humans.Infrastructure.Jobs;
 

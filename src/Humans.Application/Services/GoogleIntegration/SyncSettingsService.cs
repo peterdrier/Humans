@@ -1,8 +1,8 @@
 using NodaTime;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Application.Interfaces.GoogleIntegration;
 
 namespace Humans.Application.Services.GoogleIntegration;
 

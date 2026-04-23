@@ -5,6 +5,9 @@ using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Legal;
+using Humans.Application.Interfaces.Governance;
 
 namespace Humans.Infrastructure.Jobs;
 

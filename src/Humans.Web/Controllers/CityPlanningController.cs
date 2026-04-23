@@ -1,4 +1,5 @@
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.CitiPlanning;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Microsoft.AspNetCore.Authorization;

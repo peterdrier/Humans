@@ -1,5 +1,5 @@
 using Humans.Application.Configuration;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Infrastructure.Services;
 
 namespace Humans.Web.Extensions.Infrastructure;

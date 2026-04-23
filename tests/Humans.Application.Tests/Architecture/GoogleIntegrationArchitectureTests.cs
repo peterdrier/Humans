@@ -1,5 +1,7 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using EmailProvisioningService = Humans.Application.Services.GoogleIntegration.EmailProvisioningService;

@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs.Calendar;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Calendar;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Humans.Integration.Tests.Infrastructure;

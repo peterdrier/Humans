@@ -3,11 +3,12 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Services.Profile;
 

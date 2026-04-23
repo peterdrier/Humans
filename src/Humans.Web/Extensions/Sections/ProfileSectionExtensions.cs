@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
@@ -17,6 +16,9 @@ using ProfilesDuplicateAccountService = Humans.Application.Services.Profile.Dupl
 using UsersAccountProvisioningService = Humans.Application.Services.Users.AccountProvisioningService;
 using UsersUnsubscribeService = Humans.Application.Services.Users.UnsubscribeService;
 using GoogleEmailProvisioningService = Humans.Application.Services.GoogleIntegration.EmailProvisioningService;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Web.Extensions.Sections;
 

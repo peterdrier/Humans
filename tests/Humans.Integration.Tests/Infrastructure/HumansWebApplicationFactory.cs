@@ -5,8 +5,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Testcontainers.PostgreSql;
-using Humans.Application.Interfaces;
 using Xunit;
+using Humans.Application.Interfaces.Email;
 
 namespace Humans.Integration.Tests.Infrastructure;
 

@@ -3,11 +3,12 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Legal;
 
 namespace Humans.Web.Controllers;
 

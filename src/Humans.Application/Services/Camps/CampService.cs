@@ -1,9 +1,12 @@
 using Humans.Application;
 using Humans.Application.Extensions;
 using Humans.Application.Helpers;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;

@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Teams;
 using Humans.Infrastructure.Configuration;
@@ -9,6 +8,8 @@ using Humans.Infrastructure.Services.GoogleWorkspace;
 using GoogleWorkspaceUserService = Humans.Application.Services.GoogleIntegration.GoogleWorkspaceUserService;
 using GoogleDriveActivityMonitorService = Humans.Application.Services.GoogleIntegration.DriveActivityMonitorService;
 using GoogleAdminService = Humans.Application.Services.GoogleIntegration.GoogleAdminService;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Teams;
 
 namespace Humans.Web.Extensions.Infrastructure;
 

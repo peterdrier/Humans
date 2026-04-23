@@ -1,5 +1,5 @@
 using Hangfire;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Email;
 using Humans.Infrastructure.Jobs;
 
 namespace Humans.Infrastructure.Services;

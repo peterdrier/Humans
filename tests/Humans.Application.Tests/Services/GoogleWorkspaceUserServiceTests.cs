@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.GoogleIntegration;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;

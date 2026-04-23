@@ -121,10 +121,10 @@
                             @{
                                 var statusClass = order.PaymentStatus switch
                                 {
-                                    Humans.Domain.Enums.TicketPaymentStatus.Paid => "bg-success",
-                                    Humans.Domain.Enums.TicketPaymentStatus.Pending => "bg-warning text-dark",
-                                    Humans.Domain.Enums.TicketPaymentStatus.Refunded => "bg-danger",
-                                    Humans.Domain.Enums.TicketPaymentStatus.Cancelled => "bg-secondary",
+                                    TicketPaymentStatus.Paid => "bg-success",
+                                    TicketPaymentStatus.Pending => "bg-warning text-dark",
+                                    TicketPaymentStatus.Refunded => "bg-danger",
+                                    TicketPaymentStatus.Cancelled => "bg-secondary",
                                     _ => "bg-secondary"
                                 };
                             }

@@ -1,10 +1,11 @@
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Teams;
 
 namespace Humans.Application.Services.GoogleIntegration;
 

@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories;
@@ -6,6 +5,8 @@ using Humans.Infrastructure.Services;
 using ShiftsShiftManagementService = Humans.Application.Services.Shifts.ShiftManagementService;
 using ShiftsShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
 using ShiftsGeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
+using Humans.Application.Interfaces.Calendar;
+using Humans.Application.Interfaces.Shifts;
 
 namespace Humans.Web.Extensions.Sections;
 

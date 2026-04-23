@@ -11,6 +11,10 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Application.DTOs;
 using Humans.Infrastructure.Data;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Governance;
 
 namespace Humans.Infrastructure.Jobs;
 

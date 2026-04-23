@@ -1,6 +1,9 @@
 using AwesomeAssertions;
 using Humans.Application.Configuration;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.CityPlanning;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;

@@ -1,6 +1,7 @@
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using NodaTime;

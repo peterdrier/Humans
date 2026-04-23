@@ -1,3 +1,5 @@
+using Humans.Application.Interfaces.Legal;
+using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 using NodaTime;
 
@@ -21,7 +23,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <see cref="Humans.Domain.Entities.LegalDocument.Team"/> is a cross-domain
 /// nav that this section's invariants document schedules for strip. This
 /// repository never <c>.Include</c>s it; callers that need team data call
-/// <see cref="Humans.Application.Interfaces.ITeamService"/> and stitch by
+/// <see cref="Teams.ITeamService"/> and stitch by
 /// <see cref="Humans.Domain.Entities.LegalDocument.TeamId"/>.
 /// </para>
 /// </remarks>
@@ -56,7 +58,7 @@ public interface ILegalDocumentRepository
     /// <summary>
     /// Returns every active, required legal document with <c>Versions</c>
     /// included. Read-only (AsNoTracking). Used by
-    /// <see cref="Humans.Application.Interfaces.ILegalDocumentSyncService.GetRequiredVersionsAsync"/>.
+    /// <see cref="ILegalDocumentSyncService.GetRequiredVersionsAsync"/>.
     /// </summary>
     Task<IReadOnlyList<LegalDocument>> GetActiveRequiredDocumentsAsync(CancellationToken ct = default);
 

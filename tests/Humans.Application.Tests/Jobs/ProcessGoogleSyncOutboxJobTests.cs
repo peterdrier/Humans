@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -13,6 +12,8 @@ using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Notifications;
 
 namespace Humans.Application.Tests.Jobs;
 

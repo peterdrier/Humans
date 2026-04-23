@@ -1,6 +1,11 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Budget;
+using Humans.Application.Interfaces.Campaigns;
+using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Tickets;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Constants;

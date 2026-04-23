@@ -1,5 +1,6 @@
 // @e2e: shifts.spec.ts
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;

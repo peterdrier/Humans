@@ -1,6 +1,7 @@
 using Hangfire;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Tickets;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 

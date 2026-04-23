@@ -13,6 +13,9 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories;
 using Xunit;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Tests.Services;
 

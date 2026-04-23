@@ -1,9 +1,11 @@
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Application.Interfaces.Legal;
+using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Services.Legal;
 

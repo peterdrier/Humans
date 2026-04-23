@@ -7,6 +7,10 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Teams;
 
 namespace Humans.Infrastructure.Jobs;
 

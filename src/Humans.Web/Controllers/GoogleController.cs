@@ -5,13 +5,16 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Web.Authorization;
 using Humans.Web.Constants;
 using Humans.Web.Models;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
@@ -108,7 +111,7 @@ public class GoogleController : HumansControllerBase
     [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncSystemTeams(
-        [FromServices] Humans.Application.Interfaces.ISystemTeamSync systemTeamSyncJob)
+        [FromServices] ISystemTeamSync systemTeamSyncJob)
     {
         try
         {

@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Auth;
 
 namespace Humans.Application.Services.Auth;
 

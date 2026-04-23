@@ -1,6 +1,6 @@
 using System.Reflection;
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.GoogleIntegration;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using GoogleWorkspaceUserService = Humans.Application.Services.GoogleIntegration.GoogleWorkspaceUserService;

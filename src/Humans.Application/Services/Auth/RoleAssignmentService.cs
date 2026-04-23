@@ -1,13 +1,18 @@
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Auth;
 
 namespace Humans.Application.Services.Auth;
 

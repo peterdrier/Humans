@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Email;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Helpers;
 using Microsoft.Extensions.Hosting;

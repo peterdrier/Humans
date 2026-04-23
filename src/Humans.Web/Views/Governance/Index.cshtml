@@ -5,7 +5,7 @@
     var orderedLanguages = Model.StatutesContent
         .OrderByDisplayLanguage(canonicalFirst: true)
         .ToList();
-    var statutesTabs = new Humans.Web.Models.TabbedMarkdownDocumentsViewModel
+    var statutesTabs = new TabbedMarkdownDocumentsViewModel
     {
         Documents = orderedLanguages,
         TabsId = "statutesTabs",

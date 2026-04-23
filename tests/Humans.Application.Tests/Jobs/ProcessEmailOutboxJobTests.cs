@@ -7,7 +7,6 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
-using Humans.Application.Interfaces;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -17,6 +16,7 @@ using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using Xunit;
+using Humans.Application.Interfaces.Email;
 
 namespace Humans.Application.Tests.Jobs;
 

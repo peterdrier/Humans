@@ -230,7 +230,7 @@
 </div>
 
 @{
-    var shiftCards = ViewData["ShiftCards"] as Humans.Web.Models.ShiftCardsViewModel;
+    var shiftCards = ViewData["ShiftCards"] as ShiftCardsViewModel;
     var hasUpcomingShifts = shiftCards?.NextShifts.Count > 0 || shiftCards?.PendingCount > 0;
 }
 

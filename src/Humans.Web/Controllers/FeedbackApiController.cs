@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
 using Humans.Web.Filters;
 using Humans.Web.Models;
+using Humans.Application.Interfaces.Feedback;
 
 // FeedbackReport / FeedbackMessage cross-domain nav properties (User, ResolvedByUser,
 // AssignedToUser, AssignedToTeam, SenderUser) are [Obsolete] — FeedbackService stitches

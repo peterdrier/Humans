@@ -2,9 +2,9 @@ using AwesomeAssertions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Humans.Application;
-using Humans.Application.Interfaces;
 using Humans.Application.Services.Legal;
 using Xunit;
+using Humans.Application.Interfaces.Legal;
 
 namespace Humans.Application.Tests.Services;
 

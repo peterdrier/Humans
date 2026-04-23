@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Services.Profiles;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +9,7 @@ using UserEmailService = Humans.Application.Services.Profile.UserEmailService;
 using CommunicationPreferenceService = Humans.Application.Services.Profile.CommunicationPreferenceService;
 using AccountMergeService = Humans.Application.Services.Profile.AccountMergeService;
 using DuplicateAccountService = Humans.Application.Services.Profile.DuplicateAccountService;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Tests.Architecture;
 

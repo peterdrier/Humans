@@ -3,8 +3,8 @@ using Google.Apis.Admin.Directory.directory_v1.Data;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
 using Microsoft.Extensions.Options;
-using Humans.Application.Interfaces;
 using Humans.Infrastructure.Configuration;
+using Humans.Application.Interfaces.GoogleIntegration;
 
 namespace Humans.Infrastructure.Services.GoogleWorkspace;
 

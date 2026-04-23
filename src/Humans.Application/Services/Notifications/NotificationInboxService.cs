@@ -1,7 +1,8 @@
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Caching.Memory;

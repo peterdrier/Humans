@@ -32,10 +32,10 @@
             @* ===== STEP 0: Skills ===== *@
             <div class="step-pane active" id="step-0">
                 <div class="chip-grid">
-                    @foreach (var skill in Humans.Web.Models.ShiftInfoViewModel.SkillOptions)
+                    @foreach (var skill in ShiftInfoViewModel.SkillOptions)
                     {
                         var isSelected = Model.SelectedSkills.Contains(skill);
-                        var emoji = Humans.Web.Models.ShiftInfoViewModel.SkillEmoji.GetValueOrDefault(skill, "");
+                        var emoji = ShiftInfoViewModel.SkillEmoji.GetValueOrDefault(skill, "");
                         <label class="chip @(isSelected ? "selected" : "")" role="checkbox" aria-checked="@(isSelected ? "true" : "false")" tabindex="0">
                             <input type="checkbox" name="SelectedSkills" value="@skill" class="d-none"
                                    @(isSelected ? "checked" : "") />
@@ -53,11 +53,11 @@
             <div class="step-pane" id="step-1">
                 <p class="fw-bold small text-muted mb-2">@Localizer["ShiftInfo_WorkTime"]</p>
                 <div class="radio-card-grid">
-                    @foreach (var tp in Humans.Web.Models.ShiftInfoViewModel.TimePreferenceOptions)
+                    @foreach (var tp in ShiftInfoViewModel.TimePreferenceOptions)
                     {
                         var isSelected = string.Equals(Model.TimePreference, tp, StringComparison.Ordinal);
-                        var emoji = Humans.Web.Models.ShiftInfoViewModel.TimePreferenceEmoji.GetValueOrDefault(tp, "");
-                        var desc = Humans.Web.Models.ShiftInfoViewModel.TimePreferenceDesc.GetValueOrDefault(tp, "");
+                        var emoji = ShiftInfoViewModel.TimePreferenceEmoji.GetValueOrDefault(tp, "");
+                        var desc = ShiftInfoViewModel.TimePreferenceDesc.GetValueOrDefault(tp, "");
                         <label class="radio-card @(isSelected ? "selected" : "")" tabindex="0">
                             <input type="radio" name="TimePreference" value="@tp" class="d-none"
                                    @(isSelected ? "checked" : "") />
@@ -69,7 +69,7 @@
                 </div>
 
                 <p class="fw-bold small text-muted mb-2 mt-4">@Localizer["ShiftInfo_OtherPrefs"]</p>
-                @foreach (var quirk in Humans.Web.Models.ShiftInfoViewModel.ToggleQuirkOptions)
+                @foreach (var quirk in ShiftInfoViewModel.ToggleQuirkOptions)
                 {
                     var isChecked = Model.SelectedQuirks.Contains(quirk);
                     <div class="form-check form-switch mb-2">
@@ -83,10 +83,10 @@
             @* ===== STEP 2: Languages ===== *@
             <div class="step-pane" id="step-2">
                 <div class="chip-grid">
-                    @foreach (var lang in Humans.Web.Models.ShiftInfoViewModel.LanguageOptions)
+                    @foreach (var lang in ShiftInfoViewModel.LanguageOptions)
                     {
                         var isSelected = Model.SelectedLanguages.Contains(lang);
-                        var emoji = Humans.Web.Models.ShiftInfoViewModel.LanguageEmoji.GetValueOrDefault(lang, "");
+                        var emoji = ShiftInfoViewModel.LanguageEmoji.GetValueOrDefault(lang, "");
                         <label class="chip @(isSelected ? "selected" : "")" role="checkbox" aria-checked="@(isSelected ? "true" : "false")" tabindex="0">
                             <input type="checkbox" name="SelectedLanguages" value="@lang" class="d-none"
                                    @(isSelected ? "checked" : "") />

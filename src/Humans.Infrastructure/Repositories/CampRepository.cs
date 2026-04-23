@@ -16,7 +16,7 @@ namespace Humans.Infrastructure.Repositories;
 /// lands. Uses <see cref="IDbContextFactory{TContext}"/> so the repository can
 /// be registered as Singleton while <c>HumansDbContext</c> remains Scoped.
 /// Cross-domain navigation (<c>CampLead.User</c>) is never <c>Include</c>-ed;
-/// the service stitches display data via <see cref="Humans.Application.Interfaces.IUserService"/>.
+/// the service stitches display data via <see cref="Application.Interfaces.Users.IUserService"/>.
 /// </summary>
 public sealed class CampRepository : ICampRepository
 {

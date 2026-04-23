@@ -1,4 +1,6 @@
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Teams;
 
 namespace Humans.Application.Services.Notifications;
 

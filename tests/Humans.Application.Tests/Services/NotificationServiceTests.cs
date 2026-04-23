@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -14,6 +13,8 @@ using NSubstitute;
 using Xunit;
 using NotificationService = Humans.Application.Services.Notifications.NotificationService;
 using NotificationEmitter = Humans.Application.Services.Notifications.NotificationEmitter;
+using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Tests.Services;
 
