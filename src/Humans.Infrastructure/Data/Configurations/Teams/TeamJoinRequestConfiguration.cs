@@ -26,6 +26,7 @@ public class TeamJoinRequestConfiguration : IEntityTypeConfiguration<TeamJoinReq
         builder.Property(r => r.ReviewNotes)
             .HasMaxLength(2000);
 
+#pragma warning disable CS0618 // Obsolete cross-domain navs kept so EF FK constraints stay modelled.
         builder.HasOne(r => r.User)
             .WithMany()
             .HasForeignKey(r => r.UserId)
@@ -35,6 +36,7 @@ public class TeamJoinRequestConfiguration : IEntityTypeConfiguration<TeamJoinReq
             .WithMany()
             .HasForeignKey(r => r.ReviewedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
+#pragma warning restore CS0618
 
         builder.HasMany(r => r.StateHistory)
             .WithOne(sh => sh.TeamJoinRequest)

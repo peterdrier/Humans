@@ -50,5 +50,12 @@ public class TeamRoleAssignment
     /// <summary>
     /// Navigation property to the user who made the assignment.
     /// </summary>
+    /// <remarks>
+    /// Cross-domain nav into the Users section — will be removed per
+    /// design-rules §6c once the User-entity nav strip follow-up lands.
+    /// New callers resolve user data via <c>IUserService.GetByIdAsync</c>
+    /// keyed on <see cref="AssignedByUserId"/>.
+    /// </remarks>
+    [Obsolete("Cross-domain nav; resolve via IUserService.GetByIdAsync(AssignedByUserId) instead. See design-rules §6c.")]
     public User AssignedByUser { get; set; } = null!;
 }

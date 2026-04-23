@@ -22,6 +22,13 @@ using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 
+// Cross-domain nav reads (TeamMember.User, User.UserEmails, etc.) are
+// scheduled for removal per design-rules §6c, but GoogleWorkspaceSyncService
+// still lives in Infrastructure and reads TeamMember.User directly (§15i —
+// Google Workspace row). This file-wide pragma is cleared when the service
+// migrates to Application alongside the User-entity nav strip.
+#pragma warning disable CS0618
+
 namespace Humans.Infrastructure.Services;
 
 /// <summary>

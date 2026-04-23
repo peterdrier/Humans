@@ -15,6 +15,7 @@ using Humans.Application.Services.Auth;
 using Humans.Application.Services.Email;
 using Humans.Application.Services.Profile;
 using Humans.Application.Services.Shifts;
+using Humans.Application.Services.Teams;
 using Humans.Application.Services.Users;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
@@ -54,6 +55,9 @@ public class DependencyCycleResolutionTests
         services.AddScoped<ISystemTeamSync>(_ => Substitute.For<ISystemTeamSync>());
         services.AddScoped<INavBadgeCacheInvalidator>(_ => Substitute.For<INavBadgeCacheInvalidator>());
         services.AddScoped<IRoleAssignmentClaimsCacheInvalidator>(_ => Substitute.For<IRoleAssignmentClaimsCacheInvalidator>());
+        services.AddScoped<ITeamRepository>(_ => Substitute.For<ITeamRepository>());
+        services.AddScoped<INotificationMeterCacheInvalidator>(_ => Substitute.For<INotificationMeterCacheInvalidator>());
+        services.AddScoped<IShiftAuthorizationInvalidator>(_ => Substitute.For<IShiftAuthorizationInvalidator>());
         services.AddScoped<NodaTime.IClock>(_ => Substitute.For<NodaTime.IClock>());
 
         services.AddScoped<UserService>();
@@ -105,6 +109,9 @@ public class DependencyCycleResolutionTests
         services.AddScoped<ISystemTeamSync>(_ => Substitute.For<ISystemTeamSync>());
         services.AddScoped<INavBadgeCacheInvalidator>(_ => Substitute.For<INavBadgeCacheInvalidator>());
         services.AddScoped<IRoleAssignmentClaimsCacheInvalidator>(_ => Substitute.For<IRoleAssignmentClaimsCacheInvalidator>());
+        services.AddScoped<ITeamRepository>(_ => Substitute.For<ITeamRepository>());
+        services.AddScoped<INotificationMeterCacheInvalidator>(_ => Substitute.For<INotificationMeterCacheInvalidator>());
+        services.AddScoped<IShiftAuthorizationInvalidator>(_ => Substitute.For<IShiftAuthorizationInvalidator>());
         services.AddScoped<IEmailOutboxRepository>(_ => Substitute.For<IEmailOutboxRepository>());
         services.AddScoped<IEmailRenderer>(_ => Substitute.For<IEmailRenderer>());
         services.AddScoped<IEmailBodyComposer>(_ => Substitute.For<IEmailBodyComposer>());

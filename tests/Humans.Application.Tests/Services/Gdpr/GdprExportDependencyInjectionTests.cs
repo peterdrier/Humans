@@ -21,6 +21,7 @@ using ConsentService = Humans.Application.Services.Consent.ConsentService;
 using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
 using TicketsTicketQueryService = Humans.Application.Services.Tickets.TicketQueryService;
 using NotificationInboxService = Humans.Application.Services.Notifications.NotificationInboxService;
+using TeamService = Humans.Application.Services.Teams.TeamService;
 
 namespace Humans.Application.Tests.Services.Gdpr;
 
