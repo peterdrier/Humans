@@ -15,6 +15,8 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
         .Build();
 
+    public IReadOnlyList<ServiceDescriptor> RegisteredServices { get; private set; } = [];
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -42,11 +44,15 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         builder.ConfigureTestServices(services =>
         {
             // Replace email service with a no-op stub
+            // so integration tests don't depend on Hangfire's job-storage
+            // globals, which are intentionally disabled in Testing.
             var emailDescriptor = services.SingleOrDefault(
                 d => d.ServiceType == typeof(IEmailService));
             if (emailDescriptor != null)
                 services.Remove(emailDescriptor);
             services.AddScoped(_ => Substitute.For<IEmailService>());
+
+            RegisteredServices = services.ToList();
 
         });
     }

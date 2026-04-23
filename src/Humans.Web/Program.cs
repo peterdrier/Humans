@@ -60,10 +60,10 @@ Log.Logger = logConfig.CreateLogger();
 
 builder.Host.UseSerilog();
 
-// Validate the DI container at startup so cycles and captive dependencies
-// fail the process fast instead of manifesting as silent hangs at first request.
-// (The runtime cycle check can't see through factory-lambda registrations; ValidateOnBuild
-// eagerly resolves every service through its real constructor graph.)
+// Validate the DI container at startup so obvious cycles and captive
+// dependencies fail fast instead of surfacing on first request. Factory-lambda
+// registrations still need explicit smoke coverage because the container can't
+// inspect arbitrary factory bodies until resolve time.
 builder.Host.UseDefaultServiceProvider(options =>
 {
     options.ValidateOnBuild = true;
