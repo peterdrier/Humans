@@ -62,9 +62,48 @@ public sealed class GoogleGroupProvisioningClient : IGoogleGroupProvisioningClie
                 Google.Apis.CloudIdentity.v1.GroupsResource.CreateRequest.InitialGroupConfigEnum.WITHINITIALOWNER;
             var operation = await createRequest.ExecuteAsync(ct);
 
+            // groups.create returns a long-running Operation. In practice
+            // Cloud Identity finishes synchronously so Done is true and
+            // Response is populated, but the API contract permits an
+            // in-progress (Done=false, Response=null) or failed (Error set)
+            // result. Treat those as a bridge-level failure so the caller
+            // gets a structured GroupCreateResult with error context
+            // instead of an unhandled NullReference / KeyNotFound
+            // exception.
+            if (operation.Error is not null)
+            {
+                _logger.LogWarning(
+                    "Cloud Identity groups.create returned an error for {Email}: Code={Code} Message={Message}",
+                    groupEmail, operation.Error.Code, operation.Error.Message);
+                return new GroupCreateResult(
+                    GroupNumericId: null,
+                    Error: new GoogleClientError(operation.Error.Code ?? 0, operation.Error.Message));
+            }
+
+            if (operation.Done != true || operation.Response is null)
+            {
+                _logger.LogWarning(
+                    "Cloud Identity groups.create did not complete synchronously for {Email} (Done={Done})",
+                    groupEmail, operation.Done);
+                return new GroupCreateResult(
+                    GroupNumericId: null,
+                    Error: new GoogleClientError(0, "groups.create returned an in-progress operation without a response body"));
+            }
+
             // The resource name in the operation response is of the form
             // "groups/{id}" — strip the prefix to get the numeric id.
-            var resourceName = (string)operation.Response["name"];
+            if (!operation.Response.TryGetValue("name", out var nameObj) ||
+                nameObj is not string resourceName ||
+                !resourceName.StartsWith("groups/", StringComparison.Ordinal))
+            {
+                _logger.LogWarning(
+                    "Cloud Identity groups.create response for {Email} missing or malformed 'name' field",
+                    groupEmail);
+                return new GroupCreateResult(
+                    GroupNumericId: null,
+                    Error: new GoogleClientError(0, "groups.create response did not include a 'name' field"));
+            }
+
             var numericId = resourceName["groups/".Length..];
             return new GroupCreateResult(numericId, Error: null);
         }

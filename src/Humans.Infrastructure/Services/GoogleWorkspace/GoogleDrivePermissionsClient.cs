@@ -154,10 +154,13 @@ public sealed class GoogleDrivePermissionsClient : IGoogleDrivePermissionsClient
                 DrivePermissionCreateOutcome.Created,
                 Error: null);
         }
-        catch (Google.GoogleApiException ex) when (ex.Error?.Code == 400)
+        catch (Google.GoogleApiException ex) when (ex.Error?.Code == 400 && IsDuplicatePermissionError(ex.Error))
         {
-            // Treat 400 as idempotent: Google returns 400 "already exists"
+            // Drive returns HTTP 400 with an "already exists"-style reason
             // when the same user already has a permission on the file.
+            // Other 400s (malformed payload, unsupported role, etc.) are
+            // real failures and fall through to the generic handler below
+            // so callers can surface and retry them.
             return new DrivePermissionMutationResult(
                 DrivePermissionCreateOutcome.AlreadyExists,
                 Error: null);
@@ -275,6 +278,48 @@ public sealed class GoogleDrivePermissionsClient : IGoogleDrivePermissionsClient
                 Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
         }
     }
+
+    /// <summary>
+    /// Classifies an HTTP 400 error as a duplicate-permission case (safe to
+    /// treat as idempotent success) vs. any other bad-request failure
+    /// (malformed payload, invalid role, etc.). Matches Google's
+    /// "already exists" wording in both the top-level message and each
+    /// <c>errors[].message</c> / <c>errors[].reason</c> so that wording
+    /// changes on one side still fall into the correct bucket. Any error
+    /// that does not match defaults to Failed so real problems are not
+    /// silently swallowed.
+    /// </summary>
+    internal static bool IsDuplicatePermissionError(Google.Apis.Requests.RequestError error)
+    {
+        if (ContainsAlreadyExists(error.Message))
+        {
+            return true;
+        }
+
+        if (error.Errors is not null)
+        {
+            foreach (var detail in error.Errors)
+            {
+                if (ContainsAlreadyExists(detail.Message))
+                {
+                    return true;
+                }
+
+                var reason = detail.Reason ?? string.Empty;
+                if (string.Equals(reason, "duplicate", StringComparison.Ordinal) ||
+                    string.Equals(reason, "alreadyExists", StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static bool ContainsAlreadyExists(string? text) =>
+        !string.IsNullOrEmpty(text) &&
+        text.Contains("already exist", StringComparison.OrdinalIgnoreCase);
 
     private static DrivePermission MapPermission(SdkPermission p)
     {
