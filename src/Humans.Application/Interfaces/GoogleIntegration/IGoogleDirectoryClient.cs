@@ -56,7 +56,10 @@ public sealed record DirectoryGroupListResult(
     GoogleClientError? Error);
 
 /// <summary>
-/// Shape-neutral projection of a Directory API group row.
+/// Shape-neutral projection of a Directory API group row. <see cref="Id"/>
+/// is non-null because the connector filters out rows without one during
+/// enumeration; <see cref="Email"/> is similarly filtered so downstream
+/// callers can rely on both being populated.
 /// </summary>
 /// <param name="Id">Directory-assigned group id.</param>
 /// <param name="Email">Primary email of the group.</param>

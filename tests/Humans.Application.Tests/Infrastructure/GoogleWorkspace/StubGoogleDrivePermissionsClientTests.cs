@@ -36,7 +36,7 @@ public class StubGoogleDrivePermissionsClientTests
     {
         var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null);
 
-        var result = await _client.ListPermissionsAsync(folder.Folder!.Id);
+        var result = await _client.ListPermissionsAsync(folder.Folder!.Id!);
 
         result.Error.Should().BeNull();
         result.Permissions.Should().NotBeNull().And.BeEmpty();
@@ -48,7 +48,7 @@ public class StubGoogleDrivePermissionsClientTests
         var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null);
 
         var result = await _client.CreatePermissionAsync(
-            folder.Folder!.Id, "alice@nobodies.team", "writer");
+            folder.Folder!.Id!, "alice@nobodies.team", "writer");
 
         result.Outcome.Should().Be(DrivePermissionCreateOutcome.Created);
         result.Error.Should().BeNull();
@@ -58,10 +58,10 @@ public class StubGoogleDrivePermissionsClientTests
     public async Task CreatePermissionAsync_DuplicateEmail_ReturnsAlreadyExists()
     {
         var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null);
-        await _client.CreatePermissionAsync(folder.Folder!.Id, "alice@nobodies.team", "writer");
+        await _client.CreatePermissionAsync(folder.Folder!.Id!, "alice@nobodies.team", "writer");
 
         var second = await _client.CreatePermissionAsync(
-            folder.Folder.Id, "alice@nobodies.team", "reader");
+            folder.Folder.Id!, "alice@nobodies.team", "reader");
 
         second.Outcome.Should().Be(DrivePermissionCreateOutcome.AlreadyExists,
             because: "the real client treats Google's 400 'already exists' as idempotent success");
@@ -71,9 +71,9 @@ public class StubGoogleDrivePermissionsClientTests
     public async Task ListPermissionsAsync_AfterAdd_ContainsUserPermission()
     {
         var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null);
-        await _client.CreatePermissionAsync(folder.Folder!.Id, "alice@nobodies.team", "writer");
+        await _client.CreatePermissionAsync(folder.Folder!.Id!, "alice@nobodies.team", "writer");
 
-        var result = await _client.ListPermissionsAsync(folder.Folder.Id);
+        var result = await _client.ListPermissionsAsync(folder.Folder.Id!);
 
         result.Permissions.Should().ContainSingle();
         var perm = result.Permissions!.Single();
@@ -88,14 +88,14 @@ public class StubGoogleDrivePermissionsClientTests
     public async Task DeletePermissionAsync_Existing_RemovesIt()
     {
         var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null);
-        await _client.CreatePermissionAsync(folder.Folder!.Id, "alice@nobodies.team", "writer");
-        var before = await _client.ListPermissionsAsync(folder.Folder.Id);
-        var permId = before.Permissions!.Single().Id;
+        await _client.CreatePermissionAsync(folder.Folder!.Id!, "alice@nobodies.team", "writer");
+        var before = await _client.ListPermissionsAsync(folder.Folder.Id!);
+        var permId = before.Permissions!.Single().Id!;
 
-        var deleteError = await _client.DeletePermissionAsync(folder.Folder.Id, permId);
+        var deleteError = await _client.DeletePermissionAsync(folder.Folder.Id!, permId);
 
         deleteError.Should().BeNull();
-        var after = await _client.ListPermissionsAsync(folder.Folder.Id);
+        var after = await _client.ListPermissionsAsync(folder.Folder.Id!);
         after.Permissions.Should().BeEmpty();
     }
 
@@ -104,7 +104,7 @@ public class StubGoogleDrivePermissionsClientTests
     {
         var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null);
 
-        var result = await _client.DeletePermissionAsync(folder.Folder!.Id, "nope");
+        var result = await _client.DeletePermissionAsync(folder.Folder!.Id!, "nope");
 
         result.Should().NotBeNull();
         result!.StatusCode.Should().Be(404);
@@ -115,7 +115,7 @@ public class StubGoogleDrivePermissionsClientTests
     {
         var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null);
 
-        var fetched = await _client.GetFileAsync(folder.Folder!.Id);
+        var fetched = await _client.GetFileAsync(folder.Folder!.Id!);
 
         fetched.Error.Should().BeNull();
         fetched.File.Should().NotBeNull();
@@ -137,10 +137,10 @@ public class StubGoogleDrivePermissionsClientTests
     {
         var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null);
 
-        var error = await _client.SetInheritedPermissionsDisabledAsync(folder.Folder!.Id, disabled: true);
+        var error = await _client.SetInheritedPermissionsDisabledAsync(folder.Folder!.Id!, disabled: true);
 
         error.Should().BeNull();
-        var fetched = await _client.GetFileAsync(folder.Folder.Id);
+        var fetched = await _client.GetFileAsync(folder.Folder.Id!);
         fetched.File!.InheritedPermissionsDisabled.Should().BeTrue();
     }
 

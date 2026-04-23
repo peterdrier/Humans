@@ -99,9 +99,11 @@ public interface IGoogleDrivePermissionsClient
 public sealed record DriveFolderCreateResult(DriveFolder? Folder, GoogleClientError? Error);
 
 /// <summary>
-/// Shape-neutral projection of a newly-created Drive folder.
+/// Shape-neutral projection of a newly-created Drive folder. <see cref="Id"/>
+/// and <see cref="Name"/> are nullable to match the underlying SDK's own
+/// nullability; on success Google always populates them.
 /// </summary>
-public sealed record DriveFolder(string Id, string Name, string? WebViewLink);
+public sealed record DriveFolder(string? Id, string? Name, string? WebViewLink);
 
 /// <summary>
 /// Outcome of <see cref="IGoogleDrivePermissionsClient.ListPermissionsAsync"/>.
@@ -114,8 +116,11 @@ public sealed record DrivePermissionListResult(
 /// <summary>
 /// Shape-neutral projection of a Drive permission row. Fields mirror the
 /// subset the sync service needs: who, what role, whether it's inherited.
+/// All identity/role fields are nullable because the Drive SDK's own types
+/// are nullable — Google has been observed to omit <c>role</c> on stale
+/// rows during maintenance windows, so callers must be resilient.
 /// </summary>
-/// <param name="Id">Drive's permission id (used as the key for delete).</param>
+/// <param name="Id">Drive's permission id (used as the key for delete). Null on the rare malformed row.</param>
 /// <param name="Type">
 /// <c>user</c>, <c>group</c>, <c>domain</c>, or <c>anyone</c>. Only <c>user</c>
 /// permissions are managed by this system.
@@ -132,9 +137,9 @@ public sealed record DrivePermissionListResult(
 /// the system cannot manage these and must skip them during reconciliation.
 /// </param>
 public sealed record DrivePermission(
-    string Id,
-    string Type,
-    string Role,
+    string? Id,
+    string? Type,
+    string? Role,
     string? EmailAddress,
     bool IsInheritedOnly);
 
@@ -169,10 +174,13 @@ public sealed record DriveFileMetadataResult(DriveFileMetadata? File, GoogleClie
 /// <summary>
 /// Shape-neutral projection of Drive file metadata, limited to the fields
 /// the sync service needs for path walking and inheritance enforcement.
+/// <see cref="Id"/> and <see cref="Name"/> are nullable to match the
+/// underlying SDK's nullability — a successful <c>Files.Get</c> against
+/// a Shared Drive root has been observed to omit the name field.
 /// </summary>
 public sealed record DriveFileMetadata(
-    string Id,
-    string Name,
+    string? Id,
+    string? Name,
     IReadOnlyList<string>? Parents,
     string? DriveId,
     bool? InheritedPermissionsDisabled);

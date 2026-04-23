@@ -101,7 +101,10 @@ public sealed class GoogleDirectoryClient : IGoogleDirectoryClient
                 {
                     foreach (var g in response.GroupsValue)
                     {
-                        if (string.IsNullOrEmpty(g.Email))
+                        // Require both Id and Email to be populated so downstream
+                        // callers can treat them as non-nullable. Defensive —
+                        // in practice Google always returns both on list.
+                        if (string.IsNullOrEmpty(g.Email) || string.IsNullOrEmpty(g.Id))
                         {
                             continue;
                         }
