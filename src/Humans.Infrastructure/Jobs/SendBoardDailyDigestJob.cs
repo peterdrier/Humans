@@ -174,9 +174,12 @@ public class SendBoardDailyDigestJob : IRecurringJob
                 : (IReadOnlyList<Guid>)Array.Empty<Guid>();
 
             // 5. Resolve active Board members via the role-assignment service.
+            // Include UserEmails so GetEffectiveEmail picks the verified
+            // notification-target address instead of silently falling back
+            // to User.Email.
             var boardUserIds = await _roleAssignmentService.GetActiveUserIdsInRoleAsync(
                 RoleNames.Board, cancellationToken);
-            var boardMembers = await _userService.GetByIdsAsync(boardUserIds, cancellationToken);
+            var boardMembers = await _userService.GetByIdsWithEmailsAsync(boardUserIds, cancellationToken);
 
             var sentCount = 0;
             foreach (var member in boardMembers.Values)

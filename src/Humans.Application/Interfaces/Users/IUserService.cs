@@ -28,6 +28,19 @@ public interface IUserService
         CancellationToken ct = default);
 
     /// <summary>
+    /// Same as <see cref="GetByIdsAsync"/> but also hydrates each user's
+    /// <see cref="User.UserEmails"/> collection so callers can resolve
+    /// <see cref="User.GetEffectiveEmail"/> (the verified notification-target
+    /// address) without a second round-trip. Used by notification-sending
+    /// jobs (digests, re-consent reminder, term renewal) so the correct
+    /// recipient is picked instead of silently falling back to
+    /// <see cref="User.Email"/>.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, User>> GetByIdsWithEmailsAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Get the participation record for a user in a given year. Returns null if no record exists.
     /// </summary>
     Task<EventParticipation?> GetParticipationAsync(Guid userId, int year, CancellationToken ct = default);

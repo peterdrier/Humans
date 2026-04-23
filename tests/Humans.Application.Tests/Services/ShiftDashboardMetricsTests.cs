@@ -675,6 +675,13 @@ public class ShiftDashboardMetricsTests : IDisposable
             return users.ToDictionary(u => u.Id);
         }
 
+        public async Task<IReadOnlyDictionary<Guid, User>> GetByIdsWithEmailsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+        {
+            if (userIds.Count == 0) return new Dictionary<Guid, User>();
+            var users = await _db.Users.Include(u => u.UserEmails).Where(u => userIds.Contains(u.Id)).ToListAsync(ct);
+            return users.ToDictionary(u => u.Id);
+        }
+
         public async Task<IReadOnlyList<Instant>> GetLoginTimestampsInWindowAsync(Instant fromInclusive, Instant toExclusive, CancellationToken ct = default)
         {
             return await _db.Users

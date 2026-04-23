@@ -84,6 +84,10 @@ public sealed class UserService : IUserService, IUserDataContributor
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
         _repo.GetByIdsAsync(userIds, ct);
 
+    public Task<IReadOnlyDictionary<Guid, User>> GetByIdsWithEmailsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
+        _repo.GetByIdsWithEmailsAsync(userIds, ct);
+
     public Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default) =>
         _repo.GetAllAsync(ct);
 
@@ -200,26 +204,55 @@ public sealed class UserService : IUserService, IUserDataContributor
     public async Task<AnonymizedAccountSummary?> AnonymizeExpiredAccountAsync(
         Guid userId, Instant now, CancellationToken ct = default)
     {
-        // 1. Anonymize identity + UserEmails on the User aggregate.
-        var identity = await _repo.ApplyExpiredDeletionAnonymizationAsync(userId, ct);
-        if (identity is null)
+        // Capture the identity slice BEFORE any writes so the caller can send
+        // the confirmation email / emit audit entries even if the User-aggregate
+        // anonymization (the final step) is the place that fails.
+        var user = await _repo.GetByIdAsync(userId, ct);
+        if (user is null)
             return null;
 
-        // 2. End team memberships and team role slot assignments.
+        var originalEmail = user.GetEffectiveEmail();
+        var originalDisplayName = user.DisplayName;
+        var preferredLanguage = user.PreferredLanguage;
+
+        // Do every cross-section cleanup FIRST, while the account is still
+        // marked for deletion. If any of these throws, the DeletionScheduledFor /
+        // DeletionEligibleAfter fields are still set, so tomorrow's job run
+        // retries the same user rather than silently leaving them in a
+        // half-anonymized state. Only when every cleanup has committed do we
+        // collapse the User identity (which is the step that clears the
+        // deletion markers).
+
+        // 1. End team memberships and team role slot assignments.
         await _teamService.RevokeAllMembershipsAsync(userId, ct);
 
-        // 3. End active governance role assignments.
+        // 2. End active governance role assignments.
         await RoleAssignmentService.RevokeAllActiveAsync(userId, ct);
 
-        // 4. Anonymize the profile + remove contact fields + volunteer history.
+        // 3. Anonymize the profile + remove contact fields + volunteer history.
         await ProfileService.AnonymizeExpiredProfileAsync(userId, ct);
 
-        // 5. Cancel active shift signups (returns ids for per-signup audit log).
+        // 4. Cancel active shift signups (returns ids for per-signup audit log).
         var cancelledSignupIds = await ShiftSignupService.CancelActiveSignupsForUserAsync(
             userId, "Account deletion", ct);
 
-        // 6. Delete the user's VolunteerEventProfile row(s).
+        // 5. Delete the user's VolunteerEventProfile row(s).
         await ShiftManagementService.DeleteShiftProfilesForUserAsync(userId, ct);
+
+        // 6. Finally, anonymize identity + remove UserEmails on the User
+        //    aggregate. This is the write that clears DeletionScheduledFor /
+        //    DeletionEligibleAfter — once this commits, the user falls off
+        //    tomorrow's candidate list.
+        var identity = await _repo.ApplyExpiredDeletionAnonymizationAsync(userId, ct);
+        if (identity is null)
+        {
+            // Can only happen if the user was deleted by another code path
+            // between the GetById above and now. Still return the captured
+            // pre-write slice so the caller can audit the cancelled signups
+            // / pre-existing identity.
+            return new AnonymizedAccountSummary(
+                originalEmail, originalDisplayName, preferredLanguage, cancelledSignupIds);
+        }
 
         // 7. Invalidate cross-cutting caches that key off the user.
         await _fullProfileInvalidator.InvalidateAsync(userId, ct);

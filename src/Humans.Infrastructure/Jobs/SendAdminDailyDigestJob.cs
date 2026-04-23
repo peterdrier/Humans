@@ -144,9 +144,12 @@ public class SendAdminDailyDigestJob : IRecurringJob
             }
 
             // Resolve active Admin users via the role-assignment service.
+            // Include UserEmails so GetEffectiveEmail picks the verified
+            // notification-target address instead of silently falling back
+            // to User.Email.
             var adminUserIds = await _roleAssignmentService.GetActiveUserIdsInRoleAsync(
                 RoleNames.Admin, cancellationToken);
-            var admins = await _userService.GetByIdsAsync(adminUserIds, cancellationToken);
+            var admins = await _userService.GetByIdsWithEmailsAsync(adminUserIds, cancellationToken);
 
             var sentCount = 0;
             foreach (var admin in admins.Values)

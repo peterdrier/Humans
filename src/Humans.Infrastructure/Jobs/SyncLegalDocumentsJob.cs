@@ -140,8 +140,10 @@ public class SyncLegalDocumentsJob : IRecurringJob
             return;
         }
 
-        // Batch load user entities for display names and emails via IUserService
-        var users = await _userService.GetByIdsAsync(usersToNotify, cancellationToken);
+        // Batch load user entities for display names and emails via
+        // IUserService. Use the -WithEmails variant so GetEffectiveEmail
+        // picks the verified notification-target address.
+        var users = await _userService.GetByIdsWithEmailsAsync(usersToNotify, cancellationToken);
 
         var documentNames = updatedDocs.Where(d => d.IsRequired).Select(d => d.Name).ToList();
         var notificationCount = 0;

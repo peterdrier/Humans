@@ -37,6 +37,15 @@ public interface IUserRepository
         CancellationToken ct = default);
 
     /// <summary>
+    /// Same as <see cref="GetByIdsAsync"/> but includes each user's
+    /// <see cref="User.UserEmails"/> collection so callers can resolve
+    /// <see cref="User.GetEffectiveEmail"/> correctly. Read-only (AsNoTracking).
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, User>> GetByIdsWithEmailsAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Loads every user, read-only (AsNoTracking). Used by admin list views
     /// that must include profileless users. Trivial at ~500-user scale.
     /// </summary>
