@@ -1,50 +1,72 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Constants;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
+using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Governance;
-
-// RoleAssignment.User cross-domain nav is [Obsolete] (design-rules §6c). This job
-// still reads RoleAssignments directly; migration to IRoleAssignmentService +
-// IUserService.GetByIdsAsync is tracked as a §15h touch-and-clean follow-up.
-#pragma warning disable CS0618
+using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Interfaces.Users;
+using Humans.Domain.Constants;
+using Humans.Domain.Enums;
 
 namespace Humans.Infrastructure.Jobs;
 
 /// <summary>
 /// Daily job that emails each Admin a digest of system health and pending actions.
 /// </summary>
+/// <remarks>
+/// All reads fan out through section services
+/// (<see cref="IUserService"/>, <see cref="IProfileService"/>,
+/// <see cref="ITeamService"/>, <see cref="IApplicationDecisionService"/>,
+/// <see cref="IRoleAssignmentService"/>, <see cref="ITicketSyncService"/>,
+/// <see cref="IGoogleSyncOutboxRepository"/>) so the job never touches
+/// <see cref="Humans.Infrastructure.Data.HumansDbContext"/> directly
+/// (design-rules §2c).
+/// </remarks>
 public class SendAdminDailyDigestJob : IRecurringJob
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly IUserService _userService;
+    private readonly IProfileService _profileService;
+    private readonly ITeamService _teamService;
+    private readonly IApplicationDecisionService _applicationDecisionService;
+    private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly ITicketSyncService _ticketSyncService;
+    private readonly IGoogleSyncOutboxRepository _googleSyncOutboxRepository;
     private readonly IEmailService _emailService;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IHumansMetrics _metrics;
-    private readonly IGoogleSyncOutboxRepository _googleSyncOutboxRepository;
     private readonly ILogger<SendAdminDailyDigestJob> _logger;
     private readonly IClock _clock;
 
     public SendAdminDailyDigestJob(
-        HumansDbContext dbContext,
+        IUserService userService,
+        IProfileService profileService,
+        ITeamService teamService,
+        IApplicationDecisionService applicationDecisionService,
+        IRoleAssignmentService roleAssignmentService,
+        ITicketSyncService ticketSyncService,
+        IGoogleSyncOutboxRepository googleSyncOutboxRepository,
         IEmailService emailService,
         IMembershipCalculator membershipCalculator,
         IHumansMetrics metrics,
-        IGoogleSyncOutboxRepository googleSyncOutboxRepository,
         ILogger<SendAdminDailyDigestJob> logger,
         IClock clock)
     {
-        _dbContext = dbContext;
+        _userService = userService;
+        _profileService = profileService;
+        _teamService = teamService;
+        _applicationDecisionService = applicationDecisionService;
+        _roleAssignmentService = roleAssignmentService;
+        _ticketSyncService = ticketSyncService;
+        _googleSyncOutboxRepository = googleSyncOutboxRepository;
         _emailService = emailService;
         _membershipCalculator = membershipCalculator;
         _metrics = metrics;
-        _googleSyncOutboxRepository = googleSyncOutboxRepository;
         _logger = logger;
         _clock = clock;
     }
@@ -59,61 +81,40 @@ public class SendAdminDailyDigestJob : IRecurringJob
 
         try
         {
-            // Pending deletions
-            var pendingDeletionsCount = await _dbContext.Users
-                .CountAsync(u => u.DeletionRequestedAt != null, cancellationToken);
-
-            // Pending consents
-            var allUserIds = await _dbContext.Users.Select(u => u.Id).ToListAsync(cancellationToken);
-            var usersWithAllConsents = await _membershipCalculator.GetUsersWithAllRequiredConsentsAsync(allUserIds, cancellationToken);
-
-            var leadUserIds = await _dbContext.TeamMembers
-                .Where(tm => tm.LeftAt == null && tm.Role == TeamMemberRole.Coordinator && tm.Team.SystemTeamType == SystemTeamType.None)
-                .Select(tm => tm.UserId)
-                .Distinct()
-                .ToListAsync(cancellationToken);
-            var leadsWithAllConsents = leadUserIds.Count > 0
-                ? await _membershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(leadUserIds, SystemTeamIds.Coordinators, cancellationToken)
-                : new HashSet<Guid>();
-
-            var pendingConsentsCount = allUserIds.Count(id =>
-                !usersWithAllConsents.Contains(id) ||
-                (leadUserIds.Contains(id) && !leadsWithAllConsents.Contains(id)));
-
-            // Team join requests
-            var teamJoinRequestCount = await _dbContext.TeamJoinRequests
-                .CountAsync(r => r.Status == TeamJoinRequestStatus.Pending, cancellationToken);
-
-            // Onboarding review
-            var onboardingReviewCount = await _dbContext.Profiles
-                .CountAsync(p => p.ConsentCheckStatus != null
-                    && (p.ConsentCheckStatus == ConsentCheckStatus.Pending || p.ConsentCheckStatus == ConsentCheckStatus.Flagged)
-                    && p.RejectedAt == null, cancellationToken);
-
-            var totalNotApproved = await _dbContext.Profiles
-                .CountAsync(p => !p.IsApproved && !p.IsSuspended, cancellationToken);
+            // Pending deletions / consent reviews / onboarding / voting.
+            var pendingDeletionsCount = await _userService.GetPendingDeletionCountAsync(cancellationToken);
+            var onboardingReviewCount = await _profileService.GetConsentReviewPendingCountAsync(cancellationToken);
+            var totalNotApproved = await _profileService.GetNotApprovedAndNotSuspendedCountAsync(cancellationToken);
             var stillOnboardingCount = Math.Max(0, totalNotApproved - onboardingReviewCount);
+            var boardVotingTotal = await _applicationDecisionService.GetPendingApplicationCountAsync(cancellationToken);
+            var teamJoinRequestCount = await _teamService.GetTotalPendingJoinRequestCountAsync(cancellationToken);
 
-            // Board voting
-            var boardVotingTotal = await _dbContext.Applications
-                .CountAsync(a => a.Status == ApplicationStatus.Submitted, cancellationToken);
+            // Pending consents calculation — reuses the same inputs the Admin
+            // dashboard does so the numbers match.
+            var allUserIds = await _userService.GetAllUserIdsAsync(cancellationToken);
+            var allUserIdsList = allUserIds.ToList();
+            var usersWithAllConsents = await _membershipCalculator
+                .GetUsersWithAllRequiredConsentsAsync(allUserIdsList, cancellationToken);
 
-            // Stale Google sync outbox events (unprocessed with errors, excluding permanent failures).
-            // Routed through the repository so this job doesn't read google_sync_outbox_events
-            // directly (issue #554 Part 1, design-rules §2c).
+            var leadUserIds = await _teamService.GetActiveNonSystemTeamCoordinatorUserIdsAsync(cancellationToken);
+            var leadUserIdsList = leadUserIds.ToList();
+            var leadsWithAllConsents = leadUserIdsList.Count > 0
+                ? await _membershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
+                    leadUserIdsList, SystemTeamIds.Coordinators, cancellationToken)
+                : new HashSet<Guid>();
+            var leadSet = leadUserIdsList.ToHashSet();
+
+            var pendingConsentsCount = allUserIdsList.Count(id =>
+                !usersWithAllConsents.Contains(id) ||
+                (leadSet.Contains(id) && !leadsWithAllConsents.Contains(id)));
+
+            // Google sync outbox counts — already routed through the repo.
             var failedSyncEvents = await _googleSyncOutboxRepository.CountStaleAsync(cancellationToken);
-
-            // Permanent Google sync failures — count distinct users with rejected email status
-            var permanentSyncFailures = await _dbContext.Users
-                .CountAsync(u => u.GoogleEmailStatus == GoogleEmailStatus.Rejected, cancellationToken);
-
-            // Transient retries (still being retried, have errors but not permanent) — via repo.
             var transientSyncRetries = await _googleSyncOutboxRepository.CountTransientRetriesAsync(cancellationToken);
+            var permanentSyncFailures = await _userService.GetRejectedGoogleEmailCountAsync(cancellationToken);
 
-            // Ticket sync status
-            var ticketSyncState = await _dbContext.TicketSyncStates.FindAsync([1], cancellationToken);
-            var ticketSyncError = ticketSyncState?.SyncStatus == TicketSyncStatus.Error;
-            var ticketSyncErrorMessage = ticketSyncError ? ticketSyncState?.LastError : null;
+            // Ticket sync status — routed through ITicketSyncService.
+            var ticketSyncStatus = await _ticketSyncService.GetErrorStatusAsync(cancellationToken);
 
             var counts = new AdminDigestCounts(
                 pendingDeletionsCount,
@@ -125,15 +126,15 @@ public class SendAdminDailyDigestJob : IRecurringJob
                 failedSyncEvents,
                 permanentSyncFailures,
                 transientSyncRetries,
-                ticketSyncError,
-                ticketSyncErrorMessage);
+                ticketSyncStatus.InError,
+                ticketSyncStatus.ErrorMessage);
 
             // Skip if everything is clear
             var hasItems = pendingDeletionsCount > 0 || pendingConsentsCount > 0
                 || teamJoinRequestCount > 0 || onboardingReviewCount > 0
                 || stillOnboardingCount > 0 || boardVotingTotal > 0
                 || failedSyncEvents > 0 || permanentSyncFailures > 0
-                || transientSyncRetries > 0 || ticketSyncError;
+                || transientSyncRetries > 0 || ticketSyncStatus.InError;
 
             if (!hasItems)
             {
@@ -142,19 +143,13 @@ public class SendAdminDailyDigestJob : IRecurringJob
                 return;
             }
 
-            // Find active Admins
-            var admins = await _dbContext.RoleAssignments
-                .Include(ra => ra.User)
-                    .ThenInclude(u => u.UserEmails)
-                .Where(ra => ra.RoleName == RoleNames.Admin
-                    && ra.ValidFrom <= now
-                    && (ra.ValidTo == null || ra.ValidTo.Value > now))
-                .Select(ra => ra.User)
-                .Distinct()
-                .ToListAsync(cancellationToken);
+            // Resolve active Admin users via the role-assignment service.
+            var adminUserIds = await _roleAssignmentService.GetActiveUserIdsInRoleAsync(
+                RoleNames.Admin, cancellationToken);
+            var admins = await _userService.GetByIdsAsync(adminUserIds, cancellationToken);
 
             var sentCount = 0;
-            foreach (var admin in admins)
+            foreach (var admin in admins.Values)
             {
                 var email = admin.GetEffectiveEmail();
                 if (email is null)

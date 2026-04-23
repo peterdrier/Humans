@@ -26,7 +26,21 @@ public interface ITicketSyncService
     /// section read <c>ticket_sync_states</c> directly (design-rules §2c).
     /// </summary>
     Task<bool> IsInErrorStateAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the current error state plus the most recent error message
+    /// recorded on the singleton ticket sync state row. <see cref="ErrorMessage"/>
+    /// is null unless <see cref="InError"/> is true. Used by the Admin daily
+    /// digest so the digest can render the specific failure message without
+    /// reading <c>ticket_sync_states</c> directly (design-rules §2c).
+    /// </summary>
+    Task<TicketSyncErrorStatus> GetErrorStatusAsync(CancellationToken ct = default);
 }
+
+/// <summary>
+/// Ticket sync error state shape used by the Admin daily digest.
+/// </summary>
+public record TicketSyncErrorStatus(bool InError, string? ErrorMessage);
 
 /// <summary>Summary of a sync operation.</summary>
 public record TicketSyncResult(

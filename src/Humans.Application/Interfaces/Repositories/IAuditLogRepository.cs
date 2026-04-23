@@ -108,4 +108,16 @@ public interface IAuditLogRepository
     /// </summary>
     Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(
         IReadOnlyList<Guid> teamIds, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the distinct entity ids of audit rows whose
+    /// <see cref="AuditLogEntry.Action"/> matches <paramref name="action"/>
+    /// and whose <see cref="AuditLogEntry.OccurredAt"/> falls inside the
+    /// half-open window <c>[windowStart, windowEnd)</c>. Read-only.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
+        NodaTime.Instant windowStart,
+        NodaTime.Instant windowEnd,
+        AuditAction action,
+        CancellationToken ct = default);
 }

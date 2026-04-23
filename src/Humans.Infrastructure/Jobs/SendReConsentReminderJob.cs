@@ -1,24 +1,31 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Infrastructure.Configuration;
-using Humans.Infrastructure.Data;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Infrastructure.Jobs;
 
 /// <summary>
 /// Background job that sends re-consent reminders to members.
 /// </summary>
+/// <remarks>
+/// Reads user display/email data via <see cref="IUserService"/> and persists
+/// <c>User.LastConsentReminderSentAt</c> through
+/// <see cref="IUserService.SetLastConsentReminderSentAsync"/>, so the job
+/// never touches <see cref="Humans.Infrastructure.Data.HumansDbContext"/>
+/// directly (design-rules §2c).
+/// </remarks>
 public class SendReConsentReminderJob : IRecurringJob
 {
-    private readonly HumansDbContext _dbContext;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly ILegalDocumentSyncService _legalDocService;
+    private readonly IUserService _userService;
     private readonly IEmailService _emailService;
     private readonly EmailSettings _emailSettings;
     private readonly IHumansMetrics _metrics;
@@ -26,18 +33,18 @@ public class SendReConsentReminderJob : IRecurringJob
     private readonly IClock _clock;
 
     public SendReConsentReminderJob(
-        HumansDbContext dbContext,
         IMembershipCalculator membershipCalculator,
         ILegalDocumentSyncService legalDocService,
+        IUserService userService,
         IEmailService emailService,
         IOptions<EmailSettings> emailSettings,
         IHumansMetrics metrics,
         ILogger<SendReConsentReminderJob> logger,
         IClock clock)
     {
-        _dbContext = dbContext;
         _membershipCalculator = membershipCalculator;
         _legalDocService = legalDocService;
+        _userService = userService;
         _emailService = emailService;
         _emailSettings = emailSettings.Value;
         _metrics = metrics;
@@ -71,10 +78,7 @@ public class SendReConsentReminderJob : IRecurringJob
                 .ToList();
 
             var userIds = usersNeedingReminder.ToList();
-            var users = await _dbContext.Users
-                .Include(u => u.UserEmails)
-                .Where(u => userIds.Contains(u.Id))
-                .ToDictionaryAsync(u => u.Id, cancellationToken);
+            var users = await _userService.GetByIdsAsync(userIds, cancellationToken);
 
             var now = _clock.GetCurrentInstant();
             var cooldown = Duration.FromDays(cooldownDays);
@@ -105,7 +109,7 @@ public class SendReConsentReminderJob : IRecurringJob
                         user.PreferredLanguage,
                         cancellationToken);
 
-                    user.LastConsentReminderSentAt = now;
+                    await _userService.SetLastConsentReminderSentAsync(userId, now, cancellationToken);
                     sentCount++;
 
                     _logger.LogInformation(
@@ -113,8 +117,6 @@ public class SendReConsentReminderJob : IRecurringJob
                         userId, effectiveEmail);
                 }
             }
-
-            await _dbContext.SaveChangesAsync(cancellationToken);
 
             _metrics.RecordJobRun("send_reconsent_reminder", "success");
             _logger.LogInformation(

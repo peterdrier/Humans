@@ -594,6 +594,20 @@ public sealed class TeamRepository : ITeamRepository
             .CountAsync(r => r.Status == TeamJoinRequestStatus.Pending, ct);
     }
 
+    public async Task<IReadOnlyList<Guid>> GetActiveNonSystemTeamCoordinatorUserIdsAsync(
+        CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        return await db.TeamMembers
+            .AsNoTracking()
+            .Where(tm => tm.LeftAt == null
+                && tm.Role == TeamMemberRole.Coordinator
+                && tm.Team.SystemTeamType == SystemTeamType.None)
+            .Select(tm => tm.UserId)
+            .Distinct()
+            .ToListAsync(ct);
+    }
+
     public async Task AddRequestAsync(TeamJoinRequest request, CancellationToken ct = default)
     {
         await using var db = await _factory.CreateDbContextAsync(ct);

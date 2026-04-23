@@ -261,4 +261,11 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
 
         return [new UserDataSlice(GdprExportSections.AuditLog, shaped)];
     }
+
+    public Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
+        NodaTime.Instant windowStart,
+        NodaTime.Instant windowEnd,
+        AuditAction action,
+        CancellationToken ct = default) =>
+        _repo.GetEntityIdsForActionInWindowAsync(windowStart, windowEnd, action, ct);
 }

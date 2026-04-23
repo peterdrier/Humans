@@ -67,6 +67,10 @@ file sealed class StubAuditLog : IAuditLogService
 
     public Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(IReadOnlyList<Guid> teamIds, CancellationToken ct = default) =>
         Task.FromResult(new Dictionary<Guid, (string Name, string Slug)>());
+
+    public Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
+        Instant windowStart, Instant windowEnd, AuditAction action, CancellationToken ct = default) =>
+        Task.FromResult((IReadOnlyList<Guid>)Array.Empty<Guid>());
 }
 
 /// <summary>

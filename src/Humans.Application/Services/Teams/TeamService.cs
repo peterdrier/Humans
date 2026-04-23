@@ -1759,6 +1759,10 @@ public sealed class TeamService : ITeamService, IUserDataContributor
     public Task<int> GetTotalPendingJoinRequestCountAsync(CancellationToken cancellationToken = default) =>
         _repo.GetTotalPendingCountAsync(cancellationToken);
 
+    public Task<IReadOnlyList<Guid>> GetActiveNonSystemTeamCoordinatorUserIdsAsync(
+        CancellationToken cancellationToken = default) =>
+        _repo.GetActiveNonSystemTeamCoordinatorUserIdsAsync(cancellationToken);
+
     public Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
         IEnumerable<Guid> teamIds,
         CancellationToken cancellationToken = default) =>

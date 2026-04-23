@@ -666,4 +666,15 @@ public interface ITeamService
     /// directly (design-rules §2c).
     /// </summary>
     Task<int> GetTotalPendingJoinRequestCountAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the distinct user ids of every active
+    /// (<see cref="TeamMember.LeftAt"/> is null)
+    /// <see cref="TeamMemberRole.Coordinator"/> on a non-system team.
+    /// Used by the Admin daily digest to compute pending-consent counts
+    /// for team coordinators without reading
+    /// <c>team_members</c> directly (design-rules §2c).
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetActiveNonSystemTeamCoordinatorUserIdsAsync(
+        CancellationToken cancellationToken = default);
 }

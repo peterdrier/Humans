@@ -231,4 +231,77 @@ public sealed class ApplicationRepository : IApplicationRepository
             : new ApplicationAdminStats(
                 stats.Total, stats.Approved, stats.Rejected, stats.Colaborador, stats.Asociado);
     }
+
+    public async Task<IReadOnlyList<MemberApplication>> GetExpiringApplicationsNeedingReminderAsync(
+        LocalDate today, LocalDate reminderThreshold, CancellationToken ct = default) =>
+        await _dbContext.Applications
+            .AsNoTracking()
+            .Where(a =>
+                a.Status == ApplicationStatus.Approved &&
+                a.TermExpiresAt != null &&
+                a.TermExpiresAt <= reminderThreshold &&
+                a.TermExpiresAt >= today &&
+                a.RenewalReminderSentAt == null)
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlySet<(Guid UserId, MembershipTier Tier)>> GetPendingApplicationUserTiersAsync(
+        CancellationToken ct = default)
+    {
+        var pairs = await _dbContext.Applications
+            .AsNoTracking()
+            .Where(a => a.Status == ApplicationStatus.Submitted)
+            .Select(a => new { a.UserId, a.MembershipTier })
+            .ToListAsync(ct);
+
+        return pairs
+            .Select(p => (p.UserId, p.MembershipTier))
+            .ToHashSet();
+    }
+
+    public async Task<IReadOnlyList<MemberApplication>> GetApprovedInWindowAsync(
+        Instant windowStart, Instant windowEnd, CancellationToken ct = default) =>
+        await _dbContext.Applications
+            .AsNoTracking()
+            .Where(a => a.Status == ApplicationStatus.Approved
+                && a.ResolvedAt != null
+                && a.ResolvedAt.Value >= windowStart
+                && a.ResolvedAt.Value < windowEnd)
+            .OrderBy(a => a.MembershipTier)
+            .ThenBy(a => a.ResolvedAt)
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<Guid>> GetSubmittedApplicationIdsAsync(
+        CancellationToken ct = default) =>
+        await _dbContext.Applications
+            .AsNoTracking()
+            .Where(a => a.Status == ApplicationStatus.Submitted)
+            .Select(a => a.Id)
+            .ToListAsync(ct);
+
+    public async Task<int> GetUnvotedCountForBoardMemberAmongApplicationsAsync(
+        Guid boardMemberUserId,
+        IReadOnlyCollection<Guid> applicationIds,
+        CancellationToken ct = default)
+    {
+        if (applicationIds.Count == 0)
+            return 0;
+
+        var votedCount = await _dbContext.BoardVotes
+            .AsNoTracking()
+            .CountAsync(v => v.BoardMemberUserId == boardMemberUserId
+                && applicationIds.Contains(v.ApplicationId), ct);
+
+        return applicationIds.Count - votedCount;
+    }
+
+    public async Task MarkRenewalReminderSentAsync(
+        Guid applicationId, Instant sentAt, CancellationToken ct = default)
+    {
+        var app = await _dbContext.Applications.FindAsync([applicationId], ct);
+        if (app is null)
+            return;
+
+        app.RenewalReminderSentAt = sentAt;
+        await _dbContext.SaveChangesAsync(ct);
+    }
 }

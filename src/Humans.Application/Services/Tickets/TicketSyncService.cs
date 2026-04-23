@@ -438,6 +438,13 @@ public sealed class TicketSyncService : ITicketSyncService
         return syncState?.SyncStatus == TicketSyncStatus.Error;
     }
 
+    public async Task<TicketSyncErrorStatus> GetErrorStatusAsync(CancellationToken ct = default)
+    {
+        var syncState = await _ticketRepository.GetSyncStateAsync(ct);
+        var inError = syncState?.SyncStatus == TicketSyncStatus.Error;
+        return new TicketSyncErrorStatus(inError, inError ? syncState?.LastError : null);
+    }
+
     /// <summary>
     /// Derive EventParticipation records from current ticket data.
     /// For each matched user: 1+ valid tickets → Ticketed, any checked-in → Attended.

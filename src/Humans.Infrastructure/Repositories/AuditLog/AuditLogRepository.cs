@@ -191,4 +191,21 @@ public sealed class AuditLogRepository : IAuditLogRepository
             .Where(t => teamIds.Contains(t.Id))
             .ToDictionaryAsync(t => t.Id, t => (t.Name, t.Slug), ct);
     }
+
+    public async Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
+        NodaTime.Instant windowStart,
+        NodaTime.Instant windowEnd,
+        AuditAction action,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.AuditLogEntries
+            .AsNoTracking()
+            .Where(e => e.Action == action
+                && e.OccurredAt >= windowStart
+                && e.OccurredAt < windowEnd)
+            .Select(e => e.EntityId)
+            .Distinct()
+            .ToListAsync(ct);
+    }
 }

@@ -92,6 +92,20 @@ public interface IAuditLogService
     /// Batch-loads team names and slugs for a set of team IDs.
     /// </summary>
     Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(IReadOnlyList<Guid> teamIds, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the distinct entity ids for audit entries whose
+    /// <see cref="AuditLogEntry.Action"/> matches <paramref name="action"/>
+    /// and whose <see cref="AuditLogEntry.OccurredAt"/> falls inside the
+    /// half-open window <c>[windowStart, windowEnd)</c>. Used by the Board
+    /// daily digest to enumerate approvals without reading
+    /// <c>audit_log_entries</c> directly (design-rules §2c).
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
+        NodaTime.Instant windowStart,
+        NodaTime.Instant windowEnd,
+        AuditAction action,
+        CancellationToken ct = default);
 }
 
 /// <summary>

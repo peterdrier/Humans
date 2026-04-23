@@ -164,6 +164,60 @@ public interface IApplicationDecisionService
     /// admin dashboard.
     /// </summary>
     Task<int> GetPendingApplicationCountAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every <see cref="ApplicationStatus.Approved"/> application
+    /// whose <c>TermExpiresAt</c> falls between <paramref name="today"/>
+    /// (inclusive) and <paramref name="reminderThreshold"/> (inclusive) and
+    /// whose <c>RenewalReminderSentAt</c> is still null. Used by the term
+    /// renewal reminder job so it can enumerate candidates without reading
+    /// <c>applications</c> directly (design-rules §2c).
+    /// </summary>
+    Task<IReadOnlyList<MemberApplication>> GetExpiringApplicationsNeedingReminderAsync(
+        LocalDate today, LocalDate reminderThreshold, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the distinct (UserId, MembershipTier) pairs that currently
+    /// have a <see cref="ApplicationStatus.Submitted"/> application. Used by
+    /// the term renewal reminder job to exclude users who have already filed
+    /// a renewal.
+    /// </summary>
+    Task<IReadOnlySet<(Guid UserId, MembershipTier Tier)>> GetPendingApplicationUserTiersAsync(
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Stamps <c>Application.RenewalReminderSentAt</c> to
+    /// <paramref name="sentAt"/>. No-op if the application does not exist.
+    /// Used by the term renewal reminder job so it never writes to
+    /// <c>applications</c> directly.
+    /// </summary>
+    Task MarkRenewalReminderSentAsync(
+        Guid applicationId, Instant sentAt, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every <see cref="ApplicationStatus.Approved"/> application
+    /// resolved within the half-open window
+    /// <c>[windowStart, windowEnd)</c>. Used by the Board daily digest.
+    /// </summary>
+    Task<IReadOnlyList<MemberApplication>> GetApprovedInWindowAsync(
+        Instant windowStart, Instant windowEnd, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the ids of every <see cref="ApplicationStatus.Submitted"/>
+    /// application. Used by the Board daily digest.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetSubmittedApplicationIdsAsync(
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the count of applications in <paramref name="applicationIds"/>
+    /// that the given board member has NOT yet voted on. Used by the Board
+    /// daily digest per-member queue size.
+    /// </summary>
+    Task<int> GetUnvotedCountForBoardMemberAmongApplicationsAsync(
+        Guid boardMemberUserId,
+        IReadOnlyCollection<Guid> applicationIds,
+        CancellationToken ct = default);
 }
 
 public record ApplicationDecisionResult(bool Success, string? ErrorKey = null, Guid? ApplicationId = null);

@@ -154,6 +154,57 @@ public interface IApplicationRepository
     /// application block. All counts exclude <see cref="ApplicationStatus.Withdrawn"/>.
     /// </summary>
     Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every Approved application whose <c>TermExpiresAt</c> falls
+    /// between <paramref name="today"/> (inclusive) and
+    /// <paramref name="reminderThreshold"/> (inclusive) and whose
+    /// <c>RenewalReminderSentAt</c> is still null. Read-only.
+    /// </summary>
+    Task<IReadOnlyList<MemberApplication>> GetExpiringApplicationsNeedingReminderAsync(
+        LocalDate today, LocalDate reminderThreshold, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the distinct <c>(UserId, MembershipTier)</c> pairs across
+    /// every Submitted application. Used by the term renewal reminder
+    /// to suppress renewals for users who already have a pending application.
+    /// </summary>
+    Task<IReadOnlySet<(Guid UserId, MembershipTier Tier)>> GetPendingApplicationUserTiersAsync(
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns Approved applications that have been resolved within
+    /// the half-open window <c>[windowStart, windowEnd)</c>, ordered by
+    /// <see cref="MembershipTier"/> then <c>ResolvedAt</c>. Used by the
+    /// Board daily digest.
+    /// </summary>
+    Task<IReadOnlyList<MemberApplication>> GetApprovedInWindowAsync(
+        Instant windowStart, Instant windowEnd, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every Submitted application id. Used by the Board daily
+    /// digest to compute per-member unvoted counts without re-loading the
+    /// full application set.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetSubmittedApplicationIdsAsync(
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the number of applications from <paramref name="applicationIds"/>
+    /// that the given board member has NOT yet voted on. Used by the Board
+    /// daily digest to render the per-member queue size.
+    /// </summary>
+    Task<int> GetUnvotedCountForBoardMemberAmongApplicationsAsync(
+        Guid boardMemberUserId,
+        IReadOnlyCollection<Guid> applicationIds,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Stamps <c>Application.RenewalReminderSentAt</c> to
+    /// <paramref name="sentAt"/>. No-op if the application does not exist.
+    /// </summary>
+    Task MarkRenewalReminderSentAsync(
+        Guid applicationId, Instant sentAt, CancellationToken ct = default);
 }
 
 /// <summary>

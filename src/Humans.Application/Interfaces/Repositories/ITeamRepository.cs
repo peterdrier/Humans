@@ -383,6 +383,14 @@ public interface ITeamRepository
     /// <summary>Total pending join requests across all teams.</summary>
     Task<int> GetTotalPendingCountAsync(CancellationToken ct = default);
 
+    /// <summary>
+    /// Distinct user ids of every active (<see cref="TeamMember.LeftAt"/> is null)
+    /// <see cref="TeamMemberRole.Coordinator"/> on a non-system team
+    /// (<see cref="Team.SystemTeamType"/> == <see cref="SystemTeamType.None"/>).
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetActiveNonSystemTeamCoordinatorUserIdsAsync(
+        CancellationToken ct = default);
+
     /// <summary>Inserts a new join request.</summary>
     Task AddRequestAsync(TeamJoinRequest request, CancellationToken ct = default);
 

@@ -633,6 +633,33 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
     public Task<int> GetPendingApplicationCountAsync(CancellationToken ct = default) =>
         _repository.CountByStatusAsync(ApplicationStatus.Submitted, ct);
 
+    public Task<IReadOnlyList<MemberApplication>> GetExpiringApplicationsNeedingReminderAsync(
+        LocalDate today, LocalDate reminderThreshold, CancellationToken ct = default) =>
+        _repository.GetExpiringApplicationsNeedingReminderAsync(today, reminderThreshold, ct);
+
+    public Task<IReadOnlySet<(Guid UserId, MembershipTier Tier)>> GetPendingApplicationUserTiersAsync(
+        CancellationToken ct = default) =>
+        _repository.GetPendingApplicationUserTiersAsync(ct);
+
+    public Task MarkRenewalReminderSentAsync(
+        Guid applicationId, Instant sentAt, CancellationToken ct = default) =>
+        _repository.MarkRenewalReminderSentAsync(applicationId, sentAt, ct);
+
+    public Task<IReadOnlyList<MemberApplication>> GetApprovedInWindowAsync(
+        Instant windowStart, Instant windowEnd, CancellationToken ct = default) =>
+        _repository.GetApprovedInWindowAsync(windowStart, windowEnd, ct);
+
+    public Task<IReadOnlyList<Guid>> GetSubmittedApplicationIdsAsync(
+        CancellationToken ct = default) =>
+        _repository.GetSubmittedApplicationIdsAsync(ct);
+
+    public Task<int> GetUnvotedCountForBoardMemberAmongApplicationsAsync(
+        Guid boardMemberUserId,
+        IReadOnlyCollection<Guid> applicationIds,
+        CancellationToken ct = default) =>
+        _repository.GetUnvotedCountForBoardMemberAmongApplicationsAsync(
+            boardMemberUserId, applicationIds, ct);
+
     public async Task UpdateDraftApplicationAsync(
         Guid applicationId, MembershipTier tier, string motivation,
         string? additionalInfo, string? significantContribution, string? roleUnderstanding,
