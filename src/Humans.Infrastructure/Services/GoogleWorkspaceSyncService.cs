@@ -19,6 +19,7 @@ using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 
 namespace Humans.Infrastructure.Services;
@@ -34,6 +35,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     private readonly IClock _clock;
     private readonly IAuditLogService _auditLogService;
     private readonly ISyncSettingsService _syncSettingsService;
+    private readonly IGoogleSyncOutboxRepository _googleSyncOutboxRepository;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<GoogleWorkspaceSyncService> _logger;
 
@@ -55,6 +57,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         IClock clock,
         IAuditLogService auditLogService,
         ISyncSettingsService syncSettingsService,
+        IGoogleSyncOutboxRepository googleSyncOutboxRepository,
         IServiceProvider serviceProvider,
         ILogger<GoogleWorkspaceSyncService> logger)
     {
@@ -64,6 +67,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         _clock = clock;
         _auditLogService = auditLogService;
         _syncSettingsService = syncSettingsService;
+        _googleSyncOutboxRepository = googleSyncOutboxRepository;
         _serviceProvider = serviceProvider;
         _logger = logger;
     }
@@ -2540,10 +2544,11 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         return correctedCount;
     }
 
-    public async Task<int> GetFailedSyncEventCountAsync(CancellationToken cancellationToken = default)
+    public Task<int> GetFailedSyncEventCountAsync(CancellationToken cancellationToken = default)
     {
-        return await _dbContext.GoogleSyncOutboxEvents
-            .CountAsync(e => e.ProcessedAt == null && e.LastError != null, cancellationToken);
+        // Routed through the outbox repository so this method is the only
+        // caller-visible path; design-rules §2c. Part 1 of issue #554.
+        return _googleSyncOutboxRepository.CountFailedAsync(cancellationToken);
     }
 
     /// <summary>

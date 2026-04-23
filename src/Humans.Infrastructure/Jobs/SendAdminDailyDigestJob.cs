@@ -4,6 +4,7 @@ using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -26,6 +27,7 @@ public class SendAdminDailyDigestJob : IRecurringJob
     private readonly IEmailService _emailService;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IHumansMetrics _metrics;
+    private readonly IGoogleSyncOutboxRepository _googleSyncOutboxRepository;
     private readonly ILogger<SendAdminDailyDigestJob> _logger;
     private readonly IClock _clock;
 
@@ -34,6 +36,7 @@ public class SendAdminDailyDigestJob : IRecurringJob
         IEmailService emailService,
         IMembershipCalculator membershipCalculator,
         IHumansMetrics metrics,
+        IGoogleSyncOutboxRepository googleSyncOutboxRepository,
         ILogger<SendAdminDailyDigestJob> logger,
         IClock clock)
     {
@@ -41,6 +44,7 @@ public class SendAdminDailyDigestJob : IRecurringJob
         _emailService = emailService;
         _membershipCalculator = membershipCalculator;
         _metrics = metrics;
+        _googleSyncOutboxRepository = googleSyncOutboxRepository;
         _logger = logger;
         _clock = clock;
     }
@@ -94,17 +98,17 @@ public class SendAdminDailyDigestJob : IRecurringJob
             var boardVotingTotal = await _dbContext.Applications
                 .CountAsync(a => a.Status == ApplicationStatus.Submitted, cancellationToken);
 
-            // Stale Google sync outbox events (unprocessed with errors, excluding permanent failures)
-            var failedSyncEvents = await _dbContext.GoogleSyncOutboxEvents
-                .CountAsync(e => e.ProcessedAt == null && e.LastError != null && !e.FailedPermanently, cancellationToken);
+            // Stale Google sync outbox events (unprocessed with errors, excluding permanent failures).
+            // Routed through the repository so this job doesn't read google_sync_outbox_events
+            // directly (issue #554 Part 1, design-rules §2c).
+            var failedSyncEvents = await _googleSyncOutboxRepository.CountStaleAsync(cancellationToken);
 
             // Permanent Google sync failures — count distinct users with rejected email status
             var permanentSyncFailures = await _dbContext.Users
                 .CountAsync(u => u.GoogleEmailStatus == GoogleEmailStatus.Rejected, cancellationToken);
 
-            // Transient retries (still being retried, have errors but not permanent)
-            var transientSyncRetries = await _dbContext.GoogleSyncOutboxEvents
-                .CountAsync(e => e.ProcessedAt == null && !e.FailedPermanently && e.RetryCount > 0, cancellationToken);
+            // Transient retries (still being retried, have errors but not permanent) — via repo.
+            var transientSyncRetries = await _googleSyncOutboxRepository.CountTransientRetriesAsync(cancellationToken);
 
             // Ticket sync status
             var ticketSyncState = await _dbContext.TicketSyncStates.FindAsync([1], cancellationToken);

@@ -35,6 +35,12 @@ internal static class GoogleWorkspaceInfrastructureExtensions
         // Team-resource repository is Singleton (IDbContextFactory-based per §15b).
         services.AddSingleton<IGoogleResourceRepository, GoogleResourceRepository>();
 
+        // Google sync outbox repository (issue #554 Part 1) — exposes narrow
+        // count queries so Notifications / Metrics / Admin-digest consumers
+        // don't read google_sync_outbox_events directly. Singleton via
+        // IDbContextFactory per §15b.
+        services.AddSingleton<IGoogleSyncOutboxRepository, GoogleSyncOutboxRepository>();
+
         // Application-layer service uses the same repo + one of the two Google
         // connector implementations below. Stub connector is used when no
         // service-account credentials are configured (dev only).

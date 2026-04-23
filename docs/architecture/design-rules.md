@@ -594,7 +594,7 @@ Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`
   - **Onboarding** — migrated in PR #285 (issue #553) — `OnboardingService` now lives in `Humans.Application.Services.Onboarding`. It owns no tables and orchestrates Profiles, Legal, and Teams via their public service interfaces.
   - **Shifts (partial, #541)** — `ShiftManagementService`, `ShiftSignupService`, and `GeneralAvailabilityService` now live in `Humans.Application.Services.Shifts`, going through `IShiftManagementRepository`, `IShiftSignupRepository`, and `IGeneralAvailabilityRepository`. §15 NEW-B (ShiftAuthorization cache invalidation on profile mutation) remains open — tracked in issue #541.
   - **Tickets (partial, #545)** — `TicketQueryService`, `TicketSyncService`, and `TicketingBudgetService` now live in `Humans.Application.Services.Tickets`, going through `ITicketRepository` and `ITicketingBudgetRepository`. The Ticket Tailor API side of `TicketSyncService` is structurally separated via the `ITicketVendorService` connector (PR #277). Pending upstream promotion to nobodies-collective/Humans.
-  - **Google Workspace (partial, #554)** — `GoogleAdminService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, and `EmailProvisioningService` migrated in PR #267 (issue #289) and now live in `Humans.Application.Services.GoogleIntegration`. `GoogleWorkspaceSyncService` remains in `Humans.Infrastructure/Services/` (still injects `HumansDbContext` directly) — its migration is the remaining #554 work item.
+  - **Google Workspace (partial, #554)** — `GoogleAdminService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, and `EmailProvisioningService` migrated in PR #267 (issue #289) and now live in `Humans.Application.Services.GoogleIntegration`. `GoogleWorkspaceSyncService` remains in `Humans.Infrastructure/Services/` (still injects `HumansDbContext` and `IDbContextFactory<HumansDbContext>` directly, plus imports `Google.Apis.*` SDK namespaces). **Part 1 of #554 (2026-04-23):** `IGoogleSyncOutboxRepository` extracted — `google_sync_outbox_events` now has a dedicated repository for the count queries used by `NotificationMeterProvider`, `HumansMetricsService`, `SendAdminDailyDigestJob`, and the notification-meter path in `GoogleWorkspaceSyncService.GetFailedSyncEventCountAsync`. **Part 2 (remaining):** split the Google SDK surface into bridges (`IGoogleDirectoryClient`, `IGoogleDriveClient`, `IGoogleGroupsClient`, `IGoogleGroupSettingsClient`); strip `HumansDbContext`/`IDbContextFactory` from `GoogleWorkspaceSyncService`; route cross-domain reads (`TeamMembers.Include(User)`, `Users`, `UserEmails`, `Teams`) through sibling service interfaces; move the service to `Humans.Application.Services.GoogleIntegration`. This is the largest remaining §15 migration in the codebase.
 - **Cross-domain `.Include()` calls** remain concentrated in `TeamService` and `GoogleWorkspaceSyncService` (both still in Infrastructure). The Application layer is clean — 0 `.Include()` calls across all Application-layer services. Target: 0 everywhere.
   - Includes fully removed from the service layer in these sections:
     - Profile
@@ -611,7 +611,7 @@ Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`
     - Tickets
     - Google Workspace (all Application-layer services; `GoogleWorkspaceSyncService` in Infrastructure still has includes)
   - **User section's PR #243 landed the Application-layer move but deferred the nav-strip** — cross-domain nav reads via `user.UserEmails`, `user.Profile`, `user.TeamMemberships`, `user.GetEffectiveEmail()` still exist in `TeamService`, `GoogleWorkspaceSyncService`, `SendBoardDailyDigestJob`, `SyncLegalDocumentsJob`, `SystemTeamSyncJob`, `SuspendNonCompliantMembersJob`, `ProfileController`. Tracked as a follow-up.
-- **26 repositories** exist today. Target: one per domain (~20 total, some sections need two):
+- **27 repositories** exist today. Target: one per domain (~20 total, some sections need two):
   - `AccountMergeRepository`
   - `ApplicationRepository`
   - `AuditLogRepository`
@@ -627,6 +627,7 @@ Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`
   - `FeedbackRepository`
   - `GeneralAvailabilityRepository`
   - `GoogleResourceRepository`
+  - `GoogleSyncOutboxRepository`
   - `LegalDocumentRepository`
   - `NotificationRepository`
   - `ProfileRepository`
