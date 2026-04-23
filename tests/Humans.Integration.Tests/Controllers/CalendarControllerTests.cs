@@ -18,32 +18,29 @@ public class CalendarControllerTests : IntegrationTestBase
         resp.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found, HttpStatusCode.Unauthorized);
     }
 
-    [Fact(Skip = "Integration fixture needs fully-onboarded persona seeder — tracked in nobodies-collective/Humans#573. Bare dev-login personas hit the onboarding/consent gate and get 302'd off /Calendar.")]
+    [Fact]
     public async Task LoggedIn_Volunteer_can_GET_Calendar()
     {
-        // 1) Sign in as a bare volunteer via dev-login (sets auth cookie).
-        var loginResp = await Client.GetAsync("/dev/login/volunteer");
-        loginResp.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found, HttpStatusCode.OK);
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 
-        // 2) Hit the month view — should render 200.
         var resp = await Client.GetAsync("/Calendar");
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    [Fact(Skip = "Integration fixture needs fully-onboarded persona seeder — tracked in nobodies-collective/Humans#573.")]
+    [Fact]
     public async Task LoggedIn_Volunteer_can_GET_Create()
     {
         // Calendar editing is open to any authenticated human; changes are audited.
-        await Client.GetAsync("/dev/login/volunteer");
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 
         var resp = await Client.GetAsync("/Calendar/Event/Create");
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    [Fact(Skip = "Integration fixture needs fully-onboarded persona seeder — tracked in nobodies-collective/Humans#573.")]
+    [Fact]
     public async Task LoggedIn_Admin_GET_Agenda_renders()
     {
-        await Client.GetAsync("/dev/login/admin");
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
         var resp = await Client.GetAsync("/Calendar/Agenda");
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
