@@ -414,4 +414,8 @@ public sealed class UserService : IUserService, IUserDataContributor
 
         return null;
     }
+
+    public Task<IReadOnlyList<(Guid UserId, string DisplayName, string GoogleEmail)>>
+        BackfillNobodiesTeamGoogleEmailsAsync(CancellationToken ct = default) =>
+        _repo.BackfillNobodiesTeamGoogleEmailsAsync(ct);
 }

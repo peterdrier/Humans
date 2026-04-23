@@ -669,4 +669,43 @@ public sealed class UserRepository : IUserRepository
         await ctx.SaveChangesAsync(ct);
         return count;
     }
+
+    public async Task<IReadOnlyList<(Guid UserId, string DisplayName, string GoogleEmail)>>
+        BackfillNobodiesTeamGoogleEmailsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        var usersToFix = await ctx.Users
+            .Where(u => u.GoogleEmail == null
+                && ctx.UserEmails.Any(ue =>
+                    ue.UserId == u.Id
+                    && ue.IsVerified
+                    && EF.Functions.ILike(ue.Email, "%@nobodies.team")))
+            .ToListAsync(ct);
+
+        var result = new List<(Guid UserId, string DisplayName, string GoogleEmail)>(usersToFix.Count);
+
+        foreach (var user in usersToFix)
+        {
+            var nobodiesEmail = await ctx.UserEmails
+                .Where(ue => ue.UserId == user.Id
+                    && ue.IsVerified
+                    && EF.Functions.ILike(ue.Email, "%@nobodies.team"))
+                .Select(ue => ue.Email)
+                .FirstOrDefaultAsync(ct);
+
+            if (nobodiesEmail is not null)
+            {
+                user.GoogleEmail = nobodiesEmail;
+                result.Add((user.Id, user.DisplayName, nobodiesEmail));
+            }
+        }
+
+        if (result.Count > 0)
+        {
+            await ctx.SaveChangesAsync(ct);
+        }
+
+        return result;
+    }
 }

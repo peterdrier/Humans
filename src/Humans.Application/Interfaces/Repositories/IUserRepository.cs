@@ -329,6 +329,17 @@ public interface IUserRepository
         int year,
         IReadOnlyList<(Guid UserId, ParticipationStatus Status)> entries,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// For each user whose <see cref="User.GoogleEmail"/> is currently null
+    /// but who has a verified <see cref="UserEmail"/> row whose address ends
+    /// in <c>@nobodies.team</c>, set <c>User.GoogleEmail</c> to that verified
+    /// address. Persists in a single save. Returns one descriptor per
+    /// mutated user so the caller can emit audit entries without reloading.
+    /// Used by the system team sync's backfill pass.
+    /// </summary>
+    Task<IReadOnlyList<(Guid UserId, string DisplayName, string GoogleEmail)>>
+        BackfillNobodiesTeamGoogleEmailsAsync(CancellationToken ct = default);
 }
 
 /// <summary>

@@ -1254,4 +1254,154 @@ public sealed class TeamRepository : ITeamRepository
             .OrderByDescending(tjr => tjr.RequestedAt)
             .ToListAsync(ct);
     }
+
+    // ==========================================================================
+    // System team sync support (issue #570 — §15 Google-writing jobs)
+    // ==========================================================================
+
+    public async Task<Team?> GetSystemTeamWithActiveMembersAsync(
+        SystemTeamType type, CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        return await db.Teams
+            .AsNoTracking()
+            .Include(t => t.Members.Where(m => m.LeftAt == null))
+            .FirstOrDefaultAsync(t => t.SystemTeamType == type, ct);
+    }
+
+    public async Task<IReadOnlyList<TeamMember>> GetActiveMembershipsForRoleReconciliationAsync(
+        CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        return await db.TeamMembers
+            .AsNoTracking()
+            .Include(tm => tm.Team)
+            .Include(tm => tm.RoleAssignments)
+                .ThenInclude(ra => ra.TeamRoleDefinition)
+            .Where(tm => tm.LeftAt == null)
+            .ToListAsync(ct);
+    }
+
+    public async Task<int> ApplyMemberRoleChangesAsync(
+        IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes,
+        CancellationToken ct = default)
+    {
+        if (changes.Count == 0)
+            return 0;
+
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        var ids = changes.Select(c => c.TeamMemberId).ToList();
+        var members = await db.TeamMembers
+            .Where(tm => ids.Contains(tm.Id) && tm.LeftAt == null)
+            .ToListAsync(ct);
+
+        var targetRoleById = changes.ToDictionary(c => c.TeamMemberId, c => c.Role);
+
+        var updated = 0;
+        foreach (var member in members)
+        {
+            if (targetRoleById.TryGetValue(member.Id, out var newRole) && member.Role != newRole)
+            {
+                member.Role = newRole;
+                updated++;
+            }
+        }
+
+        if (updated > 0)
+        {
+            await db.SaveChangesAsync(ct);
+        }
+
+        return updated;
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetActiveDepartmentCoordinatorUserIdsAsync(
+        CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        return await db.TeamMembers
+            .AsNoTracking()
+            .Where(tm =>
+                tm.LeftAt == null &&
+                tm.Role == TeamMemberRole.Coordinator &&
+                tm.Team.SystemTeamType == SystemTeamType.None &&
+                tm.Team.ParentTeamId == null)
+            .Select(tm => tm.UserId)
+            .Distinct()
+            .ToListAsync(ct);
+    }
+
+    public async Task<bool> IsActiveDepartmentCoordinatorAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        return await db.TeamMembers
+            .AsNoTracking()
+            .AnyAsync(tm =>
+                tm.UserId == userId &&
+                tm.LeftAt == null &&
+                tm.Role == TeamMemberRole.Coordinator &&
+                tm.Team.SystemTeamType == SystemTeamType.None &&
+                tm.Team.ParentTeamId == null,
+                ct);
+    }
+
+    public async Task<bool> ApplySystemTeamMembershipDeltaAsync(
+        Guid teamId,
+        IReadOnlyCollection<Guid> userIdsToAdd,
+        IReadOnlyCollection<Guid> userIdsToRemove,
+        Instant now,
+        CancellationToken ct = default)
+    {
+        if (userIdsToAdd.Count == 0 && userIdsToRemove.Count == 0)
+            return false;
+
+        await using var db = await _factory.CreateDbContextAsync(ct);
+
+        // Inserts
+        foreach (var userId in userIdsToAdd)
+        {
+            db.TeamMembers.Add(new TeamMember
+            {
+                Id = Guid.NewGuid(),
+                TeamId = teamId,
+                UserId = userId,
+                Role = TeamMemberRole.Member,
+                JoinedAt = now,
+            });
+        }
+
+        // Soft-removes: load active memberships for the users being removed,
+        // also eager-load their TeamRoleAssignments so EF cascades the delete.
+        if (userIdsToRemove.Count > 0)
+        {
+            var removeIds = userIdsToRemove is IList<Guid> list
+                ? list
+                : userIdsToRemove.ToList();
+            var members = await db.TeamMembers
+                .Include(tm => tm.RoleAssignments)
+                .Where(tm => tm.TeamId == teamId && tm.LeftAt == null && removeIds.Contains(tm.UserId))
+                .ToListAsync(ct);
+
+            foreach (var member in members)
+            {
+                // Clean up role slot assignments before ending the membership.
+                if (member.RoleAssignments.Count > 0)
+                {
+                    db.Set<TeamRoleAssignment>().RemoveRange(member.RoleAssignments);
+                }
+                member.LeftAt = now;
+            }
+        }
+
+        // Bump Team.UpdatedAt so the cached projection refresh picks up the change.
+        var team = await db.Teams.FirstOrDefaultAsync(t => t.Id == teamId, ct);
+        if (team is not null)
+        {
+            team.UpdatedAt = now;
+        }
+
+        await db.SaveChangesAsync(ct);
+        return true;
+    }
 }

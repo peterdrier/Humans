@@ -1,4 +1,5 @@
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Application;
 using NodaTime;
 
@@ -177,6 +178,24 @@ public interface IProfileRepository
         IReadOnlyCollection<Guid> userIds,
         Instant now,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// For every profile whose <see cref="Profile.MembershipTier"/> equals
+    /// <paramref name="currentTier"/> and whose <c>UserId</c> is NOT in
+    /// <paramref name="userIdsToKeep"/>, downgrades the tier to the value
+    /// supplied by <paramref name="fallbackTierByUser"/> (defaulting to
+    /// <see cref="MembershipTier.Volunteer"/> when the user is absent).
+    /// Stamps <see cref="Profile.UpdatedAt"/> and persists. Returns a list
+    /// of (UserId, NewTier) tuples for audit logging. Used by the system
+    /// team sync's tier-downgrade pass.
+    /// </summary>
+    Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>>
+        DowngradeTierForExpiredAsync(
+            MembershipTier currentTier,
+            IReadOnlyCollection<Guid> userIdsToKeep,
+            IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
+            Instant now,
+            CancellationToken ct = default);
 
     /// <summary>
     /// Reconciles the CV-entry collection for the given profile with the

@@ -1,36 +1,48 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Application.Extensions;
-using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Constants;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Humans.Application.DTOs;
-using Humans.Infrastructure.Data;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Governance;
-
-// Cross-domain nav reads (TeamMember.User, TeamJoinRequest.User, etc.) are
-// scheduled for removal per design-rules §6c, but SystemTeamSyncJob still
-// lives in Infrastructure and reads TeamMember.User directly (§15i — Google
-// Workspace / SystemTeamSync row). This file-wide pragma is cleared when the
-// job migrates to Application alongside the User-entity nav strip.
-#pragma warning disable CS0618
+using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
+using Humans.Domain.Constants;
+using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 
 namespace Humans.Infrastructure.Jobs;
 
 /// <summary>
 /// Background job that syncs membership for system-managed teams.
 /// </summary>
+/// <remarks>
+/// All reads/writes fan out through section services
+/// (<see cref="ITeamService"/>, <see cref="IUserService"/>,
+/// <see cref="IProfileService"/>, <see cref="IApplicationDecisionService"/>,
+/// <see cref="IRoleAssignmentService"/>, <see cref="ITeamResourceService"/>,
+/// <see cref="ICampRepository"/>) so the job never touches
+/// <see cref="Humans.Infrastructure.Data.HumansDbContext"/> directly
+/// (design-rules §2c). Cross-cutting cache invalidation routes through
+/// invalidator interfaces
+/// (<see cref="IActiveTeamsCacheInvalidator"/>,
+/// <see cref="IRoleAssignmentClaimsCacheInvalidator"/>) rather than
+/// IMemoryCache.
+/// </remarks>
 public class SystemTeamSyncJob : ISystemTeamSync
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly ITeamService _teamService;
+    private readonly IUserService _userService;
+    private readonly IProfileService _profileService;
+    private readonly IApplicationDecisionService _applicationDecisionService;
+    private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly ITeamResourceService _teamResourceService;
     private readonly ICampRepository _campRepository;
     // IMembershipCalculator is resolved lazily via IServiceProvider to break a
     // DI cycle: TeamService and RoleAssignmentService inject ISystemTeamSync,
@@ -42,30 +54,43 @@ public class SystemTeamSyncJob : ISystemTeamSync
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IAuditLogService _auditLogService;
     private readonly IEmailService _emailService;
-    private readonly IMemoryCache _cache;
+    private readonly IActiveTeamsCacheInvalidator _activeTeamsInvalidator;
+    private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator;
     private readonly IHumansMetrics _metrics;
     private readonly ILogger<SystemTeamSyncJob> _logger;
     private readonly IClock _clock;
 
     public SystemTeamSyncJob(
-        HumansDbContext dbContext,
+        ITeamService teamService,
+        IUserService userService,
+        IProfileService profileService,
+        IApplicationDecisionService applicationDecisionService,
+        IRoleAssignmentService roleAssignmentService,
+        ITeamResourceService teamResourceService,
         ICampRepository campRepository,
         IServiceProvider serviceProvider,
         IGoogleSyncService googleSyncService,
         IAuditLogService auditLogService,
         IEmailService emailService,
-        IMemoryCache cache,
+        IActiveTeamsCacheInvalidator activeTeamsInvalidator,
+        IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
         IHumansMetrics metrics,
         ILogger<SystemTeamSyncJob> logger,
         IClock clock)
     {
-        _dbContext = dbContext;
+        _teamService = teamService;
+        _userService = userService;
+        _profileService = profileService;
+        _applicationDecisionService = applicationDecisionService;
+        _roleAssignmentService = roleAssignmentService;
+        _teamResourceService = teamResourceService;
         _campRepository = campRepository;
         _serviceProvider = serviceProvider;
         _googleSyncService = googleSyncService;
         _auditLogService = auditLogService;
         _emailService = emailService;
-        _cache = cache;
+        _activeTeamsInvalidator = activeTeamsInvalidator;
+        _roleAssignmentClaimsInvalidator = roleAssignmentClaimsInvalidator;
         _metrics = metrics;
         _logger = logger;
         _clock = clock;
@@ -84,9 +109,12 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
         try
         {
-            // These run sequentially because they share the same DbContext instance,
-            // which is not thread-safe. Parallelizing with Task.WhenAll would require
-            // IServiceScopeFactory to create separate DbContext instances per task.
+            // These run sequentially to match the pre-migration behavior where
+            // every step shared a single DbContext. Now each step calls
+            // section services that own their own unit-of-work — the
+            // sequential ordering still matters for downstream audit/notification
+            // semantics (e.g. coordinator reconciliation must land before the
+            // Coordinators-team sync).
             await SyncVolunteersTeamAsync(report, cancellationToken);
             await ReconcileCoordinatorRolesAsync(report, cancellationToken);
             await SyncCoordinatorsTeamAsync(report, cancellationToken);
@@ -119,64 +147,69 @@ public class SystemTeamSyncJob : ISystemTeamSync
         _logger.LogDebug("Reconciling coordinator roles with IsManagement assignments");
         var step = new SyncStepResult("Coordinator Role Reconciliation");
 
-        // Find all active team members who are assigned to an IsManagement role but have Role = Member
-        var shouldBeCoordinator = await _dbContext.TeamMembers
-            .Include(tm => tm.User)
-            .Include(tm => tm.RoleAssignments)
-                .ThenInclude(ra => ra.TeamRoleDefinition)
+        // Load active memberships with role assignments + role definitions +
+        // team metadata so we can decide promote / demote in memory without
+        // touching DbContext.
+        var memberships = await _teamService
+            .GetActiveMembershipsForRoleReconciliationAsync(cancellationToken);
+
+        var shouldBeCoordinator = memberships
             .Where(tm =>
-                tm.LeftAt == null &&
                 tm.Role == TeamMemberRole.Member &&
                 tm.RoleAssignments.Any(ra => ra.TeamRoleDefinition.IsManagement))
-            .ToListAsync(cancellationToken);
+            .ToList();
 
-        foreach (var member in shouldBeCoordinator)
-        {
-            member.Role = TeamMemberRole.Coordinator;
-            var teamName = await _dbContext.Teams
-                .Where(t => t.Id == member.TeamId)
-                .Select(t => t.Name)
-                .FirstOrDefaultAsync(cancellationToken) ?? "Unknown";
-
-            step.Fixed(member.UserId, member.User.DisplayName, $"Promoted to Coordinator on {teamName}");
-
-            _logger.LogInformation(
-                "Reconciled {UserName} to Coordinator on team {TeamId} (had IsManagement role assignment)",
-                member.User.DisplayName, member.TeamId);
-        }
-
-        // Find all active team members who have Role = Coordinator but no IsManagement role assignment
-        var shouldBeMember = await _dbContext.TeamMembers
-            .Include(tm => tm.User)
-            .Include(tm => tm.RoleAssignments)
-                .ThenInclude(ra => ra.TeamRoleDefinition)
+        var shouldBeMember = memberships
             .Where(tm =>
-                tm.LeftAt == null &&
                 tm.Role == TeamMemberRole.Coordinator &&
                 tm.Team.SystemTeamType == SystemTeamType.None &&
                 !tm.RoleAssignments.Any(ra => ra.TeamRoleDefinition.IsManagement))
-            .ToListAsync(cancellationToken);
+            .ToList();
+
+        if (shouldBeCoordinator.Count == 0 && shouldBeMember.Count == 0)
+        {
+            report?.Steps.Add(step);
+            return;
+        }
+
+        // Stitch user display names for step-result audit output.
+        var affectedUserIds = shouldBeCoordinator.Select(tm => tm.UserId)
+            .Concat(shouldBeMember.Select(tm => tm.UserId))
+            .Distinct()
+            .ToList();
+        var userNamesById = await _userService.GetByIdsAsync(affectedUserIds, cancellationToken);
+
+        var changes = new List<(Guid TeamMemberId, TeamMemberRole Role)>(
+            shouldBeCoordinator.Count + shouldBeMember.Count);
+
+        foreach (var member in shouldBeCoordinator)
+        {
+            changes.Add((member.Id, TeamMemberRole.Coordinator));
+            var userName = userNamesById.TryGetValue(member.UserId, out var u)
+                ? u.DisplayName : member.UserId.ToString();
+            var teamName = member.Team.Name;
+            step.Fixed(member.UserId, userName, $"Promoted to Coordinator on {teamName}");
+            _logger.LogInformation(
+                "Reconciled {UserName} to Coordinator on team {TeamId} (had IsManagement role assignment)",
+                userName, member.TeamId);
+        }
 
         foreach (var member in shouldBeMember)
         {
-            member.Role = TeamMemberRole.Member;
-            var teamName = await _dbContext.Teams
-                .Where(t => t.Id == member.TeamId)
-                .Select(t => t.Name)
-                .FirstOrDefaultAsync(cancellationToken) ?? "Unknown";
-
-            step.Fixed(member.UserId, member.User.DisplayName, $"Demoted to Member on {teamName} (no IsManagement role)");
-
+            changes.Add((member.Id, TeamMemberRole.Member));
+            var userName = userNamesById.TryGetValue(member.UserId, out var u)
+                ? u.DisplayName : member.UserId.ToString();
+            var teamName = member.Team.Name;
+            step.Fixed(member.UserId, userName, $"Demoted to Member on {teamName} (no IsManagement role)");
             _logger.LogInformation(
                 "Reconciled {UserName} to Member on team {TeamId} (no IsManagement role assignment)",
-                member.User.DisplayName, member.TeamId);
+                userName, member.TeamId);
         }
 
-        if (shouldBeCoordinator.Count > 0 || shouldBeMember.Count > 0)
-        {
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            _cache.InvalidateActiveTeams();
-        }
+        // Apply all role changes in a single save through the Teams section.
+        // The service invalidates the ActiveTeams cache when at least one
+        // change lands, so no direct cache call here.
+        await _teamService.ApplyMemberRoleChangesAsync(changes, cancellationToken);
 
         report?.Steps.Add(step);
     }
@@ -190,7 +223,8 @@ public class SystemTeamSyncJob : ISystemTeamSync
         _logger.LogDebug("Syncing Volunteers team");
         var step = new SyncStepResult("Volunteers");
 
-        var team = await GetSystemTeamAsync(SystemTeamType.Volunteers, cancellationToken);
+        var team = await _teamService.GetSystemTeamWithActiveMembersAsync(
+            SystemTeamType.Volunteers, cancellationToken);
         if (team is null)
         {
             _logger.LogWarning("Volunteers system team not found");
@@ -198,14 +232,11 @@ public class SystemTeamSyncJob : ISystemTeamSync
             return;
         }
 
-        // Get all users with profiles that are approved and not suspended
-        var allApprovedIds = await _dbContext.Profiles
-            .AsNoTracking()
-            .Where(p => p.IsApproved && !p.IsSuspended)
-            .Select(p => p.UserId)
-            .ToListAsync(cancellationToken);
+        // All users with profiles that are approved and not suspended.
+        var allApprovedIds = await _profileService.GetActiveApprovedUserIdsAsync(cancellationToken);
 
-        // Use shared partition to determine eligibility (Active = approved + not suspended + all consents signed)
+        // Use shared partition to determine eligibility (Active = approved +
+        // not suspended + all consents signed).
         var partition = await MembershipCalculator.PartitionUsersAsync(allApprovedIds, cancellationToken);
         var eligibleUserIds = partition.Active.ToList();
 
@@ -222,7 +253,8 @@ public class SystemTeamSyncJob : ISystemTeamSync
         _logger.LogDebug("Syncing Coordinators team");
         var step = new SyncStepResult("Coordinators");
 
-        var team = await GetSystemTeamAsync(SystemTeamType.Coordinators, cancellationToken);
+        var team = await _teamService.GetSystemTeamWithActiveMembersAsync(
+            SystemTeamType.Coordinators, cancellationToken);
         if (team is null)
         {
             _logger.LogWarning("Coordinators system team not found");
@@ -230,19 +262,10 @@ public class SystemTeamSyncJob : ISystemTeamSync
             return;
         }
 
-        // Get all current department coordinators (sub-team managers are excluded)
-        var leadUserIds = await _dbContext.TeamMembers
-            .AsNoTracking()
-            .Where(tm =>
-                tm.LeftAt == null &&
-                tm.Role == TeamMemberRole.Coordinator &&
-                tm.Team.SystemTeamType == SystemTeamType.None &&
-                tm.Team.ParentTeamId == null) // Only department coordinators, not sub-team managers
-            .Select(tm => tm.UserId)
-            .Distinct()
-            .ToListAsync(cancellationToken);
+        // Department-level coordinators only (sub-team managers excluded).
+        var leadUserIds = await _teamService.GetActiveDepartmentCoordinatorUserIdsAsync(cancellationToken);
 
-        // Additionally filter by Coordinators-team-required consents
+        // Additionally filter by Coordinators-team-required consents.
         var eligibleSet = await MembershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
             leadUserIds, SystemTeamIds.Coordinators, cancellationToken);
 
@@ -259,7 +282,8 @@ public class SystemTeamSyncJob : ISystemTeamSync
         _logger.LogDebug("Syncing Board team");
         var step = new SyncStepResult("Board");
 
-        var team = await GetSystemTeamAsync(SystemTeamType.Board, cancellationToken);
+        var team = await _teamService.GetSystemTeamWithActiveMembersAsync(
+            SystemTeamType.Board, cancellationToken);
         if (team is null)
         {
             _logger.LogWarning("Board system team not found");
@@ -267,20 +291,11 @@ public class SystemTeamSyncJob : ISystemTeamSync
             return;
         }
 
-        var now = _clock.GetCurrentInstant();
+        // Users with active Board role assignment (service reads the clock).
+        var boardMemberIds = await _roleAssignmentService.GetActiveUserIdsInRoleAsync(
+            RoleNames.Board, cancellationToken);
 
-        // Get all users with active Board role assignment
-        var boardMemberIds = await _dbContext.RoleAssignments
-            .AsNoTracking()
-            .Where(ra =>
-                ra.RoleName == RoleNames.Board &&
-                ra.ValidFrom <= now &&
-                (ra.ValidTo == null || ra.ValidTo > now))
-            .Select(ra => ra.UserId)
-            .Distinct()
-            .ToListAsync(cancellationToken);
-
-        // Additionally filter by Board-team-required consents
+        // Additionally filter by Board-team-required consents.
         var eligibleSet = await MembershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
             boardMemberIds, SystemTeamIds.Board, cancellationToken);
 
@@ -308,7 +323,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         _logger.LogDebug("Syncing {TeamType} team", teamType);
         var step = new SyncStepResult(teamType.ToString());
 
-        var team = await GetSystemTeamAsync(teamType, cancellationToken);
+        var team = await _teamService.GetSystemTeamWithActiveMembersAsync(teamType, cancellationToken);
         if (team is null)
         {
             _logger.LogWarning("{TeamType} system team not found", teamType);
@@ -318,78 +333,43 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
         var today = _clock.GetCurrentInstant().InUtc().Date;
 
-        var applicationUserIds = await _dbContext.Applications
-            .AsNoTracking()
-            .Where(a => a.Status == ApplicationStatus.Approved
-                && a.MembershipTier == tier
-                && (a.TermExpiresAt == null || a.TermExpiresAt >= today))
-            .Select(a => a.UserId)
-            .Distinct()
-            .ToListAsync(cancellationToken);
+        var applicationUserIds = await _applicationDecisionService
+            .GetActiveApprovedTierUserIdsAsync(tier, today, cancellationToken);
 
-        // Filter by profile status to match per-user sync behavior
-        var userIds = await _dbContext.Profiles
-            .AsNoTracking()
-            .Where(p => applicationUserIds.Contains(p.UserId) && p.IsApproved && !p.IsSuspended)
-            .Select(p => p.UserId)
-            .ToListAsync(cancellationToken);
+        // Filter by profile status to match per-user sync behavior.
+        var allApprovedIds = await _profileService.GetActiveApprovedUserIdsAsync(cancellationToken);
+        var approvedSet = allApprovedIds.ToHashSet();
+        var userIds = applicationUserIds.Where(approvedSet.Contains).ToList();
 
         var eligibleSet = await MembershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
             userIds, teamId, cancellationToken);
         var eligibleUserIds = eligibleSet.ToList();
 
-        // Downgrade Profile.MembershipTier for users who no longer have an active approved application for this tier.
-        // Before downgrading to Volunteer, check if the user holds an active application for the OTHER higher tier.
+        // Downgrade Profile.MembershipTier for users who no longer have an
+        // active approved application for this tier. Before downgrading to
+        // Volunteer, check if the user holds an active application for the
+        // OTHER higher tier.
         var todayInstant = _clock.GetCurrentInstant();
-        var usersWithOtherActiveTier = await _dbContext.Applications
-            .AsNoTracking()
-            .Where(a => a.Status == ApplicationStatus.Approved
-                && a.MembershipTier != tier
-                && a.MembershipTier != MembershipTier.Volunteer
-                && (a.TermExpiresAt == null || a.TermExpiresAt >= today))
-            .Select(a => new { a.UserId, a.MembershipTier })
-            .ToListAsync(cancellationToken);
-        var otherTierByUser = usersWithOtherActiveTier
-            .GroupBy(a => a.UserId)
-            .ToDictionary(g => g.Key, g => g.First().MembershipTier);
+        var otherTierByUser = await _applicationDecisionService
+            .GetOtherActiveTierAssignmentsAsync(tier, today, cancellationToken);
 
-        var toDowngrade = await _dbContext.Profiles
-            .Where(p => p.MembershipTier == tier && !applicationUserIds.Contains(p.UserId))
-            .ToListAsync(cancellationToken);
+        var downgrades = await _profileService.DowngradeTierForExpiredAsync(
+            tier, applicationUserIds, otherTierByUser, todayInstant, cancellationToken);
 
-        // Batch-load users for display names in audit log
-        var downgradeUserIds = toDowngrade.Select(p => p.UserId).ToList();
-        var downgradeUsersById = downgradeUserIds.Count > 0
-            ? await _dbContext.Users.AsNoTracking()
-                .Where(u => downgradeUserIds.Contains(u.Id))
-                .ToDictionaryAsync(u => u.Id, cancellationToken)
-            : new Dictionary<Guid, User>();
-
-        var downgradeAudits = new List<(Guid UserId, MembershipTier NewTier, string DisplayName)>();
-        foreach (var profile in toDowngrade)
+        if (downgrades.Count > 0)
         {
-            var newTier = otherTierByUser.TryGetValue(profile.UserId, out var otherTier)
-                ? otherTier
-                : MembershipTier.Volunteer;
-            profile.MembershipTier = newTier;
-            profile.UpdatedAt = todayInstant;
+            var downgradeUserIds = downgrades.Select(d => d.UserId).ToList();
+            var downgradeUsersById = await _userService.GetByIdsAsync(downgradeUserIds, cancellationToken);
 
-            var displayName = downgradeUsersById.TryGetValue(profile.UserId, out var u)
-                ? u.DisplayName : "Unknown";
-            downgradeAudits.Add((profile.UserId, newTier, displayName));
-        }
-
-        if (toDowngrade.Count > 0)
-        {
-            await _dbContext.SaveChangesAsync(cancellationToken);
-
-            foreach (var (auditUserId, newTier, displayName) in downgradeAudits)
+            foreach (var (downgradeUserId, newTier) in downgrades)
             {
+                var displayName = downgradeUsersById.TryGetValue(downgradeUserId, out var u)
+                    ? u.DisplayName : "Unknown";
                 await _auditLogService.LogAsync(
-                    AuditAction.TierDowngraded, nameof(Profile), auditUserId,
+                    AuditAction.TierDowngraded, nameof(Profile), downgradeUserId,
                     $"Membership tier changed to {newTier} for {displayName} due to {tier} term expiry",
                     nameof(SystemTeamSyncJob),
-                    relatedEntityId: auditUserId, relatedEntityType: nameof(User));
+                    relatedEntityId: downgradeUserId, relatedEntityType: nameof(User));
             }
         }
 
@@ -403,16 +383,16 @@ public class SystemTeamSyncJob : ISystemTeamSync
     /// </summary>
     public async Task SyncVolunteersMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var team = await GetSystemTeamAsync(SystemTeamType.Volunteers, cancellationToken);
+        var team = await _teamService.GetSystemTeamWithActiveMembersAsync(
+            SystemTeamType.Volunteers, cancellationToken);
         if (team is null)
         {
             _logger.LogWarning("Volunteers system team not found");
             return;
         }
 
-        var profile = await _dbContext.Profiles
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
+        var profiles = await _profileService.GetByUserIdsAsync([userId], cancellationToken);
+        profiles.TryGetValue(userId, out var profile);
 
         var isEligible = profile is { IsApproved: true, IsSuspended: false }
             && await MembershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, cancellationToken);
@@ -428,23 +408,15 @@ public class SystemTeamSyncJob : ISystemTeamSync
     /// </summary>
     public async Task SyncCoordinatorsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var team = await GetSystemTeamAsync(SystemTeamType.Coordinators, cancellationToken);
+        var team = await _teamService.GetSystemTeamWithActiveMembersAsync(
+            SystemTeamType.Coordinators, cancellationToken);
         if (team is null)
         {
             _logger.LogWarning("Coordinators system team not found");
             return;
         }
 
-        // Check if user is currently Coordinator of any department (sub-team managers excluded)
-        var isCoordinatorAnywhere = await _dbContext.TeamMembers
-            .AsNoTracking()
-            .AnyAsync(tm =>
-                tm.UserId == userId &&
-                tm.LeftAt == null &&
-                tm.Role == TeamMemberRole.Coordinator &&
-                tm.Team.SystemTeamType == SystemTeamType.None &&
-                tm.Team.ParentTeamId == null, // Only department coordinators
-                cancellationToken);
+        var isCoordinatorAnywhere = await _teamService.IsActiveDepartmentCoordinatorAsync(userId, cancellationToken);
 
         var isEligible = isCoordinatorAnywhere
             && await MembershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Coordinators, cancellationToken);
@@ -466,7 +438,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
     private async Task SyncTierMembershipForUserAsync(Guid userId, MembershipTier tier,
         SystemTeamType teamType, Guid teamId, CancellationToken cancellationToken)
     {
-        var team = await GetSystemTeamAsync(teamType, cancellationToken);
+        var team = await _teamService.GetSystemTeamWithActiveMembersAsync(teamType, cancellationToken);
         if (team is null)
         {
             _logger.LogWarning("{TeamType} system team not found", teamType);
@@ -475,18 +447,11 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
         var today = _clock.GetCurrentInstant().InUtc().Date;
 
-        var hasApprovedApp = await _dbContext.Applications
-            .AsNoTracking()
-            .AnyAsync(a =>
-                a.UserId == userId &&
-                a.Status == ApplicationStatus.Approved &&
-                a.MembershipTier == tier &&
-                (a.TermExpiresAt == null || a.TermExpiresAt >= today),
-                cancellationToken);
+        var hasApprovedApp = await _applicationDecisionService
+            .HasActiveApprovedTierAsync(userId, tier, today, cancellationToken);
 
-        var profile = await _dbContext.Profiles
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
+        var profiles = await _profileService.GetByUserIdsAsync([userId], cancellationToken);
+        profiles.TryGetValue(userId, out var profile);
 
         var isEligible = hasApprovedApp
             && profile is { IsApproved: true, IsSuspended: false }
@@ -505,7 +470,8 @@ public class SystemTeamSyncJob : ISystemTeamSync
         _logger.LogDebug("Syncing Barrio Leads team");
         var step = new SyncStepResult("Barrio Leads");
 
-        var team = await GetSystemTeamAsync(SystemTeamType.BarrioLeads, cancellationToken);
+        var team = await _teamService.GetSystemTeamWithActiveMembersAsync(
+            SystemTeamType.BarrioLeads, cancellationToken);
         if (team is null)
         {
             _logger.LogWarning("Barrio Leads system team not found");
@@ -526,7 +492,8 @@ public class SystemTeamSyncJob : ISystemTeamSync
     /// </summary>
     public async Task SyncBarrioLeadsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var team = await GetSystemTeamAsync(SystemTeamType.BarrioLeads, cancellationToken);
+        var team = await _teamService.GetSystemTeamWithActiveMembersAsync(
+            SystemTeamType.BarrioLeads, cancellationToken);
         if (team is null)
         {
             _logger.LogWarning("Barrio Leads system team not found");
@@ -535,19 +502,14 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
         var isLeadAnywhere = await _campRepository.IsLeadAnywhereAsync(userId, cancellationToken);
 
-        // Idempotency guard: if the user should be a member and already has an active
-        // team_members row, do nothing. This avoids unique-index violations
-        // (IX_team_members_active_unique) on the Barrio Leads team when the user is
-        // registering another camp and already has an active membership from a
-        // previous registration. Checks against the database directly rather than the
-        // filtered Include collection to be robust against any tracker staleness.
+        // Idempotency guard: if the user should be a member and already has an
+        // active team_members row, do nothing. This avoids unique-index
+        // violations (IX_team_members_active_unique) on the Barrio Leads team
+        // when the user is registering another camp and already has an active
+        // membership from a previous registration.
         if (isLeadAnywhere)
         {
-            var alreadyActive = await _dbContext.TeamMembers
-                .AsNoTracking()
-                .AnyAsync(
-                    tm => tm.TeamId == team.Id && tm.UserId == userId && tm.LeftAt == null,
-                    cancellationToken);
+            var alreadyActive = team.Members.Any(m => m.UserId == userId && m.LeftAt == null);
             if (alreadyActive)
             {
                 return;
@@ -566,45 +528,15 @@ public class SystemTeamSyncJob : ISystemTeamSync
     {
         var step = new SyncStepResult("Google Email Backfill");
 
-        var usersToFix = await _dbContext.Users
-            .Where(u => u.GoogleEmail == null
-                && _dbContext.UserEmails.Any(ue =>
-                    ue.UserId == u.Id
-                    && ue.IsVerified
-                    && EF.Functions.ILike(ue.Email, "%@nobodies.team")))
-            .ToListAsync(cancellationToken);
-
-        foreach (var user in usersToFix)
+        var backfilled = await _userService.BackfillNobodiesTeamGoogleEmailsAsync(cancellationToken);
+        foreach (var (userId, displayName, googleEmail) in backfilled)
         {
-            var nobodiesEmail = await _dbContext.UserEmails
-                .Where(ue => ue.UserId == user.Id
-                    && ue.IsVerified
-                    && EF.Functions.ILike(ue.Email, "%@nobodies.team"))
-                .Select(ue => ue.Email)
-                .FirstOrDefaultAsync(cancellationToken);
-
-            if (nobodiesEmail is not null)
-            {
-                user.GoogleEmail = nobodiesEmail;
-                step.Fixed(user.Id, user.DisplayName, $"Set GoogleEmail to {nobodiesEmail}");
-                _logger.LogInformation("Backfilled GoogleEmail for {User} to {Email}",
-                    user.DisplayName, nobodiesEmail);
-            }
-        }
-
-        if (usersToFix.Count > 0)
-        {
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            step.Fixed(userId, displayName, $"Set GoogleEmail to {googleEmail}");
+            _logger.LogInformation(
+                "Backfilled GoogleEmail for {User} to {Email}", displayName, googleEmail);
         }
 
         report?.Steps.Add(step);
-    }
-
-    private async Task<Team?> GetSystemTeamAsync(SystemTeamType systemTeamType, CancellationToken cancellationToken)
-    {
-        return await _dbContext.Teams
-            .Include(t => t.Members.Where(m => m.LeftAt == null))
-            .FirstOrDefaultAsync(t => t.SystemTeamType == systemTeamType, cancellationToken);
     }
 
     private async Task SyncTeamMembershipAsync(Team team, List<Guid> eligibleUserIds,
@@ -617,40 +549,39 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
         var eligibleSet = eligibleUserIds.ToHashSet();
 
-        // When syncing a single user, only evaluate that user (don't remove others)
-        var scopeIds = singleUserSync.HasValue ? new HashSet<Guid> { singleUserSync.Value } : currentMemberIds.Union(eligibleSet).ToHashSet();
+        // When syncing a single user, only evaluate that user (don't remove others).
+        var scopeIds = singleUserSync.HasValue
+            ? new HashSet<Guid> { singleUserSync.Value }
+            : currentMemberIds.Union(eligibleSet).ToHashSet();
 
-        // Users to add (in eligible but not current members)
+        // Users to add (in eligible but not current members).
         var toAdd = scopeIds.Where(id => eligibleSet.Contains(id) && !currentMemberIds.Contains(id)).ToList();
 
-        // Users to remove (current members but not in eligible)
+        // Users to remove (current members but not in eligible).
         var toRemove = scopeIds.Where(id => currentMemberIds.Contains(id) && !eligibleSet.Contains(id)).ToList();
+
+        if (toAdd.Count == 0 && toRemove.Count == 0)
+            return;
 
         var now = _clock.GetCurrentInstant();
 
-        // Batch-load display names for affected users (single query)
+        // Batch-load display names for affected users via IUserService.
         var affectedUserIds = toAdd.Concat(toRemove).ToList();
-        var userNames = affectedUserIds.Count > 0
-            ? await _dbContext.Users
-                .AsNoTracking()
-                .Where(u => affectedUserIds.Contains(u.Id))
-                .ToDictionaryAsync(u => u.Id, u => u.DisplayName, cancellationToken)
-            : new Dictionary<Guid, string>();
+        var usersById = await _userService.GetByIdsAsync(affectedUserIds, cancellationToken);
+        var userNames = usersById.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.DisplayName);
 
-        // Add new members
+        // Apply the bulk membership delta in a single save through the Teams
+        // section (also cascades TeamRoleAssignment deletes on soft-remove and
+        // invalidates the ActiveTeams cache).
+        await _teamService.ApplySystemTeamMembershipDeltaAsync(
+            team.Id, toAdd, toRemove, now, cancellationToken);
+
+        // Fan out Google sync adds per user — the call stays outside the
+        // Teams section so sync-service failures don't tear down the DB
+        // write (which is the behavior the pre-migration job had).
         var addedAudits = new List<(Guid UserId, string UserName)>();
         foreach (var userId in toAdd)
         {
-            var member = new TeamMember
-            {
-                Id = Guid.NewGuid(),
-                TeamId = team.Id,
-                UserId = userId,
-                Role = TeamMemberRole.Member,
-                JoinedAt = now
-            };
-            _dbContext.TeamMembers.Add(member);
-
             var userName = userNames.GetValueOrDefault(userId, userId.ToString());
             step?.Added(userId, userName);
             addedAudits.Add((userId, userName));
@@ -658,81 +589,63 @@ public class SystemTeamSyncJob : ISystemTeamSync
             await _googleSyncService.AddUserToTeamResourcesAsync(team.Id, userId, cancellationToken);
         }
 
-        // Remove members who are no longer eligible
+        // Fan out Google sync removes per user.
         var removedAudits = new List<(Guid UserId, string UserName)>();
         foreach (var userId in toRemove)
         {
-            var member = team.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt is null);
-            if (member is not null)
-            {
-                // Clean up role slot assignments before ending membership
-                var roleAssignments = await _dbContext.Set<TeamRoleAssignment>()
-                    .Where(a => a.TeamMemberId == member.Id)
-                    .ToListAsync(cancellationToken);
-                _dbContext.Set<TeamRoleAssignment>().RemoveRange(roleAssignments);
+            var userName = userNames.GetValueOrDefault(userId, userId.ToString());
+            step?.Removed(userId, userName);
+            removedAudits.Add((userId, userName));
 
-                member.LeftAt = now;
-
-                var userName = userNames.GetValueOrDefault(userId, userId.ToString());
-                step?.Removed(userId, userName);
-                removedAudits.Add((userId, userName));
-
-                await _googleSyncService.RemoveUserFromTeamResourcesAsync(team.Id, userId, cancellationToken);
-            }
+            await _googleSyncService.RemoveUserFromTeamResourcesAsync(team.Id, userId, cancellationToken);
         }
 
-        if (toAdd.Count > 0 || toRemove.Count > 0)
+        foreach (var (auditUserId, userName) in addedAudits)
         {
-            team.UpdatedAt = now;
-            await _dbContext.SaveChangesAsync(cancellationToken);
-
-            foreach (var (auditUserId, userName) in addedAudits)
-            {
-                await _auditLogService.LogAsync(
-                    AuditAction.TeamMemberAdded, nameof(Team), team.Id,
-                    $"{userName} added to {team.Name} by system sync",
-                    nameof(SystemTeamSyncJob),
-                    relatedEntityId: auditUserId, relatedEntityType: nameof(User));
-            }
-
-            foreach (var (auditUserId, userName) in removedAudits)
-            {
-                await _auditLogService.LogAsync(
-                    AuditAction.TeamMemberRemoved, nameof(Team), team.Id,
-                    $"{userName} removed from {team.Name} by system sync",
-                    nameof(SystemTeamSyncJob),
-                    relatedEntityId: auditUserId, relatedEntityType: nameof(User));
-            }
-
-            // Invalidate team cache — sync job runs infrequently, cache rebuilds on next access
-            _cache.InvalidateActiveTeams();
-            InvalidateUserCachesForSystemTeamMembershipChanges(team.SystemTeamType, affectedUserIds);
-
-            _logger.LogInformation(
-                "Synced {TeamName} team: added {AddCount}, removed {RemoveCount}",
-                team.Name, toAdd.Count, toRemove.Count);
+            await _auditLogService.LogAsync(
+                AuditAction.TeamMemberAdded, nameof(Team), team.Id,
+                $"{userName} added to {team.Name} by system sync",
+                nameof(SystemTeamSyncJob),
+                relatedEntityId: auditUserId, relatedEntityType: nameof(User));
         }
 
-        // Send "added to team" emails for newly added members (skip hidden teams)
+        foreach (var (auditUserId, userName) in removedAudits)
+        {
+            await _auditLogService.LogAsync(
+                AuditAction.TeamMemberRemoved, nameof(Team), team.Id,
+                $"{userName} removed from {team.Name} by system sync",
+                nameof(SystemTeamSyncJob),
+                relatedEntityId: auditUserId, relatedEntityType: nameof(User));
+        }
+
+        // Invalidate per-user role-assignment-claim caches for Volunteers
+        // changes so the sidebar claims transform refreshes before the 60s
+        // TTL elapses (matches pre-migration behavior).
+        InvalidateUserCachesForSystemTeamMembershipChanges(team.SystemTeamType, affectedUserIds);
+
+        _logger.LogInformation(
+            "Synced {TeamName} team: added {AddCount}, removed {RemoveCount}",
+            team.Name, toAdd.Count, toRemove.Count);
+
+        // Send "added to team" emails for newly added members (skip hidden teams).
         if (toAdd.Count > 0 && !team.IsHidden)
         {
-            var resources = await _dbContext.GoogleResources
-                .AsNoTracking()
-                .Where(gr => gr.TeamId == team.Id && gr.IsActive)
-                .Select(gr => new { gr.Name, gr.Url })
-                .ToListAsync(cancellationToken);
+            var resources = await _teamResourceService.GetTeamResourcesAsync(team.Id, cancellationToken);
             var resourceTuples = resources.Select(r => (r.Name, r.Url)).ToList();
 
-            var addedUsers = await _dbContext.Users
-                .Include(u => u.UserEmails)
-                .Where(u => toAdd.Contains(u.Id))
-                .ToListAsync(cancellationToken);
+            var addedUsersWithEmails = await _userService
+                .GetByIdsWithEmailsAsync(toAdd, cancellationToken);
 
-            foreach (var user in addedUsers)
+            foreach (var userId in toAdd)
             {
+                if (!addedUsersWithEmails.TryGetValue(userId, out var user))
+                    continue;
+
                 try
                 {
+#pragma warning disable CS0618 // User.GetEffectiveEmail() cross-domain nav — covered by §15i follow-up.
                     var email = user.GetEffectiveEmail() ?? user.Email!;
+#pragma warning restore CS0618
                     await _emailService.SendAddedToTeamAsync(
                         email, user.DisplayName, team.Name, team.Slug,
                         resourceTuples, user.PreferredLanguage, cancellationToken);
@@ -757,7 +670,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
         foreach (var userId in userIds)
         {
-            _cache.InvalidateRoleAssignmentClaims(userId);
+            _roleAssignmentClaimsInvalidator.Invalidate(userId);
         }
     }
 }

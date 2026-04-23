@@ -252,6 +252,39 @@ public sealed class ProfileRepository : IProfileRepository
         return profiles.Select(p => p.UserId).ToHashSet();
     }
 
+    public async Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>>
+        DowngradeTierForExpiredAsync(
+            MembershipTier currentTier,
+            IReadOnlyCollection<Guid> userIdsToKeep,
+            IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
+            Instant now,
+            CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var keepList = userIdsToKeep is IList<Guid> list ? list : userIdsToKeep.ToList();
+        var profiles = await ctx.Profiles
+            .Where(p => p.MembershipTier == currentTier && !keepList.Contains(p.UserId))
+            .ToListAsync(ct);
+
+        var result = new List<(Guid UserId, MembershipTier NewTier)>(profiles.Count);
+        foreach (var profile in profiles)
+        {
+            var newTier = fallbackTierByUser.TryGetValue(profile.UserId, out var other)
+                ? other
+                : MembershipTier.Volunteer;
+            profile.MembershipTier = newTier;
+            profile.UpdatedAt = now;
+            result.Add((profile.UserId, newTier));
+        }
+
+        if (profiles.Count > 0)
+        {
+            await ctx.SaveChangesAsync(ct);
+        }
+
+        return result;
+    }
+
     private async Task<bool> AnonymizeProfileInternalAsync(
         Guid userId, string firstName, string lastName, CancellationToken ct)
     {

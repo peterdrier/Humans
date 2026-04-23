@@ -226,4 +226,25 @@ public interface IProfileService
         IReadOnlyCollection<Guid> userIds,
         Instant now,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// For every profile whose <see cref="Profile.MembershipTier"/> equals
+    /// <paramref name="currentTier"/> and whose <c>UserId</c> is NOT in
+    /// <paramref name="userIdsToKeep"/>, downgrade the tier to the value
+    /// supplied by <paramref name="fallbackTierByUser"/> (falling back to
+    /// <see cref="MembershipTier.Volunteer"/> when the user is absent from
+    /// the map). Stamps <see cref="Profile.UpdatedAt"/> to
+    /// <paramref name="now"/> and persists in a single save. Returns a list
+    /// of (UserId, NewTier) tuples so the caller can emit audit entries
+    /// without a second round-trip. Used by
+    /// <c>SystemTeamSyncJob.SyncTierTeamAsync</c> so the job does not write
+    /// to <c>profiles</c> directly (design-rules §2c).
+    /// </summary>
+    Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>>
+        DowngradeTierForExpiredAsync(
+            MembershipTier currentTier,
+            IReadOnlyCollection<Guid> userIdsToKeep,
+            IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
+            Instant now,
+            CancellationToken ct = default);
 }

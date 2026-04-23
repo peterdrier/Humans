@@ -660,6 +660,18 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         _repository.GetUnvotedCountForBoardMemberAmongApplicationsAsync(
             boardMemberUserId, applicationIds, ct);
 
+    public Task<IReadOnlyList<Guid>> GetActiveApprovedTierUserIdsAsync(
+        MembershipTier tier, LocalDate today, CancellationToken ct = default) =>
+        _repository.GetActiveApprovedTierUserIdsAsync(tier, today, ct);
+
+    public Task<bool> HasActiveApprovedTierAsync(
+        Guid userId, MembershipTier tier, LocalDate today, CancellationToken ct = default) =>
+        _repository.HasActiveApprovedTierAsync(userId, tier, today, ct);
+
+    public Task<IReadOnlyDictionary<Guid, MembershipTier>> GetOtherActiveTierAssignmentsAsync(
+        MembershipTier excludeTier, LocalDate today, CancellationToken ct = default) =>
+        _repository.GetOtherActiveTierAssignmentsAsync(excludeTier, today, ct);
+
     public async Task UpdateDraftApplicationAsync(
         Guid applicationId, MembershipTier tier, string motivation,
         string? additionalInfo, string? significantContribution, string? roleUnderstanding,

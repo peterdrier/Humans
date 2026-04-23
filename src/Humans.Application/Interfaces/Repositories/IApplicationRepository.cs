@@ -205,6 +205,35 @@ public interface IApplicationRepository
     /// </summary>
     Task MarkRenewalReminderSentAsync(
         Guid applicationId, Instant sentAt, CancellationToken ct = default);
+
+    // ==========================================================================
+    // System team sync support (issue #570 — §15 Google-writing jobs)
+    // ==========================================================================
+
+    /// <summary>
+    /// Returns the distinct user ids of every Approved application for
+    /// <paramref name="tier"/> whose term is still active on
+    /// <paramref name="today"/> (<c>TermExpiresAt</c> is null or on/after
+    /// <paramref name="today"/>).
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetActiveApprovedTierUserIdsAsync(
+        MembershipTier tier, LocalDate today, CancellationToken ct = default);
+
+    /// <summary>
+    /// Does the user have an Approved application for <paramref name="tier"/>
+    /// whose term is still active on <paramref name="today"/>?
+    /// </summary>
+    Task<bool> HasActiveApprovedTierAsync(
+        Guid userId, MembershipTier tier, LocalDate today, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns per-user active-approved non-Volunteer tier assignments
+    /// excluding <paramref name="excludeTier"/>. Each entry is the first
+    /// (UserId, MembershipTier) row encountered. Used by the system team
+    /// sync's tier-downgrade calculation.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, MembershipTier>> GetOtherActiveTierAssignmentsAsync(
+        MembershipTier excludeTier, LocalDate today, CancellationToken ct = default);
 }
 
 /// <summary>

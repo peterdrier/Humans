@@ -208,6 +208,9 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task<IReadOnlyList<(Guid UserId, string DisplayName, string GoogleEmail)>>
+            BackfillNobodiesTeamGoogleEmailsAsync(CancellationToken ct = default) =>
+            throw new NotSupportedException();
     }
 
     private sealed class FakeUserEmailRepository : IUserEmailRepository

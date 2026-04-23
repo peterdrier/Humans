@@ -605,4 +605,25 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         }
         return suspendedIds;
     }
+
+    public async Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>>
+        DowngradeTierForExpiredAsync(
+            MembershipTier currentTier,
+            IReadOnlyCollection<Guid> userIdsToKeep,
+            IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
+            Instant now,
+            CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        var downgrades = await inner.DowngradeTierForExpiredAsync(
+            currentTier, userIdsToKeep, fallbackTierByUser, now, ct);
+        // MembershipTier is part of the FullProfile projection — refresh the
+        // cache entry for every downgraded user.
+        foreach (var (userId, _) in downgrades)
+        {
+            await RefreshEntryAsync(userId, ct);
+        }
+        return downgrades;
+    }
 }

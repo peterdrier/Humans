@@ -718,6 +718,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<int> GetRejectedGoogleEmailCountAsync(CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(Instant now, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<AnonymizedAccountSummary?> AnonymizeExpiredAccountAsync(Guid userId, Instant now, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<(Guid UserId, string DisplayName, string GoogleEmail)>> BackfillNobodiesTeamGoogleEmailsAsync(CancellationToken ct = default) => throw new NotSupportedException();
     }
 
     private sealed class FakeTeamService : ITeamService
@@ -817,5 +818,11 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<IReadOnlyList<Guid>> GetActiveNonSystemTeamCoordinatorUserIdsAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<TeamMember>> GetActiveMembersForTeamsAsync(IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<TeamMember>> GetActiveChildMembersByParentIdsAsync(IReadOnlyCollection<Guid> parentTeamIds, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<Team?> GetSystemTeamWithActiveMembersAsync(SystemTeamType type, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<TeamMember>> GetActiveMembershipsForRoleReconciliationAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<int> ApplyMemberRoleChangesAsync(IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<Guid>> GetActiveDepartmentCoordinatorUserIdsAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<bool> IsActiveDepartmentCoordinatorAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<bool> ApplySystemTeamMembershipDeltaAsync(Guid teamId, IReadOnlyCollection<Guid> userIdsToAdd, IReadOnlyCollection<Guid> userIdsToRemove, Instant now, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 }

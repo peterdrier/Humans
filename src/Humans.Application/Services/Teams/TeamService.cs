@@ -2297,4 +2297,57 @@ public sealed class TeamService : ITeamService, IUserDataContributor
         if (name.Length > 100)
             throw new InvalidOperationException("Role name cannot exceed 100 characters");
     }
+
+    // ==========================================================================
+    // System team sync support (issue #570 — §15 Google-writing jobs)
+    // ==========================================================================
+
+    public Task<Team?> GetSystemTeamWithActiveMembersAsync(
+        SystemTeamType type, CancellationToken cancellationToken = default) =>
+        _repo.GetSystemTeamWithActiveMembersAsync(type, cancellationToken);
+
+    public Task<IReadOnlyList<TeamMember>> GetActiveMembershipsForRoleReconciliationAsync(
+        CancellationToken cancellationToken = default) =>
+        _repo.GetActiveMembershipsForRoleReconciliationAsync(cancellationToken);
+
+    public async Task<int> ApplyMemberRoleChangesAsync(
+        IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes,
+        CancellationToken cancellationToken = default)
+    {
+        if (changes.Count == 0)
+            return 0;
+        var updated = await _repo.ApplyMemberRoleChangesAsync(changes, cancellationToken);
+        if (updated > 0)
+        {
+            InvalidateActiveTeamsCache();
+        }
+        return updated;
+    }
+
+    public Task<IReadOnlyList<Guid>> GetActiveDepartmentCoordinatorUserIdsAsync(
+        CancellationToken cancellationToken = default) =>
+        _repo.GetActiveDepartmentCoordinatorUserIdsAsync(cancellationToken);
+
+    public Task<bool> IsActiveDepartmentCoordinatorAsync(
+        Guid userId, CancellationToken cancellationToken = default) =>
+        _repo.IsActiveDepartmentCoordinatorAsync(userId, cancellationToken);
+
+    public async Task<bool> ApplySystemTeamMembershipDeltaAsync(
+        Guid teamId,
+        IReadOnlyCollection<Guid> userIdsToAdd,
+        IReadOnlyCollection<Guid> userIdsToRemove,
+        Instant now,
+        CancellationToken cancellationToken = default)
+    {
+        var changed = await _repo.ApplySystemTeamMembershipDeltaAsync(
+            teamId, userIdsToAdd, userIdsToRemove, now, cancellationToken);
+        if (changed)
+        {
+            // The in-service CachedTeam projection is rebuilt lazily on next
+            // read; invalidate it so downstream directory / coordinator
+            // queries reflect the post-sync membership.
+            InvalidateActiveTeamsCache();
+        }
+        return changed;
+    }
 }

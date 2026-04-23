@@ -1006,6 +1006,16 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         CancellationToken ct = default) =>
         _profileRepository.SuspendManyAsync(userIds, now, ct);
 
+    public Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>>
+        DowngradeTierForExpiredAsync(
+            MembershipTier currentTier,
+            IReadOnlyCollection<Guid> userIdsToKeep,
+            IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
+            Instant now,
+            CancellationToken ct = default) =>
+        _profileRepository.DowngradeTierForExpiredAsync(
+            currentTier, userIdsToKeep, fallbackTierByUser, now, ct);
+
     // ==========================================================================
     // Helpers
     // ==========================================================================

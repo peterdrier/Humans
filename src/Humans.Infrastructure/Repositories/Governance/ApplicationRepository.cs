@@ -304,4 +304,43 @@ public sealed class ApplicationRepository : IApplicationRepository
         app.RenewalReminderSentAt = sentAt;
         await _dbContext.SaveChangesAsync(ct);
     }
+
+    public async Task<IReadOnlyList<Guid>> GetActiveApprovedTierUserIdsAsync(
+        MembershipTier tier, LocalDate today, CancellationToken ct = default) =>
+        await _dbContext.Applications
+            .AsNoTracking()
+            .Where(a => a.Status == ApplicationStatus.Approved
+                && a.MembershipTier == tier
+                && (a.TermExpiresAt == null || a.TermExpiresAt >= today))
+            .Select(a => a.UserId)
+            .Distinct()
+            .ToListAsync(ct);
+
+    public Task<bool> HasActiveApprovedTierAsync(
+        Guid userId, MembershipTier tier, LocalDate today, CancellationToken ct = default) =>
+        _dbContext.Applications
+            .AsNoTracking()
+            .AnyAsync(a =>
+                a.UserId == userId &&
+                a.Status == ApplicationStatus.Approved &&
+                a.MembershipTier == tier &&
+                (a.TermExpiresAt == null || a.TermExpiresAt >= today),
+                ct);
+
+    public async Task<IReadOnlyDictionary<Guid, MembershipTier>> GetOtherActiveTierAssignmentsAsync(
+        MembershipTier excludeTier, LocalDate today, CancellationToken ct = default)
+    {
+        var rows = await _dbContext.Applications
+            .AsNoTracking()
+            .Where(a => a.Status == ApplicationStatus.Approved
+                && a.MembershipTier != excludeTier
+                && a.MembershipTier != MembershipTier.Volunteer
+                && (a.TermExpiresAt == null || a.TermExpiresAt >= today))
+            .Select(a => new { a.UserId, a.MembershipTier })
+            .ToListAsync(ct);
+
+        return rows
+            .GroupBy(r => r.UserId)
+            .ToDictionary(g => g.Key, g => g.First().MembershipTier);
+    }
 }

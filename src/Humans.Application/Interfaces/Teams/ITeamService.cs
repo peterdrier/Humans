@@ -702,4 +702,76 @@ public interface ITeamService
     Task<IReadOnlyList<TeamMember>> GetActiveChildMembersByParentIdsAsync(
         IReadOnlyCollection<Guid> parentTeamIds,
         CancellationToken cancellationToken = default);
+
+    // ==========================================================================
+    // System team sync support (issue #570 — §15 Google-writing jobs)
+    //
+    // Narrow read/write methods used exclusively by SystemTeamSyncJob so the
+    // job can drop its HumansDbContext dependency. Each mutation commits in
+    // its own repository-owned unit of work; the caller fan-outs Google sync
+    // calls externally.
+    // ==========================================================================
+
+    /// <summary>
+    /// Loads the system team whose <see cref="Team.SystemTeamType"/> equals
+    /// <paramref name="type"/>, with active members hydrated. Returns null
+    /// when no team is configured for that system type.
+    /// </summary>
+    Task<Team?> GetSystemTeamWithActiveMembersAsync(
+        SystemTeamType type, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Loads every active membership with enough role-assignment / role-
+    /// definition / team context to decide coordinator promotion and
+    /// demotion in-memory. Used by <c>SystemTeamSyncJob.ReconcileCoordinatorRolesAsync</c>.
+    /// </summary>
+    Task<IReadOnlyList<TeamMember>> GetActiveMembershipsForRoleReconciliationAsync(
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Applies a bulk list of <see cref="TeamMember.Role"/> changes (promote
+    /// to Coordinator / demote to Member) in a single save. Invalidates the
+    /// ActiveTeams cache if any change is applied. Returns the number of
+    /// memberships updated.
+    /// </summary>
+    Task<int> ApplyMemberRoleChangesAsync(
+        IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the distinct user ids of every active coordinator on a
+    /// non-system department team (<c>ParentTeamId</c> is null). Sub-team
+    /// managers are excluded.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetActiveDepartmentCoordinatorUserIdsAsync(
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Is the user a coordinator on any active department team
+    /// (<c>ParentTeamId</c> is null)?
+    /// </summary>
+    Task<bool> IsActiveDepartmentCoordinatorAsync(
+        Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Applies a system-team membership reconciliation in a single save:
+    /// inserts new <see cref="TeamMember"/> rows for <paramref name="userIdsToAdd"/>
+    /// with <see cref="TeamMemberRole.Member"/> + <c>JoinedAt=now</c>, and
+    /// soft-removes the active memberships for <paramref name="userIdsToRemove"/>
+    /// by stamping <see cref="TeamMember.LeftAt"/> and cascade-deleting any
+    /// attached <see cref="TeamRoleAssignment"/> rows. Bumps
+    /// <see cref="Team.UpdatedAt"/> and invalidates the ActiveTeams cache
+    /// when at least one change lands. Returns true when any writes occur.
+    /// </summary>
+    /// <remarks>
+    /// The caller is expected to fan out Google-sync calls
+    /// (<c>AddUserToTeamResourcesAsync</c> / <c>RemoveUserFromTeamResourcesAsync</c>)
+    /// and audit entries per user after this method returns.
+    /// </remarks>
+    Task<bool> ApplySystemTeamMembershipDeltaAsync(
+        Guid teamId,
+        IReadOnlyCollection<Guid> userIdsToAdd,
+        IReadOnlyCollection<Guid> userIdsToRemove,
+        Instant now,
+        CancellationToken cancellationToken = default);
 }
