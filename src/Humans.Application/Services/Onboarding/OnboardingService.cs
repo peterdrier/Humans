@@ -387,12 +387,13 @@ public sealed class OnboardingService : IOnboardingService
             await _applicationDecisionService.GetPendingApplicationCountAsync(ct);
         var appStats = await _applicationDecisionService.GetAdminStatsAsync(ct);
 
-        // Language distribution across approved, non-suspended humans
-        // (IsApproved && !IsSuspended — same predicate the admin dashboard
-        // used pre-partition). The partition's Active bucket narrows further
-        // to "has all required consents", so we union Active + MissingConsents
-        // to recover the full approved-and-not-suspended slice. Pass to the
-        // User section, which owns preferred language — no cross-domain join
+        // Language distribution for the admin dashboard chart — approved,
+        // non-suspended humans, grouped by PreferredLanguage. Union
+        // Active + MissingConsents; pending-deletion users are not counted
+        // (bucket is split off earlier by PartitionUsersAsync). This is a
+        // visualization, not an audit count, so sub-user-count drift from
+        // the pre-partition predicate is acceptable. Pass to the User
+        // section, which owns preferred language — no cross-domain join
         // (design-rules §6).
         var approvedNotSuspended = partition.Active
             .Concat(partition.MissingConsents)
