@@ -178,6 +178,19 @@ public sealed class UserService : IUserService, IUserDataContributor
         return set;
     }
 
+    public async Task<bool> TrySetGoogleEmailStatusFromSyncAsync(
+        Guid userId, GoogleEmailStatus status, CancellationToken ct = default)
+    {
+        if (status == GoogleEmailStatus.Valid)
+        {
+            var user = await _repo.GetByIdAsync(userId, ct);
+            if (user is null || user.GoogleEmailStatus == GoogleEmailStatus.Rejected)
+                return false;
+        }
+
+        return await SetGoogleEmailStatusAsync(userId, status, ct);
+    }
+
     public async Task<(bool Updated, string? OldEmail)> ApplyEmailBackfillAsync(
         Guid userId, string newEmail, CancellationToken ct = default)
     {

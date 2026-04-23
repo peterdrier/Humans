@@ -127,7 +127,8 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
                             .GetActiveByTeamIdAsync(outboxEvent.TeamId, cancellationToken);
                         if (activeResources.Count > 0)
                         {
-                            await MarkUserGoogleEmailStatusAsync(outboxEvent.UserId, GoogleEmailStatus.Valid, cancellationToken);
+                            await _userService.TrySetGoogleEmailStatusFromSyncAsync(
+                                outboxEvent.UserId, GoogleEmailStatus.Valid, cancellationToken);
                         }
                     }
                 }
@@ -148,7 +149,8 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
                         ex.Error?.Code);
 
                     // Mark user's Google email as Rejected
-                    await MarkUserGoogleEmailStatusAsync(outboxEvent.UserId, GoogleEmailStatus.Rejected, cancellationToken);
+                    await _userService.TrySetGoogleEmailStatusFromSyncAsync(
+                        outboxEvent.UserId, GoogleEmailStatus.Rejected, cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -211,26 +213,5 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
     private static bool IsPermanentError(Google.GoogleApiException ex)
     {
         return ex.Error?.Code is int code && PermanentErrorCodes.Contains(code);
-    }
-
-    /// <summary>
-    /// Sets the user's <see cref="GoogleEmailStatus"/> via
-    /// <see cref="IUserService"/>, preserving the "Rejected is terminal"
-    /// rule: once a user has been flagged Rejected (Google HTTP 403 on a
-    /// group-add), a later successful sync MUST NOT flip them back to Valid
-    /// until the user themselves changes their email — only a non-Rejected
-    /// starting state may be promoted to Valid.
-    /// </summary>
-    private async Task MarkUserGoogleEmailStatusAsync(
-        Guid userId, GoogleEmailStatus status, CancellationToken cancellationToken)
-    {
-        if (status == GoogleEmailStatus.Valid)
-        {
-            var user = await _userService.GetByIdAsync(userId, cancellationToken);
-            if (user is null || user.GoogleEmailStatus == GoogleEmailStatus.Rejected)
-                return;
-        }
-
-        await _userService.SetGoogleEmailStatusAsync(userId, status, cancellationToken);
     }
 }

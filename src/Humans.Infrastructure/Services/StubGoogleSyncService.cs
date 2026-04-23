@@ -177,4 +177,11 @@ public class StubGoogleSyncService : IGoogleSyncService
         // Stub: no outbox in non-production environments.
         return Task.FromResult(0);
     }
+
+    public Task<IReadOnlyList<GoogleSyncOutboxEvent>> GetRecentOutboxEventsAsync(
+        int take, CancellationToken cancellationToken = default)
+    {
+        // Stub: no outbox in non-production environments.
+        return Task.FromResult<IReadOnlyList<GoogleSyncOutboxEvent>>(Array.Empty<GoogleSyncOutboxEvent>());
+    }
 }

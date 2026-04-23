@@ -11,7 +11,6 @@ using Humans.Web.Constants;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 
@@ -736,15 +735,13 @@ public class GoogleController : HumansControllerBase
     [HttpGet("SyncOutbox")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SyncOutbox(
-        [FromServices] IGoogleSyncOutboxRepository outboxRepository,
-        [FromServices] IGoogleResourceRepository resourceRepository,
         [FromServices] IUserService userService,
         [FromServices] ITeamService teamService)
     {
-        var events = (await outboxRepository.GetRecentAsync(200)).ToList();
+        var events = (await _googleSyncService.GetRecentOutboxEventsAsync(200)).ToList();
 
-        // Resolve display info for events via section-owned services / repos
-        // (§15 Part 2c, issue #576 — no direct DbContext access in controllers).
+        // Resolve display info for events via section-owned services (§15 Part 2c,
+        // design-rules §2a — controllers go through service interfaces, not repos).
         var userIds = events.Select(e => e.UserId).Distinct().ToList();
         var teamIds = events.Select(e => e.TeamId).Distinct().ToList();
         var users = await userService.GetByIdsAsync(userIds);
@@ -754,7 +751,7 @@ public class GoogleController : HumansControllerBase
             kvp => kvp.Key, kvp => kvp.Value.DisplayName);
         var teamLookup = (await teamService.GetTeamNamesByIdsAsync(teamIds))
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-        var resourcesByTeam = await resourceRepository.GetActiveByTeamIdsAsync(teamIds);
+        var resourcesByTeam = await _teamResourceService.GetResourcesByTeamIdsAsync(teamIds);
         var resourceLookup = resourcesByTeam.ToDictionary(
             kvp => kvp.Key,
             kvp => kvp.Value.Select(r => $"{r.Name} ({r.ResourceType})").ToList());
