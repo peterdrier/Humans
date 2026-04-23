@@ -13,9 +13,8 @@ internal static class FeedbackSectionExtensions
     internal static IServiceCollection AddFeedbackSection(this IServiceCollection services)
     {
         // Feedback section — §15 repository + Application-layer service, no caching decorator.
-        // Feedback is admin-review-only and low-traffic; same Scoped + DbContext repository
-        // pattern as Governance (issue #549).
-        services.AddScoped<IFeedbackRepository, FeedbackRepository>();
+        // Singleton + IDbContextFactory pattern (§15b) so the repository owns context lifetime.
+        services.AddSingleton<IFeedbackRepository, FeedbackRepository>();
         services.AddScoped<FeedbackApplicationService>();
         services.AddScoped<IFeedbackService>(sp => sp.GetRequiredService<FeedbackApplicationService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<FeedbackApplicationService>());

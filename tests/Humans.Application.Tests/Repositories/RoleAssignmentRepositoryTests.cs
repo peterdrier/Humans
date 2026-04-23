@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
@@ -23,7 +24,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
             .Options;
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 22, 12, 0));
-        _repo = new RoleAssignmentRepository(_dbContext);
+        _repo = new RoleAssignmentRepository(new TestDbContextFactory(options));
     }
 
     public void Dispose()
@@ -64,7 +65,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
         var tracked = await _repo.FindForMutationAsync(assignment.Id);
         tracked.Should().NotBeNull();
         tracked!.ValidTo = _clock.GetCurrentInstant();
-        await _repo.SaveTrackedAsync();
+        await _repo.UpdateAsync(tracked);
 
         var reloaded = await _dbContext.RoleAssignments.AsNoTracking().FirstAsync(ra => ra.Id == assignment.Id);
         reloaded.ValidTo.Should().NotBeNull();
@@ -199,7 +200,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
         {
             ra.ValidTo = now;
         }
-        await _repo.SaveTrackedAsync();
+        await _repo.UpdateManyAsync(result);
 
         var reloaded = await _dbContext.RoleAssignments.AsNoTracking().Where(r => r.UserId == userId).ToListAsync();
         reloaded.All(r => r.ValidTo.HasValue).Should().BeTrue();

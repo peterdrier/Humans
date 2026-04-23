@@ -16,9 +16,9 @@ namespace Humans.Application.Interfaces.Repositories;
 /// stitch display data from <c>IUserService</c>, <c>IUserEmailService</c>, and
 /// <c>ITeamService</c>.
 ///
-/// Feedback is admin-review-only and low-traffic, so the repository uses the
-/// Scoped + <c>HumansDbContext</c> pattern (like <c>ApplicationRepository</c>)
-/// rather than the Singleton + <c>IDbContextFactory</c> pattern.
+/// Feedback is admin-review-only and low-traffic. The repository uses the
+/// Singleton + <c>IDbContextFactory</c> pattern so each method owns its own
+/// <c>HumansDbContext</c> lifetime.
 /// </remarks>
 public interface IFeedbackRepository
 {
@@ -35,8 +35,9 @@ public interface IFeedbackRepository
     Task<FeedbackReport?> GetByIdAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
-    /// Loads a tracked feedback report for mutation (no navigation included).
-    /// Returns null if not found.
+    /// Loads a feedback report by id (no navigation included) for mutation
+    /// via <see cref="SaveTrackedReportAsync"/> or
+    /// <see cref="AddMessageAndSaveReportAsync"/>. Returns null if not found.
     /// </summary>
     Task<FeedbackReport?> FindForMutationAsync(Guid id, CancellationToken ct = default);
 

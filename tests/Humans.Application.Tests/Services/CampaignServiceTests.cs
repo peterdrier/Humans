@@ -5,6 +5,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Interfaces;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -33,7 +34,7 @@ public class CampaignServiceTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
 
-        var repository = new CampaignRepository(_dbContext);
+        var repository = new CampaignRepository(new TestDbContextFactory(options));
         _teamService = Substitute.For<ITeamService>();
         _userService = Substitute.For<IUserService>();
         _userEmailService = Substitute.For<IUserEmailService>();
@@ -489,6 +490,7 @@ public class CampaignServiceTests : IDisposable
             Arg.Is<CampaignCodeEmailRequest>(r => r.CampaignGrantId == grant.Id),
             Arg.Any<CancellationToken>());
 
+        _dbContext.ChangeTracker.Clear();
         var updatedGrant = await _dbContext.CampaignGrants.FindAsync(grant.Id);
         updatedGrant!.LatestEmailStatus.Should().Be(EmailOutboxStatus.Queued);
     }
@@ -524,6 +526,7 @@ public class CampaignServiceTests : IDisposable
             Arg.Is<CampaignCodeEmailRequest>(r => r.CampaignGrantId == grants[0].Id),
             Arg.Any<CancellationToken>());
 
+        _dbContext.ChangeTracker.Clear();
         var retriedGrant = await _dbContext.CampaignGrants.FindAsync(grants[0].Id);
         retriedGrant!.LatestEmailStatus.Should().Be(EmailOutboxStatus.Queued);
     }
@@ -635,6 +638,7 @@ public class CampaignServiceTests : IDisposable
         };
         _dbContext.Campaigns.Add(campaign);
         await _dbContext.SaveChangesAsync();
+        _dbContext.ChangeTracker.Clear();
         return campaign;
     }
 
@@ -660,6 +664,7 @@ public class CampaignServiceTests : IDisposable
             });
         }
         await _dbContext.SaveChangesAsync();
+        _dbContext.ChangeTracker.Clear();
         return campaign;
     }
 }

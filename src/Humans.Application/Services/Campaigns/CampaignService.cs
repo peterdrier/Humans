@@ -74,8 +74,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor
             CreatedByUserId = createdByUserId
         };
 
-        _repository.AddCampaign(campaign);
-        await _repository.SaveChangesAsync(ct);
+        await _repository.AddCampaignAsync(campaign, ct);
 
         _logger.LogInformation("Campaign {CampaignId} created: {Title}", campaign.Id, title);
         return campaign;
@@ -111,7 +110,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor
         campaign.EmailBodyTemplate = emailBodyTemplate.Trim();
         campaign.ReplyToAddress = string.IsNullOrWhiteSpace(replyToAddress) ? null : replyToAddress.Trim();
 
-        await _repository.SaveChangesAsync(ct);
+        await _repository.UpdateCampaignAsync(campaign, ct);
 
         _logger.LogInformation("Campaign {CampaignId} updated", id);
         return true;
@@ -182,6 +181,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor
         var imported = 0;
         var skipped = 0;
         var maxOrder = campaign.Codes.Any() ? campaign.Codes.Max(c => c.ImportOrder) : 0;
+        var newCodes = new List<CampaignCode>();
 
         foreach (var code in codes)
         {
@@ -196,7 +196,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor
             }
 
             maxOrder++;
-            _repository.AddCampaignCode(new CampaignCode
+            newCodes.Add(new CampaignCode
             {
                 Id = Guid.NewGuid(),
                 CampaignId = campaignId,
@@ -208,7 +208,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor
             imported++;
         }
 
-        await _repository.SaveChangesAsync(ct);
+        await _repository.AddCampaignCodesAsync(newCodes, ct);
 
         _logger.LogInformation(
             "Campaign {CampaignId}: imported {Imported} codes, skipped {Skipped} duplicates",
@@ -223,11 +223,12 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor
 
         var now = _clock.GetCurrentInstant();
         var maxOrder = campaign.Codes.Any() ? campaign.Codes.Max(c => c.ImportOrder) : 0;
+        var newCodes = new List<CampaignCode>(codes.Count);
 
         foreach (var code in codes)
         {
             maxOrder++;
-            _repository.AddCampaignCode(new CampaignCode
+            newCodes.Add(new CampaignCode
             {
                 Id = Guid.NewGuid(),
                 CampaignId = campaignId,
@@ -237,7 +238,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor
             });
         }
 
-        await _repository.SaveChangesAsync(ct);
+        await _repository.AddCampaignCodesAsync(newCodes, ct);
 
         _logger.LogInformation(
             "Campaign {CampaignId}: imported {Count} vendor-generated codes",
@@ -263,7 +264,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor
                 campaignId);
 
         campaign.Status = CampaignStatus.Active;
-        await _repository.SaveChangesAsync(ct);
+        await _repository.UpdateCampaignAsync(campaign, ct);
 
         _logger.LogInformation("Campaign {CampaignId} activated", campaignId);
     }
@@ -278,7 +279,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor
                 $"Campaign {campaignId} must be in Active status to complete (current: {campaign.Status}).");
 
         campaign.Status = CampaignStatus.Completed;
-        await _repository.SaveChangesAsync(ct);
+        await _repository.UpdateCampaignAsync(campaign, ct);
 
         _logger.LogInformation("Campaign {CampaignId} completed", campaignId);
     }
