@@ -575,23 +575,27 @@ Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`
 3. **Don't half-migrate a section.** If you start extracting a repository, finish the full stack in one session. A half-migrated section is worse than either extreme.
 4. **EF migration review still applies.** Schema changes still go through the EF migration reviewer agent — the repository layer does not change what migrations look like.
 
-### 15i. Known Current Violations (as of 2026-04-22)
+### 15i. Known Current Violations (as of 2026-04-23)
 
-- **~22 services** still live in `Humans.Infrastructure/Services/` and inject `HumansDbContext` directly. Target: 0. Migration progress by section:
+- **4 business services** still live in `Humans.Infrastructure/Services/` and inject `HumansDbContext` directly: `TeamService`, `GoogleWorkspaceSyncService`, `CalendarService`, `HumansMetricsService`. All other files in that folder are connectors, stubs, or renderers that correctly stay in Infrastructure. Target: 0. Migration progress by section:
   - **Governance** — migrated 2026-04-15 in PR #503.
   - **Profiles** — fully migrated 2026-04-20 in PR #235 — `ProfileService`, `ContactFieldService`, `ContactService`, `UserEmailService`, `CommunicationPreferenceService` now live in `Humans.Application.Services.Profile`. (`VolunteerHistoryService` was folded into `ProfileService`/`IProfileRepository`; it no longer exists as a separate service.)
   - **User** — migrated 2026-04-21 in PR #243 — `UserService` now lives in `Humans.Application.Services.Users`, goes through `IUserRepository`, and invalidates `IFullProfileInvalidator` on writes that change FullProfile-visible fields. **No caching decorator** was added for the User section: User is ~500 rows with no hot bulk-read path, so a dict cache isn't warranted (same rationale as Governance's decorator removal in #242). Option A is documented in `docs/superpowers/specs/2026-04-21-issue-511-user-migration.md`.
   - **City Planning** — migrated 2026-04-22 in PR #543 — `CityPlanningService` now lives in `Humans.Application.Services.CityPlanning`, goes through `ICityPlanningRepository`, and routes cross-section reads (camps, teams, profiles, users) through the owning service interfaces. Cross-domain `.Include(h => h.ModifiedByUser)` on `CampPolygonHistories` replaced with a batched `IUserService.GetByIdsAsync` lookup. Option A (no decorator) — admin-facing, low-traffic.
   - **Audit Log** — migrated 2026-04-22 for issue #552 — `AuditLogService` now lives in `Humans.Application.Services.AuditLog`, goes through `IAuditLogRepository`, and persists each entry immediately (auto-saved per call) rather than relying on a shared-scope `SaveChanges` from the caller. The repository is append-only per §12 — no update or delete surface — enforced by `AuditLogArchitectureTests.IAuditLogRepository_HasNoUpdateOrDeleteMethods`. Option A (no decorator) — writes are scattered across every section (~96 call sites) and reads are admin-only.
-  - **Budget** — migrated 2026-04-22 in issue #544 — `BudgetService` now lives in `Humans.Application.Services.Budget`, goes through `IBudgetRepository`, and calls `ITeamService` (via two narrow new methods `GetBudgetableTeamsAsync` and `GetEffectiveBudgetCoordinatorTeamIdsAsync`) for cross-domain team reads. No caching decorator — Budget is admin-only, low-traffic. `BudgetAuditLog.ActorUser` and `BudgetCategory.Team` cross-domain navs are `[Obsolete]`-marked; `BudgetLineItem.ResponsibleTeam` is still read by the Finance CategoryDetail view and deferred to a nav-strip follow-up. `TicketingBudgetService` remains in Infrastructure — it is part of the Tickets section and migrates in issue #545.
+  - **Budget** — migrated 2026-04-22 in issue #544 — `BudgetService` now lives in `Humans.Application.Services.Budget`, goes through `IBudgetRepository`, and calls `ITeamService` (via two narrow new methods `GetBudgetableTeamsAsync` and `GetEffectiveBudgetCoordinatorTeamIdsAsync`) for cross-domain team reads. No caching decorator — Budget is admin-only, low-traffic. `BudgetAuditLog.ActorUser` and `BudgetCategory.Team` cross-domain navs are `[Obsolete]`-marked; `BudgetLineItem.ResponsibleTeam` is still read by the Finance CategoryDetail view and deferred to a nav-strip follow-up.
   - **Campaigns** — migrated 2026-04-22 in issue #546 — `CampaignService` now lives in `Humans.Application.Services.Campaigns`, goes through `ICampaignRepository`, and routes cross-section reads via `ITeamService.GetTeamMembersAsync` and the new `IUserEmailService.GetNotificationTargetEmailsAsync(IReadOnlyCollection<Guid>)`. No caching decorator. Cross-domain navs `CampaignGrant.User` and `Campaign.CreatedByUser` are `[Obsolete]`-marked; the `TicketQueryService.GetCodeTrackingDataAsync` code-tracking page still reads `grant.User.DisplayName` inside `#pragma warning disable CS0618` blocks — migration follow-up lands when Tickets moves to Application.
   - **Camps** — migrated 2026-04-22 for issue #542 — `CampService` now lives in `Humans.Application.Services.Camps`, goes through `ICampRepository`, routes lead display-names through `IUserService`, and delegates filesystem I/O to `ICampImageStorage`. **No caching decorator**: the ~100-row camp list uses short-TTL `IMemoryCache` in-service per §15f.
   - **Email** — migrated 2026-04-22 in PR for issue #548 — `EmailOutboxService` and `OutboxEmailService` now live in `Humans.Application.Services.Email`, go through `IEmailOutboxRepository`, and route the verified-email-by-recipient lookup through `IUserEmailService` so `user_emails` stays behind its owning service. Two new connector abstractions (`IEmailBodyComposer`, `IImmediateOutboxProcessor`) keep `IHostEnvironment`/`EmailSettings` and Hangfire out of the Application layer. No caching decorator — outbox is a sequential queue drain, not a hot-path read shape.
   - **Feedback** — migrated 2026-04-22 in issue #549 — `FeedbackService` now lives in `Humans.Application.Services.Feedback`, goes through `IFeedbackRepository`, and resolves reporter / assignee / resolver display names + effective email via `IUserService`, `IUserEmailService.GetNotificationTargetEmailsAsync`, and `ITeamService.GetTeamNamesByIdsAsync`. Cross-domain `.Include()` chains on `FeedbackReport.User`, `.ResolvedByUser`, `.AssignedToUser`, `.AssignedToTeam`, and `FeedbackMessage.SenderUser` are gone from the service (4→0). Navs are `[Obsolete]`-marked and populated in-memory by the service (§6b "in-memory join") so controllers and views continue to read `report.User.DisplayName` etc. under `#pragma warning disable CS0618`. Nav-strip follow-up lands as part of the wider User-entity nav cleanup. No caching decorator — Feedback is admin-review-only and low-traffic.
   - **Auth** — migrated 2026-04-22 in issue #551 — `RoleAssignmentService` and `MagicLinkService` now live in `Humans.Application.Services.Auth`. `RoleAssignmentService` goes through `IRoleAssignmentRepository`, stitches assignee / creator display names via `IUserService`, and invalidates the per-user claims cache via `IRoleAssignmentClaimsCacheInvalidator` + the nav-badge cache via `INavBadgeCacheInvalidator`. `MagicLinkService` owns no tables; verified-email lookup routes through `IUserEmailService.FindVerifiedEmailWithUserAsync`, and Data-Protection / URL / replay / signup-cooldown state sits behind Infrastructure-side `IMagicLinkUrlBuilder` + `IMagicLinkRateLimiter` (same shape as `CommunicationPreferenceService` + `IUnsubscribeTokenProvider`). Cross-domain navs on `RoleAssignment` (`User`, `CreatedByUser`) are `[Obsolete]`-marked and populated in-memory; controllers + the two daily-digest jobs that still read them do so under `#pragma warning disable CS0618`. No caching decorator — Auth writes are rare (handful of admin events per month).
-  - **Teams (partial)** — `TeamPageService` migrated 2026-04-22 under umbrella #540 (sub-task #540b) — it now lives in `Humans.Application.Services.Teams` and owns no tables (pure composer over `ITeamService`, `IProfileService`, `ITeamResourceService`, `IShiftManagementService`, `IUserService`). A new `IShiftManagementService.GetTeamIdsWithShiftsInEventAsync` method replaced the direct `Rotas`/`Shifts` query. `TeamService` (2,698 LOC), `TeamResourceService` (883 LOC), and `StubTeamResourceService` (368 LOC) remain in `Humans.Infrastructure/Services/` pending sub-tasks #540a and #540c.
+  - **Teams (partial, #540)** — `TeamPageService` migrated 2026-04-22 under umbrella #540 (sub-task #540b); `TeamResourceService` migrated in PR #274 (sub-task #540c) — both now live in `Humans.Application.Services.Teams`. `TeamPageService` owns no tables (pure composer over `ITeamService`, `IProfileService`, `ITeamResourceService`, `IShiftManagementService`, `IUserService`); the `ITeamResourceGoogleClient` connector bridges Drive API calls for `TeamResourceService`. `TeamService` remains in `Humans.Infrastructure/Services/` pending sub-task #540a.
   - **Notifications** — migrated 2026-04-22 for issue #550 — `NotificationService`, `NotificationInboxService`, and `NotificationMeterProvider` now live in `Humans.Application.Services.Notifications`, go through `INotificationRepository` for their owned tables (`notifications`, `notification_recipients`), and reach every other section's data via its public service interface. `NotificationMeterProvider` was the biggest clean-up: it previously read `Profiles`, `Users`, `GoogleSyncOutboxEvents`, `TeamJoinRequests`, `TicketSyncStates`, and `Applications` directly; it now aggregates count methods added to `IProfileService`, `IUserService`, `IGoogleSyncService`, `ITeamService`, `ITicketSyncService`, and `IApplicationDecisionService`. `IRoleAssignmentService.GetActiveUserIdsForRoleAsync` was added so `NotificationService.SendToRoleAsync` doesn't query `role_assignments`. `CleanupNotificationsJob` also moves through the repository. Option A (no caching decorator) — dispatch is fire-and-forget and reads are cached at the view-component layer via short-TTL `IMemoryCache`.
-- **~20 cross-domain `.Include()` calls** across **~12 services**. Biggest offenders: `OnboardingService` (7), `GoogleWorkspaceSyncService` (4). Target: 0.
+  - **Onboarding** — migrated in PR #285 (issue #553) — `OnboardingService` now lives in `Humans.Application.Services.Onboarding`. It owns no tables and orchestrates Profiles, Legal, and Teams via their public service interfaces.
+  - **Shifts (partial, #541)** — `ShiftManagementService`, `ShiftSignupService`, and `GeneralAvailabilityService` now live in `Humans.Application.Services.Shifts`, going through `IShiftManagementRepository`, `IShiftSignupRepository`, and `IGeneralAvailabilityRepository`. §15 NEW-B (ShiftAuthorization cache invalidation on profile mutation) remains open — tracked in issue #541.
+  - **Tickets (partial, #545)** — `TicketQueryService`, `TicketSyncService`, and `TicketingBudgetService` now live in `Humans.Application.Services.Tickets`, going through `ITicketRepository` and `ITicketingBudgetRepository`. The Ticket Tailor API side of `TicketSyncService` is structurally separated via the `ITicketVendorService` connector (PR #277). Pending upstream promotion to nobodies-collective/Humans.
+  - **Google Workspace (partial, #554)** — `GoogleAdminService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, and `EmailProvisioningService` migrated in PR #267 (issue #289) and now live in `Humans.Application.Services.GoogleIntegration`. `GoogleWorkspaceSyncService` remains in `Humans.Infrastructure/Services/` (still injects `HumansDbContext` directly) — its migration is the remaining #554 work item.
+- **Cross-domain `.Include()` calls** remain concentrated in `TeamService` and `GoogleWorkspaceSyncService` (both still in Infrastructure). The Application layer is clean — 0 `.Include()` calls across all Application-layer services. Target: 0 everywhere.
   - Includes fully removed from the service layer in these sections:
     - Profile
     - Governance
@@ -600,25 +604,40 @@ Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`
     - Camps
     - Feedback
     - Auth
-    - Teams (TeamPageService only — `TeamService` and `TeamResourceService` still in Infrastructure)
+    - Teams (TeamPageService and TeamResourceService — `TeamService` still in Infrastructure)
     - Notifications
-  - **User section's PR #243 landed the Application-layer move but deferred the nav-strip** — cross-domain nav reads via `user.UserEmails`, `user.Profile`, `user.TeamMemberships`, `user.GetEffectiveEmail()` still exist in `TicketQueryService`, `TeamService`, `GoogleWorkspaceSyncService`, `SendBoardDailyDigestJob`, `SyncLegalDocumentsJob`, `SystemTeamSyncJob`, `SuspendNonCompliantMembersJob`, `ProfileController`. Tracked as a follow-up.
-- **15 repositories** exist today. Target: one per domain (~20 total):
+    - Onboarding
+    - Shifts
+    - Tickets
+    - Google Workspace (all Application-layer services; `GoogleWorkspaceSyncService` in Infrastructure still has includes)
+  - **User section's PR #243 landed the Application-layer move but deferred the nav-strip** — cross-domain nav reads via `user.UserEmails`, `user.Profile`, `user.TeamMemberships`, `user.GetEffectiveEmail()` still exist in `TeamService`, `GoogleWorkspaceSyncService`, `SendBoardDailyDigestJob`, `SyncLegalDocumentsJob`, `SystemTeamSyncJob`, `SuspendNonCompliantMembersJob`, `ProfileController`. Tracked as a follow-up.
+- **26 repositories** exist today. Target: one per domain (~20 total, some sections need two):
+  - `AccountMergeRepository`
   - `ApplicationRepository`
-  - `ProfileRepository`
-  - `ContactFieldRepository`
-  - `UserEmailRepository`
-  - `CommunicationPreferenceRepository`
-  - `UserRepository`
-  - `CityPlanningRepository`
   - `AuditLogRepository`
   - `BudgetRepository`
   - `CampaignRepository`
   - `CampRepository`
+  - `CityPlanningRepository`
+  - `CommunicationPreferenceRepository`
+  - `ConsentRepository`
+  - `ContactFieldRepository`
+  - `DriveActivityMonitorRepository`
   - `EmailOutboxRepository`
   - `FeedbackRepository`
-  - `RoleAssignmentRepository`
+  - `GeneralAvailabilityRepository`
+  - `GoogleResourceRepository`
+  - `LegalDocumentRepository`
   - `NotificationRepository`
+  - `ProfileRepository`
+  - `RoleAssignmentRepository`
+  - `ShiftManagementRepository`
+  - `ShiftSignupRepository`
+  - `SyncSettingsRepository`
+  - `TicketRepository`
+  - `TicketingBudgetRepository`
+  - `UserEmailRepository`
+  - `UserRepository`
 - **0 stores** exist today. `IApplicationStore` was retired when Governance dropped its caching layer (issue #533). Target: replaced by §15 `ConcurrentDictionary`-in-decorator where a cache is warranted; no separate store type.
 - **1 caching decorator** exists today (`CachingProfileService` — §15 pattern). Governance, User, and Camps sections operate without one. Target: every migrated section that needs caching uses the §15 pattern. Not every section needs caching.
 - **Inline `IMemoryCache.GetOrCreateAsync`** still scattered across services for non-profile caches (nav badge, notification meter, role-assignment claims, shift auth, camps-for-year, camp settings). These are short-TTL request-acceleration caches, not canonical domain data caches, and are appropriate for `IMemoryCache`. Canonical domain data caches (full entity projections) must use the §15 pattern.
