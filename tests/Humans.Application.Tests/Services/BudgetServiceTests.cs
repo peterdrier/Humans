@@ -2,7 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Repositories;
+using Humans.Infrastructure.Repositories.Budget;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime.Testing;

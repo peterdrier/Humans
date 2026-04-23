@@ -12,7 +12,6 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using Xunit;
 using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
@@ -20,6 +19,7 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Auth;
+using Humans.Infrastructure.Repositories.Shifts;
 
 namespace Humans.Application.Tests.Services;
 

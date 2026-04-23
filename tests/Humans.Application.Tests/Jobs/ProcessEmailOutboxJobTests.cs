@@ -13,10 +13,10 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
-using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using Xunit;
 using Humans.Application.Interfaces.Email;
+using Humans.Infrastructure.Repositories.Email;
 
 namespace Humans.Application.Tests.Jobs;
 

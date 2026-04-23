@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Infrastructure.Repositories.Shifts;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using GeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
@@ -86,7 +87,7 @@ public class GeneralAvailabilityArchitectureTests
     [Fact]
     public void GeneralAvailabilityRepository_IsSealed()
     {
-        var repoType = typeof(Humans.Infrastructure.Repositories.GeneralAvailabilityRepository);
+        var repoType = typeof(GeneralAvailabilityRepository);
 
         repoType.IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");

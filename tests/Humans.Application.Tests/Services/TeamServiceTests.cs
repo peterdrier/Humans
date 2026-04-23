@@ -1,12 +1,10 @@
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Application;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -14,7 +12,6 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Application.Services.Shifts;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using Xunit;
 using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
@@ -25,6 +22,8 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Auth;
+using Humans.Infrastructure.Repositories.Auth;
+using Humans.Infrastructure.Repositories.Shifts;
 
 namespace Humans.Application.Tests.Services;
 

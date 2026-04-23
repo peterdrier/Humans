@@ -12,7 +12,7 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
-using Humans.Infrastructure.Repositories;
+using Humans.Infrastructure.Repositories.Email;
 using Humans.Infrastructure.Services;
 using Xunit;
 

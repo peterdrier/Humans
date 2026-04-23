@@ -1,7 +1,7 @@
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Infrastructure.Repositories;
+using Humans.Infrastructure.Repositories.AuditLog;
 using AuditLogAuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
 
 namespace Humans.Web.Extensions.Sections;

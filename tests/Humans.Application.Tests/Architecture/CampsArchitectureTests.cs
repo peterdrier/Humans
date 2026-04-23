@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
+using Humans.Infrastructure.Repositories.Camps;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using CampService = Humans.Application.Services.Camps.CampService;
@@ -92,7 +93,7 @@ public class CampsArchitectureTests
     [Fact]
     public void CampRepository_IsSealed()
     {
-        var repoType = typeof(Humans.Infrastructure.Repositories.CampRepository);
+        var repoType = typeof(CampRepository);
 
         repoType.IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");

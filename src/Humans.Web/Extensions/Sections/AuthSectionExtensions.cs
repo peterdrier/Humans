@@ -4,7 +4,7 @@ using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Auth;
 using Humans.Infrastructure.Caching;
-using Humans.Infrastructure.Repositories;
+using Humans.Infrastructure.Repositories.Auth;
 using Humans.Infrastructure.Services.Auth;
 
 namespace Humans.Web.Extensions.Sections;

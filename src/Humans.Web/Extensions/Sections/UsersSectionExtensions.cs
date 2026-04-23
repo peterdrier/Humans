@@ -3,7 +3,7 @@ using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
-using Humans.Infrastructure.Repositories;
+using Humans.Infrastructure.Repositories.Users;
 using DashboardDashboardService = Humans.Application.Services.Dashboard.DashboardService;
 using GovernanceMembershipCalculator = Humans.Application.Services.Governance.MembershipCalculator;
 using GovernanceMembershipQuery = Humans.Application.Services.Governance.MembershipQuery;

@@ -4,6 +4,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
+using Humans.Infrastructure.Repositories.Tickets;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using TicketSyncService = Humans.Application.Services.Tickets.TicketSyncService;
@@ -124,7 +125,7 @@ public class TicketSyncArchitectureTests
         // Mirrors ProfileRepository/UserRepository — repository implementations
         // are terminal; no subclass should extend or override the EF-backed
         // data access.
-        var repoType = typeof(Humans.Infrastructure.Repositories.TicketRepository);
+        var repoType = typeof(TicketRepository);
 
         repoType.IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
@@ -133,7 +134,7 @@ public class TicketSyncArchitectureTests
     [Fact]
     public void TicketRepository_ImplementsITicketRepository()
     {
-        typeof(ITicketRepository).IsAssignableFrom(typeof(Humans.Infrastructure.Repositories.TicketRepository))
+        typeof(ITicketRepository).IsAssignableFrom(typeof(TicketRepository))
             .Should().BeTrue();
     }
 }

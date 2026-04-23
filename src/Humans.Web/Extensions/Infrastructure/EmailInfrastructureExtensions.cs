@@ -1,12 +1,12 @@
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Jobs;
-using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using EmailOutboxService = Humans.Application.Services.Email.EmailOutboxService;
 using OutboxEmailService = Humans.Application.Services.Email.OutboxEmailService;
 using InfrastructureEmailBodyComposer = Humans.Infrastructure.Services.BrandedEmailBodyComposer;
 using Humans.Application.Interfaces.Email;
+using Humans.Infrastructure.Repositories.Email;
 
 namespace Humans.Web.Extensions.Infrastructure;
 

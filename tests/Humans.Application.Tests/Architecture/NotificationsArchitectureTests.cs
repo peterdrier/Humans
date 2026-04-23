@@ -5,6 +5,7 @@ using Xunit;
 using NotificationService = Humans.Application.Services.Notifications.NotificationService;
 using NotificationInboxService = Humans.Application.Services.Notifications.NotificationInboxService;
 using NotificationMeterProvider = Humans.Application.Services.Notifications.NotificationMeterProvider;
+using Humans.Infrastructure.Repositories.Notifications;
 
 namespace Humans.Application.Tests.Architecture;
 
@@ -165,7 +166,7 @@ public class NotificationsArchitectureTests
     [Fact]
     public void NotificationRepository_IsSealed()
     {
-        var repoType = typeof(Humans.Infrastructure.Repositories.NotificationRepository);
+        var repoType = typeof(NotificationRepository);
 
         repoType.IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");

@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Infrastructure.Repositories.Shifts;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using ShiftManagementService = Humans.Application.Services.Shifts.ShiftManagementService;
@@ -61,7 +62,7 @@ public class ShiftManagementArchitectureTests
     [Fact]
     public void ShiftManagementRepository_IsSealed()
     {
-        var repoType = typeof(Humans.Infrastructure.Repositories.ShiftManagementRepository);
+        var repoType = typeof(ShiftManagementRepository);
         repoType.IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
     }

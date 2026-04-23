@@ -3,7 +3,6 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -15,6 +14,7 @@ using NotificationService = Humans.Application.Services.Notifications.Notificati
 using NotificationEmitter = Humans.Application.Services.Notifications.NotificationEmitter;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Infrastructure.Repositories.Notifications;
 
 namespace Humans.Application.Tests.Services;
 

@@ -6,6 +6,7 @@ using Xunit;
 using UserService = Humans.Application.Services.Users.UserService;
 using AccountProvisioningService = Humans.Application.Services.Users.AccountProvisioningService;
 using UnsubscribeService = Humans.Application.Services.Users.UnsubscribeService;
+using Humans.Infrastructure.Repositories.Users;
 
 namespace Humans.Application.Tests.Architecture;
 
@@ -106,7 +107,7 @@ public class UserArchitectureTests
         // extend or override the EF-backed data access.
         var repoType = typeof(IUserRepository).Assembly
             .GetExportedTypes()
-            .Concat(typeof(Humans.Infrastructure.Repositories.UserRepository).Assembly.GetExportedTypes())
+            .Concat(typeof(UserRepository).Assembly.GetExportedTypes())
             .Single(t => string.Equals(t.Name, "UserRepository", StringComparison.Ordinal)
                          && typeof(IUserRepository).IsAssignableFrom(t));
 

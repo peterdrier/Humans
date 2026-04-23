@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Infrastructure.Repositories.AuditLog;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using AuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
@@ -94,7 +95,7 @@ public class AuditLogArchitectureTests
     [Fact]
     public void AuditLogRepository_IsSealed()
     {
-        var repoType = typeof(Humans.Infrastructure.Repositories.AuditLogRepository);
+        var repoType = typeof(AuditLogRepository);
 
         repoType.IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");

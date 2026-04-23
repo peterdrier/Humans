@@ -11,11 +11,11 @@ using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Repositories;
 using Xunit;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Infrastructure.Repositories.Email;
 
 namespace Humans.Application.Tests.Services;
 

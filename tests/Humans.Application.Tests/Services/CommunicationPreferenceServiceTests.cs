@@ -1,12 +1,11 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Repositories;
+using Humans.Infrastructure.Repositories.Profiles;
 using Humans.Infrastructure.Services.Profiles;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;

@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
+using Humans.Infrastructure.Repositories.Auth;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using MagicLinkService = Humans.Application.Services.Auth.MagicLinkService;
@@ -118,7 +119,7 @@ public class AuthArchitectureTests
     [Fact]
     public void RoleAssignmentRepository_IsSealed()
     {
-        var repoType = typeof(Humans.Infrastructure.Repositories.RoleAssignmentRepository);
+        var repoType = typeof(RoleAssignmentRepository);
 
         repoType.IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");

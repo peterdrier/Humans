@@ -2,7 +2,7 @@ using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Jobs;
-using Humans.Infrastructure.Repositories;
+using Humans.Infrastructure.Repositories.GoogleIntegration;
 using Humans.Infrastructure.Services;
 using Humans.Web.Filters;
 using GoogleSyncSettingsService = Humans.Application.Services.GoogleIntegration.SyncSettingsService;

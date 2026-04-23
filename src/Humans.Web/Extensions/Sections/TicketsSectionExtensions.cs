@@ -1,11 +1,11 @@
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Jobs;
-using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using TicketsTicketSyncService = Humans.Application.Services.Tickets.TicketSyncService;
 using TicketsTicketQueryService = Humans.Application.Services.Tickets.TicketQueryService;
 using Humans.Application.Interfaces.Tickets;
+using Humans.Infrastructure.Repositories.Tickets;
 
 namespace Humans.Web.Extensions.Sections;
 

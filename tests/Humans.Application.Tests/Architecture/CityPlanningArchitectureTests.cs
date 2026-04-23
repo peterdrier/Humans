@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Infrastructure.Repositories.CitiPlanning;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using CityPlanningService = Humans.Application.Services.CityPlanning.CityPlanningService;
@@ -88,7 +89,7 @@ public class CityPlanningArchitectureTests
     [Fact]
     public void CityPlanningRepository_IsSealed()
     {
-        var repoType = typeof(Humans.Infrastructure.Repositories.CityPlanningRepository);
+        var repoType = typeof(CityPlanningRepository);
 
         repoType.IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");

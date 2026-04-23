@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.HostedServices;
-using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using Humans.Infrastructure.Services.Profiles;
 using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
@@ -19,6 +18,8 @@ using GoogleEmailProvisioningService = Humans.Application.Services.GoogleIntegra
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Infrastructure.Repositories.Profiles;
+using Humans.Infrastructure.Repositories.Users;
 
 namespace Humans.Web.Extensions.Sections;
 

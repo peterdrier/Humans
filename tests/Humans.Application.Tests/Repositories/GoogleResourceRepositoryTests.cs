@@ -3,7 +3,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Repositories;
+using Humans.Infrastructure.Repositories.GoogleIntegration;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;

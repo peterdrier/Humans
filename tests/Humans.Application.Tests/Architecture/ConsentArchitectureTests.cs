@@ -1,6 +1,7 @@
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Infrastructure.Repositories.Consent;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using ConsentService = Humans.Application.Services.Consent.ConsentService;
@@ -99,7 +100,7 @@ public class ConsentArchitectureTests
     {
         // Mirrors ProfileRepository / UserRepository / AuditLogRepository — repository implementations are terminal;
         // no subclass should extend or override the EF-backed data access.
-        var repoType = typeof(Humans.Infrastructure.Repositories.ConsentRepository);
+        var repoType = typeof(ConsentRepository);
 
         repoType.IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");

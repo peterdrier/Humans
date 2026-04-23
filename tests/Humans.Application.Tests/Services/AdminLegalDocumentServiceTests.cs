@@ -11,10 +11,11 @@ using Humans.Application.Services.Legal;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Repositories;
-using Xunit;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Teams;
+using Humans.Infrastructure.Repositories.Legal;
+
+using Xunit;
 
 namespace Humans.Application.Tests.Services;
 

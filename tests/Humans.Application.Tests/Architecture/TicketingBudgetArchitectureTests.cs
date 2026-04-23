@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Infrastructure.Repositories.Tickets;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using TicketingBudgetService = Humans.Application.Services.Tickets.TicketingBudgetService;
@@ -100,7 +101,7 @@ public class TicketingBudgetArchitectureTests
     {
         // Mirrors ProfileRepository / UserRepository — repository implementations are terminal;
         // no subclass should extend or override the EF-backed data access.
-        var repoType = typeof(Humans.Infrastructure.Repositories.TicketingBudgetRepository);
+        var repoType = typeof(TicketingBudgetRepository);
 
         repoType.IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");

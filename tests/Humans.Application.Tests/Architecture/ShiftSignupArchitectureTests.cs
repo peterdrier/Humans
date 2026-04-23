@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Infrastructure.Repositories.Shifts;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
@@ -93,7 +94,7 @@ public class ShiftSignupArchitectureTests
     [Fact]
     public void ShiftSignupRepository_IsSealed()
     {
-        var repoType = typeof(Humans.Infrastructure.Repositories.ShiftSignupRepository);
+        var repoType = typeof(ShiftSignupRepository);
 
         repoType.IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
@@ -102,7 +103,7 @@ public class ShiftSignupArchitectureTests
     [Fact]
     public void ShiftSignupRepository_NamespaceIsHumansInfrastructureRepositories()
     {
-        var repoType = typeof(Humans.Infrastructure.Repositories.ShiftSignupRepository);
+        var repoType = typeof(ShiftSignupRepository);
 
         repoType.Namespace
             .Should().Be("Humans.Infrastructure.Repositories",

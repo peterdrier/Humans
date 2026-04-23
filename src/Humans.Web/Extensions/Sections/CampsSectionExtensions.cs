@@ -1,7 +1,7 @@
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Infrastructure.Repositories;
+using Humans.Infrastructure.Repositories.Camps;
 using Humans.Infrastructure.Services;
 using CampsCampContactService = Humans.Application.Services.Camps.CampContactService;
 using CampsCampService = Humans.Application.Services.Camps.CampService;

@@ -6,6 +6,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
+using Humans.Infrastructure.Repositories.Tickets;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using TicketQueryService = Humans.Application.Services.Tickets.TicketQueryService;
@@ -109,7 +110,7 @@ public class TicketQueryArchitectureTests
     [Fact]
     public void TicketRepository_IsSealed()
     {
-        var repoType = typeof(Humans.Infrastructure.Repositories.TicketRepository);
+        var repoType = typeof(TicketRepository);
 
         repoType.IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");

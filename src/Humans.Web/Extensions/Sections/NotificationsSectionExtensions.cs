@@ -3,7 +3,7 @@ using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Notifications;
 using Humans.Infrastructure.Jobs;
-using Humans.Infrastructure.Repositories;
+using Humans.Infrastructure.Repositories.Notifications;
 
 namespace Humans.Web.Extensions.Sections;
 

@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
+using Humans.Infrastructure.Repositories.Feedback;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using FeedbackService = Humans.Application.Services.Feedback.FeedbackService;
@@ -109,7 +110,7 @@ public class FeedbackArchitectureTests
     [Fact]
     public void FeedbackRepository_IsSealed()
     {
-        var repoType = typeof(Humans.Infrastructure.Repositories.FeedbackRepository);
+        var repoType = typeof(FeedbackRepository);
 
         repoType.IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");

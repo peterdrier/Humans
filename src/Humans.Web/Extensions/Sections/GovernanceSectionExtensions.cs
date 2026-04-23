@@ -5,7 +5,7 @@ using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Jobs;
-using Humans.Infrastructure.Repositories;
+using Humans.Infrastructure.Repositories.Governance;
 using Humans.Infrastructure.Services;
 using GovernanceApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
 using OnboardingOrchestratorService = Humans.Application.Services.Onboarding.OnboardingService;

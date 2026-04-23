@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Infrastructure.Repositories.Legal;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using AdminLegalDocumentService = Humans.Application.Services.Legal.AdminLegalDocumentService;
@@ -143,7 +144,7 @@ public class LegalArchitectureTests
     [Fact]
     public void LegalDocumentRepository_IsSealed()
     {
-        var repoType = typeof(Humans.Infrastructure.Repositories.LegalDocumentRepository);
+        var repoType = typeof(LegalDocumentRepository);
         repoType.IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension (matches Profile/User/Application repos)");
     }

@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
+using Humans.Infrastructure.Repositories.Email;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using EmailOutboxService = Humans.Application.Services.Email.EmailOutboxService;
@@ -139,7 +140,7 @@ public class EmailArchitectureTests
     {
         var repoType = typeof(IEmailOutboxRepository).Assembly
             .GetExportedTypes()
-            .Concat(typeof(Humans.Infrastructure.Repositories.EmailOutboxRepository).Assembly.GetExportedTypes())
+            .Concat(typeof(EmailOutboxRepository).Assembly.GetExportedTypes())
             .Single(t => string.Equals(t.Name, "EmailOutboxRepository", StringComparison.Ordinal)
                          && typeof(IEmailOutboxRepository).IsAssignableFrom(t));
 

@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
+using Humans.Infrastructure.Repositories.GoogleIntegration;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using TeamResourceService = Humans.Application.Services.Teams.TeamResourceService;
@@ -118,7 +119,7 @@ public class TeamResourceArchitectureTests
     {
         // Mirrors ProfileRepository — repository implementations are terminal; no subclass should
         // extend or override the EF-backed data access.
-        var repoType = typeof(Humans.Infrastructure.Repositories.GoogleResourceRepository);
+        var repoType = typeof(GoogleResourceRepository);
         repoType.IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
     }
@@ -126,7 +127,7 @@ public class TeamResourceArchitectureTests
     [Fact]
     public void GoogleResourceRepository_AssemblyIsHumansInfrastructure()
     {
-        typeof(Humans.Infrastructure.Repositories.GoogleResourceRepository).Assembly.GetName().Name
+        typeof(GoogleResourceRepository).Assembly.GetName().Name
             .Should().Be("Humans.Infrastructure");
     }
 

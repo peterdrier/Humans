@@ -7,8 +7,8 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Repositories;
 using Xunit;
+using Humans.Infrastructure.Repositories.GoogleIntegration;
 
 namespace Humans.Application.Tests.Repositories;
 

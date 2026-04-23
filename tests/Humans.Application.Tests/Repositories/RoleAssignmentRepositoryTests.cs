@@ -3,7 +3,7 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Repositories;
+using Humans.Infrastructure.Repositories.Auth;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
