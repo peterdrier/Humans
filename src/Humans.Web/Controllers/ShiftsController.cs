@@ -20,6 +20,7 @@ public class ShiftsController : HumansControllerBase
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IShiftSignupService _signupService;
     private readonly IGeneralAvailabilityService _availabilityService;
+    private readonly ITeamService _teamService;
     private readonly IClock _clock;
     private readonly ILogger<ShiftsController> _logger;
 
@@ -27,6 +28,7 @@ public class ShiftsController : HumansControllerBase
         IShiftManagementService shiftMgmt,
         IShiftSignupService signupService,
         IGeneralAvailabilityService availabilityService,
+        ITeamService teamService,
         UserManager<User> userManager,
         IClock clock,
         ILogger<ShiftsController> logger)
@@ -35,6 +37,7 @@ public class ShiftsController : HumansControllerBase
         _shiftMgmt = shiftMgmt;
         _signupService = signupService;
         _availabilityService = availabilityService;
+        _teamService = teamService;
         _clock = clock;
         _logger = logger;
     }
@@ -96,17 +99,22 @@ public class ShiftsController : HumansControllerBase
             ? urgentShifts.Where(u => u.Shift.Rota.Tags.Any(t => activeTagFilter.Contains(t.Id))).ToList()
             : urgentShifts;
 
+        // Resolve team name/slug cross-section (Shifts doesn't own Team data).
+        var shiftTeamIds = filteredShifts.Select(u => u.Shift.Rota.TeamId).Distinct().ToList();
+        var teamLookup = await _teamService.GetByIdsWithParentsAsync(shiftTeamIds);
+
         // Group by department → rota → shift
         var departments = filteredShifts
             .GroupBy(u => u.Shift.Rota.TeamId)
             .Select(deptGroup =>
             {
                 var firstShift = deptGroup.OrderBy(x => x.Shift.Id).First().Shift;
+                var team = teamLookup.TryGetValue(firstShift.Rota.TeamId, out var t) ? t : null;
                 return new DepartmentShiftGroup
                 {
                     TeamId = firstShift.Rota.TeamId,
-                    TeamName = firstShift.Rota.Team.Name,
-                    TeamSlug = firstShift.Rota.Team.Slug,
+                    TeamName = team?.Name ?? string.Empty,
+                    TeamSlug = team?.Slug ?? string.Empty,
                     Rotas = deptGroup
                         .GroupBy(u => u.Shift.RotaId)
                         .Select(rotaGroup =>
