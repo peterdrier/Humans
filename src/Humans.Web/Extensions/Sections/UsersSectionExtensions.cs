@@ -2,7 +2,7 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories;
-using Humans.Infrastructure.Services;
+using DashboardDashboardService = Humans.Application.Services.Dashboard.DashboardService;
 using GovernanceMembershipCalculator = Humans.Application.Services.Governance.MembershipCalculator;
 using GovernanceMembershipQuery = Humans.Application.Services.Governance.MembershipQuery;
 using UsersUserService = Humans.Application.Services.Users.UserService;
@@ -29,7 +29,7 @@ internal static class UsersSectionExtensions
         // Only MembershipCalculator depends on the query adapter.
         services.AddScoped<IMembershipQuery, GovernanceMembershipQuery>();
         services.AddScoped<IMembershipCalculator, GovernanceMembershipCalculator>();
-        services.AddScoped<IDashboardService, DashboardService>();
+        services.AddScoped<IDashboardService, DashboardDashboardService>();
 
         return services;
     }

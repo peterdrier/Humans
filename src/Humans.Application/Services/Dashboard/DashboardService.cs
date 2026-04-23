@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using MemberApplication = Humans.Domain.Entities.Application;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Application.Services.Dashboard;
 
 /// <summary>
 /// Orchestrates the member dashboard snapshot. Pulls from several owning services

@@ -7,7 +7,7 @@ using Humans.Domain.Enums;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Application.Services.Camps;
 
 public class CampContactService : ICampContactService
 {

@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
+using CampsCampContactService = Humans.Application.Services.Camps.CampContactService;
 using CampsCampService = Humans.Application.Services.Camps.CampService;
 
 namespace Humans.Web.Extensions.Sections;
@@ -18,7 +19,7 @@ internal static class CampsSectionExtensions
         services.AddScoped<ICampService>(sp => sp.GetRequiredService<CampsCampService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CampsCampService>());
 
-        services.AddScoped<ICampContactService, CampContactService>();
+        services.AddScoped<ICampContactService, CampsCampContactService>();
 
         return services;
     }
