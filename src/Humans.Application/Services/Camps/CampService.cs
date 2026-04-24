@@ -1623,10 +1623,14 @@ public sealed class CampService : ICampService, IUserDataContributor
 
         var members = await _repo.GetSeasonMembersAsync(campSeasonId, cancellationToken);
 
-        // Fold active leads of the camp into the active list so the roster shows
-        // the people running the camp even if they never requested membership.
-        // Leads also on a CampMember row get IsLead=true stamped; leads without a
-        // row appear as synthetic entries with CampMemberId = Guid.Empty.
+        // TEMP: fold active CampLead rows into the active members list so the
+        // roster shows the people running the camp even if they never requested
+        // membership. Leads that are also on a CampMember row get IsLead=true
+        // stamped; leads without a row appear as synthetic entries with
+        // CampMemberId = Guid.Empty. The upcoming camp-roles PR will subsume
+        // the CampLead concept into role assignments on CampMember — when that
+        // lands, delete this whole union block and drop `IsLead` from the
+        // CampMemberRow record.
         var camp = await _repo.GetByIdAsync(info.CampId, cancellationToken);
         var activeLeads = camp?.Leads.Where(l => l.LeftAt is null).ToList() ?? new List<CampLead>();
         var leadUserIds = activeLeads.Select(l => l.UserId).ToHashSet();

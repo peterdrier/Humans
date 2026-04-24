@@ -129,7 +129,7 @@ All stored as strings via `HasConversion<string>()`. `Vibes` stored as jsonb arr
 - Rejecting a membership request sends a `CampMembershipRejected` notification to the requester.
 - When a season is rejected or withdrawn, pending requesters receive a `CampMembershipSeasonClosed` notification. Their membership rows are **not** auto-mutated — the notification is the only side effect, so if the season is later reactivated the request is still live.
 - Camp leads do **not** receive a per-request stored notification when humans request to join. Instead a `NotificationMeter` ("N humans want to join your camp") shows the live pending count; it updates immediately on approve/reject/withdraw and drops to zero when the season is closed.
-- Active leads appear in the camp's active-members list automatically, tagged with an `IsLead` flag. They do not need a CampMember row to be shown as part of the camp.
+- Active leads appear in the camp's active-members list automatically, tagged with an `IsLead` flag. They do not need a CampMember row to be shown as part of the camp. **This `IsLead` flag is temporary** — the upcoming camp-roles PR will subsume the `CampLead` concept into role assignments on `CampMember` (Team-style). When that lands, the synthesis logic in `CampService.GetCampMembersAsync` and the `IsLead` flag on `CampMemberRow` / `CampMemberRowViewModel` must be removed, and the `camp_leads` table dropped after migrating existing leads to role assignments.
 
 ## Cross-Section Dependencies
 

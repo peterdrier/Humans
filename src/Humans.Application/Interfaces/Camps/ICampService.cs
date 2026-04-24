@@ -229,6 +229,11 @@ public record CampMemberListData(
     IReadOnlyList<CampMemberRow> Pending,
     IReadOnlyList<CampMemberRow> Active);
 
+// TEMP: `IsLead` is a display-only flag populated by unioning active `CampLead`
+// rows into the active-members list. It'll be superseded by the upcoming camp
+// roles PR (Team-style role assignments on CampMember), which will subsume the
+// CampLead concept entirely. Remove this flag + the union logic in
+// CampService.GetCampMembersAsync when that lands.
 public record CampMemberRow(
     Guid CampMemberId,
     Guid UserId,
