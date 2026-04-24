@@ -525,6 +525,7 @@ public sealed class CampService : ICampService, IUserDataContributor
     {
         var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
         var firstImage = camp.Images.OrderBy(i => i.SortOrder).FirstOrDefault();
+        var status = season?.Status ?? CampSeasonStatus.Pending;
 
         return new CampPublicSummary(
             camp.Id,
@@ -537,11 +538,12 @@ public sealed class CampService : ICampService, IUserDataContributor
             (season?.AcceptingMembers ?? YesNoMaybe.No).ToString(),
             (season?.KidsWelcome ?? YesNoMaybe.No).ToString(),
             season?.SoundZone?.ToString(),
-            (season?.Status ?? CampSeasonStatus.Pending).ToString(),
+            status.ToString(),
             camp.TimesAtNowhere,
             camp.IsSwissCamp,
             camp.Links,
-            camp.WebOrSocialUrl);
+            camp.WebOrSocialUrl,
+            status is CampSeasonStatus.Active or CampSeasonStatus.Full);
     }
 
     private static CampPlacementSummary? CreateCampPlacementSummary(Camp camp, int year)

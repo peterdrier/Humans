@@ -247,7 +247,8 @@ public record CampPublicSummary(
     int TimesAtNowhere,
     bool IsSwissCamp,
     IReadOnlyList<CampLink>? Links,
-    string? WebOrSocialUrl);
+    string? WebOrSocialUrl,
+    bool IsConfirmedForYear);
 
 public record CampPlacementSummary(
     Guid Id,
