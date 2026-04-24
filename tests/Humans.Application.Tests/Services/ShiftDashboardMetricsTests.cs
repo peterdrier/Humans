@@ -491,6 +491,217 @@ public class ShiftDashboardMetricsTests : IDisposable
     }
 
     // ================================================================
+    // GetDailyDepartmentStaffingAsync
+    // ================================================================
+
+    [Fact]
+    public async Task GetDailyDepartmentStaffing_EventPeriod_ReturnsEmpty()
+    {
+        // Event day-over-day mix is deliberately omitted by design — the planning
+        // flow for event shifts is different. Only Build and Strike produce data.
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var rota = await SeedRotaAsync(team, es, RotaPeriod.Event);
+        var shift = await SeedShiftAsync(rota, dayOffset: 2, min: 1, max: 3);
+        await SeedSignupsAsync(shift, SignupStatus.Confirmed, count: 2);
+
+        var result = await _service.GetDailyDepartmentStaffingAsync(es.Id, ShiftPeriod.Event);
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetDailyDepartmentStaffing_NullPeriod_ReturnsEmpty()
+    {
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var rota = await SeedRotaAsync(team, es, RotaPeriod.Build);
+        var shift = await SeedShiftAsync(rota, dayOffset: -3, min: 1, max: 3);
+        await SeedSignupsAsync(shift, SignupStatus.Confirmed, count: 1);
+
+        var result = await _service.GetDailyDepartmentStaffingAsync(es.Id, period: null);
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetDailyDepartmentStaffing_BuildPeriod_CountsOnlyConfirmed()
+    {
+        // Pending signups must not inflate on-site counts — the chart is about
+        // who is actually confirmed to show up that day.
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Build");
+        var rota = await SeedRotaAsync(team, es, RotaPeriod.Build);
+        var shift = await SeedShiftAsync(rota, dayOffset: -3, min: 1, max: 5);
+        await SeedSignupsAsync(shift, SignupStatus.Confirmed, count: 2);
+        await SeedSignupsAsync(shift, SignupStatus.Pending, count: 3);
+
+        var result = await _service.GetDailyDepartmentStaffingAsync(es.Id, ShiftPeriod.Build);
+
+        var dayRow = result.SingleOrDefault(r => r.Date == es.GateOpeningDate.PlusDays(-3));
+        dayRow.Should().NotBeNull();
+        dayRow!.Departments.Should().ContainSingle(d => string.Equals(d.DepartmentName, "Build", StringComparison.Ordinal))
+            .Which.ConfirmedCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task GetDailyDepartmentStaffing_NonPromotedSubteam_RollsUpToParent()
+    {
+        // Subteam shifts that AREN'T promoted to directory must roll up into the
+        // parent department's stacked-bar segment, not appear as a separate one.
+        var es = await SeedEventAsync();
+        var infra = await SeedTeamAsync("Infrastructure");
+        var power = await SeedTeamAsync("Power", parentId: infra.Id); // not promoted
+        var powerRota = await SeedRotaAsync(power, es, RotaPeriod.Build);
+        var shift = await SeedShiftAsync(powerRota, dayOffset: -2, min: 1, max: 5);
+        await SeedSignupsAsync(shift, SignupStatus.Confirmed, count: 3);
+
+        var result = await _service.GetDailyDepartmentStaffingAsync(es.Id, ShiftPeriod.Build);
+
+        var dayRow = result.Single(r => r.Date == es.GateOpeningDate.PlusDays(-2));
+        dayRow.Departments.Should().ContainSingle();
+        dayRow.Departments[0].DepartmentName.Should().Be("Infrastructure");
+        dayRow.Departments[0].ConfirmedCount.Should().Be(3);
+    }
+
+    // ================================================================
+    // GetShiftDurationBreakdownAsync
+    // ================================================================
+
+    [Fact]
+    public async Task GetShiftDurationBreakdown_NullPeriod_ReturnsEmpty()
+    {
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var rota = await SeedRotaAsync(team, es, RotaPeriod.Event);
+        await SeedShiftAsync(rota, dayOffset: 1, min: 1, max: 3);
+
+        var result = await _service.GetShiftDurationBreakdownAsync(es.Id, period: null);
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetShiftDurationBreakdown_AllDayShifts_CollapseIntoSingleBucket()
+    {
+        // Full-day shifts share one bucket regardless of nominal duration
+        // (6 h, 8 h, 10 h all render as "Full day" on the breakdown chart).
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var rota = await SeedRotaAsync(team, es, RotaPeriod.Event);
+        await SeedAllDayShiftAsync(rota, dayOffset: 1, nominalHours: 6, min: 1, max: 3);
+        await SeedAllDayShiftAsync(rota, dayOffset: 2, nominalHours: 8, min: 1, max: 4);
+
+        var result = await _service.GetShiftDurationBreakdownAsync(es.Id, ShiftPeriod.Event);
+
+        result.Should().ContainSingle(r => r.IsAllDay);
+        result.Single(r => r.IsAllDay).TotalSlots.Should().Be(7);
+    }
+
+    [Fact]
+    public async Task GetShiftDurationBreakdown_DistinctHourlyDurations_GetSeparateBuckets()
+    {
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var rota = await SeedRotaAsync(team, es, RotaPeriod.Event);
+        await SeedHourlyShiftAsync(rota, dayOffset: 1, hours: 2, min: 1, max: 3);
+        await SeedHourlyShiftAsync(rota, dayOffset: 2, hours: 4, min: 1, max: 5);
+        await SeedHourlyShiftAsync(rota, dayOffset: 3, hours: 4, min: 1, max: 5);
+
+        var result = await _service.GetShiftDurationBreakdownAsync(es.Id, ShiftPeriod.Event);
+
+        result.Should().HaveCount(2);
+        result.Should().Contain(r => !r.IsAllDay && r.DurationHours == 2 && r.TotalSlots == 3);
+        result.Should().Contain(r => !r.IsAllDay && r.DurationHours == 4 && r.TotalSlots == 10);
+    }
+
+    // ================================================================
+    // GetCoverageHeatmapAsync
+    // ================================================================
+
+    [Fact]
+    public async Task GetCoverageHeatmap_PromotedSubteam_GetsOwnRow()
+    {
+        // A subteam promoted to the directory gets its own heatmap row.
+        // Its shifts must NOT also appear under the parent team's row
+        // (the "no-overlap" invariant).
+        var es = await SeedEventAsync();
+        var infra = await SeedTeamAsync("Infrastructure");
+        var power = await SeedTeamAsync("Power", parentId: infra.Id, isPromotedToDirectory: true);
+
+        var infraRota = await SeedRotaAsync(infra, es, RotaPeriod.Event);
+        var powerRota = await SeedRotaAsync(power, es, RotaPeriod.Event);
+        await SeedShiftAsync(infraRota, dayOffset: 1, min: 1, max: 3);
+        await SeedShiftAsync(powerRota, dayOffset: 1, min: 1, max: 4);
+
+        var result = await _service.GetCoverageHeatmapAsync(es.Id, ShiftPeriod.Event);
+
+        result.Rotas.Should().HaveCount(2);
+        result.Rotas.Should().ContainSingle(r => string.Equals(r.RotaName, "Infrastructure", StringComparison.Ordinal))
+            .Which.Cells.Sum(c => c.TotalSlots).Should().Be(3);
+        result.Rotas.Should().ContainSingle(r => string.Equals(r.RotaName, "Power", StringComparison.Ordinal))
+            .Which.Cells.Sum(c => c.TotalSlots).Should().Be(4);
+    }
+
+    [Fact]
+    public async Task GetCoverageHeatmap_NonPromotedSubteam_RollsUpToParent()
+    {
+        // Non-promoted subteam: shifts appear only in the parent's row, never
+        // as a separate row (no-overlap in the other direction).
+        var es = await SeedEventAsync();
+        var infra = await SeedTeamAsync("Infrastructure");
+        var plumbing = await SeedTeamAsync("Plumbing", parentId: infra.Id); // not promoted
+        var infraRota = await SeedRotaAsync(infra, es, RotaPeriod.Event);
+        var plumbingRota = await SeedRotaAsync(plumbing, es, RotaPeriod.Event);
+
+        await SeedShiftAsync(infraRota, dayOffset: 1, min: 1, max: 2);
+        await SeedShiftAsync(plumbingRota, dayOffset: 1, min: 1, max: 3);
+
+        var result = await _service.GetCoverageHeatmapAsync(es.Id, ShiftPeriod.Event);
+
+        result.Rotas.Should().ContainSingle();
+        result.Rotas[0].RotaName.Should().Be("Infrastructure");
+        result.Rotas[0].Cells.Sum(c => c.TotalSlots).Should().Be(5);
+        result.Rotas.Should().NotContain(r => string.Equals(r.RotaName, "Plumbing", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task GetCoverageHeatmap_FilledSlotsCapAtMaxVolunteers()
+    {
+        // Overfilled shifts must not inflate heatmap cell counts — same cap rule
+        // as the overview card, applied per cell.
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var rota = await SeedRotaAsync(team, es, RotaPeriod.Event);
+        var shift = await SeedShiftAsync(rota, dayOffset: 1, min: 1, max: 3);
+        await SeedSignupsAsync(shift, SignupStatus.Confirmed, count: 5);
+
+        var result = await _service.GetCoverageHeatmapAsync(es.Id, ShiftPeriod.Event);
+
+        var cell = result.Rotas.Single().Cells.Single(c => c.TotalSlots > 0);
+        cell.TotalSlots.Should().Be(3);
+        cell.FilledSlots.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task GetCoverageHeatmap_DayPeriodClassification_UsesShiftPeriodEnum()
+    {
+        // Day-column period tagging must use the ShiftPeriod enum, not English
+        // strings — previously the service emitted "Set-up"/"Event"/"Strike"
+        // which coupled the view to magic values.
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var rota = await SeedRotaAsync(team, es, RotaPeriod.Event);
+        await SeedShiftAsync(rota, dayOffset: 1, min: 1, max: 2);
+
+        var result = await _service.GetCoverageHeatmapAsync(es.Id, period: null);
+
+        result.Days.Should().Contain(d => d.DayOffset < 0 && d.Period == ShiftPeriod.Build);
+        result.Days.Should().Contain(d => d.DayOffset >= 0 && d.DayOffset <= es.EventEndOffset && d.Period == ShiftPeriod.Event);
+        result.Days.Should().Contain(d => d.DayOffset > es.EventEndOffset && d.Period == ShiftPeriod.Strike);
+    }
+
+    // ================================================================
     // Seeding helpers.
     // ================================================================
 
@@ -515,7 +726,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         return es;
     }
 
-    private async Task<Team> SeedTeamAsync(string name, Guid? parentId = null)
+    private async Task<Team> SeedTeamAsync(string name, Guid? parentId = null, bool isPromotedToDirectory = false)
     {
         var team = new Team
         {
@@ -524,6 +735,7 @@ public class ShiftDashboardMetricsTests : IDisposable
             Slug = name.ToLowerInvariant(),
             IsActive = true,
             ParentTeamId = parentId,
+            IsPromotedToDirectory = isPromotedToDirectory,
             CreatedAt = TestNow,
             UpdatedAt = TestNow,
         };
@@ -564,6 +776,46 @@ public class ShiftDashboardMetricsTests : IDisposable
             MinVolunteers = min,
             MaxVolunteers = max,
             AdminOnly = adminOnly,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow,
+        };
+        _dbContext.Shifts.Add(shift);
+        await _dbContext.SaveChangesAsync();
+        return shift;
+    }
+
+    private async Task<Shift> SeedAllDayShiftAsync(Rota rota, int dayOffset, double nominalHours, int min, int max)
+    {
+        var shift = new Shift
+        {
+            Id = Guid.NewGuid(),
+            RotaId = rota.Id,
+            DayOffset = dayOffset,
+            StartTime = new LocalTime(8, 0),
+            Duration = Duration.FromHours(nominalHours),
+            IsAllDay = true,
+            MinVolunteers = min,
+            MaxVolunteers = max,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow,
+        };
+        _dbContext.Shifts.Add(shift);
+        await _dbContext.SaveChangesAsync();
+        return shift;
+    }
+
+    private async Task<Shift> SeedHourlyShiftAsync(Rota rota, int dayOffset, int hours, int min, int max)
+    {
+        var shift = new Shift
+        {
+            Id = Guid.NewGuid(),
+            RotaId = rota.Id,
+            DayOffset = dayOffset,
+            StartTime = new LocalTime(9, 0),
+            Duration = Duration.FromHours(hours),
+            IsAllDay = false,
+            MinVolunteers = min,
+            MaxVolunteers = max,
             CreatedAt = TestNow,
             UpdatedAt = TestNow,
         };

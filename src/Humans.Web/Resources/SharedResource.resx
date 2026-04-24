@@ -1752,8 +1752,6 @@
 
 
   <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Slots filled</value></data>
-  <data name="ShiftDash_Overview_ShiftsAtMinSubline" xml:space="preserve"><value>{0} / {1} shifts at min quota ({2}%)</value><comment>{0} filled shifts, {1} total shifts, {2} percentage</comment></data>
-  <data name="ShiftDash_Overview_SlotsFilledSubline" xml:space="preserve"><value>{0} / {1} slots filled ({2}%)</value><comment>{0} filled slots, {1} total slots, {2} percentage</comment></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Ticket holders</value></data>
   <data name="ShiftDash_Overview_TicketHoldersSubline" xml:space="preserve"><value>humans who have paid</value></data>
   <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve"><value>Ticket holding humans</value></data>
@@ -1785,7 +1783,6 @@
   <data name="ShiftDash_DurationMix_Title" xml:space="preserve"><value>Shift duration mix</value></data>
   <data name="ShiftDash_DurationMix_Subtitle" xml:space="preserve"><value>how shifts are split between full-day and hourly, for this period</value></data>
   <data name="ShiftDash_DurationMix_Col_Duration" xml:space="preserve"><value>Duration</value></data>
-  <data name="ShiftDash_DurationMix_Col_Shifts" xml:space="preserve"><value>Shifts</value></data>
   <data name="ShiftDash_DurationMix_Col_Slots" xml:space="preserve"><value>Slots</value></data>
   <data name="ShiftDash_DurationMix_Col_Filled" xml:space="preserve"><value>Filled</value></data>
   <data name="ShiftDash_DurationMix_Col_Pct" xml:space="preserve"><value>%</value></data>
@@ -1794,7 +1791,6 @@
   <data name="ShiftDash_DurationMix_Total" xml:space="preserve"><value>Total</value></data>
   <data name="ShiftDash_Heatmap_Title" xml:space="preserve"><value>Coverage heatmap</value></data>
   <data name="ShiftDash_Heatmap_Subtitle" xml:space="preserve"><value>slot fill per rota per day — green = 80%+, yellow = 60–79%, red = below, grey = no shift that day</value></data>
-  <data name="ShiftDash_Heatmap_Col_Rota" xml:space="preserve"><value>Department / Rota</value></data>
   <data name="ShiftDash_Heatmap_Col_Team" xml:space="preserve"><value>Team</value></data>
   <data name="ShiftDash_Heatmap_Tooltip_Filled" xml:space="preserve"><value>{0} — {1} / {2} slots filled</value></data>
   <data name="ShiftDash_Heatmap_Tooltip_None" xml:space="preserve"><value>{0} — no shifts that day</value></data>
@@ -1805,11 +1801,7 @@
   <data name="ShiftDash_Departments_Col_Pct" xml:space="preserve"><value>%</value></data>
   <data name="ShiftDash_Departments_Col_SlotsRemaining" xml:space="preserve"><value>Slots remaining</value></data>
   <data name="ShiftDash_Departments_Col_Period" xml:space="preserve"><value>Period</value></data>
-  <data name="ShiftDash_Departments_Col_ShiftsAtMin" xml:space="preserve"><value>Shifts at min</value><comment>Shifts meeting minimum volunteer count</comment></data>
-  <data name="ShiftDash_Departments_Col_SlotsFilled" xml:space="preserve"><value>Slots filled</value><comment>Individual volunteer slots confirmed</comment></data>
   <data name="ShiftDash_Departments_Direct" xml:space="preserve"><value>Direct</value></data>
-  <data name="ShiftsSummary_ShiftsAtMin" xml:space="preserve"><value>{0} / {1} shifts at min</value><comment>{0} filled shifts, {1} total shifts</comment></data>
-  <data name="ShiftsSummary_SlotsFilled2" xml:space="preserve"><value>{0} / {1} slots filled</value><comment>{0} filled slots, {1} total slots</comment></data>
 
   <data name="ShiftDash_Coordinators_Title" xml:space="preserve"><value>Coordinator activity</value></data>
   <data name="ShiftDash_Coordinators_Subtitle" xml:space="preserve"><value>teams with pending signups, oldest login first</value></data>

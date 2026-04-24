@@ -24,6 +24,7 @@ public class ShiftDashboardController : HumansControllerBase
     private readonly IGeneralAvailabilityService _availabilityService;
     private readonly UserManager<User> _userManager;
     private readonly IWebHostEnvironment _environment;
+    private readonly IClock _clock;
     private readonly ILogger<ShiftDashboardController> _logger;
 
     public ShiftDashboardController(
@@ -32,6 +33,7 @@ public class ShiftDashboardController : HumansControllerBase
         IGeneralAvailabilityService availabilityService,
         UserManager<User> userManager,
         IWebHostEnvironment environment,
+        IClock clock,
         ILogger<ShiftDashboardController> logger)
         : base(userManager)
     {
@@ -40,6 +42,7 @@ public class ShiftDashboardController : HumansControllerBase
         _availabilityService = availabilityService;
         _userManager = userManager;
         _environment = environment;
+        _clock = clock;
         _logger = logger;
     }
 
@@ -88,6 +91,19 @@ public class ShiftDashboardController : HumansControllerBase
             Name = d.TeamName
         }).ToList();
 
+        // Countdown to "feet on the ground" (first build day). Computed in the event
+        // timezone so midnight-local is the reference, and from the injected IClock
+        // so tests can override with FakeClock.
+        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId) ?? DateTimeZone.Utc;
+        var todayLocal = _clock.GetCurrentInstant().InZone(tz).Date;
+        var firstBuildDay = es.GateOpeningDate.PlusDays(es.BuildStartOffset);
+        var daysToBuild = Period.Between(todayLocal, firstBuildDay, PeriodUnits.Days).Days;
+        var countdown = new BuildDayCountdown(
+            DaysToBuild: daysToBuild,
+            FirstBuildDay: firstBuildDay,
+            Weeks: Math.Abs(daysToBuild) / 7,
+            RemainderDays: Math.Abs(daysToBuild) % 7);
+
         var model = new ShiftDashboardViewModel
         {
             Shifts = shifts.ToList(),
@@ -107,6 +123,7 @@ public class ShiftDashboardController : HumansControllerBase
             CoverageHeatmap = coverageHeatmap,
             TrendWindow = window,
             IsDevelopment = _environment.IsDevelopment(),
+            Countdown = countdown,
         };
 
         return View(model);

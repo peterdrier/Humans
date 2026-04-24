@@ -1,3 +1,4 @@
+using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Application.DTOs;
@@ -83,7 +84,6 @@ public record DepartmentDayCount(string DepartmentName, int ConfirmedCount);
 public record ShiftDurationBreakdownRow(
     bool IsAllDay,
     int DurationHours,
-    int ShiftCount,
     int TotalSlots,
     int FilledSlots);
 
@@ -96,7 +96,7 @@ public record CoverageHeatmap(
     IReadOnlyList<CoverageHeatmapDay> Days,
     IReadOnlyList<CoverageHeatmapRotaRow> Rotas);
 
-public record CoverageHeatmapDay(int DayOffset, LocalDate Date, string DateLabel, string PeriodLabel);
+public record CoverageHeatmapDay(int DayOffset, LocalDate Date, string DateLabel, ShiftPeriod Period);
 
 public record CoverageHeatmapRotaRow(
     Guid RotaId,

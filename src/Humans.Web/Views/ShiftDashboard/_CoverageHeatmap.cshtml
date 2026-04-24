@@ -1,4 +1,5 @@
 @using Humans.Application.DTOs
+@using Humans.Domain.Enums
 @model CoverageHeatmap
 
 @{
@@ -10,19 +11,18 @@
         var pct = 100.0 * filled / total;
         if (pct >= 80) return "bg-success text-white";
         if (pct >= 60) return "bg-warning text-dark";
-        if (pct > 0) return "bg-danger text-white";
-        return "bg-danger text-white";                   // Total > 0 but nobody confirmed — hard red.
+        return "bg-danger text-white";                   // Under-staffed (including zero-confirmed).
     }
 
     static string CellLabel(int total, int filled) =>
         total == 0 ? "—" : $"{filled}/{total}";
 
-    static string PeriodBadgeClass(string periodLabel) => periodLabel switch
+    static string PeriodBadgeClass(ShiftPeriod period) => period switch
     {
-        "Set-up" => "bg-info",
-        "Event"  => "bg-success",
-        "Strike" => "bg-secondary",
-        _        => "bg-light"
+        ShiftPeriod.Build  => "bg-info",
+        ShiftPeriod.Event  => "bg-success",
+        ShiftPeriod.Strike => "bg-secondary",
+        _                  => "bg-light"
     };
 }
 
@@ -40,7 +40,7 @@
                     {
                         <th class="text-center" style="min-width: 72px; font-size: 0.75rem;">
                             <div>@day.DateLabel</div>
-                            <span class="badge @PeriodBadgeClass(day.PeriodLabel)">@day.PeriodLabel</span>
+                            <span class="badge @PeriodBadgeClass(day.Period)">@day.Period</span>
                         </th>
                     }
                 </tr>

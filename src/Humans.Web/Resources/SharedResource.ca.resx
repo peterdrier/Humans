@@ -1735,8 +1735,6 @@
 
 
   <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Places cobertes</value></data>
-  <data name="ShiftDash_Overview_ShiftsAtMinSubline" xml:space="preserve"><value>{0} / {1} torns al mínim ({2}%)</value></data>
-  <data name="ShiftDash_Overview_SlotsFilledSubline" xml:space="preserve"><value>{0} / {1} places cobertes ({2}%)</value></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Amb entrada</value></data>
   <data name="ShiftDash_Overview_TicketHoldersSubline" xml:space="preserve"><value>humans que han pagat</value></data>
   <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve"><value>Ticket holding humans</value></data>
@@ -1763,10 +1761,6 @@
   <data name="ShiftDash_Departments_Col_SlotsRemaining" xml:space="preserve"><value>Places lliures</value></data>
   <data name="ShiftDash_Departments_Col_Period" xml:space="preserve"><value>Període</value></data>
   <data name="ShiftDash_Departments_Direct" xml:space="preserve"><value>Directe</value></data>
-  <data name="ShiftDash_Departments_Col_ShiftsAtMin" xml:space="preserve"><value>Torns al mínim</value></data>
-  <data name="ShiftDash_Departments_Col_SlotsFilled" xml:space="preserve"><value>Places cobertes</value></data>
-  <data name="ShiftsSummary_ShiftsAtMin" xml:space="preserve"><value>{0} / {1} torns al mínim</value></data>
-  <data name="ShiftsSummary_SlotsFilled2" xml:space="preserve"><value>{0} / {1} places cobertes</value></data>
 
   <data name="ShiftDash_Coordinators_Title" xml:space="preserve"><value>Activitat dels coordinadors</value></data>
   <data name="ShiftDash_Coordinators_Subtitle" xml:space="preserve"><value>equips amb pendents, inici de sessió més antic primer</value></data>

@@ -2,7 +2,6 @@
 @using Humans.Application.Enums
 @using Humans.Domain.Enums
 @using Humans.Web.Controllers
-@using NodaTime
 
 @{
     ViewData["Title"] = Localizer["ShiftDash_Title"].Value;
@@ -12,14 +11,10 @@
     string PeriodBtnClass(ShiftPeriod? p) =>
         Model.SelectedPeriod == p ? "btn btn-primary active" : "btn btn-outline-secondary";
 
-    // "Feet on the ground" = first build day = GateOpeningDate + BuildStartOffset.
-    // Computed in the event's timezone so midnight-local is the reference.
-    var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(Model.EventSettings.TimeZoneId) ?? DateTimeZone.Utc;
-    var todayLocal = SystemClock.Instance.GetCurrentInstant().InZone(tz).Date;
-    var firstBuildDay = Model.EventSettings.GateOpeningDate.PlusDays(Model.EventSettings.BuildStartOffset);
-    var daysToBuild = Period.Between(todayLocal, firstBuildDay, PeriodUnits.Days).Days;
-    var weeks = Math.Abs(daysToBuild) / 7;
-    var remainderDays = Math.Abs(daysToBuild) % 7;
+    var daysToBuild = Model.Countdown.DaysToBuild;
+    var firstBuildDay = Model.Countdown.FirstBuildDay;
+    var weeks = Model.Countdown.Weeks;
+    var remainderDays = Model.Countdown.RemainderDays;
 }
 
 <div class="container py-4">

@@ -1442,16 +1442,10 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             {
                 var date = es.GateOpeningDate.PlusDays(off);
                 var label = date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
-                var periodLabel = off < 0 ? "Set-up" : off <= es.EventEndOffset ? "Event" : "Strike";
-                return new CoverageHeatmapDay(off, date, label, periodLabel);
+                var dayPeriod = off < 0 ? ShiftPeriod.Build : off <= es.EventEndOffset ? ShiftPeriod.Event : ShiftPeriod.Strike;
+                return new CoverageHeatmapDay(off, date, label, dayPeriod);
             })
             .ToList();
-
-        // A "directory team" is what appears on the public Teams page: every top-level
-        // team, plus subteams promoted via IsPromotedToDirectory. Those are the rows
-        // that make sense as a coordinator-facing coverage grid — matches Team.IsInDirectory.
-        static bool IsDirectoryTeam(Team? t) =>
-            t is not null && (t.ParentTeamId is null || t.IsPromotedToDirectory);
 
         // Resolves the TEAM a shift should be displayed under on the heatmap.
         //   - Shift on a top-level team → that team
@@ -1465,10 +1459,12 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             return team.ParentTeamId is Guid pid && teamLookup.TryGetValue(pid, out var parent) ? parent : null;
         }
 
-        // Group shifts by the display team (one row per team on the heatmap).
+        // Group shifts by the display team (one row per team on the heatmap). A team
+        // qualifies for its own row if it is in the directory — top-level teams always
+        // are, subteams only if IsPromotedToDirectory (aka "Show on Teams page").
         var shiftsByDisplayTeam = allShifts
             .Select(s => (Shift: s, Team: DisplayTeamFor(s)))
-            .Where(x => x.Team is not null && IsDirectoryTeam(x.Team))
+            .Where(x => x.Team?.IsInDirectory == true)
             .GroupBy(x => x.Team!.Id, x => x.Shift)
             .ToList();
 
@@ -1555,7 +1551,6 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             .Select(g => new ShiftDurationBreakdownRow(
                 IsAllDay: g.Key.IsAllDay,
                 DurationHours: g.Key.Hours,
-                ShiftCount: g.Count(),
                 TotalSlots: g.Sum(s => s.MaxVolunteers),
                 FilledSlots: g.Sum(FilledSlotsOn)))
             // Full-day on top; hourly shifts sorted ascending by duration.
