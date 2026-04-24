@@ -86,6 +86,7 @@ Stored as string via `HasConversion<string>()`.
 | Board | 3 | Board members |
 | Asociados | 4 | Approved Asociados with active terms |
 | Colaboradors | 5 | Approved Colaboradors with active terms |
+| BarrioLeads | 6 | Active camp leads across all camps |
 
 ### SystemTeamIds (constants)
 
@@ -96,6 +97,7 @@ Stored as string via `HasConversion<string>()`.
 | Board | `00000000-0000-0000-0001-000000000003` |
 | Asociados | `00000000-0000-0000-0001-000000000004` |
 | Colaboradors | `00000000-0000-0000-0001-000000000005` |
+| BarrioLeads | `00000000-0000-0000-0001-000000000006` |
 
 ## Actors & Roles
 
