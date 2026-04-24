@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -35,6 +36,7 @@ namespace Humans.Infrastructure.Jobs;
 /// IMemoryCache; the ActiveTeams cache is owned and invalidated by
 /// <see cref="ITeamService"/> itself on every mutating write.
 /// </remarks>
+[DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class SystemTeamSyncJob : ISystemTeamSync
 {
     private readonly ITeamService _teamService;

@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
@@ -9,6 +10,7 @@ namespace Humans.Infrastructure.Jobs;
 /// Periodic job that checks Google Drive Activity API for permission changes
 /// not initiated by the system's service account and logs anomalies to the audit log.
 /// </summary>
+[DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class DriveActivityMonitorJob : IRecurringJob
 {
     private readonly IDriveActivityMonitorService _monitorService;

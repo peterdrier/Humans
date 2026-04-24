@@ -1,3 +1,4 @@
+using Hangfire;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Configuration;
@@ -10,6 +11,7 @@ namespace Humans.Infrastructure.Jobs;
 /// <summary>
 /// Purges old sent messages from the email outbox. Runs weekly.
 /// </summary>
+[DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class CleanupEmailOutboxJob : IRecurringJob
 {
     private readonly IEmailOutboxRepository _outboxRepo;

@@ -1,3 +1,4 @@
+using Hangfire;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Microsoft.Extensions.Logging;
@@ -11,6 +12,7 @@ namespace Humans.Infrastructure.Jobs;
 /// - Unresolved informational notifications older than 30 days
 /// Actionable notifications are never auto-cleaned (they represent real work items).
 /// </summary>
+[DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class CleanupNotificationsJob : IRecurringJob
 {
     private static readonly Duration ResolvedRetentionPeriod = Duration.FromDays(7);

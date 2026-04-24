@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
@@ -22,6 +23,7 @@ namespace Humans.Infrastructure.Jobs;
 /// audit-log + confirmation-email orchestration so a per-user failure
 /// doesn't stop the run.
 /// </remarks>
+[DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class ProcessAccountDeletionsJob : IRecurringJob
 {
     private readonly IUserService _userService;
