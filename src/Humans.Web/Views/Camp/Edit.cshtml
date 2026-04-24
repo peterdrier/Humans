@@ -451,11 +451,11 @@
                 }
 
                 <div class="px-3 pt-3 pb-2">
-                    <strong class="text-muted small">Active members (@Model.ActiveMembers.Count)</strong>
+                    <strong class="text-muted small">Active humans (@Model.ActiveMembers.Count)</strong>
                 </div>
                 @if (Model.ActiveMembers.Count == 0)
                 {
-                    <div class="px-3 pb-2 text-muted small fst-italic">No members yet.</div>
+                    <div class="px-3 pb-2 text-muted small fst-italic">No humans yet.</div>
                 }
                 else
                 {
@@ -466,7 +466,7 @@
                                 <human-link user-id="@active.UserId" display-name="@active.DisplayName" show-popover="true" />
                                 <form asp-action="RemoveMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@active.CampMemberId" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove" data-confirm="Remove this member?">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove" data-confirm="Remove this human?">
                                         <i class="fa-solid fa-user-minus"></i>
                                     </button>
                                 </form>
