@@ -1003,20 +1003,12 @@ public class ProfileController : HumansControllerBase
     [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client)]
     public async Task<IActionResult> Picture(Guid id, CancellationToken ct)
     {
-        try
-        {
-            var (data, contentType) = await _profileService.GetProfilePictureAsync(id, ct);
+        var (data, contentType) = await _profileService.GetProfilePictureAsync(id, ct);
 
-            if (data is null || string.IsNullOrEmpty(contentType))
-                return NotFound();
+        if (data is null || string.IsNullOrEmpty(contentType))
+            return NotFound();
 
-            return File(data, contentType);
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogWarning("Profile picture request for {ProfileId} was cancelled", id);
-            return new EmptyResult();
-        }
+        return File(data, contentType);
     }
 
     // ─── View Another Profile ────────────────────────────────────────
