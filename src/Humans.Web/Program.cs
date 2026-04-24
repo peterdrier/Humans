@@ -427,12 +427,19 @@ builder.Services.AddControllersWithViews(options =>
     {
         options.Filters.Add<MembershipRequiredFilter>();
         options.Filters.Add<Humans.Web.Filters.AuthorizationPillFilter>();
-        options.Filters.Add<Humans.Web.Filters.GlobalExceptionFilter>();
     })
     .AddViewLocalization(LanguageViewLocationExpanderFormat.Suffix)
     .AddDataAnnotationsLocalization();
 builder.Services.AddRazorPages();
 builder.Services.AddSignalR();
+
+// IExceptionHandler pipeline. Order matters — handlers run in registration order
+// until one returns true. Cancellation handler goes FIRST so client-abort
+// OperationCanceledExceptions don't get logged at Error level by the global
+// logger, then the logger captures everything else and returns false so
+// UseExceptionHandler("/Home/Error") still renders the error page.
+builder.Services.AddExceptionHandler<Humans.Web.ExceptionHandlers.CancellationExceptionHandler>();
+builder.Services.AddExceptionHandler<Humans.Web.ExceptionHandlers.GlobalLoggingExceptionHandler>();
 
 var supportedCultures = CultureCatalog.SupportedCultureCodes.ToArray();
 builder.Services.Configure<RequestLocalizationOptions>(options =>
@@ -513,28 +520,15 @@ app.Services.GetRequiredService<IHumansMetrics>();
 // Forwarded headers must be first (for reverse proxy)
 app.UseForwardedHeaders();
 
-// Global catch-all logger — logs every unhandled exception regardless of what
-// downstream middleware does. Must be first after forwarded headers.
-app.Use(async (context, next) =>
-{
-    try
-    {
-        await next(context);
-    }
-    catch (Exception ex)
-    {
-        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Unhandled exception on {Method} {Path}", context.Request.Method, context.Request.Path);
-        throw;
-    }
-});
-
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
 }
 else
 {
+    // Runs the IExceptionHandler pipeline registered via AddExceptionHandler<T>()
+    // (CancellationExceptionHandler, GlobalLoggingExceptionHandler) and, if none
+    // short-circuit, re-executes the request at /Home/Error.
     app.UseExceptionHandler("/Home/Error");
 }
 
