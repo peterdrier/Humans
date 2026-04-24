@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
@@ -25,6 +26,7 @@ namespace Humans.Infrastructure.Jobs;
 /// <see cref="IUserService.GetByIdsAsync"/> and
 /// <see cref="ITeamService.GetTeamNamesByIdsAsync"/>.
 /// </remarks>
+[DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class ProcessGoogleSyncOutboxJob : IRecurringJob
 {
     private const int BatchSize = 100;
