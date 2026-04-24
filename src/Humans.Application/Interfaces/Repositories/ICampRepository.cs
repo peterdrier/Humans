@@ -359,4 +359,87 @@ public interface ICampRepository
     /// if the list changed.
     /// </summary>
     Task<bool> CloseSeasonAsync(int year, CancellationToken ct = default);
+
+    // ==========================================================================
+    // Camp membership (camp_members)
+    // ==========================================================================
+
+    /// <summary>
+    /// Idempotent insert of a Pending membership row. Handles the 23505
+    /// unique-violation race on (CampSeasonId, UserId) by returning the
+    /// winning row instead of throwing.
+    /// </summary>
+    Task<CampMemberInsertResult> RequestMembershipAsync(
+        Guid campSeasonId, Guid userId, Instant requestedAt, CancellationToken ct = default);
+
+    /// <summary>
+    /// Loads a membership for a privileged mutation (approve/reject/remove),
+    /// scoped to a specific camp. Returns null if not found, or if the
+    /// membership's season belongs to a different camp than
+    /// <paramref name="scopedCampId"/>. The returned entity is detached —
+    /// callers mutate it and pass to <see cref="SaveMemberAsync"/>.
+    /// </summary>
+    Task<CampMember?> GetMemberForCampMutationAsync(
+        Guid campMemberId, Guid scopedCampId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Loads a membership for a self-mutation (withdraw/leave), scoped to a
+    /// specific user. Returns null if not found, or if the membership's
+    /// <c>UserId</c> does not match <paramref name="userId"/>. The returned
+    /// entity is detached — callers mutate it and pass to
+    /// <see cref="SaveMemberAsync"/>.
+    /// </summary>
+    Task<CampMember?> GetMemberForOwnMutationAsync(
+        Guid campMemberId, Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Persists a previously-loaded membership with its scalar mutations applied.
+    /// </summary>
+    Task SaveMemberAsync(CampMember member, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the caller's active-or-pending membership in the given season,
+    /// read-only. Null if none.
+    /// </summary>
+    Task<CampMember?> GetUserMembershipInSeasonAsync(
+        Guid campSeasonId, Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns active + pending members for a season with FK-only user ids.
+    /// Read-only. Ordered by <c>RequestedAt</c>.
+    /// </summary>
+    Task<IReadOnlyList<CampMember>> GetSeasonMembersAsync(
+        Guid campSeasonId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns all active-or-pending memberships for the user, with their
+    /// <c>CampSeason</c> and the season's parent <c>Camp</c> loaded so the
+    /// caller can build display summaries. Read-only.
+    /// </summary>
+    Task<IReadOnlyList<CampMember>> GetUserMembershipsAsync(
+        Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns user ids of humans with a pending request for the given season.
+    /// Used to notify requesters when a season is rejected or withdrawn. Does
+    /// not mutate the membership rows — pending rows stay as-is so humans can
+    /// re-request if the season is reactivated.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetPendingRequesterUserIdsForSeasonAsync(
+        Guid campSeasonId, CancellationToken ct = default);
 }
+
+/// <summary>
+/// Outcome of <see cref="ICampRepository.RequestMembershipAsync"/>.
+/// </summary>
+public enum CampMemberInsertOutcome
+{
+    /// <summary>A new pending row was inserted.</summary>
+    Created,
+    /// <summary>Row already existed in Pending status (includes races won by a rival insert).</summary>
+    AlreadyPending,
+    /// <summary>Row already existed in Active status.</summary>
+    AlreadyActive
+}
+
+public record CampMemberInsertResult(Guid MemberId, CampMemberInsertOutcome Outcome);

@@ -1,0 +1,35 @@
+@using Humans.Domain.Enums
+@model Humans.Web.ViewComponents.MyCampsViewModel
+
+<div class="card mb-3">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fa-solid fa-campground me-1"></i> My @Localizer["Camp_Plural"]</h5>
+    </div>
+    <div class="card-body p-0">
+        @foreach (var group in Model.Years)
+        {
+            <div class="px-3 pt-2">
+                <strong class="text-muted small">@group.Year</strong>
+            </div>
+            <ul class="list-group list-group-flush">
+                @foreach (var membership in group.Memberships)
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <a asp-controller="Camp" asp-action="Details" asp-route-slug="@membership.CampSlug">
+                            @membership.CampName
+                        </a>
+                        @switch (membership.Status)
+                        {
+                            case CampMemberStatus.Active:
+                                <span class="badge bg-success">Active</span>
+                                break;
+                            case CampMemberStatus.Pending:
+                                <span class="badge bg-warning text-dark">Pending</span>
+                                break;
+                        }
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+</div>

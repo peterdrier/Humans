@@ -410,6 +410,77 @@
                 <div class="form-text">Names this camp was previously known as.</div>
             </div>
         </div>
+
+        @* Per-season membership (pending requests + active members) *@
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fa-solid fa-users-gear me-1"></i> Humans this season (@Model.Year)
+            </div>
+            <div class="card-body p-0">
+                <div class="px-3 py-2">
+                    <strong class="text-muted small">Pending requests (@Model.PendingMembers.Count)</strong>
+                </div>
+                @if (Model.PendingMembers.Count == 0)
+                {
+                    <div class="px-3 pb-2 text-muted small fst-italic">No pending requests.</div>
+                }
+                else
+                {
+                    <ul class="list-group list-group-flush">
+                        @foreach (var pending in Model.PendingMembers)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+                                <human-link user-id="@pending.UserId" display-name="@pending.DisplayName" show-popover="true" />
+                                <div class="d-flex gap-2">
+                                    <form asp-action="ApproveMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@pending.CampMemberId" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Approve">
+                                            <i class="fa-solid fa-check"></i>
+                                        </button>
+                                    </form>
+                                    <form asp-action="RejectMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@pending.CampMemberId" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Reject" data-confirm="Reject this request?">
+                                            <i class="fa-solid fa-xmark"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+
+                <div class="px-3 pt-3 pb-2">
+                    <strong class="text-muted small">Active members (@Model.ActiveMembers.Count)</strong>
+                </div>
+                @if (Model.ActiveMembers.Count == 0)
+                {
+                    <div class="px-3 pb-2 text-muted small fst-italic">No members yet.</div>
+                }
+                else
+                {
+                    <ul class="list-group list-group-flush">
+                        @foreach (var active in Model.ActiveMembers)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+                                <human-link user-id="@active.UserId" display-name="@active.DisplayName" show-popover="true" />
+                                <form asp-action="RemoveMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@active.CampMemberId" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove" data-confirm="Remove this member?">
+                                        <i class="fa-solid fa-user-minus"></i>
+                                    </button>
+                                </form>
+                            </li>
+                        }
+                    </ul>
+                }
+                <div class="card-body border-top">
+                    <small class="text-muted">
+                        This is a post-hoc record so the app knows who's in which camp. Approving here does <strong>not</strong> admit someone to your camp — that's done through your camp's own process.
+                    </small>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 

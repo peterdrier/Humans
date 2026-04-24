@@ -292,6 +292,58 @@
             </div>
         }
 
+        @* My membership (authenticated only — never shown to anonymous visitors) *@
+        @if (User.Identity?.IsAuthenticated == true && Model.Membership.Status != CampMemberStatusSummaryView.NoOpenSeason)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fa-solid fa-campground me-1"></i> My membership
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted mb-2">
+                        This does <strong>not</strong> join you to the camp. Join through the camp's own process first, then tell Humans so you get access to any per-camp roles, Early Entry allocations, and notifications.
+                    </p>
+                    @switch (Model.Membership.Status)
+                    {
+                        case CampMemberStatusSummaryView.None:
+                            <form asp-controller="Camp" asp-action="RequestMembership" asp-route-slug="@Model.Slug" method="post">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-outline-primary w-100">
+                                    <i class="fa-solid fa-hand me-1"></i> Request to join for @Model.Membership.OpenSeasonYear
+                                </button>
+                            </form>
+                            break;
+                        case CampMemberStatusSummaryView.Pending:
+                            <div class="d-grid gap-2">
+                                <div class="alert alert-warning py-2 mb-0">
+                                    <i class="fa-solid fa-hourglass-half me-1"></i> Pending lead approval for @Model.Membership.OpenSeasonYear.
+                                </div>
+                                <form asp-controller="Camp" asp-action="WithdrawMembershipRequest" asp-route-slug="@Model.Slug" asp-route-campMemberId="@Model.Membership.CampMemberId" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-outline-secondary w-100" data-confirm="Withdraw your pending request?">
+                                        <i class="fa-solid fa-xmark me-1"></i> Withdraw request
+                                    </button>
+                                </form>
+                            </div>
+                            break;
+                        case CampMemberStatusSummaryView.Active:
+                            <div class="d-grid gap-2">
+                                <div class="alert alert-success py-2 mb-0">
+                                    <i class="fa-solid fa-check me-1"></i> You are a member for @Model.Membership.OpenSeasonYear.
+                                </div>
+                                <form asp-controller="Camp" asp-action="LeaveMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@Model.Membership.CampMemberId" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-outline-warning w-100" data-confirm="Leave this camp for this season?">
+                                        <i class="fa-solid fa-right-from-bracket me-1"></i> Leave camp
+                                    </button>
+                                </form>
+                            </div>
+                            break;
+                    }
+                </div>
+            </div>
+        }
+
         @* Actions *@
         @if (Model.IsCurrentUserLead || Model.IsCurrentUserCampAdmin)
         {
