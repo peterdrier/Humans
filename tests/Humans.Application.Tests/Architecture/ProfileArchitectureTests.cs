@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Teams;
 using Humans.Infrastructure.Services.Profiles;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -76,6 +77,19 @@ public class ProfileArchitectureTests
 
         storeParam.Should().BeNull(
             because: "Application services must not depend on store abstractions (design-rules §15)");
+    }
+
+    [HumansFact]
+    public void ProfileService_HasNoOutboundEdgeToTeams()
+    {
+        // Issue #582: Profile is foundational. The only prior reason
+        // ProfileService injected ITeamService was the deletion-request
+        // cascade, which moved to IAccountDeletionService.
+        var ctor = typeof(ProfileService).GetConstructors().Single();
+        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
+
+        paramTypes.Should().NotContain(typeof(ITeamService),
+            because: "Profile is foundational — the deletion cascade moved to IAccountDeletionService in issue #582");
     }
 
     // ── IProfileRepository ────────────────────────────────────────────────────

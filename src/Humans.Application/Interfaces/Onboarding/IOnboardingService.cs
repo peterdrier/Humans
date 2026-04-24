@@ -53,5 +53,4 @@ public interface IOnboardingService : IOnboardingEligibilityQuery
 
     // --- Admin ---
     Task<DTOs.AdminDashboardData> GetAdminDashboardAsync(CancellationToken ct = default);
-    Task<OnboardingResult> PurgeHumanAsync(Guid userId, CancellationToken ct = default);
 }

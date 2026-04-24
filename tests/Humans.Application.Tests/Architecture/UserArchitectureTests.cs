@@ -1,6 +1,9 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Teams;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using UserService = Humans.Application.Services.Users.UserService;
@@ -88,6 +91,44 @@ public class UserArchitectureTests
 
         storeParam.Should().BeNull(
             because: "Application services must not depend on store abstractions (design-rules §15); the User section's §15 migration went further and does not use a store at all");
+    }
+
+    [HumansFact]
+    public void UserService_HasNoOutboundEdgeToHigherLevelSections()
+    {
+        // Issue #582: UserService is foundational. It must not inject
+        // ITeamService / IRoleAssignmentService / IShift*Service (those sections
+        // sit above it in the ownership graph). The account-deletion cascade
+        // that previously forced these edges lives in IAccountDeletionService.
+        var ctor = typeof(UserService).GetConstructors().Single();
+        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
+
+        paramTypes.Should().NotContain(typeof(ITeamService),
+            because: "UserService is foundational — no outbound edge to Teams (issue #582, feedback_user_profile_foundational)");
+        paramTypes.Should().NotContain(typeof(IRoleAssignmentService),
+            because: "UserService is foundational — no outbound edge to RoleAssignments (issue #582)");
+        paramTypes.Should().NotContain(typeof(IShiftSignupService),
+            because: "UserService is foundational — no outbound edge to Shifts (issue #582)");
+        paramTypes.Should().NotContain(typeof(IShiftManagementService),
+            because: "UserService is foundational — no outbound edge to Shifts (issue #582)");
+        paramTypes.Should().NotContain(typeof(IProfileService),
+            because: "UserService is foundational — no outbound edge to Profile (issue #582; Profile depends on User, never the reverse)");
+    }
+
+    [HumansFact]
+    public void UserService_HasNoServiceProviderConstructorParameter()
+    {
+        // Issue #582: the IServiceProvider was a workaround for DI cycles that
+        // existed solely because of the deletion cascade (ProfileService,
+        // RoleAssignmentService, ShiftSignupService, ShiftManagementService
+        // were resolved lazily). With those moved to IAccountDeletionService,
+        // UserService no longer needs a lazy escape hatch.
+        var ctor = typeof(UserService).GetConstructors().Single();
+        var providerParam = ctor.GetParameters()
+            .FirstOrDefault(p => p.ParameterType == typeof(IServiceProvider));
+
+        providerParam.Should().BeNull(
+            because: "UserService's lazy IServiceProvider escape hatch only existed for deletion cascade; the cascade moved to IAccountDeletionService in issue #582");
     }
 
     // ── IUserRepository ──────────────────────────────────────────────────────

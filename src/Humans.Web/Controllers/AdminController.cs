@@ -8,7 +8,7 @@ using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Infrastructure.Data;
 using Humans.Web.Models;
-using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
@@ -19,7 +19,7 @@ public class AdminController : HumansControllerBase
     private readonly UserManager<User> _userManager;
     private readonly ILogger<AdminController> _logger;
     private readonly IWebHostEnvironment _environment;
-    private readonly IOnboardingService _onboardingService;
+    private readonly IAccountDeletionService _accountDeletionService;
     private readonly ConfigurationRegistry _configRegistry;
     private readonly QueryStatistics _queryStatistics;
     private readonly ICacheStatsProvider _cacheStatsProvider;
@@ -29,7 +29,7 @@ public class AdminController : HumansControllerBase
         UserManager<User> userManager,
         ILogger<AdminController> logger,
         IWebHostEnvironment environment,
-        IOnboardingService onboardingService,
+        IAccountDeletionService accountDeletionService,
         ConfigurationRegistry configRegistry,
         QueryStatistics queryStatistics,
         ICacheStatsProvider cacheStatsProvider)
@@ -39,7 +39,7 @@ public class AdminController : HumansControllerBase
         _userManager = userManager;
         _logger = logger;
         _environment = environment;
-        _onboardingService = onboardingService;
+        _accountDeletionService = accountDeletionService;
         _configRegistry = configRegistry;
         _queryStatistics = queryStatistics;
         _cacheStatsProvider = cacheStatsProvider;
@@ -89,7 +89,7 @@ public class AdminController : HumansControllerBase
             await _userManager.RemoveLoginAsync(user, login.LoginProvider, login.ProviderKey);
         }
 
-        var result = await _onboardingService.PurgeHumanAsync(id);
+        var result = await _accountDeletionService.PurgeAsync(id);
         if (!result.Success)
         {
             return NotFound();

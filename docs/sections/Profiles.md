@@ -265,7 +265,11 @@ External contacts are managed separately at `/Contacts` (ContactsController).
 - **Account merge & duplicates** — `AccountMergeService` and `DuplicateAccountService` live in `Humans.Application.Services.Profile/`. `AccountMergeService` is backed by `IAccountMergeRepository` (Singleton) for `account_merge_requests` and orchestrates the actual merge via `IUserEmailService`, `IContactFieldService`, `IProfileService`, and `IUserService`. `DuplicateAccountService` is stateless — no repository, just cross-section reads via those same interfaces. Neither service reads `DbContext` directly.
 - **Architecture tests** — `tests/Humans.Application.Tests/Architecture/ProfileArchitectureTests.cs` + `GdprExportDependencyInjectionTests.cs`.
 
+### Account deletion cascade
+
+Account deletion cascades (user-requested / admin-initiated / expiry-triggered) are orchestrated by `IAccountDeletionService` (lives in the Users section, `src/Humans.Application/Services/Users/AccountLifecycle/`). `ProfileService` keeps only own-data mutations (`AnonymizeExpiredProfileAsync`, delegation from `RequestDeletionAsync` to the orchestrator) — the cascade that revokes team memberships, role assignments, and cancels shift signups lives in the orchestrator (peterdrier/Humans#314, nobodies-collective/Humans#582). This preserves the rule that foundational services (`UserService`, `ProfileService`) have no outbound edges to higher-level sections (Teams, RoleAssignments, Shifts).
+
 ### Touch-and-clean guidance
 
-- `OnboardingService.PurgeHumanAsync` / `SetConsentCheckPendingIfEligibleAsync` do not currently invalidate the `FullProfile` dict (§15g, §15i). Pre-existing behavior; to be addressed when Shifts migrates (§15 NEW-B).
+- `SetConsentCheckPendingIfEligibleAsync` does not currently invalidate the `FullProfile` dict (§15i). Pre-existing behavior; to be addressed when Shifts migrates (§15 NEW-B).
 - Cross-section reads for `Profile.User` / `UserEmail.User` / `CommunicationPreference.User` must go through `IUserService.GetByIdsAsync` — do not re-add nav properties to the entities.

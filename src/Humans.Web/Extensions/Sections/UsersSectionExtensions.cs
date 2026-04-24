@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.Users.AccountLifecycle;
 using Humans.Infrastructure.Repositories.Users;
 using DashboardDashboardService = Humans.Application.Services.Dashboard.DashboardService;
 using GovernanceMembershipCalculator = Humans.Application.Services.Governance.MembershipCalculator;
@@ -24,6 +25,14 @@ internal static class UsersSectionExtensions
         services.AddScoped<UsersUserService>();
         services.AddScoped<IUserService>(sp => sp.GetRequiredService<UsersUserService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<UsersUserService>());
+
+        // Account deletion orchestrator (issue #582). Single entry point for
+        // user-requested / admin-initiated / expiry-triggered deletion paths.
+        // Lives alongside UserService because the User aggregate is the
+        // deletion anchor; reaches up to Teams / RoleAssignments / Shifts
+        // via their service interfaces so UserService/ProfileService retain
+        // no outbound edges to higher-level sections.
+        services.AddScoped<IAccountDeletionService, AccountDeletionService>();
 
         // Query adapter breaks the circular DI graph between IMembershipCalculator
         // and ITeamService / IRoleAssignmentService (both of which inject

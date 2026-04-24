@@ -203,7 +203,7 @@ public interface IProfileService
     /// owned by the profile in the same save. No-op if the user has no
     /// profile. Returns <c>true</c> if a profile was anonymized. Used by the
     /// account deletion job via
-    /// <see cref="Users.IUserService.AnonymizeExpiredAccountAsync"/>.
+    /// <see cref="Users.IAccountDeletionService.AnonymizeExpiredAccountAsync"/>.
     /// </summary>
     Task<bool> AnonymizeExpiredProfileAsync(Guid userId, CancellationToken ct = default);
 

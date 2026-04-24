@@ -53,7 +53,7 @@ The only onboarding-specific value type is the narrow `IOnboardingEligibilityQue
 ## Cross-Section Dependencies
 
 - **Profiles:** `IProfileService` — profile reads, review-queue reads, profile mutations (clear/flag consent check, reject signup, approve/suspend/unsuspend). The Profile caching decorator handles `FullProfile` + nav/notification cache invalidation.
-- **Users/Identity:** `IUserService` — user reads, all-user-ids enumeration, language distribution, and the atomic purge flow (`PurgeAsync`).
+- **Users/Identity:** `IUserService` — user reads, all-user-ids enumeration, language distribution. Admin-initiated account purge is NOT here — it lives on `IAccountDeletionService` (see Users/Profiles for the deletion lifecycle).
 - **Governance:** `IApplicationDecisionService` — pending-application lookup, board voting dashboard/detail, board vote recording, unvoted-count, admin stats, pending-application count.
 - **Auth:** `IRoleAssignmentService` — cross-section Board-member resolution (`GetActiveUserIdsInRoleAsync`). Used from within `IApplicationDecisionService.GetBoardVotingDashboardAsync`.
 - **Teams:** `ISystemTeamSync` — Volunteers / Colaboradors / Asociados system team membership sync.

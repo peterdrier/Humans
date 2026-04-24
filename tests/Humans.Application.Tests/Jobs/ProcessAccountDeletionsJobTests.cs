@@ -27,6 +27,7 @@ namespace Humans.Application.Tests.Jobs;
 public class ProcessAccountDeletionsJobTests : IDisposable
 {
     private readonly IUserService _userService;
+    private readonly IAccountDeletionService _accountDeletionService;
     private readonly IEmailService _emailService;
     private readonly IAuditLogService _auditLogService;
     private readonly HumansMetricsService _metrics;
@@ -38,6 +39,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
     public ProcessAccountDeletionsJobTests()
     {
         _userService = Substitute.For<IUserService>();
+        _accountDeletionService = Substitute.For<IAccountDeletionService>();
         _emailService = Substitute.For<IEmailService>();
         _auditLogService = Substitute.For<IAuditLogService>();
         _clock = new FakeClock(Now);
@@ -47,7 +49,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         var logger = Substitute.For<ILogger<ProcessAccountDeletionsJob>>();
 
         _job = new ProcessAccountDeletionsJob(
-            _userService, _emailService, _auditLogService, _metrics, logger, _clock);
+            _userService, _accountDeletionService, _emailService, _auditLogService, _metrics, logger, _clock);
     }
 
     public void Dispose()
@@ -64,7 +66,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
         await _job.ExecuteAsync();
 
-        await _userService.DidNotReceiveWithAnyArgs()
+        await _accountDeletionService.DidNotReceiveWithAnyArgs()
             .AnonymizeExpiredAccountAsync(default, default, default);
         await _emailService.DidNotReceiveWithAnyArgs().SendAccountDeletedAsync(
             default!, default!, default, default);
@@ -80,7 +82,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>())
             .Returns(new[] { userId });
 
-        _userService.AnonymizeExpiredAccountAsync(userId, Now, Arg.Any<CancellationToken>())
+        _accountDeletionService.AnonymizeExpiredAccountAsync(userId, Now, Arg.Any<CancellationToken>())
             .Returns(new AnonymizedAccountSummary(
                 OriginalEmail: "test@example.com",
                 OriginalDisplayName: "Test User",
@@ -89,7 +91,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
         await _job.ExecuteAsync();
 
-        await _userService.Received(1).AnonymizeExpiredAccountAsync(
+        await _accountDeletionService.Received(1).AnonymizeExpiredAccountAsync(
             userId, Now, Arg.Any<CancellationToken>());
 
         await _auditLogService.Received(1).LogAsync(
@@ -118,9 +120,9 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>())
             .Returns(new[] { vanishedId, goodId });
 
-        _userService.AnonymizeExpiredAccountAsync(vanishedId, Now, Arg.Any<CancellationToken>())
+        _accountDeletionService.AnonymizeExpiredAccountAsync(vanishedId, Now, Arg.Any<CancellationToken>())
             .Returns((AnonymizedAccountSummary?)null);
-        _userService.AnonymizeExpiredAccountAsync(goodId, Now, Arg.Any<CancellationToken>())
+        _accountDeletionService.AnonymizeExpiredAccountAsync(goodId, Now, Arg.Any<CancellationToken>())
             .Returns(new AnonymizedAccountSummary(
                 "other@example.com", "Other User", "es",
                 Array.Empty<(Guid, Guid)>()));
@@ -139,7 +141,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         var userId = Guid.NewGuid();
         _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>())
             .Returns(new[] { userId });
-        _userService.AnonymizeExpiredAccountAsync(userId, Now, Arg.Any<CancellationToken>())
+        _accountDeletionService.AnonymizeExpiredAccountAsync(userId, Now, Arg.Any<CancellationToken>())
             .Returns(new AnonymizedAccountSummary(
                 OriginalEmail: null,
                 OriginalDisplayName: "Orphan User",
@@ -167,9 +169,9 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>())
             .Returns(new[] { user1, user2 });
 
-        _userService.AnonymizeExpiredAccountAsync(user1, Now, Arg.Any<CancellationToken>())
+        _accountDeletionService.AnonymizeExpiredAccountAsync(user1, Now, Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("DB error"));
-        _userService.AnonymizeExpiredAccountAsync(user2, Now, Arg.Any<CancellationToken>())
+        _accountDeletionService.AnonymizeExpiredAccountAsync(user2, Now, Arg.Any<CancellationToken>())
             .Returns(new AnonymizedAccountSummary(
                 "u2@example.com", "User Two", "en",
                 Array.Empty<(Guid, Guid)>()));

@@ -15,16 +15,20 @@ namespace Humans.Infrastructure.Jobs;
 /// </summary>
 /// <remarks>
 /// Delegates the actual anonymization to
-/// <see cref="IUserService.AnonymizeExpiredAccountAsync"/> — the Users section
-/// owns the User aggregate and coordinates cross-section writes (profile,
-/// team memberships, role assignments, shift signups, volunteer event
-/// profiles) through their owning services. The job retains the loop +
+/// <see cref="IAccountDeletionService.AnonymizeExpiredAccountAsync"/> — the
+/// orchestrator owns the cross-section write order (team memberships, role
+/// assignments, profile anonymization, shift signup cancellation, volunteer-
+/// event-profile deletion, User-aggregate identity collapse) and every
+/// deletion-related cache invalidation. The job retains the loop +
 /// audit-log + confirmation-email orchestration so a per-user failure
-/// doesn't stop the run.
+/// doesn't stop the run. Candidate enumeration stays on
+/// <see cref="IUserService"/> because <c>DeletionScheduledFor</c> is a User
+/// column (owning-section rule).
 /// </remarks>
 public class ProcessAccountDeletionsJob : IRecurringJob
 {
     private readonly IUserService _userService;
+    private readonly IAccountDeletionService _accountDeletionService;
     private readonly IEmailService _emailService;
     private readonly IAuditLogService _auditLogService;
     private readonly IHumansMetrics _metrics;
@@ -33,6 +37,7 @@ public class ProcessAccountDeletionsJob : IRecurringJob
 
     public ProcessAccountDeletionsJob(
         IUserService userService,
+        IAccountDeletionService accountDeletionService,
         IEmailService emailService,
         IAuditLogService auditLogService,
         IHumansMetrics metrics,
@@ -40,6 +45,7 @@ public class ProcessAccountDeletionsJob : IRecurringJob
         IClock clock)
     {
         _userService = userService;
+        _accountDeletionService = accountDeletionService;
         _emailService = emailService;
         _auditLogService = auditLogService;
         _metrics = metrics;
@@ -78,7 +84,7 @@ public class ProcessAccountDeletionsJob : IRecurringJob
             {
                 try
                 {
-                    var summary = await _userService.AnonymizeExpiredAccountAsync(
+                    var summary = await _accountDeletionService.AnonymizeExpiredAccountAsync(
                         userId, now, cancellationToken);
 
                     if (summary is null)

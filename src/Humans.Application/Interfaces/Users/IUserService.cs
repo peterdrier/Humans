@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -103,12 +104,30 @@ public interface IUserService
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     /// <summary>
-    /// Purges a human: removes all UserEmail rows for the user, anonymizes the
-    /// email/display name, and permanently locks out the account. Returns
-    /// false if the user did not exist. Invalidates the FullProfile cache on
-    /// success so downstream consumers see the purged view.
+    /// Purges a human at the User aggregate — removes all UserEmail rows for
+    /// the user, anonymizes the email/display name, and permanently locks out
+    /// the account. Returns the prior display name on success, or <c>null</c>
+    /// if the user did not exist. Invalidates the FullProfile cache on
+    /// success so downstream consumers see the purged view. Cross-section
+    /// invalidation (ActiveTeams cache, etc.) is owned by the caller —
+    /// <see cref="IAccountDeletionService.PurgeAsync"/> is the orchestrator
+    /// wrapping this method for the admin-initiated purge flow.
     /// </summary>
-    Task<(bool Purged, string? DisplayName)> PurgeAsync(Guid userId, CancellationToken ct = default);
+    Task<string?> PurgeOwnDataAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Applies the identity-level fields of the GDPR expiry anonymization
+    /// on the User aggregate in one atomic save — renames to
+    /// <c>Deleted User</c> + sentinel email, removes <c>UserEmail</c> rows,
+    /// clears phone/picture/iCal/deletion fields, sets the security stamp,
+    /// and permanently locks out the account. Returns the pre-write identity
+    /// slice or <c>null</c> if the user does not exist. Invalidates the
+    /// FullProfile cache on success. Cross-section cascade (team
+    /// memberships, role assignments, profile anonymization, shift cleanup)
+    /// is owned by <see cref="IAccountDeletionService.AnonymizeExpiredAccountAsync"/>.
+    /// </summary>
+    Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(
+        Guid userId, CancellationToken ct = default);
 
     // ---- Methods added for Profile-section migration (§15 Step 0) ----
 
@@ -260,27 +279,6 @@ public interface IUserService
         Instant now, CancellationToken ct = default);
 
     /// <summary>
-    /// Anonymizes the identity portion of a user whose 30-day deletion grace
-    /// period has expired: display name, username, email fields, profile
-    /// picture, phone number, deletion fields, security stamp, iCal token,
-    /// and lockout are all cleared or replaced with sentinels. Removes
-    /// <c>UserEmail</c> rows, ends active team memberships (via
-    /// <see cref="Teams.ITeamService.RevokeAllMembershipsAsync"/>) and active
-    /// governance role assignments, anonymizes the profile (via
-    /// <see cref="Profiles.IProfileService"/>), removes contact fields,
-    /// volunteer history, volunteer event profiles (via
-    /// <see cref="Shifts.IShiftManagementService"/>) and cancels active shift
-    /// signups (via <see cref="Shifts.IShiftSignupService"/>). Returns an
-    /// <see cref="AnonymizedAccountSummary"/> describing the prior identity,
-    /// the user's preferred language, and the ids of any shift signups that
-    /// were cancelled, or null if the user does not exist. Invalidates the
-    /// FullProfile cache, role-assignment claims, shift-authorization, and
-    /// the Teams member cache.
-    /// </summary>
-    Task<AnonymizedAccountSummary?> AnonymizeExpiredAccountAsync(
-        Guid userId, Instant now, CancellationToken ct = default);
-
-    /// <summary>
     /// For every user whose <see cref="User.GoogleEmail"/> is null but who has
     /// a verified <c>@nobodies.team</c> <see cref="UserEmail"/> row, sets
     /// <see cref="User.GoogleEmail"/> to that verified address. Persists all
@@ -293,7 +291,7 @@ public interface IUserService
 }
 
 /// <summary>
-/// Summary returned from <see cref="IUserService.AnonymizeExpiredAccountAsync"/>
+/// Summary returned from <see cref="IAccountDeletionService.AnonymizeExpiredAccountAsync"/>
 /// so the caller (account deletion job) can send a confirmation email and
 /// write the corresponding audit log entries without re-loading the
 /// anonymized row.

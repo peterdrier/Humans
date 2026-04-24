@@ -15,9 +15,7 @@ using MemberApplication = Humans.Domain.Entities.Application;
 using ProfileService = Humans.Application.Services.Profile.ProfileService;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Campaigns;
-using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Consent;
-using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;
@@ -38,15 +36,14 @@ public class ProfileServiceTests : IDisposable
     private readonly IContactFieldRepository _contactFieldRepository;
     private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository = Substitute.For<ICommunicationPreferenceRepository>();
     private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
-    private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly IConsentService _consentService = Substitute.For<IConsentService>();
     private readonly ITicketQueryService _ticketQueryService = Substitute.For<ITicketQueryService>();
     private readonly IApplicationDecisionService _applicationDecisionService = Substitute.For<IApplicationDecisionService>();
     private readonly ICampaignService _campaignService = Substitute.For<ICampaignService>();
-    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
+    private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();
 
     public ProfileServiceTests()
     {
@@ -67,10 +64,10 @@ public class ProfileServiceTests : IDisposable
             _profileRepository, _userService,
             _userEmailRepository,
             _contactFieldRepository, _communicationPreferenceRepository,
-            _onboardingService, _emailService, _auditLogService,
+            _onboardingService, _auditLogService,
             _membershipCalculator, _consentService, _ticketQueryService,
             _applicationDecisionService, _campaignService,
-            _teamService, _roleAssignmentService,
+            _roleAssignmentService, _accountDeletionService,
             _clock,
             NullLogger<ProfileService>.Instance);
 
@@ -288,91 +285,35 @@ public class ProfileServiceTests : IDisposable
     }
 
     // --- Deletion request flow ---
+    // NB: the actual RequestDeletionAsync cascade lives in IAccountDeletionService
+    // (issue #582). ProfileService simply delegates; see AccountDeletionServiceTests
+    // for the full team/role/audit/email coverage.
 
     [HumansFact]
-    public async Task RequestDeletionAsync_ValidUser_SetsDeletionDates()
+    public async Task RequestDeletionAsync_DelegatesToAccountDeletionService()
     {
         var userId = Guid.NewGuid();
-        var user = await SeedUserAsync(userId);
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _accountDeletionService.RequestDeletionAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(true));
 
         var result = await _service.RequestDeletionAsync(userId);
 
         result.Success.Should().BeTrue();
-        await _userService.Received().SetDeletionPendingAsync(
-            userId,
-            _clock.GetCurrentInstant(),
-            _clock.GetCurrentInstant().Plus(Duration.FromDays(30)),
-            Arg.Any<CancellationToken>());
+        await _accountDeletionService.Received(1)
+            .RequestDeletionAsync(userId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task RequestDeletionAsync_RevokesTeamMemberships()
+    public async Task RequestDeletionAsync_PropagatesErrorFromAccountDeletionService()
     {
         var userId = Guid.NewGuid();
-        var user = await SeedUserAsync(userId);
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
-
-        await _service.RequestDeletionAsync(userId);
-
-        await _teamService.Received().RevokeAllMembershipsAsync(userId, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task RequestDeletionAsync_RevokesRoleAssignments()
-    {
-        var userId = Guid.NewGuid();
-        var user = await SeedUserAsync(userId);
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
-
-        await _service.RequestDeletionAsync(userId);
-
-        await _roleAssignmentService.Received().RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task RequestDeletionAsync_AlreadyPending_ReturnsError()
-    {
-        var userId = Guid.NewGuid();
-        var user = await SeedUserAsync(userId);
-        user.DeletionRequestedAt = _clock.GetCurrentInstant();
-        user.DeletionScheduledFor = _clock.GetCurrentInstant().Plus(Duration.FromDays(30));
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _accountDeletionService.RequestDeletionAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(false, "AlreadyPending"));
 
         var result = await _service.RequestDeletionAsync(userId);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("AlreadyPending");
-    }
-
-    [HumansFact]
-    public async Task RequestDeletionAsync_WritesAuditLog()
-    {
-        var userId = Guid.NewGuid();
-        var user = await SeedUserAsync(userId);
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
-
-        await _service.RequestDeletionAsync(userId);
-
-        await _auditLogService.Received().LogAsync(
-            AuditAction.MembershipsRevokedOnDeletionRequest,
-            nameof(User), userId, Arg.Any<string>(), userId,
-            Arg.Any<Guid?>(), Arg.Any<string?>());
-    }
-
-    [HumansFact]
-    public async Task RequestDeletionAsync_SendsDeletionEmail()
-    {
-        var userId = Guid.NewGuid();
-        var user = await SeedUserAsync(userId);
-        user.Email = "test@example.com";
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
-
-        await _service.RequestDeletionAsync(userId);
-
-        await _emailService.Received().SendAccountDeletionRequestedAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<DateTime>(),
-            Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     // --- Cancel deletion flow ---
@@ -1462,10 +1403,10 @@ public class ProfileServiceTests : IDisposable
         profileRepository, _userService,
         _userEmailRepository,
         _contactFieldRepository, _communicationPreferenceRepository,
-        _onboardingService, _emailService, _auditLogService,
+        _onboardingService, _auditLogService,
         _membershipCalculator, _consentService, _ticketQueryService,
         _applicationDecisionService, _campaignService,
-        _teamService, _roleAssignmentService,
+        _roleAssignmentService, _accountDeletionService,
         _clock,
         NullLogger<ProfileService>.Instance);
 

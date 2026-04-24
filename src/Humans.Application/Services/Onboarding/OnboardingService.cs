@@ -429,19 +429,6 @@ public sealed class OnboardingService : IOnboardingService
     }
 
     // ==========================================================================
-    // Purge
-    // ==========================================================================
-
-    public async Task<OnboardingResult> PurgeHumanAsync(Guid userId, CancellationToken ct = default)
-    {
-        var (purged, _) = await _userService.PurgeAsync(userId, ct);
-        if (!purged)
-            return new OnboardingResult(false, "NotFound");
-
-        return new OnboardingResult(true);
-    }
-
-    // ==========================================================================
     // Helpers
     // ==========================================================================
 

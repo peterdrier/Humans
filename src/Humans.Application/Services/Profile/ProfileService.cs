@@ -11,9 +11,7 @@ using Humans.Domain.Enums;
 using MemberApplication = Humans.Domain.Entities.Application;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Campaigns;
-using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Consent;
-using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;
@@ -35,15 +33,14 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
     private readonly IContactFieldRepository _contactFieldRepository;
     private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository;
     private readonly IOnboardingEligibilityQuery _onboardingEligibilityQuery;
-    private readonly IEmailService _emailService;
     private readonly IAuditLogService _auditLogService;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IConsentService _consentService;
     private readonly ITicketQueryService _ticketQueryService;
     private readonly IApplicationDecisionService _applicationDecisionService;
     private readonly ICampaignService _campaignService;
-    private readonly ITeamService _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly IAccountDeletionService _accountDeletionService;
     private readonly IClock _clock;
     private readonly ILogger<ProfileService> _logger;
 
@@ -54,15 +51,14 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         IContactFieldRepository contactFieldRepository,
         ICommunicationPreferenceRepository communicationPreferenceRepository,
         IOnboardingEligibilityQuery onboardingEligibilityQuery,
-        IEmailService emailService,
         IAuditLogService auditLogService,
         IMembershipCalculator membershipCalculator,
         IConsentService consentService,
         ITicketQueryService ticketQueryService,
         IApplicationDecisionService applicationDecisionService,
         ICampaignService campaignService,
-        ITeamService teamService,
         IRoleAssignmentService roleAssignmentService,
+        IAccountDeletionService accountDeletionService,
         IClock clock,
         ILogger<ProfileService> logger)
     {
@@ -72,15 +68,14 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         _contactFieldRepository = contactFieldRepository;
         _communicationPreferenceRepository = communicationPreferenceRepository;
         _onboardingEligibilityQuery = onboardingEligibilityQuery;
-        _emailService = emailService;
         _auditLogService = auditLogService;
         _membershipCalculator = membershipCalculator;
         _consentService = consentService;
         _ticketQueryService = ticketQueryService;
         _applicationDecisionService = applicationDecisionService;
         _campaignService = campaignService;
-        _teamService = teamService;
         _roleAssignmentService = roleAssignmentService;
+        _accountDeletionService = accountDeletionService;
         _clock = clock;
         _logger = logger;
     }
@@ -300,54 +295,16 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         return profile.Id;
     }
 
-    public async Task<OnboardingResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default)
+    public Task<OnboardingResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default)
     {
-        var user = await _userService.GetByIdAsync(userId, ct);
-        if (user is null)
-            return new OnboardingResult(false, "NotFound");
-
-        if (user.IsDeletionPending)
-            return new OnboardingResult(false, "AlreadyPending");
-
-        var now = _clock.GetCurrentInstant();
-        var deletionDate = now.Plus(Duration.FromDays(30));
-
-        // 1. Persist deletion-pending fields on User (tracked write via IUserService)
-        await _userService.SetDeletionPendingAsync(userId, now, deletionDate, ct);
-
-        // 2. Revoke team memberships and team role assignments
-        var endedMemberships = await _teamService.RevokeAllMembershipsAsync(userId, ct);
-
-        // 3. Revoke governance role assignments
-        var endedRoles = await _roleAssignmentService.RevokeAllActiveAsync(userId, ct);
-
-        // 4. Audit log
-        await _auditLogService.LogAsync(
-            AuditAction.MembershipsRevokedOnDeletionRequest, nameof(User), userId,
-            $"Revoked {endedMemberships} team membership(s) and {endedRoles} role assignment(s) on deletion request",
-            userId);
-
-        _logger.LogWarning(
-            "User {UserId} requested account deletion. Scheduled for {DeletionDate}. " +
-            "Revoked {MembershipCount} memberships and {RoleCount} roles immediately",
-            userId, deletionDate, endedMemberships, endedRoles);
-
-        // 5. Send deletion confirmation email
-        var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
-        var notificationEmail = userEmails.FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified)?.Email
-                                ?? user.Email;
-        if (notificationEmail is not null)
-        {
-            await _emailService.SendAccountDeletionRequestedAsync(
-                notificationEmail,
-                user.DisplayName,
-                deletionDate.ToDateTimeUtc(),
-                user.PreferredLanguage,
-                ct);
-        }
-
-        // Store update and cache invalidation handled by CachingProfileService decorator
-        return new OnboardingResult(true);
+        // Delegates to IAccountDeletionService — the single orchestrator for
+        // user-initiated / admin / expiry deletion paths. See issue #582:
+        // ProfileService keeps only own-data mutations; cross-section cascade
+        // (team memberships, role assignments, deletion-pending fields, audit,
+        // email) belongs to the orchestrator. CachingProfileService's
+        // RequestDeletionAsync wrapper still fires its post-success cache
+        // refresh + ShiftAuthorization invalidation.
+        return _accountDeletionService.RequestDeletionAsync(userId, ct);
     }
 
     public async Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default)
