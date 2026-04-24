@@ -937,7 +937,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         {
             var perPeriod = shifts
                 .GroupBy(s => s.GetShiftPeriod(es))
-                .ToDictionary(g => g.Key, g => (Total: g.Count(), Filled: g.Count(IsFilled)));
+                .ToDictionary(g => g.Key, g => (TotalSlots: g.Sum(x => x.MaxVolunteers), FilledSlots: g.Sum(FilledSlotsOn)));
             periodFillRates = new PeriodBreakdown(
                 Pct(perPeriod, ShiftPeriod.Build),
                 Pct(perPeriod, ShiftPeriod.Event),
@@ -971,9 +971,9 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             ticketHolders.Count, ticketHoldersEngaged, nonTicketSignups, stalePendingCount,
             departments);
 
-        static double Pct(Dictionary<ShiftPeriod, (int Total, int Filled)> perPeriod, ShiftPeriod p) =>
-            perPeriod.TryGetValue(p, out var v) && v.Total > 0
-                ? 100.0 * v.Filled / v.Total
+        static double Pct(Dictionary<ShiftPeriod, (int TotalSlots, int FilledSlots)> perPeriod, ShiftPeriod p) =>
+            perPeriod.TryGetValue(p, out var v) && v.TotalSlots > 0
+                ? 100.0 * v.FilledSlots / v.TotalSlots
                 : 0d;
     }
 
