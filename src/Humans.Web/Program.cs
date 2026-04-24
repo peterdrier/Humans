@@ -422,6 +422,17 @@ builder.Services.AddSession(options =>
 // Configure Localization
 builder.Services.AddLocalization();
 
+// CORS — allow the public nobodies.team website to fetch /api/barrios
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("BarriosPublic", policy =>
+    {
+        policy.WithOrigins("https://nobodies.team", "https://www.nobodies.team")
+            .WithMethods("GET")
+            .WithHeaders("Content-Type", "Accept");
+    });
+});
+
 // Add Controllers with Views
 builder.Services.AddControllersWithViews(options =>
     {
@@ -572,6 +583,8 @@ app.Use(async (context, next) =>
 app.UseMiddleware<CspNonceMiddleware>();
 
 app.UseRouting();
+
+app.UseCors();
 
 // Rate limiting
 app.UseRateLimiter();

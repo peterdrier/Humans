@@ -1,11 +1,13 @@
 using Humans.Application.Interfaces.Camps;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers;
 
 [AllowAnonymous]
 [ApiController]
+[EnableCors("BarriosPublic")]
 [Route("api/barrios")]
 [Route("api/camps")]
 public class CampApiController : ControllerBase
