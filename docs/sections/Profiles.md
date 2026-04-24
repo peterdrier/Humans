@@ -11,6 +11,8 @@ Per-human personal data: profile, contact fields, emails, communication preferen
 - **Communication Preferences** control per-category email opt-in/opt-out (System, EventOperations, CommunityUpdates, Marketing).
 - **UserEmail** is a per-user email address record. A user has one "login" email plus zero-or-more verified additional addresses; one of them may be flagged as the notification target.
 - **CV Entries** (sub-aggregate of Profile) record volunteer involvement history.
+- **Duplicate Account Detection** scans for email addresses appearing on multiple accounts (across `User.Email` and `UserEmail.Email`, with gmail/googlemail equivalence). Admin can resolve by archiving the duplicate and re-linking its logins to the real account.
+- **Account Merge** consolidates two accounts into one, transferring all associated data (emails, contact fields, CV entries, role assignments, memberships) to the surviving account.
 
 ## Data Model
 
@@ -130,6 +132,14 @@ Defaults are created lazily: System=on, EventOperations=on, CommunityUpdates=off
 
 Sub-aggregate of Profile — no separate service. Written through `IProfileService.SaveCVEntriesAsync`; read via `FullProfile.CVEntries`.
 
+### AccountMergeRequest
+
+Tracks pending and resolved merges between duplicate accounts. `AccountMergeService` orchestrates the merge; `DuplicateAccountService` is the stateless detector that flags candidates.
+
+**Table:** `account_merge_requests`
+
+Cross-domain navs `TargetUser`, `SourceUser`, `ResolvedByUser` → FK-only (`TargetUserId`, `SourceUserId`, `ResolvedByUserId`). User data resolves via `IUserService.GetByIdsAsync`.
+
 ### MembershipTier
 
 | Value | Int | Description |
@@ -196,7 +206,8 @@ External contacts are managed separately at `/Contacts` (ContactsController).
 |-------|--------------|
 | Any authenticated human | View and edit own profile, manage own emails, manage own contact fields, upload profile picture, set notification and communication preferences, request data export (GDPR Article 15), request account deletion |
 | Any active human | View other active humans' profiles (contact fields restricted by per-field visibility). Send facilitated messages to other humans. Search for humans |
-| HumanAdmin, Board, Admin | View any profile with full detail. Manage humans via admin pages (suspend, unsuspend, update tier, view audit log, manage roles) |
+| HumanAdmin, Board, Admin | View any profile with full detail. Manage humans via admin pages (suspend, unsuspend, update tier, view audit log, manage roles). Review duplicate-account candidates. Approve/resolve `AccountMergeRequest`s |
+| Admin (non-production only) | Purge a human and all associated data |
 
 ## Invariants
 
@@ -209,6 +220,9 @@ External contacts are managed separately at `/Contacts` (ContactsController).
 - Data export returns all personal data as a JSON download (GDPR compliance). The service implements `IUserDataContributor` per design-rules §8a.
 - Profile pictures are stored on disk. Uploaded images are validated for allowed types and size.
 - `CachingProfileService` (Singleton) and `IFullProfileInvalidator` must resolve to the **same** instance — both registrations point to the single decorator. Two instances would split the `ConcurrentDictionary<Guid, FullProfile>` cache and silently lose invalidations.
+- Purging a human permanently deletes the account and all associated data, including severing the OAuth link so the next Google login creates a fresh account. Purge is disabled in production environments. No one can purge their own account.
+- Duplicate account detection applies gmail/googlemail equivalence when scanning for address collisions.
+- `AccountMergeService` writes and `DuplicateAccountService` reads go through the Profile section's repositories and `IUserService` — never through cross-section `DbSet` reads.
 
 ## Negative Access Rules
 
@@ -216,12 +230,16 @@ External contacts are managed separately at `/Contacts` (ContactsController).
 - Regular humans **cannot** edit another human's profile.
 - Regular humans **cannot** see contact fields above their access level on other humans' profiles.
 - Non-active humans (still onboarding) **cannot** view other humans' profiles or send messages.
+- Any Admin **cannot** purge their own account.
+- Purge **cannot** run in production environments (gate on `IWebHostEnvironment`).
 
 ## Triggers
 
 - When all required legal documents are consented to, consent check status transitions to Pending.
 - When consent check status is Cleared, the human is auto-approved as a Volunteer and added to the Volunteers system team.
 - When a human requests account deletion, team memberships are revoked immediately. The actual data purge runs in a background job.
+- When an `AccountMergeRequest` is accepted, all rows from the source user (emails, contact fields, CV entries, role assignments, memberships) are reassigned to the target user via the Profile section's owning services; the source user is archived.
+- When `DuplicateAccountService` flags a candidate, an audit entry is written via `IAuditLogService`.
 
 ## Cross-Section Dependencies
 
@@ -233,9 +251,9 @@ External contacts are managed separately at `/Contacts` (ContactsController).
 
 ## Architecture
 
-**Owning services:** `ProfileService`, `ContactFieldService`, `ContactService`, `UserEmailService`, `CommunicationPreferenceService`, `AccountProvisioningService`, `AccountMergeService`, `DuplicateAccountService`
-**Owned tables:** `profiles`, `contact_fields`, `user_emails`, `communication_preferences`, `volunteer_history_entries`
-**Status:** (A) Migrated — canonical §15 reference implementation (peterdrier/Humans PR #235, 2026-04-20). `AccountMergeService` / `DuplicateAccountService` moved into `Humans.Application/Services/Profile/` after the original migration.
+**Owning services:** `ProfileService`, `ContactFieldService`, `ContactService`, `UserEmailService`, `CommunicationPreferenceService`, `AccountMergeService`, `DuplicateAccountService`
+**Owned tables:** `profiles`, `contact_fields`, `user_emails`, `communication_preferences`, `volunteer_history_entries`, `account_merge_requests`
+**Status:** (A) Migrated — canonical §15 reference implementation (peterdrier/Humans PR #235, 2026-04-20). `AccountMergeService` / `DuplicateAccountService` moved into `Humans.Application/Services/Profile/` after the original migration (they now live alongside the other Profile-section services in the code tree; design-rules §8 ownership updated accordingly).
 
 - Services live in `Humans.Application.Services.Profile/` and never import `Microsoft.EntityFrameworkCore`.
 - `IProfileRepository`, `IUserEmailRepository`, `IContactFieldRepository`, `ICommunicationPreferenceRepository` (impls in `Humans.Infrastructure/Repositories/`) are the only code paths that touch this section's tables via `DbContext`. Repositories are Singleton, using `IDbContextFactory<HumansDbContext>` and short-lived contexts per method.
@@ -244,6 +262,7 @@ External contacts are managed separately at `/Contacts` (ContactsController).
 - **`IFullProfileInvalidator`** is aliased to the same Singleton `CachingProfileService` instance so external sections' writes (Auth, Onboarding, Teams, Google) can invalidate the cache without touching the dict.
 - **Cross-domain navs stripped:** `Profile.User`, `UserEmail.User`, `CommunicationPreference.User`. Display stitching routes through `IUserService.GetByIdsAsync`.
 - **GDPR:** `ProfileService` implements `IUserDataContributor` (design-rules §8a). The `ExpectedContributorTypes` in `GdprExportDependencyInjectionTests` enforces registration.
+- **Account merge & duplicates** — `AccountMergeService` and `DuplicateAccountService` live in `Humans.Application.Services.Profile/`. `AccountMergeService` is backed by `IAccountMergeRepository` (Singleton) for `account_merge_requests` and orchestrates the actual merge via `IUserEmailService`, `IContactFieldService`, `IProfileService`, and `IUserService`. `DuplicateAccountService` is stateless — no repository, just cross-section reads via those same interfaces. Neither service reads `DbContext` directly.
 - **Architecture tests** — `tests/Humans.Application.Tests/Architecture/ProfileArchitectureTests.cs` + `GdprExportDependencyInjectionTests.cs`.
 
 ### Touch-and-clean guidance

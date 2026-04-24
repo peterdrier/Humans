@@ -174,7 +174,7 @@ The project is licensed under **AGPL-3.0** (`LICENSE` at repo root).
 
 ## Section Invariants
 
-`docs/sections/` contains terse invariant documents for each major section of the app (Profiles, Budget, Teams, Feedback, Camps, City Planning, Governance, Legal & Consent, Onboarding, Google Integration, Shifts, Campaigns, Tickets, Calendar, Auth, Admin). Each doc defines:
+`docs/sections/` contains terse invariant documents for each major section of the app (Users, Profiles, Budget, Teams, Feedback, Camps, City Planning, Calendar, Governance, Legal & Consent, Onboarding, Google Integration, Shifts, Campaigns, Tickets, Auth, Email, Notifications, Audit Log). `/Admin/*` is a nav holder, not a section — its services belong to the sections they act on (Email, Profiles, Google Integration, Auth, Legal & Consent). Each doc defines:
 - **Concepts** — the domain vocabulary the section owns
 - **Data Model** — field-level detail for the entities this section owns (per-entity tables live here, not in `data-model.md`)
 - **Actors & Roles** — who interacts and in what capacity

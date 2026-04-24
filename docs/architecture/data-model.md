@@ -8,12 +8,14 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 
 | Entity | Owning section | Notes |
 |--------|---------------|-------|
-| User | Profiles (profile-adjacent fields) | Entity itself owned by Users/Identity; no dedicated section doc yet — extension fields live in [`../sections/Profiles.md`](../sections/Profiles.md). |
+| User | [Users/Identity](../sections/Users.md) | Profile-adjacent extension fields documented in [`Profiles.md`](../sections/Profiles.md#user-identity-extension). |
+| EventParticipation | [Users/Identity](../sections/Users.md) | Per-user, per-event participation status. |
 | Profile | [Profiles](../sections/Profiles.md) | |
 | UserEmail | [Profiles](../sections/Profiles.md) | |
 | ContactField | [Profiles](../sections/Profiles.md) | |
 | CommunicationPreference | [Profiles](../sections/Profiles.md) | |
 | VolunteerHistoryEntry | [Profiles](../sections/Profiles.md) | Sub-aggregate of Profile. |
+| AccountMergeRequest | [Profiles](../sections/Profiles.md) | `AccountMergeService` + `DuplicateAccountService` live in `Humans.Application.Services.Profile/`. |
 | Application | [Governance](../sections/Governance.md) | |
 | ApplicationStateHistory | [Governance](../sections/Governance.md) | Append-only (§12). |
 | BoardVote | [Governance](../sections/Governance.md) | Transient — deleted on finalization. |
@@ -33,19 +35,18 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | CampPolygon | [City Planning](../sections/CityPlanning.md) | |
 | CampPolygonHistory | [City Planning](../sections/CityPlanning.md) | Append-only (§12). |
 | CalendarEvent / CalendarEventException | [Calendar](../sections/Calendar.md) | |
-| EmailOutboxMessage | Email (no dedicated section doc) | See [EmailOutboxMessage below](#emailoutboxmessage). |
+| EmailOutboxMessage | [Email](../sections/Email.md) | |
 | Campaign / CampaignCode / CampaignGrant | [Campaigns](../sections/Campaigns.md) | |
 | TicketOrder / TicketAttendee / TicketSyncState | [Tickets](../sections/Tickets.md) | |
-| EventSettings / Rota / Shift / ShiftSignup / GeneralAvailability / VolunteerEventProfile | [Shifts](../sections/Shifts.md) | |
+| EventSettings / Rota / Shift / ShiftSignup / GeneralAvailability / VolunteerEventProfile / ShiftTag / VolunteerTagPreference | [Shifts](../sections/Shifts.md) | |
 | FeedbackReport / FeedbackMessage | [Feedback](../sections/Feedback.md) | |
 | BudgetYear / BudgetGroup / BudgetCategory / BudgetLineItem / BudgetAuditLog / TicketingProjection | [Budget](../sections/Budget.md) | `BudgetAuditLog` append-only (§12). |
 | SyncServiceSettings / GoogleSyncOutboxEvent | [Google Integration](../sections/GoogleIntegration.md) | |
-| SystemSetting | [Admin](../sections/Admin.md) | Per-key ownership — each key is owned by its consuming section's repository. |
-| AccountMergeRequest | [Admin](../sections/Admin.md) | |
-| AuditLogEntry | Audit Log (no dedicated section doc) | Append-only (§12). See [AuditLogEntry below](#auditlogentry). |
-| Notification / NotificationRecipient | Notifications (no dedicated section doc) | |
+| SystemSetting | per-key ownership | Each key belongs to its consuming section's repository. See [SystemSetting below](#systemsetting-per-key-ownership). |
+| AuditLogEntry | [Audit Log](../sections/AuditLog.md) | Append-only (§12). |
+| Notification / NotificationRecipient | [Notifications](../sections/Notifications.md) | |
 
-Sections with no dedicated doc yet (Users/Identity, Email, Audit Log, Notifications) are candidates for new section files — see `docs/sections/SECTION-TEMPLATE.md`.
+Every major section in the app now has a dedicated section doc. `/Admin/*` is a controller/nav holder, not a section — its services belong to the sections they act on (Email, Profiles, Google Integration, Auth, Legal & Consent).
 
 ## Cross-section FK graph
 
@@ -91,66 +92,19 @@ CampaignGrant (Campaigns)
 
 **Aggregate-local FKs** (FKs whose source and target live in the same section) are documented inside the section's own doc and kept as nav properties — they are not part of the cross-section graph.
 
-## Cross-cutting entities
+## SystemSetting (per-key ownership)
 
-### EmailOutboxMessage
+`system_settings` is a cross-cutting key/value table, but **each key is owned by the consuming section's repository**. There is no single cross-cutting owner. Sections that need runtime-flag state add the key here and expose reads/writes through their own service surface; no other section touches the key.
 
-Queued / sent / failed transactional email records. Processed by `ProcessEmailOutboxJob`; cleaned up by `CleanupEmailOutboxJob`. No dedicated section doc yet.
-
-**Table:** `email_outbox_messages`
+| Key | Owning section | Purpose |
+|-----|----------------|---------|
+| `email_outbox_paused` | [Email](../sections/Email.md) | When `"true"`, `ProcessEmailOutboxJob` skips processing |
+| `DriveActivityMonitor:LastRunAt` | [Google Integration](../sections/GoogleIntegration.md) | Last-run timestamp for drive-activity monitor |
 
 | Property | Type | Purpose |
 |----------|------|---------|
-| Id | Guid | PK |
-| RecipientEmail | string | Delivery address |
-| RecipientName | string? | Display name |
-| Subject | string | Email subject line |
-| HtmlBody | string | Rendered HTML body |
-| PlainTextBody | string? | Optional plain-text alternative |
-| TemplateName | string | Template identifier used to render this message |
-| UserId | Guid? | FK → User (optional) — FK only |
-| CampaignGrantId | Guid? | FK → CampaignGrant (optional) — FK only |
-| ReplyTo | string? | Reply-To header value |
-| ExtraHeaders | string? | JSON-encoded additional headers (e.g., `List-Unsubscribe`) |
-| Status | EmailOutboxStatus | Queued / Sent / Failed |
-| CreatedAt | Instant | When queued |
-| PickedUpAt | Instant? | When first picked up by the job |
-| SentAt | Instant? | When successfully delivered |
-| RetryCount | int | Number of delivery attempts |
-| LastError | string? | Last delivery error message |
-| NextRetryAt | Instant? | Earliest time for next retry attempt |
-
-#### EmailOutboxStatus
-
-| Value | Description |
-|-------|-------------|
-| Queued | Awaiting delivery |
-| Sent | Successfully delivered |
-| Failed | Exhausted all retries |
-
-Stored as int.
-
-### AuditLogEntry
-
-Append-only system audit trail (user actions, sync ops). `IAuditLogService` is cross-cutting and called from most sections. Append-only per design-rules §12 — enforced by `AuditLogArchitectureTests.IAuditLogRepository_HasNoUpdateOrDeleteMethods`.
-
-**Table:** `audit_log_entries`
-
-Relationships: `AuditLogEntry.ActorUserId` → User (optional), `AuditLogEntry.RelatedGoogleResourceId` → GoogleResource (optional).
-
-#### AuditAction (cross-section enum)
-
-Action strings are shared across all sections that write audit entries. Representative entries (non-exhaustive):
-
-- `ConsentCheckCleared` — Consent Coordinator cleared a consent check
-- `ConsentCheckFlagged` — Consent Coordinator flagged a consent check
-- `SignupRejected` — Admin rejected a signup
-- `TierApplicationApproved` — Board approved a tier application
-- `TierApplicationRejected` — Board rejected a tier application
-- `TierDowngraded` — Admin downgraded a member's tier
-- `MembershipsRevokedOnDeletionRequest` — GDPR deletion revoked memberships
-- `FeedbackResponseSent` — Admin sent an email response to a feedback report
-- `CalendarEventCreated`, `CalendarEventUpdated`, `CalendarEventDeleted`, `CalendarOccurrenceCancelled`, `CalendarOccurrenceOverridden` — Calendar mutations
+| Key | string | PK |
+| Value | string | Setting value |
 
 ## Cross-cutting serialization rules
 
@@ -165,12 +119,12 @@ The following entities are append-only — no `UpdateAsync` / `DeleteAsync` on t
 
 | Entity | Owning section | Enforcement |
 |--------|---------------|-------------|
-| ConsentRecord | Legal & Consent | DB triggers block UPDATE / DELETE |
-| AuditLogEntry | Audit Log (cross-cutting) | Architecture test: `AuditLogArchitectureTests.IAuditLogRepository_HasNoUpdateOrDeleteMethods` |
-| BudgetAuditLog | Budget | Repository shape — no update/delete methods |
-| CampPolygonHistory | City Planning | Architecture test: `CityPlanningArchitectureTests` pins append-only repo surface |
-| ApplicationStateHistory | Governance | Repository shape — no update/delete methods |
-| TeamJoinRequestStateHistory | Teams | Repository shape (target; pending #540a) |
+| ConsentRecord | [Legal & Consent](../sections/LegalAndConsent.md) | DB triggers block UPDATE / DELETE |
+| AuditLogEntry | [Audit Log](../sections/AuditLog.md) | Architecture test: `AuditLogArchitectureTests.IAuditLogRepository_HasNoUpdateOrDeleteMethods` |
+| BudgetAuditLog | [Budget](../sections/Budget.md) | Repository shape — no update/delete methods |
+| CampPolygonHistory | [City Planning](../sections/CityPlanning.md) | Architecture test: `CityPlanningArchitectureTests` pins append-only repo surface |
+| ApplicationStateHistory | [Governance](../sections/Governance.md) | Repository shape — no update/delete methods |
+| TeamJoinRequestStateHistory | [Teams](../sections/Teams.md) | Repository shape (target; pending sub-task nobodies-collective/Humans#540a) |
 
 ## Constants
 
