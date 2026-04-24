@@ -1732,7 +1732,7 @@
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>Si vous n'êtes pas satisfait de notre réponse, vous avez le droit de déposer une plainte auprès de l'Agence Espagnole de Protection des Données (AEPD) à {0}.</value><comment>{0} = AEPD URL</comment></data>
 
 
-  <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Quarts remplis</value></data>
+  <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Places remplies</value></data>
   <data name="ShiftDash_Overview_ShiftsAtMinSubline" xml:space="preserve"><value>{0} / {1} quarts au minimum ({2}%)</value></data>
   <data name="ShiftDash_Overview_SlotsFilledSubline" xml:space="preserve"><value>{0} / {1} places remplies ({2}%)</value></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Détenteurs de billets</value></data>

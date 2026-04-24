@@ -1734,7 +1734,7 @@
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>Si no estàs satisfet amb la nostra resposta, tens dret a presentar una reclamació davant l'Agència Espanyola de Protecció de Dades (AEPD) a {0}.</value><comment>{0} = AEPD URL</comment></data>
 
 
-  <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Torns coberts</value></data>
+  <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Places cobertes</value></data>
   <data name="ShiftDash_Overview_ShiftsAtMinSubline" xml:space="preserve"><value>{0} / {1} torns al mínim ({2}%)</value></data>
   <data name="ShiftDash_Overview_SlotsFilledSubline" xml:space="preserve"><value>{0} / {1} places cobertes ({2}%)</value></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Amb entrada</value></data>

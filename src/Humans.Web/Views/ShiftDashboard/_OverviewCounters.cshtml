@@ -28,7 +28,6 @@
             <div class="card-body">
                 <div class="text-muted small text-uppercase">@Localizer["ShiftDash_Overview_ShiftsFilled"]</div>
                 <div class="fs-3 fw-bold">@o.FilledSlots <span class="text-muted fs-6">/ @o.TotalSlots (@slotsPct.ToString("0")%)</span></div>
-                <div class="text-muted small">@string.Format(Localizer["ShiftDash_Overview_ShiftsAtMinSubline"].Value, o.FilledShifts, o.TotalShifts, shiftsPct.ToString("0"))</div>
                 @if (!Model.SelectedPeriod.HasValue)
                 {
                     <div class="mt-2">

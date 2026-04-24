@@ -1734,7 +1734,7 @@
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>Si no estás satisfecho con nuestra respuesta, tienes derecho a presentar una reclamación ante la Agencia Española de Protección de Datos (AEPD) en {0}.</value><comment>{0} = AEPD URL</comment></data>
 
 
-  <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Turnos cubiertos</value></data>
+  <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Plazas cubiertas</value></data>
   <data name="ShiftDash_Overview_ShiftsAtMinSubline" xml:space="preserve"><value>{0} / {1} turnos al mínimo ({2}%)</value></data>
   <data name="ShiftDash_Overview_SlotsFilledSubline" xml:space="preserve"><value>{0} / {1} plazas cubiertas ({2}%)</value></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Con entrada</value></data>
@@ -1755,6 +1755,32 @@
   <data name="ShiftDash_PeriodFilter_Strike" xml:space="preserve"><value>Desmontaje</value></data>
 
   <data name="ShiftDash_Departments_Title" xml:space="preserve"><value>Departamentos</value></data>
+  <data name="ShiftDash_Countdown_Label" xml:space="preserve"><value>Cuenta regresiva a pies en el suelo</value></data>
+  <data name="ShiftDash_Countdown_Days" xml:space="preserve"><value>{0} días</value></data>
+  <data name="ShiftDash_Countdown_Weeks" xml:space="preserve"><value>({0} semanas)</value></data>
+  <data name="ShiftDash_Countdown_WeeksAndDays" xml:space="preserve"><value>({0} semanas, {1} días)</value></data>
+  <data name="ShiftDash_Countdown_FirstDay" xml:space="preserve"><value>primer día de montaje: {0}</value></data>
+  <data name="ShiftDash_Countdown_Today" xml:space="preserve"><value>¡Pies en el suelo — hoy!</value></data>
+  <data name="ShiftDash_Countdown_InProgress" xml:space="preserve"><value>Evento en curso — día {0} desde el inicio del montaje</value></data>
+  <data name="ShiftDash_DeptStaffingByDay_Title" xml:space="preserve"><value>Humans en el sitio por día</value></data>
+  <data name="ShiftDash_DeptStaffingByDay_Subtitle" xml:space="preserve"><value>agrupado por departamento — solo confirmados</value></data>
+  <data name="ShiftDash_DurationMix_Title" xml:space="preserve"><value>Mix de duración de turnos</value></data>
+  <data name="ShiftDash_DurationMix_Subtitle" xml:space="preserve"><value>reparto entre turnos de día completo y por horas, para este periodo</value></data>
+  <data name="ShiftDash_DurationMix_Col_Duration" xml:space="preserve"><value>Duración</value></data>
+  <data name="ShiftDash_DurationMix_Col_Shifts" xml:space="preserve"><value>Turnos</value></data>
+  <data name="ShiftDash_DurationMix_Col_Slots" xml:space="preserve"><value>Plazas</value></data>
+  <data name="ShiftDash_DurationMix_Col_Filled" xml:space="preserve"><value>Cubiertas</value></data>
+  <data name="ShiftDash_DurationMix_Col_Pct" xml:space="preserve"><value>%</value></data>
+  <data name="ShiftDash_DurationMix_FullDay" xml:space="preserve"><value>Día completo</value></data>
+  <data name="ShiftDash_DurationMix_HourLabel" xml:space="preserve"><value>{0} h</value></data>
+  <data name="ShiftDash_DurationMix_Total" xml:space="preserve"><value>Total</value></data>
+  <data name="ShiftDash_Heatmap_Title" xml:space="preserve"><value>Mapa de cobertura</value></data>
+  <data name="ShiftDash_Heatmap_Subtitle" xml:space="preserve"><value>cobertura de plazas por turno por día — verde = 80%+, amarillo = 60–79%, rojo = menos, gris = sin turno</value></data>
+  <data name="ShiftDash_Heatmap_Col_Rota" xml:space="preserve"><value>Departamento / Turno</value></data>
+  <data name="ShiftDash_Heatmap_Col_Team" xml:space="preserve"><value>Equipo</value></data>
+  <data name="ShiftDash_Heatmap_Tooltip_Filled" xml:space="preserve"><value>{0} — {1} / {2} plazas cubiertas</value></data>
+  <data name="ShiftDash_Heatmap_Tooltip_None" xml:space="preserve"><value>{0} — sin turnos ese día</value></data>
+  <data name="ShiftDash_Heatmap_Legend" xml:space="preserve"><value>Pasa el ratón sobre una celda para ver detalles. Desplázate horizontalmente para ver todos los días.</value></data>
   <data name="ShiftDash_Departments_SortNote" xml:space="preserve"><value>ordenados por menor % de plazas cubiertas primero</value></data>
   <data name="ShiftDash_Departments_Col_Department" xml:space="preserve"><value>Departamento</value></data>
   <data name="ShiftDash_Departments_Col_Total" xml:space="preserve"><value>Total</value></data>

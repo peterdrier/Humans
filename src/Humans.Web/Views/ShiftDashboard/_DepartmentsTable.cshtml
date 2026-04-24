@@ -32,8 +32,7 @@
                 <tr>
                     <th></th>
                     <th>@Localizer["ShiftDash_Departments_Col_Department"]</th>
-                    <th class="text-end">@Localizer["ShiftDash_Departments_Col_ShiftsAtMin"]</th>
-                    <th class="text-end">@Localizer["ShiftDash_Departments_Col_SlotsFilled"]</th>
+                    <th class="text-end">@Localizer["ShiftDash_Departments_Col_Filled"]</th>
                     <th class="text-end">@Localizer["ShiftDash_Departments_Col_Pct"]</th>
                     <th class="text-end">@Localizer["ShiftDash_Departments_Col_SlotsRemaining"]</th>
                 </tr>
@@ -43,24 +42,38 @@
                 {
                     var rowId = "dept-" + row.DepartmentId.ToString("N");
                     var pct = SlotPct(row.FilledSlots, row.TotalSlots);
+                    // Drill-down is shown when there are subgroups (always worth seeing)
+                    // or when no period is selected (so the per-period breakdown has something to say).
+                    // Otherwise we render a plain non-interactive row — no chevron, no collapse target.
+                    var hasDrilldown = row.Subgroups.Count > 0 || !periodSelected;
+                    if (hasDrilldown)
+                    {
                     <tr role="button" data-bs-toggle="collapse" data-bs-target="#@rowId" aria-expanded="false" aria-controls="@rowId">
                         <td class="text-muted"><i class="fa-solid fa-chevron-right"></i></td>
-                        <td>@row.DepartmentName</td>
-                        <td class="text-end">@row.FilledShifts / @row.TotalShifts</td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(row.DepartmentSlug))
+                            {
+                                <a asp-controller="Team" asp-action="Details" asp-route-slug="@row.DepartmentSlug"
+                                   onclick="event.stopPropagation();">@row.DepartmentName</a>
+                            }
+                            else
+                            {
+                                @row.DepartmentName
+                            }
+                        </td>
                         <td class="text-end">@row.FilledSlots / @row.TotalSlots</td>
                         <td class="text-end"><span class="badge @PctClass(pct)">@pct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(pct)</span></span></td>
                         <td class="text-end">@row.SlotsRemaining</td>
                     </tr>
                     <tr class="collapse" id="@rowId">
-                        <td colspan="6" class="bg-light">
+                        <td colspan="5" class="bg-light">
                             @if (row.Subgroups.Count > 0)
                             {
                                 <table class="table table-sm mb-0">
                                     <thead>
                                         <tr>
                                             <th></th>
-                                            <th class="text-end">@Localizer["ShiftDash_Departments_Col_ShiftsAtMin"]</th>
-                                            <th class="text-end">@Localizer["ShiftDash_Departments_Col_SlotsFilled"]</th>
+                                            <th class="text-end">@Localizer["ShiftDash_Departments_Col_Filled"]</th>
                                             <th class="text-end">@Localizer["ShiftDash_Departments_Col_Pct"]</th>
                                             <th class="text-end">@Localizer["ShiftDash_Departments_Col_SlotsRemaining"]</th>
                                             @if (!periodSelected)
@@ -81,9 +94,15 @@
                                                     {
                                                         <span class="badge bg-secondary me-1">@Localizer["ShiftDash_Departments_Direct"]</span>
                                                     }
-                                                    @sub.Name
+                                                    @if (!string.IsNullOrEmpty(sub.Slug))
+                                                    {
+                                                        <a asp-controller="Team" asp-action="Details" asp-route-slug="@sub.Slug">@sub.Name</a>
+                                                    }
+                                                    else
+                                                    {
+                                                        @sub.Name
+                                                    }
                                                 </td>
-                                                <td class="text-end">@sub.FilledShifts / @sub.TotalShifts</td>
                                                 <td class="text-end">@sub.FilledSlots / @sub.TotalSlots</td>
                                                 <td class="text-end"><span class="badge @PctClass(sPct)">@sPct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(sPct)</span></span></td>
                                                 <td class="text-end">@sub.SlotsRemaining</td>
@@ -107,8 +126,7 @@
                                     <thead>
                                         <tr>
                                             <th>@Localizer["ShiftDash_Departments_Col_Period"]</th>
-                                            <th class="text-end">@Localizer["ShiftDash_Departments_Col_ShiftsAtMin"]</th>
-                                            <th class="text-end">@Localizer["ShiftDash_Departments_Col_SlotsFilled"]</th>
+                                            <th class="text-end">@Localizer["ShiftDash_Departments_Col_Filled"]</th>
                                             <th class="text-end">@Localizer["ShiftDash_Departments_Col_Pct"]</th>
                                             <th class="text-end">@Localizer["ShiftDash_Departments_Col_SlotsRemaining"]</th>
                                         </tr>
@@ -122,7 +140,6 @@
                                             var pPct = SlotPct(p.FilledSlots, p.TotalSlots);
                                             <tr>
                                                 <td>@label</td>
-                                                <td class="text-end">@p.Filled / @p.Total</td>
                                                 <td class="text-end">@p.FilledSlots / @p.TotalSlots</td>
                                                 <td class="text-end"><span class="badge @PctClass(pPct)">@pPct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(pPct)</span></span></td>
                                                 <td class="text-end">@p.SlotsRemaining</td>
@@ -133,6 +150,26 @@
                             }
                         </td>
                     </tr>
+                    }
+                    else
+                    {
+                    <tr>
+                        <td></td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(row.DepartmentSlug))
+                            {
+                                <a asp-controller="Team" asp-action="Details" asp-route-slug="@row.DepartmentSlug">@row.DepartmentName</a>
+                            }
+                            else
+                            {
+                                @row.DepartmentName
+                            }
+                        </td>
+                        <td class="text-end">@row.FilledSlots / @row.TotalSlots</td>
+                        <td class="text-end"><span class="badge @PctClass(pct)">@pct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(pct)</span></span></td>
+                        <td class="text-end">@row.SlotsRemaining</td>
+                    </tr>
+                    }
                 }
             </tbody>
         </table>

@@ -67,22 +67,14 @@ public class ShiftAdminController : HumansTeamControllerBase
         var pendingSignups = new List<ShiftSignup>();
         var totalSlots = 0;
         var confirmedCount = 0;
-        var totalShifts = 0;
-        var filledShifts = 0;
 
         foreach (var rota in rotas)
         {
             foreach (var shift in rota.Shifts)
             {
                 totalSlots += shift.MaxVolunteers;
-                totalShifts++;
                 var shiftSignups = await _signupService.GetByShiftAsync(shift.Id);
-                var shiftConfirmed = shiftSignups.Count(s => s.Status == SignupStatus.Confirmed);
-                confirmedCount += shiftConfirmed;
-                if (shiftConfirmed >= shift.MinVolunteers)
-                {
-                    filledShifts++;
-                }
+                confirmedCount += shiftSignups.Count(s => s.Status == SignupStatus.Confirmed);
                 pendingSignups.AddRange(shiftSignups.Where(s => s.Status == SignupStatus.Pending));
             }
         }
@@ -130,8 +122,6 @@ public class ShiftAdminController : HumansTeamControllerBase
             PendingSignups = pendingSignups,
             TotalSlots = totalSlots,
             ConfirmedCount = confirmedCount,
-            TotalShifts = totalShifts,
-            FilledShifts = filledShifts,
             CanManageShifts = canManage,
             CanApproveSignups = canApprove,
             VolunteerProfiles = profileDict,
