@@ -1,7 +1,9 @@
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
+using TicketsTicketSyncErrorMeterContributor = Humans.Application.Services.Tickets.TicketSyncErrorMeterContributor;
 using TicketsTicketSyncService = Humans.Application.Services.Tickets.TicketSyncService;
 using TicketsTicketQueryService = Humans.Application.Services.Tickets.TicketQueryService;
 using Humans.Application.Interfaces.Tickets;
@@ -28,6 +30,10 @@ internal static class TicketsSectionExtensions
 
         services.AddScoped<TicketSyncJob>();
         services.AddScoped<TicketingBudgetSyncJob>();
+
+        // Notification meter contributor owned by this section (push-model per
+        // issue nobodies-collective/Humans#581).
+        services.AddScoped<INotificationMeterContributor, TicketsTicketSyncErrorMeterContributor>();
 
         return services;
     }

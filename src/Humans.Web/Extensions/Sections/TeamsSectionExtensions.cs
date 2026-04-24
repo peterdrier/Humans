@@ -1,11 +1,13 @@
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Teams;
+using TeamsTeamJoinRequestsPendingMeterContributor = Humans.Application.Services.Teams.TeamJoinRequestsPendingMeterContributor;
 using TeamsTeamPageService = Humans.Application.Services.Teams.TeamPageService;
 using TeamsTeamService = Humans.Application.Services.Teams.TeamService;
 
@@ -46,6 +48,10 @@ internal static class TeamsSectionExtensions
         services.AddScoped<IActiveTeamsCacheInvalidator, ActiveTeamsCacheInvalidator>();
 
         services.AddScoped<ISystemTeamSync, SystemTeamSyncJob>();
+
+        // Notification meter contributor owned by this section (push-model per
+        // issue nobodies-collective/Humans#581).
+        services.AddScoped<INotificationMeterContributor, TeamsTeamJoinRequestsPendingMeterContributor>();
 
         return services;
     }

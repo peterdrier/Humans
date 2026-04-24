@@ -1,8 +1,10 @@
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.Users;
 using Humans.Infrastructure.Repositories.Users;
 using DashboardDashboardService = Humans.Application.Services.Dashboard.DashboardService;
 using GovernanceMembershipCalculator = Humans.Application.Services.Governance.MembershipCalculator;
@@ -32,6 +34,10 @@ internal static class UsersSectionExtensions
         services.AddScoped<IMembershipQuery, GovernanceMembershipQuery>();
         services.AddScoped<IMembershipCalculator, GovernanceMembershipCalculator>();
         services.AddScoped<IDashboardService, DashboardDashboardService>();
+
+        // Notification meter contributor owned by this section (push-model per
+        // issue nobodies-collective/Humans#581).
+        services.AddScoped<INotificationMeterContributor, PendingDeletionsMeterContributor>();
 
         return services;
     }

@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Caching;
@@ -8,6 +9,7 @@ using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Governance;
 using Humans.Infrastructure.Services;
 using GovernanceApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
+using GovernanceBoardVotingMeterContributor = Humans.Application.Services.Governance.BoardVotingMeterContributor;
 using OnboardingOrchestratorService = Humans.Application.Services.Onboarding.OnboardingService;
 
 namespace Humans.Web.Extensions.Sections;
@@ -40,6 +42,12 @@ internal static class GovernanceSectionExtensions
         services.AddScoped<IOnboardingEligibilityQuery>(sp => sp.GetRequiredService<OnboardingOrchestratorService>());
 
         services.AddScoped<TermRenewalReminderJob>();
+
+        // Notification meter contributor owned by this section (push-model per
+        // issue nobodies-collective/Humans#581). Per-user scope; self-caches
+        // under CacheKeys.VotingBadge(userId) which is also read by
+        // NavBadgesViewComponent so cache warmth is shared.
+        services.AddScoped<INotificationMeterContributor, GovernanceBoardVotingMeterContributor>();
 
         return services;
     }

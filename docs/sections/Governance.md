@@ -65,4 +65,4 @@ Governance runs on a plain repository + Scoped service — **no caching decorato
 
 ### Known incoming violations (other sections reading Governance tables)
 
-`OnboardingService`, `SendBoardDailyDigestJob`, `SendAdminDailyDigestJob`, `TermRenewalReminderJob`, `SystemTeamSyncJob`, and `NotificationMeterProvider` still read governance-owned tables directly for dashboard-counting and batch jobs. Those uses are allowed until the sections owning those services migrate to call `IApplicationDecisionService` / `IApplicationRepository` instead.
+`OnboardingService`, `SendBoardDailyDigestJob`, `SendAdminDailyDigestJob`, `TermRenewalReminderJob`, and `SystemTeamSyncJob` still read governance-owned tables directly for dashboard-counting and batch jobs. Those uses are allowed until the sections owning those services migrate to call `IApplicationDecisionService` / `IApplicationRepository` instead. Issue nobodies-collective/Humans#581 inverted the old pull-model `NotificationMeterProvider` to a push-model registry; Governance's own `BoardVotingMeterContributor` now lives in this section and calls `IApplicationDecisionService` directly.

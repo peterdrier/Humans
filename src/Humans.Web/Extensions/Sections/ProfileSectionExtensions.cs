@@ -1,6 +1,8 @@
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Services.Profile;
 using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.HostedServices;
 using Humans.Infrastructure.Services;
@@ -88,6 +90,12 @@ internal static class ProfileSectionExtensions
         // in lazily per user. Failures are logged and swallowed; lazy population
         // still works.
         services.AddHostedService<FullProfileWarmupHostedService>();
+
+        // Notification meter contributors owned by this section (push-model per
+        // issue nobodies-collective/Humans#581). The cross-section provider in
+        // Notifications consumes IEnumerable<INotificationMeterContributor>.
+        services.AddScoped<INotificationMeterContributor, ConsentReviewsPendingMeterContributor>();
+        services.AddScoped<INotificationMeterContributor, OnboardingPendingMeterContributor>();
 
         return services;
     }

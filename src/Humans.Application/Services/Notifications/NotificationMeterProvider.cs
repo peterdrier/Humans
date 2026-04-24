@@ -1,13 +1,6 @@
 using System.Security.Claims;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;
-using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Tickets;
-using Humans.Application.Interfaces.Users;
-using Humans.Domain.Constants;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
@@ -15,59 +8,53 @@ namespace Humans.Application.Services.Notifications;
 
 /// <summary>
 /// Application-layer implementation of <see cref="INotificationMeterProvider"/>.
-/// Provides live counter meters for admin/coordinator work queues. Counts
-/// are computed by calling into each owning section service
-/// (<see cref="IProfileService"/>, <see cref="IUserService"/>,
-/// <see cref="IGoogleSyncService"/>, <see cref="ITeamService"/>,
-/// <see cref="ITicketSyncService"/>, <see cref="IApplicationDecisionService"/>)
-/// and cached for ~2 minutes. No direct DB access.
+/// Pure aggregation + caching: discovers registered
+/// <see cref="INotificationMeterContributor"/>s via DI, filters by per-user role
+/// visibility, and collects their meters. Knows nothing about individual sections.
 /// </summary>
 /// <remarks>
 /// <para>
-/// This service replaces the pre-§15 <c>NotificationMeterProvider</c> that
-/// read <c>profiles</c>, <c>users</c>, <c>google_sync_outbox_events</c>,
-/// <c>team_join_requests</c>, <c>ticket_sync_states</c>, and
-/// <c>applications</c> directly. Per design-rules §2c the Notifications
-/// section owns <c>notifications</c>/<c>notification_recipients</c> only —
-/// every other table is reached through its owning section's public
-/// service interface.
+/// This service is the push-model registry for the admin/coordinator navbar work-queue
+/// badges. Each section registers one or more <see cref="INotificationMeterContributor"/>
+/// instances via its DI extension (issue nobodies-collective/Humans#581). The provider
+/// itself has zero knowledge of <c>IProfileService</c>, <c>IUserService</c>,
+/// <c>IGoogleSyncService</c>, <c>ITeamService</c>, <c>ITicketSyncService</c>, or
+/// <c>IApplicationDecisionService</c>.
 /// </para>
 /// <para>
-/// The meter counts cache (<see cref="CacheKeys.NotificationMeters"/>) is a
-/// short-TTL request-acceleration cache appropriate for <see cref="IMemoryCache"/>
-/// per §15i. Writes elsewhere invalidate it via
-/// <see cref="INotificationMeterCacheInvalidator"/>.
+/// Global-scoped contributors are cached as a cross-user bundle under
+/// <see cref="CacheKeys.NotificationMeters"/> with a 2-minute TTL (§15i request-
+/// acceleration cache). Writes elsewhere invalidate the bundle via
+/// <see cref="INotificationMeterCacheInvalidator"/>. Per-user contributors are invoked
+/// each request and self-cache if desired (e.g. board voting badge uses
+/// <see cref="CacheKeys.VotingBadge"/>).
+/// </para>
+/// <para>
+/// A failing contributor is isolated: it is logged and its meter is omitted for that
+/// request, without affecting other sections' meters in the same call.
 /// </para>
 /// </remarks>
 public sealed class NotificationMeterProvider : INotificationMeterProvider
 {
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(2);
 
-    private readonly IProfileService _profileService;
-    private readonly IUserService _userService;
-    private readonly IGoogleSyncService _googleSyncService;
-    private readonly ITeamService _teamService;
-    private readonly ITicketSyncService _ticketSyncService;
-    private readonly IApplicationDecisionService _applicationDecisionService;
+    /// <summary>
+    /// Sentinel principal passed to <see cref="INotificationMeterContributor.BuildMeterAsync"/>
+    /// for <see cref="NotificationMeterScope.Global"/> contributors. Global contributors
+    /// must not read any identity claim off this value — its contents are undefined.
+    /// </summary>
+    private static readonly ClaimsPrincipal GlobalScopePrincipal = new();
+
+    private readonly IEnumerable<INotificationMeterContributor> _contributors;
     private readonly IMemoryCache _cache;
     private readonly ILogger<NotificationMeterProvider> _logger;
 
     public NotificationMeterProvider(
-        IProfileService profileService,
-        IUserService userService,
-        IGoogleSyncService googleSyncService,
-        ITeamService teamService,
-        ITicketSyncService ticketSyncService,
-        IApplicationDecisionService applicationDecisionService,
+        IEnumerable<INotificationMeterContributor> contributors,
         IMemoryCache cache,
         ILogger<NotificationMeterProvider> logger)
     {
-        _profileService = profileService;
-        _userService = userService;
-        _googleSyncService = googleSyncService;
-        _teamService = teamService;
-        _ticketSyncService = ticketSyncService;
-        _applicationDecisionService = applicationDecisionService;
+        _contributors = contributors;
         _cache = cache;
         _logger = logger;
     }
@@ -75,180 +62,109 @@ public sealed class NotificationMeterProvider : INotificationMeterProvider
     public async Task<IReadOnlyList<NotificationMeter>> GetMetersForUserAsync(
         ClaimsPrincipal user, CancellationToken cancellationToken = default)
     {
-        var counts = await GetCachedCountsAsync(cancellationToken);
-        var meters = new List<NotificationMeter>();
+        ArgumentNullException.ThrowIfNull(user);
 
-        var isAdmin = user.IsInRole(RoleNames.Admin);
-        var isBoard = user.IsInRole(RoleNames.Board);
-        var isVolunteerCoordinator = user.IsInRole(RoleNames.VolunteerCoordinator);
-        var isConsentCoordinator = user.IsInRole(RoleNames.ConsentCoordinator);
+        var visible = _contributors.Where(c => c.IsVisibleTo(user)).ToList();
+        if (visible.Count == 0)
+            return [];
 
-        // Consent reviews pending — Consent Coordinator
-        if (isConsentCoordinator && counts.ConsentReviewsPending > 0)
+        // Global contributors are resolved from a shared cross-user cache bundle.
+        // The cache entry holds the last-computed meter (possibly null) for each
+        // global contributor key; per-user role visibility is re-applied above, so
+        // two users with different roles share the same cached counts.
+        Dictionary<string, NotificationMeter?>? globalBundle = null;
+        if (visible.Any(c => c.Scope == NotificationMeterScope.Global))
+            globalBundle = await GetCachedGlobalBundleAsync(cancellationToken);
+
+        var perUserTasks = visible
+            .Where(c => c.Scope == NotificationMeterScope.PerUser)
+            .Select(c => BuildPerUserMeterAsync(c, user, cancellationToken))
+            .ToList();
+        var perUserResults = await Task.WhenAll(perUserTasks);
+
+        var result = new List<NotificationMeter>(visible.Count);
+
+        if (globalBundle is not null)
         {
-            meters.Add(new NotificationMeter
+            foreach (var contributor in visible.Where(c => c.Scope == NotificationMeterScope.Global))
             {
-                Title = "Consent reviews pending",
-                Count = counts.ConsentReviewsPending,
-                ActionUrl = "/OnboardingReview",
-                Priority = 10,
-            });
-        }
-
-        // Applications pending board vote — Board (per-user count)
-        if (isBoard)
-        {
-            var userIdClaim = user.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (Guid.TryParse(userIdClaim, out var boardMemberUserId))
-            {
-                var pendingVoteCount = await GetPerUserVotingCountAsync(boardMemberUserId, cancellationToken);
-                if (pendingVoteCount > 0)
-                {
-                    meters.Add(new NotificationMeter
-                    {
-                        Title = "Applications pending your vote",
-                        Count = pendingVoteCount,
-                        ActionUrl = "/OnboardingReview/BoardVoting",
-                        Priority = 9,
-                    });
-                }
+                if (globalBundle.TryGetValue(contributor.Key, out var meter) && meter is not null)
+                    result.Add(meter);
             }
         }
 
-        // Pending account deletions — Admin
-        if (isAdmin && counts.PendingDeletions > 0)
+        foreach (var meter in perUserResults)
         {
-            meters.Add(new NotificationMeter
-            {
-                Title = "Pending account deletions",
-                Count = counts.PendingDeletions,
-                ActionUrl = "/Profile/Admin?filter=deleting&sort=name&dir=asc",
-                Priority = 8,
-            });
+            if (meter is not null)
+                result.Add(meter);
         }
 
-        // Failed Google sync events — Admin
-        if (isAdmin && counts.FailedSyncEvents > 0)
-        {
-            meters.Add(new NotificationMeter
-            {
-                Title = "Failed Google sync events",
-                Count = counts.FailedSyncEvents,
-                ActionUrl = "/Google/Sync",
-                Priority = 7,
-            });
-        }
-
-        // Onboarding profiles pending — Board / Volunteer Coordinator
-        if ((isBoard || isVolunteerCoordinator) && counts.OnboardingPending > 0)
-        {
-            meters.Add(new NotificationMeter
-            {
-                Title = "Onboarding profiles pending",
-                Count = counts.OnboardingPending,
-                ActionUrl = "/OnboardingReview",
-                Priority = 6,
-            });
-        }
-
-        // Team join requests pending — Admin (visible to admins since coordinators
-        // see their own team's requests on the team page)
-        if (isAdmin && counts.TeamJoinRequestsPending > 0)
-        {
-            meters.Add(new NotificationMeter
-            {
-                Title = "Team join requests pending",
-                Count = counts.TeamJoinRequestsPending,
-                ActionUrl = "/Teams/Summary",
-                Priority = 5,
-            });
-        }
-
-        // Ticket sync error — Admin
-        if (isAdmin && counts.TicketSyncError)
-        {
-            meters.Add(new NotificationMeter
-            {
-                Title = "Ticket sync error",
-                Count = 1,
-                ActionUrl = "/Tickets",
-                Priority = 4,
-            });
-        }
-
-        return meters;
+        return result;
     }
 
-    private async Task<MeterCounts> GetCachedCountsAsync(CancellationToken cancellationToken)
+    private async Task<Dictionary<string, NotificationMeter?>> GetCachedGlobalBundleAsync(
+        CancellationToken cancellationToken)
     {
-        var counts = await _cache.GetOrCreateAsync(CacheKeys.NotificationMeters, async entry =>
+        var bundle = await _cache.GetOrCreateAsync(CacheKeys.NotificationMeters, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = CacheDuration;
-
-            try
-            {
-                return await ComputeCountsAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to compute notification meter counts");
-                return new MeterCounts();
-            }
+            return await ComputeGlobalBundleAsync(cancellationToken);
         });
 
-        return counts!;
+        return bundle!;
     }
 
-    private async Task<int> GetPerUserVotingCountAsync(Guid boardMemberUserId, CancellationToken cancellationToken)
+    private async Task<Dictionary<string, NotificationMeter?>> ComputeGlobalBundleAsync(
+        CancellationToken cancellationToken)
     {
-        var cacheKey = CacheKeys.VotingBadge(boardMemberUserId);
-        return await _cache.GetOrCreateAsync(cacheKey, async entry =>
+        var globalContributors = _contributors
+            .Where(c => c.Scope == NotificationMeterScope.Global)
+            .ToList();
+
+        var tasks = globalContributors
+            .Select(c => BuildGlobalMeterAsync(c, cancellationToken))
+            .ToList();
+
+        var results = await Task.WhenAll(tasks);
+
+        var bundle = new Dictionary<string, NotificationMeter?>(StringComparer.Ordinal);
+        foreach (var (key, meter) in results)
+            bundle[key] = meter;
+        return bundle;
+    }
+
+    private async Task<(string Key, NotificationMeter? Meter)> BuildGlobalMeterAsync(
+        INotificationMeterContributor contributor, CancellationToken cancellationToken)
+    {
+        try
         {
-            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
-            return await _applicationDecisionService
-                .GetUnvotedApplicationCountAsync(boardMemberUserId, cancellationToken);
-        });
-    }
-
-    private async Task<MeterCounts> ComputeCountsAsync(CancellationToken cancellationToken)
-    {
-        var consentReviewsPending = await _profileService.GetConsentReviewPendingCountAsync(cancellationToken);
-
-        var pendingDeletions = await _userService.GetPendingDeletionCountAsync(cancellationToken);
-
-        var failedSyncEvents = await _googleSyncService.GetFailedSyncEventCountAsync(cancellationToken);
-
-        // Onboarding profiles pending excludes consent-review items, matching
-        // the board digest "still onboarding" queue semantics.
-        var totalNotApproved = await _profileService
-            .GetNotApprovedAndNotSuspendedCountAsync(cancellationToken);
-        var onboardingPending = totalNotApproved - consentReviewsPending;
-        if (onboardingPending < 0)
-            onboardingPending = 0;
-
-        var teamJoinRequestsPending = await _teamService
-            .GetTotalPendingJoinRequestCountAsync(cancellationToken);
-
-        var ticketSyncError = await _ticketSyncService.IsInErrorStateAsync(cancellationToken);
-
-        return new MeterCounts
+            var meter = await contributor.BuildMeterAsync(GlobalScopePrincipal, cancellationToken);
+            return (contributor.Key, meter);
+        }
+        catch (Exception ex)
         {
-            ConsentReviewsPending = consentReviewsPending,
-            PendingDeletions = pendingDeletions,
-            FailedSyncEvents = failedSyncEvents,
-            OnboardingPending = onboardingPending,
-            TeamJoinRequestsPending = teamJoinRequestsPending,
-            TicketSyncError = ticketSyncError,
-        };
+            _logger.LogError(
+                ex,
+                "Notification meter contributor {Key} (global) failed; meter omitted this cycle",
+                contributor.Key);
+            return (contributor.Key, null);
+        }
     }
 
-    private sealed class MeterCounts
+    private async Task<NotificationMeter?> BuildPerUserMeterAsync(
+        INotificationMeterContributor contributor, ClaimsPrincipal user, CancellationToken cancellationToken)
     {
-        public int ConsentReviewsPending { get; init; }
-        public int PendingDeletions { get; init; }
-        public int FailedSyncEvents { get; init; }
-        public int OnboardingPending { get; init; }
-        public int TeamJoinRequestsPending { get; init; }
-        public bool TicketSyncError { get; init; }
+        try
+        {
+            return await contributor.BuildMeterAsync(user, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Notification meter contributor {Key} (per-user) failed; meter omitted this request",
+                contributor.Key);
+            return null;
+        }
     }
 }

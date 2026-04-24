@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -121,36 +122,52 @@ public class NotificationsArchitectureTests
     }
 
     [Fact]
-    public void NotificationMeterProvider_TakesCrossSectionInterfaces()
+    public void NotificationMeterProvider_HasNoSectionServiceDependencies()
     {
-        // The meter provider computes badge counts by calling into each owning
-        // section service — IProfileService, IUserService, IGoogleSyncService,
-        // ITeamService, ITicketSyncService, IApplicationDecisionService — never
-        // reading the underlying tables directly.
+        // Push-model inversion (issue nobodies-collective/Humans#581): the
+        // provider is a pure registry/cache and must not depend on any section
+        // service. Sections register their own INotificationMeterContributor
+        // instances via section DI extensions; the provider consumes them
+        // through IEnumerable<INotificationMeterContributor> and knows nothing
+        // about individual sections.
         var ctor = typeof(NotificationMeterProvider).GetConstructors().Single();
         var paramTypeNames = ctor.GetParameters().Select(p => p.ParameterType.Name).ToList();
 
-        paramTypeNames.Should().Contain("IProfileService");
-        paramTypeNames.Should().Contain("IUserService");
-        paramTypeNames.Should().Contain("IGoogleSyncService");
-        paramTypeNames.Should().Contain("ITeamService");
-        paramTypeNames.Should().Contain("ITicketSyncService");
-        paramTypeNames.Should().Contain("IApplicationDecisionService");
+        paramTypeNames.Should().NotContain("IProfileService");
+        paramTypeNames.Should().NotContain("IUserService");
+        paramTypeNames.Should().NotContain("IGoogleSyncService");
+        paramTypeNames.Should().NotContain("ITeamService");
+        paramTypeNames.Should().NotContain("ITicketSyncService");
+        paramTypeNames.Should().NotContain("IApplicationDecisionService");
+    }
+
+    [Fact]
+    public void NotificationMeterProvider_ResolvesContributorsThroughEnumerableRegistry()
+    {
+        // The provider discovers meters by resolving every registered
+        // INotificationMeterContributor from DI (IEnumerable<T>). Any section
+        // can add a new meter purely by registering a contributor in its own
+        // DI extension; no changes to the provider are needed.
+        var ctor = typeof(NotificationMeterProvider).GetConstructors().Single();
+        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
+
+        paramTypes.Should().Contain(typeof(IEnumerable<INotificationMeterContributor>),
+            because: "the push-model provider consumes contributors via IEnumerable<T> registry");
     }
 
     [Fact]
     public void NotificationMeterProvider_TakesNoRepositoryDependency()
     {
         // The meter provider does not own notifications/notification_recipients
-        // reads either — those stay with the inbox service. It is purely an
-        // aggregator across other sections' count methods.
+        // reads either — those stay with the inbox service. It is purely a
+        // registry/cache across other sections' contributors.
         var ctor = typeof(NotificationMeterProvider).GetConstructors().Single();
         var hasRepo = ctor.GetParameters()
             .Any(p => (p.ParameterType.Namespace ?? string.Empty)
                 .StartsWith("Humans.Application.Interfaces.Repositories", StringComparison.Ordinal));
 
         hasRepo.Should().BeFalse(
-            because: "the meter provider is a cross-section aggregator; it should not bypass any section's public service interface (design-rules §9)");
+            because: "the meter provider is a pure registry; it should not bypass any section's public service interface (design-rules §9)");
     }
 
     // ── INotificationRepository ──────────────────────────────────────────────

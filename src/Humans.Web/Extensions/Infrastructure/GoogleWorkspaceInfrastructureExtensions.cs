@@ -1,10 +1,12 @@
 using Humans.Application.Configuration;
+using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Teams;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
 using Humans.Infrastructure.Services.GoogleWorkspace;
+using FailedGoogleSyncMeterContributor = Humans.Application.Services.GoogleIntegration.FailedGoogleSyncMeterContributor;
 using GoogleWorkspaceUserService = Humans.Application.Services.GoogleIntegration.GoogleWorkspaceUserService;
 using GoogleDriveActivityMonitorService = Humans.Application.Services.GoogleIntegration.DriveActivityMonitorService;
 using GoogleAdminService = Humans.Application.Services.GoogleIntegration.GoogleAdminService;
@@ -116,6 +118,12 @@ internal static class GoogleWorkspaceInfrastructureExtensions
         services.AddScoped<GoogleResourceReconciliationJob>();
         services.AddScoped<DriveActivityMonitorJob>();
         services.AddScoped<ProcessGoogleSyncOutboxJob>();
+
+        // Notification meter contributor owned by this section (push-model per
+        // issue nobodies-collective/Humans#581). Registered here rather than in
+        // a section extension because Google Integration's DI surface lives in
+        // the Infrastructure extensions file.
+        services.AddScoped<INotificationMeterContributor, FailedGoogleSyncMeterContributor>();
 
         return services;
     }
