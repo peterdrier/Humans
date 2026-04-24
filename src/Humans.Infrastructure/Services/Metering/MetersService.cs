@@ -36,7 +36,7 @@ public sealed class MetersService : IMeters, IDisposable
 
         return _registrations.GetOrAdd(name, _ =>
         {
-            var registration = new Registration(name, owner => _registrations.TryRemove(owner.Name, out Registration? _));
+            var registration = new Registration(name);
 
             _otelMeter.CreateObservableGauge(
                 name,
@@ -55,20 +55,16 @@ public sealed class MetersService : IMeters, IDisposable
 
     private sealed class Registration : IMeter
     {
-        private readonly Action<Registration> _onDispose;
         private int _current;
 
-        public Registration(string name, Action<Registration> onDispose)
+        public Registration(string name)
         {
             Name = name;
-            _onDispose = onDispose;
         }
 
         public string Name { get; }
         public int Current => Volatile.Read(ref _current);
 
         public void Set(int value) => Volatile.Write(ref _current, value);
-
-        public void Dispose() => _onDispose(this);
     }
 }

@@ -76,21 +76,6 @@ public sealed class MetersServiceTests
         act.Should().Throw<ArgumentException>();
     }
 
-    [Fact]
-    public void Dispose_Handle_RemovesRegistration_NextDeclareCreatesFresh()
-    {
-        using var meters = new MetersService(NullLogger<MetersService>.Instance);
-        var name = UniqueName("dispose");
-
-        var first = meters.Declare(name, Meta);
-        first.Set(7);
-        first.Dispose();
-
-        var second = meters.Declare(name, Meta);
-
-        second.Should().NotBeSameAs(first);
-    }
-
     // Spins up a short-lived MeterListener, triggers one measurement
     // collection, and returns the value for the named gauge. Exercises the
     // real OTel callback wired by MetersService.
