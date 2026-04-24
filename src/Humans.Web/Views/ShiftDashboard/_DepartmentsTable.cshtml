@@ -44,7 +44,7 @@
                     var rowId = "dept-" + row.DepartmentId.ToString("N");
                     var pct = SlotPct(row.FilledSlots, row.TotalSlots);
                     <tr role="button" data-bs-toggle="collapse" data-bs-target="#@rowId" aria-expanded="false" aria-controls="@rowId">
-                        <td class="text-muted"><i class="bi bi-chevron-right"></i></td>
+                        <td class="text-muted"><i class="fa-solid fa-chevron-right"></i></td>
                         <td>@row.DepartmentName</td>
                         <td class="text-end">@row.FilledShifts / @row.TotalShifts</td>
                         <td class="text-end">@row.FilledSlots / @row.TotalSlots</td>
