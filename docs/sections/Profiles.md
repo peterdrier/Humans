@@ -1,5 +1,7 @@
 # Profiles — Section Invariants
 
+Per-human personal data: profile, contact fields, emails, communication preferences. The reference implementation for the §15 caching architecture.
+
 ## Concepts
 
 - A **Profile** holds a human's personal information: name, city, country, birthday (month and day only — never year), profile picture, and admin notes.
@@ -7,6 +9,157 @@
 - **Visibility Levels** determine who can see each contact field: BoardOnly (most restrictive), CoordinatorsAndBoard, MyTeams (shared team members), or AllActiveProfiles (least restrictive).
 - **Membership Tier** is tracked on the profile: Volunteer (default), Colaborador, or Asociado.
 - **Communication Preferences** control per-category email opt-in/opt-out (System, EventOperations, CommunityUpdates, Marketing).
+- **UserEmail** is a per-user email address record. A user has one "login" email plus zero-or-more verified additional addresses; one of them may be flagged as the notification target.
+- **CV Entries** (sub-aggregate of Profile) record volunteer involvement history.
+
+## Data Model
+
+### User (Identity extension)
+
+User is owned by the **Users/Identity** section; the properties below are the profile-adjacent extensions that Profile consumers read most often. Field-level ownership still belongs here because Profile's `CachingProfileService` stitches them into `FullProfile`.
+
+#### Google email preference
+
+| Property | Type | Default | Purpose |
+|----------|------|---------|---------|
+| GoogleEmail | string? (256) | null | Preferred email for Google services (Groups, Drive). Auto-set to @nobodies.team when provisioned/linked. Falls back to OAuth email when null. |
+
+Methods:
+- `GetGoogleServiceEmail()` → `GoogleEmail ?? Email` (for Google resource sync)
+- `GetEffectiveEmail()` → notification target email or OAuth email (for system notifications)
+
+#### Contact-import properties
+
+| Property | Type | Default | Purpose |
+|----------|------|---------|---------|
+| ContactSource | ContactSource? | null | Where imported from (Manual, MailerLite, TicketTailor); null for self-registered users |
+| ExternalSourceId | string?(256) | null | ID in the external source system |
+
+A contact is identified by `ContactSource != null && LastLoginAt == null`. When a contact authenticates, `LastLoginAt` is set and they become a regular user.
+
+#### Campaign-related properties
+
+| Property | Type | Default | Purpose |
+|----------|------|---------|---------|
+| UnsubscribedFromCampaigns | bool | false | Set via `/Unsubscribe/{token}`; excludes user from future campaign sends |
+
+### Profile
+
+**Table:** `profiles`
+
+| Property | Type | Default | Purpose |
+|----------|------|---------|---------|
+| Id | Guid | new | PK |
+| UserId | Guid | — | FK → User (Users/Identity) — **FK only**, no nav |
+| MembershipTier | MembershipTier | Volunteer | Current tier — tracked on Profile, not as RoleAssignment |
+| ConsentCheckStatus | ConsentCheckStatus? | null | Consent check gate status (null until all consents signed) |
+| ConsentCheckAt | Instant? | null | When consent check was performed |
+| ConsentCheckedByUserId | Guid? | null | Consent Coordinator who performed the check |
+| ConsentCheckNotes | string? | null | Notes from the Consent Coordinator |
+| RejectionReason | string? | null | Reason for rejection (when Admin rejects a flagged check) |
+| RejectedAt | Instant? | null | When the profile was rejected |
+| RejectedByUserId | Guid? | null | Admin who rejected the profile |
+
+Cross-domain nav `Profile.User` is **stripped** per design-rules §15i. Consumers resolve User data via `IUserService.GetByIdsAsync`.
+
+### ContactField
+
+**Table:** `contact_fields`
+
+Contact fields allow humans to share different types of contact information with per-field visibility controls.
+
+#### Field types (`ContactFieldType`)
+
+| Value | Description |
+|-------|-------------|
+| ~~Email~~ | **Deprecated** — use `UserEmail` instead. Kept for backward compatibility. |
+| Phone | Phone number |
+| Signal | Signal messenger |
+| Telegram | Telegram messenger |
+| WhatsApp | WhatsApp messenger |
+| Discord | Discord username |
+| Other | Custom type (requires `CustomLabel`) |
+
+#### Visibility levels (`ContactFieldVisibility`)
+
+Lower values are more restrictive. A viewer with access level X can see fields with visibility >= X.
+
+| Value | Level | Who Can See |
+|-------|-------|-------------|
+| BoardOnly | 0 | Board members only |
+| CoordinatorsAndBoard | 1 | Team coordinators and Board |
+| MyTeams | 2 | Members who share a team with the owner |
+| AllActiveProfiles | 3 | All active members |
+
+#### Access-level resolution
+
+1. **Self** → BoardOnly (sees everything)
+2. **Board member** → BoardOnly (sees everything)
+3. **Any coordinator** → CoordinatorsAndBoard
+4. **Shares team with owner** → MyTeams
+5. **Other active member** → AllActiveProfiles only
+
+### UserEmail
+
+**Table:** `user_emails`
+
+Per-user email addresses (login, verified, notifications). Cross-domain nav `UserEmail.User` is **stripped** per §15i.
+
+### CommunicationPreference
+
+**Table:** `communication_preferences`
+
+Per-user, per-category email opt-in/opt-out preferences. One row per user per category. Used for CAN-SPAM/GDPR compliance.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| Id | Guid | PK |
+| UserId | Guid | FK → User (Cascade) — **FK only**, no nav |
+| Category | MessageCategory | Enum stored as string |
+| OptedOut | bool | true = user opted out |
+| UpdatedAt | Instant | Last change |
+| UpdateSource | string (100) | "Profile", "MagicLink", "OneClick", "Default", "DataMigration" |
+
+**Unique constraint:** `(UserId, Category)`. **Indexes:** `UserId`.
+
+Defaults are created lazily: System=on, EventOperations=on, CommunityUpdates=off, Marketing=off.
+
+### VolunteerHistoryEntry (CV Entry)
+
+**Table:** `volunteer_history_entries`
+
+Sub-aggregate of Profile — no separate service. Written through `IProfileService.SaveCVEntriesAsync`; read via `FullProfile.CVEntries`.
+
+### MembershipTier
+
+| Value | Int | Description |
+|-------|-----|-------------|
+| Volunteer | 0 | Default tier, no application needed |
+| Colaborador | 1 | Active contributor, requires application + Board vote, 2-year term |
+| Asociado | 2 | Voting member with governance rights, requires application + Board vote, 2-year term |
+
+Stored as string via `HasConversion<string>()`.
+
+### ConsentCheckStatus
+
+| Value | Int | Description |
+|-------|-----|-------------|
+| Pending | 0 | All required consents signed, awaiting Coordinator review |
+| Cleared | 1 | Cleared — triggers auto-approve as Volunteer |
+| Flagged | 2 | Safety concern flagged — blocks Volunteer access |
+
+Stored as string via `HasConversion<string>()`. Nullable on Profile (null until all consents signed).
+
+### MessageCategory
+
+| Value | Int | Description |
+|-------|-----|-------------|
+| System | 0 | Critical account/consent/security notifications. Always on. |
+| EventOperations | 1 | Shift changes, schedule updates, team additions. Default: on. |
+| CommunityUpdates | 2 | Community news, facilitated messages. Default: off. |
+| Marketing | 3 | Campaign emails, promotions. Default: off. |
+
+Stored as string via `HasConversion<string>()`.
 
 ## Routing
 
@@ -40,7 +193,7 @@ External contacts are managed separately at `/Contacts` (ContactsController).
 ## Actors & Roles
 
 | Actor | Capabilities |
-|-------|-------------|
+|-------|--------------|
 | Any authenticated human | View and edit own profile, manage own emails, manage own contact fields, upload profile picture, set notification and communication preferences, request data export (GDPR Article 15), request account deletion |
 | Any active human | View other active humans' profiles (contact fields restricted by per-field visibility). Send facilitated messages to other humans. Search for humans |
 | HumanAdmin, Board, Admin | View any profile with full detail. Manage humans via admin pages (suspend, unsuspend, update tier, view audit log, manage roles) |
@@ -53,8 +206,9 @@ External contacts are managed separately at `/Contacts` (ContactsController).
 - Membership tier (Volunteer, Colaborador, Asociado) is tracked on the profile, not as a role assignment.
 - Consent check status on the profile gates Volunteer activation: unset until all consents are signed, then Pending, Cleared, or Flagged.
 - Profile deletion request sets a flag. Memberships and team memberships are revoked immediately. Actual data purge is deferred to a background job.
-- Data export returns all personal data as a JSON download (GDPR compliance).
+- Data export returns all personal data as a JSON download (GDPR compliance). The service implements `IUserDataContributor` per design-rules §8a.
 - Profile pictures are stored on disk. Uploaded images are validated for allowed types and size.
+- `CachingProfileService` (Singleton) and `IFullProfileInvalidator` must resolve to the **same** instance — both registrations point to the single decorator. Two instances would split the `ConcurrentDictionary<Guid, FullProfile>` cache and silently lose invalidations.
 
 ## Negative Access Rules
 
@@ -71,16 +225,28 @@ External contacts are managed separately at `/Contacts` (ContactsController).
 
 ## Cross-Section Dependencies
 
-- **Legal & Consent**: Consent check status depends on all required document versions having consent records.
-- **Teams**: Active membership equals membership in the Volunteers system team. Profile activation triggers addition.
-- **Onboarding**: Profile completion is a prerequisite step in the onboarding pipeline.
-- **Google Integration**: A human's Google service email determines which email is used for Google Groups and Drive sync.
+- **Legal & Consent:** `IConsentService` — consent-check status gating depends on all required document versions having active consent records.
+- **Teams:** `ITeamService` — active membership equals membership in the Volunteers system team. Profile activation triggers addition.
+- **Onboarding:** `IOnboardingEligibilityQuery.SetConsentCheckPendingIfEligibleAsync` — Profile calls back into Onboarding to trigger the consent-check gate, using a narrow interface to avoid a DI cycle with `IOnboardingService`.
+- **Google Integration:** `IGoogleWorkspaceUserService` / `IGoogleSyncService` — a human's Google service email determines which email is used for Google Groups and Drive sync.
+- **Users/Identity:** `IUserService.GetByIdsAsync` — display data for cross-domain nav stitching.
 
-## Architecture — Current vs Target
+## Architecture
 
-See `docs/architecture/design-rules.md` for the full rules.
-
-**Owning services:** `ProfileService`, `ContactFieldService`, `ContactService`, `UserEmailService`, `CommunicationPreferenceService`, `VolunteerHistoryService`
+**Owning services:** `ProfileService`, `ContactFieldService`, `ContactService`, `UserEmailService`, `CommunicationPreferenceService`, `AccountProvisioningService`, `AccountMergeService`, `DuplicateAccountService`
 **Owned tables:** `profiles`, `contact_fields`, `user_emails`, `communication_preferences`, `volunteer_history_entries`
+**Status:** (A) Migrated — canonical §15 reference implementation (peterdrier/Humans PR #235, 2026-04-20). `AccountMergeService` / `DuplicateAccountService` moved into `Humans.Application/Services/Profile/` after the original migration.
 
-Services live in `Humans.Application/Services/Profile/`. Each has a repository interface in `Humans.Application/Interfaces/Repositories/` with EF implementation in `Humans.Infrastructure/Repositories/` (registered Singleton via `IDbContextFactory`). In-memory caching is provided by the `CachingProfileService` Singleton decorator, which owns a `ConcurrentDictionary<Guid, FullProfile>` keyed by userId. There is no separate store class or warmup hosted service. See `docs/architecture/design-rules.md §15` for the canonical pattern. (`VolunteerHistoryService` no longer exists as a separate service — CV entries are part of `FullProfile` and written through `IProfileService.SaveCVEntriesAsync`.)
+- Services live in `Humans.Application.Services.Profile/` and never import `Microsoft.EntityFrameworkCore`.
+- `IProfileRepository`, `IUserEmailRepository`, `IContactFieldRepository`, `ICommunicationPreferenceRepository` (impls in `Humans.Infrastructure/Repositories/`) are the only code paths that touch this section's tables via `DbContext`. Repositories are Singleton, using `IDbContextFactory<HumansDbContext>` and short-lived contexts per method.
+- **Decorator decision — caching decorator.** `CachingProfileService` is a Singleton owning `ConcurrentDictionary<Guid, FullProfile> _byUserId`. Warmup via `FullProfileWarmupHostedService`. See design-rules §15d.
+- **Inner service** is `Humans.Application.Services.Profile.ProfileService`, registered as `AddKeyedScoped` under `CachingProfileService.InnerServiceKey` (`"profile-inner"`). The decorator resolves it per-call via `IServiceScopeFactory`.
+- **`IFullProfileInvalidator`** is aliased to the same Singleton `CachingProfileService` instance so external sections' writes (Auth, Onboarding, Teams, Google) can invalidate the cache without touching the dict.
+- **Cross-domain navs stripped:** `Profile.User`, `UserEmail.User`, `CommunicationPreference.User`. Display stitching routes through `IUserService.GetByIdsAsync`.
+- **GDPR:** `ProfileService` implements `IUserDataContributor` (design-rules §8a). The `ExpectedContributorTypes` in `GdprExportDependencyInjectionTests` enforces registration.
+- **Architecture tests** — `tests/Humans.Application.Tests/Architecture/ProfileArchitectureTests.cs` + `GdprExportDependencyInjectionTests.cs`.
+
+### Touch-and-clean guidance
+
+- `OnboardingService.PurgeHumanAsync` / `SetConsentCheckPendingIfEligibleAsync` do not currently invalidate the `FullProfile` dict (§15g, §15i). Pre-existing behavior; to be addressed when Shifts migrates (§15 NEW-B).
+- Cross-section reads for `Profile.User` / `UserEmail.User` / `CommunicationPreference.User` must go through `IUserService.GetByIdsAsync` — do not re-add nav properties to the entities.
