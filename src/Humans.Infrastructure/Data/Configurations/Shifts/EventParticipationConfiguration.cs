@@ -32,9 +32,13 @@ public class EventParticipationConfiguration : IEntityTypeConfiguration<EventPar
         builder.HasIndex(ep => new { ep.UserId, ep.Year })
             .IsUnique();
 
+        // EF needs the nav ref to configure the cross-section FK + cascade.
+        // The nav is [Obsolete] for the Application layer (design-rules §6c).
+#pragma warning disable CS0618
         builder.HasOne(ep => ep.User)
             .WithMany(u => u.EventParticipations)
             .HasForeignKey(ep => ep.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+#pragma warning restore CS0618
     }
 }

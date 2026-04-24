@@ -30,6 +30,7 @@ public class TicketAttendee
     public Guid? MatchedUserId { get; set; }
 
     /// <summary>Navigation to matched user.</summary>
+    [Obsolete("Cross-domain nav; resolve via IUserService.GetByIdAsync(MatchedUserId) instead. See design-rules §6c.")]
     public User? MatchedUser { get; set; }
 
     /// <summary>Ticket type name (e.g. "Full Week", "Weekend Pass").</summary>

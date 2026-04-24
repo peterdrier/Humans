@@ -45,10 +45,14 @@ public class TicketAttendeeConfiguration : IEntityTypeConfiguration<TicketAttend
         builder.Property(a => a.SyncedAt)
             .IsRequired();
 
+        // EF needs the nav ref to configure the cross-section FK + cascade.
+        // The nav is [Obsolete] for the Application layer (design-rules §6c).
+#pragma warning disable CS0618
         builder.HasOne(a => a.MatchedUser)
             .WithMany()
             .HasForeignKey(a => a.MatchedUserId)
             .OnDelete(DeleteBehavior.SetNull);
+#pragma warning restore CS0618
 
         builder.HasIndex(a => a.AttendeeEmail);
         builder.HasIndex(a => a.MatchedUserId);
