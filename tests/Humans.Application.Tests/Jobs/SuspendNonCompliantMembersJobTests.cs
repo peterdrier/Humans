@@ -1,18 +1,18 @@
 using AwesomeAssertions;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Jobs;
-using Humans.Infrastructure.Services;
 using Xunit;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Governance;
@@ -35,7 +35,8 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
     private readonly IFullProfileInvalidator _fullProfileInvalidator;
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator;
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator;
-    private readonly HumansMetricsService _metrics;
+    private readonly IOnboardingMetrics _onboardingMetrics;
+    private readonly IJobRunMetrics _jobMetrics;
     private readonly FakeClock _clock;
     private readonly SuspendNonCompliantMembersJob _job;
 
@@ -55,9 +56,8 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         _roleAssignmentClaimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
         _shiftAuthorizationInvalidator = Substitute.For<IShiftAuthorizationInvalidator>();
         _clock = new FakeClock(Now);
-        _metrics = new HumansMetricsService(
-            Substitute.For<IServiceScopeFactory>(),
-            Substitute.For<ILogger<HumansMetricsService>>());
+        _onboardingMetrics = Substitute.For<IOnboardingMetrics>();
+        _jobMetrics = Substitute.For<IJobRunMetrics>();
         var logger = Substitute.For<ILogger<SuspendNonCompliantMembersJob>>();
 
         // Default: ITeamService.GetUserTeamsAsync returns empty list so tests
@@ -69,12 +69,11 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             _userService, _profileService, _teamService, _membershipCalculator,
             _emailService, _notificationService, _googleSyncService, _auditLogService,
             _fullProfileInvalidator, _roleAssignmentClaimsInvalidator,
-            _shiftAuthorizationInvalidator, _metrics, logger, _clock);
+            _shiftAuthorizationInvalidator, _onboardingMetrics, _jobMetrics, logger, _clock);
     }
 
     public void Dispose()
     {
-        _metrics.Dispose();
         GC.SuppressFinalize(this);
     }
 

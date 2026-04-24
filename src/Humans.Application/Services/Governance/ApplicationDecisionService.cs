@@ -44,7 +44,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
     private readonly IEmailService _emailService;
     private readonly INotificationService _notificationService;
     private readonly ISystemTeamSync _syncJob;
-    private readonly IHumansMetrics _metrics;
+    private readonly IApplicationMetrics _metrics;
     private readonly INavBadgeCacheInvalidator _navBadge;
     private readonly INotificationMeterCacheInvalidator _notificationMeter;
     private readonly IVotingBadgeCacheInvalidator _votingBadge;
@@ -60,7 +60,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         IEmailService emailService,
         INotificationService notificationService,
         ISystemTeamSync syncJob,
-        IHumansMetrics metrics,
+        IApplicationMetrics metrics,
         INavBadgeCacheInvalidator navBadge,
         INotificationMeterCacheInvalidator notificationMeter,
         IVotingBadgeCacheInvalidator votingBadge,

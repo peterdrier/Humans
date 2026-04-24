@@ -45,7 +45,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
-    private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
+    private readonly IJobRunMetrics _metrics = Substitute.For<IJobRunMetrics>();
 
     private SystemTeamSyncJob CreateJob()
     {

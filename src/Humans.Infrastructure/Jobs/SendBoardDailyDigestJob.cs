@@ -37,7 +37,7 @@ public class SendBoardDailyDigestJob : IRecurringJob
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IEmailService _emailService;
     private readonly IMembershipCalculator _membershipCalculator;
-    private readonly IHumansMetrics _metrics;
+    private readonly IJobRunMetrics _metrics;
     private readonly ILogger<SendBoardDailyDigestJob> _logger;
     private readonly IClock _clock;
 
@@ -50,7 +50,7 @@ public class SendBoardDailyDigestJob : IRecurringJob
         IRoleAssignmentService roleAssignmentService,
         IEmailService emailService,
         IMembershipCalculator membershipCalculator,
-        IHumansMetrics metrics,
+        IJobRunMetrics metrics,
         ILogger<SendBoardDailyDigestJob> logger,
         IClock clock)
     {

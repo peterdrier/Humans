@@ -18,13 +18,13 @@ public class CleanupNotificationsJob : IRecurringJob
 
     private readonly INotificationRepository _notificationRepository;
     private readonly IClock _clock;
-    private readonly IHumansMetrics _metrics;
+    private readonly IJobRunMetrics _metrics;
     private readonly ILogger<CleanupNotificationsJob> _logger;
 
     public CleanupNotificationsJob(
         INotificationRepository notificationRepository,
         IClock clock,
-        IHumansMetrics metrics,
+        IJobRunMetrics metrics,
         ILogger<CleanupNotificationsJob> logger)
     {
         _notificationRepository = notificationRepository;

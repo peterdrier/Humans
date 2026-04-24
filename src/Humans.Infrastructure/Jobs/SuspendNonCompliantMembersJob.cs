@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
@@ -44,7 +45,8 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
     private readonly IFullProfileInvalidator _fullProfileInvalidator;
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator;
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator;
-    private readonly IHumansMetrics _metrics;
+    private readonly IOnboardingMetrics _onboardingMetrics;
+    private readonly IJobRunMetrics _jobMetrics;
     private readonly ILogger<SuspendNonCompliantMembersJob> _logger;
     private readonly IClock _clock;
 
@@ -60,7 +62,8 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
         IFullProfileInvalidator fullProfileInvalidator,
         IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
         IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,
-        IHumansMetrics metrics,
+        IOnboardingMetrics onboardingMetrics,
+        IJobRunMetrics jobMetrics,
         ILogger<SuspendNonCompliantMembersJob> logger,
         IClock clock)
     {
@@ -75,7 +78,8 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
         _fullProfileInvalidator = fullProfileInvalidator;
         _roleAssignmentClaimsInvalidator = roleAssignmentClaimsInvalidator;
         _shiftAuthorizationInvalidator = shiftAuthorizationInvalidator;
-        _metrics = metrics;
+        _onboardingMetrics = onboardingMetrics;
+        _jobMetrics = jobMetrics;
         _logger = logger;
         _clock = clock;
     }
@@ -111,7 +115,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
 
             if (suspendedIds.Count == 0)
             {
-                _metrics.RecordJobRun("suspend_noncompliant_members", "success");
+                _jobMetrics.RecordJobRun("suspend_noncompliant_members", "success");
                 _logger.LogInformation(
                     "Completed non-compliant member check, no eligible users to suspend");
                 return;
@@ -192,7 +196,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                     "User {UserId} ({Email}) suspended and flagged for removal from {Count} teams",
                     user.Id, effectiveEmail, memberships.Count);
 
-                _metrics.RecordMemberSuspended("job");
+                _onboardingMetrics.RecordMemberSuspended("job");
 
                 // 4. Audit log + cross-cutting cache invalidation.
                 await _auditLogService.LogAsync(
@@ -206,14 +210,14 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                 _teamService.RemoveMemberFromAllTeamsCache(user.Id);
             }
 
-            _metrics.RecordJobRun("suspend_noncompliant_members", "success");
+            _jobMetrics.RecordJobRun("suspend_noncompliant_members", "success");
             _logger.LogInformation(
                 "Completed non-compliant member check, suspended {Count} members",
                 suspendedIds.Count);
         }
         catch (Exception ex)
         {
-            _metrics.RecordJobRun("suspend_noncompliant_members", "failure");
+            _jobMetrics.RecordJobRun("suspend_noncompliant_members", "failure");
             _logger.LogError(ex, "Error checking non-compliant members");
             throw;
         }

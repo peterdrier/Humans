@@ -54,7 +54,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
     private readonly IAuditLogService _auditLogService;
     private readonly IEmailService _emailService;
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator;
-    private readonly IHumansMetrics _metrics;
+    private readonly IJobRunMetrics _metrics;
     private readonly ILogger<SystemTeamSyncJob> _logger;
     private readonly IClock _clock;
 
@@ -67,7 +67,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         IAuditLogService auditLogService,
         IEmailService emailService,
         IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
-        IHumansMetrics metrics,
+        IJobRunMetrics metrics,
         ILogger<SystemTeamSyncJob> logger,
         IClock clock)
     {

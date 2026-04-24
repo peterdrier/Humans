@@ -173,6 +173,26 @@ public sealed class ProfileRepository : IProfileRepository
             .CountAsync(p => !p.IsApproved && !p.IsSuspended, ct);
     }
 
+    public async Task<(int Approved, int Suspended, int Pending)> GetStatusCountsAsync(
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        // Materialise (IsApproved, IsSuspended) once, partition in memory.
+        // At ~500-row scale the cost is trivial and saves three count queries.
+        var snapshot = await ctx.Profiles
+            .Select(p => new { p.IsApproved, p.IsSuspended })
+            .ToListAsync(ct);
+
+        int approved = 0, suspended = 0, pending = 0;
+        foreach (var row in snapshot)
+        {
+            if (row.IsSuspended) suspended++;
+            else if (row.IsApproved) approved++;
+            else pending++;
+        }
+        return (approved, suspended, pending);
+    }
+
     public async Task<IReadOnlyList<ProfileLanguage>> GetLanguagesAsync(
         Guid profileId, CancellationToken ct = default)
     {

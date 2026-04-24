@@ -28,7 +28,7 @@ public class TermRenewalReminderJob : IRecurringJob
     private readonly IUserService _userService;
     private readonly IEmailService _emailService;
     private readonly INotificationService _notificationService;
-    private readonly IHumansMetrics _metrics;
+    private readonly IJobRunMetrics _metrics;
     private readonly ILogger<TermRenewalReminderJob> _logger;
     private readonly IClock _clock;
 
@@ -39,7 +39,7 @@ public class TermRenewalReminderJob : IRecurringJob
         IUserService userService,
         IEmailService emailService,
         INotificationService notificationService,
-        IHumansMetrics metrics,
+        IJobRunMetrics metrics,
         ILogger<TermRenewalReminderJob> logger,
         IClock clock)
     {

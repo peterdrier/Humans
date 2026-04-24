@@ -12,13 +12,13 @@ namespace Humans.Infrastructure.Jobs;
 public class DriveActivityMonitorJob : IRecurringJob
 {
     private readonly IDriveActivityMonitorService _monitorService;
-    private readonly IHumansMetrics _metrics;
+    private readonly IJobRunMetrics _metrics;
     private readonly ILogger<DriveActivityMonitorJob> _logger;
     private readonly IClock _clock;
 
     public DriveActivityMonitorJob(
         IDriveActivityMonitorService monitorService,
-        IHumansMetrics metrics,
+        IJobRunMetrics metrics,
         ILogger<DriveActivityMonitorJob> logger,
         IClock clock)
     {

@@ -390,6 +390,12 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
     public Task<int> GetNotApprovedAndNotSuspendedCountAsync(CancellationToken ct = default) =>
         _profileRepository.GetNotApprovedAndNotSuspendedCountAsync(ct);
 
+    public async Task<ProfileStatusCounts> GetProfileStatusCountsAsync(CancellationToken ct = default)
+    {
+        var (approved, suspended, pending) = await _profileRepository.GetStatusCountsAsync(ct);
+        return new ProfileStatusCounts(approved, suspended, pending);
+    }
+
     public Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
         GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default) =>
         _profileRepository.GetCustomPictureInfoByUserIdsAsync(userIds, ct);

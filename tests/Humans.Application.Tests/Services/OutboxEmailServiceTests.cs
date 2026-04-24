@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Email;
 using Humans.Domain.Entities;
@@ -34,7 +33,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     private readonly FakeClock _clock;
     private readonly OutboxEmailService _service;
     private readonly IEmailRenderer _renderer = Substitute.For<IEmailRenderer>();
-    private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
+    private readonly IEmailMetrics _metrics = Substitute.For<IEmailMetrics>();
     private readonly IImmediateOutboxProcessor _immediate = Substitute.For<IImmediateOutboxProcessor>();
     private readonly ICommunicationPreferenceService _commPrefService = Substitute.For<ICommunicationPreferenceService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
@@ -104,7 +103,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
 
         await _service.SendWelcomeEmailAsync("alice@example.com", "Alice", "en");
 
-        _metrics.Received(1).RecordEmailQueued("welcome");
+        _metrics.Received(1).RecordQueued("welcome");
     }
 
     [Fact]
@@ -168,7 +167,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
         var msg = await _dbContext.EmailOutboxMessages.SingleAsync();
         msg.TemplateName.Should().Be("application_approved");
         msg.RecipientEmail.Should().Be("eve@example.com");
-        _metrics.Received(1).RecordEmailQueued("application_approved");
+        _metrics.Received(1).RecordQueued("application_approved");
     }
 
     [Fact]
@@ -271,6 +270,6 @@ public sealed class OutboxEmailServiceTests : IDisposable
         msg.CampaignGrantId.Should().Be(grantId);
         msg.ReplyTo.Should().Be("reply@example.com");
         msg.ExtraHeaders.Should().NotBeNull();
-        _metrics.Received(1).RecordEmailQueued("campaign_code");
+        _metrics.Received(1).RecordQueued("campaign_code");
     }
 }

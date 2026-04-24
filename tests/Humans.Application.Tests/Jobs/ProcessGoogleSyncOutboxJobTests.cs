@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
@@ -15,8 +16,6 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.GoogleIntegration;
-using Humans.Infrastructure.Services;
-using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace Humans.Application.Tests.Jobs;
@@ -31,7 +30,8 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
     private readonly IGoogleSyncService _googleSyncService;
     private readonly INotificationService _notificationService;
     private readonly FakeClock _clock;
-    private readonly HumansMetricsService _metrics;
+    private readonly IGoogleSyncMetrics _syncMetrics;
+    private readonly IJobRunMetrics _jobMetrics;
     private readonly ProcessGoogleSyncOutboxJob _job;
 
     public ProcessGoogleSyncOutboxJobTests()
@@ -58,9 +58,8 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
         _googleSyncService = Substitute.For<IGoogleSyncService>();
         _notificationService = Substitute.For<INotificationService>();
         _clock = new FakeClock(Instant.FromUtc(2026, 2, 15, 20, 0));
-        _metrics = new HumansMetricsService(
-            Substitute.For<IServiceScopeFactory>(),
-            Substitute.For<ILogger<HumansMetricsService>>());
+        _syncMetrics = Substitute.For<IGoogleSyncMetrics>();
+        _jobMetrics = Substitute.For<IJobRunMetrics>();
         var logger = Substitute.For<ILogger<ProcessGoogleSyncOutboxJob>>();
 
         _job = new ProcessGoogleSyncOutboxJob(
@@ -70,7 +69,8 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
             _teamService,
             _googleSyncService,
             _notificationService,
-            _metrics,
+            _syncMetrics,
+            _jobMetrics,
             _clock,
             logger);
     }
@@ -78,7 +78,6 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
-        _metrics.Dispose();
         GC.SuppressFinalize(this);
     }
 

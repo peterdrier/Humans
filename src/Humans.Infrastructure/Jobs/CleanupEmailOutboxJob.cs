@@ -15,14 +15,14 @@ public class CleanupEmailOutboxJob : IRecurringJob
     private readonly IEmailOutboxRepository _outboxRepo;
     private readonly IClock _clock;
     private readonly EmailSettings _settings;
-    private readonly IHumansMetrics _metrics;
+    private readonly IJobRunMetrics _metrics;
     private readonly ILogger<CleanupEmailOutboxJob> _logger;
 
     public CleanupEmailOutboxJob(
         IEmailOutboxRepository outboxRepo,
         IClock clock,
         IOptions<EmailSettings> settings,
-        IHumansMetrics metrics,
+        IJobRunMetrics metrics,
         ILogger<CleanupEmailOutboxJob> logger)
     {
         _outboxRepo = outboxRepo;

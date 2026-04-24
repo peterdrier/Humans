@@ -10,12 +10,12 @@ namespace Humans.Infrastructure.Jobs;
 public class GoogleResourceProvisionJob
 {
     private readonly IGoogleSyncService _googleService;
-    private readonly IHumansMetrics _metrics;
+    private readonly IJobRunMetrics _metrics;
     private readonly ILogger<GoogleResourceProvisionJob> _logger;
 
     public GoogleResourceProvisionJob(
         IGoogleSyncService googleService,
-        IHumansMetrics metrics,
+        IJobRunMetrics metrics,
         ILogger<GoogleResourceProvisionJob> logger)
     {
         _googleService = googleService;

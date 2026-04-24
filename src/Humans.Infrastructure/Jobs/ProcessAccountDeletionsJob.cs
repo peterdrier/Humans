@@ -27,7 +27,7 @@ public class ProcessAccountDeletionsJob : IRecurringJob
     private readonly IUserService _userService;
     private readonly IEmailService _emailService;
     private readonly IAuditLogService _auditLogService;
-    private readonly IHumansMetrics _metrics;
+    private readonly IJobRunMetrics _metrics;
     private readonly ILogger<ProcessAccountDeletionsJob> _logger;
     private readonly IClock _clock;
 
@@ -35,7 +35,7 @@ public class ProcessAccountDeletionsJob : IRecurringJob
         IUserService userService,
         IEmailService emailService,
         IAuditLogService auditLogService,
-        IHumansMetrics metrics,
+        IJobRunMetrics metrics,
         ILogger<ProcessAccountDeletionsJob> logger,
         IClock clock)
     {

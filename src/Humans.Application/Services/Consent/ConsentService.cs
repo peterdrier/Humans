@@ -53,7 +53,7 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
     private readonly ISystemTeamSync _syncJob;
     private readonly IProfileService _profileService;
     private readonly IServiceProvider _serviceProvider;
-    private readonly IHumansMetrics _metrics;
+    private readonly IConsentMetrics _metrics;
     private readonly IClock _clock;
     private readonly ILogger<ConsentService> _logger;
 
@@ -65,7 +65,7 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         ISystemTeamSync syncJob,
         IProfileService profileService,
         IServiceProvider serviceProvider,
-        IHumansMetrics metrics,
+        IConsentMetrics metrics,
         IClock clock,
         ILogger<ConsentService> logger)
     {

@@ -84,6 +84,17 @@ public interface IProfileService
     /// </summary>
     Task<int> GetNotApprovedAndNotSuspendedCountAsync(CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns aggregate profile status counts:
+    /// <c>Approved</c> = IsApproved &amp;&amp; !IsSuspended;
+    /// <c>Suspended</c> = IsSuspended;
+    /// <c>Pending</c> = !IsApproved &amp;&amp; !IsSuspended.
+    /// Used by the metrics contributor for <c>humans.humans_total</c> /
+    /// <c>humans.pending_volunteers</c> so Profiles' gauge refresher does not
+    /// touch the <c>profiles</c> table directly (design-rules §2c).
+    /// </summary>
+    Task<ProfileStatusCounts> GetProfileStatusCountsAsync(CancellationToken ct = default);
+
     Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
         GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default);
 
@@ -248,3 +259,10 @@ public interface IProfileService
             Instant now,
             CancellationToken ct = default);
 }
+
+/// <summary>
+/// Aggregate profile status counts, returned by
+/// <see cref="IProfileService.GetProfileStatusCountsAsync"/>.
+/// </summary>
+[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Auto)]
+public readonly record struct ProfileStatusCounts(int Approved, int Suspended, int Pending);

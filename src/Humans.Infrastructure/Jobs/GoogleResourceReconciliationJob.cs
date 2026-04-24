@@ -16,14 +16,14 @@ public class GoogleResourceReconciliationJob : IRecurringJob
 {
     private readonly IGoogleSyncService _googleSyncService;
     private readonly INotificationService _notificationService;
-    private readonly IHumansMetrics _metrics;
+    private readonly IJobRunMetrics _metrics;
     private readonly ILogger<GoogleResourceReconciliationJob> _logger;
     private readonly IClock _clock;
 
     public GoogleResourceReconciliationJob(
         IGoogleSyncService googleSyncService,
         INotificationService notificationService,
-        IHumansMetrics metrics,
+        IJobRunMetrics metrics,
         ILogger<GoogleResourceReconciliationJob> logger,
         IClock clock)
     {

@@ -28,7 +28,8 @@ public class ProcessEmailOutboxJob : IRecurringJob
     private readonly IEmailOutboxRepository _outboxRepo;
     private readonly ICampaignService _campaignService;
     private readonly IEmailTransport _transport;
-    private readonly IHumansMetrics _metrics;
+    private readonly IEmailMetrics _emailMetrics;
+    private readonly IJobRunMetrics _jobMetrics;
     private readonly IClock _clock;
     private readonly EmailSettings _settings;
     private readonly ILogger<ProcessEmailOutboxJob> _logger;
@@ -37,7 +38,8 @@ public class ProcessEmailOutboxJob : IRecurringJob
         IEmailOutboxRepository outboxRepo,
         ICampaignService campaignService,
         IEmailTransport transport,
-        IHumansMetrics metrics,
+        IEmailMetrics emailMetrics,
+        IJobRunMetrics jobMetrics,
         IClock clock,
         IOptions<EmailSettings> settings,
         ILogger<ProcessEmailOutboxJob> logger)
@@ -45,7 +47,8 @@ public class ProcessEmailOutboxJob : IRecurringJob
         _outboxRepo = outboxRepo;
         _campaignService = campaignService;
         _transport = transport;
-        _metrics = metrics;
+        _emailMetrics = emailMetrics;
+        _jobMetrics = jobMetrics;
         _clock = clock;
         _settings = settings.Value;
         _logger = logger;
@@ -110,7 +113,7 @@ public class ProcessEmailOutboxJob : IRecurringJob
 
                 // Success — mark as sent BEFORE throttle delay to avoid re-send on cancellation
                 await _outboxRepo.MarkSentAsync(message.Id, now, cancellationToken);
-                _metrics.RecordEmailSent(message.TemplateName);
+                _emailMetrics.RecordSent(message.TemplateName);
 
                 // Update campaign grant status if applicable — routed via
                 // ICampaignService so the Campaigns section owns campaign_grants.
@@ -131,7 +134,7 @@ public class ProcessEmailOutboxJob : IRecurringJob
                 // Failure
                 var nextRetryAt = now + Duration.FromMinutes((long)Math.Pow(2, message.RetryCount + 1));
                 await _outboxRepo.MarkFailedAsync(message.Id, now, ex.Message, nextRetryAt, cancellationToken);
-                _metrics.RecordEmailFailed(message.TemplateName);
+                _emailMetrics.RecordFailed(message.TemplateName);
 
                 // Update campaign grant status if applicable — routed via ICampaignService.
                 if (message.CampaignGrantId.HasValue)
@@ -154,9 +157,9 @@ public class ProcessEmailOutboxJob : IRecurringJob
 
         // 5. Set outbox_pending gauge
         var pendingCount = await _outboxRepo.GetPendingCountAsync(_settings.OutboxMaxRetries, cancellationToken);
-        _metrics.SetEmailOutboxPending(pendingCount);
+        _emailMetrics.SetOutboxPending(pendingCount);
 
         // 6. Record successful job run
-        _metrics.RecordJobRun("process_email_outbox", "success");
+        _jobMetrics.RecordJobRun("process_email_outbox", "success");
     }
 }

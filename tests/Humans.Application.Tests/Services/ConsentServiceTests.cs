@@ -6,12 +6,12 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Application.Interfaces;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Xunit;
 using ConsentService = Humans.Application.Services.Consent.ConsentService;
+using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Notifications;
@@ -33,7 +33,7 @@ public class ConsentServiceTests : IDisposable
     private readonly INotificationInboxService _notificationInboxService = Substitute.For<INotificationInboxService>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
     private readonly IProfileService _profileService = Substitute.For<IProfileService>();
-    private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
+    private readonly IConsentMetrics _metrics = Substitute.For<IConsentMetrics>();
 
     public ConsentServiceTests()
     {

@@ -27,7 +27,7 @@ public class SyncLegalDocumentsJob : IRecurringJob
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
     private readonly IConsentRepository _consentRepository;
-    private readonly IHumansMetrics _metrics;
+    private readonly IJobRunMetrics _metrics;
     private readonly ILogger<SyncLegalDocumentsJob> _logger;
     private readonly IClock _clock;
 
@@ -37,7 +37,7 @@ public class SyncLegalDocumentsJob : IRecurringJob
         ITeamService teamService,
         IUserService userService,
         IConsentRepository consentRepository,
-        IHumansMetrics metrics,
+        IJobRunMetrics metrics,
         ILogger<SyncLegalDocumentsJob> logger,
         IClock clock)
     {

@@ -37,7 +37,7 @@ public sealed class OnboardingService : IOnboardingService
     private readonly INotificationInboxService _notificationInboxService;
     private readonly ISystemTeamSync _syncJob;
     private readonly IMembershipCalculator _membershipCalculator;
-    private readonly IHumansMetrics _metrics;
+    private readonly IOnboardingMetrics _metrics;
     private readonly ILogger<OnboardingService> _logger;
 
     public OnboardingService(
@@ -49,7 +49,7 @@ public sealed class OnboardingService : IOnboardingService
         INotificationInboxService notificationInboxService,
         ISystemTeamSync syncJob,
         IMembershipCalculator membershipCalculator,
-        IHumansMetrics metrics,
+        IOnboardingMetrics metrics,
         ILogger<OnboardingService> logger)
     {
         _profileService = profileService;

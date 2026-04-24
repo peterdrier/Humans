@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
@@ -32,7 +31,7 @@ public sealed class OutboxEmailService : IEmailService
     private readonly IEmailRenderer _renderer;
     private readonly IEmailBodyComposer _bodyComposer;
     private readonly IImmediateOutboxProcessor _immediateProcessor;
-    private readonly IHumansMetrics _metrics;
+    private readonly IEmailMetrics _metrics;
     private readonly IClock _clock;
     private readonly ICommunicationPreferenceService _commPrefService;
     private readonly ILogger<OutboxEmailService> _logger;
@@ -43,7 +42,7 @@ public sealed class OutboxEmailService : IEmailService
         IEmailRenderer renderer,
         IEmailBodyComposer bodyComposer,
         IImmediateOutboxProcessor immediateProcessor,
-        IHumansMetrics metrics,
+        IEmailMetrics metrics,
         IClock clock,
         ICommunicationPreferenceService commPrefService,
         ILogger<OutboxEmailService> logger)
@@ -362,7 +361,7 @@ public sealed class OutboxEmailService : IEmailService
 
         await _outboxRepo.AddAsync(message, cancellationToken);
 
-        _metrics.RecordEmailQueued("campaign_code");
+        _metrics.RecordQueued("campaign_code");
         _logger.LogInformation(
             "Campaign code email queued for grant {GrantId} to {Recipient}",
             request.CampaignGrantId, request.RecipientEmail);
@@ -425,7 +424,7 @@ public sealed class OutboxEmailService : IEmailService
 
         await _outboxRepo.AddAsync(message, cancellationToken);
 
-        _metrics.RecordEmailQueued(templateName);
+        _metrics.RecordQueued(templateName);
         _logger.LogInformation("Email queued: {TemplateName} to {Recipient}", templateName, recipientEmail);
 
         if (triggerImmediate)

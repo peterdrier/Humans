@@ -116,7 +116,7 @@ public class DependencyCycleResolutionTests
         services.AddScoped<IEmailRenderer>(_ => Substitute.For<IEmailRenderer>());
         services.AddScoped<IEmailBodyComposer>(_ => Substitute.For<IEmailBodyComposer>());
         services.AddScoped<IImmediateOutboxProcessor>(_ => Substitute.For<IImmediateOutboxProcessor>());
-        services.AddScoped<IHumansMetrics>(_ => Substitute.For<IHumansMetrics>());
+        services.AddScoped<IEmailMetrics>(_ => Substitute.For<IEmailMetrics>());
         services.AddScoped<ICommunicationPreferenceService>(_ => Substitute.For<ICommunicationPreferenceService>());
         services.AddScoped<NodaTime.IClock>(_ => Substitute.For<NodaTime.IClock>());
         services.AddScoped<UserManager<User>>(_ =>

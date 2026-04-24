@@ -39,7 +39,7 @@ public class SendAdminDailyDigestJob : IRecurringJob
     private readonly IGoogleSyncOutboxRepository _googleSyncOutboxRepository;
     private readonly IEmailService _emailService;
     private readonly IMembershipCalculator _membershipCalculator;
-    private readonly IHumansMetrics _metrics;
+    private readonly IJobRunMetrics _metrics;
     private readonly ILogger<SendAdminDailyDigestJob> _logger;
     private readonly IClock _clock;
 
@@ -53,7 +53,7 @@ public class SendAdminDailyDigestJob : IRecurringJob
         IGoogleSyncOutboxRepository googleSyncOutboxRepository,
         IEmailService emailService,
         IMembershipCalculator membershipCalculator,
-        IHumansMetrics metrics,
+        IJobRunMetrics metrics,
         ILogger<SendAdminDailyDigestJob> logger,
         IClock clock)
     {

@@ -1,17 +1,16 @@
 using AwesomeAssertions;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Jobs;
-using Humans.Infrastructure.Services;
 using Xunit;
 
 namespace Humans.Application.Tests.Jobs;
@@ -29,7 +28,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
     private readonly IUserService _userService;
     private readonly IEmailService _emailService;
     private readonly IAuditLogService _auditLogService;
-    private readonly HumansMetricsService _metrics;
+    private readonly IJobRunMetrics _metrics;
     private readonly FakeClock _clock;
     private readonly ProcessAccountDeletionsJob _job;
 
@@ -41,9 +40,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         _emailService = Substitute.For<IEmailService>();
         _auditLogService = Substitute.For<IAuditLogService>();
         _clock = new FakeClock(Now);
-        _metrics = new HumansMetricsService(
-            Substitute.For<IServiceScopeFactory>(),
-            Substitute.For<ILogger<HumansMetricsService>>());
+        _metrics = Substitute.For<IJobRunMetrics>();
         var logger = Substitute.For<ILogger<ProcessAccountDeletionsJob>>();
 
         _job = new ProcessAccountDeletionsJob(
@@ -52,7 +49,6 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
     public void Dispose()
     {
-        _metrics.Dispose();
         GC.SuppressFinalize(this);
     }
 

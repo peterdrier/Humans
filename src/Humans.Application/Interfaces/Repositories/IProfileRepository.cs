@@ -112,6 +112,12 @@ public interface IProfileRepository
     Task<int> GetNotApprovedAndNotSuspendedCountAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Returns aggregate profile status counts (Approved, Suspended, Pending).
+    /// Single query so the metrics gauge refresher avoids three round-trips.
+    /// </summary>
+    Task<(int Approved, int Suspended, int Pending)> GetStatusCountsAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the languages for a profile, ordered by proficiency descending
     /// then language code. Read-only.
     /// </summary>

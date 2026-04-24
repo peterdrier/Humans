@@ -1,11 +1,11 @@
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Application.Interfaces;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -13,7 +13,6 @@ using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Email;
-using Humans.Infrastructure.Services;
 using Xunit;
 
 namespace Humans.Application.Tests.Jobs;
@@ -22,7 +21,7 @@ public class CleanupEmailOutboxJobTests : IDisposable
 {
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock;
-    private readonly HumansMetricsService _metrics;
+    private readonly IJobRunMetrics _metrics;
     private readonly CleanupEmailOutboxJob _job;
 
     // "Now" is 2026-03-14. With 150-day retention, cutoff is 2025-10-15.
@@ -36,9 +35,7 @@ public class CleanupEmailOutboxJobTests : IDisposable
 
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Now);
-        _metrics = new HumansMetricsService(
-            Substitute.For<IServiceScopeFactory>(),
-            Substitute.For<ILogger<HumansMetricsService>>());
+        _metrics = Substitute.For<IJobRunMetrics>();
         var logger = Substitute.For<ILogger<CleanupEmailOutboxJob>>();
         var settings = Options.Create(new EmailSettings { OutboxRetentionDays = 150 });
         var repo = new EmailOutboxRepository(new TestDbContextFactory(options));
@@ -49,7 +46,6 @@ public class CleanupEmailOutboxJobTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
-        _metrics.Dispose();
         GC.SuppressFinalize(this);
     }
 

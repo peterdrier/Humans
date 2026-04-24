@@ -276,6 +276,13 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         return await inner.GetNotApprovedAndNotSuspendedCountAsync(ct);
     }
 
+    public async Task<ProfileStatusCounts> GetProfileStatusCountsAsync(CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.GetProfileStatusCountsAsync(ct);
+    }
+
     public async Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
         GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default)
     {

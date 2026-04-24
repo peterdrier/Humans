@@ -66,7 +66,7 @@ Onboarding is a pure orchestrator and owns no tables. It lives in
 - `IRoleAssignmentService` — cross-section Board-member resolution (`GetActiveUserIdsInRoleAsync`). Used from within `IApplicationDecisionService.GetBoardVotingDashboardAsync`.
 - `ISystemTeamSync` — Volunteers/Colaboradors/Asociados system team membership sync.
 - `IMembershipCalculator` — consent-check eligibility + admin-dashboard partition.
-- `IEmailService` / `INotificationService` / `INotificationInboxService` / `IHumansMetrics` / `ILogger` — cross-cutting concerns.
+- `IEmailService` / `INotificationService` / `INotificationInboxService` / `IOnboardingMetrics` / `ILogger` — cross-cutting concerns. `IOnboardingMetrics` is the Onboarding section's push-model metrics surface (issue nobodies-collective/Humans#580); `IHumansMetrics` no longer carries Record methods.
 
 The **DI cycle between `OnboardingService` and `ProfileService`/`ConsentService`** is broken by extracting the narrow `IOnboardingEligibilityQuery` interface (`SetConsentCheckPendingIfEligibleAsync(userId, ct)`). `OnboardingService` implements it; `ProfileService` and `ConsentService` depend on it instead of the full `IOnboardingService`.
 

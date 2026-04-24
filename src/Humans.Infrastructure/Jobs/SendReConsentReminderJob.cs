@@ -28,7 +28,7 @@ public class SendReConsentReminderJob : IRecurringJob
     private readonly IUserService _userService;
     private readonly IEmailService _emailService;
     private readonly EmailSettings _emailSettings;
-    private readonly IHumansMetrics _metrics;
+    private readonly IJobRunMetrics _metrics;
     private readonly ILogger<SendReConsentReminderJob> _logger;
     private readonly IClock _clock;
 
@@ -38,7 +38,7 @@ public class SendReConsentReminderJob : IRecurringJob
         IUserService userService,
         IEmailService emailService,
         IOptions<EmailSettings> emailSettings,
-        IHumansMetrics metrics,
+        IJobRunMetrics metrics,
         ILogger<SendReConsentReminderJob> logger,
         IClock clock)
     {
