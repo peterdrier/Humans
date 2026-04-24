@@ -121,6 +121,9 @@ public sealed class DevelopmentDashboardSeeder
             EventEndOffset = 6,
             StrikeEndOffset = 9,
             IsActive = true,
+            // Enable volunteer browsing so /Shifts/ and /Teams/{slug}/Shifts render
+            // the seeded rotas side-by-side with /Shifts/Dashboard for QA comparisons.
+            IsShiftBrowsingOpen = true,
             CreatedAt = now.Minus(Duration.FromDays(30)),
             UpdatedAt = now,
         };
@@ -195,7 +198,10 @@ public sealed class DevelopmentDashboardSeeder
                 EventSettingsId = es.Id,
                 Name = $"{team.Name} - {label}",
                 Priority = ShiftPriority.Normal,
-                Policy = SignupPolicy.RequireApproval,
+                // Public so the volunteer-facing /Shifts/ page lists them for any
+                // logged-in user — otherwise the browse view hides approval-only
+                // rotas and QA can't compare across the three surfaces.
+                Policy = SignupPolicy.Public,
                 Period = period,
                 IsVisibleToVolunteers = true,
                 CreatedAt = now,
