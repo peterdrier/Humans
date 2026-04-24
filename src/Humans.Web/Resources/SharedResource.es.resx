@@ -1735,6 +1735,8 @@
 
 
   <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Turnos cubiertos</value></data>
+  <data name="ShiftDash_Overview_ShiftsAtMinSubline" xml:space="preserve"><value>{0} / {1} turnos al mínimo ({2}%)</value></data>
+  <data name="ShiftDash_Overview_SlotsFilledSubline" xml:space="preserve"><value>{0} / {1} plazas cubiertas ({2}%)</value></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Con entrada</value></data>
   <data name="ShiftDash_Overview_TicketHoldersSubline" xml:space="preserve"><value>humans que han pagado</value></data>
   <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve"><value>Ticket holding humans</value></data>
@@ -1748,12 +1750,12 @@
 
   <data name="ShiftDash_PeriodFilter_Label" xml:space="preserve"><value>Mostrando:</value></data>
   <data name="ShiftDash_PeriodFilter_All" xml:space="preserve"><value>Todo</value></data>
-  <data name="ShiftDash_PeriodFilter_BuildDays" xml:space="preserve"><value>Días de montaje</value></data>
-  <data name="ShiftDash_PeriodFilter_EventShifts" xml:space="preserve"><value>Turnos de evento</value></data>
+  <data name="ShiftDash_PeriodFilter_BuildDays" xml:space="preserve"><value>Montaje</value></data>
+  <data name="ShiftDash_PeriodFilter_EventShifts" xml:space="preserve"><value>Evento</value></data>
   <data name="ShiftDash_PeriodFilter_Strike" xml:space="preserve"><value>Desmontaje</value></data>
 
   <data name="ShiftDash_Departments_Title" xml:space="preserve"><value>Departamentos</value></data>
-  <data name="ShiftDash_Departments_SortNote" xml:space="preserve"><value>ordenados por menor % cubierto primero</value></data>
+  <data name="ShiftDash_Departments_SortNote" xml:space="preserve"><value>ordenados por menor % de plazas cubiertas primero</value></data>
   <data name="ShiftDash_Departments_Col_Department" xml:space="preserve"><value>Departamento</value></data>
   <data name="ShiftDash_Departments_Col_Total" xml:space="preserve"><value>Total</value></data>
   <data name="ShiftDash_Departments_Col_Filled" xml:space="preserve"><value>Cubiertos</value></data>
@@ -1761,6 +1763,10 @@
   <data name="ShiftDash_Departments_Col_SlotsRemaining" xml:space="preserve"><value>Plazas libres</value></data>
   <data name="ShiftDash_Departments_Col_Period" xml:space="preserve"><value>Periodo</value></data>
   <data name="ShiftDash_Departments_Direct" xml:space="preserve"><value>Directo</value></data>
+  <data name="ShiftDash_Departments_Col_ShiftsAtMin" xml:space="preserve"><value>Turnos al mínimo</value></data>
+  <data name="ShiftDash_Departments_Col_SlotsFilled" xml:space="preserve"><value>Plazas cubiertas</value></data>
+  <data name="ShiftsSummary_ShiftsAtMin" xml:space="preserve"><value>{0} / {1} turnos al mínimo</value></data>
+  <data name="ShiftsSummary_SlotsFilled2" xml:space="preserve"><value>{0} / {1} plazas cubiertas</value></data>
 
   <data name="ShiftDash_Coordinators_Title" xml:space="preserve"><value>Actividad de coordinadores</value></data>
   <data name="ShiftDash_Coordinators_Subtitle" xml:space="preserve"><value>equipos con pendientes, inicio de sesión más antiguo primero</value></data>

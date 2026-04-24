@@ -1,19 +1,22 @@
 @using Humans.Application.DTOs
-@model IReadOnlyList<DepartmentStaffingRow>
+@using Humans.Application.Enums
+@model (IReadOnlyList<DepartmentStaffingRow> Rows, ShiftPeriod? SelectedPeriod)
 
 @{
     static string PctClass(double pct) =>
         pct >= 80 ? "bg-success" : pct >= 60 ? "bg-warning text-dark" : "bg-danger";
 
-    static double Pct(int filled, int total) => total == 0 ? 0 : 100.0 * filled / total;
+    static double SlotPct(int filled, int total) => total == 0 ? 0 : 100.0 * filled / total;
 
     string PctStatusLabel(double pct) =>
         pct >= 80 ? Localizer["ShiftDash_Status_OnTrack"].Value
         : pct >= 60 ? Localizer["ShiftDash_Status_AtRisk"].Value
         : Localizer["ShiftDash_Status_BelowTarget"].Value;
+
+    var periodSelected = Model.SelectedPeriod.HasValue;
 }
 
-@if (Model.Count == 0)
+@if (Model.Rows.Count == 0)
 {
     return;
 }
@@ -29,22 +32,22 @@
                 <tr>
                     <th></th>
                     <th>@Localizer["ShiftDash_Departments_Col_Department"]</th>
-                    <th class="text-end">@Localizer["ShiftDash_Departments_Col_Total"]</th>
-                    <th class="text-end">@Localizer["ShiftDash_Departments_Col_Filled"]</th>
+                    <th class="text-end">@Localizer["ShiftDash_Departments_Col_ShiftsAtMin"]</th>
+                    <th class="text-end">@Localizer["ShiftDash_Departments_Col_SlotsFilled"]</th>
                     <th class="text-end">@Localizer["ShiftDash_Departments_Col_Pct"]</th>
                     <th class="text-end">@Localizer["ShiftDash_Departments_Col_SlotsRemaining"]</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach (var row in Model)
+                @foreach (var row in Model.Rows)
                 {
                     var rowId = "dept-" + row.DepartmentId.ToString("N");
-                    var pct = Pct(row.FilledShifts, row.TotalShifts);
+                    var pct = SlotPct(row.FilledSlots, row.TotalSlots);
                     <tr role="button" data-bs-toggle="collapse" data-bs-target="#@rowId" aria-expanded="false" aria-controls="@rowId">
                         <td class="text-muted"><i class="bi bi-chevron-right"></i></td>
                         <td>@row.DepartmentName</td>
-                        <td class="text-end">@row.TotalShifts</td>
-                        <td class="text-end">@row.FilledShifts</td>
+                        <td class="text-end">@row.FilledShifts / @row.TotalShifts</td>
+                        <td class="text-end">@row.FilledSlots / @row.TotalSlots</td>
                         <td class="text-end"><span class="badge @PctClass(pct)">@pct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(pct)</span></span></td>
                         <td class="text-end">@row.SlotsRemaining</td>
                     </tr>
@@ -56,19 +59,22 @@
                                     <thead>
                                         <tr>
                                             <th></th>
-                                            <th class="text-end">@Localizer["ShiftDash_Departments_Col_Total"]</th>
-                                            <th class="text-end">@Localizer["ShiftDash_Departments_Col_Filled"]</th>
+                                            <th class="text-end">@Localizer["ShiftDash_Departments_Col_ShiftsAtMin"]</th>
+                                            <th class="text-end">@Localizer["ShiftDash_Departments_Col_SlotsFilled"]</th>
                                             <th class="text-end">@Localizer["ShiftDash_Departments_Col_Pct"]</th>
                                             <th class="text-end">@Localizer["ShiftDash_Departments_Col_SlotsRemaining"]</th>
-                                            <th class="text-end">@Localizer["Shifts_SetUp"]</th>
-                                            <th class="text-end">@Localizer["Shifts_Event"]</th>
-                                            <th class="text-end">@Localizer["Shifts_Strike"]</th>
+                                            @if (!periodSelected)
+                                            {
+                                                <th class="text-end">@Localizer["Shifts_SetUp"]</th>
+                                                <th class="text-end">@Localizer["Shifts_Event"]</th>
+                                                <th class="text-end">@Localizer["Shifts_Strike"]</th>
+                                            }
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @foreach (var sub in row.Subgroups)
                                         {
-                                            var sPct = Pct(sub.FilledShifts, sub.TotalShifts);
+                                            var sPct = SlotPct(sub.FilledSlots, sub.TotalSlots);
                                             <tr>
                                                 <td>
                                                     @if (sub.IsDirect)
@@ -77,26 +83,32 @@
                                                     }
                                                     @sub.Name
                                                 </td>
-                                                <td class="text-end">@sub.TotalShifts</td>
-                                                <td class="text-end">@sub.FilledShifts</td>
+                                                <td class="text-end">@sub.FilledShifts / @sub.TotalShifts</td>
+                                                <td class="text-end">@sub.FilledSlots / @sub.TotalSlots</td>
                                                 <td class="text-end"><span class="badge @PctClass(sPct)">@sPct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(sPct)</span></span></td>
                                                 <td class="text-end">@sub.SlotsRemaining</td>
-                                                <td class="text-end"><span class="badge @PctClass(Pct(sub.Build.Filled, sub.Build.Total))">@Pct(sub.Build.Filled, sub.Build.Total).ToString("0")% <span class="visually-hidden">@PctStatusLabel(Pct(sub.Build.Filled, sub.Build.Total))</span></span></td>
-                                                <td class="text-end"><span class="badge @PctClass(Pct(sub.Event.Filled, sub.Event.Total))">@Pct(sub.Event.Filled, sub.Event.Total).ToString("0")% <span class="visually-hidden">@PctStatusLabel(Pct(sub.Event.Filled, sub.Event.Total))</span></span></td>
-                                                <td class="text-end"><span class="badge @PctClass(Pct(sub.Strike.Filled, sub.Strike.Total))">@Pct(sub.Strike.Filled, sub.Strike.Total).ToString("0")% <span class="visually-hidden">@PctStatusLabel(Pct(sub.Strike.Filled, sub.Strike.Total))</span></span></td>
+                                                @if (!periodSelected)
+                                                {
+                                                    var bPct = SlotPct(sub.Build.FilledSlots, sub.Build.TotalSlots);
+                                                    var ePct = SlotPct(sub.Event.FilledSlots, sub.Event.TotalSlots);
+                                                    var stPct = SlotPct(sub.Strike.FilledSlots, sub.Strike.TotalSlots);
+                                                    <td class="text-end"><span class="badge @PctClass(bPct)">@bPct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(bPct)</span></span></td>
+                                                    <td class="text-end"><span class="badge @PctClass(ePct)">@ePct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(ePct)</span></span></td>
+                                                    <td class="text-end"><span class="badge @PctClass(stPct)">@stPct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(stPct)</span></span></td>
+                                                }
                                             </tr>
                                         }
                                     </tbody>
                                 </table>
                             }
-                            else
+                            else if (!periodSelected)
                             {
                                 <table class="table table-sm mb-0">
                                     <thead>
                                         <tr>
                                             <th>@Localizer["ShiftDash_Departments_Col_Period"]</th>
-                                            <th class="text-end">@Localizer["ShiftDash_Departments_Col_Total"]</th>
-                                            <th class="text-end">@Localizer["ShiftDash_Departments_Col_Filled"]</th>
+                                            <th class="text-end">@Localizer["ShiftDash_Departments_Col_ShiftsAtMin"]</th>
+                                            <th class="text-end">@Localizer["ShiftDash_Departments_Col_SlotsFilled"]</th>
                                             <th class="text-end">@Localizer["ShiftDash_Departments_Col_Pct"]</th>
                                             <th class="text-end">@Localizer["ShiftDash_Departments_Col_SlotsRemaining"]</th>
                                         </tr>
@@ -107,11 +119,11 @@
                                             (Localizer["Shifts_Event"].Value, row.Event),
                                             (Localizer["Shifts_Strike"].Value, row.Strike) })
                                         {
-                                            var pPct = Pct(p.Filled, p.Total);
+                                            var pPct = SlotPct(p.FilledSlots, p.TotalSlots);
                                             <tr>
                                                 <td>@label</td>
-                                                <td class="text-end">@p.Total</td>
-                                                <td class="text-end">@p.Filled</td>
+                                                <td class="text-end">@p.Filled / @p.Total</td>
+                                                <td class="text-end">@p.FilledSlots / @p.TotalSlots</td>
                                                 <td class="text-end"><span class="badge @PctClass(pPct)">@pPct.ToString("0")% <span class="visually-hidden">@PctStatusLabel(pPct)</span></span></td>
                                                 <td class="text-end">@p.SlotsRemaining</td>
                                             </tr>

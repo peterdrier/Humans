@@ -5,6 +5,8 @@ namespace Humans.Application.DTOs;
 public record DashboardOverview(
     int TotalShifts,
     int FilledShifts,
+    int TotalSlots,
+    int FilledSlots,
     PeriodBreakdown PeriodFillRates,
     int TicketHolderCount,
     int TicketHoldersEngaged,
@@ -19,6 +21,8 @@ public record DepartmentStaffingRow(
     string DepartmentName,
     int TotalShifts,
     int FilledShifts,
+    int TotalSlots,
+    int FilledSlots,
     int SlotsRemaining,
     PeriodStaffing Build,
     PeriodStaffing Event,
@@ -31,12 +35,14 @@ public record SubgroupStaffingRow(
     bool IsDirect,
     int TotalShifts,
     int FilledShifts,
+    int TotalSlots,
+    int FilledSlots,
     int SlotsRemaining,
     PeriodStaffing Build,
     PeriodStaffing Event,
     PeriodStaffing Strike);
 
-public record PeriodStaffing(int Total, int Filled, int SlotsRemaining);
+public record PeriodStaffing(int Total, int Filled, int TotalSlots, int FilledSlots, int SlotsRemaining);
 
 public record CoordinatorActivityRow(
     Guid TeamId,

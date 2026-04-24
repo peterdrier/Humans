@@ -1733,6 +1733,8 @@
 
 
   <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Quarts remplis</value></data>
+  <data name="ShiftDash_Overview_ShiftsAtMinSubline" xml:space="preserve"><value>{0} / {1} quarts au minimum ({2}%)</value></data>
+  <data name="ShiftDash_Overview_SlotsFilledSubline" xml:space="preserve"><value>{0} / {1} places remplies ({2}%)</value></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Détenteurs de billets</value></data>
   <data name="ShiftDash_Overview_TicketHoldersSubline" xml:space="preserve"><value>humans qui ont payé</value></data>
   <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve"><value>Ticket holding humans</value></data>
@@ -1746,12 +1748,12 @@
 
   <data name="ShiftDash_PeriodFilter_Label" xml:space="preserve"><value>Affichage :</value></data>
   <data name="ShiftDash_PeriodFilter_All" xml:space="preserve"><value>Tout</value></data>
-  <data name="ShiftDash_PeriodFilter_BuildDays" xml:space="preserve"><value>Jours de montage</value></data>
-  <data name="ShiftDash_PeriodFilter_EventShifts" xml:space="preserve"><value>Quarts de l'événement</value></data>
+  <data name="ShiftDash_PeriodFilter_BuildDays" xml:space="preserve"><value>Montage</value></data>
+  <data name="ShiftDash_PeriodFilter_EventShifts" xml:space="preserve"><value>Événement</value></data>
   <data name="ShiftDash_PeriodFilter_Strike" xml:space="preserve"><value>Démontage</value></data>
 
   <data name="ShiftDash_Departments_Title" xml:space="preserve"><value>Départements</value></data>
-  <data name="ShiftDash_Departments_SortNote" xml:space="preserve"><value>triés par % de remplissage le plus bas en premier</value></data>
+  <data name="ShiftDash_Departments_SortNote" xml:space="preserve"><value>triés par % de places remplies le plus bas en premier</value></data>
   <data name="ShiftDash_Departments_Col_Department" xml:space="preserve"><value>Département</value></data>
   <data name="ShiftDash_Departments_Col_Total" xml:space="preserve"><value>Total</value></data>
   <data name="ShiftDash_Departments_Col_Filled" xml:space="preserve"><value>Remplis</value></data>
@@ -1759,6 +1761,10 @@
   <data name="ShiftDash_Departments_Col_SlotsRemaining" xml:space="preserve"><value>Places restantes</value></data>
   <data name="ShiftDash_Departments_Col_Period" xml:space="preserve"><value>Période</value></data>
   <data name="ShiftDash_Departments_Direct" xml:space="preserve"><value>Direct</value></data>
+  <data name="ShiftDash_Departments_Col_ShiftsAtMin" xml:space="preserve"><value>Quarts au min.</value></data>
+  <data name="ShiftDash_Departments_Col_SlotsFilled" xml:space="preserve"><value>Places remplies</value></data>
+  <data name="ShiftsSummary_ShiftsAtMin" xml:space="preserve"><value>{0} / {1} quarts au minimum</value></data>
+  <data name="ShiftsSummary_SlotsFilled2" xml:space="preserve"><value>{0} / {1} places remplies</value></data>
 
   <data name="ShiftDash_Coordinators_Title" xml:space="preserve"><value>Activité des coordinateurs</value></data>
   <data name="ShiftDash_Coordinators_Subtitle" xml:space="preserve"><value>équipes avec inscriptions en attente, connexion la plus ancienne d'abord</value></data>

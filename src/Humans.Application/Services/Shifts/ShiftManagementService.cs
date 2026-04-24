@@ -929,6 +929,10 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         var totalShifts = shifts.Count;
         var filledShifts = shifts.Count(IsFilled);
 
+        int FilledSlotsOn(Shift s) => Math.Min(ConfirmedOn(s.Id), s.MaxVolunteers);
+        var totalSlots = shifts.Sum(s => s.MaxVolunteers);
+        var filledSlots = shifts.Sum(FilledSlotsOn);
+
         PeriodBreakdown periodFillRates;
         {
             var perPeriod = shifts
@@ -963,7 +967,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         var departments = BuildDepartmentRows(shifts, confirmedCounts, es, teamLookup);
 
         return new DashboardOverview(
-            totalShifts, filledShifts, periodFillRates,
+            totalShifts, filledShifts, totalSlots, filledSlots, periodFillRates,
             ticketHolders.Count, ticketHoldersEngaged, nonTicketSignups, stalePendingCount,
             departments);
 
@@ -974,7 +978,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     }
 
     private static DashboardOverview EmptyOverview() => new(
-        0, 0, new PeriodBreakdown(0, 0, 0), 0, 0, 0, 0, Array.Empty<DepartmentStaffingRow>());
+        0, 0, 0, 0, new PeriodBreakdown(0, 0, 0), 0, 0, 0, 0, Array.Empty<DepartmentStaffingRow>());
 
     private static List<DepartmentStaffingRow> BuildDepartmentRows(
         IReadOnlyList<Shift> shifts,
@@ -1019,7 +1023,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
                     var sAgg = AggregateShifts(sg.ToList(), confirmedCounts, es);
                     subgroups.Add(new SubgroupStaffingRow(
                         sTeamId, NameOf(sTeamId), IsDirect: false,
-                        sAgg.Total, sAgg.Filled, sAgg.Remaining,
+                        sAgg.Total, sAgg.Filled, sAgg.TotalSlots, sAgg.FilledSlots, sAgg.Remaining,
                         sAgg.Build, sAgg.Event, sAgg.Strike));
                 }
 
@@ -1029,64 +1033,74 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
                     var dAgg = AggregateShifts(directShifts, confirmedCounts, es);
                     subgroups.Insert(0, new SubgroupStaffingRow(
                         deptId, "Direct", IsDirect: true,
-                        dAgg.Total, dAgg.Filled, dAgg.Remaining,
+                        dAgg.Total, dAgg.Filled, dAgg.TotalSlots, dAgg.FilledSlots, dAgg.Remaining,
                         dAgg.Build, dAgg.Event, dAgg.Strike));
                 }
 
                 subgroups = subgroups
                     .OrderByDescending(r => r.IsDirect)
-                    .ThenBy(r => r.TotalShifts == 0 ? 0 : 100.0 * r.FilledShifts / r.TotalShifts)
+                    .ThenBy(r => r.TotalSlots == 0 ? 0 : 100.0 * r.FilledSlots / r.TotalSlots)
                     .ThenBy(r => r.Name, StringComparer.Ordinal)
                     .ToList();
             }
 
             rows.Add(new DepartmentStaffingRow(
                 deptId, deptName,
-                agg.Total, agg.Filled, agg.Remaining,
+                agg.Total, agg.Filled, agg.TotalSlots, agg.FilledSlots, agg.Remaining,
                 agg.Build, agg.Event, agg.Strike,
                 subgroups));
         }
 
         return rows
-            .OrderBy(r => r.TotalShifts == 0 ? 0 : 100.0 * r.FilledShifts / r.TotalShifts)
+            .OrderBy(r => r.TotalSlots == 0 ? 0 : 100.0 * r.FilledSlots / r.TotalSlots)
             .ThenBy(r => r.DepartmentName, StringComparer.Ordinal)
             .ToList();
     }
 
-    private static (int Total, int Filled, int Remaining, PeriodStaffing Build, PeriodStaffing Event, PeriodStaffing Strike)
+    private static (int Total, int Filled, int TotalSlots, int FilledSlots, int Remaining, PeriodStaffing Build, PeriodStaffing Event, PeriodStaffing Strike)
         AggregateShifts(List<Shift> shifts, Dictionary<Guid, int> confirmedCounts, EventSettings es)
     {
         int total = shifts.Count;
         int filled = 0;
+        int totalSlots = 0;
+        int filledSlots = 0;
         int remaining = 0;
-        var periodAgg = new Dictionary<ShiftPeriod, (int Total, int Filled, int Remaining)>
+        var periodAgg = new Dictionary<ShiftPeriod, (int Total, int Filled, int TotalSlots, int FilledSlots, int Remaining)>
         {
-            [ShiftPeriod.Build] = (0, 0, 0),
-            [ShiftPeriod.Event] = (0, 0, 0),
-            [ShiftPeriod.Strike] = (0, 0, 0),
+            [ShiftPeriod.Build] = (0, 0, 0, 0, 0),
+            [ShiftPeriod.Event] = (0, 0, 0, 0, 0),
+            [ShiftPeriod.Strike] = (0, 0, 0, 0, 0),
         };
 
         foreach (var s in shifts)
         {
             var confirmed = confirmedCounts.TryGetValue(s.Id, out var c) ? c : 0;
             var isFilled = confirmed >= s.MinVolunteers;
+            var filledSlotsHere = Math.Min(confirmed, s.MaxVolunteers);
             var slotsLeft = Math.Max(0, s.MaxVolunteers - confirmed);
 
             if (isFilled) filled++;
+            totalSlots += s.MaxVolunteers;
+            filledSlots += filledSlotsHere;
             remaining += slotsLeft;
 
             var p = s.GetShiftPeriod(es);
             var cur = periodAgg[p];
-            periodAgg[p] = (cur.Total + 1, cur.Filled + (isFilled ? 1 : 0), cur.Remaining + slotsLeft);
+            periodAgg[p] = (
+                cur.Total + 1,
+                cur.Filled + (isFilled ? 1 : 0),
+                cur.TotalSlots + s.MaxVolunteers,
+                cur.FilledSlots + filledSlotsHere,
+                cur.Remaining + slotsLeft);
         }
 
         PeriodStaffing ToStaffing(ShiftPeriod p)
         {
             var v = periodAgg[p];
-            return new PeriodStaffing(v.Total, v.Filled, v.Remaining);
+            return new PeriodStaffing(v.Total, v.Filled, v.TotalSlots, v.FilledSlots, v.Remaining);
         }
 
-        return (total, filled, remaining, ToStaffing(ShiftPeriod.Build), ToStaffing(ShiftPeriod.Event), ToStaffing(ShiftPeriod.Strike));
+        return (total, filled, totalSlots, filledSlots, remaining, ToStaffing(ShiftPeriod.Build), ToStaffing(ShiftPeriod.Event), ToStaffing(ShiftPeriod.Strike));
     }
 
     public async Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period = null)

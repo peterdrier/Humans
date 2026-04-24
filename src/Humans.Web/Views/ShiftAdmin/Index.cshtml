@@ -22,8 +22,9 @@
 
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2>@Model.Department.Name — Shifts</h2>
-        <div>
-            <span class="badge bg-primary fs-6">@Model.ConfirmedCount / @Model.TotalSlots filled</span>
+        <div class="d-flex gap-2">
+            <span class="badge bg-secondary fs-6">@string.Format(Localizer["ShiftsSummary_ShiftsAtMin"].Value, Model.FilledShifts, Model.TotalShifts)</span>
+            <span class="badge bg-primary fs-6">@string.Format(Localizer["ShiftsSummary_SlotsFilled2"].Value, Model.ConfirmedCount, Model.TotalSlots)</span>
         </div>
     </div>
 

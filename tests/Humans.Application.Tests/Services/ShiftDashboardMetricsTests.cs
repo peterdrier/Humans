@@ -73,11 +73,51 @@ public class ShiftDashboardMetricsTests : IDisposable
 
         result.TotalShifts.Should().Be(0);
         result.FilledShifts.Should().Be(0);
+        result.TotalSlots.Should().Be(0);
+        result.FilledSlots.Should().Be(0);
         result.TicketHolderCount.Should().Be(0);
         result.TicketHoldersEngaged.Should().Be(0);
         result.NonTicketSignups.Should().Be(0);
         result.StalePendingCount.Should().Be(0);
         result.Departments.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetDashboardOverview_SumsSlotTotalsAcrossShifts()
+    {
+        // Slot-level counters are independent from "shift at min" counters:
+        // a shift can be below min yet still contribute filled slots toward TotalSlots.
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var rota = await SeedRotaAsync(team, es, RotaPeriod.Event);
+
+        var s1 = await SeedShiftAsync(rota, dayOffset: 1, min: 3, max: 5);
+        await SeedSignupsAsync(s1, SignupStatus.Confirmed, count: 2); // below min — 0 shifts at min, 2 slots filled
+        var s2 = await SeedShiftAsync(rota, dayOffset: 2, min: 1, max: 4);
+        await SeedSignupsAsync(s2, SignupStatus.Confirmed, count: 4); // at max — 1 shift at min, 4 slots filled
+
+        var result = await _service.GetDashboardOverviewAsync(es.Id);
+
+        result.TotalShifts.Should().Be(2);
+        result.FilledShifts.Should().Be(1);
+        result.TotalSlots.Should().Be(9);
+        result.FilledSlots.Should().Be(6);
+    }
+
+    [Fact]
+    public async Task GetDashboardOverview_FilledSlotsCapsAtMaxVolunteers()
+    {
+        // Overfilling a shift (confirmed > max) must not inflate FilledSlots beyond MaxVolunteers.
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var rota = await SeedRotaAsync(team, es, RotaPeriod.Event);
+        var shift = await SeedShiftAsync(rota, dayOffset: 1, min: 1, max: 3);
+        await SeedSignupsAsync(shift, SignupStatus.Confirmed, count: 5);
+
+        var result = await _service.GetDashboardOverviewAsync(es.Id);
+
+        result.TotalSlots.Should().Be(3);
+        result.FilledSlots.Should().Be(3);
     }
 
     [Fact]
@@ -268,22 +308,29 @@ public class ShiftDashboardMetricsTests : IDisposable
         var infraRow = result.Departments.Single(d => string.Equals(d.DepartmentName, "Infrastructure", StringComparison.Ordinal));
         infraRow.TotalShifts.Should().Be(6);
         infraRow.FilledShifts.Should().Be(3); // 1 direct + 2 power
+        infraRow.TotalSlots.Should().Be(18); // 6 shifts × max=3
+        infraRow.FilledSlots.Should().Be(5); // 1 direct + 2 power shifts × 2 confirmed
         infraRow.Subgroups.Should().HaveCount(3);
 
         // "Direct" pinned first regardless of fill %.
         infraRow.Subgroups[0].IsDirect.Should().BeTrue();
         infraRow.Subgroups[0].Name.Should().Be("Direct");
 
-        // Remaining: Plumbing before Power (lower fill %).
+        // Remaining subgroups sorted by lowest slot fill % first:
+        // Plumbing (0/6 = 0%) before Power (4/6 ≈ 67%).
         infraRow.Subgroups[1].Name.Should().Be("Plumbing");
         infraRow.Subgroups[2].Name.Should().Be("Power");
 
         // Invariant: subgroup totals sum to department totals.
         infraRow.Subgroups.Sum(s => s.TotalShifts).Should().Be(infraRow.TotalShifts);
         infraRow.Subgroups.Sum(s => s.FilledShifts).Should().Be(infraRow.FilledShifts);
+        infraRow.Subgroups.Sum(s => s.TotalSlots).Should().Be(infraRow.TotalSlots);
+        infraRow.Subgroups.Sum(s => s.FilledSlots).Should().Be(infraRow.FilledSlots);
         infraRow.Subgroups.Sum(s => s.SlotsRemaining).Should().Be(infraRow.SlotsRemaining);
         infraRow.Subgroups.Sum(s => s.Event.Total).Should().Be(infraRow.Event.Total);
         infraRow.Subgroups.Sum(s => s.Event.Filled).Should().Be(infraRow.Event.Filled);
+        infraRow.Subgroups.Sum(s => s.Event.TotalSlots).Should().Be(infraRow.Event.TotalSlots);
+        infraRow.Subgroups.Sum(s => s.Event.FilledSlots).Should().Be(infraRow.Event.FilledSlots);
     }
 
     [Fact]

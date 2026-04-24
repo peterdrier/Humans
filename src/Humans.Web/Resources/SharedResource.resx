@@ -1752,6 +1752,8 @@
 
 
   <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Shifts filled</value></data>
+  <data name="ShiftDash_Overview_ShiftsAtMinSubline" xml:space="preserve"><value>{0} / {1} shifts at min quota ({2}%)</value><comment>{0} filled shifts, {1} total shifts, {2} percentage</comment></data>
+  <data name="ShiftDash_Overview_SlotsFilledSubline" xml:space="preserve"><value>{0} / {1} slots filled ({2}%)</value><comment>{0} filled slots, {1} total slots, {2} percentage</comment></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Ticket holders</value></data>
   <data name="ShiftDash_Overview_TicketHoldersSubline" xml:space="preserve"><value>humans who have paid</value></data>
   <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve"><value>Ticket holding humans</value></data>
@@ -1765,19 +1767,23 @@
 
   <data name="ShiftDash_PeriodFilter_Label" xml:space="preserve"><value>Showing:</value></data>
   <data name="ShiftDash_PeriodFilter_All" xml:space="preserve"><value>All</value></data>
-  <data name="ShiftDash_PeriodFilter_BuildDays" xml:space="preserve"><value>Build days</value></data>
-  <data name="ShiftDash_PeriodFilter_EventShifts" xml:space="preserve"><value>Event-time shifts</value></data>
+  <data name="ShiftDash_PeriodFilter_BuildDays" xml:space="preserve"><value>Set-up</value></data>
+  <data name="ShiftDash_PeriodFilter_EventShifts" xml:space="preserve"><value>Event</value></data>
   <data name="ShiftDash_PeriodFilter_Strike" xml:space="preserve"><value>Strike</value></data>
 
   <data name="ShiftDash_Departments_Title" xml:space="preserve"><value>Departments</value></data>
-  <data name="ShiftDash_Departments_SortNote" xml:space="preserve"><value>sorted by lowest fill % first</value></data>
+  <data name="ShiftDash_Departments_SortNote" xml:space="preserve"><value>sorted by lowest slot fill % first</value></data>
   <data name="ShiftDash_Departments_Col_Department" xml:space="preserve"><value>Department</value></data>
   <data name="ShiftDash_Departments_Col_Total" xml:space="preserve"><value>Total</value></data>
   <data name="ShiftDash_Departments_Col_Filled" xml:space="preserve"><value>Filled</value></data>
   <data name="ShiftDash_Departments_Col_Pct" xml:space="preserve"><value>%</value></data>
   <data name="ShiftDash_Departments_Col_SlotsRemaining" xml:space="preserve"><value>Slots remaining</value></data>
   <data name="ShiftDash_Departments_Col_Period" xml:space="preserve"><value>Period</value></data>
+  <data name="ShiftDash_Departments_Col_ShiftsAtMin" xml:space="preserve"><value>Shifts at min</value><comment>Shifts meeting minimum volunteer count</comment></data>
+  <data name="ShiftDash_Departments_Col_SlotsFilled" xml:space="preserve"><value>Slots filled</value><comment>Individual volunteer slots confirmed</comment></data>
   <data name="ShiftDash_Departments_Direct" xml:space="preserve"><value>Direct</value></data>
+  <data name="ShiftsSummary_ShiftsAtMin" xml:space="preserve"><value>{0} / {1} shifts at min</value><comment>{0} filled shifts, {1} total shifts</comment></data>
+  <data name="ShiftsSummary_SlotsFilled2" xml:space="preserve"><value>{0} / {1} slots filled</value><comment>{0} filled slots, {1} total slots</comment></data>
 
   <data name="ShiftDash_Coordinators_Title" xml:space="preserve"><value>Coordinator activity</value></data>
   <data name="ShiftDash_Coordinators_Subtitle" xml:space="preserve"><value>teams with pending signups, oldest login first</value></data>

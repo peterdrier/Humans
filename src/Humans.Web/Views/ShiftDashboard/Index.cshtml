@@ -78,8 +78,8 @@
 
     @if (Model.Overview is not null)
     {
-        @await Html.PartialAsync("_OverviewCounters", Model.Overview)
-        @await Html.PartialAsync("_DepartmentsTable", Model.Overview.Departments)
+        @await Html.PartialAsync("_OverviewCounters", (Model.Overview, Model.SelectedPeriod))
+        @await Html.PartialAsync("_DepartmentsTable", (Model.Overview.Departments, Model.SelectedPeriod))
     }
     @await Html.PartialAsync("_CoordinatorActivity", Model.CoordinatorActivity)
     @await Html.PartialAsync("_TrendsChart", (Model.Trends, Model.TrendWindow, Model.SelectedPeriod))

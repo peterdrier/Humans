@@ -224,6 +224,8 @@ public class ShiftAdminViewModel
     public List<ShiftSignup> PendingSignups { get; set; } = [];
     public int TotalSlots { get; set; }
     public int ConfirmedCount { get; set; }
+    public int TotalShifts { get; set; }
+    public int FilledShifts { get; set; }
     public bool CanManageShifts { get; set; }
     public bool CanApproveSignups { get; set; }
     public Dictionary<Guid, VolunteerEventProfile> VolunteerProfiles { get; set; } = new();
