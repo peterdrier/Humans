@@ -14,5 +14,4 @@ public interface IHumansMetrics
     void RecordJobRun(string job, string result);
     void RecordEmailQueued(string template);
     void RecordEmailFailed(string template);
-    void SetEmailOutboxPending(int count);
 }

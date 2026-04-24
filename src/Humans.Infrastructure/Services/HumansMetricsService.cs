@@ -32,8 +32,6 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
     private readonly Counter<long> _emailsQueued;
     private readonly Counter<long> _emailsFailed;
 
-    private volatile int _emailOutboxPending;
-
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<HumansMetricsService> _logger;
     private readonly Timer _refreshTimer;
@@ -150,10 +148,9 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
             observeValue: () => _snapshot.PendingOutboxEvents,
             description: "Unprocessed Google sync outbox events");
 
-        HumansMeter.CreateObservableGauge(
-            "humans.email_outbox_pending",
-            observeValue: () => _emailOutboxPending,
-            description: "Emails pending in the outbox queue");
+        // humans.email_outbox_pending now lives on IMeters — ProcessEmailOutboxJob
+        // declares it directly and pushes the pending count each run. Same metric
+        // name, same OTel export (both paths publish through Meter("Humans.Metrics")).
 
         // Timer: fire immediately, then every 60 seconds
         _refreshTimer = new Timer(
@@ -193,9 +190,6 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
 
     public void RecordEmailFailed(string template)
         => _emailsFailed.Add(1, new KeyValuePair<string, object?>("template", template));
-
-    public void SetEmailOutboxPending(int count)
-        => _emailOutboxPending = count;
 
     // --- Observable gauge callbacks ---
 

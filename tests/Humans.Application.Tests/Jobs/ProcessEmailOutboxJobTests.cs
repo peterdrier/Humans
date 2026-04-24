@@ -17,7 +17,9 @@ using Humans.Infrastructure.Services;
 using Xunit;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Metering;
 using Humans.Infrastructure.Repositories.Email;
+using Humans.Infrastructure.Services.Metering;
 
 namespace Humans.Application.Tests.Jobs;
 
@@ -29,6 +31,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
     private readonly ICampaignService _campaignService;
     private readonly FakeClock _clock;
     private readonly HumansMetricsService _metrics;
+    private readonly MetersService _meters;
     private readonly IOptions<EmailSettings> _settings;
     private readonly EmailOutboxRepository _repo;
     private readonly ProcessEmailOutboxJob _job;
@@ -46,17 +49,19 @@ public class ProcessEmailOutboxJobTests : IDisposable
         _metrics = new HumansMetricsService(
             Substitute.For<IServiceScopeFactory>(),
             Substitute.For<ILogger<HumansMetricsService>>());
+        _meters = new MetersService(Substitute.For<ILogger<MetersService>>());
         _settings = Options.Create(new EmailSettings { OutboxBatchSize = 10, OutboxMaxRetries = 10 });
         var logger = Substitute.For<ILogger<ProcessEmailOutboxJob>>();
         _repo = new EmailOutboxRepository(new TestDbContextFactory(_options));
 
-        _job = new ProcessEmailOutboxJob(_repo, _campaignService, _transport, _metrics, _clock, _settings, logger);
+        _job = new ProcessEmailOutboxJob(_repo, _campaignService, _transport, _metrics, _meters, _clock, _settings, logger);
     }
 
     public void Dispose()
     {
         _dbContext.Dispose();
         _metrics.Dispose();
+        _meters.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -117,7 +122,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
 
         var batchSettings = Options.Create(new EmailSettings { OutboxBatchSize = 10, OutboxMaxRetries = 10 });
         var job = new ProcessEmailOutboxJob(
-            _repo, _campaignService, _transport, _metrics, _clock, batchSettings,
+            _repo, _campaignService, _transport, _metrics, _meters, _clock, batchSettings,
             Substitute.For<ILogger<ProcessEmailOutboxJob>>());
 
         await job.ExecuteAsync();
