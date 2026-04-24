@@ -1,0 +1,86 @@
+@using Humans.Application.DTOs
+@model IReadOnlyList<DailyDepartmentStaffing>
+
+@{
+    if (Model.Count == 0) { return; }
+
+    // Flatten to a stable ordered list of department names for consistent colour assignment.
+    var deptNames = Model
+        .SelectMany(d => d.Departments)
+        .Select(d => d.DepartmentName)
+        .Distinct(StringComparer.Ordinal)
+        .OrderBy(n => n, StringComparer.Ordinal)
+        .ToList();
+
+    if (deptNames.Count == 0) { return; }
+
+    var jsonOpts = new System.Text.Json.JsonSerializerOptions
+    {
+        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+    };
+    var labels = Model.Select(d => d.DateLabel).ToList();
+    var datasets = deptNames.Select(name => new
+    {
+        label = name,
+        data = Model.Select(d => d.Departments.FirstOrDefault(x => x.DepartmentName == name)?.ConfirmedCount ?? 0).ToList()
+    }).ToList();
+}
+
+<div class="card mb-4">
+    <div class="card-header">
+        <strong>@Localizer["ShiftDash_DeptStaffingByDay_Title"]</strong>
+        <span class="text-muted small ms-2">@Localizer["ShiftDash_DeptStaffingByDay_Subtitle"]</span>
+    </div>
+    <div class="card-body">
+        <canvas id="deptStaffingByDayChart" height="110"></canvas>
+    </div>
+</div>
+
+<script>
+(function () {
+    var labels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(labels));
+    var datasets = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(datasets, jsonOpts));
+    // A palette large enough to cover the 8 parent departments without repeats.
+    // Values are standalone hex so rendering works regardless of theme CSS vars.
+    var palette = ['#4e79a7','#f28e2b','#e15759','#76b7b2','#59a14f','#edc948','#b07aa1','#ff9da7','#9c755f','#bab0ac'];
+    datasets.forEach(function(ds, i) { ds.backgroundColor = palette[i % palette.length]; });
+
+    function render() {
+        new Chart(document.getElementById('deptStaffingByDayChart'), {
+            type: 'bar',
+            data: { labels: labels, datasets: datasets },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { stacked: true },
+                    y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Confirmed volunteers' } }
+                },
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            footer: function (items) {
+                                var total = items.reduce(function (s, it) { return s + it.parsed.y; }, 0);
+                                return 'Total on site: ' + total;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    if (typeof Chart === 'undefined') {
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js';
+        s.integrity = 'sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ';
+        s.crossOrigin = 'anonymous';
+        s.onload = render;
+        document.head.appendChild(s);
+    } else {
+        document.addEventListener('DOMContentLoaded', render);
+    }
+})();
+</script>

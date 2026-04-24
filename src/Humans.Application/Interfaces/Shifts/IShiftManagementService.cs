@@ -234,6 +234,35 @@ public interface IShiftManagementService
     Task<IReadOnlyList<DashboardTrendPoint>> GetDashboardTrendsAsync(
         Guid eventSettingsId, TrendWindow window, ShiftPeriod? period = null);
 
+    /// <summary>
+    /// Per-day stacked breakdown of Confirmed volunteers, grouped by parent
+    /// department. Only returns data for <see cref="ShiftPeriod.Build"/> and
+    /// <see cref="ShiftPeriod.Strike"/>; returns an empty list for Event or
+    /// when <paramref name="period"/> is null. Subteam signups roll up into
+    /// the parent department.
+    /// </summary>
+    Task<IReadOnlyList<DailyDepartmentStaffing>> GetDailyDepartmentStaffingAsync(
+        Guid eventSettingsId, ShiftPeriod? period);
+
+    /// <summary>
+    /// Breakdown of shift counts by duration bucket for the given period.
+    /// Full-day shifts are grouped into one bucket regardless of nominal hours;
+    /// other shifts are bucketed by whole-hour duration. Returns empty when
+    /// <paramref name="period"/> is null (the "All" view on the dashboard
+    /// deliberately omits this breakdown).
+    /// </summary>
+    Task<IReadOnlyList<ShiftDurationBreakdownRow>> GetShiftDurationBreakdownAsync(
+        Guid eventSettingsId, ShiftPeriod? period);
+
+    /// <summary>
+    /// Builds a rota × day coverage heatmap for the selected period (or the
+    /// full event schedule when <paramref name="period"/> is null). Each cell
+    /// reports slot fill on a single calendar day, based on shifts that
+    /// overlap that day. Returns an empty heatmap if no visible shifts exist.
+    /// </summary>
+    Task<CoverageHeatmap> GetCoverageHeatmapAsync(
+        Guid eventSettingsId, ShiftPeriod? period);
+
     // === Shift Tags ===
 
     /// <summary>

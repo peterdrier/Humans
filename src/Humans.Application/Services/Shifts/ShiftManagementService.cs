@@ -997,6 +997,9 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         string NameOf(Guid teamId) =>
             teamLookup.TryGetValue(teamId, out var t) ? t.Name : string.Empty;
 
+        string? SlugOf(Guid teamId) =>
+            teamLookup.TryGetValue(teamId, out var t) ? t.Slug : null;
+
         var groups = shifts
             .GroupBy(DeptIdOf)
             .ToList();
@@ -1022,7 +1025,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
                     var sTeamId = sg.Key;
                     var sAgg = AggregateShifts(sg.ToList(), confirmedCounts, es);
                     subgroups.Add(new SubgroupStaffingRow(
-                        sTeamId, NameOf(sTeamId), IsDirect: false,
+                        sTeamId, NameOf(sTeamId), SlugOf(sTeamId), IsDirect: false,
                         sAgg.Total, sAgg.Filled, sAgg.TotalSlots, sAgg.FilledSlots, sAgg.Remaining,
                         sAgg.Build, sAgg.Event, sAgg.Strike));
                 }
@@ -1031,8 +1034,10 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
                 if (directShifts.Count > 0)
                 {
                     var dAgg = AggregateShifts(directShifts, confirmedCounts, es);
+                    // "Direct" points at the parent department's own team page — that's
+                    // where you'd manage direct roles/shifts on the parent.
                     subgroups.Insert(0, new SubgroupStaffingRow(
-                        deptId, "Direct", IsDirect: true,
+                        deptId, "Direct", SlugOf(deptId), IsDirect: true,
                         dAgg.Total, dAgg.Filled, dAgg.TotalSlots, dAgg.FilledSlots, dAgg.Remaining,
                         dAgg.Build, dAgg.Event, dAgg.Strike));
                 }
@@ -1045,7 +1050,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             }
 
             rows.Add(new DepartmentStaffingRow(
-                deptId, deptName,
+                deptId, deptName, SlugOf(deptId),
                 agg.Total, agg.Filled, agg.TotalSlots, agg.FilledSlots, agg.Remaining,
                 agg.Build, agg.Event, agg.Strike,
                 subgroups));
@@ -1324,6 +1329,241 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
                 loginCountsByDay.TryGetValue(d, out var l) ? l : 0));
         }
         return points;
+    }
+
+    public async Task<IReadOnlyList<DailyDepartmentStaffing>> GetDailyDepartmentStaffingAsync(
+        Guid eventSettingsId, ShiftPeriod? period)
+    {
+        // Only meaningful for Set-up (Build) and Strike. Event planning has a different
+        // day-over-day dynamic (per-rota shift-time coverage), so we intentionally skip it.
+        if (period is not (ShiftPeriod.Build or ShiftPeriod.Strike))
+            return Array.Empty<DailyDepartmentStaffing>();
+
+        var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
+        if (es is null) return Array.Empty<DailyDepartmentStaffing>();
+
+        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId) ?? DateTimeZone.Utc;
+
+        var dayOffsets = new List<int>();
+        if (period is ShiftPeriod.Build)
+            for (var d = es.BuildStartOffset; d < 0; d++) dayOffsets.Add(d);
+        else
+            for (var d = es.EventEndOffset + 1; d <= es.StrikeEndOffset; d++) dayOffsets.Add(d);
+
+        if (dayOffsets.Count == 0) return Array.Empty<DailyDepartmentStaffing>();
+
+        var shifts = await _repo.GetVisibleShiftsForEventAsync(eventSettingsId);
+        var shiftIds = shifts.Select(s => s.Id).ToList();
+        var confirmedCounts = await _repo.GetConfirmedSignupCountsByShiftAsync(shiftIds);
+
+        var teamIdsOnRotas = shifts.Select(s => s.Rota.TeamId).Distinct().ToList();
+        var teamLookup = await TeamService.GetByIdsWithParentsAsync(teamIdsOnRotas);
+
+        (Guid Id, string Name) DeptOf(Shift s)
+        {
+            if (!teamLookup.TryGetValue(s.Rota.TeamId, out var t))
+                return (s.Rota.TeamId, string.Empty);
+            var parentId = t.ParentTeamId ?? t.Id;
+            var parentName = t.ParentTeamId is null
+                ? t.Name
+                : teamLookup.TryGetValue(parentId, out var parent) ? parent.Name : t.Name;
+            return (parentId, parentName);
+        }
+
+        var results = new List<DailyDepartmentStaffing>(dayOffsets.Count);
+        foreach (var dayOffset in dayOffsets)
+        {
+            var dayDate = es.GateOpeningDate.PlusDays(dayOffset);
+            var dayStart = dayDate.AtStartOfDayInZone(tz).ToInstant();
+            var dayEnd = dayDate.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
+            var dateLabel = dayDate.DayOfWeek.ToString()[..3] + " " + dayDate.ToString("MMM d", null);
+
+            var overlapping = shifts.Where(s =>
+            {
+                var start = s.GetAbsoluteStart(es);
+                var end = s.GetAbsoluteEnd(es);
+                return start < dayEnd && end > dayStart;
+            });
+
+            var byDept = new Dictionary<Guid, (string Name, int Count)>();
+            foreach (var s in overlapping)
+            {
+                var (deptId, deptName) = DeptOf(s);
+                var confirmed = confirmedCounts.TryGetValue(s.Id, out var c) ? c : 0;
+                if (confirmed == 0) continue;
+                var cur = byDept.TryGetValue(deptId, out var existing) ? existing : (Name: deptName, Count: 0);
+                byDept[deptId] = (cur.Name, cur.Count + confirmed);
+            }
+
+            var depts = byDept.Values
+                .OrderBy(v => v.Name, StringComparer.Ordinal)
+                .Select(v => new DepartmentDayCount(v.Name, v.Count))
+                .ToList();
+
+            results.Add(new DailyDepartmentStaffing(dayDate, dateLabel, depts));
+        }
+
+        return results;
+    }
+
+    public async Task<CoverageHeatmap> GetCoverageHeatmapAsync(
+        Guid eventSettingsId, ShiftPeriod? period)
+    {
+        var empty = new CoverageHeatmap(
+            Array.Empty<CoverageHeatmapDay>(),
+            Array.Empty<CoverageHeatmapRotaRow>());
+
+        var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
+        if (es is null) return empty;
+
+        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId) ?? DateTimeZone.Utc;
+
+        var dayOffsets = new List<int>();
+        if (period is null or ShiftPeriod.Build)
+            for (var d = es.BuildStartOffset; d < 0; d++) dayOffsets.Add(d);
+        if (period is null or ShiftPeriod.Event)
+            for (var d = 0; d <= es.EventEndOffset; d++) dayOffsets.Add(d);
+        if (period is null or ShiftPeriod.Strike)
+            for (var d = es.EventEndOffset + 1; d <= es.StrikeEndOffset; d++) dayOffsets.Add(d);
+
+        if (dayOffsets.Count == 0) return empty;
+
+        var allShifts = await _repo.GetVisibleShiftsForEventAsync(eventSettingsId);
+        if (allShifts.Count == 0) return empty;
+
+        var shiftIds = allShifts.Select(s => s.Id).ToList();
+        var confirmedCounts = await _repo.GetConfirmedSignupCountsByShiftAsync(shiftIds);
+
+        var teamIds = allShifts.Select(s => s.Rota.TeamId).Distinct().ToList();
+        var teamLookup = await TeamService.GetByIdsWithParentsAsync(teamIds);
+
+        var days = dayOffsets
+            .Select(off =>
+            {
+                var date = es.GateOpeningDate.PlusDays(off);
+                var label = date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
+                var periodLabel = off < 0 ? "Set-up" : off <= es.EventEndOffset ? "Event" : "Strike";
+                return new CoverageHeatmapDay(off, date, label, periodLabel);
+            })
+            .ToList();
+
+        // A "directory team" is what appears on the public Teams page: every top-level
+        // team, plus subteams promoted via IsPromotedToDirectory. Those are the rows
+        // that make sense as a coordinator-facing coverage grid — matches Team.IsInDirectory.
+        static bool IsDirectoryTeam(Team? t) =>
+            t is not null && (t.ParentTeamId is null || t.IsPromotedToDirectory);
+
+        // Resolves the TEAM a shift should be displayed under on the heatmap.
+        //   - Shift on a top-level team → that team
+        //   - Shift on a PROMOTED subteam → that subteam (gets its own row)
+        //   - Shift on a non-promoted subteam → roll up into the parent team
+        Team? DisplayTeamFor(Shift s)
+        {
+            if (!teamLookup.TryGetValue(s.Rota.TeamId, out var team)) return null;
+            if (team.ParentTeamId is null) return team;
+            if (team.IsPromotedToDirectory) return team;
+            return team.ParentTeamId is Guid pid && teamLookup.TryGetValue(pid, out var parent) ? parent : null;
+        }
+
+        // Group shifts by the display team (one row per team on the heatmap).
+        var shiftsByDisplayTeam = allShifts
+            .Select(s => (Shift: s, Team: DisplayTeamFor(s)))
+            .Where(x => x.Team is not null && IsDirectoryTeam(x.Team))
+            .GroupBy(x => x.Team!.Id, x => x.Shift)
+            .ToList();
+
+        var rows = new List<CoverageHeatmapRotaRow>();
+        foreach (var teamGroup in shiftsByDisplayTeam)
+        {
+            var teamId = teamGroup.Key;
+            if (!teamLookup.TryGetValue(teamId, out var team)) continue;
+
+            var shifts = teamGroup.ToList();
+
+            var cells = new List<CoverageHeatmapCell>(days.Count);
+            var teamHasAnyShift = false;
+
+            foreach (var day in days)
+            {
+                var dayStart = day.Date.AtStartOfDayInZone(tz).ToInstant();
+                var dayEnd = day.Date.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
+
+                var overlapping = shifts.Where(s =>
+                {
+                    var start = s.GetAbsoluteStart(es);
+                    var end = s.GetAbsoluteEnd(es);
+                    return start < dayEnd && end > dayStart;
+                }).ToList();
+
+                var totalSlots = overlapping.Sum(s => s.MaxVolunteers);
+                var filledSlots = overlapping.Sum(s =>
+                    Math.Min(confirmedCounts.TryGetValue(s.Id, out var c) ? c : 0, s.MaxVolunteers));
+
+                if (totalSlots > 0) teamHasAnyShift = true;
+                cells.Add(new CoverageHeatmapCell(day.DayOffset, totalSlots, filledSlots));
+            }
+
+            if (!teamHasAnyShift) continue;
+
+            // For a promoted subteam row, carry its parent's name as the "department"
+            // tag so coordinators see which top-level team it rolls into.
+            var departmentName = team.ParentTeamId is Guid pid && teamLookup.TryGetValue(pid, out var parentTeam)
+                ? parentTeam.Name
+                : team.Name;
+
+            rows.Add(new CoverageHeatmapRotaRow(
+                team.Id,
+                team.Name,
+                departmentName,
+                cells));
+        }
+
+        rows = rows
+            .OrderBy(r => r.DepartmentName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(r => r.RotaName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return new CoverageHeatmap(days, rows);
+    }
+
+    public async Task<IReadOnlyList<ShiftDurationBreakdownRow>> GetShiftDurationBreakdownAsync(
+        Guid eventSettingsId, ShiftPeriod? period)
+    {
+        if (period is null) return Array.Empty<ShiftDurationBreakdownRow>();
+
+        var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
+        if (es is null) return Array.Empty<ShiftDurationBreakdownRow>();
+
+        var allShifts = await _repo.GetVisibleShiftsForEventAsync(eventSettingsId);
+        var periodShifts = allShifts.Where(s => s.GetShiftPeriod(es) == period.Value).ToList();
+
+        var shiftIds = periodShifts.Select(s => s.Id).ToList();
+        var confirmedCounts = await _repo.GetConfirmedSignupCountsByShiftAsync(shiftIds);
+
+        int FilledSlotsOn(Shift s)
+        {
+            var confirmed = confirmedCounts.TryGetValue(s.Id, out var c) ? c : 0;
+            return Math.Min(confirmed, s.MaxVolunteers);
+        }
+
+        // Key: (IsAllDay, whole-hour Duration). All-day shifts collapse into one bucket
+        // regardless of nominal duration; hourly shifts are rounded down to whole hours.
+        var grouped = periodShifts
+            .GroupBy(s => (
+                s.IsAllDay,
+                Hours: s.IsAllDay ? 0 : (int)s.Duration.TotalHours))
+            .Select(g => new ShiftDurationBreakdownRow(
+                IsAllDay: g.Key.IsAllDay,
+                DurationHours: g.Key.Hours,
+                ShiftCount: g.Count(),
+                TotalSlots: g.Sum(s => s.MaxVolunteers),
+                FilledSlots: g.Sum(FilledSlotsOn)))
+            // Full-day on top; hourly shifts sorted ascending by duration.
+            .OrderByDescending(r => r.IsAllDay)
+            .ThenBy(r => r.DurationHours)
+            .ToList();
+
+        return grouped;
     }
 
     // ============================================================

@@ -77,6 +77,9 @@ public class ShiftDashboardController : HumansControllerBase
         // Always fetch the full history; the partial slices client-side on window toggle
         // so the user doesn't incur a full page reload to change the trend range.
         var trends = await _shiftMgmt.GetDashboardTrendsAsync(es.Id, TrendWindow.All, period);
+        var dailyDeptStaffing = await _shiftMgmt.GetDailyDepartmentStaffingAsync(es.Id, period);
+        var shiftDurationBreakdown = await _shiftMgmt.GetShiftDurationBreakdownAsync(es.Id, period);
+        var coverageHeatmap = await _shiftMgmt.GetCoverageHeatmapAsync(es.Id, period);
         var deptTuples = await _shiftMgmt.GetDepartmentsWithRotasAsync(es.Id);
 
         var departments = deptTuples.Select(d => new DepartmentOption
@@ -99,6 +102,9 @@ public class ShiftDashboardController : HumansControllerBase
             Overview = overview,
             CoordinatorActivity = coordinatorActivity,
             Trends = trends,
+            DailyDepartmentStaffing = dailyDeptStaffing,
+            ShiftDurationBreakdown = shiftDurationBreakdown,
+            CoverageHeatmap = coverageHeatmap,
             TrendWindow = window,
             IsDevelopment = _environment.IsDevelopment(),
         };
