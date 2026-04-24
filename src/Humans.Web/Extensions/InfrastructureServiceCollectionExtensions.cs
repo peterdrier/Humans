@@ -22,7 +22,7 @@ public static class InfrastructureServiceCollectionExtensions
 
         // Section-owned registrations. Each section file registers its own
         // repositories, services, jobs, options, and GDPR contributor forwarding.
-        services.AddProfileSection();
+        services.AddProfileSection(configuration);
         services.AddUsersSection();
         services.AddAuthSection();
         services.AddTeamsSection();

@@ -20,6 +20,8 @@ using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Infrastructure.Repositories.Profiles;
 using Humans.Infrastructure.Repositories.Users;
 
@@ -44,6 +46,7 @@ public class ProfileServiceTests : IDisposable
     private readonly ICampaignService _campaignService = Substitute.For<ICampaignService>();
     private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
     private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();
+    private readonly InMemoryProfilePictureStore _profilePictureStore = new();
 
     public ProfileServiceTests()
     {
@@ -68,6 +71,7 @@ public class ProfileServiceTests : IDisposable
             _membershipCalculator, _consentService, _ticketQueryService,
             _applicationDecisionService, _campaignService,
             _roleAssignmentService, _accountDeletionService,
+            _profilePictureStore,
             _clock,
             NullLogger<ProfileService>.Instance);
 
@@ -183,6 +187,45 @@ public class ProfileServiceTests : IDisposable
         var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.ProfilePictureData.Should().BeNull();
         profile.ProfilePictureContentType.Should().BeNull();
+    }
+
+    // --- Profile picture dual-write (phase 1 of issue nobodies-collective/Humans#527) ---
+
+    [HumansFact]
+    public async Task SaveProfileAsync_UploadsProfilePicture_DualWritesToDbAndFilesystem()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(userId);
+        var payload = new byte[] { 0x10, 0x20, 0x30 };
+        var request = MakeRequest(pictureData: payload, pictureContentType: "image/jpeg");
+
+        await _service.SaveProfileAsync(userId, "Test", request, "en");
+
+        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        // DB was written
+        profile.ProfilePictureData.Should().BeEquivalentTo(payload);
+        profile.ProfilePictureContentType.Should().Be("image/jpeg");
+        // Filesystem was written with the same bytes, keyed by profile id
+        _profilePictureStore.Files.Should().ContainKey(profile.Id);
+        _profilePictureStore.Files[profile.Id].Data.Should().BeEquivalentTo(payload);
+        _profilePictureStore.Files[profile.Id].ContentType.Should().Be("image/jpeg");
+    }
+
+    [HumansFact]
+    public async Task SaveProfileAsync_RemoveProfilePicture_DeletesFromDbAndFilesystem()
+    {
+        var userId = Guid.NewGuid();
+        var profileId = await SeedUserWithProfileAsync(userId, withPicture: true);
+        // Pre-seed the filesystem side so we can assert deletion.
+        await _profilePictureStore.WriteAsync(profileId, new byte[] { 1 }, "image/jpeg");
+
+        var request = MakeRequest(removeProfilePicture: true);
+        await _service.SaveProfileAsync(userId, "Test", request, "en");
+
+        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        profile.ProfilePictureData.Should().BeNull();
+        profile.ProfilePictureContentType.Should().BeNull();
+        _profilePictureStore.Files.Should().NotContainKey(profile.Id);
     }
 
     [HumansFact]
@@ -1407,6 +1450,7 @@ public class ProfileServiceTests : IDisposable
         _membershipCalculator, _consentService, _ticketQueryService,
         _applicationDecisionService, _campaignService,
         _roleAssignmentService, _accountDeletionService,
+        _profilePictureStore,
         _clock,
         NullLogger<ProfileService>.Instance);
 
@@ -1429,7 +1473,7 @@ public class ProfileServiceTests : IDisposable
         return user;
     }
 
-    private async Task SeedUserWithProfileAsync(Guid userId,
+    private async Task<Guid> SeedUserWithProfileAsync(Guid userId,
         bool isApproved = false, bool withPicture = false)
     {
         await SeedUserAsync(userId);
@@ -1451,6 +1495,7 @@ public class ProfileServiceTests : IDisposable
         }
         _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync();
+        return profile.Id;
     }
 
     private FullProfile MakeFullProfile(Profile profile, Guid userId, string? displayName = null)
@@ -1484,6 +1529,7 @@ public class ProfileServiceTests : IDisposable
         string burnerName = "TestBurner", string firstName = "Test", string lastName = "User",
         int? birthdayMonth = null, int? birthdayDay = null,
         bool removeProfilePicture = false,
+        byte[]? pictureData = null, string? pictureContentType = null,
         MembershipTier? selectedTier = null, string? applicationMotivation = null,
         string? city = null)
     {
@@ -1494,7 +1540,7 @@ public class ProfileServiceTests : IDisposable
             BirthdayMonth: birthdayMonth, BirthdayDay: birthdayDay,
             EmergencyContactName: null, EmergencyContactPhone: null, EmergencyContactRelationship: null,
             NoPriorBurnExperience: false,
-            ProfilePictureData: null, ProfilePictureContentType: null,
+            ProfilePictureData: pictureData, ProfilePictureContentType: pictureContentType,
             RemoveProfilePicture: removeProfilePicture,
             SelectedTier: selectedTier, ApplicationMotivation: applicationMotivation,
             ApplicationAdditionalInfo: null,

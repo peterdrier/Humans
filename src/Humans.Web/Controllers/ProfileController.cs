@@ -70,6 +70,7 @@ public class ProfileController : HumansControllerBase
     private readonly IAuthorizationService _authorizationService;
     private readonly IUserService _userService;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IProfilePictureStore _profilePictureStore;
 
     private const int MaxProfilePictureUploadBytes = 20 * 1024 * 1024; // 20MB upload limit
     private const int MaxGooglePhotoDownloadBytes = 20 * 1024 * 1024; // 20MB hard ceiling for Google avatar fetch
@@ -121,7 +122,8 @@ public class ProfileController : HumansControllerBase
         IClock clock,
         IAuthorizationService authorizationService,
         IUserService userService,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        IProfilePictureStore profilePictureStore)
         : base(userManager)
     {
         _userManager = userManager;
@@ -149,6 +151,7 @@ public class ProfileController : HumansControllerBase
         _authorizationService = authorizationService;
         _userService = userService;
         _httpClientFactory = httpClientFactory;
+        _profilePictureStore = profilePictureStore;
     }
 
     // ─── Own Profile (Me) ────────────────────────────────────────────
@@ -1019,10 +1022,36 @@ public class ProfileController : HumansControllerBase
     [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client)]
     public async Task<IActionResult> Picture(Guid id, CancellationToken ct)
     {
+        // Phase 1 of issue nobodies-collective/Humans#527: try filesystem
+        // first, fall back to DB, migrate-to-filesystem on DB hit.
+        var fsHit = await _profilePictureStore.TryReadAsync(id, ct);
+        if (fsHit is not null)
+        {
+            _logger.LogDebug(
+                "Profile picture {ProfileId} served from filesystem", id);
+            return File(fsHit.Value.Data, fsHit.Value.ContentType);
+        }
+
         var (data, contentType) = await _profileService.GetProfilePictureAsync(id, ct);
 
         if (data is null || string.IsNullOrEmpty(contentType))
             return NotFound();
+
+        // Best-effort migration to filesystem so subsequent requests hit
+        // the fast path. Never fail the current request on migration errors.
+        try
+        {
+            await _profilePictureStore.WriteAsync(id, data, contentType, ct);
+            _logger.LogInformation(
+                "Profile picture {ProfileId} served from DB fallback; migrated to filesystem",
+                id);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex,
+                "Profile picture {ProfileId} served from DB fallback; migration to filesystem failed",
+                id);
+        }
 
         return File(data, contentType);
     }

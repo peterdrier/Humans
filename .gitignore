@@ -123,6 +123,10 @@ docker-compose.override.yml
 # Uploads (bind-mounted volume)
 uploads/
 
+# Profile pictures filesystem store (bind-mounted volume in prod;
+# issue nobodies-collective/Humans#527).
+App_Data/
+
 .gemini/
 .superpowers/
 gha-creds-*.json

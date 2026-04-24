@@ -46,6 +46,12 @@ RUN groupadd -r appuser && useradd -r -g appuser -s /sbin/nologin appuser
 # Copy published files
 COPY --from=build /app/publish .
 
+# Ensure App_Data exists (profile picture filesystem store — phase 1 of
+# nobodies-collective/Humans#527). In production this directory must be a
+# persistent volume (Coolify/preview); otherwise pictures migrated from the
+# DB fallback are lost on container restart.
+RUN mkdir -p /app/App_Data/profile-pictures
+
 # Set ownership
 RUN chown -R appuser:appuser /app
 
