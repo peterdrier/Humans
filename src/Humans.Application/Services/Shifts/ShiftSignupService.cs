@@ -890,7 +890,9 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
             {
                 var tz = DateTimeZoneProviders.Tzdb[existingEs.TimeZoneId];
                 var dateStr = existingStart.InZone(tz).ToString("ddd MMM d HH:mm", null);
+#pragma warning disable CS0618 // Rota.Team cross-domain nav, stitched in memory by ShiftManagementService
                 var teamName = existing.Shift.Rota.Team?.Name ?? "Unknown";
+#pragma warning restore CS0618
                 return $"Time conflict with '{existing.Shift.Rota.Name}' ({teamName}, {dateStr}).";
             }
         }

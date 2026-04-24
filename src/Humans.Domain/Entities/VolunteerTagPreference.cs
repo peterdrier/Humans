@@ -24,6 +24,7 @@ public class VolunteerTagPreference
     /// <summary>
     /// Navigation property to the volunteer.
     /// </summary>
+    [Obsolete("Cross-domain nav; resolve via IUserService.GetByIdAsync(UserId) instead. See design-rules §6c.")]
     public User User { get; set; } = null!;
 
     /// <summary>

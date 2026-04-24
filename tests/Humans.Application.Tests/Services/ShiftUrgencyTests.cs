@@ -232,7 +232,9 @@ public class ShiftUrgencyTests
 
     private static UrgentShift MakeUrgentShift(int dayOffset, double score, int remaining)
     {
+#pragma warning disable CS0618 // Rota.Team cross-domain nav — aggregate constructed inline for test fixture
         var rota = new Rota { Priority = ShiftPriority.Normal, Team = new Team { Name = "Test" } };
+#pragma warning restore CS0618
         var shift = new Shift
         {
             Id = Guid.NewGuid(),

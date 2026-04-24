@@ -326,6 +326,7 @@ public class ShiftsController : HumansControllerBase
 
         foreach (var signup in signups)
         {
+#pragma warning disable CS0618 // Rota.Team cross-domain nav, stitched in memory by ShiftManagementService
             if (signup.Shift?.Rota?.Team is null || es is null)
             {
                 _logger.LogWarning(
@@ -342,6 +343,7 @@ public class ShiftsController : HumansControllerBase
                 AbsoluteStart = signup.Shift.GetAbsoluteStart(es),
                 AbsoluteEnd = signup.Shift.GetAbsoluteEnd(es)
             };
+#pragma warning restore CS0618
 
             switch (signup.Status)
             {

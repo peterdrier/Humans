@@ -25,16 +25,22 @@ public class ShiftSignupConfiguration : IEntityTypeConfiguration<ShiftSignup>
         builder.HasIndex(d => d.ShiftId);
         builder.HasIndex(d => new { d.ShiftId, d.Status });
 
+        // EF needs the nav ref to configure cross-section FK + cascade behavior.
+        // The User/EnrolledByUser/ReviewedByUser navs are [Obsolete] for the
+        // Application layer (design-rules §6c) — suppress only for this wiring.
+#pragma warning disable CS0618
         builder.HasOne(d => d.User)
             .WithMany()
             .HasForeignKey(d => d.UserId)
             .OnDelete(DeleteBehavior.Restrict);
+#pragma warning restore CS0618
 
         builder.HasOne(d => d.Shift)
             .WithMany(s => s.ShiftSignups)
             .HasForeignKey(d => d.ShiftId)
             .OnDelete(DeleteBehavior.Restrict);
 
+#pragma warning disable CS0618
         builder.HasOne(d => d.EnrolledByUser)
             .WithMany()
             .HasForeignKey(d => d.EnrolledByUserId)
@@ -44,5 +50,6 @@ public class ShiftSignupConfiguration : IEntityTypeConfiguration<ShiftSignup>
             .WithMany()
             .HasForeignKey(d => d.ReviewedByUserId)
             .OnDelete(DeleteBehavior.SetNull);
+#pragma warning restore CS0618
     }
 }

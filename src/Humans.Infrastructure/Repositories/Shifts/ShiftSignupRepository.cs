@@ -45,6 +45,15 @@ public sealed class ShiftSignupRepository : IShiftSignupRepository
                            (s.Status == SignupStatus.Pending || s.Status == SignupStatus.Confirmed),
                 ct);
 
+    // Cross-domain .Include(Rota.Team) / .Include(ShiftSignup.User) / .Include(ShiftSignup.ReviewedByUser)
+    // are retained here for now as a pragmatic shortcut inside the Shifts repository
+    // (design-rules §6 forbids cross-domain includes in the Application layer — which
+    // is already clean — but the repository still eager-loads these for view compatibility).
+    // The nav props are [Obsolete] for Application-layer consumers (§6c); the suppressions
+    // below scope the warning to just these legacy includes. Retiring them lands in the
+    // wider User-entity nav-strip follow-up.
+#pragma warning disable CS0618
+
     public async Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(
         Guid userId, Guid? eventSettingsId = null, CancellationToken ct = default)
     {
@@ -100,6 +109,7 @@ public sealed class ShiftSignupRepository : IShiftSignupRepository
 
         return await query.ToListAsync(ct);
     }
+#pragma warning restore CS0618
 
     public Task<ShiftSignup?> GetByBlockIdFirstAsync(Guid signupBlockId, CancellationToken ct = default) =>
         _dbContext.ShiftSignups
@@ -107,6 +117,7 @@ public sealed class ShiftSignupRepository : IShiftSignupRepository
             .Include(s => s.Shift).ThenInclude(s => s.Rota)
             .FirstOrDefaultAsync(s => s.SignupBlockId == signupBlockId, ct);
 
+#pragma warning disable CS0618 // Cross-domain .Include(User) / .Include(ReviewedByUser) — see file header note
     public async Task<IReadOnlyList<ShiftSignup>> GetByShiftAsync(Guid shiftId, CancellationToken ct = default) =>
         await _dbContext.ShiftSignups
             .AsNoTracking()
@@ -127,6 +138,7 @@ public sealed class ShiftSignupRepository : IShiftSignupRepository
             .Where(s => s.UserId == userId && s.Status == SignupStatus.NoShow)
             .OrderByDescending(s => s.ReviewedAt)
             .ToListAsync(ct);
+#pragma warning restore CS0618
 
     public async Task<HashSet<Guid>> GetActiveShiftIdsForUserAsync(
         Guid userId, IReadOnlyCollection<Guid> shiftIds, CancellationToken ct = default)
@@ -182,6 +194,7 @@ public sealed class ShiftSignupRepository : IShiftSignupRepository
     // Reads — within-section cross-service (pending #541a / #541c)
     // ============================================================
 
+#pragma warning disable CS0618 // Cross-domain .Include(Rota.Team) — see file header note
     public Task<Shift?> GetShiftWithContextAsync(Guid shiftId, CancellationToken ct = default) =>
         _dbContext.Shifts
             .AsNoTracking()
@@ -189,6 +202,7 @@ public sealed class ShiftSignupRepository : IShiftSignupRepository
             .Include(s => s.Rota).ThenInclude(r => r.Team)
             .Include(s => s.ShiftSignups)
             .FirstOrDefaultAsync(s => s.Id == shiftId, ct);
+#pragma warning restore CS0618
 
     public Task<Rota?> GetRotaWithShiftsAsync(Guid rotaId, CancellationToken ct = default) =>
         _dbContext.Rotas

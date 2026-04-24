@@ -83,6 +83,7 @@ public class Rota
     /// <summary>
     /// Navigation property to the department (parent team).
     /// </summary>
+    [Obsolete("Cross-domain nav; resolve via ITeamService.GetTeamByIdAsync(TeamId) instead. See design-rules §6c.")]
     public Team Team { get; set; } = null!;
 
     /// <summary>

@@ -146,11 +146,13 @@ public class DashboardService : IDashboardService
                             continue;
                         }
 
+#pragma warning disable CS0618 // Rota.Team cross-domain nav, stitched in memory by ShiftSignupService
                         var item = new DashboardSignup(
                             Signup: s,
                             DepartmentName: s.Shift.Rota?.Team?.Name ?? "Unknown",
                             AbsoluteStart: s.Shift.GetAbsoluteStart(activeEvent),
                             AbsoluteEnd: s.Shift.GetAbsoluteEnd(activeEvent));
+#pragma warning restore CS0618
                         if (item.AbsoluteEnd > now)
                             nextShifts.Add(item);
                     }

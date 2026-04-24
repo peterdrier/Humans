@@ -149,6 +149,7 @@ public class ShiftSignupServiceEarlyEntryTests : IDisposable
         };
         _dbContext.Teams.Add(team);
 
+#pragma warning disable CS0618 // Rota.Team cross-domain nav — aggregate constructed inline for test fixture
         var rota = new Rota
         {
             Id = Guid.NewGuid(),
@@ -163,6 +164,7 @@ public class ShiftSignupServiceEarlyEntryTests : IDisposable
             EventSettings = eventSettings,
             Team = team
         };
+#pragma warning restore CS0618
         _dbContext.Rotas.Add(rota);
 
         return (eventSettings, rota, team);

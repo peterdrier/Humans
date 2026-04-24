@@ -75,6 +75,7 @@ public class ShiftSignup
     /// <summary>
     /// Navigation property to the volunteer.
     /// </summary>
+    [Obsolete("Cross-domain nav; resolve via IUserService.GetByIdAsync(UserId) instead. See design-rules §6c.")]
     public User User { get; set; } = null!;
 
     /// <summary>
@@ -85,11 +86,13 @@ public class ShiftSignup
     /// <summary>
     /// Navigation property to the user who enrolled the volunteer.
     /// </summary>
+    [Obsolete("Cross-domain nav; resolve via IUserService.GetByIdAsync(EnrolledByUserId) instead. See design-rules §6c.")]
     public User? EnrolledByUser { get; set; }
 
     /// <summary>
     /// Navigation property to the user who reviewed the signup.
     /// </summary>
+    [Obsolete("Cross-domain nav; resolve via IUserService.GetByIdAsync(ReviewedByUserId) instead. See design-rules §6c.")]
     public User? ReviewedByUser { get; set; }
 
     // State transition methods

@@ -1,7 +1,11 @@
 @model Humans.Web.Models.ShiftAdminViewModel
 @using Humans.Web.Controllers
+@* ShiftSignup.User is an Obsolete cross-domain nav (§6c); ShiftManagementService
+   populates it in-memory (§6b) before the view renders. Retired with the wider
+   User-entity nav-strip follow-up. *@
 
 @{
+#pragma warning disable CS0618
     ViewData["Title"] = $"Shifts - {Model.Department.Name}";
     var searchUrl = Url.Action(nameof(ShiftAdminController.SearchVolunteers), "ShiftAdmin", new { slug = Model.Department.Slug });
     var voluntellUrl = Url.Action(nameof(ShiftAdminController.Voluntell), "ShiftAdmin", new { slug = Model.Department.Slug });

@@ -74,5 +74,6 @@ public class VolunteerEventProfile
     public Instant UpdatedAt { get; set; }
 
     // Navigation
+    [Obsolete("Cross-domain nav; resolve via IUserService.GetByIdAsync(UserId) instead. See design-rules §6c.")]
     public User User { get; set; } = null!;
 }
