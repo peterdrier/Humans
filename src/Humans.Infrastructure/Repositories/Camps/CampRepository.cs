@@ -818,4 +818,25 @@ public sealed class CampRepository : ICampRepository
             .Select(m => m.UserId)
             .ToListAsync(ct);
     }
+
+    public async Task<int> CountPendingMembershipsForLeadAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var leadCampIds = ctx.CampLeads
+            .AsNoTracking()
+            .Where(l => l.UserId == userId && l.LeftAt == null)
+            .Select(l => l.CampId);
+
+        // Only count requests for seasons that are actually open (Active or Full).
+        // If a season is rejected/withdrawn, the requesters have already been
+        // notified; the row stays for audit but shouldn't nag the lead.
+        return await ctx.CampMembers
+            .AsNoTracking()
+            .Where(m => m.Status == CampMemberStatus.Pending
+                && leadCampIds.Contains(m.CampSeason.CampId)
+                && (m.CampSeason.Status == CampSeasonStatus.Active
+                    || m.CampSeason.Status == CampSeasonStatus.Full))
+            .CountAsync(ct);
+    }
 }

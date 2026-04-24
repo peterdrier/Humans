@@ -409,7 +409,8 @@ public class CampController : HumansCampControllerBase
                 UserId = m.UserId,
                 DisplayName = m.DisplayName,
                 RequestedAt = m.RequestedAt,
-                ConfirmedAt = m.ConfirmedAt
+                ConfirmedAt = m.ConfirmedAt,
+                IsLead = m.IsLead
             })
             .ToList();
         viewModel.ActiveMembers = members.Active
@@ -419,7 +420,8 @@ public class CampController : HumansCampControllerBase
                 UserId = m.UserId,
                 DisplayName = m.DisplayName,
                 RequestedAt = m.RequestedAt,
-                ConfirmedAt = m.ConfirmedAt
+                ConfirmedAt = m.ConfirmedAt,
+                IsLead = m.IsLead
             })
             .ToList();
     }

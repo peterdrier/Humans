@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Notifications;
@@ -66,6 +67,7 @@ public class CampServiceTests : IDisposable
             Substitute.For<ISystemTeamSync>(),
             _imageStorage,
             _notificationEmitter,
+            Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             _clock,
             new MemoryCache(new MemoryCacheOptions()),
             NullLogger<CampService>.Instance);
@@ -869,6 +871,77 @@ public class CampServiceTests : IDisposable
         var state = await _service.GetMembershipStateForCampAsync(camp.Id, Guid.NewGuid());
 
         state.Status.Should().Be(CampMemberStatusSummary.NoOpenSeason);
+    }
+
+    [Fact]
+    public async Task GetPendingMembershipCountForLeadAsync_CountsPendingOnActiveSeasonsForLeadsCamps()
+    {
+        await SeedSettingsAsync();
+        var leadUserId = Guid.NewGuid();
+        await SeedUserAsync(leadUserId, "Lead Larry");
+        var camp = await _service.CreateCampAsync(
+            leadUserId, "Lead Camp", "lc@camp.com", "+34600000020",
+            null, null, false, 1, MakeSeasonData(), null, 2026);
+        await ApproveLatestSeasonAsync(camp.Id);
+
+        // Two humans request; count should be 2.
+        var alice = Guid.NewGuid();
+        var bob = Guid.NewGuid();
+        await SeedUserAsync(alice, "Alice");
+        await SeedUserAsync(bob, "Bob");
+        await _service.RequestCampMembershipAsync(camp.Id, alice);
+        await _service.RequestCampMembershipAsync(camp.Id, bob);
+
+        (await _service.GetPendingMembershipCountForLeadAsync(leadUserId)).Should().Be(2);
+
+        // A non-lead sees 0.
+        (await _service.GetPendingMembershipCountForLeadAsync(Guid.NewGuid())).Should().Be(0);
+
+        // Approve one; count drops to 1.
+        var aliceReq = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.UserId == alice);
+        await _service.ApproveCampMemberAsync(camp.Id, aliceReq.Id, leadUserId);
+        (await _service.GetPendingMembershipCountForLeadAsync(leadUserId)).Should().Be(1);
+
+        // Withdraw the season; count drops to 0 (pending rows remain, but meter
+        // filters to Active/Full seasons only).
+        var season = await _dbContext.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id);
+        await _service.WithdrawSeasonAsync(season.Id);
+        (await _service.GetPendingMembershipCountForLeadAsync(leadUserId)).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GetCampMembersAsync_IncludesLeadsAsActiveWithLeadBadge()
+    {
+        await SeedSettingsAsync();
+        var leadUserId = Guid.NewGuid();
+        await SeedUserAsync(leadUserId, "Lead Larry");
+        // Use the lead as the creator so they're registered as a CampLead.
+        var camp = await _service.CreateCampAsync(
+            leadUserId, "Lead Camp", "lc@camp.com", "+34600000010",
+            null, null, false, 1, MakeSeasonData(), null, 2026);
+        await ApproveLatestSeasonAsync(camp.Id);
+        var season = await _dbContext.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id);
+
+        // A separate human requests and is approved.
+        var memberUserId = Guid.NewGuid();
+        await SeedUserAsync(memberUserId, "Member Mary");
+        var req = await _service.RequestCampMembershipAsync(camp.Id, memberUserId);
+        await _service.ApproveCampMemberAsync(camp.Id, req.CampMemberId, Guid.NewGuid());
+
+        var members = await _service.GetCampMembersAsync(season.Id);
+
+        // Lead appears without a CampMember row but with IsLead=true.
+        var leadRow = members.Active.Single(r => r.UserId == leadUserId);
+        leadRow.IsLead.Should().BeTrue();
+        leadRow.CampMemberId.Should().Be(Guid.Empty);
+
+        // Approved member appears normally.
+        var memberRow = members.Active.Single(r => r.UserId == memberUserId);
+        memberRow.IsLead.Should().BeFalse();
+        memberRow.CampMemberId.Should().Be(req.CampMemberId);
+
+        // Leads sort to the top.
+        members.Active[0].IsLead.Should().BeTrue();
     }
 
     [Fact]

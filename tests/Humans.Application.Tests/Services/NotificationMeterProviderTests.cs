@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Profiles;
@@ -23,6 +24,7 @@ public class NotificationMeterProviderTests : IDisposable
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly ITicketSyncService _ticketSyncService = Substitute.For<ITicketSyncService>();
     private readonly IApplicationDecisionService _applicationDecisionService = Substitute.For<IApplicationDecisionService>();
+    private readonly ICampService _campService = Substitute.For<ICampService>();
     private readonly IMemoryCache _cache;
     private readonly NotificationMeterProvider _provider;
 
@@ -36,6 +38,7 @@ public class NotificationMeterProviderTests : IDisposable
             _teamService,
             _ticketSyncService,
             _applicationDecisionService,
+            _campService,
             _cache,
             NullLogger<NotificationMeterProvider>.Instance);
     }

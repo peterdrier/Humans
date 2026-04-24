@@ -171,6 +171,15 @@ public interface ICampService
     /// </summary>
     Task<IReadOnlyList<CampMembershipSummary>> GetCampMembershipsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Total number of Pending membership requests across all camps where the
+    /// user is an active lead. Used by the notification meter to show a single
+    /// "N people want to join your camp" counter instead of emitting a stored
+    /// notification per request.
+    /// </summary>
+    Task<int> GetPendingMembershipCountForLeadAsync(
+        Guid userId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -225,7 +234,8 @@ public record CampMemberRow(
     Guid UserId,
     string DisplayName,
     Instant RequestedAt,
-    Instant? ConfirmedAt);
+    Instant? ConfirmedAt,
+    bool IsLead);
 
 public record CampMembershipSummary(
     Guid CampMemberId,

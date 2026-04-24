@@ -160,6 +160,7 @@ public class CampMemberRowViewModel
     public string DisplayName { get; set; } = string.Empty;
     public NodaTime.Instant RequestedAt { get; set; }
     public NodaTime.Instant? ConfirmedAt { get; set; }
+    public bool IsLead { get; set; }
 }
 
 public class CampImageViewModel

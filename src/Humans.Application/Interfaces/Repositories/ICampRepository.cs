@@ -427,6 +427,13 @@ public interface ICampRepository
     /// </summary>
     Task<IReadOnlyList<Guid>> GetPendingRequesterUserIdsForSeasonAsync(
         Guid campSeasonId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Total count of Pending membership rows across all seasons belonging to
+    /// camps where <paramref name="userId"/> is an active lead. Read-only.
+    /// </summary>
+    Task<int> CountPendingMembershipsForLeadAsync(
+        Guid userId, CancellationToken ct = default);
 }
 
 /// <summary>

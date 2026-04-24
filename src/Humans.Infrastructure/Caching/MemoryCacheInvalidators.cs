@@ -33,6 +33,13 @@ public sealed class VotingBadgeCacheInvalidator : IVotingBadgeCacheInvalidator
     public void Invalidate(Guid userId) => _cache.InvalidateVotingBadge(userId);
 }
 
+public sealed class CampLeadJoinRequestsBadgeCacheInvalidator : ICampLeadJoinRequestsBadgeCacheInvalidator
+{
+    private readonly IMemoryCache _cache;
+    public CampLeadJoinRequestsBadgeCacheInvalidator(IMemoryCache cache) => _cache = cache;
+    public void Invalidate(Guid userId) => _cache.InvalidateCampLeadJoinRequestsBadge(userId);
+}
+
 public sealed class RoleAssignmentClaimsCacheInvalidator : IRoleAssignmentClaimsCacheInvalidator
 {
     private readonly IMemoryCache _cache;

@@ -463,13 +463,22 @@
                         @foreach (var active in Model.ActiveMembers)
                         {
                             <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
-                                <human-link user-id="@active.UserId" display-name="@active.DisplayName" show-popover="true" />
-                                <form asp-action="RemoveMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@active.CampMemberId" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove" data-confirm="Remove this human?">
-                                        <i class="fa-solid fa-user-minus"></i>
-                                    </button>
-                                </form>
+                                <div class="d-flex align-items-center gap-2">
+                                    <human-link user-id="@active.UserId" display-name="@active.DisplayName" show-popover="true" />
+                                    @if (active.IsLead)
+                                    {
+                                        <span class="badge bg-info text-dark" title="Camp lead">Lead</span>
+                                    }
+                                </div>
+                                @if (!active.IsLead && active.CampMemberId != Guid.Empty)
+                                {
+                                    <form asp-action="RemoveMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@active.CampMemberId" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove" data-confirm="Remove this human?">
+                                            <i class="fa-solid fa-user-minus"></i>
+                                        </button>
+                                    </form>
+                                }
                             </li>
                         }
                     </ul>

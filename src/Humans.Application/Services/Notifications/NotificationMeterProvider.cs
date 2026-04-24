@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Humans.Application.DTOs;
+using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;
@@ -49,6 +50,7 @@ public sealed class NotificationMeterProvider : INotificationMeterProvider
     private readonly ITeamService _teamService;
     private readonly ITicketSyncService _ticketSyncService;
     private readonly IApplicationDecisionService _applicationDecisionService;
+    private readonly ICampService _campService;
     private readonly IMemoryCache _cache;
     private readonly ILogger<NotificationMeterProvider> _logger;
 
@@ -59,6 +61,7 @@ public sealed class NotificationMeterProvider : INotificationMeterProvider
         ITeamService teamService,
         ITicketSyncService ticketSyncService,
         IApplicationDecisionService applicationDecisionService,
+        ICampService campService,
         IMemoryCache cache,
         ILogger<NotificationMeterProvider> logger)
     {
@@ -68,6 +71,7 @@ public sealed class NotificationMeterProvider : INotificationMeterProvider
         _teamService = teamService;
         _ticketSyncService = ticketSyncService;
         _applicationDecisionService = applicationDecisionService;
+        _campService = campService;
         _cache = cache;
         _logger = logger;
     }
@@ -176,7 +180,48 @@ public sealed class NotificationMeterProvider : INotificationMeterProvider
             });
         }
 
+        // Pending camp membership requests — per-lead (nobodies-collective#488)
+        // Shown as a single counter ("N people want to join your camp") instead of
+        // emitting a stored notification per request.
+        {
+            var userIdClaim = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (Guid.TryParse(userIdClaim, out var leadUserId))
+            {
+                var campLeadRequestsPending = await GetPerCampLeadPendingCountAsync(leadUserId, cancellationToken);
+                if (campLeadRequestsPending > 0)
+                {
+                    meters.Add(new NotificationMeter
+                    {
+                        Title = campLeadRequestsPending == 1
+                            ? "1 human wants to join your camp"
+                            : $"{campLeadRequestsPending} humans want to join your camp",
+                        Count = campLeadRequestsPending,
+                        ActionUrl = "/Barrios",
+                        Priority = 3,
+                    });
+                }
+            }
+        }
+
         return meters;
+    }
+
+    private async Task<int> GetPerCampLeadPendingCountAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var cacheKey = CacheKeys.CampLeadJoinRequestsBadge(userId);
+        return await _cache.GetOrCreateAsync(cacheKey, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
+            try
+            {
+                return await _campService.GetPendingMembershipCountForLeadAsync(userId, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to compute camp lead pending-request count for {UserId}", userId);
+                return 0;
+            }
+        });
     }
 
     private async Task<MeterCounts> GetCachedCountsAsync(CancellationToken cancellationToken)
