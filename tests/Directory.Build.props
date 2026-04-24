@@ -7,14 +7,32 @@
   <PropertyGroup>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+
+    <!--
+      xUnit1051 is a new xunit v3 analyzer that flags every call to a
+      CancellationToken-accepting method which isn't passing
+      TestContext.Current.CancellationToken. It's advisory, not correctness —
+      most of our tests pre-date the analyzer and pass CancellationToken.None
+      (or omit it) deliberately. Addressing ~1700 call sites is a separate
+      clean-up; suppress here so TreatWarningsAsErrors doesn't block the v3
+      upgrade. File a follow-up if/when we want to enable it.
+    -->
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
   </PropertyGroup>
+
+  <!-- Ship the shared xunit.runner.json next to each test project's output.
+       Keeps longRunningTestSeconds = 1 consistent across Domain / Application /
+       Integration tests without per-project duplicates. -->
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)xunit.runner.json" Link="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 
   <!-- Common test packages -->
   <ItemGroup>
     <PackageReference Include="AwesomeAssertions" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="NSubstitute" />
-    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.v3" />
     <PackageReference Include="coverlet.collector">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

@@ -28,7 +28,12 @@ jobs:
       run: dotnet build Humans.slnx --no-restore --configuration Release
 
     - name: Test
-      run: dotnet test Humans.slnx --no-build --configuration Release --verbosity quiet --logger "trx;LogFileName=test-results.trx" --logger "console;verbosity=minimal" --filter "FullyQualifiedName!~Integration"
+      # --blame-hang-timeout 2m is the CI hang guard: if the test host stalls
+      # for 2+ minutes we dump and fail the run rather than burning the whole
+      # job budget on a silent hang. See nobodies-collective/Humans#586 — PR
+      # peterdrier/Humans#306 shipped a DI cycle that silently stalled the
+      # test host for 8+ minutes before this guard existed.
+      run: dotnet test Humans.slnx --no-build --configuration Release --verbosity quiet --blame-hang-timeout 2m --logger "trx;LogFileName=test-results.trx" --logger "console;verbosity=minimal" --filter "FullyQualifiedName!~Integration"
 
     - name: Upload test results
       uses: actions/upload-artifact@v4

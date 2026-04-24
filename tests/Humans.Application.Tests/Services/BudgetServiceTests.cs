@@ -44,9 +44,10 @@ public class BudgetServiceTests : IAsyncLifetime
             NullLogger<BudgetServiceImpl>.Instance);
     }
 
-    public Task InitializeAsync() => Task.CompletedTask;
+    // xUnit v3 IAsyncLifetime: both methods return ValueTask.
+    public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await _provider.DisposeAsync();
     }
