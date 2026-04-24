@@ -54,7 +54,7 @@
                             @if (!string.IsNullOrEmpty(row.DepartmentSlug))
                             {
                                 <a asp-controller="Team" asp-action="Details" asp-route-slug="@row.DepartmentSlug"
-                                   onclick="event.stopPropagation();">@row.DepartmentName</a>
+                                   data-dashboard-team-link="true">@row.DepartmentName</a>
                             }
                             else
                             {
@@ -175,3 +175,14 @@
         </table>
     </div>
 </div>
+
+<script>
+    // Team-page links inside a clickable-collapse row must not trigger the row's
+    // data-bs-toggle="collapse" behaviour — stop propagation so the link navigates
+    // cleanly without also opening/closing the drill-down.
+    (function () {
+        document.querySelectorAll('[data-dashboard-team-link="true"]').forEach(function (el) {
+            el.addEventListener('click', function (e) { e.stopPropagation(); });
+        });
+    })();
+</script>
