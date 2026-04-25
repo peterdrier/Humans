@@ -1566,10 +1566,6 @@ tr[data-href] {
     flex: 0 0 auto;
 }
 
-.calendar-banner-cue-muted {
-    color: var(--h-sepia, #8b7355);
-}
-
 .calendar-banner-link {
     color: inherit;
     text-decoration: none;
