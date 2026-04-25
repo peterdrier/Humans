@@ -52,7 +52,7 @@ No new endpoints needed. The import JS fetches `GET /api/city-planning/state` (t
 
 Fetching at import time (rather than page load) ensures the list is always fresh.
 
-All polygon writes go through the existing `PUT /api/city-planning/camp-polygons/{campSeasonId}` endpoint with `note: "Imported YYYY-MM-DD"` set in the request body.
+All polygon writes go through the existing `PUT /api/city-planning/camp-polygons/{campSeasonId}` endpoint with `note: "Imported YYYY-MM-DD HH:mm"` set in the request body.
 
 ---
 
