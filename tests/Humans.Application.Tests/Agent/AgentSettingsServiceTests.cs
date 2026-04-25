@@ -12,7 +12,7 @@ namespace Humans.Application.Tests.Agent;
 
 public class AgentSettingsServiceTests
 {
-    [Fact]
+    [HumansFact]
     public async Task Updating_persists_to_db_and_refreshes_store()
     {
         await using var db = CreateDb();

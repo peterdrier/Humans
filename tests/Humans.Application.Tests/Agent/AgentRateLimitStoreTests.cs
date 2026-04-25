@@ -7,7 +7,7 @@ namespace Humans.Application.Tests.Agent;
 
 public class AgentRateLimitStoreTests
 {
-    [Fact]
+    [HumansFact]
     public void Incrementing_accumulates_for_the_same_user_and_day()
     {
         var store = new AgentRateLimitStore();
@@ -22,7 +22,7 @@ public class AgentRateLimitStoreTests
         snapshot.TokensToday.Should().Be(1200);
     }
 
-    [Fact]
+    [HumansFact]
     public void Different_days_are_independent()
     {
         var store = new AgentRateLimitStore();

@@ -9,7 +9,7 @@ public sealed class AgentSectionDocReader
         new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "Onboarding", "Teams", "LegalAndConsent", "Governance", "Shifts",
-            "Tickets", "Profiles", "Admin", "Budget", "Camps",
+            "Tickets", "Profiles", "Auth", "Budget", "Camps",
             "CityPlanning", "Campaigns", "Feedback", "GoogleIntegration"
         };
 

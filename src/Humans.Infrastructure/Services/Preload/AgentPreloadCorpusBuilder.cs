@@ -8,10 +8,10 @@ namespace Humans.Infrastructure.Services.Preload;
 public sealed class AgentPreloadCorpusBuilder : IAgentPreloadCorpusBuilder
 {
     private static readonly IReadOnlyList<string> Tier1Sections =
-        ["Onboarding", "Teams", "LegalAndConsent", "Governance", "Shifts", "Tickets", "Profiles", "Admin"];
+        ["Onboarding", "Teams", "LegalAndConsent", "Governance", "Shifts", "Tickets", "Profiles", "Auth"];
 
     private static readonly IReadOnlyList<string> Tier2Sections =
-        ["Onboarding", "Teams", "LegalAndConsent", "Governance", "Shifts", "Tickets", "Profiles", "Admin",
+        ["Onboarding", "Teams", "LegalAndConsent", "Governance", "Shifts", "Tickets", "Profiles", "Auth",
          "Budget", "Camps", "CityPlanning", "Campaigns", "Feedback", "GoogleIntegration"];
 
     private readonly AgentSectionDocReader _sections;

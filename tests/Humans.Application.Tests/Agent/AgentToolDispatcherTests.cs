@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.Constants;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Feedback;
 using Humans.Application.Models;
 using NSubstitute;
 using Xunit;
@@ -9,7 +10,7 @@ namespace Humans.Application.Tests.Agent;
 
 public class AgentToolDispatcherTests
 {
-    [Fact]
+    [HumansFact]
     public async Task Unknown_tool_name_returns_error_result()
     {
         var dispatcher = MakeDispatcher();
@@ -23,7 +24,7 @@ public class AgentToolDispatcherTests
         result.Content.Should().Contain("Unknown tool");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RouteToFeedback_calls_IFeedbackService_and_returns_feedback_url()
     {
         var feedback = Substitute.For<IFeedbackService>();

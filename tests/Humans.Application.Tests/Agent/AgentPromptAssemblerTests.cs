@@ -7,7 +7,7 @@ namespace Humans.Application.Tests.Agent;
 
 public class AgentPromptAssemblerTests
 {
-    [Fact]
+    [HumansFact]
     public void BuildUserContextTail_includes_display_name_and_locale_header()
     {
         var snapshot = new AgentUserSnapshot(

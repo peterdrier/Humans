@@ -1,4 +1,5 @@
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Consent;
 using Humans.Domain.Constants;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;

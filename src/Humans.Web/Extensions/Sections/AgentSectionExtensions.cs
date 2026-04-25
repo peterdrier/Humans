@@ -38,7 +38,7 @@ internal static class AgentSectionExtensions
         services.AddScoped<IAgentService>(sp => sp.GetRequiredService<AgentService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<AgentService>());
 
-        services.AddScoped<IAgentPreloadAugmentor, AgentPreloadAugmentor>();
+        services.AddSingleton<IAgentPreloadAugmentor, AgentPreloadAugmentor>();
 
         services.AddScoped<AgentConversationRetentionJob>();
         services.AddHostedService<AgentSettingsStoreWarmupHostedService>();

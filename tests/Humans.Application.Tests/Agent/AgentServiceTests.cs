@@ -22,7 +22,7 @@ namespace Humans.Application.Tests.Agent;
 
 public class AgentServiceTests
 {
-    [Fact]
+    [HumansFact]
     public async Task Ask_returns_rate_limit_finalizer_when_over_daily_cap()
     {
         var userId = Guid.NewGuid();

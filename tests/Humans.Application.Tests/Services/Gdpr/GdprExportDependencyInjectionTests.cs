@@ -107,7 +107,7 @@ public class GdprExportDependencyInjectionTests
         // still holds most of them, and Humans.Application is the new target
         // location per the repository/store/decorator migration — the first
         // such move is ApplicationDecisionService (Governance, PR #503).
-        var infrastructureAssembly = typeof(TeamService).Assembly;
+        var infrastructureAssembly = typeof(Humans.Infrastructure.Services.Agent.AgentService).Assembly;
         var applicationAssembly = typeof(ApplicationDecisionService).Assembly;
 
         var foundContributors = new[] { infrastructureAssembly, applicationAssembly }
@@ -136,8 +136,6 @@ public class GdprExportDependencyInjectionTests
                 services,
                 config,
                 new StubHostEnvironment());
-        Humans.Web.Extensions.InfrastructureServiceCollectionExtensions
-            .AddAgentSection(services, config);
 
         var contributorDescriptors = services
             .Where(d => d.ServiceType == typeof(IUserDataContributor))
@@ -190,8 +188,6 @@ public class GdprExportDependencyInjectionTests
                 services,
                 config,
                 new StubHostEnvironment());
-        Humans.Web.Extensions.InfrastructureServiceCollectionExtensions
-            .AddAgentSection(services, config);
 
         // Replace every contributor's concrete-type registration with a fake
         // instance of that same type. GetUninitializedObject skips the

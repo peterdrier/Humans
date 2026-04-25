@@ -224,15 +224,15 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         if (missingVersionIds.Count == 0)
             return Array.Empty<string>();
 
-        var names = await _dbContext.DocumentVersions
-            .AsNoTracking()
-            .Where(v => missingVersionIds.Contains(v.Id))
-            .Select(v => v.LegalDocument.Name)
-            .Distinct()
-            .OrderBy(n => n)
-            .ToListAsync(ct);
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var versionId in missingVersionIds)
+        {
+            var version = await _legalDocumentSyncService.GetVersionByIdAsync(versionId, ct);
+            if (version?.LegalDocument is { } doc)
+                names.Add(doc.Name);
+        }
 
-        return names;
+        return names.OrderBy(n => n, StringComparer.Ordinal).ToList();
     }
 
     private static string ComputeContentHash(string content)
