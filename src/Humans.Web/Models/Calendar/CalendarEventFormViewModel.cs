@@ -21,10 +21,16 @@ public class CalendarEventFormViewModel
     [Required]
     public Guid OwningTeamId { get; set; }
 
-    [Required]
-    public DateTime StartLocal { get; set; }
+    public DateTime? StartLocal { get; set; }
 
     public DateTime? EndLocal { get; set; }
+
+    // Date-only inputs used when IsAllDay is true. EndDateLocal is inclusive (the
+    // event covers every day from StartDateLocal through EndDateLocal). The controller
+    // normalizes to half-open [Start 00:00, EndDate+1 00:00) when persisting.
+    public DateTime? StartDateLocal { get; set; }
+
+    public DateTime? EndDateLocal { get; set; }
 
     public bool IsAllDay { get; set; }
 

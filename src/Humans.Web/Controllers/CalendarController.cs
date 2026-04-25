@@ -179,6 +179,8 @@ public class CalendarController : HumansControllerBase
             OwningTeamId = teamId ?? teams[0].Id,
             StartLocal = DateTime.Today.AddHours(19),
             EndLocal = DateTime.Today.AddHours(20),
+            StartDateLocal = DateTime.Today,
+            EndDateLocal = DateTime.Today,
             TeamOptions = teams,
         });
     }
@@ -190,17 +192,18 @@ public class CalendarController : HumansControllerBase
         var team = await _teams.GetTeamByIdAsync(form.OwningTeamId, ct);
         if (team is null) return NotFound();
 
-        if (!ModelState.IsValid)
+        var zone = DateTimeZoneProviders.Tzdb[form.RecurrenceTimezone];
+        if (!TryResolveStartEnd(form, zone, out var start, out var end))
         {
             form.TeamOptions = await GetSelectableTeamsAsync(ct);
             return View(form);
         }
 
-        var zone = DateTimeZoneProviders.Tzdb[form.RecurrenceTimezone];
-        var start = LocalDateTime.FromDateTime(form.StartLocal).InZoneLeniently(zone).ToInstant();
-        Instant? end = form.EndLocal is { } elo
-            ? LocalDateTime.FromDateTime(elo).InZoneLeniently(zone).ToInstant()
-            : null;
+        if (!ModelState.IsValid)
+        {
+            form.TeamOptions = await GetSelectableTeamsAsync(ct);
+            return View(form);
+        }
 
         var ev = await _calendar.CreateEventAsync(new CreateCalendarEventDto(
             form.Title, form.Description, form.Location, form.LocationUrl,
@@ -219,6 +222,12 @@ public class CalendarController : HumansControllerBase
         if (ev is null) return NotFound();
 
         var zone = DateTimeZoneProviders.Tzdb[ev.RecurrenceTimezone ?? "Europe/Madrid"];
+        var startDate = ev.StartUtc.InZone(zone).Date;
+        // Stored end is half-open exclusive midnight; subtract a tick to recover the
+        // inclusive end date that the user originally entered.
+        var endDateInclusive = ev.EndUtc is { } endUtc
+            ? endUtc.Minus(Duration.FromNanoseconds(1)).InZone(zone).Date
+            : startDate;
         return View(new CalendarEventFormViewModel
         {
             Id = ev.Id,
@@ -229,6 +238,8 @@ public class CalendarController : HumansControllerBase
             OwningTeamId = ev.OwningTeamId,
             StartLocal = ev.StartUtc.InZone(zone).LocalDateTime.ToDateTimeUnspecified(),
             EndLocal = ev.EndUtc?.InZone(zone).LocalDateTime.ToDateTimeUnspecified(),
+            StartDateLocal = startDate.ToDateTimeUnspecified(),
+            EndDateLocal = endDateInclusive.ToDateTimeUnspecified(),
             IsAllDay = ev.IsAllDay,
             IsRecurring = ev.RecurrenceRule is not null,
             RecurrenceRule = ev.RecurrenceRule,
@@ -244,17 +255,18 @@ public class CalendarController : HumansControllerBase
         var ev = await _calendar.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
-        if (!ModelState.IsValid)
+        var zone = DateTimeZoneProviders.Tzdb[form.RecurrenceTimezone];
+        if (!TryResolveStartEnd(form, zone, out var start, out var end))
         {
             form.TeamOptions = await GetSelectableTeamsAsync(ct);
             return View(form);
         }
 
-        var zone = DateTimeZoneProviders.Tzdb[form.RecurrenceTimezone];
-        var start = LocalDateTime.FromDateTime(form.StartLocal).InZoneLeniently(zone).ToInstant();
-        Instant? end = form.EndLocal is { } elo
-            ? LocalDateTime.FromDateTime(elo).InZoneLeniently(zone).ToInstant()
-            : null;
+        if (!ModelState.IsValid)
+        {
+            form.TeamOptions = await GetSelectableTeamsAsync(ct);
+            return View(form);
+        }
 
         await _calendar.UpdateEventAsync(id, new UpdateCalendarEventDto(
             form.Title, form.Description, form.Location, form.LocationUrl,
@@ -264,6 +276,48 @@ public class CalendarController : HumansControllerBase
             updatedByUserId: GetCurrentUserId(), ct);
 
         return RedirectToAction(nameof(Event), new { id });
+    }
+
+    /// <summary>
+    /// Resolves the form's Start/End instants based on whether IsAllDay is set.
+    /// All-day events use date-only inputs and store half-open [00:00, EndDate+1 00:00).
+    /// Timed events use the datetime-local inputs as-is. ModelState errors are pushed
+    /// to the relevant fields on validation failure.
+    /// </summary>
+    private bool TryResolveStartEnd(CalendarEventFormViewModel form, DateTimeZone zone, out Instant start, out Instant? end)
+    {
+        start = default;
+        end = null;
+
+        if (form.IsAllDay)
+        {
+            if (form.StartDateLocal is not { } startDt)
+            {
+                ModelState.AddModelError(nameof(form.StartDateLocal), "Start date is required.");
+                return false;
+            }
+            var startDate = LocalDate.FromDateTime(startDt);
+            var inclusiveEnd = form.EndDateLocal is { } endDt ? LocalDate.FromDateTime(endDt) : startDate;
+            if (inclusiveEnd < startDate)
+            {
+                ModelState.AddModelError(nameof(form.EndDateLocal), "End date must be on or after the start date.");
+                return false;
+            }
+            start = startDate.AtMidnight().InZoneLeniently(zone).ToInstant();
+            end = inclusiveEnd.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
+            return true;
+        }
+
+        if (form.StartLocal is not { } startLocal)
+        {
+            ModelState.AddModelError(nameof(form.StartLocal), "Start is required.");
+            return false;
+        }
+        start = LocalDateTime.FromDateTime(startLocal).InZoneLeniently(zone).ToInstant();
+        end = form.EndLocal is { } elo
+            ? LocalDateTime.FromDateTime(elo).InZoneLeniently(zone).ToInstant()
+            : null;
+        return true;
     }
 
     [HttpPost("Event/{id:guid}/Delete")]
