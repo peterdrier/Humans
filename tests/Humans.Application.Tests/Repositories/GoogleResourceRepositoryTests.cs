@@ -49,7 +49,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
         _seedContext.Dispose();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetActiveByTeamIdAsync_OrdersByProvisionedAt_ExcludesInactive()
     {
         var teamId = Guid.NewGuid();
@@ -64,14 +64,14 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
         rows.Select(r => r.Id).Should().ContainInOrder(older.Id, newer.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetActiveByTeamIdsAsync_EmptyCollection_ReturnsEmptyDictionary()
     {
         var dict = await _repository.GetActiveByTeamIdsAsync(Array.Empty<Guid>());
         dict.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetActiveByTeamIdsAsync_MissingTeamsMapToEmptyList()
     {
         var presentTeam = Guid.NewGuid();
@@ -86,7 +86,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
             because: "callers depend on missing teams mapping to empty rather than missing so Count-based code paths work without null checks");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task FindActiveByGoogleIdAsync_MatchesOnType()
     {
         var teamId = Guid.NewGuid();
@@ -101,7 +101,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
         missing.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ReactivateAsync_UpdatesNameUrlAndClearsErrorMessage()
     {
         var teamId = Guid.NewGuid();
@@ -125,7 +125,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
         updated.DrivePermissionLevel.Should().Be(DrivePermissionLevel.Manager);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ReactivateAsync_AppliesNewGoogleIdWhenProvided()
     {
         // Group reactivation overwrites GoogleId because legacy rows may have
@@ -145,7 +145,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
         updated!.GoogleId.Should().Be("01234567");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UnlinkAsync_FlipsIsActive_IsIdempotent()
     {
         var row = Seed(Guid.NewGuid(), "r", GoogleResourceType.DriveFile);
@@ -161,7 +161,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
         await _repository.UnlinkAsync(Guid.NewGuid());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UpdatePermissionLevelAsync_ReportsTrueOnlyWhenRowExists()
     {
         var row = Seed(Guid.NewGuid(), "r", GoogleResourceType.DriveFolder);
@@ -174,7 +174,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
         missing.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DeactivateByTeamAsync_WithType_LeavesOtherTypesUntouched()
     {
         // Guards the same reconciliation-ordering bug as
@@ -193,7 +193,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
         (await check.GoogleResources.FindAsync(group.Id))!.IsActive.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DeactivateByTeamAsync_NoRows_ReturnsEmpty()
     {
         var deactivated = await _repository.DeactivateByTeamAsync(Guid.NewGuid(), resourceType: null);

@@ -134,3 +134,4 @@ src/Humans.Web/bin/
 src/**/bin\\Debug/
 .reforge-port
 todos.md
+/.claude/scheduled_tasks.lock

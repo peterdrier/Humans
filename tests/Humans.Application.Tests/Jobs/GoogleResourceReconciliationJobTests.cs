@@ -43,7 +43,7 @@ public class GoogleResourceReconciliationJobTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_SyncsEveryLinkableResourceType()
     {
         _googleSyncService.CheckGroupSettingsAsync(Arg.Any<CancellationToken>())

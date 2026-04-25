@@ -30,7 +30,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetByIdAsync_IncludesAggregateLocalNavs()
     {
         var app = SeedApp();
@@ -51,14 +51,14 @@ public sealed class ApplicationRepositoryTests : IDisposable
         result.StateHistory.Should().NotBeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetByIdAsync_NonExistent_ReturnsNull()
     {
         var result = await _repo.GetByIdAsync(Guid.NewGuid());
         result.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetByUserIdAsync_ReturnsApplicationsOrderedBySubmittedAtDescending()
     {
         var userId = Guid.NewGuid();
@@ -72,7 +72,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         result[1].Id.Should().Be(older.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetByUserIdAsync_ExcludesOtherUsers()
     {
         var userA = Guid.NewGuid();
@@ -86,7 +86,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         result[0].UserId.Should().Be(userA);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task AnySubmittedForUserAsync_ReturnsTrueOnlyForSubmittedStatus()
     {
         var userId = Guid.NewGuid();
@@ -96,7 +96,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         (await _repo.AnySubmittedForUserAsync(Guid.NewGuid())).Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task AnySubmittedForUserAsync_DoesNotMatchApprovedOrWithdrawn()
     {
         var userId = Guid.NewGuid();
@@ -107,7 +107,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         (await _repo.AnySubmittedForUserAsync(userId)).Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CountByStatusAsync_CountsOnlyMatchingStatus()
     {
         SeedApp();
@@ -117,7 +117,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         (await _repo.CountByStatusAsync(ApplicationStatus.Approved)).Should().Be(0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFilteredAsync_DefaultsToSubmitted()
     {
         var submitted = SeedApp();
@@ -132,7 +132,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         items[0].Id.Should().Be(submitted.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFilteredAsync_FiltersByStatus()
     {
         SeedApp();
@@ -146,7 +146,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         items[0].Id.Should().Be(approved.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFilteredAsync_FiltersByTier()
     {
         SeedApp(tier: MembershipTier.Colaborador);
@@ -159,7 +159,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         items[0].MembershipTier.Should().Be(MembershipTier.Asociado);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFilteredAsync_Pagination()
     {
         for (var i = 0; i < 3; i++)
@@ -172,7 +172,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         items.Should().HaveCount(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task AddAsync_PersistsApplication()
     {
         var app = new MemberApplication
@@ -191,7 +191,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         reloaded.Should().NotBeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task FinalizeAsync_DeletesAllBoardVotesForApplication()
     {
         var app = SeedApp();
@@ -207,7 +207,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         remaining.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task FinalizeAsync_DoesNotDeleteVotesOnOtherApplications()
     {
         var appA = SeedApp();
@@ -222,7 +222,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         otherVotes.Should().HaveCount(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetVoterIdsForApplicationAsync_ReturnsEveryVoterOnce()
     {
         var app = SeedApp();
@@ -238,7 +238,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         ids.Should().BeEquivalentTo(new[] { voter1, voter2 });
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetVoterIdsForApplicationAsync_EmptyForNoVotes()
     {
         var app = SeedApp();
@@ -248,7 +248,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         ids.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UpdateAsync_PersistsMutations()
     {
         var app = SeedApp();

@@ -9,7 +9,7 @@ public class CalendarControllerTests : IntegrationTestBase
 {
     public CalendarControllerTests(HumansWebApplicationFactory factory) : base(factory) { }
 
-    [Fact]
+    [HumansFact]
     public async Task Anonymous_GET_Calendar_redirects_to_login()
     {
         var resp = await Client.GetAsync("/Calendar");
@@ -18,7 +18,7 @@ public class CalendarControllerTests : IntegrationTestBase
         resp.StatusCode.Should().BeOneOf(HttpStatusCode.Redirect, HttpStatusCode.Found, HttpStatusCode.Unauthorized);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task LoggedIn_Volunteer_can_GET_Calendar()
     {
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
@@ -27,7 +27,7 @@ public class CalendarControllerTests : IntegrationTestBase
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task LoggedIn_Volunteer_can_GET_Create()
     {
         // Calendar editing is open to any authenticated human; changes are audited.
@@ -37,7 +37,7 @@ public class CalendarControllerTests : IntegrationTestBase
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task LoggedIn_Admin_GET_Agenda_renders()
     {
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);

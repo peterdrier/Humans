@@ -22,7 +22,7 @@ namespace Humans.Application.Tests.Infrastructure.GoogleWorkspace;
 /// </summary>
 public class GoogleDrivePermissionsClientClassifierTests
 {
-    [Theory]
+    [HumansTheory]
     [InlineData("A permission with the specified email address already exists")]
     [InlineData("A permission already exists for this user")]
     [InlineData("Already exists")]
@@ -35,7 +35,7 @@ public class GoogleDrivePermissionsClientClassifierTests
             .Should().BeTrue(because: "'already exist' wording is Google's idempotency signal");
     }
 
-    [Fact]
+    [HumansFact]
     public void InnerErrorReasonDuplicate_ClassifiedAsDuplicate()
     {
         var error = new RequestError
@@ -51,7 +51,7 @@ public class GoogleDrivePermissionsClientClassifierTests
         GoogleDrivePermissionsClient.IsDuplicatePermissionError(error).Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public void InnerErrorReasonAlreadyExists_ClassifiedAsDuplicate()
     {
         var error = new RequestError
@@ -67,7 +67,7 @@ public class GoogleDrivePermissionsClientClassifierTests
         GoogleDrivePermissionsClient.IsDuplicatePermissionError(error).Should().BeTrue();
     }
 
-    [Theory]
+    [HumansTheory]
     [InlineData("Bad request.")]
     [InlineData("The role 'superuser' is not supported")]
     [InlineData("Sharing rate limit exceeded")]
@@ -81,7 +81,7 @@ public class GoogleDrivePermissionsClientClassifierTests
             .Should().BeFalse(because: "non-duplicate 400s must surface to the caller for retry / investigation");
     }
 
-    [Fact]
+    [HumansFact]
     public void InnerErrorWithUnrelatedReason_NotClassifiedAsDuplicate()
     {
         var error = new RequestError
@@ -98,7 +98,7 @@ public class GoogleDrivePermissionsClientClassifierTests
             .Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public void NullMessageAndNoInnerErrors_NotClassifiedAsDuplicate()
     {
         var error = new RequestError { Code = 400 };

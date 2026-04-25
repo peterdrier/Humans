@@ -6,7 +6,7 @@ namespace Humans.Domain.Tests.Helpers;
 
 public class EmailNormalizationTests
 {
-    [Theory]
+    [HumansTheory]
     [InlineData("user@googlemail.com", "user@gmail.com")]
     [InlineData("User@GoogleMail.COM", "user@gmail.com")]
     [InlineData("foo.bar@googlemail.com", "foo.bar@gmail.com")]
@@ -15,7 +15,7 @@ public class EmailNormalizationTests
         EmailNormalization.NormalizeForComparison(input).Should().Be(expected);
     }
 
-    [Theory]
+    [HumansTheory]
     [InlineData("user@gmail.com", "user@gmail.com")]
     [InlineData("user@outlook.com", "user@outlook.com")]
     [InlineData("user@nobodies.team", "user@nobodies.team")]
@@ -24,7 +24,7 @@ public class EmailNormalizationTests
         EmailNormalization.NormalizeForComparison(input).Should().Be(expected);
     }
 
-    [Theory]
+    [HumansTheory]
     [InlineData(null)]
     [InlineData("")]
     public void NormalizeForComparison_NullOrEmpty_ReturnsInput(string? input)

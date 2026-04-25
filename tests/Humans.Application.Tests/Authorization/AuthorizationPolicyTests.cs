@@ -42,7 +42,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     // --- AdminOnly ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.Admin, true)]
     [InlineData(RoleNames.Board, false)]
     [InlineData(RoleNames.TeamsAdmin, false)]
@@ -54,7 +54,7 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().Be(expected);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task AdminOnly_DeniesUnauthenticated()
     {
         var result = await AuthorizeAnonymousAsync(PolicyNames.AdminOnly);
@@ -63,7 +63,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     // --- BoardOnly ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.Board, true)]
     [InlineData(RoleNames.Admin, false)]
     [InlineData(RoleNames.HumanAdmin, false)]
@@ -73,7 +73,7 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().Be(expected);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task BoardOnly_DeniesUnauthenticated()
     {
         var result = await AuthorizeAnonymousAsync(PolicyNames.BoardOnly);
@@ -82,7 +82,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     // --- BoardOrAdmin ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.Board, true)]
     [InlineData(RoleNames.Admin, true)]
     [InlineData(RoleNames.TeamsAdmin, false)]
@@ -96,7 +96,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     // --- HumanAdminBoardOrAdmin ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.HumanAdmin, true)]
     [InlineData(RoleNames.Board, true)]
     [InlineData(RoleNames.Admin, true)]
@@ -110,7 +110,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     // --- HumanAdminOrAdmin ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.HumanAdmin, true)]
     [InlineData(RoleNames.Admin, true)]
     [InlineData(RoleNames.Board, false)]
@@ -123,7 +123,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     // --- TeamsAdminBoardOrAdmin ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.TeamsAdmin, true)]
     [InlineData(RoleNames.Board, true)]
     [InlineData(RoleNames.Admin, true)]
@@ -137,7 +137,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     // --- CampAdminOrAdmin ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.CampAdmin, true)]
     [InlineData(RoleNames.Admin, true)]
     [InlineData(RoleNames.Board, false)]
@@ -150,7 +150,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     // --- TicketAdminBoardOrAdmin ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.TicketAdmin, true)]
     [InlineData(RoleNames.Admin, true)]
     [InlineData(RoleNames.Board, true)]
@@ -164,7 +164,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     // --- TicketAdminOrAdmin ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.TicketAdmin, true)]
     [InlineData(RoleNames.Admin, true)]
     [InlineData(RoleNames.Board, false)]
@@ -177,7 +177,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     // --- FeedbackAdminOrAdmin ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.FeedbackAdmin, true)]
     [InlineData(RoleNames.Admin, true)]
     [InlineData(RoleNames.Board, false)]
@@ -190,7 +190,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     // --- FinanceAdminOrAdmin ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.FinanceAdmin, true)]
     [InlineData(RoleNames.Admin, true)]
     [InlineData(RoleNames.Board, false)]
@@ -203,7 +203,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     // --- ReviewQueueAccess ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.ConsentCoordinator, true)]
     [InlineData(RoleNames.VolunteerCoordinator, true)]
     [InlineData(RoleNames.Board, true)]
@@ -218,7 +218,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     // --- ConsentCoordinatorBoardOrAdmin ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.ConsentCoordinator, true)]
     [InlineData(RoleNames.Board, true)]
     [InlineData(RoleNames.Admin, true)]
@@ -232,7 +232,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     // --- ShiftDashboardAccess ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.Admin, true)]
     [InlineData(RoleNames.NoInfoAdmin, true)]
     [InlineData(RoleNames.VolunteerCoordinator, true)]
@@ -246,7 +246,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     // --- ShiftDepartmentManager ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.Admin, true)]
     [InlineData(RoleNames.NoInfoAdmin, true)]
     [InlineData(RoleNames.VolunteerCoordinator, true)]
@@ -260,7 +260,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     // --- PrivilegedSignupApprover ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.Admin, true)]
     [InlineData(RoleNames.NoInfoAdmin, true)]
     [InlineData(RoleNames.VolunteerCoordinator, false)]
@@ -273,7 +273,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     // --- VolunteerManager ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.Admin, true)]
     [InlineData(RoleNames.VolunteerCoordinator, true)]
     [InlineData(RoleNames.NoInfoAdmin, false)]
@@ -286,7 +286,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     // --- VolunteerSectionAccess ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.TeamsAdmin, true)]
     [InlineData(RoleNames.Board, true)]
     [InlineData(RoleNames.Admin, true)]
@@ -301,7 +301,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     // --- MedicalDataViewer ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.Admin, true)]
     [InlineData(RoleNames.NoInfoAdmin, true)]
     [InlineData(RoleNames.Board, false)]
@@ -314,7 +314,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     // --- ActiveMemberOrShiftAccess (composite) ---
 
-    [Fact]
+    [HumansFact]
     public async Task ActiveMemberOrShiftAccess_AllowsActiveMember()
     {
         var user = CreateUserWithClaim(
@@ -324,7 +324,7 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().BeTrue();
     }
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.Admin)]
     [InlineData(RoleNames.Board)]
     [InlineData(RoleNames.TeamsAdmin)]
@@ -334,7 +334,7 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().BeTrue();
     }
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.NoInfoAdmin)]
     [InlineData(RoleNames.VolunteerCoordinator)]
     public async Task ActiveMemberOrShiftAccess_AllowsShiftDashboardRoles(string role)
@@ -343,7 +343,7 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ActiveMemberOrShiftAccess_DeniesRegularUser()
     {
         var user = CreateAuthenticatedUser();
@@ -353,7 +353,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     // --- IsActiveMember (composite) ---
 
-    [Fact]
+    [HumansFact]
     public async Task IsActiveMember_AllowsActiveMemberClaim()
     {
         var user = CreateUserWithClaim(
@@ -363,7 +363,7 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().BeTrue();
     }
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.Admin)]
     [InlineData(RoleNames.Board)]
     [InlineData(RoleNames.TeamsAdmin)]
@@ -373,7 +373,7 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().BeTrue();
     }
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.NoInfoAdmin)]
     [InlineData(RoleNames.CampAdmin)]
     public async Task IsActiveMember_DeniesNonMatchingRoles(string role)
@@ -382,7 +382,7 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsActiveMember_DeniesRegularUser()
     {
         var user = CreateAuthenticatedUser();
@@ -392,14 +392,14 @@ public class AuthorizationPolicyTests : IDisposable
 
     // --- HumanAdminOnly (composite) ---
 
-    [Fact]
+    [HumansFact]
     public async Task HumanAdminOnly_AllowsHumanAdminWithoutBoardOrAdmin()
     {
         var result = await AuthorizeAsync(PolicyNames.HumanAdminOnly, RoleNames.HumanAdmin);
         result.Succeeded.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HumanAdminOnly_DeniesHumanAdminWhoIsAlsoAdmin()
     {
         var user = CreateUserWithRoles(RoleNames.HumanAdmin, RoleNames.Admin);
@@ -407,7 +407,7 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HumanAdminOnly_DeniesHumanAdminWhoIsAlsoBoard()
     {
         var user = CreateUserWithRoles(RoleNames.HumanAdmin, RoleNames.Board);
@@ -415,14 +415,14 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HumanAdminOnly_DeniesPlainAdmin()
     {
         var result = await AuthorizeAsync(PolicyNames.HumanAdminOnly, RoleNames.Admin);
         result.Succeeded.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HumanAdminOnly_DeniesRegularUser()
     {
         var user = CreateAuthenticatedUser();
@@ -432,7 +432,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     // --- Unknown policy fails closed ---
 
-    [Fact]
+    [HumansFact]
     public async Task UnknownPolicy_ThrowsInvalidOperationException()
     {
         var user = CreateUserWithRoles(RoleNames.Admin);

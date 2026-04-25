@@ -40,7 +40,7 @@ public sealed class CalendarRepositoryTests : IDisposable
     // AddAsync / GetEventByIdAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task AddAsync_PersistsEvent()
     {
         var ev = BuildEvent();
@@ -51,7 +51,7 @@ public sealed class CalendarRepositoryTests : IDisposable
         persisted.Title.Should().Be(ev.Title);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetEventByIdAsync_ReturnsEventWithExceptions()
     {
         var ev = BuildEvent();
@@ -69,14 +69,14 @@ public sealed class CalendarRepositoryTests : IDisposable
         fetched!.Exceptions.Should().ContainSingle(x => x.IsCancelled);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetEventByIdAsync_ReturnsNullForMissingId()
     {
         var fetched = await _repo.GetEventByIdAsync(Guid.NewGuid());
         fetched.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetEventByIdAsync_DoesNotLoadOwningTeamNav()
     {
         var ev = BuildEvent();
@@ -90,7 +90,7 @@ public sealed class CalendarRepositoryTests : IDisposable
 #pragma warning restore CS0618
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetEventByIdAsync_HidesSoftDeleted()
     {
         var ev = BuildEvent();
@@ -106,7 +106,7 @@ public sealed class CalendarRepositoryTests : IDisposable
     // GetEventsInWindowAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetEventsInWindowAsync_FiltersByOverlap()
     {
         var inside = BuildEvent(
@@ -128,7 +128,7 @@ public sealed class CalendarRepositoryTests : IDisposable
         events.Should().NotContain(e => e.Id == outside.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetEventsInWindowAsync_FiltersByTeam()
     {
         var teamA = Guid.NewGuid();
@@ -149,7 +149,7 @@ public sealed class CalendarRepositoryTests : IDisposable
         events.Should().NotContain(e => e.Id == b.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetEventsInWindowAsync_IncludesExceptions()
     {
         var ev = BuildEvent();
@@ -175,7 +175,7 @@ public sealed class CalendarRepositoryTests : IDisposable
     // UpdateAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task UpdateAsync_MutatesTrackedEntity()
     {
         var ev = BuildEvent();
@@ -193,7 +193,7 @@ public sealed class CalendarRepositoryTests : IDisposable
         persisted!.Title.Should().Be("Updated title");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UpdateAsync_ReturnsFalseForMissingId()
     {
         var updated = await _repo.UpdateAsync(Guid.NewGuid(), _ => { });
@@ -204,7 +204,7 @@ public sealed class CalendarRepositoryTests : IDisposable
     // SoftDeleteAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task SoftDeleteAsync_ReturnsTeamIdAndTitleAndStampsDeletedAt()
     {
         var ev = BuildEvent();
@@ -224,7 +224,7 @@ public sealed class CalendarRepositoryTests : IDisposable
         deletedRow.DeletedAt.Should().Be(now);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SoftDeleteAsync_ReturnsNullForMissingId()
     {
         var result = await _repo.SoftDeleteAsync(Guid.NewGuid(), Instant.FromUtc(2026, 4, 10, 0, 0));
@@ -235,7 +235,7 @@ public sealed class CalendarRepositoryTests : IDisposable
     // UpsertExceptionAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task UpsertExceptionAsync_InsertsNewRowWhenMissing()
     {
         var ev = BuildEvent();
@@ -253,7 +253,7 @@ public sealed class CalendarRepositoryTests : IDisposable
         exceptions[0].IsCancelled.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UpsertExceptionAsync_UpdatesExistingRowWhenPresent()
     {
         var ev = BuildEvent();
@@ -282,7 +282,7 @@ public sealed class CalendarRepositoryTests : IDisposable
             !x.IsCancelled && x.OverrideTitle == "Overridden");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UpsertExceptionAsync_ThrowsWhenNeitherCancelledNorOverridden()
     {
         var ev = BuildEvent();

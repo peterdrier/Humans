@@ -1,5 +1,7 @@
 # City Planning — Section Invariants
 
+Interactive map for camp barrio placement: polygon editing, placement phase control, append-only history.
+
 ## Concepts
 
 - **City Planning** is an interactive map for camp barrio placement. Camp leads draw polygons to claim their barrio's physical footprint on the site.
@@ -7,23 +9,78 @@
 - **CampPolygon** is a single polygon per CampSeason representing the camp's placed area.
 - **CampPolygonHistory** is an append-only audit trail of polygon edits and restores.
 
+## Data Model
+
+### CityPlanningSettings
+
+Per-year singleton controlling the placement phase and map overlays. Auto-created from `CampSettings.PublicYear`.
+
+**Table:** `city_planning_settings`
+
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK |
+| Year | int | Season year (unique) |
+| IsPlacementOpen | bool | Whether camp leads can edit polygons |
+| OpenedAt | Instant? | When placement was last opened |
+| ClosedAt | Instant? | When placement was last closed |
+| PlacementOpensAt | LocalDateTime? | Informational scheduled open (not enforced) |
+| PlacementClosesAt | LocalDateTime? | Informational scheduled close (not enforced) |
+| LimitZoneGeoJson | text? | GeoJSON FeatureCollection — site boundary |
+| OfficialZonesGeoJson | text? | GeoJSON FeatureCollection — named overlay zones |
+| UpdatedAt | Instant | Last modification |
+
+### CampPolygon
+
+One polygon per CampSeason representing the camp's placed barrio area.
+
+**Table:** `camp_polygons`
+
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK |
+| CampSeasonId | Guid | FK → CampSeason (unique — one polygon per season) — **FK only**, no nav read by this section |
+| GeoJson | text | GeoJSON Feature with Polygon geometry |
+| AreaSqm | double | Computed area in square meters |
+| LastModifiedByUserId | Guid | FK → User — **FK only**, no nav read by this section |
+| LastModifiedAt | Instant | Last modification |
+
+### CampPolygonHistory
+
+Append-only per design-rules §12. The repository exposes no `UpdateAsync` / `RemoveAsync` — restores call `SavePolygonAndAppendHistoryAsync` with a `"Restored from ..."` note, which both updates the polygon and appends a new history row.
+
+**Table:** `camp_polygon_histories`
+
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK |
+| CampSeasonId | Guid | FK → CampSeason — **FK only**, no nav read by this section |
+| GeoJson | text | GeoJSON snapshot |
+| AreaSqm | double | Area at time of snapshot |
+| ModifiedByUserId | Guid | FK → User — **FK only**, no nav read by this section |
+| ModifiedAt | Instant | When this version was saved |
+| Note | string (512) | "Saved" or "Restored from {timestamp}" |
+
+Cross-domain navs (`CampPolygon.CampSeason`, `CampPolygon.LastModifiedByUser`, `CampPolygonHistory.CampSeason`, `CampPolygonHistory.ModifiedByUser`) remain declared on the entities but are no longer read from this section's code. Stripping them at the entity boundary is a follow-up item consistent with §15i — new code must use `ICampService` / `IUserService` instead.
+
 ## Actors & Roles
 
 | Actor | Capabilities |
-|-------|-------------|
+|-------|--------------|
 | Any authenticated human | View the map and all placed barrios |
 | Camp lead (own camp, placement open) | Draw or edit their own camp's polygon |
-| City-planning team member (team slug: city-planning) | Full admin access always (any polygon, settings, exports) |
+| City-planning team member (team slug: `city-planning`) | Full admin access always (any polygon, settings, exports) |
 | CampAdmin role | Full admin access always |
 
 ## Invariants
 
-- Only one CampPolygon per CampSeason (unique constraint on CampSeasonId).
-- CampPolygonHistory is append-only — edits and restores always create a new history entry.
+- Only one CampPolygon per CampSeason (unique constraint on `CampSeasonId`).
+- CampPolygonHistory is append-only — edits and restores always create a new history entry (design-rules §12).
 - Camp leads can only edit their own camp's polygon when placement is open. City-planning team members and CampAdmin are exempt from the placement-open requirement.
-- CityPlanningSettings row is auto-created per year from CampSettings.PublicYear.
+- CityPlanningSettings row is auto-created per year from `CampSettings.PublicYear`.
 - SignalR broadcasts polygon updates to all connected clients in real time.
 - Limit zone and official zones are stored as GeoJSON on CityPlanningSettings; out-of-bounds and overlap detection is client-side.
+- Enforced by `CityPlanningArchitectureTests` (no-decorator shape, append-only repository surface).
 
 ## Negative Access Rules
 
@@ -33,25 +90,28 @@
 
 ## Triggers
 
-- Saving a polygon creates a CampPolygonHistory entry with note "Saved".
-- Restoring a historical version saves the current polygon state to history first (note: "Restored from {timestamp}"), then overwrites the polygon with the restored version.
+- Saving a polygon creates a CampPolygonHistory entry with note `"Saved"`.
+- Restoring a historical version saves the current polygon state to history first (note: `"Restored from {timestamp}"`), then overwrites the polygon with the restored version.
 - SignalR broadcasts `CampPolygonUpdated` to all connected clients after every save.
 
 ## Cross-Section Dependencies
 
-- **Camps**: CampSeason is the anchor entity; CampLead determines who can edit which polygon.
-- **Admin**: CampAdmin role grants full city-planning access.
-- **Teams**: Membership in the city-planning team (slug: `city-planning`) grants admin access.
+- **Camps:** `ICampService` — CampSeason is the anchor entity; CampLead determines who can edit which polygon.
+- **Teams:** `ITeamService` — membership in the city-planning team (slug: `city-planning`) grants admin access.
+- **Profiles:** `IProfileService` — display data for polygon edit attribution.
+- **Users/Identity:** `IUserService.GetByIdsAsync` — `LastModifiedByUser` / `ModifiedByUser` display names (replaces prior cross-domain `.Include`).
 
 ## Architecture
 
-See `docs/architecture/design-rules.md` for the full rules.
-
 **Owning services:** `CityPlanningService` (`Humans.Application.Services.CityPlanning`)
-**Owning repository:** `ICityPlanningRepository` / `CityPlanningRepository` (`Humans.Infrastructure.Repositories`)
 **Owned tables:** `city_planning_settings`, `camp_polygons`, `camp_polygon_histories`
+**Status:** (A) Migrated (peterdrier/Humans PR #543, 2026-04-22).
 
-Migrated to the §15 repository pattern in PR #543 (2026-04-22). Option A (no caching decorator) — admin-facing, low-traffic. Cross-section reads route through `ICampService`, `ITeamService`, `IProfileService`, and `IUserService`. The previous cross-domain `.Include(h => h.ModifiedByUser)` on `CampPolygonHistories` is replaced by a batched `IUserService.GetByIdsAsync` lookup at the service layer.
+- `CityPlanningService` lives in `Humans.Application.Services.CityPlanning` and never imports `Microsoft.EntityFrameworkCore` — enforced structurally by `Humans.Application.csproj`'s reference graph.
+- `ICityPlanningRepository` / `CityPlanningRepository` (`Humans.Infrastructure.Repositories`) is the only code path that touches this section's tables via `DbContext`.
+- **Decorator decision — no caching decorator.** Admin-facing, low-traffic (same rationale as Governance / User / Feedback).
+- **Cross-section reads** route through `ICampService`, `ITeamService`, `IProfileService`, and `IUserService`. The previous cross-domain `.Include(h => h.ModifiedByUser)` on `CampPolygonHistories` is replaced by a batched `IUserService.GetByIdsAsync` lookup at the service layer.
+- **Architecture test** — `tests/Humans.Application.Tests/Architecture/CityPlanningArchitectureTests.cs` pins the non-decorator shape and the append-only repository surface.
 
 ### Repository surface
 
@@ -62,10 +122,4 @@ Migrated to the §15 repository pattern in PR #543 (2026-04-22). Option A (no ca
 - Atomic "save polygon + append history" write (`SavePolygonAndAppendHistoryAsync`). Polygon upsert and history insert happen in one unit of work.
 - Settings read/upsert (`GetSettingsByYearAsync`, `GetOrCreateSettingsAsync`, `MutateSettingsAsync`).
 
-Per §12, `camp_polygon_histories` is append-only — the repository intentionally exposes no `UpdateHistoryAsync` / `RemoveHistoryAsync`. Restores call `SavePolygonAndAppendHistoryAsync` with a `Restored from …` note, which both updates the polygon and appends a new history row.
-
-### Design rules enforced
-
-- The service holds no `DbContext` — enforced structurally by `Humans.Application.csproj` not referencing `Microsoft.EntityFrameworkCore`.
-- Cross-domain navs (`CampPolygon.CampSeason`, `CampPolygon.LastModifiedByUser`, `CampPolygonHistory.CampSeason`, `CampPolygonHistory.ModifiedByUser`) remain declared on the entities but are no longer read from this section's code. Stripping them at the entity boundary is a follow-up item consistent with the `User` nav-strip deferral in §15i — any new code must use `ICampService` / `IUserService` instead.
-- `CityPlanningArchitectureTests` pin the non-decorator shape and the append-only repository surface.
+Per §12, `camp_polygon_histories` is append-only — the repository intentionally exposes no `UpdateHistoryAsync` / `RemoveHistoryAsync`.

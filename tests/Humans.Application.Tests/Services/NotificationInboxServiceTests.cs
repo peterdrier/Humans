@@ -83,7 +83,7 @@ public class NotificationInboxServiceTests : IDisposable
 
     // --- ResolveAsync ---
 
-    [Fact]
+    [HumansFact]
     public async Task ResolveAsync_ResolvesNotification()
     {
         var notification = await CreateNotification(NotificationClass.Actionable);
@@ -97,7 +97,7 @@ public class NotificationInboxServiceTests : IDisposable
         updated.ResolvedByUserId.Should().Be(_userId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ResolveAsync_ReturnsNotFoundForMissingNotification()
     {
         var result = await _service.ResolveAsync(Guid.NewGuid(), _userId);
@@ -106,7 +106,7 @@ public class NotificationInboxServiceTests : IDisposable
         result.NotFound.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ResolveAsync_ReturnsForbiddenIfNotRecipient()
     {
         var notification = await CreateNotification(NotificationClass.Actionable);
@@ -117,7 +117,7 @@ public class NotificationInboxServiceTests : IDisposable
         result.Forbidden.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ResolveAsync_IdempotentIfAlreadyResolved()
     {
         var now = _clock.GetCurrentInstant();
@@ -133,7 +133,7 @@ public class NotificationInboxServiceTests : IDisposable
 
     // --- DismissAsync ---
 
-    [Fact]
+    [HumansFact]
     public async Task DismissAsync_DismissesInformationalNotification()
     {
         var notification = await CreateNotification(NotificationClass.Informational);
@@ -146,7 +146,7 @@ public class NotificationInboxServiceTests : IDisposable
         updated.ResolvedAt.Should().NotBeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DismissAsync_RejectsDismissOfActionableNotification()
     {
         var notification = await CreateNotification(NotificationClass.Actionable);
@@ -157,7 +157,7 @@ public class NotificationInboxServiceTests : IDisposable
         result.Forbidden.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DismissAsync_ReturnsNotFoundForMissing()
     {
         var result = await _service.DismissAsync(Guid.NewGuid(), _userId);
@@ -168,7 +168,7 @@ public class NotificationInboxServiceTests : IDisposable
 
     // --- MarkReadAsync ---
 
-    [Fact]
+    [HumansFact]
     public async Task MarkReadAsync_SetsReadAt()
     {
         var notification = await CreateNotification();
@@ -183,7 +183,7 @@ public class NotificationInboxServiceTests : IDisposable
         recipient.ReadAt.Should().NotBeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task MarkReadAsync_ReturnsNotFoundIfNotRecipient()
     {
         var notification = await CreateNotification();
@@ -196,7 +196,7 @@ public class NotificationInboxServiceTests : IDisposable
 
     // --- MarkAllReadAsync ---
 
-    [Fact]
+    [HumansFact]
     public async Task MarkAllReadAsync_MarksAllUnreadAsRead()
     {
         await CreateNotification();
@@ -213,7 +213,7 @@ public class NotificationInboxServiceTests : IDisposable
 
     // --- BulkResolveAsync ---
 
-    [Fact]
+    [HumansFact]
     public async Task BulkResolveAsync_ResolvesMultipleActionableNotifications()
     {
         var n1 = await CreateNotification(NotificationClass.Actionable);
@@ -228,7 +228,7 @@ public class NotificationInboxServiceTests : IDisposable
         resolved.Should().Be(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task BulkResolveAsync_SkipsInformationalNotifications()
     {
         var actionable = await CreateNotification(NotificationClass.Actionable);
@@ -245,7 +245,7 @@ public class NotificationInboxServiceTests : IDisposable
 
     // --- BulkDismissAsync ---
 
-    [Fact]
+    [HumansFact]
     public async Task BulkDismissAsync_DismissesMultipleInformationalNotifications()
     {
         var n1 = await CreateNotification(NotificationClass.Informational);
@@ -260,7 +260,7 @@ public class NotificationInboxServiceTests : IDisposable
         resolved.Should().Be(2);
     }
 
-    [Fact]
+    [HumansFact(Timeout = 10000)]
     public async Task BulkDismissAsync_SkipsActionableNotifications()
     {
         var actionable = await CreateNotification(NotificationClass.Actionable);
@@ -277,7 +277,7 @@ public class NotificationInboxServiceTests : IDisposable
 
     // --- ClickThroughAsync ---
 
-    [Fact]
+    [HumansFact]
     public async Task ClickThroughAsync_MarksReadAndReturnsUrl()
     {
         var notification = await CreateNotification();
@@ -292,7 +292,7 @@ public class NotificationInboxServiceTests : IDisposable
         recipient.ReadAt.Should().NotBeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ClickThroughAsync_ReturnsNullIfNotRecipient()
     {
         var notification = await CreateNotification();
@@ -304,7 +304,7 @@ public class NotificationInboxServiceTests : IDisposable
 
     // --- GetPopupAsync ---
 
-    [Fact]
+    [HumansFact]
     public async Task GetPopupAsync_ReturnsUnresolvedNotificationsSplitByClass()
     {
         await CreateNotification(NotificationClass.Actionable);
@@ -323,7 +323,7 @@ public class NotificationInboxServiceTests : IDisposable
 
     // --- Cache invalidation ---
 
-    [Fact]
+    [HumansFact]
     public async Task ResolveAsync_InvalidatesBadgeCache()
     {
         var notification = await CreateNotification(NotificationClass.Actionable);
@@ -335,7 +335,7 @@ public class NotificationInboxServiceTests : IDisposable
         _cache.TryGetValue(cacheKey, out _).Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task MarkReadAsync_InvalidatesBadgeCache()
     {
         var notification = await CreateNotification();
@@ -347,7 +347,7 @@ public class NotificationInboxServiceTests : IDisposable
         _cache.TryGetValue(cacheKey, out _).Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task MarkAllReadAsync_InvalidatesBadgeCache()
     {
         await CreateNotification();

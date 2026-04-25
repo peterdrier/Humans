@@ -25,7 +25,7 @@ public class CityPlanningArchitectureTests
 {
     // ── CityPlanningService ──────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void CityPlanningService_LivesInHumansApplicationServicesCityPlanningNamespace()
     {
         typeof(CityPlanningService).Namespace
@@ -33,7 +33,7 @@ public class CityPlanningArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void CityPlanningService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(CityPlanningService).GetConstructors().Single();
@@ -43,7 +43,7 @@ public class CityPlanningArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use ICityPlanningRepository instead (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void CityPlanningService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(CityPlanningService).GetConstructors().Single();
@@ -55,7 +55,7 @@ public class CityPlanningArchitectureTests
             because: "canonical City Planning data is not IMemoryCache-backed; §15 Option A applies (no caching decorator warranted)");
     }
 
-    [Fact]
+    [HumansFact]
     public void CityPlanningService_TakesRepository()
     {
         var ctor = typeof(CityPlanningService).GetConstructors().Single();
@@ -64,7 +64,7 @@ public class CityPlanningArchitectureTests
         paramTypes.Should().Contain(typeof(ICityPlanningRepository));
     }
 
-    [Fact]
+    [HumansFact]
     public void CityPlanningService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(CityPlanningService).GetConstructors().Single();
@@ -78,7 +78,7 @@ public class CityPlanningArchitectureTests
 
     // ── ICityPlanningRepository ──────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void ICityPlanningRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(ICityPlanningRepository).Namespace
@@ -86,7 +86,7 @@ public class CityPlanningArchitectureTests
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
 
-    [Fact]
+    [HumansFact]
     public void CityPlanningRepository_IsSealed()
     {
         var repoType = typeof(CityPlanningRepository);
@@ -95,7 +95,7 @@ public class CityPlanningArchitectureTests
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
     }
 
-    [Fact]
+    [HumansFact]
     public void ICityPlanningRepository_HasNoHistoryUpdateOrDeleteMethods()
     {
         // CampPolygonHistory is append-only per design-rules §12.

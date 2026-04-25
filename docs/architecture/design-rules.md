@@ -235,28 +235,29 @@ Each section's service owns these tables. Cross-service access goes through the 
 
 | Section | Service(s) | Owned Tables |
 |---------|-----------|--------------|
-| **Profiles** | `ProfileService`, `ContactFieldService`, `ContactService`, `UserEmailService`, `CommunicationPreferenceService`, `VolunteerHistoryService` | `profiles`, `contact_fields`, `user_emails`, `communication_preferences`, `volunteer_history_entries` |
-| **Users/Identity** | `UserService`, `AccountProvisioningService`, `DuplicateAccountService`, `AccountMergeService` | `AspNetUsers` (users), `AspNetUserClaims`, `AspNetUserLogins`, `AspNetUserTokens` |
-| **Teams** | `TeamService`, `TeamPageService`, `TeamResourceService` | `teams`, `team_members`, `team_join_requests`, `team_join_request_state_histories`, `team_role_definitions`, `team_role_assignments`, `team_pages` |
-| **Auth** | `RoleAssignmentService` | `role_assignments` |
+| **Profiles** | `ProfileService`, `ContactFieldService`, `ContactService`, `UserEmailService`, `CommunicationPreferenceService`, `AccountMergeService`, `DuplicateAccountService` | `profiles`, `contact_fields`, `user_emails`, `communication_preferences`, `volunteer_history_entries`, `account_merge_requests` |
+| **Users/Identity** | `UserService`, `AccountProvisioningService`, `UnsubscribeService` | `AspNetUsers`, `AspNetUserClaims`, `AspNetUserLogins`, `AspNetUserTokens`, `AspNetRoles` (legacy), `AspNetUserRoles` (legacy), `event_participations` |
+| **Teams** | `TeamService`, `TeamPageService`, `TeamResourceService` | `teams`, `team_members`, `team_join_requests`, `team_join_request_state_histories`, `team_role_definitions`, `team_role_assignments`, `team_pages`, `google_resources` |
+| **Auth** | `RoleAssignmentService`, `MagicLinkService` | `role_assignments` |
 | **Governance** | `ApplicationDecisionService` | `applications`, `application_state_histories`, `board_votes` |
-| **Legal & Consent** | `LegalDocumentService`, `AdminLegalDocumentService`, `ConsentService` | `legal_documents`, `document_versions`, `consent_records` |
-| **Onboarding** | `OnboardingService` | *(no owned tables — orchestrates Profiles, Legal, Teams)* |
+| **Legal & Consent** | `LegalDocumentService`, `AdminLegalDocumentService`, `LegalDocumentSyncService`, `ConsentService` | `legal_documents`, `document_versions`, `consent_records` |
+| **Onboarding** | `OnboardingService` | *(no owned tables — orchestrates Profiles, Legal, Teams, Governance)* |
 | **Camps** | `CampService`, `CampContactService` | `camps`, `camp_seasons`, `camp_leads`, `camp_images`, `camp_historical_names`, `camp_settings` |
 | **City Planning** | `CityPlanningService` | `city_planning_settings`, `camp_polygons`, `camp_polygon_histories` |
-| **Shifts** | `ShiftManagementService`, `ShiftSignupService`, `GeneralAvailabilityService` | `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availabilities`, `volunteer_event_profiles` |
+| **Calendar** | `CalendarService` | `calendar_events`, `calendar_event_exceptions` |
+| **Shifts** | `ShiftManagementService`, `ShiftSignupService`, `GeneralAvailabilityService` | `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availabilities`, `volunteer_event_profiles`, `shift_tags`, `volunteer_tag_preferences` |
 | **Budget** | `BudgetService` | `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections` |
 | **Tickets** | `TicketQueryService`, `TicketSyncService`, `TicketingBudgetService` | `ticket_orders`, `ticket_attendees`, `ticket_sync_states` |
 | **Campaigns** | `CampaignService` | `campaigns`, `campaign_codes`, `campaign_grants` |
-| **Team Resources** | `TeamResourceService` | `google_resources` |
-| **Google Integration** | `GoogleSyncService`, `GoogleAdminService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService` | `sync_service_settings` |
-| **Email** | `EmailOutboxService`, `EmailService` | `email_outbox_messages` |
-| **Calendar** | `CalendarService` | `calendar_events`, `calendar_event_exceptions` |
+| **Google Integration** | `GoogleSyncService`, `GoogleAdminService`, `GoogleWorkspaceSyncService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService` | `sync_service_settings`, `google_sync_outbox_events` |
+| **Email** | `EmailOutboxService`, `OutboxEmailService`, `EmailService` | `email_outbox_messages`; owns `system_settings` key `email_outbox_paused` |
 | **Feedback** | `FeedbackService` | `feedback_reports`, `feedback_messages` |
-| **Notifications** | `NotificationService`, `NotificationInboxService` | *(in-memory / transient)* |
-| **Audit** | `AuditLogService` | `audit_log_entries` |
-| **System Settings** | *(accessed via owning services)* | `system_settings` |
-| **Unsubscribe** | `UnsubscribeService` | *(operates on User.UnsubscribedFromCampaigns via UserService)* |
+| **Notifications** | `NotificationService`, `NotificationInboxService`, `NotificationMeterProvider` | `notifications`, `notification_recipients` |
+| **Audit Log** | `AuditLogService` | `audit_log_entries` |
+
+**`system_settings` is per-key ownership.** Each key belongs to its consuming section's repository — there is no single cross-cutting owner. Currently-tracked keys: `email_outbox_paused` (Email), `DriveActivityMonitor:LastRunAt` (Google Integration).
+
+**Admin is not a section.** The `/Admin/*` controllers are a nav holder for admin-only actions that live in other sections (outbox pause in Email, suspend/merge/purge in Profiles, sync settings in Google Integration, role assignments in Auth, legal-doc management in Legal & Consent). Services referenced from `AdminController` belong to their owning section, not to Admin.
 
 See [`docs/architecture/dependency-graph.md`](dependency-graph.md) for the full directed dependency graph with current vs target edges and circular dependency analysis.
 

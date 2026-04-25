@@ -16,7 +16,7 @@ namespace Humans.Application.Tests.Architecture;
 /// </summary>
 public class ShiftManagementArchitectureTests
 {
-    [Fact]
+    [HumansFact]
     public void ShiftManagementService_LivesInHumansApplicationServicesShiftsNamespace()
     {
         typeof(ShiftManagementService).Namespace
@@ -24,7 +24,7 @@ public class ShiftManagementArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void ShiftManagementService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(ShiftManagementService).GetConstructors().Single();
@@ -34,7 +34,7 @@ public class ShiftManagementArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use IShiftManagementRepository (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void ShiftManagementService_TakesRepository()
     {
         var ctor = typeof(ShiftManagementService).GetConstructors().Single();
@@ -43,7 +43,7 @@ public class ShiftManagementArchitectureTests
         paramTypes.Should().Contain(typeof(IShiftManagementRepository));
     }
 
-    [Fact]
+    [HumansFact]
     public void ShiftManagementService_ImplementsShiftAuthorizationInvalidator()
     {
         typeof(IShiftAuthorizationInvalidator).IsAssignableFrom(typeof(ShiftManagementService))
@@ -51,7 +51,7 @@ public class ShiftManagementArchitectureTests
                 because: "the service owns the shift-auth cache and external sections (Profile deletion) drop it through this invalidator rather than poking IMemoryCache directly");
     }
 
-    [Fact]
+    [HumansFact]
     public void IShiftManagementRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(IShiftManagementRepository).Namespace
@@ -59,7 +59,7 @@ public class ShiftManagementArchitectureTests
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
 
-    [Fact]
+    [HumansFact]
     public void ShiftManagementRepository_IsSealed()
     {
         var repoType = typeof(ShiftManagementRepository);

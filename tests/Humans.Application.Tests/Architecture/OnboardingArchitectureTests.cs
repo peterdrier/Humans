@@ -17,7 +17,7 @@ namespace Humans.Application.Tests.Architecture;
 /// </summary>
 public class OnboardingArchitectureTests
 {
-    [Fact]
+    [HumansFact]
     public void OnboardingService_LivesInHumansApplicationServicesOnboardingNamespace()
     {
         typeof(OnboardingService).Namespace
@@ -25,7 +25,7 @@ public class OnboardingArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void OnboardingService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(OnboardingService).GetConstructors().Single();
@@ -35,7 +35,7 @@ public class OnboardingArchitectureTests
                 because: "Onboarding is a pure orchestrator — it owns no tables and must never inject DbContext (design-rules §2c, onboarding.md §15i violation #1)");
     }
 
-    [Fact]
+    [HumansFact]
     public void OnboardingService_HasNoIDbContextFactoryConstructorParameter()
     {
         var ctor = typeof(OnboardingService).GetConstructors().Single();
@@ -47,7 +47,7 @@ public class OnboardingArchitectureTests
             because: "Onboarding is a pure orchestrator — it owns no tables, so IDbContextFactory has no legitimate use (design-rules §9)");
     }
 
-    [Fact]
+    [HumansFact]
     public void OnboardingService_HasNoDbSetConstructorParameter()
     {
         var ctor = typeof(OnboardingService).GetConstructors().Single();
@@ -63,7 +63,7 @@ public class OnboardingArchitectureTests
             because: "no DbSet of any kind belongs in the orchestrator — all data access goes through owning section services");
     }
 
-    [Fact]
+    [HumansFact]
     public void OnboardingService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(OnboardingService).GetConstructors().Single();
@@ -75,7 +75,7 @@ public class OnboardingArchitectureTests
             because: "Onboarding owns no cached data; cache invalidation is owned by each section's write path (design-rules §2d)");
     }
 
-    [Fact]
+    [HumansFact]
     public void OnboardingService_HasNoIFullProfileInvalidatorConstructorParameter()
     {
         var ctor = typeof(OnboardingService).GetConstructors().Single();
@@ -85,7 +85,7 @@ public class OnboardingArchitectureTests
                 because: "FullProfile cache invalidation is owned by ProfileService (via its decorator) — the orchestrator must not shortcut around it");
     }
 
-    [Fact]
+    [HumansFact]
     public void OnboardingService_HasNoRepositoryDependency()
     {
         var ctor = typeof(OnboardingService).GetConstructors().Single();
@@ -97,7 +97,7 @@ public class OnboardingArchitectureTests
             because: "Onboarding owns no tables — it must not inject repository interfaces, only section service interfaces (design-rules §9)");
     }
 
-    [Fact]
+    [HumansFact]
     public void OnboardingService_ImplementsIOnboardingEligibilityQuery()
     {
         typeof(IOnboardingEligibilityQuery).IsAssignableFrom(typeof(OnboardingService))
@@ -105,7 +105,7 @@ public class OnboardingArchitectureTests
                 because: "OnboardingService exposes the narrow IOnboardingEligibilityQuery surface so ProfileService / ConsentService can break the DI cycle with OnboardingService");
     }
 
-    [Fact]
+    [HumansFact]
     public void IOnboardingService_ExtendsIOnboardingEligibilityQuery()
     {
         typeof(IOnboardingEligibilityQuery).IsAssignableFrom(typeof(IOnboardingService))
@@ -113,7 +113,7 @@ public class OnboardingArchitectureTests
                 because: "the narrow consent-check query surface is available to every IOnboardingService caller as well as the DI-cycle-break callers");
     }
 
-    [Fact]
+    [HumansFact]
     public void OnboardingService_DependsOnlyOnServiceInterfaces()
     {
         var ctor = typeof(OnboardingService).GetConstructors().Single();

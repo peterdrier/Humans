@@ -42,7 +42,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     // AddAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task AddAsync_PersistsNewRecord()
     {
         var record = BuildRecord(Guid.NewGuid(), Guid.NewGuid());
@@ -55,7 +55,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         persisted.DocumentVersionId.Should().Be(record.DocumentVersionId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task AddAsync_AutoSaves_PerCall()
     {
         // The old ConsentService added to a shared-scope DbContext and relied on
@@ -73,7 +73,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     // ExistsForUserAndVersionAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task ExistsForUserAndVersionAsync_ReturnsTrue_WhenRecordExists()
     {
         var userId = Guid.NewGuid();
@@ -85,7 +85,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         exists.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExistsForUserAndVersionAsync_ReturnsFalse_WhenNoRecord()
     {
         var exists = await _repo.ExistsForUserAndVersionAsync(Guid.NewGuid(), Guid.NewGuid());
@@ -93,7 +93,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         exists.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExistsForUserAndVersionAsync_ReturnsFalse_ForDifferentUser()
     {
         var versionId = Guid.NewGuid();
@@ -108,7 +108,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     // GetByUserAndVersionAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetByUserAndVersionAsync_ReturnsRecord_WhenExists()
     {
         var userId = Guid.NewGuid();
@@ -122,7 +122,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         record.DocumentVersionId.Should().Be(versionId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetByUserAndVersionAsync_ReturnsNull_WhenMissing()
     {
         var record = await _repo.GetByUserAndVersionAsync(Guid.NewGuid(), Guid.NewGuid());
@@ -134,7 +134,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     // GetAllForUserAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetAllForUserAsync_ReturnsOnlyThatUsersRecords_NewestFirst()
     {
         var userId = Guid.NewGuid();
@@ -157,7 +157,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         results[1].Id.Should().Be(older.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetAllForUserAsync_IncludesDocumentVersionAndLegalDocumentNavs()
     {
         var userId = Guid.NewGuid();
@@ -173,7 +173,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         results[0].DocumentVersion.LegalDocument.Name.Should().Be("Privacy Policy");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetAllForUserAsync_ReturnsEmpty_WhenNoRecords()
     {
         var results = await _repo.GetAllForUserAsync(Guid.NewGuid());
@@ -185,7 +185,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     // GetCountForUserAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetCountForUserAsync_ReturnsCount()
     {
         var userId = Guid.NewGuid();
@@ -198,7 +198,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         count.Should().Be(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCountForUserAsync_ReturnsZero_WhenNoRecords()
     {
         var count = await _repo.GetCountForUserAsync(Guid.NewGuid());
@@ -210,7 +210,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     // GetExplicitlyConsentedVersionIdsAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetExplicitlyConsentedVersionIdsAsync_ReturnsOnlyExplicitConsents()
     {
         var userId = Guid.NewGuid();
@@ -226,7 +226,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         ids.Should().NotContain(implicitId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetExplicitlyConsentedVersionIdsAsync_ReturnsEmpty_WhenNone()
     {
         var ids = await _repo.GetExplicitlyConsentedVersionIdsAsync(Guid.NewGuid());
@@ -238,7 +238,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     // GetExplicitlyConsentedVersionIdsForUsersAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetExplicitlyConsentedVersionIdsForUsersAsync_EmptyInput_ReturnsEmpty()
     {
         var map = await _repo.GetExplicitlyConsentedVersionIdsForUsersAsync(Array.Empty<Guid>());
@@ -246,7 +246,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         map.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetExplicitlyConsentedVersionIdsForUsersAsync_IncludesEveryInputUser()
     {
         // Every input user appears in the result, with an empty set when no consents.
@@ -264,7 +264,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         map[userWithoutConsents].Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetExplicitlyConsentedVersionIdsForUsersAsync_ExcludesImplicitConsents()
     {
         var userId = Guid.NewGuid();
@@ -283,7 +283,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     // GetPairsForUsersAndVersionsAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetPairsForUsersAndVersionsAsync_EmptyUsers_ReturnsEmpty()
     {
         var pairs = await _repo.GetPairsForUsersAndVersionsAsync(
@@ -292,7 +292,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         pairs.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetPairsForUsersAndVersionsAsync_EmptyVersions_ReturnsEmpty()
     {
         var pairs = await _repo.GetPairsForUsersAndVersionsAsync(
@@ -301,7 +301,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         pairs.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetPairsForUsersAndVersionsAsync_ReturnsOnlyMatchingPairs()
     {
         var userA = Guid.NewGuid();

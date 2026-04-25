@@ -26,7 +26,7 @@ namespace Humans.Application.Tests.Architecture;
 /// </summary>
 public class StripeConnectorArchitectureTests
 {
-    [Fact]
+    [HumansFact]
     public void IStripeService_LivesInHumansApplicationInterfacesNamespace()
     {
         typeof(IStripeService).Namespace
@@ -34,7 +34,7 @@ public class StripeConnectorArchitectureTests
                 because: "connector interfaces live in Humans.Application so Application-layer services depend only on the abstraction (design-rules §15i)");
     }
 
-    [Fact]
+    [HumansFact]
     public void HumansApplicationAssembly_HasNoReferenceToStripeNet()
     {
         var applicationAssembly = typeof(IStripeService).Assembly;
@@ -48,7 +48,7 @@ public class StripeConnectorArchitectureTests
             because: "Humans.Application must not reference the Stripe.net SDK — the connector implementation lives in Infrastructure (design-rules §15i)");
     }
 
-    [Fact]
+    [HumansFact]
     public void IStripeService_ExposesNoStripeSdkTypesOnItsPublicSurface()
     {
         var methodTypes = typeof(IStripeService).GetMethods()
@@ -88,7 +88,7 @@ public class StripeConnectorArchitectureTests
         }
     }
 
-    [Fact]
+    [HumansFact]
     public void StripeServiceImplementation_LivesInInfrastructureServicesNamespace()
     {
         var impl = typeof(IStripeService).Assembly

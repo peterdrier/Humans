@@ -88,7 +88,7 @@ public class GdprExportDependencyInjectionTests
         typeof(BudgetService)
     ];
 
-    [Fact]
+    [HumansFact]
     public void EverySectionServiceMustImplementIUserDataContributor()
     {
         foreach (var type in ExpectedContributorTypes)
@@ -99,7 +99,7 @@ public class GdprExportDependencyInjectionTests
         }
     }
 
-    [Fact]
+    [HumansFact]
     public void EveryIUserDataContributorInInfrastructureIsExpected()
     {
         // Scan both assemblies where section services live: Humans.Infrastructure
@@ -121,7 +121,7 @@ public class GdprExportDependencyInjectionTests
             "every IUserDataContributor implementation must be accounted for in ExpectedContributorTypes — add new contributors to that list");
     }
 
-    [Fact]
+    [HumansFact]
     public void EveryExpectedContributorIsRegisteredInInfrastructure()
     {
         // Walk the real InfrastructureServiceCollectionExtensions registrations
@@ -154,7 +154,7 @@ public class GdprExportDependencyInjectionTests
         }
     }
 
-    [Fact]
+    [HumansFact]
     public void GdprExportServiceIsRegistered()
     {
         var services = new ServiceCollection();
@@ -168,7 +168,7 @@ public class GdprExportDependencyInjectionTests
             "the GDPR export orchestrator must be registered exactly once");
     }
 
-    [Fact]
+    [HumansFact]
     public void EveryIUserDataContributorFactoryForwardsToAnExpectedConcreteType()
     {
         // This is the "prevent silent drop" assertion. Counting descriptors
@@ -215,7 +215,7 @@ public class GdprExportDependencyInjectionTests
             "every IUserDataContributor forwarding factory must resolve to a distinct expected concrete type — duplicated or mis-forwarded factories would silently drop a section");
     }
 
-    [Fact]
+    [HumansFact]
     public void IFullProfileInvalidator_IsRegisteredAsFactory_NotAFreshInstance()
     {
         // Verifies the critical DI invariant at the descriptor level:

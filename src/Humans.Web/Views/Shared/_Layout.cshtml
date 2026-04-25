@@ -28,10 +28,44 @@
     <header>
         <nav class="navbar navbar-expand-sm navbar-dark mb-3">
             <div class="container">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
-                    <img src="~/img/logo.svg" alt="" aria-hidden="true" />
-                    @Localizer["Nav_Brand"]
-                </a>
+                @{
+                    string? buildHashTooltip = null;
+                    if (User.IsInRole(Humans.Domain.Constants.RoleNames.Admin)
+                        || User.IsInRole(Humans.Domain.Constants.RoleNames.HumanAdmin)
+                        || User.IsInRole(Humans.Domain.Constants.RoleNames.TeamsAdmin)
+                        || User.IsInRole(Humans.Domain.Constants.RoleNames.CampAdmin)
+                        || User.IsInRole(Humans.Domain.Constants.RoleNames.TicketAdmin)
+                        || User.IsInRole(Humans.Domain.Constants.RoleNames.FeedbackAdmin)
+                        || User.IsInRole(Humans.Domain.Constants.RoleNames.FinanceAdmin)
+                        || User.IsInRole(Humans.Domain.Constants.RoleNames.NoInfoAdmin))
+                    {
+                        var brandAssembly = System.Reflection.Assembly.GetEntryAssembly()!;
+                        var brandAttr = (System.Reflection.AssemblyInformationalVersionAttribute?)
+                            Attribute.GetCustomAttribute(brandAssembly, typeof(System.Reflection.AssemblyInformationalVersionAttribute));
+                        var brandInfoVersion = brandAttr?.InformationalVersion ?? "";
+                        var brandPlusIndex = brandInfoVersion.IndexOf('+', StringComparison.Ordinal);
+                        var brandFullCommit = brandPlusIndex >= 0 ? brandInfoVersion[(brandPlusIndex + 1)..] : "";
+                        if (brandFullCommit.Length > 0)
+                        {
+                            buildHashTooltip = brandFullCommit.Length > 8 ? brandFullCommit[..8] : brandFullCommit;
+                        }
+                    }
+                }
+                @if (buildHashTooltip != null)
+                {
+                    <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index"
+                       data-bs-toggle="tooltip" data-bs-custom-class="build-hash-tooltip" title="@buildHashTooltip">
+                        <img src="~/img/logo.svg" alt="" aria-hidden="true" />
+                        @Localizer["Nav_Brand"]
+                    </a>
+                }
+                else
+                {
+                    <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
+                        <img src="~/img/logo.svg" alt="" aria-hidden="true" />
+                        @Localizer["Nav_Brand"]
+                    </a>
+                }
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse">
                     <span class="navbar-toggler-icon"></span>
                 </button>

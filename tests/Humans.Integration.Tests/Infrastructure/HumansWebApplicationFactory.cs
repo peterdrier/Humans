@@ -76,14 +76,20 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         });
     }
 
-    public async Task InitializeAsync()
+    // xUnit v3 IAsyncLifetime: InitializeAsync returns ValueTask.
+    // DisposeAsync is inherited from IAsyncDisposable — the base
+    // WebApplicationFactory<TEntryPoint> already provides a virtual
+    // ValueTask DisposeAsync(), so override that to tear down the
+    // Testcontainers Postgres container.
+    public async ValueTask InitializeAsync()
     {
         await _postgres.StartAsync();
     }
 
-    async Task IAsyncLifetime.DisposeAsync()
+    public override async ValueTask DisposeAsync()
     {
         await _postgres.DisposeAsync();
+        await base.DisposeAsync();
     }
 
     /// <summary>

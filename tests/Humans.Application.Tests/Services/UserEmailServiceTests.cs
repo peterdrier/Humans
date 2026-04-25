@@ -40,7 +40,7 @@ public class UserEmailServiceTests
             _serviceProvider);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SetNotificationTargetAsync_VerifiedTarget_InvalidatesFullProfile()
     {
         var userId = Guid.NewGuid();
@@ -69,7 +69,7 @@ public class UserEmailServiceTests
         emails.Single(e => e.Id == otherId).IsNotificationTarget.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SetNotificationTargetAsync_UnverifiedTarget_DoesNotInvalidate()
     {
         var userId = Guid.NewGuid();

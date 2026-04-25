@@ -53,7 +53,7 @@ public class CleanupEmailOutboxJobTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact(Timeout = 10000)]
     public async Task ExecuteAsync_DeletesSentMessagesOlderThanRetentionPeriod()
     {
         // 200 days ago — older than the 150-day retention
@@ -65,7 +65,7 @@ public class CleanupEmailOutboxJobTests : IDisposable
         remaining.Should().Be(0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_KeepsSentMessagesWithinRetentionPeriod()
     {
         // 100 days ago — within the 150-day retention
@@ -77,7 +77,7 @@ public class CleanupEmailOutboxJobTests : IDisposable
         remaining.Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_KeepsFailedMessagesRegardlessOfAge()
     {
         // Failed message, 200 days old — should not be deleted
@@ -89,7 +89,7 @@ public class CleanupEmailOutboxJobTests : IDisposable
         remaining.Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_KeepsQueuedMessagesRegardlessOfAge()
     {
         // Queued message, 200 days old — should not be deleted

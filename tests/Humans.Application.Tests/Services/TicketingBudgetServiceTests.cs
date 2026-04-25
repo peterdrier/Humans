@@ -27,7 +27,7 @@ public class TicketingBudgetServiceTests
     private TicketingBudgetService CreateSut() =>
         new(_repo, _budgetService, _clock, NullLogger<TicketingBudgetService>.Instance);
 
-    [Fact]
+    [HumansFact]
     public async Task SyncActualsAsync_BucketsByIsoWeek_AndExcludesCurrentWeek()
     {
         // "Now" is Wed 2026-03-11 → current ISO-week Monday is 2026-03-09 (excluded).
@@ -69,7 +69,7 @@ public class TicketingBudgetServiceTests
         week.TicketTailorFees.Should().Be(1.5m);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SyncActualsAsync_TreatsNullFeesAsZero()
     {
         var purchasedAt = Instant.FromUtc(2026, 3, 3, 10, 0); // inside completed week Mon 2 Mar
@@ -97,7 +97,7 @@ public class TicketingBudgetServiceTests
         capturedActuals[0].Revenue.Should().Be(150m);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SyncActualsAsync_ProducesEmptyActuals_WhenNoCompletedWeeks()
     {
         // Only orders inside the current week: nothing should be synced.
@@ -122,7 +122,7 @@ public class TicketingBudgetServiceTests
         capturedActuals.Should().NotBeNull().And.BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RefreshProjectionsAsync_DelegatesToBudgetService()
     {
         var yearId = Guid.NewGuid();
@@ -137,7 +137,7 @@ public class TicketingBudgetServiceTests
         await _budgetService.Received(1).RefreshTicketingProjectionsAsync(yearId, Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetProjectionsAsync_DelegatesToBudgetService()
     {
         var groupId = Guid.NewGuid();
@@ -164,7 +164,7 @@ public class TicketingBudgetServiceTests
         result.Should().BeSameAs(expected);
     }
 
-    [Fact]
+    [HumansFact]
     public void GetActualTicketsSold_DelegatesToBudgetService()
     {
         var group = new BudgetGroup { Id = Guid.NewGuid(), Name = "Ticketing" };

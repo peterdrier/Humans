@@ -1,5 +1,7 @@
 # Legal & Consent — Section Invariants
 
+Legal documents synced from GitHub, per-version consent records (append-only), the Consent Coordinator review gate.
+
 ## Concepts
 
 - A **Legal Document** is a named document (e.g., "Privacy Policy", "Volunteer Agreement") that may be global or scoped to a specific team. Documents are synced from a GitHub repository.
@@ -7,10 +9,33 @@
 - A **Consent Record** is an append-only audit entry linking a human to a specific document version with a timestamp and consent type (granted or withdrawn). Consent records can never be updated or deleted — only new records can be inserted.
 - **Consent Check** is the safety gate in the onboarding pipeline. After a human signs all required documents, a Consent Coordinator reviews and either clears or flags the check.
 
+## Data Model
+
+### LegalDocument
+
+**Table:** `legal_documents`
+
+Global or team-scoped. Aggregate-local nav `LegalDocument.Versions` kept. Cross-domain nav `LegalDocument.Team` is **intentionally retained** until `ConsentService` migrates (sub-task #547b) — consent-side reads still navigate it. Scheduled for strip after #547b lands.
+
+### DocumentVersion
+
+**Table:** `document_versions`
+
+Aggregate-local nav `DocumentVersion.LegalDocument` kept.
+
+### ConsentRecord
+
+Append-only per design-rules §12. **DB triggers** prevent UPDATE and DELETE operations; only INSERT is allowed, to maintain GDPR audit-trail integrity.
+
+**Table:** `consent_records`
+
+Cross-domain nav `ConsentRecord.User` — scheduled for strip when `IConsentRepository` lands in #547b.
+Cross-aggregate nav `ConsentRecord.DocumentVersion` — scheduled for strip; callers will join by `DocumentVersionId` via `ILegalDocumentRepository`.
+
 ## Actors & Roles
 
 | Actor | Capabilities |
-|-------|-------------|
+|-------|--------------|
 | Anyone (including anonymous) | View published legal documents |
 | Any authenticated human | View own consent status. Sign or re-sign document versions. Accessible during onboarding (before becoming an active member) |
 | ConsentCoordinator, Board, Admin | Review consent checks in the onboarding queue. Clear or flag consent checks |
@@ -18,7 +43,7 @@
 
 ## Invariants
 
-- Consent records are immutable. Database triggers prevent UPDATE and DELETE operations on consent records. Only INSERT is allowed to maintain GDPR audit trail integrity.
+- Consent records are immutable. Database triggers prevent UPDATE and DELETE operations on consent records. Only INSERT is allowed to maintain GDPR audit trail integrity (§12).
 - Legal documents can be global (required of all humans) or team-scoped (required when joining a specific team).
 - When all required global documents have active consent, the human's consent check status transitions from unset to Pending.
 - Legal documents are synced from a GitHub repository by a background job.
@@ -40,56 +65,49 @@
 
 ## Cross-Section Dependencies
 
-- **Profiles**: Consent check status lives on the profile. Consent completion triggers the onboarding gate.
-- **Onboarding**: Consent to all required documents is a mandatory step before Volunteer activation.
-- **Teams**: Legal documents can be scoped to a specific team. Joining a team may require consenting to team-specific documents.
-- **Google Integration**: Legal document sync from GitHub is a background job.
+- **Profiles:** `IProfileService` — consent check status lives on the profile. Consent completion triggers the onboarding gate.
+- **Onboarding:** `IOnboardingEligibilityQuery.SetConsentCheckPendingIfEligibleAsync` — narrow callback when all required consents are satisfied.
+- **Teams:** `ITeamService` — legal documents can be scoped to a specific team; joining a team may require consenting to team-specific documents.
+- **Google Integration:** `IGitHubLegalDocumentConnector` — legal document sync from GitHub is delegated to an Infrastructure-side connector.
 
-## Architecture — Current vs Target
+## Architecture
 
-See `docs/architecture/design-rules.md` for the full rules.
-
-**Owning services:** `LegalDocumentService`, `AdminLegalDocumentService`, `LegalDocumentSyncService` (document side, migrated 2026-04-22 in PR #547a), `ConsentService` (consent side, pending in sub-task #547b)
+**Owning services:** `LegalDocumentService`, `AdminLegalDocumentService`, `LegalDocumentSyncService` (document-side, migrated peterdrier/Humans PR #547a), `ConsentService` (consent-side, pending in sub-task nobodies-collective/Humans#547b)
 **Owned tables:** `legal_documents`, `document_versions`, `consent_records`
-
-## Target Architecture Direction
-
-> **Status (2026-04-22):** **Document-side half done.** `LegalDocumentService`, `AdminLegalDocumentService`, and `LegalDocumentSyncService` migrated to `Humans.Application.Services.Legal` in PR #547a and share `ILegalDocumentRepository` for `legal_documents` + `document_versions`. GitHub I/O is delegated to `IGitHubLegalDocumentConnector` in Infrastructure. **Consent-side pending** — `ConsentService` still lives in `Humans.Infrastructure/Services` and owns `consent_records`; migration is tracked in sub-task #547b. The cross-aggregate nav `LegalDocument.Team` was intentionally left declared (not stripped) so ConsentService continues to read it from the same entity shape until #547b lands.
+**Status:** (B) Partially migrated. Document-side half done — `LegalDocumentService`, `AdminLegalDocumentService`, `LegalDocumentSyncService` live in `Humans.Application.Services.Legal` and share `ILegalDocumentRepository`. GitHub I/O is delegated to `IGitHubLegalDocumentConnector` in Infrastructure. **Consent-side pending** — `ConsentService` still lives in `Humans.Infrastructure/Services` and owns `consent_records`; migration is tracked in sub-task nobodies-collective/Humans#547b.
 
 ### Target repositories
 
 - **`ILegalDocumentRepository`** — owns `legal_documents`, `document_versions` — **shipped in PR #547a**
   - Aggregate-local navs kept: `LegalDocument.Versions`, `DocumentVersion.LegalDocument`
-  - Cross-domain navs stripped: `LegalDocument.Team` (Teams section) — **deferred** until `ConsentService` migrates in #547b so the ConsentService nav read continues to work against the same entity shape.
+  - Cross-domain navs stripped: `LegalDocument.Team` (Teams) — **deferred** until `ConsentService` migrates in #547b so the ConsentService nav read continues to work against the same entity shape.
 - **`IConsentRepository`** — owns `consent_records` — **pending in #547b**
-  - Aggregate-local navs kept: (none — `ConsentRecord` is a flat record)
-  - Cross-domain navs stripped: `ConsentRecord.User` (Users/Identity section), `ConsentRecord.DocumentVersion` (sibling `ILegalDocumentRepository` aggregate — callers that need version data should call `ILegalDocumentService`/`ILegalDocumentRepository` by `DocumentVersionId`)
-  - Note: `consent_records` is append-only per §12 (DB triggers block UPDATE/DELETE) — repository exposes `AddAsync` and `GetXxxAsync` but no `UpdateAsync`/`DeleteAsync`.
+  - Aggregate-local navs kept: none — `ConsentRecord` is a flat record
+  - Cross-domain navs stripped: `ConsentRecord.User` (Users/Identity), `ConsentRecord.DocumentVersion` (sibling `ILegalDocumentRepository` aggregate — callers join by `DocumentVersionId`).
+  - `consent_records` is append-only per §12 (DB triggers block UPDATE/DELETE) — repository exposes `AddAsync` and `GetXxxAsync` but no `UpdateAsync`/`DeleteAsync`.
 
-`LegalDocumentService` (the GitHub markdown fetcher) has zero `DbContext` usage and post-#547a lives in `Humans.Application.Services.Legal`. GitHub I/O is delegated to `IGitHubLegalDocumentConnector` (Infrastructure); the `IMemoryCache` usage stays inline on the service for now and can move into a caching decorator around `ILegalDocumentService` in a follow-up if warranted.
+`LegalDocumentService` has zero `DbContext` usage post-#547a. GitHub I/O is delegated to `IGitHubLegalDocumentConnector` (Infrastructure); `IMemoryCache` usage stays inline on the service and can move into a caching decorator around `ILegalDocumentService` in a follow-up if warranted.
 
 `LegalDocumentSyncService` (post-#547a) lives in `Humans.Application.Services.Legal`, consumes `ILegalDocumentRepository`, and delegates all GitHub I/O to `IGitHubLegalDocumentConnector`. Notification fan-out routes `IsApproved && !IsSuspended` lookups through `IProfileService.GetActiveApprovedUserIdsAsync` instead of reading `_dbContext.Profiles` directly.
 
 ### Current violations
 
-Document-side violations cleared in PR #547a. Remaining pending items observed as of 2026-04-22 (all consent-side, migrating in #547b):
+Document-side violations cleared in PR #547a. Remaining consent-side (pending #547b, baseline 2026-04-22):
 
 - **Cross-domain `.Include()` calls:**
-  - `ConsentService.cs:61` — `.Include(d => d.Team)` (Teams section)
+  - `ConsentService.cs:61` — `.Include(d => d.Team)` (Teams)
   - `ConsentService.cs:67-68` — `.Include(c => c.DocumentVersion).ThenInclude(v => v.LegalDocument)` (cross-aggregate within section; should call `ILegalDocumentRepository` by `DocumentVersionId`)
   - `ConsentService.cs:183-184` — same cross-aggregate shape
 - **Cross-section direct DbContext reads:**
-  - `ConsentService.cs:110` — reads `_dbContext.Profiles` (Profiles section; should call `IProfileService`)
+  - `ConsentService.cs:110` — reads `_dbContext.Profiles` (Profiles — should call `IProfileService`)
 - **Within-section cross-aggregate direct DbContext reads:**
-  - `ConsentService.cs:59` — reads `_dbContext.LegalDocuments` (should call `ILegalDocumentRepository` / `ILegalDocumentSyncService`)
+  - `ConsentService.cs:59` — reads `_dbContext.LegalDocuments` (should call `ILegalDocumentRepository`/`ILegalDocumentSyncService`)
 - **Cross-domain nav properties on this section's entities:**
-  - `LegalDocument.Team` (→ `Teams`, Teams section) — still declared; strip scheduled for #547b once `ConsentService` stops navigating it.
-  - `ConsentRecord.User` (→ `User`, Users/Identity section) — strip when introducing `IConsentRepository`.
-  - `ConsentRecord.DocumentVersion` (→ `DocumentVersion`, sibling aggregate) — strip; callers join by `DocumentVersionId` through `ILegalDocumentRepository`.
+  - `LegalDocument.Team` (→ Teams) — still declared; strip scheduled for #547b
+  - `ConsentRecord.User` (→ Users/Identity) — strip when introducing `IConsentRepository`
+  - `ConsentRecord.DocumentVersion` (→ sibling aggregate) — strip; callers join by `DocumentVersionId`
 
 ### Touch-and-clean guidance
-
-Until `ConsentService` migrates in #547b, when touching its code:
 
 - When editing `ConsentService.cs:110`, replace the direct `_dbContext.Profiles` read with an `IProfileService` call.
 - When editing `ConsentService.cs:59` or any `LegalDocuments` read in `ConsentService`, route through `ILegalDocumentSyncService`/`ILegalDocumentRepository` rather than adding another `_dbContext.LegalDocuments` query.

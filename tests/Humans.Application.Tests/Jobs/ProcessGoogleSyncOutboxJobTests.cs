@@ -82,7 +82,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_AddUserEvent_ProcessesAndMarksAsCompleted()
     {
         var outboxEvent = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.AddUserToTeamResources);
@@ -100,7 +100,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
         updatedEvent.LastError.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_RemoveUserFailure_IncrementsRetryAndStoresError()
     {
         var outboxEvent = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.RemoveUserFromTeamResources);
@@ -120,7 +120,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
         updatedEvent.LastError.Should().Contain("google timeout");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_FinalFailure_SendsAdminNotificationToGoogleSyncDashboard()
     {
         var outboxEvent = await SeedOutboxEventAsync(

@@ -33,7 +33,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task AddAsync_PersistsAssignment()
     {
         var userId = Guid.NewGuid();
@@ -55,7 +55,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
         stored.RoleName.Should().Be(RoleNames.Board);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task FindForMutationAsync_ReturnsTrackedEntityThatCanBeSaved()
     {
         var assignment = await SeedAssignmentAsync(
@@ -71,7 +71,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
         reloaded.ValidTo.Should().NotBeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetByIdAsync_ReturnsReadOnlyAssignment_WithoutCrossDomainNavs()
     {
         var assignment = await SeedAssignmentAsync(
@@ -90,7 +90,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
 #pragma warning restore CS0618
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetByUserIdAsync_ReturnsAssignmentsOrderedByValidFromDesc()
     {
         var userId = Guid.NewGuid();
@@ -106,7 +106,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
         result[1].Id.Should().Be(old.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFilteredAsync_FiltersByRoleAndActive_WithPagination()
     {
         var now = _clock.GetCurrentInstant();
@@ -124,7 +124,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
         items.All(ra => string.Equals(ra.RoleName, RoleNames.Board, StringComparison.Ordinal)).Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HasOverlappingAssignmentAsync_OpenEnded_OverlapsAnyFutureRange()
     {
         var userId = Guid.NewGuid();
@@ -137,7 +137,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
         hasOverlap.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HasOverlappingAssignmentAsync_BoundedRange_NoOverlapBeforeOrAfter()
     {
         var userId = Guid.NewGuid();
@@ -156,7 +156,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
         after.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HasActiveRoleAsync_ReturnsTrueForActiveAssignment()
     {
         var userId = Guid.NewGuid();
@@ -168,7 +168,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HasActiveRoleAsync_ReturnsFalseForEndedAssignment()
     {
         var userId = Guid.NewGuid();
@@ -181,7 +181,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetActiveForUserForMutationAsync_ReturnsOnlyActive_Tracked()
     {
         var userId = Guid.NewGuid();

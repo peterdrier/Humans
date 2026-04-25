@@ -19,7 +19,7 @@ public class StubGoogleDrivePermissionsClientTests
     private readonly StubGoogleDrivePermissionsClient _client =
         new(NullLogger<StubGoogleDrivePermissionsClient>.Instance);
 
-    [Fact]
+    [HumansFact]
     public async Task CreateFolderAsync_ReturnsFolderWithIdAndLink()
     {
         var result = await _client.CreateFolderAsync("Team A", parentFolderId: null);
@@ -31,7 +31,7 @@ public class StubGoogleDrivePermissionsClientTests
         result.Folder.WebViewLink.Should().StartWith("https://drive.google.com/drive/folders/");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ListPermissionsAsync_EmptyFolder_ReturnsEmptyList()
     {
         var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null);
@@ -42,7 +42,7 @@ public class StubGoogleDrivePermissionsClientTests
         result.Permissions.Should().NotBeNull().And.BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CreatePermissionAsync_NewEmail_ReturnsCreated()
     {
         var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null);
@@ -54,7 +54,7 @@ public class StubGoogleDrivePermissionsClientTests
         result.Error.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CreatePermissionAsync_DuplicateEmail_ReturnsAlreadyExists()
     {
         var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null);
@@ -67,7 +67,7 @@ public class StubGoogleDrivePermissionsClientTests
             because: "the real client treats Google's 400 'already exists' as idempotent success");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ListPermissionsAsync_AfterAdd_ContainsUserPermission()
     {
         var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null);
@@ -84,7 +84,7 @@ public class StubGoogleDrivePermissionsClientTests
             because: "stub permissions are treated as direct — tests covering inherited-vs-direct filtering belong to the real-client integration tests");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DeletePermissionAsync_Existing_RemovesIt()
     {
         var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null);
@@ -99,7 +99,7 @@ public class StubGoogleDrivePermissionsClientTests
         after.Permissions.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DeletePermissionAsync_MissingPermission_Returns404()
     {
         var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null);
@@ -110,7 +110,7 @@ public class StubGoogleDrivePermissionsClientTests
         result!.StatusCode.Should().Be(404);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFileAsync_AfterCreateFolder_ReturnsFolderMetadata()
     {
         var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null);
@@ -123,7 +123,7 @@ public class StubGoogleDrivePermissionsClientTests
         fetched.File.Name.Should().Be("Team A");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFileAsync_MissingId_Returns404()
     {
         var result = await _client.GetFileAsync("nonexistent");
@@ -132,7 +132,7 @@ public class StubGoogleDrivePermissionsClientTests
         result.Error!.StatusCode.Should().Be(404);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SetInheritedPermissionsDisabledAsync_RoundTripsViaGetFile()
     {
         var folder = await _client.CreateFolderAsync("Team A", parentFolderId: null);
@@ -144,7 +144,7 @@ public class StubGoogleDrivePermissionsClientTests
         fetched.File!.InheritedPermissionsDisabled.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetSharedDriveAsync_UnknownDrive_Returns404()
     {
         var result = await _client.GetSharedDriveAsync("nonexistent-drive");
@@ -153,7 +153,7 @@ public class StubGoogleDrivePermissionsClientTests
         result.Error!.StatusCode.Should().Be(404);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ListPermissionsAsync_UnknownFile_Returns404()
     {
         // Mirrors the real Drive API which returns HTTP 404 for missing
@@ -167,7 +167,7 @@ public class StubGoogleDrivePermissionsClientTests
         result.Error!.StatusCode.Should().Be(404);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CreatePermissionAsync_UnknownFile_ReturnsFailed()
     {
         // Mirrors the real Drive API which returns HTTP 404 when the file

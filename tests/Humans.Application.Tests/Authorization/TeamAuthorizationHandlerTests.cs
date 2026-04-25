@@ -36,7 +36,7 @@ public sealed class TeamAuthorizationHandlerTests
 
     // --- Admin override ---
 
-    [Fact]
+    [HumansFact]
     public async Task Admin_CanManageAnyTeam()
     {
         var user = CreateUserWithRoles(RoleNames.Admin);
@@ -49,7 +49,7 @@ public sealed class TeamAuthorizationHandlerTests
 
     // --- TeamsAdmin override ---
 
-    [Fact]
+    [HumansFact]
     public async Task TeamsAdmin_CanManageAnyTeam()
     {
         var user = CreateUserWithRoles(RoleNames.TeamsAdmin);
@@ -62,7 +62,7 @@ public sealed class TeamAuthorizationHandlerTests
 
     // --- Board override ---
 
-    [Fact]
+    [HumansFact]
     public async Task Board_CanManageAnyTeam()
     {
         var user = CreateUserWithRoles(RoleNames.Board);
@@ -75,7 +75,7 @@ public sealed class TeamAuthorizationHandlerTests
 
     // --- Team coordinator access ---
 
-    [Fact]
+    [HumansFact]
     public async Task Coordinator_CanManageOwnTeam()
     {
         var user = CreateUser(UserId);
@@ -86,7 +86,7 @@ public sealed class TeamAuthorizationHandlerTests
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task Coordinator_CannotManageOtherTeam()
     {
         var user = CreateUser(UserId);
@@ -99,7 +99,7 @@ public sealed class TeamAuthorizationHandlerTests
 
     // --- Denial cases ---
 
-    [Fact]
+    [HumansFact]
     public async Task RegularUser_DeniedOnAnyTeam()
     {
         var regularUserId = Guid.NewGuid();
@@ -115,7 +115,7 @@ public sealed class TeamAuthorizationHandlerTests
 
     // --- Edge cases ---
 
-    [Fact]
+    [HumansFact]
     public async Task UnauthenticatedUser_Denied()
     {
         var user = new ClaimsPrincipal(new ClaimsIdentity());
@@ -126,7 +126,7 @@ public sealed class TeamAuthorizationHandlerTests
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UserWithInvalidIdClaim_Denied()
     {
         var claims = new List<Claim>

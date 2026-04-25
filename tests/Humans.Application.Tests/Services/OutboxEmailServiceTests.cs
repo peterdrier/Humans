@@ -74,7 +74,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendWelcomeEmailAsync_CreatesOutboxRowWithCorrectFields()
     {
         _renderer.RenderWelcome("Alice", "en")
@@ -96,7 +96,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
         msg.CreatedAt.Should().Be(_clock.GetCurrentInstant());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendWelcomeEmailAsync_RecordsEmailQueuedMetric()
     {
         _renderer.RenderWelcome("Alice", "en")
@@ -107,7 +107,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
         _metrics.Received(1).RecordEmailQueued("welcome");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendEmailVerificationAsync_CreatesOutboxRowAndTriggersImmediate()
     {
         _renderer.RenderEmailVerification("Bob", "bob@example.com", "https://verify", false, "en")
@@ -126,7 +126,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
         _immediate.Received(1).TriggerImmediate();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendFacilitatedMessageAsync_SetsReplyToOnOutboxMessage()
     {
         _renderer.RenderFacilitatedMessage("Charlie", "Dave", "Hey!", true, "dave@example.com", "en")
@@ -141,7 +141,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
         messages[0].ReplyTo.Should().Be("dave@example.com");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendFacilitatedMessageAsync_NoContactInfo_ReplyToIsNull()
     {
         _renderer.RenderFacilitatedMessage("Charlie", "Dave", "Hey!", false, null, "en")
@@ -156,7 +156,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
         messages[0].ReplyTo.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendApplicationApprovedAsync_CreatesOutboxRowWithCorrectTemplateName()
     {
         _renderer.RenderApplicationApproved("Eve", MembershipTier.Colaborador, "en")
@@ -171,7 +171,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
         _metrics.Received(1).RecordEmailQueued("application_approved");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendWelcomeEmailAsync_DoesNotTriggerImmediate()
     {
         _renderer.RenderWelcome("Alice", "en")
@@ -183,7 +183,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
         _immediate.DidNotReceive().TriggerImmediate();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task EnqueueAsync_WhenUserOptedOutOfCategory_DoesNotCreateOutboxRow()
     {
         var userId = Guid.NewGuid();
@@ -209,7 +209,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
         messages.Should().BeEmpty("the email should have been suppressed because the user opted out of TeamUpdates");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task EnqueueAsync_WhenUserOptedInToCategory_CreatesOutboxRow()
     {
         var userId = Guid.NewGuid();
@@ -238,7 +238,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
         messages[0].UserId.Should().Be(userId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendCampaignCodeAsync_UsesRendererAndStampsFullRow()
     {
         var userId = Guid.NewGuid();

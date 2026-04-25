@@ -27,7 +27,7 @@ public class TicketTailorServiceTests
             NullLogger<TicketTailorService>.Instance);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetOrdersAsync_ParsesOrderResponse()
     {
         var handler = new MockHttpHandler();
@@ -62,7 +62,7 @@ public class TicketTailorServiceTests
         orders[0].DiscountCode.Should().Be("NOBO25");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetOrdersAsync_HandlesPagination()
     {
         var handler = new MockHttpHandler();
@@ -101,7 +101,7 @@ public class TicketTailorServiceTests
         orders.Should().HaveCount(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetOrdersAsync_ThrowsOnApiError()
     {
         var handler = new MockHttpHandler();
@@ -113,7 +113,7 @@ public class TicketTailorServiceTests
         await act.Should().ThrowAsync<HttpRequestException>();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetIssuedTicketsAsync_ParsesTicketResponse()
     {
         var handler = new MockHttpHandler();
@@ -147,7 +147,7 @@ public class TicketTailorServiceTests
         tickets[0].VendorOrderId.Should().Be("ord_001");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetEventSummaryAsync_ParsesEventResponse()
     {
         var handler = new MockHttpHandler();

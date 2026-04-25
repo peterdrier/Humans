@@ -24,7 +24,7 @@ public class GoogleAdminArchitectureTests
 {
     // ── GoogleAdminService ───────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void GoogleAdminService_LivesInHumansApplicationServicesGoogleIntegrationNamespace()
     {
         typeof(GoogleAdminService).Namespace
@@ -32,7 +32,7 @@ public class GoogleAdminArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void GoogleAdminService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(GoogleAdminService).GetConstructors().Single();
@@ -42,7 +42,7 @@ public class GoogleAdminArchitectureTests
                 because: "services in Humans.Application must never take DbContext (design-rules §3) — the Google Integration service routes through owning service interfaces");
     }
 
-    [Fact]
+    [HumansFact]
     public void GoogleAdminService_HasNoDbContextFactoryConstructorParameter()
     {
         var ctor = typeof(GoogleAdminService).GetConstructors().Single();
@@ -55,7 +55,7 @@ public class GoogleAdminArchitectureTests
             because: "IDbContextFactory belongs behind the repository boundary, not in an Application-layer service");
     }
 
-    [Fact]
+    [HumansFact]
     public void GoogleAdminService_RoutesCrossSectionDataThroughOwningServices()
     {
         var ctor = typeof(GoogleAdminService).GetConstructors().Single();
@@ -73,14 +73,14 @@ public class GoogleAdminArchitectureTests
             because: "Google Admin SDK calls go through IGoogleWorkspaceUserService (PR #287 connector), not this service");
     }
 
-    [Fact]
+    [HumansFact]
     public void GoogleAdminService_IsSealed()
     {
         typeof(GoogleAdminService).IsSealed.Should().BeTrue(
             because: "service implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
     }
 
-    [Fact]
+    [HumansFact]
     public void GoogleAdminService_DoesNotReferenceGoogleSdkTypes()
     {
         // Paranoid guard: the service's assembly must not pull Google.Apis.*

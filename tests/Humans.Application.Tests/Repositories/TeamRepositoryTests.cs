@@ -47,7 +47,7 @@ public sealed class TeamRepositoryTests : IDisposable
     // Team reads
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetByIdAsync_ReturnsTeam_WhenPresent()
     {
         var team = await SeedTeamAsync("Test");
@@ -59,7 +59,7 @@ public sealed class TeamRepositoryTests : IDisposable
         result.Name.Should().Be("Test");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetByIdAsync_ReturnsNull_WhenMissing()
     {
         var result = await _repo.GetByIdAsync(Guid.NewGuid());
@@ -67,7 +67,7 @@ public sealed class TeamRepositoryTests : IDisposable
         result.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetByIdWithRelationsAsync_LoadsActiveMembersAndChildren()
     {
         var team = await SeedTeamAsync("Dept");
@@ -82,7 +82,7 @@ public sealed class TeamRepositoryTests : IDisposable
         result.ChildTeams.Should().HaveCount(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SlugExistsAsync_ReturnsTrue_WhenSlugMatches()
     {
         await SeedTeamAsync("Test", slug: "test");
@@ -92,7 +92,7 @@ public sealed class TeamRepositoryTests : IDisposable
         exists.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SlugExistsAsync_ReturnsFalse_WhenSlugIsOwnTeam()
     {
         var team = await SeedTeamAsync("Test", slug: "test");
@@ -102,7 +102,7 @@ public sealed class TeamRepositoryTests : IDisposable
         exists.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetAllActiveAsync_ExcludesInactiveTeams()
     {
         await SeedTeamAsync("Active", isActive: true);
@@ -113,7 +113,7 @@ public sealed class TeamRepositoryTests : IDisposable
         all.Should().ContainSingle(t => t.Name == "Active");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetActiveOptionsAsync_ReturnsIdNamePairs()
     {
         await SeedTeamAsync("A");
@@ -124,7 +124,7 @@ public sealed class TeamRepositoryTests : IDisposable
         options.Select(o => o.Name).Should().Contain(["A", "B"]);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetNamesByIdsAsync_IncludesInactive_ForGdprHistory()
     {
         var active = await SeedTeamAsync("Active", isActive: true);
@@ -140,7 +140,7 @@ public sealed class TeamRepositoryTests : IDisposable
     // Membership writes — compound transactions
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task AddMemberWithOutboxAsync_PersistsBothInSameTransaction()
     {
         var team = await SeedTeamAsync("Test");
@@ -171,7 +171,7 @@ public sealed class TeamRepositoryTests : IDisposable
         (await _dbContext.GoogleSyncOutboxEvents.CountAsync()).Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task MarkMemberLeftWithOutboxAsync_SetsLeftAtAndRemovesAssignments()
     {
         var team = await SeedTeamAsync("Test");
@@ -200,7 +200,7 @@ public sealed class TeamRepositoryTests : IDisposable
         (await _dbContext.Set<TeamRoleAssignment>().CountAsync()).Should().Be(0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task WithdrawRequestAsync_ReturnsFalse_WhenRequestNotPending()
     {
         var team = await SeedTeamAsync("Test");
@@ -221,7 +221,7 @@ public sealed class TeamRepositoryTests : IDisposable
         withdrew.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task WithdrawRequestAsync_SetsStatusAndResolvedAt_WhenPending()
     {
         var team = await SeedTeamAsync("Test");
@@ -247,7 +247,7 @@ public sealed class TeamRepositoryTests : IDisposable
         reloaded.ResolvedAt.Should().Be(now);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DeactivateTeamAsync_SoftDeletesAndClosesActiveMemberships()
     {
         var team = await SeedTeamAsync("Test");
@@ -265,7 +265,7 @@ public sealed class TeamRepositoryTests : IDisposable
         m.LeftAt.Should().Be(now);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RevokeAllMembershipsAsync_ClosesEveryActiveMembershipAndRemovesAssignments()
     {
         var team1 = await SeedTeamAsync("Team A");

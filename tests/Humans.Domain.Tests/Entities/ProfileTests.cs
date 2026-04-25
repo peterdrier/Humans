@@ -9,7 +9,7 @@ namespace Humans.Domain.Tests.Entities;
 
 public class ProfileTests
 {
-    [Fact]
+    [HumansFact]
     public void FullName_ShouldCombineFirstAndLastName()
     {
         var profile = new Profile
@@ -25,7 +25,7 @@ public class ProfileTests
         profile.FullName.Should().Be("John Doe");
     }
 
-    [Fact]
+    [HumansFact]
     public void FullName_WithOnlyFirstName_ShouldReturnFirstName()
     {
         var profile = new Profile
@@ -41,7 +41,7 @@ public class ProfileTests
         profile.FullName.Should().Be("John");
     }
 
-    [Fact]
+    [HumansFact]
     public void NewProfile_ShouldDefaultToVolunteerTier()
     {
         var profile = CreateProfile();
@@ -49,7 +49,7 @@ public class ProfileTests
         profile.MembershipTier.Should().Be(MembershipTier.Volunteer);
     }
 
-    [Fact]
+    [HumansFact]
     public void NewProfile_ShouldHaveNullConsentCheckStatus()
     {
         var profile = CreateProfile();
@@ -57,7 +57,7 @@ public class ProfileTests
         profile.ConsentCheckStatus.Should().BeNull();
     }
 
-    [Theory]
+    [HumansTheory]
     [InlineData(ConsentCheckStatus.Pending)]
     [InlineData(ConsentCheckStatus.Cleared)]
     [InlineData(ConsentCheckStatus.Flagged)]
@@ -70,7 +70,7 @@ public class ProfileTests
         profile.ConsentCheckStatus.Should().Be(status);
     }
 
-    [Fact]
+    [HumansFact]
     public void Profile_ConsentCheckCleared_SetsRelatedFields()
     {
         var profile = CreateProfile();
@@ -88,7 +88,7 @@ public class ProfileTests
         profile.ConsentCheckNotes.Should().Be("Looks good");
     }
 
-    [Fact]
+    [HumansFact]
     public void Profile_Rejection_SetsRelatedFields()
     {
         var profile = CreateProfile();
@@ -104,7 +104,7 @@ public class ProfileTests
         profile.RejectedByUserId.Should().Be(adminId);
     }
 
-    [Theory]
+    [HumansTheory]
     [InlineData(MembershipTier.Volunteer)]
     [InlineData(MembershipTier.Colaborador)]
     [InlineData(MembershipTier.Asociado)]

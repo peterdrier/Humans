@@ -9,7 +9,7 @@ public class AnonymousAccessTests : IntegrationTestBase
 {
     public AnonymousAccessTests(HumansWebApplicationFactory factory) : base(factory) { }
 
-    [Fact]
+    [HumansFact]
     public async Task Homepage_IsAccessibleAnonymously()
     {
         var response = await Client.GetAsync("/");
@@ -17,7 +17,7 @@ public class AnonymousAccessTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task AboutPage_IsAccessibleAnonymously()
     {
         var response = await Client.GetAsync("/About");
@@ -25,7 +25,7 @@ public class AnonymousAccessTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task PrivacyPage_IsAccessibleAnonymously()
     {
         var response = await Client.GetAsync("/Home/Privacy");
@@ -33,7 +33,7 @@ public class AnonymousAccessTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task TeamsPage_IsAccessibleAnonymously()
     {
         var response = await Client.GetAsync("/Teams");
@@ -41,7 +41,7 @@ public class AnonymousAccessTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    [Theory]
+    [HumansTheory]
     [InlineData("/Profile")]
     [InlineData("/Admin")]
     [InlineData("/Consent")]

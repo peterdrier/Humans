@@ -92,14 +92,14 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
 
     // ── Reads ────────────────────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public async Task GetByIdAsync_ReturnsNull_WhenMissing()
     {
         var result = await _repo.GetByIdAsync(Guid.NewGuid());
         result.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetByIdAsync_IncludesVersions()
     {
         var doc = await SeedDocumentAsync("Privacy");
@@ -111,7 +111,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         result!.Versions.Should().ContainSingle();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDocumentsAsync_FiltersByTeam()
     {
         await SeedDocumentAsync("Privacy");
@@ -149,7 +149,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         all.Should().HaveCount(3);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetActiveRequiredDocumentsForTeamAsync_ExcludesInactive()
     {
         await SeedDocumentAsync("Active", isActive: true, isRequired: true);
@@ -162,7 +162,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
             .Which.Name.Should().Be("Active");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetVersionByIdAsync_IncludesParentDocument()
     {
         var doc = await SeedDocumentAsync("Privacy");
@@ -177,7 +177,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
 
     // ── Writes ───────────────────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact(Timeout = 10000)]
     public async Task AddAsync_PersistsNewDocument()
     {
         var doc = new LegalDocument
@@ -200,7 +200,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         dbCount.Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UpdateAsync_ReturnsFalse_WhenMissing()
     {
         var updated = await _repo.UpdateAsync(
@@ -210,7 +210,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         updated.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ArchiveAsync_SetsIsActiveFalse()
     {
         var doc = await SeedDocumentAsync("Privacy", isActive: true);
@@ -221,7 +221,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         result!.IsActive.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task AddVersionAsync_AddsVersionAndUpdatesDocument()
     {
         var doc = await SeedDocumentAsync("Privacy");
@@ -246,7 +246,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         reloaded.Versions.Should().ContainSingle();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UpdateVersionSummaryAsync_TrimsAndPersists()
     {
         var doc = await SeedDocumentAsync("Privacy");
@@ -259,7 +259,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
         reloaded!.ChangesSummary.Should().Be("trimmed");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UpdateVersionSummaryAsync_ReturnsFalse_WhenVersionBelongsToAnotherDocument()
     {
         var docA = await SeedDocumentAsync("A");

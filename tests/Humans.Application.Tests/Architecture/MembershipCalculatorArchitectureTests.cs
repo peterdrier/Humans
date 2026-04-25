@@ -26,7 +26,7 @@ namespace Humans.Application.Tests.Architecture;
 /// </summary>
 public class MembershipCalculatorArchitectureTests
 {
-    [Fact]
+    [HumansFact]
     public void MembershipCalculator_LivesInHumansApplicationServicesGovernanceNamespace()
     {
         typeof(MembershipCalculator).Namespace
@@ -34,7 +34,7 @@ public class MembershipCalculatorArchitectureTests
                 because: "orchestrators with business logic live in Humans.Application per design-rules §2b, organized by section — MembershipCalculator reads belong under Governance alongside ApplicationDecisionService");
     }
 
-    [Fact]
+    [HumansFact]
     public void MembershipCalculator_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(MembershipCalculator).GetConstructors().Single();
@@ -44,7 +44,7 @@ public class MembershipCalculatorArchitectureTests
                 because: "services in Humans.Application must never take DbContext — cross-section reads go through owning service interfaces per design-rules §9");
     }
 
-    [Fact]
+    [HumansFact]
     public void MembershipCalculator_HasNoDbContextFactoryConstructorParameter()
     {
         var ctor = typeof(MembershipCalculator).GetConstructors().Single();
@@ -55,7 +55,7 @@ public class MembershipCalculatorArchitectureTests
                 because: "MembershipCalculator is a pure orchestrator — it owns no tables and must not hold an IDbContextFactory");
     }
 
-    [Fact]
+    [HumansFact]
     public void MembershipCalculator_HasNoRepositoryConstructorParameter()
     {
         // The orchestrator owns no tables; it must not inject any
@@ -69,7 +69,7 @@ public class MembershipCalculatorArchitectureTests
                 because: "MembershipCalculator owns no data — it must read only through other sections' service interfaces");
     }
 
-    [Fact]
+    [HumansFact]
     public void MembershipCalculator_TakesProfileService()
     {
         var ctor = typeof(MembershipCalculator).GetConstructors().Single();
@@ -78,7 +78,7 @@ public class MembershipCalculatorArchitectureTests
                 because: "profile reads go through IProfileService per design-rules §9");
     }
 
-    [Fact]
+    [HumansFact]
     public void MembershipCalculator_TakesMembershipQuery()
     {
         var ctor = typeof(MembershipCalculator).GetConstructors().Single();
@@ -87,7 +87,7 @@ public class MembershipCalculatorArchitectureTests
                 because: "team + role reads go through IMembershipQuery (a thin pass-through over ITeamService and IRoleAssignmentService) to break the circular DI graph caused by ISystemTeamSync — see PR #279");
     }
 
-    [Fact]
+    [HumansFact]
     public void MembershipCalculator_DoesNotTakeTeamServiceDirectly()
     {
         var ctor = typeof(MembershipCalculator).GetConstructors().Single();
@@ -96,7 +96,7 @@ public class MembershipCalculatorArchitectureTests
                 because: "injecting ITeamService directly closes the DI cycle ITeamService -> ISystemTeamSync -> IMembershipCalculator — use IMembershipQuery instead");
     }
 
-    [Fact]
+    [HumansFact]
     public void MembershipCalculator_DoesNotTakeRoleAssignmentServiceDirectly()
     {
         var ctor = typeof(MembershipCalculator).GetConstructors().Single();
@@ -105,7 +105,7 @@ public class MembershipCalculatorArchitectureTests
                 because: "injecting IRoleAssignmentService directly closes the DI cycle IRoleAssignmentService -> ISystemTeamSync -> IMembershipCalculator — use IMembershipQuery instead");
     }
 
-    [Fact]
+    [HumansFact]
     public void MembershipCalculator_TakesUserService()
     {
         var ctor = typeof(MembershipCalculator).GetConstructors().Single();
@@ -114,7 +114,7 @@ public class MembershipCalculatorArchitectureTests
                 because: "user reads (for DeletionRequestedAt in PartitionUsersAsync) go through IUserService per design-rules §9");
     }
 
-    [Fact]
+    [HumansFact]
     public void MembershipCalculator_IsSealed()
     {
         typeof(MembershipCalculator).IsSealed

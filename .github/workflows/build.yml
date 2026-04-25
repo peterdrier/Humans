@@ -28,7 +28,25 @@ jobs:
       run: dotnet build Humans.slnx --no-restore --configuration Release
 
     - name: Test
-      run: dotnet test Humans.slnx --no-build --configuration Release --verbosity quiet --logger "trx;LogFileName=test-results.trx" --logger "console;verbosity=minimal" --filter "FullyQualifiedName!~Integration"
+      # --blame-hang-timeout 2m is the CI hang guard: if the test host stalls
+      # for 2+ minutes we dump and fail the run rather than burning the whole
+      # job budget on a silent hang. See nobodies-collective/Humans#586 — PR
+      # peterdrier/Humans#306 shipped a DI cycle that silently stalled the
+      # test host for 8+ minutes before this guard existed.
+      run: dotnet test Humans.slnx --no-build --configuration Release --verbosity quiet --blame-hang-timeout 2m --logger "trx;LogFileName=test-results.trx" --logger "console;verbosity=minimal" --filter "FullyQualifiedName!~Integration"
+
+    - name: Verify EF migration chain is linear
+      # Catches migration forks (two migrations claiming the same parent) and
+      # snapshot drift (HumansDbContextModelSnapshot.cs out of sync with the
+      # current DbContext model). Exits non-zero if the snapshot doesn't match
+      # the live model — which is exactly what happens when two branches each
+      # add a migration off the same tip and one merges before the other.
+      run: |
+        dotnet tool install --global dotnet-ef --version 10.0.*
+        dotnet ef migrations has-pending-model-changes \
+          --project src/Humans.Infrastructure \
+          --startup-project src/Humans.Web \
+          --no-build --configuration Release
 
     - name: Upload test results
       uses: actions/upload-artifact@v4
@@ -57,3 +75,15 @@ jobs:
 
     - name: Enforce google_resources ownership
       run: bash scripts/check-google-resource-ownership.sh
+
+    - name: Forbid RS0030 suppressions in test code
+      # The BannedApiAnalyzers rule RS0030 enforces "no bare [Fact] / [Theory]
+      # in tests — use HumansFact / HumansTheory". The only legitimate
+      # suppression site is tests/Humans.Testing/ where HumansFactAttribute
+      # itself is declared. Anywhere else is a policy escape hatch and is
+      # forbidden — set a higher Timeout on [HumansFact] instead.
+      run: |
+        if grep -rn --include='*.cs' --exclude-dir=Humans.Testing 'RS0030' tests/; then
+          echo "::error::RS0030 suppressions in test code are forbidden. Use [HumansFact] / [HumansTheory] (or set Timeout = N) instead of suppressing the analyzer."
+          exit 1
+        fi

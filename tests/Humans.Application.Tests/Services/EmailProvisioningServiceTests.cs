@@ -17,7 +17,7 @@ namespace Humans.Application.Tests.Services;
 
 public class EmailProvisioningServiceTests
 {
-    [Theory]
+    [HumansTheory]
     [InlineData("mueller", "mueller")]
     [InlineData("müller", "mueller")]
     [InlineData("Müller", "mueller")]
@@ -29,7 +29,7 @@ public class EmailProvisioningServiceTests
         EmailProvisioningService.SanitizeEmailPrefix(input).Should().Be(expected);
     }
 
-    [Theory]
+    [HumansTheory]
     [InlineData("garcía", "garcia")]
     [InlineData("café", "cafe")]
     [InlineData("naïve", "naive")]
@@ -40,7 +40,7 @@ public class EmailProvisioningServiceTests
         EmailProvisioningService.SanitizeEmailPrefix(input).Should().Be(expected);
     }
 
-    [Theory]
+    [HumansTheory]
     [InlineData("müller.garcía", "mueller.garcia")]
     [InlineData("Böhm-López", "boehm-lopez")]
     public void SanitizeEmailPrefix_HandlesMixedGermanAndAccented(string input, string expected)
@@ -48,37 +48,37 @@ public class EmailProvisioningServiceTests
         EmailProvisioningService.SanitizeEmailPrefix(input).Should().Be(expected);
     }
 
-    [Fact]
+    [HumansFact]
     public void SanitizeEmailPrefix_ReturnsNullForNonTransliterableCharacters()
     {
         EmailProvisioningService.SanitizeEmailPrefix("田中").Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public void SanitizeEmailPrefix_ReturnsEmptyForWhitespaceOnly()
     {
         EmailProvisioningService.SanitizeEmailPrefix("   ").Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public void SanitizeEmailPrefix_ReturnsNullForEmbeddedSpaces()
     {
         EmailProvisioningService.SanitizeEmailPrefix("jo hn").Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public void SanitizeEmailPrefix_TrimsLeadingAndTrailingWhitespace()
     {
         EmailProvisioningService.SanitizeEmailPrefix("  alice  ").Should().Be("alice");
     }
 
-    [Fact]
+    [HumansFact]
     public void SanitizeEmailPrefix_ConvertsToLowerCase()
     {
         EmailProvisioningService.SanitizeEmailPrefix("Alice").Should().Be("alice");
     }
 
-    [Fact]
+    [HumansFact]
     public void SanitizeEmailPrefix_ReturnsNullForEmbeddedControlCharacters()
     {
         EmailProvisioningService.SanitizeEmailPrefix("te\tst").Should().BeNull();
@@ -135,7 +135,7 @@ public class EmailProvisioningServiceTests
             .Returns(new Profile { FirstName = "Target", LastName = "Two" });
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ProvisionNobodiesEmailAsync_RejectsWhenEmailBelongsToAnotherUserEmail()
     {
         var f = BuildFixture();
@@ -163,7 +163,7 @@ public class EmailProvisioningServiceTests
             Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ProvisionNobodiesEmailAsync_RejectsWhenEmailBelongsToAnotherGoogleEmail()
     {
         var f = BuildFixture();
@@ -190,7 +190,7 @@ public class EmailProvisioningServiceTests
             Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ProvisionNobodiesEmailAsync_RejectsWhenPrefixCollidesWithTeamGoogleGroup()
     {
         var f = BuildFixture();
@@ -217,7 +217,7 @@ public class EmailProvisioningServiceTests
             Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ProvisionNobodiesEmailAsync_AllowsWhenPrefixIsFree()
     {
         var f = BuildFixture();

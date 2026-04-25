@@ -12,7 +12,7 @@ namespace Humans.Application.Tests.Services;
 
 public class TicketTailorServiceCachingTests
 {
-    [Fact]
+    [HumansFact]
     public async Task GetEventSummaryAsync_DoesNotCacheTransientServerFailures()
     {
         var handler = new CountingTicketTailorHandler();

@@ -63,7 +63,7 @@ public class TeamResourceServiceDeactivateTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DeactivateResourcesForTeamAsync_FlipsIsActiveAndLogsAudit()
     {
         var teamId = Guid.NewGuid();
@@ -102,7 +102,7 @@ public class TeamResourceServiceDeactivateTests : IDisposable
             Arg.Any<string?>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DeactivateResourcesForTeamAsync_WithResourceType_OnlyFlipsMatchingType()
     {
         // Guards the reconciliation-ordering bug: the nightly job runs DriveFolder then
@@ -127,7 +127,7 @@ public class TeamResourceServiceDeactivateTests : IDisposable
         rows.Single(r => r.ResourceType == GoogleResourceType.Group).IsActive.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DeactivateResourcesForTeamAsync_NoActiveResources_IsNoOp()
     {
         var teamId = Guid.NewGuid();

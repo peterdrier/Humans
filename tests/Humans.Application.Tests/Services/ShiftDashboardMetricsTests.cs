@@ -64,7 +64,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_EmptyDatabase_ReturnsZeroCounters()
     {
         var es = await SeedEventAsync();
@@ -82,7 +82,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.Departments.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_SumsSlotTotalsAcrossShifts()
     {
         // Slot-level counters are independent from "shift at min" counters:
@@ -104,7 +104,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.FilledSlots.Should().Be(6);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_FilledSlotsCapsAtMaxVolunteers()
     {
         // Overfilling a shift (confirmed > max) must not inflate FilledSlots beyond MaxVolunteers.
@@ -120,7 +120,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.FilledSlots.Should().Be(3);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_MinVolunteersMinusOne_NotFilled()
     {
         var es = await SeedEventAsync();
@@ -135,7 +135,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.FilledShifts.Should().Be(0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_MinVolunteersExactly_Filled()
     {
         var es = await SeedEventAsync();
@@ -149,7 +149,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.FilledShifts.Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_PendingSignupsDoNotCountAsFilled()
     {
         var es = await SeedEventAsync();
@@ -163,7 +163,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.FilledShifts.Should().Be(0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_AdminOnlyAndHiddenRotaShiftsExcluded()
     {
         var es = await SeedEventAsync();
@@ -179,7 +179,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.TotalShifts.Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_TicketHolderAndEngagementCounters()
     {
         var es = await SeedEventAsync();
@@ -210,7 +210,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.NonTicketSignups.Should().Be(1); // only D
     }
 
-    [Fact]
+    [HumansFact(Timeout = 10000)]
     public async Task GetDashboardOverview_StalePending_ThresholdExact3Days_NotStale()
     {
         var es = await SeedEventAsync();
@@ -236,7 +236,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.StalePendingCount.Should().Be(0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_StalePending_JustPastThreshold_CountsAsStale()
     {
         var es = await SeedEventAsync();
@@ -262,7 +262,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.StalePendingCount.Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_NoSubteamRotas_DepartmentSubgroupsEmpty()
     {
         var es = await SeedEventAsync();
@@ -276,7 +276,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.Departments[0].Subgroups.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_WithSubteamRotas_ProducesSubgroupsWithDirectPinned()
     {
         var es = await SeedEventAsync();
@@ -333,7 +333,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         infraRow.Subgroups.Sum(s => s.Event.FilledSlots).Should().Be(infraRow.Event.FilledSlots);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_DepartmentsSortedByLowestFillPercentFirst()
     {
         var es = await SeedEventAsync();
@@ -356,7 +356,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.Departments[1].DepartmentName.Should().Be("Gate");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCoordinatorActivity_TeamsWithoutPendingExcluded()
     {
         var es = await SeedEventAsync();
@@ -385,7 +385,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result[0].Coordinators[0].DisplayName.Should().Be("coord");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCoordinatorActivity_RangeSignup_CountsAsOneBlockNotOneRowPerDay()
     {
         var es = await SeedEventAsync();
@@ -422,7 +422,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result[0].PendingSignupCount.Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCoordinatorActivity_SortsByOldestLoginFirst()
     {
         var es = await SeedEventAsync();
@@ -450,7 +450,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result[1].TeamName.Should().Be("A");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardTrends_SevenDayWindow_ReturnsSevenPointsEndingToday()
     {
         var es = await SeedEventAsync();
@@ -464,7 +464,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.Should().OnlyContain(p => p.NewSignups == 0 && p.NewTicketSales == 0 && p.DistinctLogins == 0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardTrends_CountsSignupsInToday()
     {
         var es = await SeedEventAsync();
@@ -494,7 +494,7 @@ public class ShiftDashboardMetricsTests : IDisposable
     // GetDailyDepartmentStaffingAsync
     // ================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetDailyDepartmentStaffing_EventPeriod_ReturnsEmpty()
     {
         // Event day-over-day mix is deliberately omitted by design — the planning
@@ -510,7 +510,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDailyDepartmentStaffing_NullPeriod_ReturnsEmpty()
     {
         var es = await SeedEventAsync();
@@ -524,7 +524,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDailyDepartmentStaffing_BuildPeriod_CountsOnlyConfirmed()
     {
         // Pending signups must not inflate on-site counts — the chart is about
@@ -544,7 +544,7 @@ public class ShiftDashboardMetricsTests : IDisposable
             .Which.ConfirmedCount.Should().Be(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDailyDepartmentStaffing_NonPromotedSubteam_RollsUpToParent()
     {
         // Subteam shifts that AREN'T promoted to directory must roll up into the
@@ -568,7 +568,7 @@ public class ShiftDashboardMetricsTests : IDisposable
     // GetShiftDurationBreakdownAsync
     // ================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetShiftDurationBreakdown_NullPeriod_ReturnsEmpty()
     {
         var es = await SeedEventAsync();
@@ -581,7 +581,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetShiftDurationBreakdown_AllDayShifts_CollapseIntoSingleBucket()
     {
         // Full-day shifts share one bucket regardless of nominal duration
@@ -598,7 +598,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.Single(r => r.IsAllDay).TotalSlots.Should().Be(7);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetShiftDurationBreakdown_DistinctHourlyDurations_GetSeparateBuckets()
     {
         var es = await SeedEventAsync();
@@ -619,7 +619,7 @@ public class ShiftDashboardMetricsTests : IDisposable
     // GetCoverageHeatmapAsync
     // ================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetCoverageHeatmap_PromotedSubteam_GetsOwnRow()
     {
         // A subteam promoted to the directory gets its own heatmap row.
@@ -643,7 +643,7 @@ public class ShiftDashboardMetricsTests : IDisposable
             .Which.Cells.Sum(c => c.TotalSlots).Should().Be(4);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCoverageHeatmap_NonPromotedSubteam_RollsUpToParent()
     {
         // Non-promoted subteam: shifts appear only in the parent's row, never
@@ -665,7 +665,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.Rotas.Should().NotContain(r => string.Equals(r.RotaName, "Plumbing", StringComparison.Ordinal));
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCoverageHeatmap_FilledSlotsCapAtMaxVolunteers()
     {
         // Overfilled shifts must not inflate heatmap cell counts — same cap rule
@@ -683,7 +683,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         cell.FilledSlots.Should().Be(3);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCoverageHeatmap_DayPeriodClassification_UsesShiftPeriodEnum()
     {
         // Day-column period tagging must use the ShiftPeriod enum, not English

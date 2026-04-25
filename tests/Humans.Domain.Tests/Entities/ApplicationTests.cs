@@ -16,7 +16,7 @@ public class ApplicationTests
         _clock = new FakeClock(Instant.FromUtc(2024, 1, 15, 10, 0));
     }
 
-    [Fact]
+    [HumansFact]
     public void NewApplication_ShouldHaveSubmittedStatus()
     {
         var application = new Application
@@ -31,7 +31,7 @@ public class ApplicationTests
         application.Status.Should().Be(ApplicationStatus.Submitted);
     }
 
-    [Fact]
+    [HumansFact]
     public void Approve_ShouldTransitionToApproved()
     {
         var reviewerId = Guid.NewGuid();
@@ -44,7 +44,7 @@ public class ApplicationTests
         application.ResolvedAt.Should().NotBeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public void Reject_ShouldTransitionToRejected()
     {
         var reviewerId = Guid.NewGuid();
@@ -57,7 +57,7 @@ public class ApplicationTests
         application.ResolvedAt.Should().NotBeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public void Withdraw_FromSubmitted_ShouldTransitionToWithdrawn()
     {
         var application = CreateSubmittedApplication();
@@ -68,7 +68,7 @@ public class ApplicationTests
         application.ResolvedAt.Should().NotBeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public void RequestMoreInfo_ShouldTransitionBackToSubmitted()
     {
         var reviewerId = Guid.NewGuid();
@@ -80,7 +80,7 @@ public class ApplicationTests
         application.ReviewNotes.Should().Be("Please provide more details");
     }
 
-    [Fact]
+    [HumansFact]
     public void StateTransitions_ShouldBeRecordedInHistory()
     {
         var reviewerId = Guid.NewGuid();
@@ -92,7 +92,7 @@ public class ApplicationTests
         application.StateHistory.First().Status.Should().Be(ApplicationStatus.Approved);
     }
 
-    [Fact]
+    [HumansFact]
     public void NewApplication_ShouldDefaultToVolunteerTier()
     {
         var application = new Application
@@ -107,7 +107,7 @@ public class ApplicationTests
         application.MembershipTier.Should().Be(MembershipTier.Volunteer);
     }
 
-    [Theory]
+    [HumansTheory]
     [InlineData(MembershipTier.Colaborador)]
     [InlineData(MembershipTier.Asociado)]
     public void Application_CanSetMembershipTier(MembershipTier tier)
@@ -118,7 +118,7 @@ public class ApplicationTests
         application.MembershipTier.Should().Be(tier);
     }
 
-    [Fact]
+    [HumansFact]
     public void Application_CanSetTermExpiresAt()
     {
         var application = CreateSubmittedApplication();
@@ -129,7 +129,7 @@ public class ApplicationTests
         application.TermExpiresAt.Should().Be(expiryDate);
     }
 
-    [Fact]
+    [HumansFact]
     public void Application_CanSetBoardMeetingDateAndDecisionNote()
     {
         var application = CreateSubmittedApplication();
@@ -142,7 +142,7 @@ public class ApplicationTests
         application.DecisionNote.Should().Be("Approved unanimously");
     }
 
-    [Fact]
+    [HumansFact]
     public void Application_CanSetRenewalReminderSentAt()
     {
         var application = CreateSubmittedApplication();
@@ -153,7 +153,7 @@ public class ApplicationTests
         application.RenewalReminderSentAt.Should().Be(sentAt);
     }
 
-    [Fact]
+    [HumansFact]
     public void Application_BoardVotes_ShouldBeEmptyByDefault()
     {
         var application = CreateSubmittedApplication();
@@ -161,7 +161,7 @@ public class ApplicationTests
         application.BoardVotes.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public void ValidateTier_RejectsVolunteer()
     {
         var application = CreateSubmittedApplication();
@@ -172,7 +172,7 @@ public class ApplicationTests
             .WithMessage("*Volunteer*");
     }
 
-    [Theory]
+    [HumansTheory]
     [InlineData(MembershipTier.Colaborador)]
     [InlineData(MembershipTier.Asociado)]
     public void ValidateTier_AcceptsValidTiers(MembershipTier tier)
