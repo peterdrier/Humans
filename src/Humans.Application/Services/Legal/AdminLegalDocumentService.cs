@@ -179,6 +179,9 @@ public sealed partial class AdminLegalDocumentService : IAdminLegalDocumentServi
         CancellationToken cancellationToken = default) =>
         _repository.UpdateVersionSummaryAsync(documentId, versionId, changesSummary, cancellationToken);
 
+    public Task<int> GetActiveRequiredDocumentCountAsync(CancellationToken cancellationToken = default) =>
+        _repository.CountActiveRequiredAsync(cancellationToken);
+
     [GeneratedRegex(
         @"^https?://github\.com/(?<owner>[^/]+)/(?<repo>[^/]+)/tree/(?<branch>[^/]+)/(?<path>[^\s]+)$",
         RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
