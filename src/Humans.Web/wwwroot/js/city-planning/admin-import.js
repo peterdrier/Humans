@@ -103,6 +103,8 @@ function renderPreviewModal(matched, unrecognized) {
     const unrecSection = document.getElementById('import-unrecognized-section');
     const unrecList    = document.getElementById('import-unrecognized-list');
     const confirmBtn   = document.getElementById('import-confirm-btn');
+    const statusEl     = document.getElementById('import-status');
+    if (statusEl) { statusEl.textContent = ''; statusEl.classList.add('d-none'); }
 
     if (matched.length === 0) {
         matchedBody.innerHTML = '<tr><td colspan="3" class="text-muted text-center">No camps matched.</td></tr>';
