@@ -52,7 +52,7 @@ No new endpoints needed. The import JS fetches `GET /api/city-planning/state` (t
 
 Fetching at import time (rather than page load) ensures the list is always fresh.
 
-All polygon writes go through the existing `POST /api/city-planning/polygons/{campSeasonId}` endpoint with `note: "Imported YYYY-MM-DD"` set in the request body.
+All polygon writes go through the existing `PUT /api/city-planning/camp-polygons/{campSeasonId}` endpoint with `note: "Imported YYYY-MM-DD"` set in the request body.
 
 ---
 
@@ -94,7 +94,7 @@ Show a Bootstrap modal with two sections:
 
 1. Disable Confirm button, show spinner + "Updating N polygons..."
 2. Iterate matched camps sequentially:
-   - `POST /api/city-planning/polygons/{campSeasonId}` with `{ geoJson, areaSqm, note: "Imported YYYY-MM-DD HH:mm" }` (UTC, formatted by JS at import time)
+   - `PUT /api/city-planning/camp-polygons/{campSeasonId}` with `{ geoJson, areaSqm, note: "Imported YYYY-MM-DD HH:mm" }` (UTC, formatted by JS at import time)
 3. On completion, close modal, show result banner on the Admin page:
    - Success: "N polygons updated."
    - Partial failure: "N updated, M failed." with a collapsible error list
@@ -140,6 +140,6 @@ The `"Imported YYYY-MM-DD HH:mm"` note is visually distinct from `"Saved"` (map 
 ## Related
 
 - Export: `GET /api/city-planning/export.geojson`
-- Polygon save (reused as-is): `POST /api/city-planning/polygons/{campSeasonId}`
+- Polygon save (reused as-is): `PUT /api/city-planning/camp-polygons/{campSeasonId}`
 - History: `CampPolygonHistory`, `SavePolygonAndAppendHistoryAsync`
 - Section invariants: `docs/sections/CityPlanning.md`
