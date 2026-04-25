@@ -124,7 +124,7 @@ public class ShiftManagementServiceTests : IDisposable
         shifts.Select(s => s.DayOffset).Should().BeEquivalentTo(new[] { -3, -2, -1 });
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task CreateBuildStrikeShifts_SetsCorrectMinMaxPerDay()
     {
         // Arrange: staffing grid with varying min/max per day

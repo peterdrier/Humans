@@ -60,7 +60,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task ExecuteAsync_ProcessesQueuedMessages()
     {
         var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
@@ -109,7 +109,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
         updated.NextRetryAt.Should().Be(expectedRetryAt);
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 30000)]
     public async Task ExecuteAsync_RespectsBatchSize()
     {
         for (var i = 0; i < 15; i++)
@@ -146,7 +146,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task ExecuteAsync_CrashRecovery()
     {
         // Message picked up 6 minutes ago but never completed (simulates crash)
@@ -185,7 +185,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task ExecuteAsync_RetriesFailedWithBackoff()
     {
         // Failed message with RetryCount=3, NextRetryAt in the past

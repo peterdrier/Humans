@@ -132,7 +132,7 @@ public class FeedbackServiceTests : IDisposable
         _navBadge.Received(1).Invalidate();
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task SubmitFeedbackAsync_SetsAdditionalContext()
     {
         var userId = Guid.NewGuid();

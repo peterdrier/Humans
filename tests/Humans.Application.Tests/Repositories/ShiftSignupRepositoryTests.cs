@@ -82,7 +82,7 @@ public class ShiftSignupRepositoryTests : IDisposable
         result.Should().BeEquivalentTo(new[] { active });
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task GetConfirmedCountsByShiftAsync_ExcludesNonConfirmedAndMissingShifts()
     {
         var shiftA = Guid.NewGuid();

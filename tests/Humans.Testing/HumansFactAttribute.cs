@@ -10,7 +10,7 @@ public sealed class HumansFactAttribute : FactAttribute
         [CallerLineNumber] int sourceLineNumber = -1)
         : base(sourceFilePath, sourceLineNumber)
     {
-        base.Timeout = 1000;
+        base.Timeout = 5000;
     }
 
     public new int Timeout

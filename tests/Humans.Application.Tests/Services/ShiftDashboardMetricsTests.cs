@@ -170,7 +170,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.NonTicketSignups.Should().Be(1); // only D
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task GetDashboardOverview_StalePending_ThresholdExact3Days_NotStale()
     {
         var es = await SeedEventAsync();

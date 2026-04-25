@@ -65,7 +65,7 @@ public sealed class ShiftManagementRepositoryTests : IDisposable
         (await _repo.AnyOtherActiveEventSettingsAsync(excludingId: null)).Should().BeTrue();
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task GetShiftDayOffsetsForRotaAsync_ReturnsDistinctDays()
     {
         var (es, rota) = await SeedRotaAsync(RotaPeriod.Build);

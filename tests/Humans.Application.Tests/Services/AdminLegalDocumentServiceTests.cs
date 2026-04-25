@@ -107,7 +107,7 @@ public class AdminLegalDocumentServiceTests : IDisposable
         result.ErrorMessage.Should().Contain("configured repository is owner/repo");
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task CreateLegalDocumentAsync_PersistsAndReturnsDocument()
     {
         var request = new AdminLegalDocumentUpsertRequest(

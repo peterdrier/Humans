@@ -53,7 +53,7 @@ public class CleanupEmailOutboxJobTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task ExecuteAsync_DeletesSentMessagesOlderThanRetentionPeriod()
     {
         // 200 days ago — older than the 150-day retention

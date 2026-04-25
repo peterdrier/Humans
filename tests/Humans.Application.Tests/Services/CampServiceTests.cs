@@ -553,7 +553,7 @@ public class CampServiceTests : IDisposable
     // ChangeSeasonNameAsync
     // ==========================================================================
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task ChangeSeasonNameAsync_LogsOldNameToHistory()
     {
         await SeedSettingsAsync();

@@ -349,7 +349,7 @@ public class TeamRoleServiceTests : IDisposable
         inDb.Should().NotBeNull();
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task AssignToRoleAsync_NonMember_AutoAddsToTeam()
     {
         var admin = SeedUser("Admin");

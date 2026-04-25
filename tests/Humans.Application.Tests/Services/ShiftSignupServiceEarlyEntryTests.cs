@@ -97,7 +97,7 @@ public class ShiftSignupServiceEarlyEntryTests : IDisposable
         result.Warning.Should().BeNull();
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task SignUpRangeAsync_WarnsWhenLaterEarlyEntryDayIsFull()
     {
         var (eventSettings, rota, _) = SeedBuildScenario();

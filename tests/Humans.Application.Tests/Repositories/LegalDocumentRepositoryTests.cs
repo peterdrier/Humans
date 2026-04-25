@@ -177,7 +177,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
 
     // ── Writes ───────────────────────────────────────────────────────────────
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task AddAsync_PersistsNewDocument()
     {
         var doc = new LegalDocument

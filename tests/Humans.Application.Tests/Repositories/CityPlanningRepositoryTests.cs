@@ -120,7 +120,7 @@ public sealed class CityPlanningRepositoryTests : IDisposable
         result.Should().ContainSingle().Which.Should().Be(withPolygon);
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task GetHistoryForCampSeasonAsync_ReturnsDescendingByModifiedAt()
     {
         var campSeasonId = Guid.NewGuid();

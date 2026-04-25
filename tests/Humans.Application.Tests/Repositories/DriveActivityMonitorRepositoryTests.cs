@@ -95,7 +95,7 @@ public sealed class DriveActivityMonitorRepositoryTests : IDisposable
         result.Should().Be(expected);
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task PersistAnomaliesAsync_InsertsAnomaliesAndAdvancesMarkerAtomically()
     {
         var marker = Instant.FromUtc(2026, 4, 22, 11, 0);

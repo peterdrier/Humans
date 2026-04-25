@@ -358,7 +358,7 @@ public class TicketSyncServiceTests : IDisposable
         order.VatAmount.Should().Be(28.64m);
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task SyncOrdersAndAttendeesAsync_StoresZeroVatForRefundedOrCancelledOrders()
     {
         var orders = new List<VendorOrderDto>

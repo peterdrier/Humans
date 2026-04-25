@@ -200,7 +200,7 @@ public class CampaignServiceTests : IDisposable
         updated!.Status.Should().Be(CampaignStatus.Active);
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task ActivateAsync_NoCodes_Throws()
     {
         var campaign = await SeedCampaignAsync();

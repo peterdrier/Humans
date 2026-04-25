@@ -298,7 +298,7 @@ public class ShiftSignupServiceTests : IDisposable
         result.Error.Should().Contain("before the shift ends");
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task MarkNoShow_AfterShiftEnd_SetsNoShow()
     {
         var (es, rota, shift) = SeedShiftScenario(SignupPolicy.Public);

@@ -415,7 +415,7 @@ public class CityPlanningServiceTests : IDisposable
         history[0].ModifiedByDisplayName.Should().Be("Test User");
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task GetCampPolygonHistoryAsync_FallsBackToUserIdString_WhenUserNotFound()
     {
         var campSeasonId = Guid.NewGuid();

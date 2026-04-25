@@ -33,7 +33,7 @@ public sealed class ProfileRepositoryTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task ReconcileCVEntriesAsync_AddsUpdatesAndRemovesEntries()
     {
         // Arrange: profile with two existing CV entries

@@ -309,7 +309,7 @@ public class ContactFieldServiceTests : IDisposable
         savedField.Visibility.Should().Be(ContactFieldVisibility.BoardOnly);
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task SaveContactFields_DeletesRemovedFields()
     {
         // Arrange

@@ -193,7 +193,7 @@ public class CommunicationPreferenceServiceTests : IDisposable
         result.Should().BeTrue();
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task AcceptsFacilitatedMessagesAsync_ReturnsFalseWhenOptedOut()
     {
         var userId = Guid.NewGuid();

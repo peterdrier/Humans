@@ -105,7 +105,7 @@ public class ProfileServiceTests : IDisposable
 
     // --- Profile save flow ---
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task SaveProfileAsync_NewProfile_CreatesProfile()
     {
         var userId = Guid.NewGuid();

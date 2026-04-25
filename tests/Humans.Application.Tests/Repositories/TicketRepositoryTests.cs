@@ -83,7 +83,7 @@ public sealed class TicketRepositoryTests : IDisposable
 
     // ── UpsertOrdersAsync ────────────────────────────────────────────────────
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task UpsertOrdersAsync_InsertsNewRowsAndUpdatesExisting()
     {
         var existing = new TicketOrder

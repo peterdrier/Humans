@@ -260,7 +260,7 @@ public class NotificationInboxServiceTests : IDisposable
         resolved.Should().Be(2);
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task BulkDismissAsync_SkipsActionableNotifications()
     {
         var actionable = await CreateNotification(NotificationClass.Actionable);

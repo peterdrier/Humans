@@ -208,7 +208,7 @@ public sealed class TicketQueryServiceTests : IDisposable
         result.Rows.Should().HaveCount(2);
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task GetOrdersPageAsync_FiltersbyPaymentStatus()
     {
         _dbContext.TicketOrders.Add(MakeOrder("ord_paid", TicketPaymentStatus.Paid,

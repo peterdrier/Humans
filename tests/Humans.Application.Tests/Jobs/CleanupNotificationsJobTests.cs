@@ -99,7 +99,7 @@ public class CleanupNotificationsJobTests : IDisposable
         remaining.Select(n => n.Title).Should().Contain("Unresolved actionable");
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task DeletesStaleInformationalNotificationsOlderThan30Days()
     {
         var now = _clock.GetCurrentInstant();

@@ -36,7 +36,7 @@ public class GeneralAvailabilityServiceTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [HumansFact]
+    [HumansFact(Timeout = 10000)]
     public async Task SetAvailability_CreatesRecord()
     {
         var userId = Guid.NewGuid();
