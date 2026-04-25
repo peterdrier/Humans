@@ -7,11 +7,15 @@ Runs during `dotnet build`:
 - **Roslynator.Analyzers** (RCS0xxx) - C# analysis
 - **Microsoft.VisualStudio.Threading.Analyzers** - Async/threading
 
+<!-- freshness:auto id="suppressions" prompt-file=".claude/skills/freshness-sweep/prompts/suppressions.md" -->
+
 **Common suppressions in `Directory.Build.props`:**
 - `MA0048` - File name must match type name
 - `MA0016` - Prefer collection abstraction
 - `MA0026` - Fix TODO comments
 - `MA0051` - Method too long (>60 lines)
+
+<!-- /freshness:auto -->
 
 ## Test attribute policy: HumansFact / HumansTheory
 

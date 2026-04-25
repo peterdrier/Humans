@@ -188,6 +188,17 @@ mechanical:
       Preserve the document's prose sections ("Rules", and the explanatory
       intro). Only regenerate the table.
 
+  - id: code-analysis-suppressions
+    target: docs/architecture/code-analysis.md
+    triggers:
+      - "Directory.Build.props"
+      - "tests/Directory.Build.props"
+      - "tests/BannedSymbols.txt"
+    update: prompt
+    prompt: |
+      Process the freshness:auto block with id="suppressions" in
+      docs/architecture/code-analysis.md per its inline prompt.
+
 # Editorial doc trees — walked recursively for .md files. Each .md may include
 # inline freshness markers (freshness:triggers, freshness:auto, freshness:flag-on-change).
 editorial_trees: []
