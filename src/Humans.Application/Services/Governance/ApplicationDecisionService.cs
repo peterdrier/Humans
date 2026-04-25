@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Application.DTOs;
 using Humans.Application.DTOs.Governance;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
@@ -12,6 +13,13 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using MemberApplication = Humans.Domain.Entities.Application;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Services.Governance;
 
@@ -31,6 +39,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
     private readonly IApplicationRepository _repository;
     private readonly IUserService _userService;
     private readonly IProfileService _profileService;
+    private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IAuditLogService _auditLogService;
     private readonly IEmailService _emailService;
     private readonly INotificationService _notificationService;
@@ -46,6 +55,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         IApplicationRepository repository,
         IUserService userService,
         IProfileService profileService,
+        IRoleAssignmentService roleAssignmentService,
         IAuditLogService auditLogService,
         IEmailService emailService,
         INotificationService notificationService,
@@ -60,6 +70,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         _repository = repository;
         _userService = userService;
         _profileService = profileService;
+        _roleAssignmentService = roleAssignmentService;
         _auditLogService = auditLogService;
         _emailService = emailService;
         _notificationService = notificationService;
@@ -477,6 +488,189 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
             ReviewNotes: application.ReviewNotes,
             History: history);
     }
+
+    // ==========================================================================
+    // Onboarding-section support methods — Governance owns application and
+    // board-vote tables (design-rules §2c), so these cross-section queries
+    // live here and are consumed by OnboardingService.
+    // ==========================================================================
+
+    public Task<IReadOnlySet<Guid>> GetUserIdsWithPendingApplicationAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
+        _repository.GetUserIdsWithSubmittedAsync(userIds, ct);
+
+    public Task<MemberApplication?> GetSubmittedApplicationForUserAsync(
+        Guid userId, CancellationToken ct = default) =>
+        _repository.GetSubmittedForUserAsync(userId, ct);
+
+    public Task<IReadOnlyList<MembershipTier>> GetApprovedTiersForUserAsync(
+        Guid userId, CancellationToken ct = default) =>
+        _repository.GetApprovedTiersForUserAsync(userId, ct);
+
+    public async Task<BoardVotingDashboardData> GetBoardVotingDashboardAsync(
+        CancellationToken ct = default)
+    {
+        var applications = await _repository.GetAllSubmittedWithVotesAsync(ct);
+
+        // Stitch applicant display info in memory (cross-domain nav stripped).
+        var applicantIds = applications.Select(a => a.UserId).Distinct().ToList();
+        var applicantsById = await _userService.GetByIdsAsync(applicantIds, ct);
+
+        var rows = applications.Select(a =>
+        {
+            var applicant = applicantsById.GetValueOrDefault(a.UserId);
+            return new BoardVotingDashboardRow(
+                ApplicationId: a.Id,
+                UserId: a.UserId,
+                UserDisplayName: applicant?.DisplayName ?? string.Empty,
+                UserProfilePictureUrl: applicant?.ProfilePictureUrl,
+                MembershipTier: a.MembershipTier,
+                ApplicationMotivation: a.Motivation,
+                SubmittedAt: a.SubmittedAt,
+                Status: a.Status,
+                Votes: a.BoardVotes
+                    .Select(v => new BoardVoteRow(
+                        BoardMemberUserId: v.BoardMemberUserId,
+                        BoardMemberDisplayName: null,
+                        Vote: v.Vote,
+                        Note: v.Note,
+                        VotedAt: v.VotedAt))
+                    .ToList());
+        }).ToList();
+
+        var boardMemberIds = await _roleAssignmentService.GetActiveUserIdsInRoleAsync(
+            RoleNames.Board, ct);
+        var boardUsersById = await _userService.GetByIdsAsync(boardMemberIds, ct);
+        var boardMembers = boardUsersById.Values
+            .Select(u => new BoardMemberInfo(u.Id, u.DisplayName))
+            .OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return new BoardVotingDashboardData(rows, boardMembers);
+    }
+
+    public async Task<BoardVotingDetailData?> GetBoardVotingDetailAsync(
+        Guid applicationId, CancellationToken ct = default)
+    {
+        var application = await _repository.GetByIdAsync(applicationId, ct);
+        if (application is null)
+            return null;
+
+        var applicant = await _userService.GetByIdAsync(application.UserId, ct);
+        var profile = await _profileService.GetProfileAsync(application.UserId, ct);
+
+        var voterIds = application.BoardVotes
+            .Select(v => v.BoardMemberUserId)
+            .Distinct()
+            .ToList();
+        var votersById = await _userService.GetByIdsAsync(voterIds, ct);
+
+        var voteRows = application.BoardVotes
+            .Select(v => new BoardVoteRow(
+                BoardMemberUserId: v.BoardMemberUserId,
+                BoardMemberDisplayName: votersById.GetValueOrDefault(v.BoardMemberUserId)?.DisplayName,
+                Vote: v.Vote,
+                Note: v.Note,
+                VotedAt: v.VotedAt))
+            .ToList();
+
+        return new BoardVotingDetailData(
+            ApplicationId: application.Id,
+            UserId: application.UserId,
+            DisplayName: applicant?.DisplayName ?? string.Empty,
+            ProfilePictureUrl: applicant?.ProfilePictureUrl,
+            Email: applicant?.Email ?? string.Empty,
+            FirstName: profile?.FirstName ?? string.Empty,
+            LastName: profile?.LastName ?? string.Empty,
+            City: profile?.City,
+            CountryCode: profile?.CountryCode,
+            MembershipTier: application.MembershipTier,
+            Status: application.Status,
+            Motivation: application.Motivation,
+            AdditionalInfo: application.AdditionalInfo,
+            SignificantContribution: application.SignificantContribution,
+            RoleUnderstanding: application.RoleUnderstanding,
+            SubmittedAt: application.SubmittedAt,
+            Votes: voteRows);
+    }
+
+    public Task<bool> HasBoardVotesAsync(Guid applicationId, CancellationToken ct = default) =>
+        _repository.HasBoardVotesAsync(applicationId, ct);
+
+    public async Task<ApplicationDecisionResult> CastBoardVoteAsync(
+        Guid applicationId,
+        Guid boardMemberUserId,
+        VoteChoice vote,
+        string? note,
+        CancellationToken ct = default)
+    {
+        var application = await _repository.GetByIdAsync(applicationId, ct);
+        if (application is null)
+            return new ApplicationDecisionResult(false, "NotFound");
+
+        if (application.Status != ApplicationStatus.Submitted)
+            return new ApplicationDecisionResult(false, "NotSubmitted");
+
+        var now = _clock.GetCurrentInstant();
+        await _repository.UpsertBoardVoteAsync(applicationId, boardMemberUserId, vote, note, now, ct);
+
+        _votingBadge.Invalidate(boardMemberUserId);
+
+        _logger.LogInformation(
+            "Board member {UserId} voted {Vote} on application {ApplicationId}",
+            boardMemberUserId, vote, applicationId);
+
+        return new ApplicationDecisionResult(true);
+    }
+
+    public Task<int> GetUnvotedApplicationCountAsync(
+        Guid boardMemberUserId, CancellationToken ct = default) =>
+        _repository.GetUnvotedCountForBoardMemberAsync(boardMemberUserId, ct);
+
+    public Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default) =>
+        _repository.GetAdminStatsAsync(ct);
+
+    public Task<int> GetPendingApplicationCountAsync(CancellationToken ct = default) =>
+        _repository.CountByStatusAsync(ApplicationStatus.Submitted, ct);
+
+    public Task<IReadOnlyList<MemberApplication>> GetExpiringApplicationsNeedingReminderAsync(
+        LocalDate today, LocalDate reminderThreshold, CancellationToken ct = default) =>
+        _repository.GetExpiringApplicationsNeedingReminderAsync(today, reminderThreshold, ct);
+
+    public Task<IReadOnlySet<(Guid UserId, MembershipTier Tier)>> GetPendingApplicationUserTiersAsync(
+        CancellationToken ct = default) =>
+        _repository.GetPendingApplicationUserTiersAsync(ct);
+
+    public Task MarkRenewalReminderSentAsync(
+        Guid applicationId, Instant sentAt, CancellationToken ct = default) =>
+        _repository.MarkRenewalReminderSentAsync(applicationId, sentAt, ct);
+
+    public Task<IReadOnlyList<MemberApplication>> GetApprovedInWindowAsync(
+        Instant windowStart, Instant windowEnd, CancellationToken ct = default) =>
+        _repository.GetApprovedInWindowAsync(windowStart, windowEnd, ct);
+
+    public Task<IReadOnlyList<Guid>> GetSubmittedApplicationIdsAsync(
+        CancellationToken ct = default) =>
+        _repository.GetSubmittedApplicationIdsAsync(ct);
+
+    public Task<int> GetUnvotedCountForBoardMemberAmongApplicationsAsync(
+        Guid boardMemberUserId,
+        IReadOnlyCollection<Guid> applicationIds,
+        CancellationToken ct = default) =>
+        _repository.GetUnvotedCountForBoardMemberAmongApplicationsAsync(
+            boardMemberUserId, applicationIds, ct);
+
+    public Task<IReadOnlyList<Guid>> GetActiveApprovedTierUserIdsAsync(
+        MembershipTier tier, LocalDate today, CancellationToken ct = default) =>
+        _repository.GetActiveApprovedTierUserIdsAsync(tier, today, ct);
+
+    public Task<bool> HasActiveApprovedTierAsync(
+        Guid userId, MembershipTier tier, LocalDate today, CancellationToken ct = default) =>
+        _repository.HasActiveApprovedTierAsync(userId, tier, today, ct);
+
+    public Task<IReadOnlyDictionary<Guid, MembershipTier>> GetOtherActiveTierAssignmentsAsync(
+        MembershipTier excludeTier, LocalDate today, CancellationToken ct = default) =>
+        _repository.GetOtherActiveTierAssignmentsAsync(excludeTier, today, ct);
 
     public async Task UpdateDraftApplicationAsync(
         Guid applicationId, MembershipTier tier, string motivation,

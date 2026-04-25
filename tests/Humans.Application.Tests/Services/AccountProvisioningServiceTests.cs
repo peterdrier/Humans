@@ -1,11 +1,11 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Services.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
+using Humans.Domain.Helpers;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -67,52 +67,275 @@ file sealed class StubAuditLog : IAuditLogService
 
     public Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(IReadOnlyList<Guid> teamIds, CancellationToken ct = default) =>
         Task.FromResult(new Dictionary<Guid, (string Name, string Slug)>());
+
+    public Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
+        Instant windowStart, Instant windowEnd, AuditAction action, CancellationToken ct = default) =>
+        Task.FromResult((IReadOnlyList<Guid>)Array.Empty<Guid>());
 }
 
-public class AccountProvisioningServiceTests : IDisposable
+/// <summary>
+/// Unit tests for the Application-layer <see cref="AccountProvisioningService"/>
+/// (§15 migration, issue #558). Repositories are stubbed in-memory so these
+/// tests do not depend on Npgsql-specific translations (<c>ILike</c>) that
+/// the EF InMemory provider does not support; behaviour of the actual
+/// <see cref="UserEmail"/> / <see cref="User"/> matching is covered in
+/// integration/QA against Postgres.
+/// </summary>
+public class AccountProvisioningServiceTests
 {
-    private readonly HumansDbContext _dbContext;
+    private sealed class FakeUserRepository : IUserRepository
+    {
+        private readonly Dictionary<Guid, User> _users = new();
+
+        public void Seed(User user) => _users[user.Id] = user;
+        public bool Contains(Guid userId) => _users.ContainsKey(userId);
+        public int Count => _users.Count;
+        public IReadOnlyCollection<User> All => _users.Values;
+
+        public Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default)
+            => Task.FromResult(_users.TryGetValue(userId, out var u) ? u : null);
+
+        public Task<User?> GetByEmailOrAlternateAsync(
+            string normalizedEmail, string? alternateEmail, CancellationToken ct = default)
+        {
+            foreach (var user in _users.Values)
+            {
+                if (Matches(user.Email, normalizedEmail, alternateEmail) ||
+                    Matches(user.GoogleEmail, normalizedEmail, alternateEmail))
+                {
+                    return Task.FromResult<User?>(user);
+                }
+            }
+
+            return Task.FromResult<User?>(null);
+        }
+
+        public Task<bool> SetContactSourceIfNullAsync(
+            Guid userId, ContactSource source, CancellationToken ct = default)
+        {
+            if (!_users.TryGetValue(userId, out var user))
+                return Task.FromResult(false);
+
+            if (user.ContactSource is not null)
+                return Task.FromResult(false);
+
+            user.ContactSource = source;
+            return Task.FromResult(true);
+        }
+
+        private static bool Matches(string? value, string normalized, string? alternate)
+        {
+            if (value is null) return false;
+            var v = EmailNormalization.NormalizeForComparison(value);
+            if (string.Equals(v, normalized, StringComparison.OrdinalIgnoreCase)) return true;
+            if (alternate is not null && string.Equals(v, alternate, StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+
+        // --- Methods not exercised by these tests ---
+        public Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyDictionary<Guid, User>> GetByIdsWithEmailsAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<User?> GetByNormalizedEmailAsync(string? normalizedEmail, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<User>> GetContactUsersAsync(string? search, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<Instant>> GetLoginTimestampsInWindowAsync(
+            Instant fromInclusive, Instant toExclusive, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> SetDeletionPendingAsync(
+            Guid userId, Instant requestedAt, Instant scheduledFor, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<EventParticipation?> GetParticipationAsync(
+            Guid userId, int year, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<EventParticipation>> GetAllParticipationsForYearAsync(
+            int year, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<EventParticipation?> UpsertParticipationAsync(
+            Guid userId, int year, ParticipationStatus status,
+            ParticipationSource source, Instant? declaredAt, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> RemoveParticipationAsync(
+            Guid userId, int year, ParticipationSource requiredSource, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<int> BackfillParticipationsAsync(
+            int year, IReadOnlyList<(Guid UserId, ParticipationStatus Status)> entries,
+            CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> AnonymizeForMergeAsync(Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task RemoveExternalLoginsAsync(Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task MigrateExternalLoginsAsync(
+            Guid sourceUserId, Guid targetUserId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
+            string email, Guid excludeUserId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> SetGoogleEmailStatusAsync(Guid userId, GoogleEmailStatus status, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<(bool Updated, string? OldEmail)> RewritePrimaryEmailAsync(Guid userId, string newEmail, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<Guid>> GetAllUserIdsAsync(CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<(string Language, int Count)>>
+            GetLanguageDistributionForUserIdsAsync(
+                IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<string?> PurgeAsync(Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<int> GetPendingDeletionCountAsync(CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task SetLastConsentReminderSentAsync(Guid userId, Instant sentAt, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<int> GetRejectedGoogleEmailCountAsync(CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(Instant now, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<(Guid UserId, string DisplayName, string GoogleEmail)>>
+            BackfillNobodiesTeamGoogleEmailsAsync(CancellationToken ct = default) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class FakeUserEmailRepository : IUserEmailRepository
+    {
+        private readonly Dictionary<Guid, UserEmail> _emails = new();
+
+        public void Seed(UserEmail email) => _emails[email.Id] = email;
+        public int Count => _emails.Count;
+        public IReadOnlyCollection<UserEmail> All => _emails.Values;
+
+        public Task<UserEmail?> FindByNormalizedEmailAsync(
+            string normalizedEmail, string? alternateEmail, CancellationToken ct = default)
+        {
+            foreach (var ue in _emails.Values)
+            {
+                var n = EmailNormalization.NormalizeForComparison(ue.Email);
+                if (string.Equals(n, normalizedEmail, StringComparison.OrdinalIgnoreCase)) return Task.FromResult<UserEmail?>(ue);
+                if (alternateEmail is not null && string.Equals(n, alternateEmail, StringComparison.OrdinalIgnoreCase)) return Task.FromResult<UserEmail?>(ue);
+            }
+
+            return Task.FromResult<UserEmail?>(null);
+        }
+
+        public Task AddAsync(UserEmail email, CancellationToken ct = default)
+        {
+            _emails[email.Id] = email;
+            return Task.CompletedTask;
+        }
+
+        // --- Methods not exercised by these tests ---
+        public Task<IReadOnlyList<UserEmail>> GetByUserIdReadOnlyAsync(Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<UserEmail>> GetByUserIdForMutationAsync(Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<UserEmail?> GetByIdAndUserIdAsync(Guid emailId, Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<UserEmail?> GetByIdReadOnlyAsync(Guid emailId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> ExistsForUserAsync(Guid userId, string normalizedEmail, string? alternateEmail, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> ExistsVerifiedForOtherUserAsync(Guid userId, string normalizedEmail, string? alternateEmail, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<UserEmail?> GetConflictingVerifiedEmailAsync(Guid excludeEmailId, string normalizedEmail, string? alternateEmail, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<int> GetMaxDisplayOrderAsync(Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<UserEmail>> GetAllVerifiedNobodiesTeamEmailsAsync(CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<Dictionary<Guid, string>> GetAllNotificationTargetEmailsAsync(CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<string?> GetVerifiedEmailAddressAsync(Guid userId, Guid emailId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task RemoveAsync(UserEmail email, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task RemoveAllForUserAsync(Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<Humans.Application.DTOs.UserEmailWithUser?> FindVerifiedWithUserAsync(string normalizedEmail, string? alternateEmail, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task UpdateAsync(UserEmail email, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task UpdateBatchAsync(IReadOnlyList<UserEmail> emails, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<Guid?> GetUserIdByVerifiedEmailAsync(string email, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<UserEmail>> GetAllAsync(CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task RemoveAllForUserAndSaveAsync(Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> MarkVerifiedAsync(Guid emailId, Instant now, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> RemoveByIdAsync(Guid emailId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<Guid>> SearchUserIdsByVerifiedEmailAsync(
+            string searchTerm, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<Guid?> GetOtherUserIdHavingEmailAsync(
+            string email, Guid excludeUserId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<UserEmail>> GetByEmailsAsync(
+            IReadOnlyCollection<string> emails, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> AnyWithEmailAsync(string email, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> RewriteOAuthEmailAsync(Guid userId, string newEmail, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> RewriteEmailAddressAsync(
+            Guid userId, string oldEmail, string newEmail, Instant now, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+    }
+
     private readonly FakeClock _clock;
     private readonly UserManager<User> _userManager;
+    private readonly FakeUserRepository _userRepo;
+    private readonly FakeUserEmailRepository _userEmailRepo;
     private readonly AccountProvisioningService _service;
 
     public AccountProvisioningServiceTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 8, 12, 0));
 
         var store = Substitute.For<IUserStore<User>>();
         _userManager = Substitute.For<UserManager<User>>(
             store, null, null, null, null, null, null, null, null);
 
-        // Mock CreateAsync to add user to DbContext and return success
+        _userRepo = new FakeUserRepository();
+        _userEmailRepo = new FakeUserEmailRepository();
+
+        // Mock CreateAsync to persist the user into the fake repo and return success.
         _userManager.CreateAsync(Arg.Any<User>())
             .Returns(callInfo =>
             {
                 var user = callInfo.Arg<User>();
                 if (user.Id == Guid.Empty)
                     user.Id = Guid.NewGuid();
-                _dbContext.Users.Add(user);
-                _dbContext.SaveChanges();
+                _userRepo.Seed(user);
                 return Task.FromResult(IdentityResult.Success);
             });
 
         _service = new AccountProvisioningService(
-            _dbContext,
+            _userRepo,
+            _userEmailRepo,
             _userManager,
             new StubAuditLog(),
             _clock,
             NullLogger<AccountProvisioningService>.Instance);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [Fact]
@@ -127,8 +350,7 @@ public class AccountProvisioningServiceTests : IDisposable
         result.User.ContactSource.Should().Be(ContactSource.TicketTailor);
 
         // Verify UserEmail was created
-        var userEmail = await _dbContext.UserEmails.FirstOrDefaultAsync(
-            ue => ue.UserId == result.User.Id);
+        var userEmail = _userEmailRepo.All.FirstOrDefault(ue => ue.UserId == result.User.Id);
         userEmail.Should().NotBeNull();
         userEmail!.Email.Should().Be("alice@example.com");
         userEmail.IsNotificationTarget.Should().BeTrue();
@@ -150,8 +372,8 @@ public class AccountProvisioningServiceTests : IDisposable
             ContactSource = ContactSource.MailerLite,
             CreatedAt = _clock.GetCurrentInstant(),
         };
-        _dbContext.Users.Add(existingUser);
-        _dbContext.UserEmails.Add(new UserEmail
+        _userRepo.Seed(existingUser);
+        _userEmailRepo.Seed(new UserEmail
         {
             Id = Guid.NewGuid(),
             UserId = existingUser.Id,
@@ -162,7 +384,6 @@ public class AccountProvisioningServiceTests : IDisposable
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant(),
         });
-        await _dbContext.SaveChangesAsync();
 
         var result = await _service.FindOrCreateUserByEmailAsync(
             "bob@example.com", "Bob Jones", ContactSource.TicketTailor);
@@ -185,8 +406,8 @@ public class AccountProvisioningServiceTests : IDisposable
             DisplayName = "Carol",
             CreatedAt = _clock.GetCurrentInstant(),
         };
-        _dbContext.Users.Add(existingUser);
-        _dbContext.UserEmails.Add(new UserEmail
+        _userRepo.Seed(existingUser);
+        _userEmailRepo.Seed(new UserEmail
         {
             Id = Guid.NewGuid(),
             UserId = existingUser.Id,
@@ -197,7 +418,7 @@ public class AccountProvisioningServiceTests : IDisposable
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant(),
         });
-        _dbContext.UserEmails.Add(new UserEmail
+        _userEmailRepo.Seed(new UserEmail
         {
             Id = Guid.NewGuid(),
             UserId = existingUser.Id,
@@ -208,7 +429,6 @@ public class AccountProvisioningServiceTests : IDisposable
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant(),
         });
-        await _dbContext.SaveChangesAsync();
 
         // Look up by secondary email
         var result = await _service.FindOrCreateUserByEmailAsync(
@@ -270,8 +490,8 @@ public class AccountProvisioningServiceTests : IDisposable
             ContactSource = null,
             CreatedAt = _clock.GetCurrentInstant(),
         };
-        _dbContext.Users.Add(existingUser);
-        _dbContext.UserEmails.Add(new UserEmail
+        _userRepo.Seed(existingUser);
+        _userEmailRepo.Seed(new UserEmail
         {
             Id = Guid.NewGuid(),
             UserId = existingUser.Id,
@@ -282,7 +502,6 @@ public class AccountProvisioningServiceTests : IDisposable
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant(),
         });
-        await _dbContext.SaveChangesAsync();
 
         var result = await _service.FindOrCreateUserByEmailAsync(
             "frank@example.com", "Frank", ContactSource.TicketTailor);
@@ -322,7 +541,6 @@ public class AccountProvisioningServiceTests : IDisposable
         result3.Created.Should().BeFalse();
 
         // Only one user should exist
-        var userCount = await _dbContext.Users.CountAsync(u => u.Email == "henry@example.com");
-        userCount.Should().Be(1);
+        _userRepo.All.Count(u => string.Equals(u.Email, "henry@example.com", StringComparison.Ordinal)).Should().Be(1);
     }
 }

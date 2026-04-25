@@ -2,13 +2,21 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Governance;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
+using Humans.Application.Interfaces.Legal;
+using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Profiles;
+
+// RoleAssignment cross-domain nav properties (User, CreatedByUser) are [Obsolete] —
+// RoleAssignmentService stitches them in memory from IUserService so controllers can
+// continue to read them for view-model shaping. Nav-strip follow-up tracked in
+// design-rules §15i.
+#pragma warning disable CS0618
 
 namespace Humans.Web.Controllers;
 

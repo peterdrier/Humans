@@ -17,6 +17,15 @@ public class BudgetAuditLog
     public string? NewValue { get; init; }
     public string Description { get; init; } = string.Empty;
     public Guid ActorUserId { get; init; }
+
+    /// <summary>
+    /// Cross-domain navigation to the actor user. Do not use — callers resolve
+    /// display names via <see cref="Humans.Application.Interfaces.IUserService"/>
+    /// / <c>human-link</c> tag helper, keyed off <see cref="ActorUserId"/>.
+    /// Retained only so EF's configured relationship keeps the FK constraint.
+    /// </summary>
+    [Obsolete("Cross-domain nav. Use ActorUserId + IUserService to resolve the user.")]
     public User? ActorUser { get; set; }
+
     public Instant OccurredAt { get; init; }
 }

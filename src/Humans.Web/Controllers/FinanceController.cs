@@ -1,4 +1,6 @@
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Budget;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;

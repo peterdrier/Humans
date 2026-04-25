@@ -6,11 +6,13 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
+using Humans.Infrastructure.Repositories.Email;
 using Humans.Infrastructure.Services;
 using Xunit;
 
@@ -39,8 +41,9 @@ public class CleanupEmailOutboxJobTests : IDisposable
             Substitute.For<ILogger<HumansMetricsService>>());
         var logger = Substitute.For<ILogger<CleanupEmailOutboxJob>>();
         var settings = Options.Create(new EmailSettings { OutboxRetentionDays = 150 });
+        var repo = new EmailOutboxRepository(new TestDbContextFactory(options));
 
-        _job = new CleanupEmailOutboxJob(_dbContext, _clock, settings, _metrics, logger);
+        _job = new CleanupEmailOutboxJob(repo, _clock, settings, _metrics, logger);
     }
 
     public void Dispose()

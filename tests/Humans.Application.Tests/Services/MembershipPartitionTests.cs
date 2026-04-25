@@ -1,108 +1,89 @@
 using AwesomeAssertions;
-using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Application.Interfaces;
+using Humans.Application.Services.Governance;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
 using Xunit;
+using Humans.Application.Interfaces.Consent;
+using Humans.Application.Interfaces.Legal;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Tests.Services;
 
-public class MembershipPartitionTests : IDisposable
+public class MembershipPartitionTests
 {
-    private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly MembershipCalculator _service;
+    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
+    private readonly IMembershipQuery _membershipQuery = Substitute.For<IMembershipQuery>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IConsentService _consentService = Substitute.For<IConsentService>();
     private readonly ILegalDocumentSyncService _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncService>();
 
+    private readonly Dictionary<Guid, User> _usersById = new();
+    private readonly Dictionary<Guid, Profile> _profilesByUserId = new();
+    private readonly Dictionary<Guid, List<DocumentVersion>> _requiredVersionsByTeam = new();
+    private readonly Dictionary<Guid, HashSet<Guid>> _consentedVersionsByUser = new();
+
     public MembershipPartitionTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
 
         var serviceProvider = Substitute.For<IServiceProvider>();
         serviceProvider.GetService(typeof(IConsentService)).Returns(_consentService);
 
-        _service = new MembershipCalculator(_dbContext, serviceProvider, _legalDocumentSyncService, _clock);
+        _service = new MembershipCalculator(
+            _profileService,
+            _membershipQuery,
+            _userService,
+            _legalDocumentSyncService,
+            serviceProvider,
+            _clock);
 
-        // Delegate to in-memory DB so seeded data is returned
-        _legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(
-            Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
             {
-                var teamId = callInfo.Arg<Guid>();
-                var now = _clock.GetCurrentInstant();
-                var versions = _dbContext.LegalDocuments
-                    .Where(d => d.IsRequired && d.IsActive && d.TeamId == teamId)
-                    .SelectMany(d => d.Versions)
-                    .Where(v => v.EffectiveFrom <= now)
-                    .Include(v => v.LegalDocument)
-                    .ToList()
-                    .GroupBy(v => v.LegalDocumentId)
-                    .Select(g => g.OrderByDescending(v => v.EffectiveFrom).First())
-                    .ToList();
-                return Task.FromResult<IReadOnlyList<DocumentVersion>>(versions);
+                var ids = ci.Arg<IReadOnlyCollection<Guid>>();
+                var map = ids
+                    .Where(_usersById.ContainsKey)
+                    .ToDictionary(id => id, id => _usersById[id]);
+                return Task.FromResult<IReadOnlyDictionary<Guid, User>>(map);
             });
 
-        _consentService.GetConsentedVersionIdsAsync(
-            Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
+        _profileService.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
             {
-                var userId = callInfo.Arg<Guid>();
-                var ids = _dbContext.ConsentRecords
-                    .Where(cr => cr.UserId == userId && cr.ExplicitConsent)
-                    .Select(cr => cr.DocumentVersionId)
-                    .ToHashSet();
-                return Task.FromResult<IReadOnlySet<Guid>>(ids);
+                var ids = ci.Arg<IReadOnlyCollection<Guid>>();
+                var map = ids
+                    .Where(_profilesByUserId.ContainsKey)
+                    .ToDictionary(id => id, id => _profilesByUserId[id]);
+                return Task.FromResult<IReadOnlyDictionary<Guid, Profile>>(map);
+            });
+
+        _legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var teamId = ci.Arg<Guid>();
+                var versions = _requiredVersionsByTeam.GetValueOrDefault(teamId) ?? new();
+                return Task.FromResult<IReadOnlyList<DocumentVersion>>(versions);
             });
 
         _consentService.GetConsentMapForUsersAsync(
             Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
+            .Returns(ci =>
             {
-                var userIds = callInfo.Arg<IReadOnlyList<Guid>>();
-                var consents = _dbContext.ConsentRecords
-                    .Where(cr => userIds.Contains(cr.UserId) && cr.ExplicitConsent)
-                    .Select(cr => new { cr.UserId, cr.DocumentVersionId })
-                    .ToList();
+                var userIds = ci.Arg<IReadOnlyList<Guid>>();
                 var result = userIds.ToDictionary(
                     id => id,
-                    _ => (IReadOnlySet<Guid>)new HashSet<Guid>());
-                foreach (var c in consents)
-                {
-                    ((HashSet<Guid>)result[c.UserId]).Add(c.DocumentVersionId);
-                }
+                    id => (IReadOnlySet<Guid>)(_consentedVersionsByUser.GetValueOrDefault(id) ?? new HashSet<Guid>()));
                 return Task.FromResult<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>>(result);
             });
-
-        // Seed the Volunteers system team (needed for consent queries)
-        _dbContext.Teams.Add(new Team
-        {
-            Id = SystemTeamIds.Volunteers,
-            Name = "Volunteers",
-            Slug = "volunteers",
-            SystemTeamType = SystemTeamType.Volunteers,
-            IsActive = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        });
-        _dbContext.SaveChanges();
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [Fact]
@@ -110,9 +91,8 @@ public class MembershipPartitionTests : IDisposable
     {
         var userId = SeedUser();
         SeedProfile(userId, isApproved: true, isSuspended: false);
-        var versionId = SeedLegalDocumentWithVersion(SystemTeamIds.Volunteers);
-        SeedConsentRecord(userId, versionId);
-        await _dbContext.SaveChangesAsync();
+        var versionId = SeedRequiredVersion(SystemTeamIds.Volunteers);
+        SeedConsent(userId, versionId);
 
         var result = await _service.PartitionUsersAsync(new[] { userId });
 
@@ -129,7 +109,6 @@ public class MembershipPartitionTests : IDisposable
     {
         var userId = SeedUser();
         SeedProfile(userId, isApproved: false, isSuspended: false);
-        await _dbContext.SaveChangesAsync();
 
         var result = await _service.PartitionUsersAsync(new[] { userId });
 
@@ -142,7 +121,6 @@ public class MembershipPartitionTests : IDisposable
     {
         var userId = SeedUser();
         SeedProfile(userId, isApproved: true, isSuspended: true);
-        await _dbContext.SaveChangesAsync();
 
         var result = await _service.PartitionUsersAsync(new[] { userId });
 
@@ -155,7 +133,6 @@ public class MembershipPartitionTests : IDisposable
     {
         var userId = SeedUser();
         // No profile seeded
-        await _dbContext.SaveChangesAsync();
 
         var result = await _service.PartitionUsersAsync(new[] { userId });
 
@@ -168,7 +145,6 @@ public class MembershipPartitionTests : IDisposable
     {
         var userId = SeedUser(deletionRequestedAt: _clock.GetCurrentInstant());
         SeedProfile(userId, isApproved: true, isSuspended: false);
-        await _dbContext.SaveChangesAsync();
 
         var result = await _service.PartitionUsersAsync(new[] { userId });
 
@@ -181,8 +157,7 @@ public class MembershipPartitionTests : IDisposable
     {
         var userId = SeedUser();
         SeedProfile(userId, isApproved: true, isSuspended: false);
-        SeedLegalDocumentWithVersion(SystemTeamIds.Volunteers); // required doc, no consent record
-        await _dbContext.SaveChangesAsync();
+        SeedRequiredVersion(SystemTeamIds.Volunteers); // required doc, no consent record
 
         var result = await _service.PartitionUsersAsync(new[] { userId });
 
@@ -196,8 +171,8 @@ public class MembershipPartitionTests : IDisposable
         // Seed one user per category
         var activeUser = SeedUser();
         SeedProfile(activeUser, isApproved: true, isSuspended: false);
-        var versionId = SeedLegalDocumentWithVersion(SystemTeamIds.Volunteers);
-        SeedConsentRecord(activeUser, versionId);
+        var versionId = SeedRequiredVersion(SystemTeamIds.Volunteers);
+        SeedConsent(activeUser, versionId);
 
         var pendingUser = SeedUser();
         SeedProfile(pendingUser, isApproved: false, isSuspended: false);
@@ -213,8 +188,6 @@ public class MembershipPartitionTests : IDisposable
         var missingConsentsUser = SeedUser();
         SeedProfile(missingConsentsUser, isApproved: true, isSuspended: false);
         // Has a required doc from above but no consent record
-
-        await _dbContext.SaveChangesAsync();
 
         var allIds = new[] { activeUser, pendingUser, suspendedUser, incompleteUser, deletionUser, missingConsentsUser };
         var result = await _service.PartitionUsersAsync(allIds);
@@ -235,8 +208,8 @@ public class MembershipPartitionTests : IDisposable
         // Seed one user per category
         var activeUser = SeedUser();
         SeedProfile(activeUser, isApproved: true, isSuspended: false);
-        var versionId = SeedLegalDocumentWithVersion(SystemTeamIds.Volunteers);
-        SeedConsentRecord(activeUser, versionId);
+        var versionId = SeedRequiredVersion(SystemTeamIds.Volunteers);
+        SeedConsent(activeUser, versionId);
 
         var pendingUser = SeedUser();
         SeedProfile(pendingUser, isApproved: false, isSuspended: false);
@@ -250,8 +223,6 @@ public class MembershipPartitionTests : IDisposable
 
         var missingConsentsUser = SeedUser();
         SeedProfile(missingConsentsUser, isApproved: true, isSuspended: false);
-
-        await _dbContext.SaveChangesAsync();
 
         var allIds = new[] { activeUser, pendingUser, suspendedUser, incompleteUser, deletionUser, missingConsentsUser };
         var result = await _service.PartitionUsersAsync(allIds);
@@ -279,7 +250,6 @@ public class MembershipPartitionTests : IDisposable
         // User is both suspended AND has DeletionRequestedAt → should go to PendingDeletion
         var userId = SeedUser(deletionRequestedAt: _clock.GetCurrentInstant());
         SeedProfile(userId, isApproved: true, isSuspended: true);
-        await _dbContext.SaveChangesAsync();
 
         var result = await _service.PartitionUsersAsync(new[] { userId });
 
@@ -292,7 +262,7 @@ public class MembershipPartitionTests : IDisposable
     private Guid SeedUser(Instant? deletionRequestedAt = null)
     {
         var userId = Guid.NewGuid();
-        _dbContext.Users.Add(new User
+        _usersById[userId] = new User
         {
             Id = userId,
             UserName = $"user-{userId}",
@@ -300,13 +270,13 @@ public class MembershipPartitionTests : IDisposable
             DisplayName = $"User {userId.ToString()[..8]}",
             CreatedAt = _clock.GetCurrentInstant(),
             DeletionRequestedAt = deletionRequestedAt
-        });
+        };
         return userId;
     }
 
     private void SeedProfile(Guid userId, bool isApproved, bool isSuspended)
     {
-        _dbContext.Profiles.Add(new Profile
+        _profilesByUserId[userId] = new Profile
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -317,25 +287,20 @@ public class MembershipPartitionTests : IDisposable
             IsSuspended = isSuspended,
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant()
-        });
+        };
     }
 
-    private void SeedConsentRecord(Guid userId, Guid versionId)
+    private void SeedConsent(Guid userId, Guid versionId)
     {
-        _dbContext.ConsentRecords.Add(new ConsentRecord
+        if (!_consentedVersionsByUser.TryGetValue(userId, out var set))
         {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            DocumentVersionId = versionId,
-            ExplicitConsent = true,
-            ConsentedAt = _clock.GetCurrentInstant(),
-            IpAddress = "127.0.0.1",
-            UserAgent = "test",
-            ContentHash = "testhash"
-        });
+            set = new HashSet<Guid>();
+            _consentedVersionsByUser[userId] = set;
+        }
+        set.Add(versionId);
     }
 
-    private Guid SeedLegalDocumentWithVersion(Guid teamId)
+    private Guid SeedRequiredVersion(Guid teamId)
     {
         var now = _clock.GetCurrentInstant();
         var docId = Guid.NewGuid();
@@ -352,8 +317,7 @@ public class MembershipPartitionTests : IDisposable
             CreatedAt = now,
             LastSyncedAt = now
         };
-        _dbContext.LegalDocuments.Add(doc);
-        _dbContext.DocumentVersions.Add(new DocumentVersion
+        var version = new DocumentVersion
         {
             Id = versionId,
             LegalDocumentId = docId,
@@ -363,7 +327,13 @@ public class MembershipPartitionTests : IDisposable
             RequiresReConsent = false,
             CreatedAt = now,
             LegalDocument = doc
-        });
+        };
+        if (!_requiredVersionsByTeam.TryGetValue(teamId, out var list))
+        {
+            list = new List<DocumentVersion>();
+            _requiredVersionsByTeam[teamId] = list;
+        }
+        list.Add(version);
         return versionId;
     }
 }

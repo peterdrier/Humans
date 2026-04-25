@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Email;
 using Microsoft.Extensions.Logging;
 
 namespace Humans.Infrastructure.Services;

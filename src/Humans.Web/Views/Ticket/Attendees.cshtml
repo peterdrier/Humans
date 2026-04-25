@@ -92,9 +92,9 @@
                             @{
                                 var statusClass = a.Status switch
                                 {
-                                    Humans.Domain.Enums.TicketAttendeeStatus.Valid => "bg-success",
-                                    Humans.Domain.Enums.TicketAttendeeStatus.CheckedIn => "bg-info",
-                                    Humans.Domain.Enums.TicketAttendeeStatus.Void => "bg-danger",
+                                    TicketAttendeeStatus.Valid => "bg-success",
+                                    TicketAttendeeStatus.CheckedIn => "bg-info",
+                                    TicketAttendeeStatus.Void => "bg-danger",
                                     _ => "bg-secondary"
                                 };
                             }

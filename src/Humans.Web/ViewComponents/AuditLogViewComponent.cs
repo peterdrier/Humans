@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.AuditLog;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 

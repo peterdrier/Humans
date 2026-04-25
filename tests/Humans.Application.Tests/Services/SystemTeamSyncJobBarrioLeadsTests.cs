@@ -1,11 +1,19 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Caching;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -19,123 +27,47 @@ namespace Humans.Application.Tests.Services;
 /// Covers #498: duplicate camp registration for a user who is already an active member of the
 /// Barrio Leads system team must not violate IX_team_members_active_unique.
 /// </summary>
-public class SystemTeamSyncJobBarrioLeadsTests : IDisposable
+/// <remarks>
+/// Rewritten for the §15 Google-writing jobs migration (issue #570): the job no
+/// longer owns a <c>HumansDbContext</c>, so the test coordinates through the
+/// <see cref="ITeamService"/> / <see cref="ICampRepository"/> seams. The
+/// Barrio Leads system team's <see cref="Team.Members"/> collection is stubbed
+/// so the job's idempotency guard can see the existing active membership
+/// without reading the DB directly.
+/// </remarks>
+public class SystemTeamSyncJobBarrioLeadsTests
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly FakeClock _clock;
-    private readonly SystemTeamSyncJob _job;
-    private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
+    private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 15, 12, 0));
+    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly ICampRepository _campRepository = Substitute.For<ICampRepository>();
+    private readonly IGoogleSyncService _googleSyncService = Substitute.For<IGoogleSyncService>();
+    private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
+    private readonly IEmailService _emailService = Substitute.For<IEmailService>();
+    private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
+    private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
 
-    public SystemTeamSyncJobBarrioLeadsTests()
+    private SystemTeamSyncJob CreateJob()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _dbContext = new HumansDbContext(options);
-        _clock = new FakeClock(Instant.FromUtc(2026, 4, 15, 12, 0));
+        var services = new ServiceCollection();
+        services.AddSingleton(Substitute.For<IMembershipCalculator>());
+        var provider = services.BuildServiceProvider();
 
-        _job = new SystemTeamSyncJob(
-            _dbContext,
-            Substitute.For<IMembershipCalculator>(),
-            Substitute.For<IGoogleSyncService>(),
-            Substitute.For<IAuditLogService>(),
-            Substitute.For<IEmailService>(),
-            _cache,
-            Substitute.For<IHumansMetrics>(),
+        return new SystemTeamSyncJob(
+            _teamService,
+            _userService,
+            _campRepository,
+            provider,
+            _googleSyncService,
+            _auditLogService,
+            _emailService,
+            _roleAssignmentClaimsInvalidator,
+            _metrics,
             NullLogger<SystemTeamSyncJob>.Instance,
             _clock);
     }
 
-    public void Dispose()
-    {
-        _cache.Dispose();
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
-    }
-
-    [Fact]
-    public async Task SyncBarrioLeadsMembershipForUserAsync_UserAlreadyActiveMember_IsNoOp()
-    {
-        // Arrange: user is lead of one camp and already has an active team_members row
-        // for the Barrio Leads system team (as they would after registering a first camp).
-        var userId = Guid.NewGuid();
-        var team = await SeedBarrioLeadsTeamAsync();
-        var camp1 = await SeedCampAsync("camp-one");
-        var camp2 = await SeedCampAsync("camp-two");
-
-        _dbContext.CampLeads.Add(new CampLead
-        {
-            Id = Guid.NewGuid(),
-            CampId = camp1.Id,
-            UserId = userId,
-            Role = CampLeadRole.CoLead,
-            JoinedAt = _clock.GetCurrentInstant()
-        });
-        _dbContext.TeamMembers.Add(new TeamMember
-        {
-            Id = Guid.NewGuid(),
-            TeamId = team.Id,
-            UserId = userId,
-            Role = TeamMemberRole.Member,
-            JoinedAt = _clock.GetCurrentInstant()
-        });
-        await _dbContext.SaveChangesAsync();
-
-        // Simulate a second camp registration: add another CampLead row, then call sync.
-        _dbContext.CampLeads.Add(new CampLead
-        {
-            Id = Guid.NewGuid(),
-            CampId = camp2.Id,
-            UserId = userId,
-            Role = CampLeadRole.CoLead,
-            JoinedAt = _clock.GetCurrentInstant()
-        });
-        await _dbContext.SaveChangesAsync();
-
-        // Act + Assert: should NOT throw (previously failed with unique-index violation)
-        // and there should still be exactly one active membership after sync.
-        var act = async () => await _job.SyncBarrioLeadsMembershipForUserAsync(userId);
-        await act.Should().NotThrowAsync();
-
-        var activeRows = await _dbContext.TeamMembers
-            .Where(tm => tm.TeamId == team.Id && tm.UserId == userId && tm.LeftAt == null)
-            .CountAsync();
-        activeRows.Should().Be(1);
-    }
-
-    [Fact]
-    public async Task SyncBarrioLeadsMembershipForUserAsync_UserBecomesLead_AddsMembership()
-    {
-        // Arrange: team exists, user has a new CampLead but no TeamMember row yet.
-        var userId = Guid.NewGuid();
-        var team = await SeedBarrioLeadsTeamAsync();
-        var camp = await SeedCampAsync("new-camp");
-
-        _dbContext.CampLeads.Add(new CampLead
-        {
-            Id = Guid.NewGuid(),
-            CampId = camp.Id,
-            UserId = userId,
-            Role = CampLeadRole.CoLead,
-            JoinedAt = _clock.GetCurrentInstant()
-        });
-        await _dbContext.SaveChangesAsync();
-
-        // Act
-        await _job.SyncBarrioLeadsMembershipForUserAsync(userId);
-
-        // Assert: single active membership created.
-        var activeRows = await _dbContext.TeamMembers
-            .Where(tm => tm.TeamId == team.Id && tm.UserId == userId && tm.LeftAt == null)
-            .CountAsync();
-        activeRows.Should().Be(1);
-    }
-
-    // ------------------------------------------------------------------
-    // Seed helpers
-    // ------------------------------------------------------------------
-
-    private async Task<Team> SeedBarrioLeadsTeamAsync()
+    private Team StubBarrioLeadsTeam(IEnumerable<TeamMember>? activeMembers = null)
     {
         var team = new Team
         {
@@ -147,26 +79,79 @@ public class SystemTeamSyncJobBarrioLeadsTests : IDisposable
             IsActive = true,
             IsHidden = true,
             CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
+            UpdatedAt = _clock.GetCurrentInstant(),
         };
-        _dbContext.Teams.Add(team);
-        await _dbContext.SaveChangesAsync();
+        if (activeMembers is not null)
+        {
+            foreach (var m in activeMembers)
+            {
+                team.Members.Add(m);
+            }
+        }
+        _teamService.GetSystemTeamWithActiveMembersAsync(
+            SystemTeamType.BarrioLeads, Arg.Any<CancellationToken>())
+            .Returns(team);
         return team;
     }
 
-    private async Task<Camp> SeedCampAsync(string slug)
+    [Fact]
+    public async Task SyncBarrioLeadsMembershipForUserAsync_UserAlreadyActiveMember_IsNoOp()
     {
-        var camp = new Camp
-        {
-            Id = Guid.NewGuid(),
-            Slug = slug,
-            ContactEmail = $"{slug}@example.com",
-            ContactPhone = "+34600000000",
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        };
-        _dbContext.Camps.Add(camp);
-        await _dbContext.SaveChangesAsync();
-        return camp;
+        // User is already an active member of Barrio Leads and is still a
+        // lead of at least one camp — the guard in the job should short-circuit.
+        var userId = Guid.NewGuid();
+        var team = StubBarrioLeadsTeam(
+            [
+                new TeamMember
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    Role = TeamMemberRole.Member,
+                    JoinedAt = _clock.GetCurrentInstant(),
+                    LeftAt = null,
+                },
+            ]);
+        _campRepository.IsLeadAnywhereAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var job = CreateJob();
+
+        // Act + Assert: should not throw and must not call the membership
+        // delta apply path (otherwise a duplicate insert would surface).
+        var act = async () => await job.SyncBarrioLeadsMembershipForUserAsync(userId);
+        await act.Should().NotThrowAsync();
+
+        await _teamService.DidNotReceive().ApplySystemTeamMembershipDeltaAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<IReadOnlyCollection<Guid>>(),
+            Arg.Any<IReadOnlyCollection<Guid>>(),
+            Arg.Any<Instant>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SyncBarrioLeadsMembershipForUserAsync_UserBecomesLead_AddsMembership()
+    {
+        // User is a new lead but not yet a team member — the job should
+        // enqueue the add via the bulk-delta service call.
+        var userId = Guid.NewGuid();
+        var team = StubBarrioLeadsTeam();
+        _campRepository.IsLeadAnywhereAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        _userService.GetByIdsAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, User>)new Dictionary<Guid, User>());
+
+        var job = CreateJob();
+
+        await job.SyncBarrioLeadsMembershipForUserAsync(userId);
+
+        await _teamService.Received(1).ApplySystemTeamMembershipDeltaAsync(
+            team.Id,
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 0),
+            Arg.Any<Instant>(),
+            Arg.Any<CancellationToken>());
     }
 }

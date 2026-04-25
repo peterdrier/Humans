@@ -1,12 +1,9 @@
-using Microsoft.EntityFrameworkCore;
+using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Configuration;
-using Humans.Infrastructure.Data;
-
-using Humans.Application.Interfaces;
 
 namespace Humans.Infrastructure.Jobs;
 
@@ -15,20 +12,20 @@ namespace Humans.Infrastructure.Jobs;
 /// </summary>
 public class CleanupEmailOutboxJob : IRecurringJob
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly IEmailOutboxRepository _outboxRepo;
     private readonly IClock _clock;
     private readonly EmailSettings _settings;
     private readonly IHumansMetrics _metrics;
     private readonly ILogger<CleanupEmailOutboxJob> _logger;
 
     public CleanupEmailOutboxJob(
-        HumansDbContext dbContext,
+        IEmailOutboxRepository outboxRepo,
         IClock clock,
         IOptions<EmailSettings> settings,
         IHumansMetrics metrics,
         ILogger<CleanupEmailOutboxJob> logger)
     {
-        _dbContext = dbContext;
+        _outboxRepo = outboxRepo;
         _clock = clock;
         _settings = settings.Value;
         _metrics = metrics;
@@ -41,19 +38,11 @@ public class CleanupEmailOutboxJob : IRecurringJob
         {
             var cutoff = _clock.GetCurrentInstant() - Duration.FromDays(_settings.OutboxRetentionDays);
 
-            var toDelete = await _dbContext.EmailOutboxMessages
-                .Where(m => m.Status == EmailOutboxStatus.Sent && m.SentAt < cutoff)
-                .ToListAsync(cancellationToken);
-
-            if (toDelete.Count > 0)
-            {
-                _dbContext.EmailOutboxMessages.RemoveRange(toDelete);
-                await _dbContext.SaveChangesAsync(cancellationToken);
-            }
+            var deletedCount = await _outboxRepo.DeleteSentOlderThanAsync(cutoff, cancellationToken);
 
             _logger.LogInformation(
                 "CleanupEmailOutboxJob deleted {Count} sent messages older than {Cutoff}",
-                toDelete.Count,
+                deletedCount,
                 cutoff);
 
             _metrics.RecordJobRun("cleanup_email_outbox", "success");

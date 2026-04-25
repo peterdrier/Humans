@@ -76,6 +76,9 @@ public static class MemoryCacheExtensions
     public static void InvalidateUserIdsWithTickets(this IMemoryCache cache) =>
         cache.Remove(CacheKeys.UserIdsWithTickets);
 
+    public static void InvalidateValidAttendeeEmails(this IMemoryCache cache) =>
+        cache.Remove(CacheKeys.ValidAttendeeEmails);
+
     /// <summary>
     /// Invalidate all ticket-related caches after a sync or data change.
     /// Per-user UserTicketCount entries are NOT invalidated here because they use
@@ -86,6 +89,7 @@ public static class MemoryCacheExtensions
     {
         cache.InvalidateTicketDashboardStats();
         cache.InvalidateUserIdsWithTickets();
+        cache.InvalidateValidAttendeeEmails();
     }
 
     public static void InvalidateNobodiesTeamEmails(this IMemoryCache cache) =>

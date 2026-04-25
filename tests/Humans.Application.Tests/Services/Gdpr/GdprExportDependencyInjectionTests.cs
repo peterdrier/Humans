@@ -1,15 +1,27 @@
 using System.Runtime.CompilerServices;
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using ApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
+using BudgetService = Humans.Application.Services.Budget.BudgetService;
+using CampaignService = Humans.Application.Services.Campaigns.CampaignService;
 using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
+using ProfilesAccountMergeService = Humans.Application.Services.Profile.AccountMergeService;
 using UsersUserService = Humans.Application.Services.Users.UserService;
+using AuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
+using CampService = Humans.Application.Services.Camps.CampService;
+using FeedbackService = Humans.Application.Services.Feedback.FeedbackService;
+using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
+using ConsentService = Humans.Application.Services.Consent.ConsentService;
+using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
+using TicketsTicketQueryService = Humans.Application.Services.Tickets.TicketQueryService;
+using NotificationInboxService = Humans.Application.Services.Notifications.NotificationInboxService;
+using TeamService = Humans.Application.Services.Teams.TeamService;
 
 namespace Humans.Application.Tests.Services.Gdpr;
 
@@ -61,7 +73,7 @@ public class GdprExportDependencyInjectionTests
     [
         typeof(ProfilesProfileService),
         typeof(UsersUserService),
-        typeof(AccountMergeService),
+        typeof(ProfilesAccountMergeService),
         typeof(ApplicationDecisionService),
         typeof(ConsentService),
         typeof(TeamService),
@@ -69,7 +81,7 @@ public class GdprExportDependencyInjectionTests
         typeof(ShiftSignupService),
         typeof(FeedbackService),
         typeof(NotificationInboxService),
-        typeof(TicketQueryService),
+        typeof(TicketsTicketQueryService),
         typeof(CampaignService),
         typeof(CampService),
         typeof(AuditLogService),
@@ -94,7 +106,7 @@ public class GdprExportDependencyInjectionTests
         // still holds most of them, and Humans.Application is the new target
         // location per the repository/store/decorator migration — the first
         // such move is ApplicationDecisionService (Governance, PR #503).
-        var infrastructureAssembly = typeof(TicketQueryService).Assembly;
+        var infrastructureAssembly = typeof(TeamService).Assembly;
         var applicationAssembly = typeof(ApplicationDecisionService).Assembly;
 
         var foundContributors = new[] { infrastructureAssembly, applicationAssembly }

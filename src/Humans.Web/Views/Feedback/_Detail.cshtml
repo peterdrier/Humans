@@ -26,7 +26,7 @@
                 <form asp-action="UpdateStatus" asp-route-id="@Model.Id" method="post" class="d-inline">
                     @Html.AntiForgeryToken()
                     <select name="Status" class="form-select form-select-sm detail-auto-submit" style="width: auto;">
-                        @foreach (var s in Enum.GetValues<Humans.Domain.Enums.FeedbackStatus>())
+                        @foreach (var s in Enum.GetValues<FeedbackStatus>())
                         {
                             if (Model.Status == s)
                             {

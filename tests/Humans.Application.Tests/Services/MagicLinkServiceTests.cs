@@ -1,19 +1,19 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Application.DTOs;
+using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
-using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
+using MagicLinkService = Humans.Application.Services.Auth.MagicLinkService;
 
 namespace Humans.Application.Tests.Services;
 
@@ -22,8 +22,11 @@ public class MagicLinkServiceTests : IDisposable
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly UserManager<User> _userManager;
+    private readonly IUserEmailService _userEmailService;
+    private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
-    private readonly IMemoryCache _memoryCache;
+    private readonly IMagicLinkUrlBuilder _urlBuilder;
+    private readonly IMagicLinkRateLimiter _rateLimiter;
     private readonly MagicLinkService _service;
 
     public MagicLinkServiceTests()
@@ -39,24 +42,38 @@ public class MagicLinkServiceTests : IDisposable
         _userManager = Substitute.For<UserManager<User>>(
             store, null, null, null, null, null, null, null, null);
 
+        _userEmailService = Substitute.For<IUserEmailService>();
+
+        // Default: no verified UserEmail row exists. Individual tests override
+        // by stubbing the service with a UserEmailWithUser.
+        _userEmailService
+            .FindVerifiedEmailWithUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((UserEmailWithUser?)null);
+
+        _userRepository = Substitute.For<IUserRepository>();
+        _userRepository
+            .GetByNormalizedEmailAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns((User?)null);
+
         _emailService = Substitute.For<IEmailService>();
-        _memoryCache = new MemoryCache(new MemoryCacheOptions());
+        _urlBuilder = Substitute.For<IMagicLinkUrlBuilder>();
+        _urlBuilder.BuildLoginUrl(Arg.Any<Guid>(), Arg.Any<string?>()).Returns(call =>
+            $"https://test.example.com/Account/MagicLinkConfirm?userId={call[0]}&token=abc");
+        _urlBuilder.BuildSignupUrl(Arg.Any<string>(), Arg.Any<string?>()).Returns(call =>
+            $"https://test.example.com/Account/MagicLinkSignup?email={call[0]}&token=abc");
 
-        var dataProtectionProvider = DataProtectionProvider.Create("TestApp");
-
-        var emailSettings = Options.Create(new EmailSettings
-        {
-            BaseUrl = "https://test.example.com"
-        });
+        _rateLimiter = Substitute.For<IMagicLinkRateLimiter>();
+        _rateLimiter.TryConsumeLoginTokenAsync(Arg.Any<string>(), Arg.Any<TimeSpan>()).Returns(true);
+        _rateLimiter.TryReserveSignupSendAsync(Arg.Any<string>(), Arg.Any<TimeSpan>()).Returns(true);
 
         _service = new MagicLinkService(
-            _dbContext,
             _userManager,
+            _userEmailService,
+            _userRepository,
             _emailService,
-            dataProtectionProvider,
-            _memoryCache,
+            _urlBuilder,
+            _rateLimiter,
             _clock,
-            emailSettings,
             NullLogger<MagicLinkService>.Instance);
     }
 
@@ -64,14 +81,12 @@ public class MagicLinkServiceTests : IDisposable
     {
         _dbContext.Dispose();
         _userManager.Dispose();
-        _memoryCache.Dispose();
         GC.SuppressFinalize(this);
     }
 
     [Fact]
     public async Task SendMagicLinkAsync_ExistingUserByUserEmail_SendsLoginLink()
     {
-        // Arrange
         var userId = Guid.NewGuid();
         var user = new User
         {
@@ -81,38 +96,28 @@ public class MagicLinkServiceTests : IDisposable
             DisplayName = "Alice",
             CreatedAt = _clock.GetCurrentInstant()
         };
-        _dbContext.Users.Add(user);
-        _dbContext.UserEmails.Add(new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Email = "alice@work.com",
-            IsVerified = true,
-            IsNotificationTarget = false,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        });
-        await _dbContext.SaveChangesAsync();
+
+        _userEmailService
+            .FindVerifiedEmailWithUserAsync("alice@work.com", Arg.Any<CancellationToken>())
+            .Returns(new UserEmailWithUser(userId, "alice@work.com", null, null));
 
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
         _userManager.UpdateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
 
-        // Act — search by a secondary verified email
         await _service.SendMagicLinkAsync("alice@work.com", "/dashboard");
 
-        // Assert — login link sent to the address they typed, not the primary
         await _emailService.Received(1).SendMagicLinkLoginAsync(
             "alice@work.com",
             "Alice",
-            Arg.Is<string>(url => url.Contains("/Account/MagicLinkConfirm") && url.Contains(userId.ToString())),
+            Arg.Is<string>(url => url.Contains("/Account/MagicLinkConfirm", StringComparison.Ordinal)),
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
+        _urlBuilder.Received(1).BuildLoginUrl(userId, "/dashboard");
     }
 
     [Fact]
     public async Task SendMagicLinkAsync_ExistingUserByPrimaryEmail_SendsLoginLink()
     {
-        // Arrange
         var userId = Guid.NewGuid();
         var user = new User
         {
@@ -123,27 +128,12 @@ public class MagicLinkServiceTests : IDisposable
             DisplayName = "Alice",
             CreatedAt = _clock.GetCurrentInstant()
         };
-        _dbContext.Users.Add(user);
-        _dbContext.UserEmails.Add(new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Email = "alice@gmail.com",
-            IsVerified = true,
-            IsOAuth = true,
-            IsNotificationTarget = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        });
-        await _dbContext.SaveChangesAsync();
 
-        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        _userManager.FindByEmailAsync("alice@gmail.com").Returns(user);
         _userManager.UpdateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
 
-        // Act
         await _service.SendMagicLinkAsync("alice@gmail.com", null);
 
-        // Assert
         await _emailService.Received(1).SendMagicLinkLoginAsync(
             "alice@gmail.com",
             "Alice",
@@ -155,16 +145,13 @@ public class MagicLinkServiceTests : IDisposable
     [Fact]
     public async Task SendMagicLinkAsync_UnknownEmail_SendsSignupLink()
     {
-        // Arrange — no user in DB
         _userManager.FindByEmailAsync(Arg.Any<string>()).Returns((User?)null);
 
-        // Act
         await _service.SendMagicLinkAsync("newperson@example.com", "/welcome");
 
-        // Assert — signup link sent
         await _emailService.Received(1).SendMagicLinkSignupAsync(
             "newperson@example.com",
-            Arg.Is<string>(url => url.Contains("/Account/MagicLinkSignup")),
+            Arg.Is<string>(url => url.Contains("/Account/MagicLinkSignup", StringComparison.Ordinal)),
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
@@ -172,7 +159,6 @@ public class MagicLinkServiceTests : IDisposable
     [Fact]
     public async Task SendMagicLinkAsync_RateLimited_DoesNotSendEmail()
     {
-        // Arrange — user with recent magic link
         var userId = Guid.NewGuid();
         var user = new User
         {
@@ -183,25 +169,14 @@ public class MagicLinkServiceTests : IDisposable
             CreatedAt = _clock.GetCurrentInstant(),
             MagicLinkSentAt = _clock.GetCurrentInstant() - Duration.FromSeconds(30) // 30s ago
         };
-        _dbContext.Users.Add(user);
-        _dbContext.UserEmails.Add(new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Email = "alice@gmail.com",
-            IsVerified = true,
-            IsNotificationTarget = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        });
-        await _dbContext.SaveChangesAsync();
 
+        _userEmailService
+            .FindVerifiedEmailWithUserAsync("alice@gmail.com", Arg.Any<CancellationToken>())
+            .Returns(new UserEmailWithUser(userId, "alice@gmail.com", null, null));
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
 
-        // Act
         await _service.SendMagicLinkAsync("alice@gmail.com", null);
 
-        // Assert — no email sent due to rate limit
         await _emailService.DidNotReceive().SendMagicLinkLoginAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<string?>(), Arg.Any<CancellationToken>());
@@ -210,16 +185,17 @@ public class MagicLinkServiceTests : IDisposable
     [Fact]
     public async Task SendMagicLinkAsync_SignupRateLimited_DoesNotSendEmail()
     {
-        // Arrange — no user, but request same email twice quickly
         _userManager.FindByEmailAsync(Arg.Any<string>()).Returns((User?)null);
 
+        // First call succeeds
         await _service.SendMagicLinkAsync("newperson@example.com", null);
         _emailService.ClearReceivedCalls();
 
-        // Act — second request within 60s
+        // Subsequent TryReserveSignupSendAsync returns false
+        _rateLimiter.TryReserveSignupSendAsync(Arg.Any<string>(), Arg.Any<TimeSpan>()).Returns(false);
+
         await _service.SendMagicLinkAsync("newperson@example.com", null);
 
-        // Assert — second email suppressed
         await _emailService.DidNotReceive().SendMagicLinkSignupAsync(
             Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<string?>(), Arg.Any<CancellationToken>());
@@ -228,35 +204,12 @@ public class MagicLinkServiceTests : IDisposable
     [Fact]
     public async Task SendMagicLinkAsync_UnverifiedEmail_DoesNotMatch()
     {
-        // Arrange — email exists but unverified
-        var userId = Guid.NewGuid();
-        var user = new User
-        {
-            Id = userId,
-            UserName = "alice@gmail.com",
-            Email = "alice@gmail.com",
-            DisplayName = "Alice",
-            CreatedAt = _clock.GetCurrentInstant()
-        };
-        _dbContext.Users.Add(user);
-        _dbContext.UserEmails.Add(new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Email = "alice@work.com",
-            IsVerified = false, // Not verified
-            IsNotificationTarget = false,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        });
-        await _dbContext.SaveChangesAsync();
-
+        // The repository-level FindVerifiedEmailWithUserAsync already returns null
+        // for unverified rows; the default substitute returns null.
         _userManager.FindByEmailAsync(Arg.Any<string>()).Returns((User?)null);
 
-        // Act — search by unverified email
         await _service.SendMagicLinkAsync("alice@work.com", null);
 
-        // Assert — falls through to signup (unverified email not matched)
         await _emailService.Received(1).SendMagicLinkSignupAsync(
             Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<string?>(), Arg.Any<CancellationToken>());
@@ -265,6 +218,7 @@ public class MagicLinkServiceTests : IDisposable
     [Fact]
     public void VerifySignupToken_InvalidToken_ReturnsNull()
     {
+        _urlBuilder.UnprotectSignupToken(Arg.Any<string>()).Returns((string?)null);
         var result = _service.VerifySignupToken("not-a-valid-token");
         result.Should().BeNull();
     }
@@ -285,6 +239,7 @@ public class MagicLinkServiceTests : IDisposable
         var userId = Guid.NewGuid();
         var user = new User { Id = userId, UserName = "test@test.com" };
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        _urlBuilder.UnprotectLoginToken("bad-token").Returns((string?)null);
 
         var result = await _service.VerifyLoginTokenAsync(userId, "bad-token");
 
@@ -292,36 +247,46 @@ public class MagicLinkServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task VerifyLoginTokenAsync_TokenAlreadyConsumed_ReturnsNull()
+    {
+        var userId = Guid.NewGuid();
+        var user = new User { Id = userId, UserName = "test@test.com" };
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        _urlBuilder.UnprotectLoginToken("good-token").Returns(userId.ToString());
+        _rateLimiter.TryConsumeLoginTokenAsync("good-token", Arg.Any<TimeSpan>()).Returns(false);
+
+        var result = await _service.VerifyLoginTokenAsync(userId, "good-token");
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task VerifyLoginTokenAsync_ValidToken_ReturnsUser()
+    {
+        var userId = Guid.NewGuid();
+        var user = new User { Id = userId, UserName = "test@test.com" };
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        _urlBuilder.UnprotectLoginToken("good-token").Returns(userId.ToString());
+
+        var result = await _service.VerifyLoginTokenAsync(userId, "good-token");
+
+        result.Should().NotBeNull();
+        result!.Id.Should().Be(userId);
+    }
+
+    [Fact]
     public async Task FindUserByVerifiedEmailAsync_FindsByUserEmail()
     {
-        // Arrange
         var userId = Guid.NewGuid();
-        var user = new User
-        {
-            Id = userId,
-            UserName = "alice@gmail.com",
-            Email = "alice@gmail.com",
-            DisplayName = "Alice",
-            CreatedAt = _clock.GetCurrentInstant()
-        };
-        _dbContext.Users.Add(user);
-        _dbContext.UserEmails.Add(new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Email = "alice@work.com",
-            IsVerified = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        });
-        await _dbContext.SaveChangesAsync();
+        var user = new User { Id = userId, UserName = "alice@gmail.com", DisplayName = "Alice" };
 
+        _userEmailService
+            .FindVerifiedEmailWithUserAsync("alice@work.com", Arg.Any<CancellationToken>())
+            .Returns(new UserEmailWithUser(userId, "alice@work.com", null, null));
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
 
-        // Act
         var result = await _service.FindUserByVerifiedEmailAsync("alice@work.com");
 
-        // Assert
         result.Should().NotBeNull();
         result!.Id.Should().Be(userId);
     }
@@ -329,15 +294,12 @@ public class MagicLinkServiceTests : IDisposable
     [Fact]
     public async Task FindUserByVerifiedEmailAsync_FallsBackToIdentityEmail()
     {
-        // Arrange — no UserEmail rows, but user exists in Identity
         var userId = Guid.NewGuid();
         var user = new User { Id = userId, UserName = "test@test.com", Email = "test@test.com" };
         _userManager.FindByEmailAsync("test@test.com").Returns(user);
 
-        // Act
         var result = await _service.FindUserByVerifiedEmailAsync("test@test.com");
 
-        // Assert
         result.Should().NotBeNull();
         result!.Id.Should().Be(userId);
     }

@@ -32,7 +32,7 @@
             <div class="mb-3">
                 <label asp-for="Source" class="form-label">Source</label>
                 <select asp-for="Source" class="form-select"
-                        asp-items="Html.GetEnumSelectList<Humans.Domain.Enums.ContactSource>()">
+                        asp-items="Html.GetEnumSelectList<ContactSource>()">
                 </select>
                 <span asp-validation-for="Source" class="text-danger"></span>
             </div>

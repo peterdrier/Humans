@@ -1,14 +1,71 @@
 # Feedback — Section Invariants
 
+In-app feedback reports (bugs, feature requests, questions) with screenshots and a reporter↔admin conversation thread.
+
 ## Concepts
 
 - A **Feedback Report** is an in-app submission from a human — a bug report, feature request, or question. It captures the page URL, optional screenshot, and conversation thread between the reporter and admins.
 - **Feedback status** tracks the lifecycle: Open, Acknowledged, Resolved, or WontFix.
 
+## Data Model
+
+### FeedbackReport
+
+**Table:** `feedback_reports`
+
+| Property | Type | Purpose |
+|----------|------|---------|
+| Id | Guid | PK |
+| UserId | Guid | FK → User (reporter) — **FK only**, `[Obsolete]`-marked nav |
+| Category | FeedbackCategory | Bug, FeatureRequest, Question |
+| Description | string | Feedback text (max 5000) |
+| PageUrl | string | URL where feedback was submitted |
+| UserAgent | string? | Browser user agent string |
+| ScreenshotFileName | string? | Original filename |
+| ScreenshotStoragePath | string? | Relative path under `wwwroot/uploads/feedback/` |
+| ScreenshotContentType | string? | MIME type (`image/jpeg`, `image/png`, `image/webp`) |
+| Status | FeedbackStatus | Open, Acknowledged, Resolved, WontFix |
+| AdminNotes | string? | Internal notes (max 5000) |
+| GitHubIssueNumber | int? | Linked GitHub issue |
+| AdminResponseSentAt | Instant? | When last response email was sent |
+| AssignedToUserId | Guid? | **FK only**, `[Obsolete]`-marked nav |
+| AssignedToTeamId | Guid? | **FK only**, `[Obsolete]`-marked nav |
+| CreatedAt | Instant | Submission timestamp |
+| UpdatedAt | Instant | Last modification |
+| ResolvedAt | Instant? | When resolved/won't-fix |
+| ResolvedByUserId | Guid? | FK → User (SetNull on delete) — **FK only**, `[Obsolete]`-marked nav |
+
+**Indexes:** `Status`, `CreatedAt`, `UserId`.
+
+### FeedbackMessage
+
+**Table:** `feedback_messages`
+
+Conversation thread between reporter and admins. Aggregate-local (same section as FeedbackReport). `FeedbackReport.Messages ↔ FeedbackMessage.FeedbackReport` is a legal `.Include` inside the repository.
+
+Cross-domain nav `FeedbackMessage.SenderUser` is `[Obsolete]`-marked — senders resolve via `IUserService.GetByIdsAsync`.
+
+### FeedbackCategory
+
+| Value | Description |
+|-------|-------------|
+| Bug | Bug report |
+| FeatureRequest | Feature request |
+| Question | General question |
+
+### FeedbackStatus
+
+| Value | Description |
+|-------|-------------|
+| Open | New, unreviewed |
+| Acknowledged | Admin has seen it |
+| Resolved | Fixed or addressed |
+| WontFix | Will not be addressed |
+
 ## Actors & Roles
 
 | Actor | Capabilities |
-|-------|-------------|
+|-------|--------------|
 | Any authenticated human | Submit feedback (with optional screenshot). View and reply to their own feedback reports. Accessible even during onboarding (before becoming an active member) |
 | FeedbackAdmin, Admin | View all feedback reports. Update status. Assign to humans or teams. Add admin notes. Send email responses to reporters. Link GitHub issues. Reply to any report |
 | API (key auth) | Full CRUD on feedback reports via the REST API (no user session required) |
@@ -35,65 +92,29 @@
 
 ## Cross-Section Dependencies
 
-- **Admin**: GitHub issue linking connects feedback reports to the external issue tracker.
-- **Email**: Response emails are queued through the email outbox system.
-- **Onboarding**: Feedback submission is available during onboarding, before the human is an active member.
+- **Users/Identity:** `IUserService.GetByIdsAsync` — reporter / assignee / resolver / message-sender display names.
+- **Profiles:** `IUserEmailService.GetNotificationTargetEmailsAsync` — resolves the effective notification email for a report's reporter when an admin posts a reply (added in PR for issue nobodies-collective/Humans#549).
+- **Teams:** `ITeamService.GetTeamNamesByIdsAsync` — assigned-team display names.
+- **Email:** `IEmailOutboxService` — response emails queued through the email outbox.
+- **Admin:** GitHub issue linking connects feedback reports to the external issue tracker.
+- **Onboarding:** Feedback submission is available during onboarding, before the human is an active member.
 
-## Architecture — Current vs Target
-
-See `docs/architecture/design-rules.md` for the full rules.
+## Architecture
 
 **Owning services:** `FeedbackService`
 **Owned tables:** `feedback_reports`, `feedback_messages`
+**Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#549, 2026-04-22).
 
-> **Note:** `feedback_messages` (DbSet `FeedbackMessages`, entity `FeedbackMessage`, migration `20260324014417_FeedbackUpgrade`) is owned by Feedback but is **not yet listed in `design-rules.md` §8 Table Ownership Map**. The §8 map should be updated to add `feedback_messages` under the Feedback row the next time that doc is edited.
-
-## Target Architecture Direction
-
-> **Status:** This section currently follows the "services in Infrastructure, direct DbContext" model. It will be migrated to the repository/store/decorator pattern per [`../architecture/design-rules.md`](../architecture/design-rules.md). **Delete this block once the migration lands and this section's services live in `Humans.Application` with `*Repository.cs` impls in `Humans.Infrastructure/Repositories/`.**
-
-### Target repositories
-
-- **`IFeedbackRepository`** — owns `feedback_reports`, `feedback_messages`
-  - Aggregate-local navs kept: `FeedbackReport.Messages` (collection of `FeedbackMessage`), `FeedbackMessage.FeedbackReport` (inverse). Both sides of the aggregate live in Feedback-owned tables, so `.Include(f => f.Messages)` is legal inside the repository.
-  - Cross-domain navs stripped: `FeedbackReport.User`, `FeedbackReport.ResolvedByUser`, `FeedbackReport.AssignedToUser`, `FeedbackReport.AssignedToTeam`, `FeedbackMessage.SenderUser`. The repository must return only Feedback-owned columns (FK ids) and let the application layer hydrate human/team display data via `IUserService` / `ITeamService` projections.
-
-Feedback is not a cached domain under §4 — reports are per-user and admin-triaged, not hot read paths. No `IFeedbackStore` or `CachingFeedbackService` decorator is planned. The existing nav-badge-count invalidation must move off `IMemoryCache` into a shared nav-badge cache abstraction (owned by whichever service ends up holding the badge counts) — see violations below.
-
-### Current violations
-
-Observed in this section's service code as of 2026-04-15 (`src/Humans.Infrastructure/Services/FeedbackService.cs`):
-
-- **Cross-domain `.Include()` calls** (13 total — all read paths pull User/Team graphs instead of calling `IUserService` / `ITeamService`):
-  - `FeedbackService.cs:119` `.Include(f => f.User)` — Users
-  - `FeedbackService.cs:120` `.Include(f => f.ResolvedByUser)` — Users
-  - `FeedbackService.cs:121` `.Include(f => f.AssignedToUser)` — Users
-  - `FeedbackService.cs:122` `.Include(f => f.AssignedToTeam)` — Teams
-  - `FeedbackService.cs:136` `.Include(f => f.User)` — Users
-  - `FeedbackService.cs:137` `.Include(f => f.ResolvedByUser)` — Users
-  - `FeedbackService.cs:138` `.Include(f => f.AssignedToUser)` — Users
-  - `FeedbackService.cs:139` `.Include(f => f.AssignedToTeam)` — Teams
-  - `FeedbackService.cs:227` `.Include(f => f.User)` — Users
-  - `FeedbackService.cs:299` `.Include(m => m.SenderUser)` — Users
-  - `FeedbackService.cs:311` `.Include(f => f.AssignedToUser)` — Users
-  - `FeedbackService.cs:312` `.Include(f => f.AssignedToTeam)` — Teams
-  - `FeedbackService.cs:386` `.Include(f => f.User)` — Users
-  - Aggregate-local (legal under §6, retain through migration): `FeedbackService.cs:123` `.Include(f => f.Messages.OrderBy(...))`, `FeedbackService.cs:140` `.Include(f => f.Messages)`.
-- **Cross-section direct DbContext reads:** None found. All 11 `_dbContext.*` hits are on `FeedbackReports` / `FeedbackMessages` (both Feedback-owned).
-- **Inline `IMemoryCache` usage in service methods:** `FeedbackService` injects `IMemoryCache _cache` (`FeedbackService.cs:22`, `:48`) and calls the `InvalidateNavBadgeCounts()` extension at `:108`, `:207`, `:290`. Under §4/§5 a service may not touch `IMemoryCache` directly. The nav-badge count cache is a cross-cutting concern shared with `RoleAssignmentService`, `ApplicationDecisionService`, `OnboardingService`, and `ProfileService` — it needs its own owner (likely a small `INavBadgeCache` abstraction) and Feedback should depend on that interface instead of `IMemoryCache`.
-- **Cross-domain nav properties on this section's entities:**
-  - `FeedbackReport.User` / `FeedbackReport.UserId` → `AspNetUsers` (Users section)
-  - `FeedbackReport.ResolvedByUser` / `FeedbackReport.ResolvedByUserId` → Users
-  - `FeedbackReport.AssignedToUser` / `FeedbackReport.AssignedToUserId` → Users
-  - `FeedbackReport.AssignedToTeam` / `FeedbackReport.AssignedToTeamId` → Teams section (`teams`)
-  - `FeedbackMessage.SenderUser` / `FeedbackMessage.SenderUserId` → Users
-  - Keep the FK ids; drop the reference nav properties as part of the migration. `FeedbackReport.Messages` / `FeedbackMessage.FeedbackReport` are aggregate-local and stay.
+- `FeedbackService` lives in `Humans.Application.Services.Feedback` and depends only on Application-layer abstractions. It never imports `Microsoft.EntityFrameworkCore`.
+- `IFeedbackRepository` (impl `Humans.Infrastructure/Repositories/FeedbackRepository.cs`) owns the SQL surface. Scoped + `HumansDbContext` (mirrors `ApplicationRepository`) because Feedback is admin-only and low-traffic.
+- **Aggregate-local navs kept:** `FeedbackReport.Messages ↔ FeedbackMessage.FeedbackReport`. Both sides live in Feedback-owned tables, so `.Include(f => f.Messages)` is legal inside the repository.
+- **Decorator decision — no caching decorator.** Feedback reports are per-user and admin-triaged, not a hot bulk-read path (same rationale as Governance / User).
+- **Cross-domain navs `[Obsolete]`-marked:** `FeedbackReport.User`, `.ResolvedByUser`, `.AssignedToUser`, `.AssignedToTeam`, `FeedbackMessage.SenderUser`. The repository does not `.Include()` them; the service stitches display data in memory from `IUserService`, `IUserEmailService`, and `ITeamService` (design-rules §6b). Controllers and views continue to read `report.User.DisplayName` etc. under `#pragma warning disable CS0618` until the shared User-entity nav strip lands.
+- **Nav-badge cache invalidation** routes through `INavBadgeCacheInvalidator` instead of `IMemoryCache` directly.
 
 ### Touch-and-clean guidance
 
-Until this section is migrated end-to-end, when touching its code:
-
-- When adding a new read path, do **not** introduce additional `.Include(f => f.User | f.ResolvedByUser | f.AssignedToUser | f.AssignedToTeam)` calls (see `FeedbackService.cs:118-140`, `:226-227`, `:310-312`, `:385-386`). Select the FK ids and resolve display data via `IUserService` / `ITeamService` in the caller — this is the shape the repository will expose post-migration.
-- Aggregate-local `.Include(f => f.Messages)` (`FeedbackService.cs:123`, `:140`) is fine to keep and to copy for new queries — `feedback_messages` is Feedback-owned.
-- Do **not** add new direct `IMemoryCache` usage. The existing `_cache.InvalidateNavBadgeCounts()` calls at `FeedbackService.cs:108`, `:207`, `:290` are already §5 violations; new invalidation points should go through whatever nav-badge cache interface is introduced (coordinate with the owner of the other `InvalidateNavBadgeCounts` call sites).
-- New tables that logically belong to Feedback must be added to `design-rules.md` §8 alongside `feedback_messages`; do not silently grow the section's footprint.
+- Do **not** reintroduce `.Include(f => f.User | f.ResolvedByUser | f.AssignedToUser | f.AssignedToTeam)` or `.Include(m => m.SenderUser)` anywhere — new read paths should go through the repository's existing methods (or extend the repository with a new narrowly-shaped query) and stitch display data in `FeedbackService` via the cross-section service interfaces above.
+- Aggregate-local `.Include(f => f.Messages)` is fine — `feedback_messages` is Feedback-owned.
+- Do **not** inject `IMemoryCache` into `FeedbackService`. Use `INavBadgeCacheInvalidator` (or add a new cross-cutting invalidator interface) for cache-staleness signaling.
+- New tables that logically belong to Feedback must be added to `design-rules.md §8`; do not silently grow the section's footprint.

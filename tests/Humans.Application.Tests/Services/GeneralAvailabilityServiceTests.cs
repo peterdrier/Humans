@@ -1,19 +1,20 @@
 using AwesomeAssertions;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Repositories.Shifts;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using Xunit;
+using GeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
 
 namespace Humans.Application.Tests.Services;
 
 public class GeneralAvailabilityServiceTests : IDisposable
 {
     private readonly HumansDbContext _dbContext;
+    private readonly GeneralAvailabilityRepository _repo;
     private readonly GeneralAvailabilityService _service;
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
@@ -25,7 +26,8 @@ public class GeneralAvailabilityServiceTests : IDisposable
             .Options;
 
         _dbContext = new HumansDbContext(options);
-        _service = new GeneralAvailabilityService(_dbContext, new FakeClock(TestNow));
+        _repo = new GeneralAvailabilityRepository(new TestDbContextFactory(options));
+        _service = new GeneralAvailabilityService(_repo, new FakeClock(TestNow));
     }
 
     public void Dispose()
@@ -44,6 +46,7 @@ public class GeneralAvailabilityServiceTests : IDisposable
         await _service.SetAvailabilityAsync(userId, esId, [-3, -2, -1]);
 
         var record = await _dbContext.GeneralAvailability
+            .AsNoTracking()
             .FirstOrDefaultAsync(g => g.UserId == userId && g.EventSettingsId == esId);
         record.Should().NotBeNull();
         record!.AvailableDayOffsets.Should().BeEquivalentTo(new[] { -3, -2, -1 });
@@ -63,6 +66,7 @@ public class GeneralAvailabilityServiceTests : IDisposable
         await _service.SetAvailabilityAsync(userId, esId, [0, 1, 2]);
 
         var records = await _dbContext.GeneralAvailability
+            .AsNoTracking()
             .Where(g => g.UserId == userId && g.EventSettingsId == esId)
             .ToListAsync();
         records.Should().HaveCount(1);
@@ -76,11 +80,6 @@ public class GeneralAvailabilityServiceTests : IDisposable
         var user2Id = Guid.NewGuid();
         var user3Id = Guid.NewGuid();
         var esId = SeedEventSettings();
-
-        // Seed users (required for Include)
-        _dbContext.Users.Add(new User { Id = user1Id, DisplayName = "User1", UserName = "u1", Email = "u1@test.com" });
-        _dbContext.Users.Add(new User { Id = user2Id, DisplayName = "User2", UserName = "u2", Email = "u2@test.com" });
-        _dbContext.Users.Add(new User { Id = user3Id, DisplayName = "User3", UserName = "u3", Email = "u3@test.com" });
         await _dbContext.SaveChangesAsync();
 
         await _service.SetAvailabilityAsync(user1Id, esId, [-3, -2, -1]);
@@ -91,6 +90,36 @@ public class GeneralAvailabilityServiceTests : IDisposable
         var available = await _service.GetAvailableForDayAsync(esId, -2);
         available.Should().HaveCount(2);
         available.Select(a => a.UserId).Should().BeEquivalentTo(new[] { user1Id, user2Id });
+    }
+
+    [Fact]
+    public async Task GetByUserAsync_ReturnsNullWhenMissing()
+    {
+        var result = await _service.GetByUserAsync(Guid.NewGuid(), Guid.NewGuid());
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task DeleteAsync_RemovesExistingRecord()
+    {
+        var userId = Guid.NewGuid();
+        var esId = SeedEventSettings();
+        await _dbContext.SaveChangesAsync();
+
+        await _service.SetAvailabilityAsync(userId, esId, [0, 1]);
+        await _service.DeleteAsync(userId, esId);
+
+        var after = await _dbContext.GeneralAvailability
+            .AsNoTracking()
+            .FirstOrDefaultAsync(g => g.UserId == userId && g.EventSettingsId == esId);
+        after.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task DeleteAsync_NoOpWhenMissing()
+    {
+        // Should not throw when there's no matching record.
+        await _service.DeleteAsync(Guid.NewGuid(), Guid.NewGuid());
     }
 
     private Guid SeedEventSettings()

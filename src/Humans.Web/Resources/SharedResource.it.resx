@@ -531,6 +531,10 @@
   <data name="Teams_NoOtherTeams" xml:space="preserve"><value>Nessun altro team disponibile.</value></data>
   <data name="Teams_System" xml:space="preserve"><value>Sistema</value></data>
 
+  <!-- Vol/Teams landing: Browse Shifts CTA (#534) -->
+  <data name="VolTeams_BrowseShiftsBanner" xml:space="preserve"><value>Cerchi turni? Guardali tutti qui, o scegli una squadra qui sotto.</value></data>
+  <data name="VolTeams_BrowseShiftsButton" xml:space="preserve"><value>Vedi turni</value></data>
+
   <!-- Team Detail View -->
   <data name="TeamDetail_NoDescription" xml:space="preserve"><value>Nessuna descrizione fornita.</value></data>
   <data name="TeamDetail_SystemTeamInfo" xml:space="preserve"><value>Questo è un team gestito dal sistema. L'appartenenza viene sincronizzata automaticamente in base ai criteri {0}.</value><comment>{0} = system team type</comment></data>
@@ -842,6 +846,13 @@
   <data name="AdminAddRole_NoInfoAdminDesc" xml:space="preserve"><value>Approvare iscrizioni ai turni, visualizzare dati medici</value></data>
   <data name="AdminAddRole_NotesLabel" xml:space="preserve"><value>Note (facoltative)</value></data>
   <data name="AdminAddRole_NotesPlaceholder" xml:space="preserve"><value>Motivo dell'assegnazione</value></data>
+
+  <!-- ======================== -->
+  <!-- Google Accounts View     -->
+  <!-- ======================== -->
+  <data name="GoogleAccounts_Actions" xml:space="preserve"><value>Azioni</value></data>
+  <data name="GoogleAccounts_ResetPassword" xml:space="preserve"><value>Reimposta password</value></data>
+  <data name="GoogleAccounts_ResetPasswordConfirm" xml:space="preserve"><value>Reimpostare la password di {0}? Verr&#xE0; generata una nuova password temporanea e mostrata sullo schermo. Il human dovr&#xE0; cambiarla al prossimo accesso.</value><comment>{0} = email</comment></data>
 
   <!-- ======================== -->
   <!-- Google Sync View         -->

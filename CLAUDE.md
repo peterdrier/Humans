@@ -93,6 +93,13 @@ Two-remote workflow:
 - **`origin`** = `peterdrier/Humans` (peter's fork — QA deploys from `main`)
 - **`upstream`** = `nobodies-collective/Humans` (production)
 
+**Critical: Always qualify issue and PR references with the repo.** The two remotes have overlapping issue numbers, so bare `#N` is ambiguous and has caused real chaos (wrong issues closed, commits linked to the wrong tracker). Every reference — in commit messages, PR bodies, issue comments, release notes, todos, chat — must include the owner prefix:
+
+- Fork: `peterdrier#292` (or `peterdrier/Humans#292`)
+- Upstream: `nobodies-collective#586` (or `nobodies-collective/Humans#586`)
+
+When invoking `gh` for issues/PRs, always pass `--repo peterdrier/Humans` or `--repo nobodies-collective/Humans` explicitly — never rely on the ambient default. If you don't know which repo a number belongs to, ask before writing it down.
+
 **Development flow:**
 
 - **Small changes:** commit directly to `main` on peter's fork. Coolify auto-deploys to QA.
@@ -139,6 +146,7 @@ dotnet run --project src/Humans.Web
 | Maintenance log | `docs/architecture/maintenance-log.md` |
 | **Feature specs** | **`docs/features/`** |
 | **Section invariants** | **`docs/sections/`** |
+| **Section template** | **`docs/sections/SECTION-TEMPLATE.md`** |
 | **EF migration reviewer** | **`.claude/agents/ef-migration-reviewer.md`** |
 
 ## Critical: EF Migration Review Gate
@@ -166,13 +174,21 @@ The project is licensed under **AGPL-3.0** (`LICENSE` at repo root).
 
 ## Section Invariants
 
-`docs/sections/` contains terse invariant documents for each major section of the app (Profiles, Budget, Teams, Feedback, Camps, City Planning, Governance, Legal & Consent, Onboarding, Google Integration, Shifts, Campaigns, Tickets, Admin). Each doc defines:
+`docs/sections/` contains terse invariant documents for each major section of the app (Users, Profiles, Budget, Teams, Feedback, Camps, City Planning, Calendar, Governance, Legal & Consent, Onboarding, Google Integration, Shifts, Campaigns, Tickets, Auth, Email, Notifications, Audit Log). `/Admin/*` is a nav holder, not a section — its services belong to the sections they act on (Email, Profiles, Google Integration, Auth, Legal & Consent). Each doc defines:
+- **Concepts** — the domain vocabulary the section owns
+- **Data Model** — field-level detail for the entities this section owns (per-entity tables live here, not in `data-model.md`)
 - **Actors & Roles** — who interacts and in what capacity
 - **Invariants** — hard rules that must always be true (authorization, data integrity, workflow constraints)
+- **Negative Access Rules** — the explicit "cannot" list
 - **Triggers** — side effects and cascades ("when X happens, Y must happen")
-- **Cross-Section Dependencies** — relationships to other sections
+- **Cross-Section Dependencies** — which other sections this section calls, by interface name
+- **Architecture** — owning services, owned tables, migration status (A/B/C per `design-rules.md §15`)
+
+**Every section follows the shape defined by [`docs/sections/SECTION-TEMPLATE.md`](docs/sections/SECTION-TEMPLATE.md).** Copy it when creating a new section; keep existing sections aligned when editing.
 
 **When changing authorization attributes, role checks, or workflow logic in a section**, verify the change is consistent with the section's invariant doc. Update the doc if the change intentionally alters an invariant.
+
+**Data-model ownership:** each entity is owned by exactly one section. Per-entity field tables, indexes, constraints, and cross-domain FK strip status live in the owning section's `## Data Model` block. `docs/architecture/data-model.md` is an index + cross-cutting rule sheet (FK graph between sections, append-only list, serialization rules) — do not duplicate per-entity content there.
 
 ## Todos and Issue Tracking
 

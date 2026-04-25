@@ -1,10 +1,16 @@
+// TeamMember.User / TeamJoinRequest.User are [Obsolete] cross-domain navs
+// (design-rules §6c). The Teams service populates them in-memory (§6b)
+// before returning the entity graph, so these reads are safe — but the
+// compiler still warns and TreatWarningsAsErrors promotes to error. This
+// file-wide disable is cleared when the controller projects via DTOs
+// returned directly from ITeamService.
+#pragma warning disable CS0618
 using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Humans.Application.Configuration;
-using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -14,6 +20,10 @@ using Humans.Web.Helpers;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Identity;
 using NodaTime;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Web.Controllers;
 
@@ -333,7 +343,7 @@ public class TeamController : HumansControllerBase
 
         var monthName = new DateTime(2000, currentMonth, 1).ToString("MMMM", CultureInfo.CurrentCulture);
 
-        var effectiveUrls = await Helpers.ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
+        var effectiveUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
             _profileService, Url,
             profilesWithBirthdays.Select(p => (p.UserId, p.ProfilePictureUrl)));
 
@@ -385,7 +395,7 @@ public class TeamController : HumansControllerBase
     {
         var profiles = await _profileService.GetApprovedProfilesWithLocationAsync(ct);
 
-        var effectiveUrls = await Helpers.ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
+        var effectiveUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
             _profileService, Url,
             profiles.Select(p => (p.UserId, p.ProfilePictureUrl)));
 

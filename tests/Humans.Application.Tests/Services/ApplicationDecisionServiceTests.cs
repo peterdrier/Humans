@@ -12,9 +12,16 @@ using Humans.Domain;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Repositories;
 using Xunit;
 using MemberApplication = Humans.Domain.Entities.Application;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Profiles;
+using Humans.Infrastructure.Repositories.Governance;
 
 namespace Humans.Application.Tests.Services;
 
@@ -33,6 +40,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     private readonly INavBadgeCacheInvalidator _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
     private readonly INotificationMeterCacheInvalidator _notificationMeter = Substitute.For<INotificationMeterCacheInvalidator>();
     private readonly IVotingBadgeCacheInvalidator _votingBadge = Substitute.For<IVotingBadgeCacheInvalidator>();
+    private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
     private readonly ApplicationDecisionService _service;
 
     public ApplicationDecisionServiceTests()
@@ -55,6 +63,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             _repository,
             _userService,
             _profileService,
+            _roleAssignmentService,
             _auditLogService,
             _emailService,
             _notificationService,

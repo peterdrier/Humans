@@ -1,23 +1,24 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Services.Shifts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Services;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
-using Humans.Infrastructure.Data;
 using NSubstitute;
 using Xunit;
 
 namespace Humans.Application.Tests.Services;
 
-public class ShiftUrgencyTests : IDisposable
+public class ShiftUrgencyTests
 {
-    private readonly HumansDbContext _dbContext;
     private readonly ShiftManagementService _service;
 
     // Clock is March 1, 2026 12:00 UTC. Distant event settings (~122 days out)
@@ -31,28 +32,17 @@ public class ShiftUrgencyTests : IDisposable
 
     public ShiftUrgencyTests()
     {
-        var options = new DbContextOptionsBuilder<HumansDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _dbContext = new HumansDbContext(options);
-
         var serviceProvider = Substitute.For<IServiceProvider>();
         serviceProvider.GetService(typeof(ITeamService)).Returns(Substitute.For<ITeamService>());
+        serviceProvider.GetService(typeof(IRoleAssignmentService)).Returns(Substitute.For<IRoleAssignmentService>());
 
         _service = new ShiftManagementService(
-            _dbContext,
+            Substitute.For<IShiftManagementRepository>(),
             Substitute.For<IAuditLogService>(),
-            Substitute.For<IRoleAssignmentService>(),
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             new FakeClock(TestNow),
             NullLogger<ShiftManagementService>.Instance);
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [Fact]

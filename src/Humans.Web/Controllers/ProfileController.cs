@@ -12,7 +12,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Humans.Application;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -23,6 +22,22 @@ using Humans.Web.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Campaigns;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Profiles;
+
+// RoleAssignment cross-domain nav properties (User, CreatedByUser) are [Obsolete] —
+// RoleAssignmentService stitches them in memory from IUserService so controllers can
+// continue to read them for view-model shaping. Nav-strip follow-up tracked in
+// design-rules §15i.
+#pragma warning disable CS0618
 
 namespace Humans.Web.Controllers;
 
@@ -988,20 +1003,12 @@ public class ProfileController : HumansControllerBase
     [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client)]
     public async Task<IActionResult> Picture(Guid id, CancellationToken ct)
     {
-        try
-        {
-            var (data, contentType) = await _profileService.GetProfilePictureAsync(id, ct);
+        var (data, contentType) = await _profileService.GetProfilePictureAsync(id, ct);
 
-            if (data is null || string.IsNullOrEmpty(contentType))
-                return NotFound();
+        if (data is null || string.IsNullOrEmpty(contentType))
+            return NotFound();
 
-            return File(data, contentType);
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogWarning("Profile picture request for {ProfileId} was cancelled", id);
-            return new EmptyResult();
-        }
+        return File(data, contentType);
     }
 
     // ─── View Another Profile ────────────────────────────────────────

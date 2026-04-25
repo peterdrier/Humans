@@ -1,5 +1,5 @@
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Campaigns;
 using Humans.Domain.Entities;
 
 namespace Humans.Web.Models;

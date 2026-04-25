@@ -1,0 +1,238 @@
+using Microsoft.EntityFrameworkCore;
+using NodaTime;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Domain.Entities;
+using Humans.Infrastructure.Data;
+
+namespace Humans.Infrastructure.Repositories.Auth;
+
+/// <summary>
+/// EF-backed implementation of <see cref="IRoleAssignmentRepository"/>. The
+/// only non-test file that writes to <c>DbContext.RoleAssignments</c> after
+/// the Auth migration lands.
+/// Uses <see cref="IDbContextFactory{TContext}"/> so the repository can be
+/// registered as Singleton while <c>HumansDbContext</c> remains Scoped.
+/// </summary>
+public sealed class RoleAssignmentRepository : IRoleAssignmentRepository
+{
+    private readonly IDbContextFactory<HumansDbContext> _factory;
+
+    public RoleAssignmentRepository(IDbContextFactory<HumansDbContext> factory)
+    {
+        _factory = factory;
+    }
+
+    // ==========================================================================
+    // Reads
+    // ==========================================================================
+
+    public async Task<RoleAssignment?> FindForMutationAsync(Guid assignmentId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.RoleAssignments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(ra => ra.Id == assignmentId, ct);
+    }
+
+    public async Task<RoleAssignment?> GetByIdAsync(Guid assignmentId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.RoleAssignments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(ra => ra.Id == assignmentId, ct);
+    }
+
+    public async Task<IReadOnlyList<RoleAssignment>> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.RoleAssignments
+            .AsNoTracking()
+            .Where(ra => ra.UserId == userId)
+            .OrderByDescending(ra => ra.ValidFrom)
+            .ToListAsync(ct);
+    }
+
+    public async Task<(IReadOnlyList<RoleAssignment> Items, int TotalCount)> GetFilteredAsync(
+        string? roleFilter,
+        bool activeOnly,
+        int page,
+        int pageSize,
+        Instant now,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var query = ctx.RoleAssignments.AsNoTracking().AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(roleFilter))
+        {
+            query = query.Where(ra => ra.RoleName == roleFilter);
+        }
+
+        if (activeOnly)
+        {
+            query = query.Where(ra => ra.ValidFrom <= now && (ra.ValidTo == null || ra.ValidTo > now));
+        }
+
+        var totalCount = await query.CountAsync(ct);
+
+        var items = await query
+            .OrderBy(ra => ra.RoleName)
+            .ThenByDescending(ra => ra.ValidFrom)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        return (items, totalCount);
+    }
+
+    public async Task<bool> HasOverlappingAssignmentAsync(
+        Guid userId,
+        string roleName,
+        Instant validFrom,
+        Instant? validTo,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var query = ctx.RoleAssignments
+            .AsNoTracking()
+            .Where(ra => ra.UserId == userId && ra.RoleName == roleName);
+
+        // Overlap predicate:
+        // [A_start, A_end) overlaps [B_start, B_end) iff
+        // A_end > B_start AND B_end > A_start.
+        // Null end means open-ended.
+        if (validTo.HasValue)
+        {
+            query = query.Where(ra =>
+                (ra.ValidTo == null || ra.ValidTo > validFrom) &&
+                validTo.Value > ra.ValidFrom);
+        }
+        else
+        {
+            query = query.Where(ra => ra.ValidTo == null || ra.ValidTo > validFrom);
+        }
+
+        return await query.AnyAsync(ct);
+    }
+
+    public async Task<bool> HasActiveRoleAsync(
+        Guid userId,
+        string roleName,
+        Instant now,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.RoleAssignments.AnyAsync(
+            ra => ra.UserId == userId &&
+                  ra.RoleName == roleName &&
+                  ra.ValidFrom <= now &&
+                  (ra.ValidTo == null || ra.ValidTo > now),
+            ct);
+    }
+
+    public async Task<bool> HasAnyActiveAssignmentAsync(
+        Guid userId,
+        Instant now,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.RoleAssignments.AnyAsync(
+            ra => ra.UserId == userId &&
+                  ra.ValidFrom <= now &&
+                  (ra.ValidTo == null || ra.ValidTo > now),
+            ct);
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetUserIdsWithActiveAssignmentsAsync(
+        Instant now,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.RoleAssignments
+            .AsNoTracking()
+            .Where(ra => ra.ValidFrom <= now && (ra.ValidTo == null || ra.ValidTo > now))
+            .Select(ra => ra.UserId)
+            .Distinct()
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetActiveUserIdsForRoleAsync(
+        string roleName,
+        Instant now,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.RoleAssignments
+            .AsNoTracking()
+            .Where(ra => ra.RoleName == roleName &&
+                         ra.ValidFrom <= now &&
+                         (ra.ValidTo == null || ra.ValidTo > now))
+            .Select(ra => ra.UserId)
+            .Distinct()
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<RoleAssignment>> GetActiveForUserForMutationAsync(
+        Guid userId,
+        Instant now,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.RoleAssignments
+            .AsNoTracking()
+            .Where(ra => ra.UserId == userId &&
+                         ra.ValidFrom <= now &&
+                         (ra.ValidTo == null || ra.ValidTo > now))
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetActiveUserIdsInRoleAsync(
+        string roleName,
+        Instant now,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.RoleAssignments
+            .AsNoTracking()
+            .Where(ra =>
+                ra.RoleName == roleName &&
+                ra.ValidFrom <= now &&
+                (ra.ValidTo == null || ra.ValidTo > now))
+            .Select(ra => ra.UserId)
+            .Distinct()
+            .ToListAsync(ct);
+    }
+
+    // ==========================================================================
+    // Writes
+    // ==========================================================================
+
+    public async Task AddAsync(RoleAssignment assignment, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        ctx.RoleAssignments.Add(assignment);
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdateAsync(RoleAssignment assignment, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        ctx.Attach(assignment);
+        ctx.Entry(assignment).State = EntityState.Modified;
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdateManyAsync(IReadOnlyList<RoleAssignment> assignments, CancellationToken ct = default)
+    {
+        if (assignments.Count == 0)
+            return;
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        foreach (var assignment in assignments)
+        {
+            ctx.Attach(assignment);
+            ctx.Entry(assignment).State = EntityState.Modified;
+        }
+        await ctx.SaveChangesAsync(ct);
+    }
+}

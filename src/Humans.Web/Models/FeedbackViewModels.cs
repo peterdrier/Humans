@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Enums;
 
 namespace Humans.Web.Models;

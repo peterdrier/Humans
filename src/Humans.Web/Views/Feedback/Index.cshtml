@@ -10,7 +10,7 @@
     <form method="get" class="feedback-filter-form d-flex gap-2 mb-3 flex-wrap">
         <select name="status" class="form-select form-select-sm" style="width: auto;">
             <option value="">@Localizer["Feedback_AllStatuses"]</option>
-            @foreach (var s in Enum.GetValues<Humans.Domain.Enums.FeedbackStatus>())
+            @foreach (var s in Enum.GetValues<FeedbackStatus>())
             {
                 if (Model.StatusFilter == s)
                 {
@@ -24,7 +24,7 @@
         </select>
         <select name="category" class="form-select form-select-sm" style="width: auto;">
             <option value="">@Localizer["Feedback_AllCategories"]</option>
-            @foreach (var c in Enum.GetValues<Humans.Domain.Enums.FeedbackCategory>())
+            @foreach (var c in Enum.GetValues<FeedbackCategory>())
             {
                 if (Model.CategoryFilter == c)
                 {
@@ -133,10 +133,10 @@
                         @{
                             var badgeClass = report.Status switch
                             {
-                                Humans.Domain.Enums.FeedbackStatus.Open => "bg-danger",
-                                Humans.Domain.Enums.FeedbackStatus.Acknowledged => "bg-info",
-                                Humans.Domain.Enums.FeedbackStatus.Resolved => "bg-success",
-                                Humans.Domain.Enums.FeedbackStatus.WontFix => "bg-secondary",
+                                FeedbackStatus.Open => "bg-danger",
+                                FeedbackStatus.Acknowledged => "bg-info",
+                                FeedbackStatus.Resolved => "bg-success",
+                                FeedbackStatus.WontFix => "bg-secondary",
                                 _ => "bg-secondary"
                             };
                         }

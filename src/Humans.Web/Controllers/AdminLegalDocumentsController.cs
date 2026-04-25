@@ -3,11 +3,12 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Legal;
 
 namespace Humans.Web.Controllers;
 
@@ -16,17 +17,20 @@ namespace Humans.Web.Controllers;
 public class AdminLegalDocumentsController : HumansControllerBase
 {
     private readonly IAdminLegalDocumentService _adminLegalDocumentService;
+    private readonly ITeamService _teamService;
     private readonly IClock _clock;
     private readonly ILogger<AdminLegalDocumentsController> _logger;
 
     public AdminLegalDocumentsController(
         UserManager<User> userManager,
         IAdminLegalDocumentService adminLegalDocumentService,
+        ITeamService teamService,
         IClock clock,
         ILogger<AdminLegalDocumentsController> logger)
         : base(userManager)
     {
         _adminLegalDocumentService = adminLegalDocumentService;
+        _teamService = teamService;
         _clock = clock;
         _logger = logger;
     }
@@ -35,31 +39,23 @@ public class AdminLegalDocumentsController : HumansControllerBase
     public async Task<IActionResult> LegalDocuments(Guid? teamId)
     {
         var documents = await _adminLegalDocumentService.GetLegalDocumentsAsync(teamId);
-        var now = _clock.GetCurrentInstant();
 
         var viewModel = new LegalDocumentListViewModel
         {
             FilterTeamId = teamId,
             Teams = await GetTeamSelectItems(),
-            Documents = documents.Select(d =>
+            Documents = documents.Select(d => new LegalDocumentListItemViewModel
             {
-                var currentVersion = d.Versions
-                    .Where(v => v.EffectiveFrom <= now)
-                    .MaxBy(v => v.EffectiveFrom);
-
-                return new LegalDocumentListItemViewModel
-                {
-                    Id = d.Id,
-                    Name = d.Name,
-                    TeamName = d.Team.Name,
-                    TeamId = d.TeamId,
-                    IsRequired = d.IsRequired,
-                    IsActive = d.IsActive,
-                    GracePeriodDays = d.GracePeriodDays,
-                    CurrentVersion = currentVersion?.VersionNumber,
-                    LastSyncedAt = d.LastSyncedAt != default ? d.LastSyncedAt.ToDateTimeUtc() : null,
-                    VersionCount = d.Versions.Count
-                };
+                Id = d.Id,
+                Name = d.Name,
+                TeamName = d.TeamName,
+                TeamId = d.TeamId,
+                IsRequired = d.IsRequired,
+                IsActive = d.IsActive,
+                GracePeriodDays = d.GracePeriodDays,
+                CurrentVersion = d.CurrentVersion,
+                LastSyncedAt = d.LastSyncedAt?.ToDateTimeUtc(),
+                VersionCount = d.VersionCount
             }).ToList()
         };
 
@@ -256,7 +252,7 @@ public class AdminLegalDocumentsController : HumansControllerBase
 
     private async Task<List<TeamSelectItem>> GetTeamSelectItems()
     {
-        var teams = await _adminLegalDocumentService.GetActiveTeamsAsync();
+        var teams = await _teamService.GetActiveTeamOptionsAsync();
         return teams.Select(t => new TeamSelectItem { Id = t.Id, Name = t.Name }).ToList();
     }
 

@@ -7,7 +7,7 @@ on:
 jobs:
   clone-db:
     if: github.event.action == 'opened' || github.event.action == 'reopened'
-    runs-on: self-hosted
+    runs-on: [self-hosted, nuc]
     steps:
       - name: Create preview database (clone from QA)
         run: |
@@ -30,7 +30,7 @@ jobs:
 
   cleanup-db:
     if: github.event.action == 'closed'
-    runs-on: self-hosted
+    runs-on: [self-hosted, nuc]
     steps:
       - name: Drop preview database
         run: |

@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Notifications;
 using Humans.Domain.Entities;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;

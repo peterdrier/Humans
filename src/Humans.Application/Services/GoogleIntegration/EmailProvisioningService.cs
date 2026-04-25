@@ -1,0 +1,298 @@
+using System.Globalization;
+using System.Text;
+using Microsoft.Extensions.Logging;
+using Humans.Application.Helpers;
+using Humans.Domain.Enums;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Profiles;
+
+namespace Humans.Application.Services.GoogleIntegration;
+
+/// <summary>
+/// Encapsulates the 4-step @nobodies.team email provisioning flow.
+/// Used by both HumanController (Admin) and TeamAdminController (Coordinators).
+/// Part of the Google Integration §15 migration tracked under issue #554 —
+/// PR #284 shipped <c>SyncSettingsService</c> first; this is the second
+/// Google Integration service to move to the Application layer.
+/// </summary>
+/// <remarks>
+/// All DbContext access has been pushed behind the cross-section service
+/// interfaces (<see cref="IUserService"/>, <see cref="IProfileService"/>,
+/// <see cref="IUserEmailService"/>). The Google Workspace Users API bridge
+/// is <see cref="IGoogleWorkspaceUserService"/>. Audit and notification
+/// calls go through their existing interfaces unchanged.
+/// </remarks>
+public sealed class EmailProvisioningService : IEmailProvisioningService
+{
+    private readonly IUserService _userService;
+    private readonly IProfileService _profileService;
+    private readonly IGoogleWorkspaceUserService _workspaceUserService;
+    private readonly IUserEmailService _userEmailService;
+    private readonly ITeamService _teamService;
+    private readonly IEmailService _emailService;
+    private readonly INotificationService _notificationService;
+    private readonly IAuditLogService _auditLogService;
+    private readonly ILogger<EmailProvisioningService> _logger;
+
+    public EmailProvisioningService(
+        IUserService userService,
+        IProfileService profileService,
+        IGoogleWorkspaceUserService workspaceUserService,
+        IUserEmailService userEmailService,
+        ITeamService teamService,
+        IEmailService emailService,
+        INotificationService notificationService,
+        IAuditLogService auditLogService,
+        ILogger<EmailProvisioningService> logger)
+    {
+        _userService = userService;
+        _profileService = profileService;
+        _workspaceUserService = workspaceUserService;
+        _userEmailService = userEmailService;
+        _teamService = teamService;
+        _emailService = emailService;
+        _notificationService = notificationService;
+        _auditLogService = auditLogService;
+        _logger = logger;
+    }
+
+    public async Task<EmailProvisioningResult> ProvisionNobodiesEmailAsync(
+        Guid userId,
+        string emailPrefix,
+        Guid provisionedByUserId)
+    {
+        var user = await _userService.GetByIdAsync(userId);
+        if (user is null)
+            return new EmailProvisioningResult(false, ErrorMessage: "User not found.");
+
+        var sanitizedPrefix = SanitizeEmailPrefix(emailPrefix);
+        if (string.IsNullOrEmpty(sanitizedPrefix))
+            return new EmailProvisioningResult(false, ErrorMessage: "Email prefix contains characters that cannot be transliterated to ASCII. Please choose a different prefix.");
+
+        var fullEmail = $"{sanitizedPrefix}@nobodies.team";
+
+        try
+        {
+            // Check DB first: reject if the address is already tied to another human in our system.
+            // Must run BEFORE the Workspace existence check so a stale/deleted Workspace account
+            // cannot silently "move" the identity off its current human.
+            //
+            // Cross-section reads — route through the owning services rather than
+            // touching _dbContext directly (design-rules §6). Each service filters
+            // UserId != userId inside the query so duplicate rows (mixed case or
+            // historical drift) can't mask a real cross-user conflict.
+            var conflictingEmailUserId =
+                await _userEmailService.GetOtherUserIdHavingEmailAsync(fullEmail, userId);
+            if (conflictingEmailUserId is not null)
+            {
+                _logger.LogWarning(
+                    "Provisioning rejected: {Email} is already linked to user {ConflictUserId} (requested for {UserId})",
+                    fullEmail, conflictingEmailUserId, userId);
+                return new EmailProvisioningResult(false, fullEmail,
+                    ErrorMessage: $"{fullEmail} is already in use by another human.");
+            }
+
+            var conflictingGoogleEmailUserId =
+                await _userService.GetOtherUserIdHavingGoogleEmailAsync(fullEmail, userId);
+            if (conflictingGoogleEmailUserId is not null)
+            {
+                _logger.LogWarning(
+                    "Provisioning rejected: {Email} is already set as GoogleEmail for user {ConflictUserId} (requested for {UserId})",
+                    fullEmail, conflictingGoogleEmailUserId, userId);
+                return new EmailProvisioningResult(false, fullEmail,
+                    ErrorMessage: $"{fullEmail} is already in use by another human.");
+            }
+
+            // Reject if the prefix collides with a team's Google Group. Team groups
+            // live on the same domain (@nobodies.team), so a user account with the
+            // same address would cause mail-routing chaos and break group membership.
+            var conflictingTeamName =
+                await _teamService.GetTeamNameByGoogleGroupPrefixAsync(sanitizedPrefix);
+            if (!string.IsNullOrEmpty(conflictingTeamName))
+            {
+                _logger.LogWarning(
+                    "Provisioning rejected: {Email} is the Google Group address for team '{TeamName}' (requested for {UserId})",
+                    fullEmail, conflictingTeamName, userId);
+                return new EmailProvisioningResult(false, fullEmail,
+                    ErrorMessage: $"{fullEmail} is the Google Group address for team \"{conflictingTeamName}\" and cannot be used as a personal account.");
+            }
+
+            // Check if account already exists in Google Workspace
+            var existing = await _workspaceUserService.GetAccountAsync(fullEmail);
+            if (existing is not null)
+                return new EmailProvisioningResult(false, fullEmail, ErrorMessage: $"Account {fullEmail} already exists in Google Workspace.");
+
+            // Use real name from profile, not display/burner name.
+            // Cross-section read — route through IProfileService rather than a
+            // cross-domain .Include (design-rules §6).
+            var profile = await _profileService.GetProfileAsync(userId);
+            var firstName = profile?.FirstName;
+            var lastName = profile?.LastName;
+            if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName))
+                return new EmailProvisioningResult(false, fullEmail, ErrorMessage: "Cannot provision account: the human must have a first and last name in their profile.");
+
+            // ──────────────────────────────────────────────────────────────
+            // ORDERING IS CRITICAL in this block.
+            //
+            // We must capture the user's personal (recovery) email BEFORE
+            // calling AddVerifiedEmailAsync, because that call switches the
+            // user's notification target to the new @nobodies.team address.
+            // If we resolved the recovery email after that point, we'd send
+            // the credentials email to the @nobodies.team mailbox — which the
+            // user can't access yet (they don't have the password).
+            //
+            // Sequence:
+            //   1. Capture recovery email  (personal address)
+            //   2. Provision Google Workspace account
+            //   3. Link @nobodies.team email  (changes notification target)
+            //   4. Send credentials to recovery email captured in step 1
+            //
+            // Do NOT reorder these steps.
+            // ──────────────────────────────────────────────────────────────
+
+            // Step 1: Capture recovery email BEFORE the notification target changes.
+            // Cross-section read — route through IUserEmailService rather than a
+            // cross-domain .Include on User.UserEmails (design-rules §6).
+            var recoveryEmail = await ResolveRecoveryEmailAsync(userId, user.Email);
+
+            // Step 2: Generate temp password and provision in Google Workspace.
+            var tempPassword = PasswordGenerator.GenerateTemporary();
+            await _workspaceUserService.ProvisionAccountAsync(
+                fullEmail, firstName, lastName, tempPassword,
+                recoveryEmail);
+
+            // Step 3: Link the new email — this changes the notification target
+            // to @nobodies.team AND sets User.GoogleEmail (IUserEmailService owns
+            // both mutations internally). Do NOT move this above step 1.
+            await _userEmailService.AddVerifiedEmailAsync(userId, fullEmail);
+
+            // Belt-and-suspenders: if the UserEmail row already existed for this
+            // user (e.g. a prior half-completed provisioning attempt), the call
+            // above short-circuits on its ExistsForUserAsync guard and does NOT
+            // touch User.GoogleEmail. Force-set it here so Google sync targets
+            // the provisioned @nobodies.team address even when the user
+            // previously signed in with a personal Google account
+            // (TrySetGoogleEmailAsync would silently no-op in that case and
+            // leave sync pointing at the wrong mailbox).
+            await _userService.SetGoogleEmailAsync(userId, fullEmail);
+
+            // Audit
+            await _auditLogService.LogAsync(
+                AuditAction.WorkspaceAccountProvisioned,
+                "WorkspaceAccount", userId,
+                $"Provisioned and linked @nobodies.team account: {fullEmail}",
+                provisionedByUserId);
+
+            // Step 4: Send credentials to the PERSONAL email captured in step 1.
+            if (!string.IsNullOrEmpty(recoveryEmail))
+            {
+                await _emailService.SendWorkspaceCredentialsAsync(
+                    recoveryEmail, user.DisplayName, fullEmail, tempPassword,
+                    user.PreferredLanguage);
+            }
+
+            // In-app notification (best-effort)
+            try
+            {
+                await _notificationService.SendAsync(
+                    NotificationSource.WorkspaceCredentialsReady,
+                    NotificationClass.Informational,
+                    NotificationPriority.Normal,
+                    "Your @nobodies.team account is ready",
+                    [userId],
+                    body: $"Your workspace email {fullEmail} has been provisioned. Check your personal email for login credentials.",
+                    actionUrl: "/Profile",
+                    actionLabel: "View profile");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to dispatch WorkspaceCredentialsReady notification for user {UserId}", userId);
+            }
+
+            return !string.IsNullOrEmpty(recoveryEmail)
+                ? new EmailProvisioningResult(true, fullEmail, recoveryEmail)
+                : new EmailProvisioningResult(true, fullEmail);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to provision @nobodies.team account {Email} for user {UserId}", fullEmail, userId);
+            return new EmailProvisioningResult(false, fullEmail, ErrorMessage: $"Failed to provision {fullEmail}. Check logs for details.");
+        }
+    }
+
+    /// <summary>
+    /// Resolves the user's personal recovery email — the verified notification-target
+    /// email, or the OAuth email as fallback. If the notification target is already
+    /// @nobodies.team, fall back to the OAuth email so credentials don't land in a
+    /// mailbox the user can't yet reach.
+    /// </summary>
+    private async Task<string?> ResolveRecoveryEmailAsync(Guid userId, string? oauthEmail)
+    {
+        var emails = await _userEmailService.GetUserEmailsAsync(userId);
+        var target = emails.FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified);
+        var candidate = target?.Email ?? oauthEmail;
+
+        if (candidate?.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase) == true)
+            return oauthEmail;
+
+        return candidate;
+    }
+
+    /// <summary>
+    /// Transliterates an email prefix to ASCII by applying German-specific mappings
+    /// (ü→ue, ö→oe, ä→ae, ß→ss) first, then stripping remaining diacritics via
+    /// Unicode NFD decomposition. Returns null if the result contains non-ASCII or
+    /// invalid email local-part characters; returns empty string if input was blank.
+    /// </summary>
+    internal static string? SanitizeEmailPrefix(string prefix)
+    {
+        var trimmed = prefix.Trim();
+
+        // German-specific mappings (must be applied before NFD stripping)
+        var sb = new StringBuilder(trimmed.Length);
+        foreach (var ch in trimmed)
+        {
+            var mapped = ch switch
+            {
+                'ü' => "ue",
+                'Ü' => "ue",
+                'ö' => "oe",
+                'Ö' => "oe",
+                'ä' => "ae",
+                'Ä' => "ae",
+                'ß' => "ss",
+                _ => null
+            };
+
+            if (mapped is not null)
+                sb.Append(mapped);
+            else
+                sb.Append(ch);
+        }
+
+        // NFD decomposition: split base characters from combining marks, then strip marks
+        var normalized = sb.ToString().Normalize(NormalizationForm.FormD);
+        var result = new StringBuilder(normalized.Length);
+        foreach (var ch in normalized)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark)
+                result.Append(ch);
+        }
+
+        var ascii = result.ToString().ToLowerInvariant();
+
+        // Validate result contains only valid ASCII email local-part characters
+        foreach (var ch in ascii)
+        {
+            if (ch > 127 || ch <= ' ' || ch == 0x7F)
+                return null;
+        }
+
+        return ascii;
+    }
+}

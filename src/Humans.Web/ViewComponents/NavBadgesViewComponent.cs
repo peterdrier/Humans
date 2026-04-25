@@ -2,7 +2,8 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Application;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Feedback;
+using Humans.Application.Interfaces.Onboarding;
 
 namespace Humans.Web.ViewComponents;
 

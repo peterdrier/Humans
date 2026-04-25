@@ -535,6 +535,10 @@
   <data name="Teams_NoOtherTeams" xml:space="preserve"><value>No hay otros equipos disponibles.</value></data>
   <data name="Teams_System" xml:space="preserve"><value>Sistema</value></data>
 
+  <!-- Vol/Teams landing: Browse Shifts CTA (#534) -->
+  <data name="VolTeams_BrowseShiftsBanner" xml:space="preserve"><value>&#xBF;Buscas turnos? M&#xED;ralos todos aqu&#xED;, o elige un equipo abajo.</value></data>
+  <data name="VolTeams_BrowseShiftsButton" xml:space="preserve"><value>Ver turnos</value></data>
+
   <!-- Team Detail View -->
   <data name="TeamDetail_NoDescription" xml:space="preserve"><value>Sin descripci&#xF3;n.</value></data>
   <data name="TeamDetail_SystemTeamInfo" xml:space="preserve"><value>Este es un equipo gestionado por el sistema. La membres&#xED;a se sincroniza autom&#xE1;ticamente seg&#xFA;n los criterios de {0}.</value><comment>{0} = system team type</comment></data>
@@ -847,6 +851,13 @@
   <data name="AdminAddRole_NoInfoAdminDesc" xml:space="preserve"><value>Aprobar inscripciones en turnos, ver datos médicos de voluntarios</value></data>
   <data name="AdminAddRole_NotesLabel" xml:space="preserve"><value>Notas (opcional)</value></data>
   <data name="AdminAddRole_NotesPlaceholder" xml:space="preserve"><value>Motivo de la asignaci&#xF3;n</value></data>
+
+  <!-- ======================== -->
+  <!-- Google Accounts View     -->
+  <!-- ======================== -->
+  <data name="GoogleAccounts_Actions" xml:space="preserve"><value>Acciones</value></data>
+  <data name="GoogleAccounts_ResetPassword" xml:space="preserve"><value>Restablecer contrase&#xF1;a</value></data>
+  <data name="GoogleAccounts_ResetPasswordConfirm" xml:space="preserve"><value>&#xBF;Restablecer la contrase&#xF1;a de {0}? Se generar&#xE1; una nueva contrase&#xF1;a temporal y se mostrar&#xE1; en pantalla. El human deber&#xE1; cambiarla en el pr&#xF3;ximo inicio de sesi&#xF3;n.</value><comment>{0} = email</comment></data>
 
   <!-- ======================== -->
   <!-- Google Sync View         -->

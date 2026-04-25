@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Application.DTOs;
 using Humans.Application.Enums;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -148,7 +148,7 @@ public class ShiftBrowseViewModel
     /// <summary>
     /// All available tags for the filter UI.
     /// </summary>
-    public List<Humans.Domain.Entities.ShiftTag> AllTags { get; set; } = [];
+    public List<ShiftTag> AllTags { get; set; } = [];
 
     /// <summary>
     /// Currently selected tag IDs for filtering.
@@ -236,7 +236,7 @@ public class ShiftAdminViewModel
     /// <summary>
     /// All available tags for the tag picker UI.
     /// </summary>
-    public List<Humans.Domain.Entities.ShiftTag> AllTags { get; set; } = [];
+    public List<ShiftTag> AllTags { get; set; } = [];
 }
 
 // === Homepage ===

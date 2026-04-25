@@ -345,9 +345,9 @@ public class DevLoginController : Controller
 
         var now = _clock.GetCurrentInstant();
 
-        if (!await _db.Set<Humans.Domain.Entities.Camp>().AnyAsync(c => c.Id == campId))
+        if (!await _db.Set<Camp>().AnyAsync(c => c.Id == campId))
         {
-            _db.Set<Humans.Domain.Entities.Camp>().Add(new Humans.Domain.Entities.Camp
+            _db.Set<Camp>().Add(new Camp
             {
                 Id = campId,
                 Slug = campSlug,
@@ -358,13 +358,13 @@ public class DevLoginController : Controller
                 UpdatedAt = now
             });
 
-            _db.Set<Humans.Domain.Entities.CampSeason>().Add(new Humans.Domain.Entities.CampSeason
+            _db.Set<CampSeason>().Add(new CampSeason
             {
                 Id = seasonId,
                 CampId = campId,
                 Year = year,
                 Name = campName,
-                Status = Humans.Domain.Enums.CampSeasonStatus.Active,
+                Status = CampSeasonStatus.Active,
                 BlurbShort = $"A dev test barrio ({campName}).",
                 BlurbLong = $"{campName} is a development test barrio used for local and preview environment testing. Feel free to edit this description.",
                 Languages = "English, Spanish",
@@ -376,14 +376,14 @@ public class DevLoginController : Controller
             _logger.LogInformation("DEV: seeded camp {Slug} ({Id})", campSlug, campId);
         }
 
-        if (!await _db.Set<Humans.Domain.Entities.CampLead>().AnyAsync(l => l.Id == leadId))
+        if (!await _db.Set<CampLead>().AnyAsync(l => l.Id == leadId))
         {
-            _db.Set<Humans.Domain.Entities.CampLead>().Add(new Humans.Domain.Entities.CampLead
+            _db.Set<CampLead>().Add(new CampLead
             {
                 Id = leadId,
                 CampId = campId,
                 UserId = leadUserId,
-                Role = Humans.Domain.Enums.CampLeadRole.Primary,
+                Role = CampLeadRole.Primary,
                 JoinedAt = now
             });
 

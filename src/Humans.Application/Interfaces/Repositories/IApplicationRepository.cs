@@ -1,3 +1,5 @@
+using NodaTime;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using MemberApplication = Humans.Domain.Entities.Application;
 
@@ -82,4 +84,164 @@ public interface IApplicationRepository
     /// invalidate per-voter voting badges after a successful finalize.
     /// </summary>
     Task<IReadOnlyList<Guid>> GetVoterIdsForApplicationAsync(Guid applicationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the user ids from <paramref name="userIds"/> that have a pending
+    /// (Submitted) application. Read-only.
+    /// </summary>
+    Task<IReadOnlySet<Guid>> GetUserIdsWithSubmittedAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the single Submitted application for the given user, or null
+    /// if none. Read-only.
+    /// </summary>
+    Task<MemberApplication?> GetSubmittedForUserAsync(
+        Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the distinct Approved-status membership tiers for a user.
+    /// Read-only.
+    /// </summary>
+    Task<IReadOnlyList<MembershipTier>> GetApprovedTiersForUserAsync(
+        Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every Submitted application, including aggregate-local
+    /// <c>BoardVotes</c>, ordered by tier then <c>SubmittedAt</c>. Read-only.
+    /// </summary>
+    Task<IReadOnlyList<MemberApplication>> GetAllSubmittedWithVotesAsync(
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns true if the application has any board votes. Used for
+    /// pre-finalize gating.
+    /// </summary>
+    Task<bool> HasBoardVotesAsync(Guid applicationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the existing board vote for (applicationId, boardMemberUserId),
+    /// or null if none. Read-only for callers that will mutate via
+    /// <see cref="UpsertBoardVoteAsync"/>.
+    /// </summary>
+    Task<BoardVote?> GetBoardVoteAsync(
+        Guid applicationId, Guid boardMemberUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Upserts a board vote: if a vote row exists for the
+    /// (applicationId, boardMemberUserId) pair, updates its
+    /// <see cref="BoardVote.Vote"/>/<see cref="BoardVote.Note"/>/
+    /// <see cref="BoardVote.UpdatedAt"/>; otherwise inserts a new row with the
+    /// provided values. Persists atomically.
+    /// </summary>
+    Task UpsertBoardVoteAsync(
+        Guid applicationId,
+        Guid boardMemberUserId,
+        VoteChoice vote,
+        string? note,
+        Instant now,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the number of Submitted applications that the given board
+    /// member has not yet voted on.
+    /// </summary>
+    Task<int> GetUnvotedCountForBoardMemberAsync(
+        Guid boardMemberUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns aggregate counts used by the admin dashboard's tier
+    /// application block. All counts exclude <see cref="ApplicationStatus.Withdrawn"/>.
+    /// </summary>
+    Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every Approved application whose <c>TermExpiresAt</c> falls
+    /// between <paramref name="today"/> (inclusive) and
+    /// <paramref name="reminderThreshold"/> (inclusive) and whose
+    /// <c>RenewalReminderSentAt</c> is still null. Read-only.
+    /// </summary>
+    Task<IReadOnlyList<MemberApplication>> GetExpiringApplicationsNeedingReminderAsync(
+        LocalDate today, LocalDate reminderThreshold, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the distinct <c>(UserId, MembershipTier)</c> pairs across
+    /// every Submitted application. Used by the term renewal reminder
+    /// to suppress renewals for users who already have a pending application.
+    /// </summary>
+    Task<IReadOnlySet<(Guid UserId, MembershipTier Tier)>> GetPendingApplicationUserTiersAsync(
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns Approved applications that have been resolved within
+    /// the half-open window <c>[windowStart, windowEnd)</c>, ordered by
+    /// <see cref="MembershipTier"/> then <c>ResolvedAt</c>. Used by the
+    /// Board daily digest.
+    /// </summary>
+    Task<IReadOnlyList<MemberApplication>> GetApprovedInWindowAsync(
+        Instant windowStart, Instant windowEnd, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every Submitted application id. Used by the Board daily
+    /// digest to compute per-member unvoted counts without re-loading the
+    /// full application set.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetSubmittedApplicationIdsAsync(
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the number of applications from <paramref name="applicationIds"/>
+    /// that the given board member has NOT yet voted on. Used by the Board
+    /// daily digest to render the per-member queue size.
+    /// </summary>
+    Task<int> GetUnvotedCountForBoardMemberAmongApplicationsAsync(
+        Guid boardMemberUserId,
+        IReadOnlyCollection<Guid> applicationIds,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Stamps <c>Application.RenewalReminderSentAt</c> to
+    /// <paramref name="sentAt"/>. No-op if the application does not exist.
+    /// </summary>
+    Task MarkRenewalReminderSentAsync(
+        Guid applicationId, Instant sentAt, CancellationToken ct = default);
+
+    // ==========================================================================
+    // System team sync support (issue #570 — §15 Google-writing jobs)
+    // ==========================================================================
+
+    /// <summary>
+    /// Returns the distinct user ids of every Approved application for
+    /// <paramref name="tier"/> whose term is still active on
+    /// <paramref name="today"/> (<c>TermExpiresAt</c> is null or on/after
+    /// <paramref name="today"/>).
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetActiveApprovedTierUserIdsAsync(
+        MembershipTier tier, LocalDate today, CancellationToken ct = default);
+
+    /// <summary>
+    /// Does the user have an Approved application for <paramref name="tier"/>
+    /// whose term is still active on <paramref name="today"/>?
+    /// </summary>
+    Task<bool> HasActiveApprovedTierAsync(
+        Guid userId, MembershipTier tier, LocalDate today, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns per-user active-approved non-Volunteer tier assignments
+    /// excluding <paramref name="excludeTier"/>. Each entry is the first
+    /// (UserId, MembershipTier) row encountered. Used by the system team
+    /// sync's tier-downgrade calculation.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, MembershipTier>> GetOtherActiveTierAssignmentsAsync(
+        MembershipTier excludeTier, LocalDate today, CancellationToken ct = default);
 }
+
+/// <summary>
+/// Aggregate counts for the admin dashboard's tier application block.
+/// </summary>
+public record ApplicationAdminStats(
+    int Total,
+    int Approved,
+    int Rejected,
+    int ColaboradorApplied,
+    int AsociadoApplied);

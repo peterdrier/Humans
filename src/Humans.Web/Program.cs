@@ -60,10 +60,10 @@ Log.Logger = logConfig.CreateLogger();
 
 builder.Host.UseSerilog();
 
-// Validate the DI container at startup so cycles and captive dependencies
-// fail the process fast instead of manifesting as silent hangs at first request.
-// (The runtime cycle check can't see through factory-lambda registrations; ValidateOnBuild
-// eagerly resolves every service through its real constructor graph.)
+// Validate the DI container at startup so obvious cycles and captive
+// dependencies fail fast instead of surfacing on first request. Factory-lambda
+// registrations still need explicit smoke coverage because the container can't
+// inspect arbitrary factory bodies until resolve time.
 builder.Host.UseDefaultServiceProvider(options =>
 {
     options.ValidateOnBuild = true;
@@ -259,7 +259,7 @@ builder.Services.AddHangfire((sp, config) =>
             options.UseNpgsqlConnection(
                 sp.GetRequiredService<IConfiguration>()
                     .GetConnectionString("DefaultConnection")!),
-            new Hangfire.PostgreSql.PostgreSqlStorageOptions
+            new PostgreSqlStorageOptions
             {
                 DistributedLockTimeout = TimeSpan.FromSeconds(5)
             });
@@ -342,6 +342,12 @@ builder.Services.AddRateLimiter(options =>
         if (context.Request.Path.StartsWithSegments("/Profile/Picture", StringComparison.OrdinalIgnoreCase))
             return RateLimitPartition.GetNoLimiter(string.Empty);
 
+        // Exclude SignalR hubs — long-polling fallback sends one POST per invoke,
+        // which trivially exceeds the global 100/min cap during active use.
+        // SignalR manages its own backpressure; abuse is handled via auth on the hub.
+        if (context.Request.Path.StartsWithSegments("/hubs", StringComparison.OrdinalIgnoreCase))
+            return RateLimitPartition.GetNoLimiter(string.Empty);
+
         // Exclude local network — e2e tests and internal tooling run from 192.168.*
         var remoteIp = context.Connection.RemoteIpAddress?.ToString();
         if (remoteIp is not null && remoteIp.StartsWith("192.168.", StringComparison.Ordinal))
@@ -416,17 +422,35 @@ builder.Services.AddSession(options =>
 // Configure Localization
 builder.Services.AddLocalization();
 
+// CORS — allow the public nobodies.team website to fetch /api/barrios
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("BarriosPublic", policy =>
+    {
+        policy.WithOrigins("https://nobodies.team", "https://www.nobodies.team")
+            .WithMethods("GET")
+            .WithHeaders("Content-Type", "Accept");
+    });
+});
+
 // Add Controllers with Views
 builder.Services.AddControllersWithViews(options =>
     {
         options.Filters.Add<MembershipRequiredFilter>();
         options.Filters.Add<Humans.Web.Filters.AuthorizationPillFilter>();
-        options.Filters.Add<Humans.Web.Filters.GlobalExceptionFilter>();
     })
     .AddViewLocalization(LanguageViewLocationExpanderFormat.Suffix)
     .AddDataAnnotationsLocalization();
 builder.Services.AddRazorPages();
 builder.Services.AddSignalR();
+
+// IExceptionHandler pipeline. Order matters — handlers run in registration order
+// until one returns true. Cancellation handler goes FIRST so client-abort
+// OperationCanceledExceptions don't get logged at Error level by the global
+// logger, then the logger captures everything else and returns false so
+// UseExceptionHandler("/Home/Error") still renders the error page.
+builder.Services.AddExceptionHandler<Humans.Web.ExceptionHandlers.CancellationExceptionHandler>();
+builder.Services.AddExceptionHandler<Humans.Web.ExceptionHandlers.GlobalLoggingExceptionHandler>();
 
 var supportedCultures = CultureCatalog.SupportedCultureCodes.ToArray();
 builder.Services.Configure<RequestLocalizationOptions>(options =>
@@ -507,28 +531,15 @@ app.Services.GetRequiredService<IHumansMetrics>();
 // Forwarded headers must be first (for reverse proxy)
 app.UseForwardedHeaders();
 
-// Global catch-all logger — logs every unhandled exception regardless of what
-// downstream middleware does. Must be first after forwarded headers.
-app.Use(async (context, next) =>
-{
-    try
-    {
-        await next(context);
-    }
-    catch (Exception ex)
-    {
-        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Unhandled exception on {Method} {Path}", context.Request.Method, context.Request.Path);
-        throw;
-    }
-});
-
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
 }
 else
 {
+    // Runs the IExceptionHandler pipeline registered via AddExceptionHandler<T>()
+    // (CancellationExceptionHandler, GlobalLoggingExceptionHandler) and, if none
+    // short-circuit, re-executes the request at /Home/Error.
     app.UseExceptionHandler("/Home/Error");
 }
 
@@ -566,6 +577,8 @@ app.Use(async (context, next) =>
 app.UseMiddleware<CspNonceMiddleware>();
 
 app.UseRouting();
+
+app.UseCors();
 
 // Rate limiting
 app.UseRateLimiter();

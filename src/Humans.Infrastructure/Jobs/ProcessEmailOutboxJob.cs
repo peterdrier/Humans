@@ -1,13 +1,13 @@
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
+using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Campaigns;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Domain.Enums;
+using Humans.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using Humans.Application.Interfaces;
-using Humans.Domain.Constants;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Configuration;
-using Humans.Infrastructure.Data;
 
 namespace Humans.Infrastructure.Jobs;
 
@@ -15,9 +15,18 @@ namespace Humans.Infrastructure.Jobs;
 /// Processes queued email outbox messages by sending them via the email transport.
 /// Runs every 1 minute via Hangfire.
 /// </summary>
+/// <remarks>
+/// The outbox reads/writes go through <see cref="IEmailOutboxRepository"/> so the
+/// Email section's <c>email_outbox_messages</c> + <c>IsEmailSendingPaused</c>
+/// state is owned by a single repository per §15. Campaign grant status updates
+/// route through <see cref="ICampaignService"/> so the Campaigns section owns
+/// <c>campaign_grants</c> (design-rules §2c) — this job no longer touches
+/// <c>HumansDbContext</c> at all.
+/// </remarks>
 public class ProcessEmailOutboxJob : IRecurringJob
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly IEmailOutboxRepository _outboxRepo;
+    private readonly ICampaignService _campaignService;
     private readonly IEmailTransport _transport;
     private readonly IHumansMetrics _metrics;
     private readonly IClock _clock;
@@ -25,14 +34,16 @@ public class ProcessEmailOutboxJob : IRecurringJob
     private readonly ILogger<ProcessEmailOutboxJob> _logger;
 
     public ProcessEmailOutboxJob(
-        HumansDbContext dbContext,
+        IEmailOutboxRepository outboxRepo,
+        ICampaignService campaignService,
         IEmailTransport transport,
         IHumansMetrics metrics,
         IClock clock,
         IOptions<EmailSettings> settings,
         ILogger<ProcessEmailOutboxJob> logger)
     {
-        _dbContext = dbContext;
+        _outboxRepo = outboxRepo;
+        _campaignService = campaignService;
         _transport = transport;
         _metrics = metrics;
         _clock = clock;
@@ -43,10 +54,7 @@ public class ProcessEmailOutboxJob : IRecurringJob
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         // 1. Check global pause flag
-        var pauseSetting = await _dbContext.SystemSettings
-            .FirstOrDefaultAsync(s => s.Key == SystemSettingKeys.IsEmailSendingPaused, cancellationToken);
-
-        if (pauseSetting is { Value: "true" })
+        if (await _outboxRepo.GetSendingPausedAsync(cancellationToken))
         {
             _logger.LogInformation("Email sending is paused, skipping outbox processing");
             return;
@@ -56,27 +64,17 @@ public class ProcessEmailOutboxJob : IRecurringJob
         var staleThreshold = now - Duration.FromMinutes(5);
 
         // 2. Select batch of messages to process
-        var messages = await _dbContext.EmailOutboxMessages
-            .Where(m => m.SentAt == null
-                && m.RetryCount < _settings.OutboxMaxRetries
-                && (m.NextRetryAt == null || m.NextRetryAt <= now)
-                && (m.PickedUpAt == null || m.PickedUpAt < staleThreshold))
-            .OrderBy(m => m.CreatedAt)
-            .Take(_settings.OutboxBatchSize)
-            .ToListAsync(cancellationToken);
+        var messages = await _outboxRepo.GetProcessingBatchAsync(
+            now, staleThreshold, _settings.OutboxMaxRetries, _settings.OutboxBatchSize, cancellationToken);
 
         if (messages.Count == 0)
         {
             return;
         }
 
-        // 3. Mark batch as picked up
-        foreach (var message in messages)
-        {
-            message.PickedUpAt = now;
-        }
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        // 3. Mark batch as picked up (prevents concurrent processor runs picking the same rows)
+        await _outboxRepo.MarkPickedUpAsync(
+            messages.Select(m => m.Id).ToList(), now, cancellationToken);
 
         // 4. Process each message
         foreach (var message in messages)
@@ -87,13 +85,10 @@ public class ProcessEmailOutboxJob : IRecurringJob
                 if (message.RecipientEmail.EndsWith("@localhost", StringComparison.OrdinalIgnoreCase) ||
                     message.RecipientEmail.EndsWith("@ticketstub.local", StringComparison.OrdinalIgnoreCase))
                 {
-                    message.Status = EmailOutboxStatus.Sent;
-                    message.SentAt = now;
-                    message.PickedUpAt = null;
+                    await _outboxRepo.MarkSentAsync(message.Id, now, cancellationToken);
                     _logger.LogInformation(
                         "Skipped email {MessageId} to test address {Email}",
                         message.Id, message.RecipientEmail);
-                    await _dbContext.SaveChangesAsync(cancellationToken);
                     continue;
                 }
 
@@ -114,24 +109,19 @@ public class ProcessEmailOutboxJob : IRecurringJob
                     cancellationToken);
 
                 // Success — mark as sent BEFORE throttle delay to avoid re-send on cancellation
-                message.Status = EmailOutboxStatus.Sent;
-                message.SentAt = now;
-                message.PickedUpAt = null;
+                await _outboxRepo.MarkSentAsync(message.Id, now, cancellationToken);
                 _metrics.RecordEmailSent(message.TemplateName);
 
-                // Update campaign grant status if applicable
+                // Update campaign grant status if applicable — routed via
+                // ICampaignService so the Campaigns section owns campaign_grants.
                 if (message.CampaignGrantId.HasValue)
                 {
-                    var grant = await _dbContext.CampaignGrants.FindAsync(
-                        new object[] { message.CampaignGrantId.Value }, cancellationToken);
-                    if (grant is not null)
-                    {
-                        grant.LatestEmailStatus = EmailOutboxStatus.Sent;
-                        grant.LatestEmailAt = now;
-                    }
+                    await _campaignService.UpdateGrantEmailStatusAsync(
+                        message.CampaignGrantId.Value,
+                        EmailOutboxStatus.Sent,
+                        now,
+                        cancellationToken);
                 }
-
-                await _dbContext.SaveChangesAsync(cancellationToken);
 
                 // Throttle: 1 second delay between sends to avoid SMTP rate limits
                 await Task.Delay(1000, cancellationToken);
@@ -139,25 +129,18 @@ public class ProcessEmailOutboxJob : IRecurringJob
             catch (Exception ex)
             {
                 // Failure
-                message.Status = EmailOutboxStatus.Failed;
-                message.RetryCount += 1;
-                message.LastError = ex.Message.Length > 4000
-                    ? ex.Message[..4000]
-                    : ex.Message;
-                message.NextRetryAt = now + Duration.FromMinutes((long)Math.Pow(2, message.RetryCount));
-                message.PickedUpAt = null;
+                var nextRetryAt = now + Duration.FromMinutes((long)Math.Pow(2, message.RetryCount + 1));
+                await _outboxRepo.MarkFailedAsync(message.Id, now, ex.Message, nextRetryAt, cancellationToken);
                 _metrics.RecordEmailFailed(message.TemplateName);
 
-                // Update campaign grant status if applicable
+                // Update campaign grant status if applicable — routed via ICampaignService.
                 if (message.CampaignGrantId.HasValue)
                 {
-                    var grant = await _dbContext.CampaignGrants.FindAsync(
-                        new object[] { message.CampaignGrantId.Value }, cancellationToken);
-                    if (grant is not null)
-                    {
-                        grant.LatestEmailStatus = EmailOutboxStatus.Failed;
-                        grant.LatestEmailAt = now;
-                    }
+                    await _campaignService.UpdateGrantEmailStatusAsync(
+                        message.CampaignGrantId.Value,
+                        EmailOutboxStatus.Failed,
+                        now,
+                        cancellationToken);
                 }
 
                 _logger.LogError(
@@ -165,15 +148,12 @@ public class ProcessEmailOutboxJob : IRecurringJob
                     "Failed sending email outbox message {MessageId} ({TemplateName}) attempt {Attempt}",
                     message.Id,
                     message.TemplateName,
-                    message.RetryCount);
-
-                await _dbContext.SaveChangesAsync(cancellationToken);
+                    message.RetryCount + 1);
             }
         }
 
         // 5. Set outbox_pending gauge
-        var pendingCount = await _dbContext.EmailOutboxMessages
-            .CountAsync(m => m.SentAt == null && m.RetryCount < _settings.OutboxMaxRetries, cancellationToken);
+        var pendingCount = await _outboxRepo.GetPendingCountAsync(_settings.OutboxMaxRetries, cancellationToken);
         _metrics.SetEmailOutboxPending(pendingCount);
 
         // 6. Record successful job run

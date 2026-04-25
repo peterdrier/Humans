@@ -1,11 +1,11 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Repositories;
+using Humans.Infrastructure.Repositories.Profiles;
 using Humans.Infrastructure.Services.Profiles;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
@@ -71,6 +71,10 @@ file sealed class StubAuditLogService : IAuditLogService
 
     public Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(IReadOnlyList<Guid> teamIds, CancellationToken ct = default) =>
         Task.FromResult(new Dictionary<Guid, (string Name, string Slug)>());
+
+    public Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
+        NodaTime.Instant windowStart, NodaTime.Instant windowEnd, AuditAction action, CancellationToken ct = default) =>
+        Task.FromResult((IReadOnlyList<Guid>)Array.Empty<Guid>());
 }
 
 public class CommunicationPreferenceServiceTests : IDisposable

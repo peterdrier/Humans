@@ -1,5 +1,7 @@
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Application;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -71,6 +73,45 @@ public interface IProfileRepository
     Task<(int ColaboradorCount, int AsociadoCount)> GetTierCountsAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Returns the user ids of all profiles that are approved and not
+    /// suspended. Read-only (AsNoTracking). Used by notification fan-out
+    /// that previously read <c>_dbContext.Profiles</c> directly from
+    /// cross-section services (e.g. Legal document sync).
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns profiles that are in the onboarding review queue: not approved
+    /// and not rejected. Ordered by <c>CreatedAt</c> ascending. Read-only.
+    /// Used by the onboarding review queue.
+    /// </summary>
+    Task<IReadOnlyList<Profile>> GetReviewableAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the count of profiles in the review queue (not approved, not
+    /// rejected). Used by the nav-badge count for Consent Coordinators.
+    /// </summary>
+    Task<int> GetReviewableCountAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the user ids of every approved, non-suspended profile. Used
+    /// by the admin dashboard to compute active-user aggregates without
+    /// loading the full Profile graph.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetApprovedUserIdsAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the count of profiles whose <c>ConsentCheckStatus</c> is Pending
+    /// or Flagged and whose <c>RejectedAt</c> is null.
+    /// </summary>
+    Task<int> GetConsentReviewPendingCountAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the count of profiles that are neither approved nor suspended.
+    /// </summary>
+    Task<int> GetNotApprovedAndNotSuspendedCountAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the languages for a profile, ordered by proficiency descending
     /// then language code. Read-only.
     /// </summary>
@@ -94,6 +135,67 @@ public interface IProfileRepository
     /// <see cref="GetByUserIdAsync"/>.
     /// </summary>
     Task UpdateAsync(Profile profile, CancellationToken ct = default);
+
+    /// <summary>
+    /// Clears identifying fields on the profile (name, location, bio,
+    /// emergency contacts, pronouns, birthday, profile picture, board notes,
+    /// admin notes, contribution interests) and removes every
+    /// <see cref="ContactField"/> and <see cref="VolunteerHistoryEntry"/>
+    /// row for the profile in a single <c>SaveChangesAsync</c> call. Used by
+    /// <c>AccountMergeService</c> and <c>DuplicateAccountService</c> when
+    /// archiving a source account.
+    /// </summary>
+    /// <remarks>
+    /// No-op if the user has no profile. Returns true when a profile existed
+    /// and was anonymized. Language rows (<see cref="ProfileLanguage"/>) are
+    /// intentionally left as-is; they are not personally identifying.
+    /// </remarks>
+    Task<bool> AnonymizeForMergeByUserIdAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Same set of writes as <see cref="AnonymizeForMergeByUserIdAsync"/>,
+    /// but labels the anonymized row as <c>"Deleted User"</c> instead of
+    /// <c>"Merged User"</c>. Used by the expired-deletion job path so the
+    /// post-anonymization audit log, profile view, etc. identify the record
+    /// as a GDPR-erasure outcome rather than an account merge.
+    /// </summary>
+    /// <remarks>
+    /// No-op if the user has no profile. Returns true when a profile existed
+    /// and was anonymized. Language rows (<see cref="ProfileLanguage"/>) are
+    /// intentionally left as-is; they are not personally identifying.
+    /// </remarks>
+    Task<bool> AnonymizeForDeletionByUserIdAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets <see cref="Profile.IsSuspended"/> to true and stamps
+    /// <see cref="Profile.UpdatedAt"/> for every profile whose <c>UserId</c>
+    /// is in <paramref name="userIds"/> and that is not already suspended.
+    /// Persists in a single SaveChanges and returns the set of user ids
+    /// whose profile was actually mutated. Used by the non-compliant
+    /// suspension job — the caller writes the audit log separately.
+    /// </summary>
+    Task<IReadOnlySet<Guid>> SuspendManyAsync(
+        IReadOnlyCollection<Guid> userIds,
+        Instant now,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// For every profile whose <see cref="Profile.MembershipTier"/> equals
+    /// <paramref name="currentTier"/> and whose <c>UserId</c> is NOT in
+    /// <paramref name="userIdsToKeep"/>, downgrades the tier to the value
+    /// supplied by <paramref name="fallbackTierByUser"/> (defaulting to
+    /// <see cref="MembershipTier.Volunteer"/> when the user is absent).
+    /// Stamps <see cref="Profile.UpdatedAt"/> and persists. Returns a list
+    /// of (UserId, NewTier) tuples for audit logging. Used by the system
+    /// team sync's tier-downgrade pass.
+    /// </summary>
+    Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>>
+        DowngradeTierForExpiredAsync(
+            MembershipTier currentTier,
+            IReadOnlyCollection<Guid> userIdsToKeep,
+            IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
+            Instant now,
+            CancellationToken ct = default);
 
     /// <summary>
     /// Reconciles the CV-entry collection for the given profile with the

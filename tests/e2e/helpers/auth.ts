@@ -2,7 +2,27 @@ import { type Page, type APIResponse, expect } from '@playwright/test';
 
 const NAV_SELECTOR = '[data-testid="user-nav"], .navbar .dropdown:has(.profile-dropdown-menu)';
 
+/**
+ * Pre-seed the cookie-consent cookie so the banner never renders during tests.
+ * The banner (<div id="cookieConsent">) otherwise intercepts clicks on page
+ * elements (e.g. #nextBtn in the shift-preference wizard) and causes flaky
+ * failures. Mirrors the name/value/sameSite set by wwwroot/js/site.js when a
+ * user clicks "Accept".
+ */
+async function seedCookieConsent(page: Page): Promise<void> {
+  const targetUrl = process.env.BASE_URL || 'https://humans.n.burn.camp';
+  await page.context().addCookies([
+    {
+      name: 'cookieConsent',
+      value: 'accepted',
+      url: targetUrl,
+      sameSite: 'Lax',
+    },
+  ]);
+}
+
 async function loginAs(page: Page, slug: string): Promise<void> {
+  await seedCookieConsent(page);
   await page.goto(`/dev/login/${slug}`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector(NAV_SELECTOR);
 }

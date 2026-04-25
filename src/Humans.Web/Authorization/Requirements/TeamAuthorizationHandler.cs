@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 

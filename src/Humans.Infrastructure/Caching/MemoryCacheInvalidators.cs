@@ -32,3 +32,17 @@ public sealed class VotingBadgeCacheInvalidator : IVotingBadgeCacheInvalidator
     public VotingBadgeCacheInvalidator(IMemoryCache cache) => _cache = cache;
     public void Invalidate(Guid userId) => _cache.InvalidateVotingBadge(userId);
 }
+
+public sealed class RoleAssignmentClaimsCacheInvalidator : IRoleAssignmentClaimsCacheInvalidator
+{
+    private readonly IMemoryCache _cache;
+    public RoleAssignmentClaimsCacheInvalidator(IMemoryCache cache) => _cache = cache;
+    public void Invalidate(Guid userId) => _cache.InvalidateRoleAssignmentClaims(userId);
+}
+
+public sealed class ActiveTeamsCacheInvalidator : IActiveTeamsCacheInvalidator
+{
+    private readonly IMemoryCache _cache;
+    public ActiveTeamsCacheInvalidator(IMemoryCache cache) => _cache = cache;
+    public void Invalidate() => _cache.InvalidateActiveTeams();
+}

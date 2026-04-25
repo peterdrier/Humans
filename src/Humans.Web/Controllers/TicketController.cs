@@ -1,5 +1,8 @@
 using Hangfire;
-using Humans.Application.Interfaces;
+using Humans.Application.Configuration;
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -227,12 +230,12 @@ public class TicketController : HumansControllerBase
                 AttendeeEmail = a.AttendeeEmail,
                 TicketTypeName = a.TicketTypeName,
                 Price = a.Price,
-                IsVip = a.Price > Domain.Constants.TicketConstants.VipThresholdEuros,
-                TaxableAmount = a.Price > Domain.Constants.TicketConstants.VipThresholdEuros
-                    ? Domain.Constants.TicketConstants.VipThresholdEuros
+                IsVip = a.Price > TicketConstants.VipThresholdEuros,
+                TaxableAmount = a.Price > TicketConstants.VipThresholdEuros
+                    ? TicketConstants.VipThresholdEuros
                     : a.Price,
-                VipDonation = a.Price > Domain.Constants.TicketConstants.VipThresholdEuros
-                    ? a.Price - Domain.Constants.TicketConstants.VipThresholdEuros
+                VipDonation = a.Price > TicketConstants.VipThresholdEuros
+                    ? a.Price - TicketConstants.VipThresholdEuros
                     : 0m,
                 Status = a.Status,
                 MatchedUserId = a.MatchedUserId,

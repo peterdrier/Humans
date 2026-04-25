@@ -1,32 +1,28 @@
 using AwesomeAssertions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
-using Humans.Application.Interfaces;
-using Humans.Infrastructure.Configuration;
-using Humans.Infrastructure.Services;
+using Humans.Application;
+using Humans.Application.Services.Legal;
 using Xunit;
+using Humans.Application.Interfaces.Legal;
 
 namespace Humans.Application.Tests.Services;
 
 public class LegalDocumentServiceTests : IDisposable
 {
     private readonly IMemoryCache _cache;
+    private readonly FakeConnector _connector;
     private readonly LegalDocumentService _service;
 
     public LegalDocumentServiceTests()
     {
         _cache = new MemoryCache(new MemoryCacheOptions());
-        var gitHubSettings = Options.Create(new GitHubSettings
-        {
-            Owner = "test-owner",
-            Repository = "test-repo",
-        });
+        _connector = new FakeConnector();
 
         _service = new LegalDocumentService(
             _cache,
-            NullLogger<LegalDocumentService>.Instance,
-            gitHubSettings);
+            _connector,
+            NullLogger<LegalDocumentService>.Instance);
     }
 
     public void Dispose()
@@ -67,7 +63,8 @@ public class LegalDocumentServiceTests : IDisposable
     [Fact]
     public async Task GetDocumentContentAsync_GitHubFailure_ReturnsEmptyDictionary()
     {
-        // With invalid owner/repo and no real GitHub connection, this should fail gracefully
+        _connector.ThrowOnFetch = true;
+
         var result = await _service.GetDocumentContentAsync("statutes");
 
         result.Should().BeEmpty();
@@ -76,16 +73,24 @@ public class LegalDocumentServiceTests : IDisposable
     [Fact]
     public async Task GetDocumentContentAsync_CachesResult()
     {
-        // First call - will fail but cache the empty result
+        _connector.Content = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["es"] = "hola"
+        };
+
+        // First call — populates cache.
         var result1 = await _service.GetDocumentContentAsync("statutes");
 
-        // Second call - should return cached result
+        // Swap out underlying content — if second call still equals first, cache worked.
+        _connector.Content = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["es"] = "changed"
+        };
         var result2 = await _service.GetDocumentContentAsync("statutes");
 
-        result1.Should().BeEmpty();
-        result2.Should().BeEmpty();
-
-        // Verify cache key exists
+        result1.Should().ContainKey("es");
+        result1["es"].Should().Be("hola");
+        result2["es"].Should().Be("hola");
         _cache.TryGetValue(CacheKeys.LegalDocument("statutes"), out _).Should().BeTrue();
     }
 
@@ -94,5 +99,34 @@ public class LegalDocumentServiceTests : IDisposable
     {
         CacheKeys.LegalDocument("statutes").Should().Be("Legal:statutes");
         CacheKeys.LegalDocument("privacy-policy").Should().Be("Legal:privacy-policy");
+    }
+
+    private sealed class FakeConnector : IGitHubLegalDocumentConnector
+    {
+        public Dictionary<string, string> Content { get; set; } =
+            new(StringComparer.Ordinal);
+        public bool ThrowOnFetch { get; set; }
+
+        public Task<IReadOnlyDictionary<string, string>> DiscoverLanguageFilesAsync(
+            string folderPath, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyDictionary<string, string>>(
+                new Dictionary<string, string>(StringComparer.Ordinal));
+
+        public Task<GitHubFileContent?> GetFileContentAsync(string path, CancellationToken ct = default) =>
+            Task.FromResult<GitHubFileContent?>(null);
+
+        public Task<string?> GetCommitMessageAsync(string sha, CancellationToken ct = default) =>
+            Task.FromResult<string?>(null);
+
+        public Task<string?> GetLatestCommitShaAsync(string path, CancellationToken ct = default) =>
+            Task.FromResult<string?>(null);
+
+        public Task<IReadOnlyDictionary<string, string>> GetFolderContentByPrefixAsync(
+            string folderPath, string filePrefix, CancellationToken ct = default)
+        {
+            if (ThrowOnFetch)
+                throw new InvalidOperationException("simulated failure");
+            return Task.FromResult<IReadOnlyDictionary<string, string>>(Content);
+        }
     }
 }

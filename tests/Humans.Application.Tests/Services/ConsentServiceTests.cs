@@ -7,11 +7,18 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Interfaces;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
 using Xunit;
+using ConsentService = Humans.Application.Services.Consent.ConsentService;
+using Humans.Application.Interfaces.Legal;
+using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Profiles;
+using Humans.Infrastructure.Repositories.Consent;
 
 namespace Humans.Application.Tests.Services;
 
@@ -25,6 +32,7 @@ public class ConsentServiceTests : IDisposable
     private readonly ILegalDocumentSyncService _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncService>();
     private readonly INotificationInboxService _notificationInboxService = Substitute.For<INotificationInboxService>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
+    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
 
     public ConsentServiceTests()
@@ -45,10 +53,35 @@ public class ConsentServiceTests : IDisposable
                 .Include(v => v.LegalDocument)
                 .FirstOrDefaultAsync(v => v.Id == callInfo.ArgAt<Guid>(0)));
 
+        _legalDocumentSyncService
+            .GetActiveRequiredDocumentsForTeamsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(async callInfo =>
+            {
+                var teamIds = callInfo.ArgAt<IReadOnlyCollection<Guid>>(0);
+                if (teamIds.Count == 0)
+                    return (IReadOnlyList<LegalDocument>)Array.Empty<LegalDocument>();
+
+                return await _dbContext.LegalDocuments
+                    .AsNoTracking()
+                    .Where(d => d.IsActive && d.IsRequired && teamIds.Contains(d.TeamId))
+                    .Include(d => d.Team)
+                    .Include(d => d.Versions)
+                    .ToListAsync();
+            });
+
+        var factory = new TestDbContextFactory(options);
+        var consentRepository = new ConsentRepository(factory);
+
         _service = new ConsentService(
-            _dbContext, _onboardingService, serviceProvider,
+            consentRepository,
+            _onboardingService,
             _legalDocumentSyncService,
-            _notificationInboxService, _syncJob, _metrics, _clock,
+            _notificationInboxService,
+            _syncJob,
+            _profileService,
+            serviceProvider,
+            _metrics,
+            _clock,
             NullLogger<ConsentService>.Instance);
     }
 
@@ -384,7 +417,7 @@ public class ConsentServiceTests : IDisposable
         var versionId = Guid.NewGuid();
         SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
         SeedConsentRecord(userId, versionId);
-        _dbContext.Profiles.Add(new Profile
+        var profile = new Profile
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -393,7 +426,8 @@ public class ConsentServiceTests : IDisposable
             LastName = "Doe",
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant()
-        });
+        };
+        _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>()).Returns(profile);
         await _dbContext.SaveChangesAsync();
 
         var (version, consent, fullName) = await _service.GetConsentReviewDetailAsync(versionId, userId);
@@ -410,7 +444,7 @@ public class ConsentServiceTests : IDisposable
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
         SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
-        _dbContext.Profiles.Add(new Profile
+        var profile = new Profile
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -419,7 +453,8 @@ public class ConsentServiceTests : IDisposable
             LastName = "Doe",
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant()
-        });
+        };
+        _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>()).Returns(profile);
         await _dbContext.SaveChangesAsync();
 
         var (version, consent, fullName) = await _service.GetConsentReviewDetailAsync(versionId, userId);
@@ -445,6 +480,7 @@ public class ConsentServiceTests : IDisposable
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
         SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
+        _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>()).Returns((Profile?)null);
 
         var (version, consent, fullName) = await _service.GetConsentReviewDetailAsync(versionId, userId);
 

@@ -15,7 +15,11 @@ public class GeneralAvailability
     public Instant CreatedAt { get; set; }
     public Instant UpdatedAt { get; set; }
 
-    // Navigation properties
-    public User User { get; set; } = null!;
+    // Navigation properties.
+    // Cross-domain nav User stripped per design-rules §6c (Shifts owns
+    // general_availability; User lives in Users/Identity). Callers that need
+    // user display data resolve it through IUserService/IProfileService.
+    // EventSettings is section-local (Shifts) — kept as an aggregate nav per
+    // docs/sections/Shifts.md.
     public EventSettings EventSettings { get; set; } = null!;
 }

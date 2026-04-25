@@ -6,13 +6,20 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Application.Interfaces;
+using Humans.Application.Services.Shifts;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
 using Xunit;
+using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Auth;
+using Humans.Infrastructure.Repositories.Shifts;
 
 namespace Humans.Application.Tests.Services;
 
@@ -22,6 +29,7 @@ public class ShiftSignupServiceTests : IDisposable
     private readonly FakeClock _clock;
     private readonly IAuditLogService _auditLog;
     private readonly ShiftManagementService _shiftMgmt;
+    private readonly ShiftSignupRepository _repo;
     private readonly ShiftSignupService _service;
 
     // Fixed test time: 2026-06-15 12:00 UTC
@@ -41,18 +49,21 @@ public class ShiftSignupServiceTests : IDisposable
         var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         var serviceProvider = Substitute.For<IServiceProvider>();
         serviceProvider.GetService(typeof(ITeamService)).Returns(teamService);
+        serviceProvider.GetService(typeof(IRoleAssignmentService)).Returns(roleAssignmentService);
+
+        var shiftRepo = new ShiftManagementRepository(new TestDbContextFactory(options));
 
         _shiftMgmt = new ShiftManagementService(
-            _dbContext,
+            shiftRepo,
             _auditLog,
-            roleAssignmentService,
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             _clock,
             NullLogger<ShiftManagementService>.Instance);
 
+        _repo = new ShiftSignupRepository(_dbContext, _clock);
         _service = new ShiftSignupService(
-            _dbContext,
+            _repo,
             _shiftMgmt,
             _auditLog,
             Substitute.For<INotificationService>(),

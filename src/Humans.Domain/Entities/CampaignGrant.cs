@@ -19,6 +19,15 @@ public class CampaignGrant
     // Navigation
     public Campaign Campaign { get; set; } = null!;
     public CampaignCode Code { get; set; } = null!;
+
+    /// <summary>
+    /// Cross-domain navigation to the recipient user. Do not use — callers
+    /// resolve user display names via <see cref="Humans.Application.Interfaces.IUserService"/>
+    /// keyed off <see cref="UserId"/>. Retained only so EF's configured
+    /// relationship keeps the FK constraint.
+    /// </summary>
+    [Obsolete("Cross-domain nav. Use UserId + IUserService to resolve the user.")]
     public User User { get; set; } = null!;
+
     public ICollection<EmailOutboxMessage> OutboxMessages { get; } = new List<EmailOutboxMessage>();
 }

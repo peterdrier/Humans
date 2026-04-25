@@ -1,19 +1,38 @@
+// Tests seed TeamMember.User navs directly for DB-roundtrip verification.
+// TeamMember.User is Obsolete per §6c; the production path populates it
+// in-memory via TeamService, but the tests set it on the entity before
+// SaveChanges. File-wide disable cleared when tests switch to seeding via
+// service calls instead of raw entity inserts.
+#pragma warning disable CS0618
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Application;
-using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Application.Interfaces.Caching;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Services.Shifts;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Repositories.Teams;
 using Xunit;
+using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
+using TeamService = Humans.Application.Services.Teams.TeamService;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Auth;
+using Humans.Infrastructure.Repositories.Auth;
+using Humans.Infrastructure.Repositories.Shifts;
 
 namespace Humans.Application.Tests.Services;
 
@@ -24,6 +43,7 @@ public class TeamServiceTests : IDisposable
     private readonly TeamService _service;
     private readonly RoleAssignmentService _roleAssignmentService;
     private readonly ITeamResourceService _teamResourceService;
+    private readonly IShiftAuthorizationInvalidator _shiftAuthInvalidator;
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
 
     public TeamServiceTests()
@@ -34,39 +54,80 @@ public class TeamServiceTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         _roleAssignmentService = new RoleAssignmentService(
-            _dbContext,
+            new RoleAssignmentRepository(new TestDbContextFactory(options)),
+            Substitute.For<IUserService>(),
             Substitute.For<IAuditLogService>(),
-            Substitute.For<INotificationService>(),
+            Substitute.For<INotificationEmitter>(),
             Substitute.For<ISystemTeamSync>(),
+            Substitute.For<INavBadgeCacheInvalidator>(),
+            Substitute.For<IRoleAssignmentClaimsCacheInvalidator>(),
             _clock,
-            _cache,
             NullLogger<RoleAssignmentService>.Instance);
         var serviceProvider = Substitute.For<IServiceProvider>();
+        var emailService = Substitute.For<IEmailService>();
+        var systemTeamSync = Substitute.For<ISystemTeamSync>();
         serviceProvider.GetService(typeof(ITeamService)).Returns(Substitute.For<ITeamService>());
+        serviceProvider.GetService(typeof(IRoleAssignmentService)).Returns(_roleAssignmentService);
+        serviceProvider.GetService(typeof(IEmailService)).Returns(emailService);
+        serviceProvider.GetService(typeof(ISystemTeamSync)).Returns(systemTeamSync);
         _teamResourceService = Substitute.For<ITeamResourceService>();
         _teamResourceService
             .GetTeamResourceSummariesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamResourceSummary>());
         serviceProvider.GetService(typeof(ITeamResourceService)).Returns(_teamResourceService);
+        var shiftRepo = new ShiftManagementRepository(new TestDbContextFactory(options));
         var shiftManagementService = new ShiftManagementService(
-            _dbContext,
+            shiftRepo,
             Substitute.For<IAuditLogService>(),
-            _roleAssignmentService,
             serviceProvider,
             _cache,
             _clock,
             NullLogger<ShiftManagementService>.Instance);
+        var teamRepo = new TeamRepository(new TestDbContextFactory(options));
+
+        // Shift-auth invalidation: production path uses IShiftAuthorizationInvalidator
+        // (backed by ShiftManagementService in DI). In tests we redirect it to the
+        // same IMemoryCache entry so legacy assertions on the ShiftAuthorization
+        // cache key keep working.
+        _shiftAuthInvalidator = Substitute.For<IShiftAuthorizationInvalidator>();
+        _shiftAuthInvalidator
+            .When(s => s.Invalidate(Arg.Any<Guid>()))
+            .Do(ci => _cache.Remove(CacheKeys.ShiftAuthorization(ci.Arg<Guid>())));
+
+        // Provide a test IUserService that reads from the same in-memory DB so
+        // cross-domain User stitching (design-rules §6b) behaves correctly when
+        // the service under test calls GetByIdsAsync during team reads.
+        var testUserService = Substitute.For<IUserService>();
+        testUserService
+            .GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
+                if (ids.Count == 0)
+                    return Task.FromResult<IReadOnlyDictionary<Guid, User>>(new Dictionary<Guid, User>());
+                using var db = new HumansDbContext(options);
+                var users = db.Users.AsNoTracking().Where(u => ids.Contains(u.Id)).ToList();
+                return Task.FromResult<IReadOnlyDictionary<Guid, User>>(users.ToDictionary(u => u.Id));
+            });
+        testUserService
+            .GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var id = callInfo.Arg<Guid>();
+                using var db = new HumansDbContext(options);
+                return Task.FromResult(db.Users.AsNoTracking().FirstOrDefault(u => u.Id == id));
+            });
+        serviceProvider.GetService(typeof(IUserService)).Returns(testUserService);
         _service = new TeamService(
-            _dbContext,
+            teamRepo,
             Substitute.For<IAuditLogService>(),
-            Substitute.For<IEmailService>(),
-            Substitute.For<INotificationService>(),
-            _roleAssignmentService,
+            Substitute.For<INotificationEmitter>(),
             shiftManagementService,
-            Substitute.For<ISystemTeamSync>(),
+            Substitute.For<INotificationMeterCacheInvalidator>(),
+            _shiftAuthInvalidator,
             serviceProvider,
-            _clock,
             _cache,
+            _clock,
             NullLogger<TeamService>.Instance);
     }
 
@@ -1554,14 +1615,18 @@ public class TeamServiceTests : IDisposable
         // Act
         await _service.DeleteTeamAsync(team.Id);
 
+        // Service uses its own DbContext; detach trackers so assertions re-read
+        // from the store rather than returning stale tracked entities.
+        _dbContext.ChangeTracker.Clear();
+
         // Assert — team soft-deleted
-        var reloaded = await _dbContext.Teams.FindAsync(team.Id);
+        var reloaded = await _dbContext.Teams.AsNoTracking().FirstOrDefaultAsync(t => t.Id == team.Id);
         reloaded!.IsActive.Should().BeFalse();
 
         // All previously-active memberships now have LeftAt set.
-        var aliceMember = await _dbContext.TeamMembers
+        var aliceMember = await _dbContext.TeamMembers.AsNoTracking()
             .FirstAsync(tm => tm.TeamId == team.Id && tm.UserId == alice.Id);
-        var bobMember = await _dbContext.TeamMembers
+        var bobMember = await _dbContext.TeamMembers.AsNoTracking()
             .FirstAsync(tm => tm.TeamId == team.Id && tm.UserId == bob.Id);
         aliceMember.LeftAt.Should().NotBeNull();
         bobMember.LeftAt.Should().NotBeNull();
@@ -1569,7 +1634,7 @@ public class TeamServiceTests : IDisposable
         bobMember.LeftAt.Should().Be(_clock.GetCurrentInstant());
 
         // Previously-left membership is unchanged (still has its original LeftAt).
-        var ghostMember = await _dbContext.TeamMembers
+        var ghostMember = await _dbContext.TeamMembers.AsNoTracking()
             .FirstAsync(tm => tm.TeamId == team.Id && tm.UserId == ghost.Id);
         ghostMember.LeftAt.Should().Be(_clock.GetCurrentInstant() - Duration.FromDays(30));
 
@@ -1589,7 +1654,9 @@ public class TeamServiceTests : IDisposable
 
         await _service.DeleteTeamAsync(team.Id);
 
-        var reloaded = await _dbContext.Teams.FindAsync(team.Id);
+        _dbContext.ChangeTracker.Clear();
+
+        var reloaded = await _dbContext.Teams.AsNoTracking().FirstOrDefaultAsync(t => t.Id == team.Id);
         reloaded!.IsActive.Should().BeFalse();
 
         await _teamResourceService.DidNotReceive().DeactivateResourcesForTeamAsync(

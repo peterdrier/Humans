@@ -109,7 +109,7 @@
             <div class="d-flex flex-wrap gap-2 mb-4">
                 @foreach (var cta in Model.CallsToAction)
                 {
-                    var btnClass = cta.Style == Humans.Domain.Enums.CallToActionStyle.Primary ? "btn-primary btn-lg" : "btn-outline-secondary";
+                    var btnClass = cta.Style == CallToActionStyle.Primary ? "btn-primary btn-lg" : "btn-outline-secondary";
                     <a href="@cta.Url" target="_blank" rel="noopener noreferrer" class="btn @btnClass">
                         @cta.Text <i class="fa-solid fa-arrow-up-right-from-square ms-1"></i>
                     </a>

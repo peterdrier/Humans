@@ -1,3 +1,10 @@
+// TeamMember.User / TeamJoinRequest.User are [Obsolete] cross-domain navs
+// (design-rules §6c). The Teams service populates them in-memory (§6b)
+// before returning the entity graph, so these reads are safe — but the
+// compiler still warns and TreatWarningsAsErrors promotes to error. This
+// file-wide disable is cleared when the controller projects via DTOs
+// returned directly from ITeamService.
+#pragma warning disable CS0618
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -5,13 +12,16 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Localization;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces;
 using Humans.Web.Authorization;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Web.Controllers;
 
