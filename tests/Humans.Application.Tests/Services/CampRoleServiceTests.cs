@@ -104,6 +104,55 @@ public class CampRoleServiceTests : IDisposable
         result.Should().BeNull();
     }
 
+    [HumansFact]
+    public async Task CreateDefinition_persists_and_audits()
+    {
+        var input = new CreateCampRoleDefinitionInput(
+            Name: "Sound Lead", Description: "Manages sound system",
+            SlotCount: 1, MinimumRequired: 1, SortOrder: 60, IsRequired: false);
+
+        var result = await _service.CreateDefinitionAsync(input, _actorUserId);
+
+        result.Name.Should().Be("Sound Lead");
+        result.SlotCount.Should().Be(1);
+        result.IsRequired.Should().BeFalse();
+
+        // Audit happens AFTER save (I1 fix)
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CampRoleDefinitionCreated,
+            nameof(CampRoleDefinition),
+            result.Id,
+            Arg.Any<string>(),
+            _actorUserId,
+            null, null);
+    }
+
+    [HumansFact]
+    public async Task CreateDefinition_rejects_duplicate_name()
+    {
+        await SeedDefinitionAsync("Consent Lead");
+
+        var input = new CreateCampRoleDefinitionInput(
+            Name: "Consent Lead", Description: null,
+            SlotCount: 1, MinimumRequired: 1, SortOrder: 99, IsRequired: false);
+
+        var act = async () => await _service.CreateDefinitionAsync(input, _actorUserId);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*already exists*");
+    }
+
+    [HumansFact]
+    public async Task CreateDefinition_rejects_minimumRequired_above_slotCount()
+    {
+        var input = new CreateCampRoleDefinitionInput(
+            Name: "Bad Role", Description: null,
+            SlotCount: 1, MinimumRequired: 2, SortOrder: 99, IsRequired: true);
+
+        var act = async () => await _service.CreateDefinitionAsync(input, _actorUserId);
+
+        await act.Should().ThrowAsync<ArgumentException>().WithMessage("*MinimumRequired*");
+    }
+
     private async Task<CampRoleDefinition> SeedDefinitionAsync(
         string name = "Consent Lead", int slotCount = 2, int minimumRequired = 1,
         bool isRequired = true, bool deactivated = false)

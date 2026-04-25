@@ -4,6 +4,7 @@ using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 
@@ -43,8 +44,45 @@ public sealed class CampRoleService : ICampRoleService
     public Task<CampRoleDefinition?> GetDefinitionByIdAsync(Guid id, CancellationToken ct = default)
         => _repo.GetDefinitionByIdAsync(id, ct);
 
-    public Task<CampRoleDefinition> CreateDefinitionAsync(CreateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default)
-        => throw new NotSupportedException();
+    public async Task<CampRoleDefinition> CreateDefinitionAsync(CreateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default)
+    {
+        ValidateMinimumRequired(input.SlotCount, input.MinimumRequired);
+
+        if (await _repo.DefinitionNameExistsAsync(input.Name, excludingId: null, ct))
+            throw new InvalidOperationException($"A camp role definition named '{input.Name}' already exists.");
+
+        var now = _clock.GetCurrentInstant();
+        var def = new CampRoleDefinition
+        {
+            Id = Guid.NewGuid(),
+            Name = input.Name,
+            Description = input.Description,
+            SlotCount = input.SlotCount,
+            MinimumRequired = input.MinimumRequired,
+            SortOrder = input.SortOrder,
+            IsRequired = input.IsRequired,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        await _repo.AddDefinitionAsync(def, ct); // SaveChangesAsync first
+        await _auditLog.LogAsync(
+            AuditAction.CampRoleDefinitionCreated,
+            nameof(CampRoleDefinition),
+            def.Id,
+            $"Created camp role definition '{def.Name}'.",
+            actorUserId);
+
+        return def;
+    }
+
+    private static void ValidateMinimumRequired(int slotCount, int minimumRequired)
+    {
+        if (minimumRequired < 0 || minimumRequired > slotCount)
+            throw new ArgumentException(
+                $"MinimumRequired must satisfy 0 ≤ MinimumRequired ≤ SlotCount (got SlotCount={slotCount}, MinimumRequired={minimumRequired}).",
+                nameof(minimumRequired));
+    }
 
     public Task<bool> UpdateDefinitionAsync(Guid id, UpdateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default)
         => throw new NotSupportedException();
