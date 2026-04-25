@@ -62,9 +62,14 @@ public class AgentServiceTests
 
         var settings = new AgentSettings
         {
-            Id = 1, Enabled = false, Model = "claude-sonnet-4-6",
+            Id = 1,
+            Enabled = false,
+            Model = "claude-sonnet-4-6",
             PreloadConfig = AgentPreloadConfig.Tier1,
-            DailyMessageCap = 30, HourlyMessageCap = 10, DailyTokenCap = 50_000, RetentionDays = 90,
+            DailyMessageCap = 30,
+            HourlyMessageCap = 10,
+            DailyTokenCap = 50_000,
+            RetentionDays = 90,
             UpdatedAt = Instant.FromUtc(2026, 4, 21, 0, 0)
         };
         tune(settings);
