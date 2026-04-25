@@ -34,14 +34,10 @@ public class RotaConfiguration : IEntityTypeConfiguration<Rota>
             .HasForeignKey(r => r.EventSettingsId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // EF needs the nav ref to configure the cross-section FK + cascade.
-        // The nav is [Obsolete] for the Application layer (design-rules §6c)
-        // — suppress only for this wiring block.
-#pragma warning disable CS0618
-        builder.HasOne(r => r.Team)
+        // Cross-section FK to Team — typed-FK form, no navigation property.
+        builder.HasOne<Team>()
             .WithMany()
             .HasForeignKey(r => r.TeamId)
             .OnDelete(DeleteBehavior.Restrict);
-#pragma warning restore CS0618
     }
 }

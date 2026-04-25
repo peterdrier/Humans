@@ -32,14 +32,11 @@ public class VolunteerEventProfileConfiguration : IEntityTypeConfiguration<Volun
         builder.Property(v => v.DietaryPreference).HasMaxLength(200);
         builder.Property(v => v.MedicalConditions).HasMaxLength(4000);
 
-        // EF needs the nav ref to configure the cross-section FK + cascade.
-        // The nav is [Obsolete] for the Application layer (design-rules §6c).
-#pragma warning disable CS0618
-        builder.HasOne(v => v.User)
+        // Cross-section FK to User — typed-FK form, no navigation property.
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(v => v.UserId)
             .OnDelete(DeleteBehavior.Cascade);
-#pragma warning restore CS0618
     }
 
     private static void ConfigureJsonbList(

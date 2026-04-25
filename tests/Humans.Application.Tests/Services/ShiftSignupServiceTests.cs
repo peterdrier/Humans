@@ -534,9 +534,6 @@ public class ShiftSignupServiceTests : IDisposable
 
         // Set navigation properties for in-memory provider
         rota.EventSettings = es;
-#pragma warning disable CS0618 // Rota.Team cross-domain nav — stitched inline for test fixture
-        rota.Team = team;
-#pragma warning restore CS0618
 
         var shift = SeedShift(rota, dayOffset: 1, startHour: 10, durationHours: 4);
         return (es, rota, shift);

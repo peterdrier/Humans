@@ -152,10 +152,7 @@ public class ShiftSignupsBucketingTests
 
     private static ShiftSignup MakeSignup(SignupStatus status, int dayOffset, int startHour, int durationHours)
     {
-        var team = new Team { Id = Guid.NewGuid(), Name = "Test Dept" };
-#pragma warning disable CS0618 // Rota.Team cross-domain nav — aggregate constructed inline for test fixture
-        var rota = new Rota { Id = Guid.NewGuid(), Team = team, Priority = ShiftPriority.Normal };
-#pragma warning restore CS0618
+        var rota = new Rota { Id = Guid.NewGuid(), TeamId = Guid.NewGuid(), Priority = ShiftPriority.Normal };
         var shift = new Shift
         {
             Id = Guid.NewGuid(),

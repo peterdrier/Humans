@@ -81,12 +81,6 @@ public class Rota
     public EventSettings EventSettings { get; set; } = null!;
 
     /// <summary>
-    /// Navigation property to the department (parent team).
-    /// </summary>
-    [Obsolete("Cross-domain nav; resolve via ITeamService.GetTeamByIdAsync(TeamId) instead. See design-rules §6c.")]
-    public Team Team { get; set; } = null!;
-
-    /// <summary>
     /// Navigation property to shifts within this rota.
     /// </summary>
     public ICollection<Shift> Shifts { get; } = new List<Shift>();

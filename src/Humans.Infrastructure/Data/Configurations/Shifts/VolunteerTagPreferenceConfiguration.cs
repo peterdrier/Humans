@@ -17,14 +17,11 @@ public class VolunteerTagPreferenceConfiguration : IEntityTypeConfiguration<Volu
 
         builder.HasIndex(v => v.UserId);
 
-        // EF needs the nav ref to configure the cross-section FK + cascade.
-        // The nav is [Obsolete] for the Application layer (design-rules §6c).
-#pragma warning disable CS0618
-        builder.HasOne(v => v.User)
+        // Cross-section FK to User — typed-FK form, no navigation property.
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(v => v.UserId)
             .OnDelete(DeleteBehavior.Cascade);
-#pragma warning restore CS0618
 
         builder.HasOne(v => v.ShiftTag)
             .WithMany(t => t.VolunteerPreferences)

@@ -393,9 +393,6 @@ public class ShiftManagementServiceTests : IDisposable
         _dbContext.Rotas.Add(rota);
 
         rota.EventSettings = es;
-#pragma warning disable CS0618 // Rota.Team cross-domain nav — stitched inline for test fixture
-        rota.Team = team;
-#pragma warning restore CS0618
 
         return (es, rota);
     }
