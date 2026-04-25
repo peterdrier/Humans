@@ -41,13 +41,26 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
-  <!-- Shared HumansFact / HumansTheory attributes (1s default timeout, infinite forbidden) -->
+  <!-- Shared HumansFact / HumansTheory attributes (5s default timeout, infinite forbidden). -->
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\HumansFactAttribute.cs" Link="Humans.Testing\HumansFactAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\HumansTheoryAttribute.cs" Link="Humans.Testing\HumansTheoryAttribute.cs" />
     <Using Include="Humans.Testing" />
+  </ItemGroup>
+
+  <!-- BannedApiAnalyzers: forbid bare [Fact] and [Theory] in tests. RS0030 suppression
+       in test project source is also forbidden by a CI grep step in
+       .github/workflows/build.yml. The HumansFact*Attribute / HumansTheory*Attribute
+       declarations are the only legitimate exception (they declare the replacement)
+       and use a file-scoped pragma. -->
+  <ItemGroup>
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)BannedSymbols.txt" />
   </ItemGroup>
 
 </Project>

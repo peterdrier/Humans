@@ -19,8 +19,8 @@ namespace Humans.Domain.Tests;
 /// </summary>
 public class GlobalTimeoutDemoTest
 {
-    [Fact(
-        Skip = "Demo test — unskip locally to verify the 500ms [Fact(Timeout)] enforcement. See nobodies-collective/Humans#586.",
+    [HumansFact(
+        Skip = "Demo test — unskip locally to verify the 500ms [HumansFact(Timeout)] enforcement. See nobodies-collective/Humans#586.",
         Timeout = 500)]
     public async Task Cooperative_loop_exceeding_timeout_is_cancelled()
     {

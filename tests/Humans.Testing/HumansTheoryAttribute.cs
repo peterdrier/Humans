@@ -1,3 +1,7 @@
+// BannedApi: this file is the project-approved replacement for Xunit.TheoryAttribute.
+// It is the only legitimate place to reference TheoryAttribute directly.
+#pragma warning disable RS0030
+
 using System.Runtime.CompilerServices;
 using Xunit;
 
@@ -27,4 +31,14 @@ public sealed class HumansTheoryAttribute : TheoryAttribute
             base.Timeout = value;
         }
     }
+
+    // Shadow inherited TheoryAttribute properties so tests can set them on
+    // [HumansTheory(...)] without RS0030 firing on the inherited (banned) member.
+    public new string? Skip { get => base.Skip; set => base.Skip = value; }
+    public new string? DisplayName { get => base.DisplayName; set => base.DisplayName = value; }
+    public new bool Explicit { get => base.Explicit; set => base.Explicit = value; }
+    public new Type? SkipType { get => base.SkipType; set => base.SkipType = value; }
+    public new string? SkipUnless { get => base.SkipUnless; set => base.SkipUnless = value; }
+    public new string? SkipWhen { get => base.SkipWhen; set => base.SkipWhen = value; }
+    public new Type[]? SkipExceptions { get => base.SkipExceptions; set => base.SkipExceptions = value; }
 }
