@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -9,6 +10,7 @@ using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
+using Humans.Infrastructure.Services.Metering;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -32,6 +34,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
     private readonly INotificationService _notificationService;
     private readonly FakeClock _clock;
     private readonly HumansMetricsService _metrics;
+    private readonly MetersService _meters;
     private readonly ProcessGoogleSyncOutboxJob _job;
 
     public ProcessGoogleSyncOutboxJobTests()
@@ -61,6 +64,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
         _metrics = new HumansMetricsService(
             Substitute.For<IServiceScopeFactory>(),
             Substitute.For<ILogger<HumansMetricsService>>());
+        _meters = new MetersService(NullLogger<MetersService>.Instance);
         var logger = Substitute.For<ILogger<ProcessGoogleSyncOutboxJob>>();
 
         _job = new ProcessGoogleSyncOutboxJob(
@@ -71,6 +75,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
             _googleSyncService,
             _notificationService,
             _metrics,
+            _meters,
             _clock,
             logger);
     }
@@ -79,6 +84,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
     {
         _dbContext.Dispose();
         _metrics.Dispose();
+        _meters.Dispose();
         GC.SuppressFinalize(this);
     }
 

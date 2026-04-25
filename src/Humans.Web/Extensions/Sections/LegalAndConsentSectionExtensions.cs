@@ -6,6 +6,7 @@ using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Consent;
 using Humans.Infrastructure.Repositories.Legal;
 using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Services.Metering;
 using ConsentConsentService = Humans.Application.Services.Consent.ConsentService;
 using LegalAdminLegalDocumentService = Humans.Application.Services.Legal.AdminLegalDocumentService;
 using LegalLegalDocumentService = Humans.Application.Services.Legal.LegalDocumentService;
@@ -43,6 +44,9 @@ internal static class LegalAndConsentSectionExtensions
 
         services.AddScoped<SyncLegalDocumentsJob>();
         services.AddScoped<SendReConsentReminderJob>();
+
+        // Metrics: Legal section owns humans.legal_documents_active.
+        services.AddHostedService<LegalMetricsRegistrar>();
 
         return services;
     }

@@ -77,6 +77,12 @@ public interface ILegalDocumentRepository
     Task<IReadOnlyList<LegalDocument>> GetActiveRequiredDocumentsForTeamsAsync(
         IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default);
 
+    /// <summary>
+    /// Counts active, required legal documents. Used by metrics callers that
+    /// only need the count and not the full document graph.
+    /// </summary>
+    Task<int> CountActiveRequiredAsync(CancellationToken ct = default);
+
     // ==========================================================================
     // Reads — DocumentVersion
     // ==========================================================================

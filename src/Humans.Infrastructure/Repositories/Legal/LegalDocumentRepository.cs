@@ -103,6 +103,14 @@ public sealed class LegalDocumentRepository : ILegalDocumentRepository
             .ToListAsync(ct);
     }
 
+    public async Task<int> CountActiveRequiredAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.LegalDocuments
+            .AsNoTracking()
+            .CountAsync(d => d.IsActive && d.IsRequired, ct);
+    }
+
     // ==========================================================================
     // Reads — DocumentVersion
     // ==========================================================================
