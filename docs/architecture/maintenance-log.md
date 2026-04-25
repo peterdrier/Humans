@@ -5,6 +5,8 @@ Tracks when recurring maintenance processes were last run.
 | Process | Last Run | Next Due | Cadence | Est. Cost | Notes |
 |---------|----------|----------|---------|-----------|-------|
 | NuGet vulnerability check | 2026-04-05 | 2026-04-12 | Weekly | — | `dotnet list package --vulnerable` |
+| Freshness sweep (diff) | — | — | Daily | — | `/freshness-sweep` — auto-refresh drift-prone docs against upstream/main diffs. First run pending. |
+| Freshness sweep (full) | — | — | Weekly | — | `/freshness-sweep --full` — full regeneration of every catalog entry. First run pending. |
 | Todo audit | 2026-03-08 | 2026-03-15 | Weekly | — | Stale items, completed moves |
 | Code simplification | 2026-02-24 | — | After features | codex: ~5% | Dead code, unused abstractions |
 | ReSharper InspectCode | 2026-04-05 | 2026-04-12 | Weekly | — | `/resharper` — fix Tier 1+2 warnings. Codex can't run `jb` in sandbox. |

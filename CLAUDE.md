@@ -148,6 +148,13 @@ dotnet run --project src/Humans.Web
 | **Section invariants** | **`docs/sections/`** |
 | **Section template** | **`docs/sections/SECTION-TEMPLATE.md`** |
 | **EF migration reviewer** | **`.claude/agents/ef-migration-reviewer.md`** |
+| **Freshness catalog** | **`docs/architecture/freshness-catalog.yml`** |
+
+## Doc freshness is automated
+
+`/freshness-sweep` regenerates drift-prone docs against `upstream/main` diffs.
+Catalog at `docs/architecture/freshness-catalog.yml`. Spec at
+`docs/superpowers/specs/2026-04-25-freshness-sweep-design.md`.
 
 ## Critical: EF Migration Review Gate
 
