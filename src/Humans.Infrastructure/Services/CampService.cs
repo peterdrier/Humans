@@ -715,6 +715,20 @@ public class CampService : ICampService
             reviewedByUserId,
             relatedEntityId: season.CampId, relatedEntityType: nameof(Camp));
 
+        var rejectRoleAssignments = await _dbContext.CampRoleAssignments
+            .Where(a => a.CampSeasonId == season.Id)
+            .ToListAsync(cancellationToken);
+        foreach (var ra in rejectRoleAssignments)
+        {
+            _dbContext.CampRoleAssignments.Remove(ra);
+            await _auditLogService.LogAsync(
+                AuditAction.CampRoleUnassigned,
+                entityType: nameof(CampRoleAssignment),
+                entityId: ra.Id,
+                description: $"Cascade: season {season.Status}.",
+                actorUserId: reviewedByUserId);
+        }
+
         await _dbContext.SaveChangesAsync(cancellationToken);
         InvalidateCache(season.Year);
     }
@@ -737,6 +751,20 @@ public class CampService : ICampService
             $"Withdrew from season {season.Year}",
             "CampService",
             relatedEntityId: season.CampId, relatedEntityType: nameof(Camp));
+
+        var withdrawRoleAssignments = await _dbContext.CampRoleAssignments
+            .Where(a => a.CampSeasonId == season.Id)
+            .ToListAsync(cancellationToken);
+        foreach (var ra in withdrawRoleAssignments)
+        {
+            _dbContext.CampRoleAssignments.Remove(ra);
+            await _auditLogService.LogAsync(
+                AuditAction.CampRoleUnassigned,
+                entityType: nameof(CampRoleAssignment),
+                entityId: ra.Id,
+                description: $"Cascade: season {season.Status}.",
+                jobName: "CampService");
+        }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         InvalidateCache(season.Year);
@@ -1444,6 +1472,20 @@ public class CampService : ICampService
             removedByUserId,
             relatedEntityId: member.CampSeason.CampId, relatedEntityType: nameof(Camp));
 
+        var roleAssignments = await _dbContext.CampRoleAssignments
+            .Where(a => a.CampMemberId == member.Id)
+            .ToListAsync(cancellationToken);
+        foreach (var ra in roleAssignments)
+        {
+            _dbContext.CampRoleAssignments.Remove(ra);
+            await _auditLogService.LogAsync(
+                AuditAction.CampRoleUnassigned,
+                entityType: nameof(CampRoleAssignment),
+                entityId: ra.Id,
+                description: "Cascade: member removed.",
+                actorUserId: removedByUserId);
+        }
+
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -1815,14 +1857,40 @@ public class CampService : ICampService
             CampName: season.Name);
     }
 
+    public async Task<IReadOnlyList<CampRoleAssignmentDto>> GetCampRoleAssignmentsAsync(
+        Guid campSeasonId, CancellationToken cancellationToken = default)
+    {
+        var rows = await _dbContext.CampRoleAssignments
+            .Include(a => a.CampRoleDefinition)
+            .Include(a => a.CampMember).ThenInclude(m => m.User)
+            .Where(a => a.CampSeasonId == campSeasonId)
+            .OrderBy(a => a.CampRoleDefinition.SortOrder)
+            .ThenBy(a => a.SlotIndex)
+            .ToListAsync(cancellationToken);
+
+        return rows.Select(a => new CampRoleAssignmentDto(
+            a.Id, a.CampRoleDefinitionId, a.CampRoleDefinition.Name,
+            a.SlotIndex, a.CampMemberId, a.CampMember.UserId, a.CampMember.User.DisplayName)).ToList();
+    }
+
+    public async Task UnassignCampRoleAsync(Guid assignmentId, Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        var assignment = await _dbContext.CampRoleAssignments
+            .Include(a => a.CampRoleDefinition)
+            .FirstOrDefaultAsync(a => a.Id == assignmentId, cancellationToken);
+        if (assignment is null) return;
+
+        _dbContext.CampRoleAssignments.Remove(assignment);
+        await _auditLogService.LogAsync(
+            AuditAction.CampRoleUnassigned,
+            entityType: nameof(CampRoleAssignment),
+            entityId: assignment.Id,
+            description: $"Unassigned slot {assignment.SlotIndex + 1} of '{assignment.CampRoleDefinition.Name}'.",
+            actorUserId: actorUserId);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
 #pragma warning disable MA0025 // Implement the functionality (intentional stubs landing in follow-up commits)
-    public Task<IReadOnlyList<CampRoleAssignmentDto>> GetCampRoleAssignmentsAsync(
-        Guid campSeasonId, CancellationToken cancellationToken = default) =>
-        throw new NotImplementedException();
-
-    public Task UnassignCampRoleAsync(Guid assignmentId, Guid actorUserId, CancellationToken cancellationToken = default) =>
-        throw new NotImplementedException();
-
     public Task<IReadOnlyList<CampComplianceRow>> GetCampRoleComplianceAsync(int year, CancellationToken cancellationToken = default) =>
         throw new NotImplementedException();
 #pragma warning restore MA0025

@@ -550,4 +550,152 @@ public class CampRoleTests : IDisposable
             Arg.Any<Guid?>(),
             Arg.Any<string?>());
     }
+
+    // ==========================================================================
+    // UnassignCampRoleAsync
+    // ==========================================================================
+
+    [Fact]
+    public async Task UnassignCampRoleAsync_DeletesRow_AndWritesAudit()
+    {
+        var (_, seasonId) = await SeedCampSeasonAsync();
+        var (userId, _) = await SeedCampMemberAsync(seasonId, CampMemberStatus.Active);
+        var role = await SeedRoleDefinitionAsync("Unassign Role", slotCount: 1);
+        var assignedBy = Guid.NewGuid();
+
+        var assignResult = await _service.AssignCampRoleAsync(
+            seasonId, role.Id, slotIndex: 0,
+            assigneeUserId: userId, assignedByUserId: assignedBy, autoPromoteToMember: false);
+        assignResult.Outcome.Should().Be(AssignCampRoleOutcome.Assigned);
+
+        var actorUserId = Guid.NewGuid();
+        await _service.UnassignCampRoleAsync(assignResult.AssignmentId, actorUserId);
+
+        var row = await _dbContext.CampRoleAssignments.FirstOrDefaultAsync(a => a.Id == assignResult.AssignmentId);
+        row.Should().BeNull();
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CampRoleUnassigned,
+            nameof(CampRoleAssignment),
+            assignResult.AssignmentId,
+            Arg.Any<string>(),
+            actorUserId,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
+    }
+
+    // ==========================================================================
+    // GetCampRoleAssignmentsAsync
+    // ==========================================================================
+
+    [Fact]
+    public async Task GetCampRoleAssignmentsAsync_OrdersBySortOrderThenSlotIndex()
+    {
+        var (_, seasonId) = await SeedCampSeasonAsync();
+        var (userId, _) = await SeedCampMemberAsync(seasonId, CampMemberStatus.Active);
+        var assignedBy = Guid.NewGuid();
+
+        // Two roles with different SortOrder values; assign the same active member to both.
+        var roleHigh = await SeedRoleDefinitionAsync("Role-High-Sort", slotCount: 1, sortOrder: 200);
+        var roleLow = await SeedRoleDefinitionAsync("Role-Low-Sort", slotCount: 1, sortOrder: 50);
+
+        // Assign in arbitrary (high-then-low) order so we can verify sorting kicks in.
+        var assignHigh = await _service.AssignCampRoleAsync(
+            seasonId, roleHigh.Id, slotIndex: 0,
+            assigneeUserId: userId, assignedByUserId: assignedBy, autoPromoteToMember: false);
+        assignHigh.Outcome.Should().Be(AssignCampRoleOutcome.Assigned);
+
+        var assignLow = await _service.AssignCampRoleAsync(
+            seasonId, roleLow.Id, slotIndex: 0,
+            assigneeUserId: userId, assignedByUserId: assignedBy, autoPromoteToMember: false);
+        assignLow.Outcome.Should().Be(AssignCampRoleOutcome.Assigned);
+
+        var result = await _service.GetCampRoleAssignmentsAsync(seasonId);
+        result.Should().HaveCount(2);
+        result[0].RoleName.Should().Be("Role-Low-Sort");
+        result[1].RoleName.Should().Be("Role-High-Sort");
+        result[0].AssigneeUserId.Should().Be(userId);
+        result[0].AssigneeDisplayName.Should().Be("Test Member");
+        result[0].SlotIndex.Should().Be(0);
+    }
+
+    // ==========================================================================
+    // Cascade hooks
+    // ==========================================================================
+
+    [Fact]
+    public async Task RemovingCampMember_DeletesAllTheirRoleAssignments()
+    {
+        var (_, seasonId) = await SeedCampSeasonAsync();
+        var (userId, memberId) = await SeedCampMemberAsync(seasonId, CampMemberStatus.Active);
+        var role = await SeedRoleDefinitionAsync("Cascade-Member Role", slotCount: 1);
+        var assignedBy = Guid.NewGuid();
+
+        var assignResult = await _service.AssignCampRoleAsync(
+            seasonId, role.Id, slotIndex: 0,
+            assigneeUserId: userId, assignedByUserId: assignedBy, autoPromoteToMember: false);
+        assignResult.Outcome.Should().Be(AssignCampRoleOutcome.Assigned);
+
+        var removedBy = Guid.NewGuid();
+        await _service.RemoveCampMemberAsync(memberId, removedBy);
+
+        var roleRow = await _dbContext.CampRoleAssignments.FirstOrDefaultAsync(a => a.Id == assignResult.AssignmentId);
+        roleRow.Should().BeNull();
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CampRoleUnassigned,
+            nameof(CampRoleAssignment),
+            assignResult.AssignmentId,
+            Arg.Any<string>(),
+            removedBy,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
+    }
+
+    [Theory]
+    [InlineData(CampSeasonStatus.Rejected)]
+    [InlineData(CampSeasonStatus.Withdrawn)]
+    public async Task SeasonStatusChange_ToRejectedOrWithdrawn_DeletesAllAssignmentsForSeason(CampSeasonStatus terminal)
+    {
+        // Rejecting a season requires Pending; withdrawing requires Pending or Active.
+        // Seed in a state that supports both, so we can branch later.
+        var seasonStartStatus = terminal == CampSeasonStatus.Rejected
+            ? CampSeasonStatus.Pending
+            : CampSeasonStatus.Active;
+        var (_, seasonId) = await SeedCampSeasonAsync(slug: $"cascade-{terminal}", status: seasonStartStatus);
+
+        // Role assignment requires the season to be Active or Full at assign time.
+        // For the Rejected branch we need to flip the season to Active just for assignment, then back to Pending.
+        var season = await _dbContext.CampSeasons.FirstAsync(s => s.Id == seasonId);
+        season.Status = CampSeasonStatus.Active;
+        await _dbContext.SaveChangesAsync();
+
+        var (userId, _) = await SeedCampMemberAsync(seasonId, CampMemberStatus.Active);
+        var role = await SeedRoleDefinitionAsync($"Cascade-{terminal}-Role", slotCount: 1);
+        var assignedBy = Guid.NewGuid();
+
+        var assignResult = await _service.AssignCampRoleAsync(
+            seasonId, role.Id, slotIndex: 0,
+            assigneeUserId: userId, assignedByUserId: assignedBy, autoPromoteToMember: false);
+        assignResult.Outcome.Should().Be(AssignCampRoleOutcome.Assigned);
+
+        // Reset season back to Pending for the Reject branch (Withdraw is fine on Active).
+        if (terminal == CampSeasonStatus.Rejected)
+        {
+            season.Status = CampSeasonStatus.Pending;
+            await _dbContext.SaveChangesAsync();
+        }
+
+        if (terminal == CampSeasonStatus.Rejected)
+        {
+            await _service.RejectSeasonAsync(seasonId, Guid.NewGuid(), "no good");
+        }
+        else
+        {
+            await _service.WithdrawSeasonAsync(seasonId);
+        }
+
+        var roleRow = await _dbContext.CampRoleAssignments.FirstOrDefaultAsync(a => a.Id == assignResult.AssignmentId);
+        roleRow.Should().BeNull();
+    }
 }
