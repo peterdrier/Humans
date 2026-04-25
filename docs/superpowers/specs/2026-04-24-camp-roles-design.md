@@ -205,6 +205,15 @@ Table of all role definitions (deactivated shown greyed out):
 
 Table: "Camps missing required roles — year {publicYear}". Columns: Camp, Season status, Missing roles (chips). Only renders when `PublicYear` has any Active camp-seasons.
 
+### Page split (recap)
+
+| Page | Hosts |
+|---|---|
+| `/Camps/{slug}` (detail) | Approve/Reject pending join requests (lead/CampAdmin/Admin only); read-only Roles section (any authenticated human). |
+| `/Camps/{slug}/Edit` | Active-member roster with Remove action; per-slot Role assignment UI (this feature). No approve/reject panel here. |
+
+(The first row's relocation of approve/reject is a [PR #228 fix](https://github.com/peterdrier/Humans/pull/228) — tracked separately, not part of #489's scope.)
+
 ### Updated — `Views/Camp/Edit.cshtml`
 
 New "Roles" section after the existing Leads / Members sections. Renders only if the camp has an Active season for the current `PublicYear`; otherwise shows a "No open season — roles unavailable" stub.
