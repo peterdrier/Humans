@@ -35,6 +35,19 @@ jobs:
       # test host for 8+ minutes before this guard existed.
       run: dotnet test Humans.slnx --no-build --configuration Release --verbosity quiet --blame-hang-timeout 2m --logger "trx;LogFileName=test-results.trx" --logger "console;verbosity=minimal" --filter "FullyQualifiedName!~Integration"
 
+    - name: Verify EF migration chain is linear
+      # Catches migration forks (two migrations claiming the same parent) and
+      # snapshot drift (HumansDbContextModelSnapshot.cs out of sync with the
+      # current DbContext model). Exits non-zero if the snapshot doesn't match
+      # the live model — which is exactly what happens when two branches each
+      # add a migration off the same tip and one merges before the other.
+      run: |
+        dotnet tool install --global dotnet-ef --version 10.0.*
+        dotnet ef migrations has-pending-model-changes \
+          --project src/Humans.Infrastructure \
+          --startup-project src/Humans.Web \
+          --no-build --configuration Release
+
     - name: Upload test results
       uses: actions/upload-artifact@v4
       if: always()
