@@ -1577,30 +1577,138 @@ public class CampService : ICampService
 
     // ==========================================================================
     // Camp role definitions and assignments (issue #489)
-    // Stubs only — real implementations land in subsequent commits with paired tests.
+    // Definition CRUD is implemented; assign/unassign/get-assignments/compliance
+    // remain as stubs (see #pragma below) and land in subsequent phases.
     // ==========================================================================
 
-#pragma warning disable MA0025 // Implement the functionality (intentional stubs landing in follow-up commits)
-    public Task<IReadOnlyList<CampRoleDefinitionDto>> GetCampRoleDefinitionsAsync(
-        bool includeDeactivated, CancellationToken cancellationToken = default) =>
-        throw new NotImplementedException();
+    public async Task<IReadOnlyList<CampRoleDefinitionDto>> GetCampRoleDefinitionsAsync(
+        bool includeDeactivated, CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.CampRoleDefinitions.AsQueryable();
+        if (!includeDeactivated)
+            query = query.Where(d => d.DeactivatedAt == null);
 
-    public Task<CampRoleDefinitionDto> CreateCampRoleDefinitionAsync(
+        return await query
+            .OrderBy(d => d.SortOrder)
+            .Select(d => new CampRoleDefinitionDto(d.Id, d.Name, d.Description, d.SlotCount, d.MinimumRequired,
+                d.SortOrder, d.IsRequired, d.DeactivatedAt))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<CampRoleDefinitionDto> CreateCampRoleDefinitionAsync(
         string name, string? description, int slotCount, int minimumRequired, int sortOrder, bool isRequired,
-        Guid actorUserId, CancellationToken cancellationToken = default) =>
-        throw new NotImplementedException();
+        Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Name required.", nameof(name));
+        if (slotCount < 1) throw new ArgumentOutOfRangeException(nameof(slotCount), "SlotCount must be >= 1.");
+        if (minimumRequired < 0 || minimumRequired > slotCount)
+            throw new ArgumentOutOfRangeException(nameof(minimumRequired), "MinimumRequired must be 0..SlotCount.");
 
-    public Task<CampRoleDefinitionDto> UpdateCampRoleDefinitionAsync(
+        if (await _dbContext.CampRoleDefinitions.AnyAsync(d => d.Name == name, cancellationToken))
+            throw new InvalidOperationException($"A camp role definition named '{name}' already exists.");
+
+        var now = _clock.GetCurrentInstant();
+        var def = new CampRoleDefinition
+        {
+            Id = Guid.NewGuid(),
+            Name = name.Trim(),
+            Description = description,
+            SlotCount = slotCount,
+            MinimumRequired = minimumRequired,
+            SortOrder = sortOrder,
+            IsRequired = isRequired,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        _dbContext.CampRoleDefinitions.Add(def);
+        await _auditLogService.LogAsync(
+            AuditAction.CampRoleDefinitionCreated,
+            entityType: nameof(CampRoleDefinition),
+            entityId: def.Id,
+            description: $"Created camp role definition '{def.Name}' (slots={def.SlotCount}, min={def.MinimumRequired}, required={def.IsRequired}).",
+            actorUserId: actorUserId);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return new CampRoleDefinitionDto(def.Id, def.Name, def.Description, def.SlotCount, def.MinimumRequired,
+            def.SortOrder, def.IsRequired, def.DeactivatedAt);
+    }
+
+    public async Task<CampRoleDefinitionDto> UpdateCampRoleDefinitionAsync(
         Guid roleDefinitionId, string name, string? description, int slotCount, int minimumRequired, int sortOrder, bool isRequired,
-        Guid actorUserId, CancellationToken cancellationToken = default) =>
-        throw new NotImplementedException();
+        Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        var def = await _dbContext.CampRoleDefinitions
+            .FirstOrDefaultAsync(d => d.Id == roleDefinitionId, cancellationToken)
+            ?? throw new InvalidOperationException("Role definition not found.");
 
-    public Task DeactivateCampRoleDefinitionAsync(Guid roleDefinitionId, Guid actorUserId, CancellationToken cancellationToken = default) =>
-        throw new NotImplementedException();
+        if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Name required.", nameof(name));
+        if (slotCount < 1) throw new ArgumentOutOfRangeException(nameof(slotCount));
+        if (minimumRequired < 0 || minimumRequired > slotCount)
+            throw new ArgumentOutOfRangeException(nameof(minimumRequired));
 
-    public Task ReactivateCampRoleDefinitionAsync(Guid roleDefinitionId, Guid actorUserId, CancellationToken cancellationToken = default) =>
-        throw new NotImplementedException();
+        if (await _dbContext.CampRoleDefinitions.AnyAsync(d => d.Id != roleDefinitionId && d.Name == name, cancellationToken))
+            throw new InvalidOperationException($"Another role definition named '{name}' already exists.");
 
+        def.Name = name.Trim();
+        def.Description = description;
+        def.SlotCount = slotCount;
+        def.MinimumRequired = minimumRequired;
+        def.SortOrder = sortOrder;
+        def.IsRequired = isRequired;
+        def.UpdatedAt = _clock.GetCurrentInstant();
+
+        await _auditLogService.LogAsync(
+            AuditAction.CampRoleDefinitionUpdated,
+            entityType: nameof(CampRoleDefinition),
+            entityId: def.Id,
+            description: $"Updated camp role definition '{def.Name}'.",
+            actorUserId: actorUserId);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return new CampRoleDefinitionDto(def.Id, def.Name, def.Description, def.SlotCount, def.MinimumRequired,
+            def.SortOrder, def.IsRequired, def.DeactivatedAt);
+    }
+
+    public async Task DeactivateCampRoleDefinitionAsync(Guid roleDefinitionId, Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        var def = await _dbContext.CampRoleDefinitions.FirstOrDefaultAsync(d => d.Id == roleDefinitionId, cancellationToken)
+            ?? throw new InvalidOperationException("Role definition not found.");
+
+        if (def.DeactivatedAt is null)
+        {
+            def.DeactivatedAt = _clock.GetCurrentInstant();
+            def.UpdatedAt = def.DeactivatedAt.Value;
+            await _auditLogService.LogAsync(
+                AuditAction.CampRoleDefinitionDeactivated,
+                entityType: nameof(CampRoleDefinition),
+                entityId: def.Id,
+                description: $"Deactivated camp role definition '{def.Name}'.",
+                actorUserId: actorUserId);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    public async Task ReactivateCampRoleDefinitionAsync(Guid roleDefinitionId, Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        var def = await _dbContext.CampRoleDefinitions.FirstOrDefaultAsync(d => d.Id == roleDefinitionId, cancellationToken)
+            ?? throw new InvalidOperationException("Role definition not found.");
+
+        if (def.DeactivatedAt is not null)
+        {
+            def.DeactivatedAt = null;
+            def.UpdatedAt = _clock.GetCurrentInstant();
+            await _auditLogService.LogAsync(
+                AuditAction.CampRoleDefinitionReactivated,
+                entityType: nameof(CampRoleDefinition),
+                entityId: def.Id,
+                description: $"Reactivated camp role definition '{def.Name}'.",
+                actorUserId: actorUserId);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+#pragma warning disable MA0025 // Implement the functionality (intentional stubs landing in follow-up commits)
     public Task<IReadOnlyList<CampRoleAssignmentDto>> GetCampRoleAssignmentsAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default) =>
         throw new NotImplementedException();
