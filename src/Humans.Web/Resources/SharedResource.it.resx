@@ -1639,6 +1639,10 @@
   <data name="Shifts_SortUrgencyHint" xml:space="preserve"><value>I turni che hanno pi&#249; bisogno di persone per primi</value></data>
   <data name="Shifts_SortDeptHint" xml:space="preserve"><value>Raggruppa i turni per reparto</value></data>
   <data name="Shifts_SlotsFilled" xml:space="preserve"><value>posti occupati</value></data>
+  <data name="Shifts_RotaSingular" xml:space="preserve"><value>turno</value></data>
+  <data name="Shifts_RotaPlural" xml:space="preserve"><value>turni</value></data>
+  <data name="Shifts_ShiftSingular" xml:space="preserve"><value>fascia</value></data>
+  <data name="Shifts_ShiftPlural" xml:space="preserve"><value>fasce</value></data>
   <data name="Shifts_SignUpButton" xml:space="preserve"><value>Iscriviti</value></data>
   <data name="Shifts_BrowsingClosed" xml:space="preserve"><value>La consultazione dei turni non è ancora aperta. Torna più tardi!</value></data>
   <data name="Shifts_NoActiveEvent" xml:space="preserve"><value>Nessun evento attivo configurato. Un amministratore deve prima configurare le impostazioni dell'evento.</value></data>

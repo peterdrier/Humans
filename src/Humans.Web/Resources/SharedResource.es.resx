@@ -1641,6 +1641,10 @@
   <data name="Shifts_SortUrgencyHint" xml:space="preserve"><value>Los turnos que necesitan gente primero</value></data>
   <data name="Shifts_SortDeptHint" xml:space="preserve"><value>Agrupar turnos por departamento</value></data>
   <data name="Shifts_SlotsFilled" xml:space="preserve"><value>plazas cubiertas</value></data>
+  <data name="Shifts_RotaSingular" xml:space="preserve"><value>turno</value></data>
+  <data name="Shifts_RotaPlural" xml:space="preserve"><value>turnos</value></data>
+  <data name="Shifts_ShiftSingular" xml:space="preserve"><value>franja</value></data>
+  <data name="Shifts_ShiftPlural" xml:space="preserve"><value>franjas</value></data>
   <data name="Shifts_SignUpButton" xml:space="preserve"><value>Inscribirse</value></data>
   <data name="Shifts_BrowsingClosed" xml:space="preserve"><value>La exploración de turnos aún no está abierta. ¡Vuelve más tarde!</value></data>
   <data name="Shifts_NoActiveEvent" xml:space="preserve"><value>No hay ningún evento activo configurado. Un administrador debe configurar los ajustes del evento primero.</value></data>

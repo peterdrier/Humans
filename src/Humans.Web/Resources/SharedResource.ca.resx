@@ -1641,6 +1641,10 @@
   <data name="Shifts_SortUrgencyHint" xml:space="preserve"><value>Els torns que necessiten gent primer</value></data>
   <data name="Shifts_SortDeptHint" xml:space="preserve"><value>Agrupar torns per departament</value></data>
   <data name="Shifts_SlotsFilled" xml:space="preserve"><value>places cobertes</value></data>
+  <data name="Shifts_RotaSingular" xml:space="preserve"><value>torn</value></data>
+  <data name="Shifts_RotaPlural" xml:space="preserve"><value>torns</value></data>
+  <data name="Shifts_ShiftSingular" xml:space="preserve"><value>franja</value></data>
+  <data name="Shifts_ShiftPlural" xml:space="preserve"><value>franges</value></data>
   <data name="Shifts_SignUpButton" xml:space="preserve"><value>Inscriure's</value></data>
   <data name="Shifts_BrowsingClosed" xml:space="preserve"><value>L'exploració de torns encara no està oberta. Torna més tard!</value></data>
   <data name="Shifts_NoActiveEvent" xml:space="preserve"><value>No hi ha cap esdeveniment actiu configurat. Un administrador ha de configurar els ajustos de l'esdeveniment primer.</value></data>

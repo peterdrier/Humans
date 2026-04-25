@@ -1658,6 +1658,10 @@
   <data name="Shifts_SortUrgencyHint" xml:space="preserve"><value>Show shifts that need people the most, first</value></data>
   <data name="Shifts_SortDeptHint" xml:space="preserve"><value>Group shifts by department</value></data>
   <data name="Shifts_SlotsFilled" xml:space="preserve"><value>slots filled</value></data>
+  <data name="Shifts_RotaSingular" xml:space="preserve"><value>rota</value></data>
+  <data name="Shifts_RotaPlural" xml:space="preserve"><value>rotas</value></data>
+  <data name="Shifts_ShiftSingular" xml:space="preserve"><value>shift</value></data>
+  <data name="Shifts_ShiftPlural" xml:space="preserve"><value>shifts</value></data>
   <data name="Shifts_SignUpButton" xml:space="preserve"><value>Sign Up</value></data>
   <data name="Shifts_BrowsingClosed" xml:space="preserve"><value>Shift browsing is not yet open. Check back later!</value></data>
   <data name="Shifts_NoActiveEvent" xml:space="preserve"><value>No active event is configured. An admin needs to set up event settings first.</value></data>

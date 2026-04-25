@@ -1639,6 +1639,10 @@
   <data name="Shifts_SortUrgencyHint" xml:space="preserve"><value>Schichten, die am meisten Leute brauchen, zuerst</value></data>
   <data name="Shifts_SortDeptHint" xml:space="preserve"><value>Schichten nach Abteilung gruppieren</value></data>
   <data name="Shifts_SlotsFilled" xml:space="preserve"><value>Pl&#228;tze besetzt</value></data>
+  <data name="Shifts_RotaSingular" xml:space="preserve"><value>Dienstplan</value></data>
+  <data name="Shifts_RotaPlural" xml:space="preserve"><value>Dienstpl&#228;ne</value></data>
+  <data name="Shifts_ShiftSingular" xml:space="preserve"><value>Schicht</value></data>
+  <data name="Shifts_ShiftPlural" xml:space="preserve"><value>Schichten</value></data>
   <data name="Shifts_SignUpButton" xml:space="preserve"><value>Anmelden</value></data>
   <data name="Shifts_BrowsingClosed" xml:space="preserve"><value>Schichten-Übersicht ist noch nicht geöffnet. Schau später wieder!</value></data>
   <data name="Shifts_NoActiveEvent" xml:space="preserve"><value>Kein aktives Event konfiguriert. Ein Admin muss zuerst die Event-Einstellungen einrichten.</value></data>
