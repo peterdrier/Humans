@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
@@ -6,11 +7,13 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.Metering;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Metering;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 
@@ -45,6 +48,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator;
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator;
     private readonly IHumansMetrics _metrics;
+    private readonly Counter<long> _membersSuspendedCounter;
     private readonly ILogger<SuspendNonCompliantMembersJob> _logger;
     private readonly IClock _clock;
 
@@ -61,6 +65,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
         IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
         IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,
         IHumansMetrics metrics,
+        IMeters meters,
         ILogger<SuspendNonCompliantMembersJob> logger,
         IClock clock)
     {
@@ -76,6 +81,9 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
         _roleAssignmentClaimsInvalidator = roleAssignmentClaimsInvalidator;
         _shiftAuthorizationInvalidator = shiftAuthorizationInvalidator;
         _metrics = metrics;
+        _membersSuspendedCounter = meters.RegisterCounter(
+            "humans.members_suspended_total",
+            new MeterMetadata("Total member suspensions", "{members}"));
         _logger = logger;
         _clock = clock;
     }
@@ -192,7 +200,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                     "User {UserId} ({Email}) suspended and flagged for removal from {Count} teams",
                     user.Id, effectiveEmail, memberships.Count);
 
-                _metrics.RecordMemberSuspended("job");
+                _membersSuspendedCounter.Add(1, new KeyValuePair<string, object?>("source", "job"));
 
                 // 4. Audit log + cross-cutting cache invalidation.
                 await _auditLogService.LogAsync(

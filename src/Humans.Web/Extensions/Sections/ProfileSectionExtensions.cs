@@ -4,6 +4,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.HostedServices;
 using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Services.Metering;
 using Humans.Infrastructure.Services.Profiles;
 using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
 using ProfilesContactFieldService = Humans.Application.Services.Profile.ContactFieldService;
@@ -88,6 +89,11 @@ internal static class ProfileSectionExtensions
         // in lazily per user. Failures are logged and swallowed; lazy population
         // still works.
         services.AddHostedService<FullProfileWarmupHostedService>();
+
+        // Metrics: Profile section owns humans_total, pending_volunteers,
+        // pending_consents, consent_deadline_approaching. Registered at
+        // startup with IMeters; OTel invokes the callbacks at scrape time.
+        services.AddHostedService<ProfileMetricsRegistrar>();
 
         return services;
     }

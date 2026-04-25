@@ -84,6 +84,14 @@ public sealed class UserRepository : IUserRepository
             .ToListAsync(ct);
     }
 
+    public async Task<int> GetScheduledDeletionCountAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Users
+            .AsNoTracking()
+            .CountAsync(u => u.DeletionScheduledFor != null, ct);
+    }
+
     public async Task<IReadOnlyList<(string Language, int Count)>>
         GetLanguageDistributionForUserIdsAsync(
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)

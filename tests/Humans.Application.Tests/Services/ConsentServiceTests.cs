@@ -6,10 +6,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Application.Interfaces;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
+using Humans.Infrastructure.Services.Metering;
 using Xunit;
 using ConsentService = Humans.Application.Services.Consent.ConsentService;
 using Humans.Application.Interfaces.Legal;
@@ -33,7 +33,7 @@ public class ConsentServiceTests : IDisposable
     private readonly INotificationInboxService _notificationInboxService = Substitute.For<INotificationInboxService>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
     private readonly IProfileService _profileService = Substitute.For<IProfileService>();
-    private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
+    private readonly MetersService _meters = new(NullLogger<MetersService>.Instance);
 
     public ConsentServiceTests()
     {
@@ -80,7 +80,7 @@ public class ConsentServiceTests : IDisposable
             _syncJob,
             _profileService,
             serviceProvider,
-            _metrics,
+            _meters,
             _clock,
             NullLogger<ConsentService>.Instance);
     }
@@ -88,6 +88,7 @@ public class ConsentServiceTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
+        _meters.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -196,18 +197,6 @@ public class ConsentServiceTests : IDisposable
 
         await _syncJob.Received().SyncVolunteersMembershipForUserAsync(userId, Arg.Any<CancellationToken>());
         await _syncJob.Received().SyncCoordinatorsMembershipForUserAsync(userId, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task SubmitConsentAsync_RecordsMetric()
-    {
-        var userId = Guid.NewGuid();
-        var versionId = Guid.NewGuid();
-        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
-
-        await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent");
-
-        _metrics.Received().RecordConsentGiven();
     }
 
     [HumansFact]

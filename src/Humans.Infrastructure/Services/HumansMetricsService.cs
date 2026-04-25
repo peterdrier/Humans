@@ -8,24 +8,24 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Governance;
 
 namespace Humans.Infrastructure.Services;
 
 /// <summary>
-/// Singleton service that owns the "Humans.Metrics" meter and all application-level
-/// counters and observable gauges. Gauge values are refreshed every 60 seconds from
-/// the database via a background timer.
+/// Singleton service that owns the "Humans.Metrics" meter and the counters /
+/// observable gauges that have not yet been migrated to <c>IMeters</c>.
+/// Migrated gauges (Profile/Users): humans_total, pending_volunteers,
+/// pending_consents, consent_deadline_approaching, pending_deletions.
+/// Migrated counters (Profile/Users): consents_given_total,
+/// volunteers_approved_total, members_suspended_total. The remaining gauges +
+/// counters here are scheduled for migration in subsequent commits of issue
+/// nobodies-collective/Humans#580.
 /// </summary>
 public sealed class HumansMetricsService : IHumansMetrics, IDisposable
 {
     private static readonly Meter HumansMeter = new("Humans.Metrics");
 
-    // Counters
     private readonly Counter<long> _emailsSent;
-    private readonly Counter<long> _consentsGiven;
-    private readonly Counter<long> _membersSuspended;
-    private readonly Counter<long> _volunteersApproved;
     private readonly Counter<long> _syncOperations;
     private readonly Counter<long> _applicationsProcessed;
     private readonly Counter<long> _jobRuns;
@@ -45,22 +45,9 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
         _scopeFactory = scopeFactory;
         _logger = logger;
 
-        // Counters
         _emailsSent = HumansMeter.CreateCounter<long>(
             "humans.emails_sent_total",
             description: "Total emails sent");
-
-        _consentsGiven = HumansMeter.CreateCounter<long>(
-            "humans.consents_given_total",
-            description: "Total consent records created");
-
-        _membersSuspended = HumansMeter.CreateCounter<long>(
-            "humans.members_suspended_total",
-            description: "Total member suspensions");
-
-        _volunteersApproved = HumansMeter.CreateCounter<long>(
-            "humans.volunteers_approved_total",
-            description: "Total volunteers approved");
 
         _syncOperations = HumansMeter.CreateCounter<long>(
             "humans.sync_operations_total",
@@ -81,32 +68,6 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
         _emailsFailed = HumansMeter.CreateCounter<long>(
             "humans.email_failed_total",
             description: "Total email send failures");
-
-        // Observable Gauges
-        HumansMeter.CreateObservableGauge(
-            "humans.humans_total",
-            observeValues: ObserveHumansTotal,
-            description: "Total humans by status");
-
-        HumansMeter.CreateObservableGauge(
-            "humans.pending_volunteers",
-            observeValue: () => _snapshot.PendingVolunteers,
-            description: "Volunteers awaiting board approval");
-
-        HumansMeter.CreateObservableGauge(
-            "humans.pending_consents",
-            observeValue: () => _snapshot.PendingConsents,
-            description: "Users missing required consents");
-
-        HumansMeter.CreateObservableGauge(
-            "humans.consent_deadline_approaching",
-            observeValue: () => _snapshot.ConsentDeadlineApproaching,
-            description: "Users past grace period not yet suspended");
-
-        HumansMeter.CreateObservableGauge(
-            "humans.pending_deletions",
-            observeValue: () => _snapshot.PendingDeletions,
-            description: "Accounts scheduled for deletion");
 
         HumansMeter.CreateObservableGauge(
             "humans.asociados",
@@ -148,11 +109,6 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
             observeValue: () => _snapshot.PendingOutboxEvents,
             description: "Unprocessed Google sync outbox events");
 
-        // humans.email_outbox_pending now lives on IMeters — ProcessEmailOutboxJob
-        // declares it directly and pushes the pending count each run. Same metric
-        // name, same OTel export (both paths publish through Meter("Humans.Metrics")).
-
-        // Timer: fire immediately, then every 60 seconds
         _refreshTimer = new Timer(
             callback: _ => _ = RefreshSnapshotAsync(),
             state: null,
@@ -160,19 +116,8 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
             period: TimeSpan.FromSeconds(60));
     }
 
-    // --- Counter record methods ---
-
     public void RecordEmailSent(string template)
         => _emailsSent.Add(1, new KeyValuePair<string, object?>("template", template));
-
-    public void RecordConsentGiven()
-        => _consentsGiven.Add(1);
-
-    public void RecordMemberSuspended(string source)
-        => _membersSuspended.Add(1, new KeyValuePair<string, object?>("source", source));
-
-    public void RecordVolunteerApproved()
-        => _volunteersApproved.Add(1);
 
     public void RecordSyncOperation(string result)
         => _syncOperations.Add(1, new KeyValuePair<string, object?>("result", result));
@@ -190,17 +135,6 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
 
     public void RecordEmailFailed(string template)
         => _emailsFailed.Add(1, new KeyValuePair<string, object?>("template", template));
-
-    // --- Observable gauge callbacks ---
-
-    private IEnumerable<Measurement<int>> ObserveHumansTotal()
-    {
-        var s = _snapshot;
-        yield return new Measurement<int>(s.ActiveCount, new KeyValuePair<string, object?>("status", "active"));
-        yield return new Measurement<int>(s.SuspendedCount, new KeyValuePair<string, object?>("status", "suspended"));
-        yield return new Measurement<int>(s.PendingCount, new KeyValuePair<string, object?>("status", "pending"));
-        yield return new Measurement<int>(s.InactiveCount, new KeyValuePair<string, object?>("status", "inactive"));
-    }
 
     private IEnumerable<Measurement<int>> ObserveRoleAssignments()
     {
@@ -223,98 +157,43 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
         yield return new Measurement<int>(s.ApplicationsSubmitted, new KeyValuePair<string, object?>("status", "submitted"));
     }
 
-    // --- Snapshot refresh ---
-
     private async Task RefreshSnapshotAsync()
     {
         try
         {
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
-            var membershipCalc = scope.ServiceProvider.GetRequiredService<IMembershipCalculator>();
             var clock = scope.ServiceProvider.GetRequiredService<IClock>();
             var now = clock.GetCurrentInstant();
 
-            // humans_total by status
-            var allUserIds = await db.Users.Select(u => u.Id).ToListAsync();
-            var profileData = await db.Profiles
-                .Select(p => new { p.UserId, p.IsApproved, p.IsSuspended })
-                .ToListAsync();
-
-            var profileLookup = profileData.ToDictionary(p => p.UserId);
-
-            int activeCount = 0, suspendedCount = 0, pendingCount = 0, inactiveCount = 0;
-            foreach (var userId in allUserIds)
-            {
-                if (profileLookup.TryGetValue(userId, out var p))
-                {
-                    if (p.IsSuspended) suspendedCount++;
-                    else if (!p.IsApproved) pendingCount++;
-                    else activeCount++;
-                }
-                else
-                {
-                    inactiveCount++;
-                }
-            }
-
-            // pending_consents
-            var usersWithAllConsents = await membershipCalc.GetUsersWithAllRequiredConsentsAsync(allUserIds);
-            var pendingConsents = allUserIds.Count - usersWithAllConsents.Count;
-
-            // consent_deadline_approaching
-            var usersRequiringUpdate = await membershipCalc.GetUsersRequiringStatusUpdateAsync();
-            var consentDeadlineApproaching = usersRequiringUpdate.Count;
-
-            // pending_deletions
-            var pendingDeletions = await db.Users.CountAsync(u => u.DeletionScheduledFor != null);
-
-            // asociados
             var asociados = await db.Applications.CountAsync(a => a.Status == ApplicationStatus.Approved);
 
-            // role_assignments_active
             var roleAssignments = await db.RoleAssignments
                 .Where(ra => ra.ValidFrom <= now && (ra.ValidTo == null || ra.ValidTo > now))
                 .GroupBy(ra => ra.RoleName)
                 .Select(g => new { Role = g.Key, Count = g.Count() })
                 .ToListAsync();
 
-            // teams
             var teamsActive = await db.Teams.CountAsync(t => t.IsActive);
             var teamsInactive = await db.Teams.CountAsync(t => !t.IsActive);
 
-            // team_join_requests_pending
             var teamJoinRequestsPending = await db.TeamJoinRequests
                 .CountAsync(r => r.Status == TeamJoinRequestStatus.Pending);
 
-            // google_resources
             var teamResourceService = scope.ServiceProvider.GetRequiredService<ITeamResourceService>();
             var googleResources = await teamResourceService.GetResourceCountAsync();
 
-            // legal_documents_active
             var legalDocumentsActive = await db.LegalDocuments
                 .CountAsync(d => d.IsActive && d.IsRequired);
 
-            // applications_pending
             var applicationsSubmitted = await db.Applications
                 .CountAsync(a => a.Status == ApplicationStatus.Submitted);
 
-            // google_sync_outbox_pending — goes through the repository so this
-            // service doesn't read google_sync_outbox_events directly (issue #554
-            // Part 1, design-rules §2c).
             var outboxRepo = scope.ServiceProvider.GetRequiredService<IGoogleSyncOutboxRepository>();
             var pendingOutboxEvents = await outboxRepo.CountPendingAsync();
 
             _snapshot = new GaugeSnapshot
             {
-                ActiveCount = activeCount,
-                SuspendedCount = suspendedCount,
-                PendingCount = pendingCount,
-                InactiveCount = inactiveCount,
-                PendingVolunteers = pendingCount,
-                PendingConsents = pendingConsents,
-                ConsentDeadlineApproaching = consentDeadlineApproaching,
-                PendingDeletions = pendingDeletions,
                 Asociados = asociados,
                 RoleAssignmentsByRole = roleAssignments
                     .Select(r => (r.Role, r.Count))
@@ -325,11 +204,8 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
                 GoogleResources = googleResources,
                 LegalDocumentsActive = legalDocumentsActive,
                 ApplicationsSubmitted = applicationsSubmitted,
-                PendingOutboxEvents = pendingOutboxEvents
+                PendingOutboxEvents = pendingOutboxEvents,
             };
-
-            _logger.LogDebug("Metrics snapshot refreshed: {Active} active, {Suspended} suspended, {Pending} pending",
-                activeCount, suspendedCount, pendingCount);
         }
         catch (Exception ex)
         {
@@ -346,27 +222,10 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
     {
         public static readonly GaugeSnapshot Empty = new();
 
-        // humans_total
-        public int ActiveCount { get; init; }
-        public int SuspendedCount { get; init; }
-        public int PendingCount { get; init; }
-        public int InactiveCount { get; init; }
-
-        // Simple gauges
-        public int PendingVolunteers { get; init; }
-        public int PendingConsents { get; init; }
-        public int ConsentDeadlineApproaching { get; init; }
-        public int PendingDeletions { get; init; }
         public int Asociados { get; init; }
-
-        // Role assignments grouped by role
         public IReadOnlyList<(string Role, int Count)> RoleAssignmentsByRole { get; init; } = [];
-
-        // Teams
         public int TeamsActive { get; init; }
         public int TeamsInactive { get; init; }
-
-        // Other
         public int TeamJoinRequestsPending { get; init; }
         public int GoogleResources { get; init; }
         public int LegalDocumentsActive { get; init; }
