@@ -16,6 +16,30 @@ mechanical:
     update: script
     script: docs/scripts/generate-stats.sh
 
+  - id: about-page-packages
+    target: src/Humans.Web/Views/About/Index.cshtml
+    triggers:
+      - "Directory.Packages.props"
+      - "**/*.csproj"
+    update: prompt
+    prompt: |
+      Read Directory.Packages.props and every .csproj file in the repo.
+      Build a list of production NuGet packages (exclude test-only packages
+      that are referenced only from anything under tests/).
+
+      Open src/Humans.Web/Views/About/Index.cshtml. Find the package list
+      section ("The Ingredients" and any package cards below it). Update
+      version numbers in place. Add new packages following the existing
+      card structure with a one-line description (carry over any existing
+      description for packages already in the file). Remove cards for
+      packages no longer referenced.
+
+      Preserve all prose, contributor names, the license section, and any
+      hand-written copy outside the package cards. Do not invent licenses
+      or descriptions; if you don't know a new package's license, leave a
+      `<!-- TODO: license -->` HTML comment next to its card and add a
+      question to your return JSON asking Peter to confirm.
+
 # Editorial doc trees — walked recursively for .md files. Each .md may include
 # inline freshness markers (freshness:triggers, freshness:auto, freshness:flag-on-change).
 editorial_trees: []
