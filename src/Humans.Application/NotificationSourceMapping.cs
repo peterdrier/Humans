@@ -36,6 +36,7 @@ public static class NotificationSourceMapping
         NotificationSource.CampMembershipRequested => MessageCategory.TeamUpdates,
         NotificationSource.CampMembershipApproved => MessageCategory.TeamUpdates,
         NotificationSource.CampMembershipRejected => MessageCategory.TeamUpdates,
+        NotificationSource.CampRoleAssigned => MessageCategory.TeamUpdates,
         _ => MessageCategory.System
     };
 }
