@@ -30,7 +30,6 @@ public class ProcessEmailOutboxJobTests : IDisposable
     private readonly IEmailTransport _transport;
     private readonly ICampaignService _campaignService;
     private readonly FakeClock _clock;
-    private readonly HumansMetricsService _metrics;
     private readonly MetersService _meters;
     private readonly IOptions<EmailSettings> _settings;
     private readonly EmailOutboxRepository _repo;
@@ -46,21 +45,17 @@ public class ProcessEmailOutboxJobTests : IDisposable
         _transport = Substitute.For<IEmailTransport>();
         _campaignService = Substitute.For<ICampaignService>();
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 14, 12, 0));
-        _metrics = new HumansMetricsService(
-            Substitute.For<IServiceScopeFactory>(),
-            Substitute.For<ILogger<HumansMetricsService>>());
         _meters = new MetersService(Substitute.For<ILogger<MetersService>>());
         _settings = Options.Create(new EmailSettings { OutboxBatchSize = 10, OutboxMaxRetries = 10 });
         var logger = Substitute.For<ILogger<ProcessEmailOutboxJob>>();
         _repo = new EmailOutboxRepository(new TestDbContextFactory(_options));
 
-        _job = new ProcessEmailOutboxJob(_repo, _campaignService, _transport, _metrics, _meters, _clock, _settings, logger);
+        _job = new ProcessEmailOutboxJob(_repo, _campaignService, _transport, _meters, _clock, _settings, logger);
     }
 
     public void Dispose()
     {
         _dbContext.Dispose();
-        _metrics.Dispose();
         _meters.Dispose();
         GC.SuppressFinalize(this);
     }
@@ -122,7 +117,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
 
         var batchSettings = Options.Create(new EmailSettings { OutboxBatchSize = 10, OutboxMaxRetries = 10 });
         var job = new ProcessEmailOutboxJob(
-            _repo, _campaignService, _transport, _metrics, _meters, _clock, batchSettings,
+            _repo, _campaignService, _transport, _meters, _clock, batchSettings,
             Substitute.For<ILogger<ProcessEmailOutboxJob>>());
 
         await job.ExecuteAsync();

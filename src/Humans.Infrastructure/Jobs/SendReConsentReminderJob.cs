@@ -1,3 +1,6 @@
+using System.Diagnostics.Metrics;
+using Humans.Application.Interfaces.Metering;
+using Humans.Application.Metering;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -19,7 +22,7 @@ namespace Humans.Infrastructure.Jobs;
 /// <c>User.LastConsentReminderSentAt</c> through
 /// <see cref="IUserService.SetLastConsentReminderSentAsync"/>, so the job
 /// never touches <see cref="Humans.Infrastructure.Data.HumansDbContext"/>
-/// directly (design-rules §2c).
+/// directly (design-rules Â§2c).
 /// </remarks>
 public class SendReConsentReminderJob : IRecurringJob
 {
@@ -28,7 +31,7 @@ public class SendReConsentReminderJob : IRecurringJob
     private readonly IUserService _userService;
     private readonly IEmailService _emailService;
     private readonly EmailSettings _emailSettings;
-    private readonly IHumansMetrics _metrics;
+    private readonly Counter<long> _jobRunsCounter;
     private readonly ILogger<SendReConsentReminderJob> _logger;
     private readonly IClock _clock;
 
@@ -38,7 +41,7 @@ public class SendReConsentReminderJob : IRecurringJob
         IUserService userService,
         IEmailService emailService,
         IOptions<EmailSettings> emailSettings,
-        IHumansMetrics metrics,
+        IMeters meters,
         ILogger<SendReConsentReminderJob> logger,
         IClock clock)
     {
@@ -47,7 +50,9 @@ public class SendReConsentReminderJob : IRecurringJob
         _userService = userService;
         _emailService = emailService;
         _emailSettings = emailSettings.Value;
-        _metrics = metrics;
+        _jobRunsCounter = meters.RegisterCounter(
+            "humans.job_runs_total",
+            new MeterMetadata("Total background job runs", "{runs}"));
         _logger = logger;
         _clock = clock;
     }
@@ -118,14 +123,18 @@ public class SendReConsentReminderJob : IRecurringJob
                 }
             }
 
-            _metrics.RecordJobRun("send_reconsent_reminder", "success");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "send_reconsent_reminder"),
+                new KeyValuePair<string, object?>("result", "success"));
             _logger.LogInformation(
                 "Completed re-consent reminder job, sent {Count} reminders ({Skipped} skipped due to cooldown)",
                 sentCount, userIds.Count - sentCount);
         }
         catch (Exception ex)
         {
-            _metrics.RecordJobRun("send_reconsent_reminder", "failure");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "send_reconsent_reminder"),
+                new KeyValuePair<string, object?>("result", "failure"));
             _logger.LogError(ex, "Error sending re-consent reminders");
             throw;
         }

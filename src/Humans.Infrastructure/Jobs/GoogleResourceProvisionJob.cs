@@ -1,5 +1,7 @@
+using System.Diagnostics.Metrics;
+using Humans.Application.Interfaces.Metering;
+using Humans.Application.Metering;
 using Microsoft.Extensions.Logging;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.GoogleIntegration;
 
 namespace Humans.Infrastructure.Jobs;
@@ -10,16 +12,18 @@ namespace Humans.Infrastructure.Jobs;
 public class GoogleResourceProvisionJob
 {
     private readonly IGoogleSyncService _googleService;
-    private readonly IHumansMetrics _metrics;
+    private readonly Counter<long> _jobRunsCounter;
     private readonly ILogger<GoogleResourceProvisionJob> _logger;
 
     public GoogleResourceProvisionJob(
         IGoogleSyncService googleService,
-        IHumansMetrics metrics,
+        IMeters meters,
         ILogger<GoogleResourceProvisionJob> logger)
     {
         _googleService = googleService;
-        _metrics = metrics;
+        _jobRunsCounter = meters.RegisterCounter(
+            "humans.job_runs_total",
+            new MeterMetadata("Total background job runs", "{runs}"));
         _logger = logger;
     }
 
@@ -38,14 +42,18 @@ public class GoogleResourceProvisionJob
         try
         {
             var resource = await _googleService.ProvisionTeamFolderAsync(teamId, folderName, cancellationToken);
-            _metrics.RecordJobRun("google_resource_provision", "success");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "google_resource_provision"),
+                new KeyValuePair<string, object?>("result", "success"));
             _logger.LogInformation(
                 "Successfully provisioned folder with Google ID {GoogleId}",
                 resource.GoogleId);
         }
         catch (Exception ex)
         {
-            _metrics.RecordJobRun("google_resource_provision", "failure");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "google_resource_provision"),
+                new KeyValuePair<string, object?>("result", "failure"));
             _logger.LogError(ex, "Error provisioning team folder for team {TeamId}", teamId);
             throw;
         }

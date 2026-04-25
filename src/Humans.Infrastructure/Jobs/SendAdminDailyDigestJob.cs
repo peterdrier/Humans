@@ -1,3 +1,6 @@
+using System.Diagnostics.Metrics;
+using Humans.Application.Interfaces.Metering;
+using Humans.Application.Metering;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.DTOs;
@@ -26,7 +29,7 @@ namespace Humans.Infrastructure.Jobs;
 /// <see cref="IRoleAssignmentService"/>, <see cref="ITicketSyncService"/>,
 /// <see cref="IGoogleSyncOutboxRepository"/>) so the job never touches
 /// <see cref="Humans.Infrastructure.Data.HumansDbContext"/> directly
-/// (design-rules §2c).
+/// (design-rules Â§2c).
 /// </remarks>
 public class SendAdminDailyDigestJob : IRecurringJob
 {
@@ -39,7 +42,7 @@ public class SendAdminDailyDigestJob : IRecurringJob
     private readonly IGoogleSyncOutboxRepository _googleSyncOutboxRepository;
     private readonly IEmailService _emailService;
     private readonly IMembershipCalculator _membershipCalculator;
-    private readonly IHumansMetrics _metrics;
+    private readonly Counter<long> _jobRunsCounter;
     private readonly ILogger<SendAdminDailyDigestJob> _logger;
     private readonly IClock _clock;
 
@@ -53,7 +56,7 @@ public class SendAdminDailyDigestJob : IRecurringJob
         IGoogleSyncOutboxRepository googleSyncOutboxRepository,
         IEmailService emailService,
         IMembershipCalculator membershipCalculator,
-        IHumansMetrics metrics,
+        IMeters meters,
         ILogger<SendAdminDailyDigestJob> logger,
         IClock clock)
     {
@@ -66,7 +69,9 @@ public class SendAdminDailyDigestJob : IRecurringJob
         _googleSyncOutboxRepository = googleSyncOutboxRepository;
         _emailService = emailService;
         _membershipCalculator = membershipCalculator;
-        _metrics = metrics;
+        _jobRunsCounter = meters.RegisterCounter(
+            "humans.job_runs_total",
+            new MeterMetadata("Total background job runs", "{runs}"));
         _logger = logger;
         _clock = clock;
     }
@@ -89,7 +94,7 @@ public class SendAdminDailyDigestJob : IRecurringJob
             var boardVotingTotal = await _applicationDecisionService.GetPendingApplicationCountAsync(cancellationToken);
             var teamJoinRequestCount = await _teamService.GetTotalPendingJoinRequestCountAsync(cancellationToken);
 
-            // Pending consents calculation — reuses the same inputs the Admin
+            // Pending consents calculation â€” reuses the same inputs the Admin
             // dashboard does so the numbers match.
             var allUserIds = await _userService.GetAllUserIdsAsync(cancellationToken);
             var allUserIdsList = allUserIds.ToList();
@@ -108,12 +113,12 @@ public class SendAdminDailyDigestJob : IRecurringJob
                 !usersWithAllConsents.Contains(id) ||
                 (leadSet.Contains(id) && !leadsWithAllConsents.Contains(id)));
 
-            // Google sync outbox counts — already routed through the repo.
+            // Google sync outbox counts â€” already routed through the repo.
             var failedSyncEvents = await _googleSyncOutboxRepository.CountStaleAsync(cancellationToken);
             var transientSyncRetries = await _googleSyncOutboxRepository.CountTransientRetriesAsync(cancellationToken);
             var permanentSyncFailures = await _userService.GetRejectedGoogleEmailCountAsync(cancellationToken);
 
-            // Ticket sync status — routed through ITicketSyncService.
+            // Ticket sync status â€” routed through ITicketSyncService.
             var ticketSyncStatus = await _ticketSyncService.GetErrorStatusAsync(cancellationToken);
 
             var counts = new AdminDigestCounts(
@@ -139,7 +144,9 @@ public class SendAdminDailyDigestJob : IRecurringJob
             if (!hasItems)
             {
                 _logger.LogInformation("No pending items on {Date}, skipping Admin digest", dateLabel);
-                _metrics.RecordJobRun("admin_daily_digest", "skipped");
+                _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "admin_daily_digest"),
+                new KeyValuePair<string, object?>("result", "skipped"));
                 return;
             }
 
@@ -168,14 +175,18 @@ public class SendAdminDailyDigestJob : IRecurringJob
                 sentCount++;
             }
 
-            _metrics.RecordJobRun("admin_daily_digest", "success");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "admin_daily_digest"),
+                new KeyValuePair<string, object?>("result", "success"));
             _logger.LogInformation(
                 "Admin daily digest sent to {Count} admins for {Date}",
                 sentCount, dateLabel);
         }
         catch (Exception ex)
         {
-            _metrics.RecordJobRun("admin_daily_digest", "failure");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "admin_daily_digest"),
+                new KeyValuePair<string, object?>("result", "failure"));
             _logger.LogError(ex, "Error sending Admin daily digest for {Date}", dateLabel);
             throw;
         }

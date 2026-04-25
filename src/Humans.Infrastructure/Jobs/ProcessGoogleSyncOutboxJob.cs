@@ -46,8 +46,8 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
     private readonly ITeamService _teamService;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly INotificationService _notificationService;
-    private readonly IHumansMetrics _metrics;
     private readonly Counter<long> _syncOperationsCounter;
+    private readonly Counter<long> _jobRunsCounter;
     private readonly IClock _clock;
     private readonly ILogger<ProcessGoogleSyncOutboxJob> _logger;
 
@@ -58,7 +58,6 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
         ITeamService teamService,
         IGoogleSyncService googleSyncService,
         INotificationService notificationService,
-        IHumansMetrics metrics,
         IMeters meters,
         IClock clock,
         ILogger<ProcessGoogleSyncOutboxJob> logger)
@@ -69,10 +68,12 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
         _teamService = teamService;
         _googleSyncService = googleSyncService;
         _notificationService = notificationService;
-        _metrics = metrics;
         _syncOperationsCounter = meters.RegisterCounter(
             "humans.sync_operations_total",
             new MeterMetadata("Total Google sync operations", "{operations}"));
+        _jobRunsCounter = meters.RegisterCounter(
+            "humans.job_runs_total",
+            new MeterMetadata("Total background job runs", "{runs}"));
         _clock = clock;
         _logger = logger;
     }
@@ -208,11 +209,15 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
                 }
             }
 
-            _metrics.RecordJobRun("process_google_sync_outbox", "success");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "process_google_sync_outbox"),
+                new KeyValuePair<string, object?>("result", "success"));
         }
         catch (Exception ex)
         {
-            _metrics.RecordJobRun("process_google_sync_outbox", "failure");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "process_google_sync_outbox"),
+                new KeyValuePair<string, object?>("result", "failure"));
             _logger.LogError(ex, "Error processing Google sync outbox");
             throw;
         }
