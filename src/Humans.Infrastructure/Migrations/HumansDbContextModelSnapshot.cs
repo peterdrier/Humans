@@ -18,7 +18,7 @@ namespace Humans.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.5")
+                .HasAnnotation("ProductVersion", "10.0.7")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -844,6 +844,8 @@ namespace Humans.Infrastructure.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AssignedByUserId");
 
                     b.HasIndex("CampMemberId");
 
@@ -4029,6 +4031,12 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.CampRoleAssignment", b =>
                 {
+                    b.HasOne("Humans.Domain.Entities.User", "AssignedByUser")
+                        .WithMany()
+                        .HasForeignKey("AssignedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Humans.Domain.Entities.CampMember", "CampMember")
                         .WithMany("RoleAssignments")
                         .HasForeignKey("CampMemberId")
@@ -4046,6 +4054,8 @@ namespace Humans.Infrastructure.Migrations
                         .HasForeignKey("CampSeasonId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("AssignedByUser");
 
                     b.Navigation("CampMember");
 

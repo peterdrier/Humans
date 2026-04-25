@@ -25,5 +25,5 @@ public class CampRoleAssignment
     public Instant AssignedAt { get; init; }
 
     public Guid AssignedByUserId { get; init; }
-    // No nav property — design-rules §6c. Resolve display name via IUserService.
+    public User AssignedByUser { get; set; } = null!;
 }

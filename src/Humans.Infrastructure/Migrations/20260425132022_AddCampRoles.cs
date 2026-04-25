@@ -67,6 +67,12 @@ namespace Humans.Infrastructure.Migrations
                         principalTable: "camp_seasons",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_camp_role_assignments_users_AssignedByUserId",
+                        column: x => x.AssignedByUserId,
+                        principalTable: "users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.InsertData(
@@ -81,6 +87,11 @@ namespace Humans.Infrastructure.Migrations
                     { new Guid("c0a0a0a0-0000-0000-0000-000000000005"), NodaTime.Instant.FromUnixTimeTicks(17769888000000000L), null, null, false, 0, "Power", 1, 50, NodaTime.Instant.FromUnixTimeTicks(17769888000000000L) },
                     { new Guid("c0a0a0a0-0000-0000-0000-000000000006"), NodaTime.Instant.FromUnixTimeTicks(17769888000000000L), null, null, true, 1, "Build Lead", 2, 60, NodaTime.Instant.FromUnixTimeTicks(17769888000000000L) }
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_camp_role_assignments_AssignedByUserId",
+                table: "camp_role_assignments",
+                column: "AssignedByUserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_camp_role_assignments_CampMemberId",

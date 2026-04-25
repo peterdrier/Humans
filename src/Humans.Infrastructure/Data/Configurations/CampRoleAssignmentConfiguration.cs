@@ -44,5 +44,11 @@ public class CampRoleAssignmentConfiguration : IEntityTypeConfiguration<CampRole
             .WithMany(m => m.RoleAssignments)
             .HasForeignKey(a => a.CampMemberId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Actor FK — matches TeamRoleAssignment / BudgetAuditLog convention.
+        builder.HasOne(a => a.AssignedByUser)
+            .WithMany()
+            .HasForeignKey(a => a.AssignedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
