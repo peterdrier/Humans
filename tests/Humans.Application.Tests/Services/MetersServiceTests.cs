@@ -15,7 +15,7 @@ public sealed class MetersServiceTests
 {
     private static readonly MeterMetadata Meta = new("test gauge", "{x}");
 
-    [Fact]
+    [HumansFact]
     public void Declare_PushMeter_SetIsVisibleViaOtelCallback()
     {
         using var meters = new MetersService(NullLogger<MetersService>.Instance);
@@ -27,7 +27,7 @@ public sealed class MetersServiceTests
         ReadOtelValue(name).Should().Be(42);
     }
 
-    [Fact]
+    [HumansFact]
     public void Declare_IsIdempotentByName_ReturnsSameHandle()
     {
         using var meters = new MetersService(NullLogger<MetersService>.Instance);
@@ -40,7 +40,7 @@ public sealed class MetersServiceTests
             because: "Declare must be safe to call from scoped services on each scope creation");
     }
 
-    [Fact]
+    [HumansFact]
     public void Declare_MultipleMeters_StayIndependent()
     {
         using var meters = new MetersService(NullLogger<MetersService>.Instance);
@@ -56,7 +56,7 @@ public sealed class MetersServiceTests
         ReadOtelValue(bName).Should().Be(20);
     }
 
-    [Fact]
+    [HumansFact]
     public void Declare_NullMetadata_Throws()
     {
         using var meters = new MetersService(NullLogger<MetersService>.Instance);
@@ -66,7 +66,7 @@ public sealed class MetersServiceTests
         act.Should().Throw<ArgumentNullException>();
     }
 
-    [Fact]
+    [HumansFact]
     public void Declare_EmptyName_Throws()
     {
         using var meters = new MetersService(NullLogger<MetersService>.Instance);
