@@ -309,6 +309,10 @@ public class CalendarController : HumansControllerBase
         end = form.EndLocal is { } elo
             ? LocalDateTime.FromDateTime(elo).InZoneLeniently(zone).ToInstant()
             : null;
+        if (end is { } endInstant && endInstant < start)
+        {
+            ModelState.AddModelError(nameof(form.EndLocal), "End must be on or after the start.");
+        }
     }
 
     [HttpPost("Event/{id:guid}/Delete")]

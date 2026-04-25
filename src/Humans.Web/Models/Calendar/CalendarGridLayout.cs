@@ -44,12 +44,11 @@ public static class CalendarGridLayout
                 continue;
             }
 
-            // Clip the banner to this week's visible window.
+            // Clip the banner to this week's visible window. Caller pre-filters to
+            // occurrences that overlap the week, so clipStart/clipEnd are always inside [weekStart, weekEnd].
             var weekEnd = weekStart.PlusDays(6);
             var clipStart = startDate < weekStart ? weekStart : startDate;
             var clipEnd = endDate > weekEnd ? weekEnd : endDate;
-
-            if (clipEnd < weekStart || clipStart > weekEnd) continue;
 
             var startDow = Period.Between(weekStart, clipStart, PeriodUnits.Days).Days;
             var endDow = Period.Between(weekStart, clipEnd, PeriodUnits.Days).Days;

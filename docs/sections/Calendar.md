@@ -106,24 +106,16 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 
 **Owning services:** `CalendarService`
 **Owned tables:** `calendar_events`, `calendar_event_exceptions`
-**Status:** (C) Pre-migration — `CalendarService` is in `Humans.Infrastructure/Services/CalendarService.cs` and injects `HumansDbContext` directly. Not yet listed in design-rules §15i.
+**Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#569, 2026-04-23).
 
-> **Status (pre-migration):** This section currently follows the "services in Infrastructure, direct DbContext" model. It will be migrated to the §15 repository pattern per [`../architecture/design-rules.md`](../architecture/design-rules.md). **Delete this block once the migration lands and this section's services live in `Humans.Application` with `*Repository.cs` impls in `Humans.Infrastructure/Repositories/`.**
-
-### Target repositories
-
-- **`ICalendarRepository`** — owns `calendar_events`, `calendar_event_exceptions`
-  - Aggregate-local navs kept: `CalendarEvent.Exceptions`
-  - Cross-domain navs stripped: `OwningTeamId` stays FK only; any future display of owning team name routes through `ITeamService.GetTeamNamesByIdsAsync`.
-  - Soft-delete filter: repository must include a method that bypasses the `DeletedAt` filter for admin restore / audit workflows if/when they are added.
-
-### Current violations
-
-No drift tracked yet — migration has not begun. File the current-state audit when opening the migration issue.
+- `CalendarService` lives in `Humans.Application.Services.Calendar.CalendarService` and goes through `ICalendarRepository` (`Humans.Application.Interfaces.Repositories`) for all data access. It never imports `Microsoft.EntityFrameworkCore`.
+- `CalendarRepository` lives in `Humans.Infrastructure.Repositories.Calendar`, uses `IDbContextFactory<HumansDbContext>`.
+- **Decorator decision — no caching decorator.** Short-TTL `IMemoryCache` (`calendar:active-events`) stays in-service per design-rules §15f.
+- **Cross-domain navs stripped:** `CalendarEvent.OwningTeam` is `[Obsolete]`-marked; consumers route through `ITeamService.GetTeamNamesByIdsAsync` for display names.
 
 ### Touch-and-clean guidance
 
 - When adding new controller actions, route through `ICalendarService` — do not inject `HumansDbContext` into `CalendarController`.
-- Do not add `.Include(e => e.OwningTeam)` or `.Include(e => e.CreatedByUser)` — the entity carries FKs only and will stay that way post-migration.
+- Do not add `.Include(e => e.OwningTeam)` or `.Include(e => e.CreatedByUser)` — the entity carries FKs only.
 - Every new mutation must write an `AuditLogEntry` via `IAuditLogService`; do not skip audit for "admin convenience" operations.
 - Every new page must have a nav link (CLAUDE.md coding rules — no orphan pages).
