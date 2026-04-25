@@ -29,6 +29,12 @@
 - Camp membership is per-season. A human can only have one active or pending `CampMember` row per season (enforced by a partial unique index on `(CampSeasonId, UserId) WHERE Status <> 'Removed'`). Removed rows are retained for audit and allow re-requesting.
 - A camp is "open for membership" for the current public year only when its season for that year is Active or Full. Pending/Rejected/Withdrawn seasons do not accept membership requests.
 - Camp member lists are never rendered on anonymous or public views.
+- Camp role assignments require the assignee to be an Active `CampMember` of the same season (auto-promoted if not).
+- Camp role-definition CRUD is CampAdmin/Admin-only; camp leads can only fill / empty slots.
+- Same human cannot hold two slots of the same role in the same season; same human can hold slots across multiple distinct roles.
+- Role assignments are hidden from anonymous visitors (camp detail page renders no role section).
+- Deactivating a role definition preserves historical assignments but hides it from new-assignment UI and from the compliance report.
+- Cascades: removing a `CampMember` deletes all their role assignments for that season; transitioning a season to Rejected or Withdrawn deletes all role assignments for that season.
 
 ## Negative Access Rules
 

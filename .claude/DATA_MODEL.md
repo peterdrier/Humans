@@ -37,6 +37,8 @@
 | CampImage | Image metadata (files stored on disk) |
 | CampHistoricalName | Name history for tracking renames |
 | CampSettings | Singleton settings (public year, open seasons) |
+| `CampRoleDefinition` | global, CampAdmin-managed; defines a role with `SlotCount`, `MinimumRequired`, `IsRequired`, soft-delete via `DeactivatedAt`. |
+| `CampRoleAssignment` | per-`CampSeason`, per-slot; FK to `CampMember` (cascade) + `CampSeason` (restrict) + `CampRoleDefinition` (restrict). Unique on `(season, role, slot)` and `(season, role, member)`. |
 | CityPlanningSettings | Per-year city planning config (placement phase, limit zone, official zones) |
 | CampPolygon | Polygon placement for a camp season (one per CampSeason) |
 | CampPolygonHistory | Append-only version history of polygon edits |

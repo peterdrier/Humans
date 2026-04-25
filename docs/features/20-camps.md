@@ -377,3 +377,37 @@ Transitions:
 - [Authentication](01-authentication.md) - User identity for camp registration and lead management
 - [Teams](06-teams.md) - Similar self-organizing group concept; camps are event-specific
 - [Administration](09-administration.md) - Admin role provides full camp management access
+
+## Per-camp role assignments
+
+### Data model
+
+- `CampRoleDefinition` — global, CampAdmin-managed. Fields: `Name`, `Description`, `SlotCount`, `MinimumRequired`, `SortOrder`, `IsRequired`, `DeactivatedAt`.
+- `CampRoleAssignment` — per camp-season, per slot. Unique on `(CampSeasonId, CampRoleDefinitionId, SlotIndex)` and on `(CampSeasonId, CampRoleDefinitionId, CampMemberId)`.
+
+### Workflows
+
+| Trigger | Effect |
+|---|---|
+| Lead assigns Active member to slot | `CampRoleAssignment` row, `CampRoleAssigned` notification, audit |
+| Lead assigns non-member with `autoPromote` | `CampMember(Active)` upsert + `CampRoleAssignment`, two notifications, audit |
+| Lead unassigns slot | Row deleted, audit, no notification |
+| `CampMember` removed | All assignments for that member in that season deleted |
+| Season → Rejected/Withdrawn | All assignments for that season deleted |
+| Role definition deactivated | Existing assignments preserved; hidden from new-assignment UI and compliance report |
+
+### Authorization
+
+| Action | Allowed |
+|---|---|
+| CRUD role definitions | CampAdmin, Admin |
+| Assign/unassign role | Camp Lead (of that camp), CampAdmin, Admin |
+| View role assignments (`/Camps/{slug}` and edit page) | Any authenticated human |
+| View role assignments (anonymous) | Not permitted — section hidden |
+| Required-role compliance report | CampAdmin, Admin |
+
+### Compliance report
+
+For each `CampSeason` with `Status = Active` and `Year = CampSettings.PublicYear`, list required (non-deactivated) role definitions where `COUNT(CampRoleAssignment) < MinimumRequired`. Optional roles (`IsRequired = false`) are ignored regardless of fill state.
+
+Closes nobodies-collective/Humans#489.
