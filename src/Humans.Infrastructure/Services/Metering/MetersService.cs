@@ -18,14 +18,11 @@ public sealed class MetersService : IMeters, IDisposable
 {
     private readonly Meter _otelMeter;
     private readonly ConcurrentDictionary<string, Registration> _registrations = new(StringComparer.Ordinal);
+    private readonly ILogger<MetersService> _logger;
 
     public MetersService(ILogger<MetersService> logger)
     {
-        // Logger is accepted to satisfy the leaf-ILogger contract and enable
-        // future diagnostic output; currently no log sites exist because the
-        // registry is pure in-memory state. Keep it parameter-positioned so
-        // adding logs later doesn't churn DI.
-        _ = logger;
+        _logger = logger;
         _otelMeter = new Meter("Humans.Metrics");
     }
 
@@ -34,18 +31,35 @@ public sealed class MetersService : IMeters, IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentNullException.ThrowIfNull(metadata);
 
-        return _registrations.GetOrAdd(name, _ =>
+        var registration = _registrations.GetOrAdd(name, n =>
         {
-            var registration = new Registration(name);
+            var reg = new Registration(n, metadata);
 
             _otelMeter.CreateObservableGauge(
-                name,
-                observeValue: () => registration.Current,
+                n,
+                observeValue: () => reg.Current,
                 unit: metadata.Unit,
                 description: metadata.Description);
 
-            return registration;
+            _logger.LogDebug(
+                "Registered gauge {GaugeName} (unit={Unit}, description={Description})",
+                n, metadata.Unit, metadata.Description);
+
+            return reg;
         });
+
+        if (registration.Metadata != metadata)
+        {
+            _logger.LogWarning(
+                "Gauge {GaugeName} re-declared with different metadata; keeping original. " +
+                "Original: unit={OriginalUnit}, description={OriginalDescription}. " +
+                "Ignored: unit={IgnoredUnit}, description={IgnoredDescription}",
+                name,
+                registration.Metadata.Unit, registration.Metadata.Description,
+                metadata.Unit, metadata.Description);
+        }
+
+        return registration;
     }
 
     public void Dispose()
@@ -57,12 +71,14 @@ public sealed class MetersService : IMeters, IDisposable
     {
         private int _current;
 
-        public Registration(string name)
+        public Registration(string name, MeterMetadata metadata)
         {
             Name = name;
+            Metadata = metadata;
         }
 
         public string Name { get; }
+        public MeterMetadata Metadata { get; }
         public int Current => Volatile.Read(ref _current);
 
         public void Set(int value) => Volatile.Write(ref _current, value);
