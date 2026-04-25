@@ -18,9 +18,14 @@ public class AgentSettingsServiceTests
         await using var db = CreateDb();
         db.AgentSettings.Add(new AgentSettings
         {
-            Id = 1, Enabled = false, Model = "claude-sonnet-4-6",
+            Id = 1,
+            Enabled = false,
+            Model = "claude-sonnet-4-6",
             PreloadConfig = AgentPreloadConfig.Tier1,
-            DailyMessageCap = 30, HourlyMessageCap = 10, DailyTokenCap = 50000, RetentionDays = 90,
+            DailyMessageCap = 30,
+            HourlyMessageCap = 10,
+            DailyTokenCap = 50000,
+            RetentionDays = 90,
             UpdatedAt = Instant.FromUtc(2026, 4, 21, 0, 0)
         });
         await db.SaveChangesAsync();
