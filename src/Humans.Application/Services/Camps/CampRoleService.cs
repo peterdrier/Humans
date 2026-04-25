@@ -38,7 +38,7 @@ public sealed class CampRoleService : ICampRoleService
     }
 
     public Task<IReadOnlyList<CampRoleDefinition>> ListDefinitionsAsync(bool includeDeactivated, CancellationToken ct = default)
-        => throw new NotSupportedException();
+        => _repo.ListDefinitionsAsync(includeDeactivated, ct);
 
     public Task<CampRoleDefinition?> GetDefinitionByIdAsync(Guid id, CancellationToken ct = default)
         => throw new NotSupportedException();

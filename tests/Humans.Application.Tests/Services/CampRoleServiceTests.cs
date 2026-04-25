@@ -9,6 +9,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Camps;
+using Humans.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -59,6 +60,29 @@ public class CampRoleServiceTests : IDisposable
     {
         _dbContext.Dispose();
         GC.SuppressFinalize(this);
+    }
+
+    [HumansFact]
+    public async Task ListDefinitions_excludes_deactivated_by_default()
+    {
+        await SeedDefinitionAsync("Active Role");
+        await SeedDefinitionAsync("Old Role", deactivated: true);
+
+        var result = await _service.ListDefinitionsAsync(includeDeactivated: false);
+
+        result.Should().HaveCount(1);
+        result[0].Name.Should().Be("Active Role");
+    }
+
+    [HumansFact]
+    public async Task ListDefinitions_includes_deactivated_when_requested()
+    {
+        await SeedDefinitionAsync("Active Role");
+        await SeedDefinitionAsync("Old Role", deactivated: true);
+
+        var result = await _service.ListDefinitionsAsync(includeDeactivated: true);
+
+        result.Should().HaveCount(2);
     }
 
     private async Task<CampRoleDefinition> SeedDefinitionAsync(
