@@ -210,10 +210,6 @@ public class DashboardService : IDashboardService
                 participationStatus = participation?.Status;
             }
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
         catch (OperationCanceledException ex)
         {
             _logger.LogWarning("Dashboard participation load cancelled for user {UserId}: {Reason}", userId, ex.Message);
