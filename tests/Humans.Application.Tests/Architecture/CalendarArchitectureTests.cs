@@ -23,7 +23,7 @@ public class CalendarArchitectureTests
 {
     // ── CalendarService ──────────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void CalendarService_LivesInHumansApplicationServicesCalendarNamespace()
     {
         typeof(CalendarService).Namespace
@@ -31,7 +31,7 @@ public class CalendarArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void CalendarService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(CalendarService).GetConstructors().Single();
@@ -41,7 +41,7 @@ public class CalendarArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use ICalendarRepository instead (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void CalendarService_DoesNotImportMicrosoftEntityFrameworkCore()
     {
         // The Application project reference graph structurally prevents this —
@@ -55,7 +55,7 @@ public class CalendarArchitectureTests
                 because: "Humans.Application.csproj must not reference EF (design-rules §1)");
     }
 
-    [Fact]
+    [HumansFact]
     public void CalendarService_TakesRepository()
     {
         var ctor = typeof(CalendarService).GetConstructors().Single();
@@ -64,7 +64,7 @@ public class CalendarArchitectureTests
         paramTypes.Should().Contain(typeof(ICalendarRepository));
     }
 
-    [Fact]
+    [HumansFact]
     public void CalendarService_TakesTeamService()
     {
         var ctor = typeof(CalendarService).GetConstructors().Single();
@@ -74,7 +74,7 @@ public class CalendarArchitectureTests
             because: "owning-team display names are resolved via ITeamService cross-section (design-rules §6b, §9); CalendarEvent.OwningTeam nav is [Obsolete]");
     }
 
-    [Fact]
+    [HumansFact]
     public void CalendarService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(CalendarService).GetConstructors().Single();
@@ -88,7 +88,7 @@ public class CalendarArchitectureTests
 
     // ── ICalendarRepository ──────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void ICalendarRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(ICalendarRepository).Namespace
@@ -96,7 +96,7 @@ public class CalendarArchitectureTests
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
 
-    [Fact]
+    [HumansFact]
     public void CalendarRepository_IsSealed()
     {
         var repoType = typeof(CalendarRepository);
@@ -107,7 +107,7 @@ public class CalendarArchitectureTests
 
     // ── CalendarEvent ────────────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void CalendarEvent_OwningTeamNavIsObsolete()
     {
         var navProperty = typeof(Humans.Domain.Entities.CalendarEvent)
@@ -121,7 +121,7 @@ public class CalendarArchitectureTests
                 because: "CalendarEvent.OwningTeam is a cross-domain nav into the Teams section; resolve via ITeamService instead (design-rules §6c)");
     }
 
-    [Fact]
+    [HumansFact]
     public void CalendarEvent_KeepsOwningTeamIdForeignKey()
     {
         typeof(Humans.Domain.Entities.CalendarEvent)

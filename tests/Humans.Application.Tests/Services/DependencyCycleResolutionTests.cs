@@ -32,7 +32,7 @@ namespace Humans.Application.Tests.Services;
 
 public class DependencyCycleResolutionTests
 {
-    [Fact]
+    [HumansFact]
     public void IUserService_Resolves_WhenTeamServiceAndRoleAssignmentServiceAreRegistered()
     {
         var options = new DbContextOptionsBuilder<HumansDbContext>()
@@ -86,7 +86,7 @@ public class DependencyCycleResolutionTests
         resolve().Should().BeOfType<UserService>();
     }
 
-    [Fact]
+    [HumansFact]
     public void IUserService_And_IEmailService_Resolve_WhenRealEmailChainIsRegistered()
     {
         var options = new DbContextOptionsBuilder<HumansDbContext>()

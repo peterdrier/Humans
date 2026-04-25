@@ -39,7 +39,7 @@ public class TeamResourceArchitectureTests
 {
     // ── TeamResourceService ──────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void TeamResourceService_LivesInHumansApplicationServicesTeamsNamespace()
     {
         typeof(TeamResourceService).Namespace
@@ -47,7 +47,7 @@ public class TeamResourceArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void TeamResourceService_IsSealed()
     {
         typeof(TeamResourceService).IsSealed
@@ -55,7 +55,7 @@ public class TeamResourceArchitectureTests
                 because: "application services are terminal — extension happens via a caching decorator when warranted (§15d), not subclassing");
     }
 
-    [Fact]
+    [HumansFact]
     public void TeamResourceService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(TeamResourceService).GetConstructors().Single();
@@ -65,7 +65,7 @@ public class TeamResourceArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use IGoogleResourceRepository instead (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void TeamResourceService_TakesRepository()
     {
         var ctor = typeof(TeamResourceService).GetConstructors().Single();
@@ -75,7 +75,7 @@ public class TeamResourceArchitectureTests
             because: "Application services reach persistence through a repository interface (design-rules §3/§15b)");
     }
 
-    [Fact]
+    [HumansFact]
     public void TeamResourceService_TakesGoogleConnector()
     {
         var ctor = typeof(TeamResourceService).GetConstructors().Single();
@@ -85,7 +85,7 @@ public class TeamResourceArchitectureTests
             because: "Google API calls route through an application-layer connector so Humans.Application stays free of Google.Apis.* imports");
     }
 
-    [Fact]
+    [HumansFact]
     public void TeamResourceService_HasNoGoogleApisConstructorParameter()
     {
         var ctor = typeof(TeamResourceService).GetConstructors().Single();
@@ -97,7 +97,7 @@ public class TeamResourceArchitectureTests
             because: "the Application layer must not depend on Google.Apis.* — the ITeamResourceGoogleClient connector encapsulates every Google call");
     }
 
-    [Fact]
+    [HumansFact]
     public void TeamResourceService_AssemblyIsHumansApplication()
     {
         typeof(TeamResourceService).Assembly.GetName().Name
@@ -106,7 +106,7 @@ public class TeamResourceArchitectureTests
 
     // ── IGoogleResourceRepository ────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void IGoogleResourceRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(IGoogleResourceRepository).Namespace
@@ -114,7 +114,7 @@ public class TeamResourceArchitectureTests
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
 
-    [Fact]
+    [HumansFact]
     public void GoogleResourceRepository_IsSealed()
     {
         // Mirrors ProfileRepository — repository implementations are terminal; no subclass should
@@ -124,7 +124,7 @@ public class TeamResourceArchitectureTests
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
     }
 
-    [Fact]
+    [HumansFact]
     public void GoogleResourceRepository_AssemblyIsHumansInfrastructure()
     {
         typeof(GoogleResourceRepository).Assembly.GetName().Name
@@ -133,14 +133,14 @@ public class TeamResourceArchitectureTests
 
     // ── ITeamResourceGoogleClient ────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void ITeamResourceGoogleClient_LivesInApplicationInterfacesNamespace()
     {
         typeof(ITeamResourceGoogleClient).Namespace
             .Should().Be("Humans.Application.Interfaces.GoogleIntegration");
     }
 
-    [Fact]
+    [HumansFact]
     public void ITeamResourceGoogleClient_ExposesNoGoogleApisTypes()
     {
         var methods = typeof(ITeamResourceGoogleClient).GetMethods();

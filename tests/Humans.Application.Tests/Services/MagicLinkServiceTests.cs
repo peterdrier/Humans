@@ -84,7 +84,7 @@ public class MagicLinkServiceTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendMagicLinkAsync_ExistingUserByUserEmail_SendsLoginLink()
     {
         var userId = Guid.NewGuid();
@@ -115,7 +115,7 @@ public class MagicLinkServiceTests : IDisposable
         _urlBuilder.Received(1).BuildLoginUrl(userId, "/dashboard");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendMagicLinkAsync_ExistingUserByPrimaryEmail_SendsLoginLink()
     {
         var userId = Guid.NewGuid();
@@ -142,7 +142,7 @@ public class MagicLinkServiceTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendMagicLinkAsync_UnknownEmail_SendsSignupLink()
     {
         _userManager.FindByEmailAsync(Arg.Any<string>()).Returns((User?)null);
@@ -156,7 +156,7 @@ public class MagicLinkServiceTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendMagicLinkAsync_RateLimited_DoesNotSendEmail()
     {
         var userId = Guid.NewGuid();
@@ -182,7 +182,7 @@ public class MagicLinkServiceTests : IDisposable
             Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendMagicLinkAsync_SignupRateLimited_DoesNotSendEmail()
     {
         _userManager.FindByEmailAsync(Arg.Any<string>()).Returns((User?)null);
@@ -201,7 +201,7 @@ public class MagicLinkServiceTests : IDisposable
             Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendMagicLinkAsync_UnverifiedEmail_DoesNotMatch()
     {
         // The repository-level FindVerifiedEmailWithUserAsync already returns null
@@ -215,7 +215,7 @@ public class MagicLinkServiceTests : IDisposable
             Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public void VerifySignupToken_InvalidToken_ReturnsNull()
     {
         _urlBuilder.UnprotectSignupToken(Arg.Any<string>()).Returns((string?)null);
@@ -223,7 +223,7 @@ public class MagicLinkServiceTests : IDisposable
         result.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task VerifyLoginTokenAsync_NonexistentUser_ReturnsNull()
     {
         _userManager.FindByIdAsync(Arg.Any<string>()).Returns((User?)null);
@@ -233,7 +233,7 @@ public class MagicLinkServiceTests : IDisposable
         result.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task VerifyLoginTokenAsync_InvalidToken_ReturnsNull()
     {
         var userId = Guid.NewGuid();
@@ -246,7 +246,7 @@ public class MagicLinkServiceTests : IDisposable
         result.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task VerifyLoginTokenAsync_TokenAlreadyConsumed_ReturnsNull()
     {
         var userId = Guid.NewGuid();
@@ -260,7 +260,7 @@ public class MagicLinkServiceTests : IDisposable
         result.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task VerifyLoginTokenAsync_ValidToken_ReturnsUser()
     {
         var userId = Guid.NewGuid();
@@ -274,7 +274,7 @@ public class MagicLinkServiceTests : IDisposable
         result!.Id.Should().Be(userId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task FindUserByVerifiedEmailAsync_FindsByUserEmail()
     {
         var userId = Guid.NewGuid();
@@ -291,7 +291,7 @@ public class MagicLinkServiceTests : IDisposable
         result!.Id.Should().Be(userId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task FindUserByVerifiedEmailAsync_FallsBackToIdentityEmail()
     {
         var userId = Guid.NewGuid();

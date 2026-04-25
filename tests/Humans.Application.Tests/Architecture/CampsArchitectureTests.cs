@@ -21,7 +21,7 @@ public class CampsArchitectureTests
 {
     // ── CampService ──────────────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void CampService_LivesInHumansApplicationServicesCampsNamespace()
     {
         typeof(CampService).Namespace
@@ -29,7 +29,7 @@ public class CampsArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void CampService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(CampService).GetConstructors().Single();
@@ -39,7 +39,7 @@ public class CampsArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use ICampRepository instead (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void CampService_TakesRepository()
     {
         var ctor = typeof(CampService).GetConstructors().Single();
@@ -48,7 +48,7 @@ public class CampsArchitectureTests
         paramTypes.Should().Contain(typeof(ICampRepository));
     }
 
-    [Fact]
+    [HumansFact]
     public void CampService_TakesUserService()
     {
         var ctor = typeof(CampService).GetConstructors().Single();
@@ -58,7 +58,7 @@ public class CampsArchitectureTests
             because: "lead display names are resolved via IUserService cross-section (design-rules §6, §9); CampLead.User nav is stripped");
     }
 
-    [Fact]
+    [HumansFact]
     public void CampService_TakesImageStorage()
     {
         var ctor = typeof(CampService).GetConstructors().Single();
@@ -68,7 +68,7 @@ public class CampsArchitectureTests
             because: "filesystem I/O is delegated to an infrastructure abstraction — the Application project can't touch System.IO directly (design-rules §1)");
     }
 
-    [Fact]
+    [HumansFact]
     public void CampService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(CampService).GetConstructors().Single();
@@ -82,7 +82,7 @@ public class CampsArchitectureTests
 
     // ── ICampRepository ──────────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void ICampRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(ICampRepository).Namespace
@@ -90,7 +90,7 @@ public class CampsArchitectureTests
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
 
-    [Fact]
+    [HumansFact]
     public void CampRepository_IsSealed()
     {
         var repoType = typeof(CampRepository);
@@ -101,7 +101,7 @@ public class CampsArchitectureTests
 
     // ── CampLead ─────────────────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void CampLead_HasNoUserNavigationProperty()
     {
         typeof(Humans.Domain.Entities.CampLead)
@@ -110,7 +110,7 @@ public class CampsArchitectureTests
                 because: "CampLead.User is a cross-domain nav into the Users section; resolve via IUserService instead (design-rules §6c)");
     }
 
-    [Fact]
+    [HumansFact]
     public void CampLead_KeepsUserIdForeignKey()
     {
         typeof(Humans.Domain.Entities.CampLead)

@@ -26,7 +26,7 @@ public class AuthArchitectureTests
 {
     // ── RoleAssignmentService ────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void RoleAssignmentService_LivesInHumansApplicationServicesAuthNamespace()
     {
         typeof(RoleAssignmentService).Namespace
@@ -34,7 +34,7 @@ public class AuthArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void RoleAssignmentService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(RoleAssignmentService).GetConstructors().Single();
@@ -44,7 +44,7 @@ public class AuthArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use IRoleAssignmentRepository instead (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void RoleAssignmentService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(RoleAssignmentService).GetConstructors().Single();
@@ -56,7 +56,7 @@ public class AuthArchitectureTests
             because: "Auth has no canonical domain cache; nav-badge and role-assignment-claims invalidation route through INavBadgeCacheInvalidator / IRoleAssignmentClaimsCacheInvalidator, not IMemoryCache directly (design-rules §5)");
     }
 
-    [Fact]
+    [HumansFact]
     public void RoleAssignmentService_TakesRepository()
     {
         var ctor = typeof(RoleAssignmentService).GetConstructors().Single();
@@ -65,7 +65,7 @@ public class AuthArchitectureTests
         paramTypes.Should().Contain(typeof(IRoleAssignmentRepository));
     }
 
-    [Fact]
+    [HumansFact]
     public void RoleAssignmentService_TakesUserServiceForNavStitching()
     {
         var ctor = typeof(RoleAssignmentService).GetConstructors().Single();
@@ -75,7 +75,7 @@ public class AuthArchitectureTests
             because: "RoleAssignmentService resolves assignee / assigner display names via IUserService.GetByIdsAsync and stitches them onto the [Obsolete] cross-domain navs in memory (design-rules §6b)");
     }
 
-    [Fact]
+    [HumansFact]
     public void RoleAssignmentService_TakesClaimsInvalidator()
     {
         var ctor = typeof(RoleAssignmentService).GetConstructors().Single();
@@ -85,7 +85,7 @@ public class AuthArchitectureTests
             because: "RoleAssignmentService must invalidate the per-user claims cache after Assign/End/Revoke — the dependency proves the wire is in place so the RoleAssignmentClaimsTransformation 60-second cached snapshot does not serve stale claims");
     }
 
-    [Fact]
+    [HumansFact]
     public void RoleAssignmentService_TakesNavBadgeInvalidator()
     {
         var ctor = typeof(RoleAssignmentService).GetConstructors().Single();
@@ -95,7 +95,7 @@ public class AuthArchitectureTests
             because: "Assign/End affect nav-badge counts (active role totals), so the service invalidates the nav-badge cache after writes");
     }
 
-    [Fact]
+    [HumansFact]
     public void RoleAssignmentService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(RoleAssignmentService).GetConstructors().Single();
@@ -109,7 +109,7 @@ public class AuthArchitectureTests
 
     // ── IRoleAssignmentRepository ────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void IRoleAssignmentRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(IRoleAssignmentRepository).Namespace
@@ -117,7 +117,7 @@ public class AuthArchitectureTests
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
 
-    [Fact]
+    [HumansFact]
     public void RoleAssignmentRepository_IsSealed()
     {
         var repoType = typeof(RoleAssignmentRepository);
@@ -128,7 +128,7 @@ public class AuthArchitectureTests
 
     // ── MagicLinkService ─────────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void MagicLinkService_LivesInHumansApplicationServicesAuthNamespace()
     {
         typeof(MagicLinkService).Namespace
@@ -136,7 +136,7 @@ public class AuthArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void MagicLinkService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(MagicLinkService).GetConstructors().Single();
@@ -146,7 +146,7 @@ public class AuthArchitectureTests
                 because: "MagicLinkService owns no tables — verified-email lookup routes through IUserEmailService.FindVerifiedEmailWithUserAsync instead of direct DbContext queries");
     }
 
-    [Fact]
+    [HumansFact]
     public void MagicLinkService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(MagicLinkService).GetConstructors().Single();
@@ -158,7 +158,7 @@ public class AuthArchitectureTests
             because: "MagicLink's token-replay and signup-cooldown state routes through IMagicLinkRateLimiter, an Application-layer abstraction (same pattern as IUnsubscribeTokenProvider)");
     }
 
-    [Fact]
+    [HumansFact]
     public void MagicLinkService_HasNoEmailSettingsOrDataProtectionConstructorParameter()
     {
         var ctor = typeof(MagicLinkService).GetConstructors().Single();
@@ -173,7 +173,7 @@ public class AuthArchitectureTests
             because: "Data-protection and URL construction live behind IMagicLinkUrlBuilder in Infrastructure so MagicLinkService stays free of Infrastructure config (mirrors CommunicationPreferenceService + IUnsubscribeTokenProvider)");
     }
 
-    [Fact]
+    [HumansFact]
     public void MagicLinkService_TakesUrlBuilderAndRateLimiter()
     {
         var ctor = typeof(MagicLinkService).GetConstructors().Single();

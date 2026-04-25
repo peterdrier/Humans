@@ -34,7 +34,7 @@ public sealed class BudgetAuthorizationHandlerTests
 
     // --- Admin override ---
 
-    [Fact]
+    [HumansFact]
     public async Task Admin_CanEditAnyCategory()
     {
         var user = CreateUserWithRoles(RoleNames.Admin);
@@ -45,7 +45,7 @@ public sealed class BudgetAuthorizationHandlerTests
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task Admin_CanEditRestrictedGroupCategory()
     {
         var user = CreateUserWithRoles(RoleNames.Admin);
@@ -56,7 +56,7 @@ public sealed class BudgetAuthorizationHandlerTests
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task Admin_CanEditDeletedYearCategory()
     {
         var user = CreateUserWithRoles(RoleNames.Admin);
@@ -69,7 +69,7 @@ public sealed class BudgetAuthorizationHandlerTests
 
     // --- FinanceAdmin override ---
 
-    [Fact]
+    [HumansFact]
     public async Task FinanceAdmin_CanEditAnyCategory()
     {
         var user = CreateUserWithRoles(RoleNames.FinanceAdmin);
@@ -80,7 +80,7 @@ public sealed class BudgetAuthorizationHandlerTests
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task FinanceAdmin_CanEditRestrictedGroupCategory()
     {
         var user = CreateUserWithRoles(RoleNames.FinanceAdmin);
@@ -91,7 +91,7 @@ public sealed class BudgetAuthorizationHandlerTests
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task FinanceAdmin_CanEditCategoryWithNoTeam()
     {
         var user = CreateUserWithRoles(RoleNames.FinanceAdmin);
@@ -104,7 +104,7 @@ public sealed class BudgetAuthorizationHandlerTests
 
     // --- Department coordinator access ---
 
-    [Fact]
+    [HumansFact]
     public async Task Coordinator_CanEditOwnDepartmentCategory()
     {
         var user = CreateUser(UserId);
@@ -115,7 +115,7 @@ public sealed class BudgetAuthorizationHandlerTests
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task Coordinator_CannotEditOtherDepartmentCategory()
     {
         var user = CreateUser(UserId);
@@ -128,7 +128,7 @@ public sealed class BudgetAuthorizationHandlerTests
 
     // --- Denial cases ---
 
-    [Fact]
+    [HumansFact]
     public async Task Coordinator_DeniedOnRestrictedGroup()
     {
         var user = CreateUser(UserId);
@@ -139,7 +139,7 @@ public sealed class BudgetAuthorizationHandlerTests
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task Coordinator_DeniedOnDeletedYear()
     {
         var user = CreateUser(UserId);
@@ -150,7 +150,7 @@ public sealed class BudgetAuthorizationHandlerTests
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task Coordinator_DeniedOnCategoryWithNoTeam()
     {
         var user = CreateUser(UserId);
@@ -161,7 +161,7 @@ public sealed class BudgetAuthorizationHandlerTests
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RegularUser_DeniedOnAnyCategory()
     {
         var user = CreateUser(Guid.NewGuid());
@@ -176,7 +176,7 @@ public sealed class BudgetAuthorizationHandlerTests
 
     // --- Edge cases ---
 
-    [Fact]
+    [HumansFact]
     public async Task UnauthenticatedUser_Denied()
     {
         var user = new ClaimsPrincipal(new ClaimsIdentity());
@@ -187,7 +187,7 @@ public sealed class BudgetAuthorizationHandlerTests
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UserWithInvalidIdClaim_Denied()
     {
         var claims = new List<Claim>
@@ -203,7 +203,7 @@ public sealed class BudgetAuthorizationHandlerTests
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task NullBudgetGroup_CoordinatorStillAllowed()
     {
         // Category with a team but no BudgetGroup navigation loaded

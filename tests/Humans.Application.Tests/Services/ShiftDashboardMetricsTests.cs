@@ -64,7 +64,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_EmptyDatabase_ReturnsZeroCounters()
     {
         var es = await SeedEventAsync();
@@ -80,7 +80,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.Departments.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_MinVolunteersMinusOne_NotFilled()
     {
         var es = await SeedEventAsync();
@@ -95,7 +95,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.FilledShifts.Should().Be(0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_MinVolunteersExactly_Filled()
     {
         var es = await SeedEventAsync();
@@ -109,7 +109,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.FilledShifts.Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_PendingSignupsDoNotCountAsFilled()
     {
         var es = await SeedEventAsync();
@@ -123,7 +123,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.FilledShifts.Should().Be(0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_AdminOnlyAndHiddenRotaShiftsExcluded()
     {
         var es = await SeedEventAsync();
@@ -139,7 +139,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.TotalShifts.Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_TicketHolderAndEngagementCounters()
     {
         var es = await SeedEventAsync();
@@ -170,7 +170,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.NonTicketSignups.Should().Be(1); // only D
     }
 
-    [Fact]
+    [HumansFact(Timeout = 10000)]
     public async Task GetDashboardOverview_StalePending_ThresholdExact3Days_NotStale()
     {
         var es = await SeedEventAsync();
@@ -196,7 +196,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.StalePendingCount.Should().Be(0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_StalePending_JustPastThreshold_CountsAsStale()
     {
         var es = await SeedEventAsync();
@@ -222,7 +222,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.StalePendingCount.Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_NoSubteamRotas_DepartmentSubgroupsEmpty()
     {
         var es = await SeedEventAsync();
@@ -236,7 +236,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.Departments[0].Subgroups.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_WithSubteamRotas_ProducesSubgroupsWithDirectPinned()
     {
         var es = await SeedEventAsync();
@@ -286,7 +286,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         infraRow.Subgroups.Sum(s => s.Event.Filled).Should().Be(infraRow.Event.Filled);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_DepartmentsSortedByLowestFillPercentFirst()
     {
         var es = await SeedEventAsync();
@@ -309,7 +309,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.Departments[1].DepartmentName.Should().Be("Gate");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCoordinatorActivity_TeamsWithoutPendingExcluded()
     {
         var es = await SeedEventAsync();
@@ -338,7 +338,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result[0].Coordinators[0].DisplayName.Should().Be("coord");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCoordinatorActivity_RangeSignup_CountsAsOneBlockNotOneRowPerDay()
     {
         var es = await SeedEventAsync();
@@ -375,7 +375,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result[0].PendingSignupCount.Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCoordinatorActivity_SortsByOldestLoginFirst()
     {
         var es = await SeedEventAsync();
@@ -403,7 +403,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result[1].TeamName.Should().Be("A");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardTrends_SevenDayWindow_ReturnsSevenPointsEndingToday()
     {
         var es = await SeedEventAsync();
@@ -417,7 +417,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.Should().OnlyContain(p => p.NewSignups == 0 && p.NewTicketSales == 0 && p.DistinctLogins == 0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardTrends_CountsSignupsInToday()
     {
         var es = await SeedEventAsync();

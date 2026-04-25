@@ -24,7 +24,7 @@ namespace Humans.Application.Tests.Architecture;
 /// </summary>
 public class TeamPageArchitectureTests
 {
-    [Fact]
+    [HumansFact]
     public void TeamPageService_LivesInHumansApplicationServicesTeamsNamespace()
     {
         typeof(TeamPageService).Namespace
@@ -32,14 +32,14 @@ public class TeamPageArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void TeamPageService_ImplementsITeamPageService()
     {
         typeof(ITeamPageService).IsAssignableFrom(typeof(TeamPageService))
             .Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public void TeamPageService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(TeamPageService).GetConstructors().Single();
@@ -49,7 +49,7 @@ public class TeamPageArchitectureTests
                 because: "services in Humans.Application must never take DbContext — cross-domain reads route through sibling service interfaces (design-rules §2c, §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void TeamPageService_DependsOnlyOnSiblingServiceInterfaces()
     {
         var ctor = typeof(TeamPageService).GetConstructors().Single();
@@ -63,7 +63,7 @@ public class TeamPageArchitectureTests
             because: "user display-name lookups route through IUserService instead of a direct AspNetUsers query (design-rules §2c)");
     }
 
-    [Fact]
+    [HumansFact]
     public void TeamPageService_HasNoRepositoryDependencies()
     {
         var ctor = typeof(TeamPageService).GetConstructors().Single();
@@ -75,7 +75,7 @@ public class TeamPageArchitectureTests
             because: "TeamPageService owns no tables — it is a composer that stitches sibling services (design-rules §2c)");
     }
 
-    [Fact]
+    [HumansFact]
     public void TeamPageService_IsSealed()
     {
         typeof(TeamPageService).IsSealed

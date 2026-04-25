@@ -31,7 +31,7 @@ public class AuditLogArchitectureTests
 {
     // ── AuditLogService ──────────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void AuditLogService_LivesInHumansApplicationServicesAuditLogNamespace()
     {
         typeof(AuditLogService).Namespace
@@ -39,7 +39,7 @@ public class AuditLogArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void AuditLogService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(AuditLogService).GetConstructors().Single();
@@ -49,7 +49,7 @@ public class AuditLogArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use IAuditLogRepository instead (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void AuditLogService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(AuditLogService).GetConstructors().Single();
@@ -61,7 +61,7 @@ public class AuditLogArchitectureTests
             because: "canonical Audit Log data is not IMemoryCache-backed; §15 Option A applies (no caching decorator warranted)");
     }
 
-    [Fact]
+    [HumansFact]
     public void AuditLogService_TakesRepository()
     {
         var ctor = typeof(AuditLogService).GetConstructors().Single();
@@ -70,7 +70,7 @@ public class AuditLogArchitectureTests
         paramTypes.Should().Contain(typeof(IAuditLogRepository));
     }
 
-    [Fact]
+    [HumansFact]
     public void AuditLogService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(AuditLogService).GetConstructors().Single();
@@ -84,7 +84,7 @@ public class AuditLogArchitectureTests
 
     // ── IAuditLogRepository ──────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void IAuditLogRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(IAuditLogRepository).Namespace
@@ -92,7 +92,7 @@ public class AuditLogArchitectureTests
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
 
-    [Fact]
+    [HumansFact]
     public void AuditLogRepository_IsSealed()
     {
         var repoType = typeof(AuditLogRepository);
@@ -101,7 +101,7 @@ public class AuditLogArchitectureTests
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
     }
 
-    [Fact]
+    [HumansFact]
     public void IAuditLogRepository_HasNoUpdateOrDeleteMethods()
     {
         // audit_log is append-only per design-rules §12.

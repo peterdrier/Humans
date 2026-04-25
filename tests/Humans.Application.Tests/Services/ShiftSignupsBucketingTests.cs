@@ -32,7 +32,7 @@ public class ShiftSignupsBucketingTests
 
     private readonly Guid _userId = Guid.NewGuid();
 
-    [Fact]
+    [HumansFact]
     public async Task InProgressConfirmedShift_BucketedAsUpcoming()
     {
         // Shift started at 08:00 (4h ago), ends at 16:00 (4h from now) → still in progress
@@ -43,7 +43,7 @@ public class ShiftSignupsBucketingTests
         model.Past.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task EndedConfirmedShift_BucketedAsPast()
     {
         // Shift started at 06:00, ended at 10:00 (2h ago) → past
@@ -54,7 +54,7 @@ public class ShiftSignupsBucketingTests
         model.Upcoming.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task FutureConfirmedShift_BucketedAsUpcoming()
     {
         // Shift starts tomorrow at 08:00 → future
@@ -65,7 +65,7 @@ public class ShiftSignupsBucketingTests
         model.Past.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task PendingShift_BucketedAsPending()
     {
         var signup = MakeSignup(SignupStatus.Pending, dayOffset: 1, startHour: 8, durationHours: 4);
@@ -76,7 +76,7 @@ public class ShiftSignupsBucketingTests
         model.Past.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task NoShowShift_BucketedAsPast()
     {
         var signup = MakeSignup(SignupStatus.NoShow, dayOffset: 0, startHour: 6, durationHours: 4);
@@ -85,7 +85,7 @@ public class ShiftSignupsBucketingTests
         model.Past.Should().HaveCount(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task BailedShift_BucketedAsPast()
     {
         var signup = MakeSignup(SignupStatus.Bailed, dayOffset: 0, startHour: 6, durationHours: 4);
@@ -94,7 +94,7 @@ public class ShiftSignupsBucketingTests
         model.Past.Should().HaveCount(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ServiceError_ReturnsEmptyModel()
     {
         var signupService = Substitute.For<IShiftSignupService>();

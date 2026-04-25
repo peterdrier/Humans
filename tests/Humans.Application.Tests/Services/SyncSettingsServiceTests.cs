@@ -39,7 +39,7 @@ public class SyncSettingsServiceTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetAllAsync_ReturnsAllSettings()
     {
         SeedSettings(3);
@@ -50,7 +50,7 @@ public class SyncSettingsServiceTests : IDisposable
         result.Should().HaveCount(3);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetModeAsync_ReturnsNone_ByDefault()
     {
         _seedContext.SyncServiceSettings.Add(new SyncServiceSettings
@@ -67,7 +67,7 @@ public class SyncSettingsServiceTests : IDisposable
         result.Should().Be(SyncMode.None);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UpdateModeAsync_ChangesModeAndTracksActor()
     {
         var actorId = Guid.NewGuid();
@@ -90,7 +90,7 @@ public class SyncSettingsServiceTests : IDisposable
         updated.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UpdateModeAsync_Throws_WhenServiceTypeHasNoRow()
     {
         var actorId = Guid.NewGuid();
@@ -102,7 +102,7 @@ public class SyncSettingsServiceTests : IDisposable
             .WithMessage("*Discord*");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetModeAsync_ReturnsNone_WhenServiceTypeNotFound()
     {
         // No settings seeded at all

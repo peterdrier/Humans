@@ -43,7 +43,7 @@ public sealed class TicketRepositoryTests : IDisposable
 
     // ── GetSyncStateAsync / PersistSyncStateAsync ────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public async Task GetSyncStateAsync_ReturnsSingletonRow()
     {
         var state = await _repo.GetSyncStateAsync();
@@ -53,7 +53,7 @@ public sealed class TicketRepositoryTests : IDisposable
         state.SyncStatus.Should().Be(TicketSyncStatus.Idle);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task PersistSyncStateAsync_UpdatesExistingSingleton()
     {
         var state = (await _repo.GetSyncStateAsync())!;
@@ -68,7 +68,7 @@ public sealed class TicketRepositoryTests : IDisposable
         reloaded.LastError.Should().Be("boom");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ResetSyncStateLastSyncAsync_ClearsLastSyncAt()
     {
         var state = (await _repo.GetSyncStateAsync())!;
@@ -83,7 +83,7 @@ public sealed class TicketRepositoryTests : IDisposable
 
     // ── UpsertOrdersAsync ────────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact(Timeout = 10000)]
     public async Task UpsertOrdersAsync_InsertsNewRowsAndUpdatesExisting()
     {
         var existing = new TicketOrder
@@ -142,7 +142,7 @@ public sealed class TicketRepositoryTests : IDisposable
 
     // ── GetAllUserEmailLookupEntriesAsync ────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public async Task GetAllUserEmailLookupEntriesAsync_ReturnsOneEntryPerRow()
     {
         var user = new User
@@ -184,7 +184,7 @@ public sealed class TicketRepositoryTests : IDisposable
 
     // ── GetMatchedAttendeesForEventAsync ─────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public async Task GetMatchedAttendeesForEventAsync_FiltersToEventAndMatchedOnly()
     {
         var orderId = Guid.NewGuid();

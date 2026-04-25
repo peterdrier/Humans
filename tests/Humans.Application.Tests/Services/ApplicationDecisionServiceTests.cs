@@ -84,7 +84,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
     // --- Submit flow ---
 
-    [Fact]
+    [HumansFact]
     public async Task SubmitAsync_ValidColaborador_CreatesApplication()
     {
         var userId = Guid.NewGuid();
@@ -101,7 +101,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         app.Status.Should().Be(ApplicationStatus.Submitted);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SubmitAsync_Asociado_IncludesExtraFields()
     {
         var userId = Guid.NewGuid();
@@ -115,7 +115,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         app.RoleUnderstanding.Should().Be("I understand the role");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SubmitAsync_Colaborador_ExcludesAsociadoFields()
     {
         var userId = Guid.NewGuid();
@@ -129,7 +129,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         app.RoleUnderstanding.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SubmitAsync_AlreadyPending_ReturnsError()
     {
         var userId = Guid.NewGuid();
@@ -143,7 +143,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         result.ErrorKey.Should().Be("AlreadyPending");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SubmitAsync_InvalidatesNavBadgeAndNotificationMeter()
     {
         var userId = Guid.NewGuid();
@@ -159,7 +159,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
     // --- Withdraw flow ---
 
-    [Fact]
+    [HumansFact]
     public async Task WithdrawAsync_SubmittedApplication_SetsWithdrawn()
     {
         var userId = Guid.NewGuid();
@@ -173,7 +173,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _metrics.Received().RecordApplicationProcessed("withdrawn");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task WithdrawAsync_NotSubmitted_ReturnsError()
     {
         var userId = Guid.NewGuid();
@@ -187,7 +187,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         result.ErrorKey.Should().Be("CannotWithdraw");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task WithdrawAsync_WrongUser_ReturnsNotFound()
     {
         var userId = Guid.NewGuid();
@@ -201,7 +201,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
     // --- Approve flow ---
 
-    [Fact]
+    [HumansFact]
     public async Task ApproveAsync_SubmittedApplication_SetsApproved()
     {
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
@@ -213,7 +213,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         updated.Status.Should().Be(ApplicationStatus.Approved);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ApproveAsync_SetsTermExpiry()
     {
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
@@ -226,7 +226,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         updated.TermExpiresAt.Should().Be(expectedExpiry);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ApproveAsync_UpdatesProfileTierViaProfileService()
     {
         var userId = Guid.NewGuid();
@@ -238,7 +238,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             userId, MembershipTier.Asociado, Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ApproveAsync_DeletesBoardVotes()
     {
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
@@ -258,7 +258,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         votes.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ApproveAsync_SyncsColaboradorTeam()
     {
         var userId = Guid.NewGuid();
@@ -270,7 +270,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         await _syncJob.DidNotReceive().SyncAsociadosMembershipForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ApproveAsync_SyncsAsociadoTeam()
     {
         var userId = Guid.NewGuid();
@@ -282,7 +282,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         await _syncJob.DidNotReceive().SyncColaboradorsMembershipForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ApproveAsync_InvalidatesNavBadgeAndNotificationMeter()
     {
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
@@ -293,7 +293,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _notificationMeter.Received().Invalidate();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ApproveAsync_InvalidatesEveryVoterBadge()
     {
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
@@ -324,7 +324,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _votingBadge.Received().Invalidate(voter2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ApproveAsync_NotSubmitted_ReturnsError()
     {
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
@@ -337,7 +337,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         result.ErrorKey.Should().Be("NotSubmitted");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ApproveAsync_NotFound_ReturnsError()
     {
         var result = await _service.ApproveAsync(Guid.NewGuid(), Guid.NewGuid(), null, null);
@@ -346,7 +346,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         result.ErrorKey.Should().Be("NotFound");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ApproveAsync_EmailsApplicantViaUserServiceLookup()
     {
         var userId = Guid.NewGuid();
@@ -372,7 +372,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
     // --- Reject flow ---
 
-    [Fact]
+    [HumansFact]
     public async Task RejectAsync_SubmittedApplication_SetsRejected()
     {
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
@@ -385,7 +385,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         updated.DecisionNote.Should().Be("Not ready");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RejectAsync_DeletesBoardVotes()
     {
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
@@ -405,7 +405,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         votes.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RejectAsync_DoesNotUpdateProfileTier()
     {
         var userId = Guid.NewGuid();
@@ -417,7 +417,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             Arg.Any<Guid>(), Arg.Any<MembershipTier>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RejectAsync_DoesNotSyncTeams()
     {
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
@@ -428,7 +428,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         await _syncJob.DidNotReceive().SyncAsociadosMembershipForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RejectAsync_NotSubmitted_ReturnsError()
     {
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
@@ -443,7 +443,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
     // --- GetUserApplicationsAsync ---
 
-    [Fact]
+    [HumansFact]
     public async Task GetUserApplicationsAsync_ReturnsAllStatusesOrderedBySubmittedAtDesc()
     {
         var userId = Guid.NewGuid();
@@ -487,7 +487,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         result[2].Id.Should().Be(app1.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetUserApplicationsAsync_ExcludesOtherUsers()
     {
         var userA = Guid.NewGuid();
@@ -501,7 +501,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         result[0].UserId.Should().Be(userA);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetUserApplicationsAsync_EmptyForNoApps()
     {
         var result = await _service.GetUserApplicationsAsync(Guid.NewGuid());
@@ -511,7 +511,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
     // --- GetUserApplicationDetailAsync ---
 
-    [Fact]
+    [HumansFact]
     public async Task GetUserApplicationDetailAsync_ReturnsStitchedUserDetailDto()
     {
         var userId = Guid.NewGuid();
@@ -541,7 +541,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         result.History[0].ChangedByDisplayName.Should().Be("Reviewer");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetUserApplicationDetailAsync_WrongUser_ReturnsNull()
     {
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
@@ -551,7 +551,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         result.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetUserApplicationDetailAsync_NonExistent_ReturnsNull()
     {
         var result = await _service.GetUserApplicationDetailAsync(Guid.NewGuid(), Guid.NewGuid());
@@ -559,7 +559,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         result.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetUserApplicationDetailAsync_IncludesStateHistory()
     {
         var userId = Guid.NewGuid();
@@ -576,7 +576,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
     // --- GetFilteredApplicationsAsync ---
 
-    [Fact]
+    [HumansFact]
     public async Task GetFilteredApplicationsAsync_DefaultsToSubmitted()
     {
         var submittedApp = await SeedSubmittedApplicationAsync(Guid.NewGuid());
@@ -592,7 +592,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         items[0].Status.Should().Be(ApplicationStatus.Submitted);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFilteredApplicationsAsync_FiltersByStatus()
     {
         await SeedSubmittedApplicationAsync(Guid.NewGuid());
@@ -607,7 +607,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         items[0].Id.Should().Be(approvedApp.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFilteredApplicationsAsync_FiltersByTier()
     {
         await SeedSubmittedApplicationAsync(Guid.NewGuid(), MembershipTier.Colaborador);
@@ -619,7 +619,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         items[0].MembershipTier.Should().Be(MembershipTier.Asociado);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFilteredApplicationsAsync_Pagination()
     {
         for (var i = 0; i < 3; i++)
@@ -631,7 +631,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         items.Should().HaveCount(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFilteredApplicationsAsync_StitchesApplicantInfo()
     {
         var userId = Guid.NewGuid();
@@ -658,7 +658,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
     // --- GetApplicationDetailAsync (admin) ---
 
-    [Fact]
+    [HumansFact]
     public async Task GetApplicationDetailAsync_ReturnsStitchedAdminDetailDto()
     {
         var applicantId = Guid.NewGuid();
@@ -703,7 +703,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         result.History.Should().NotBeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetApplicationDetailAsync_NonExistent_ReturnsNull()
     {
         var result = await _service.GetApplicationDetailAsync(Guid.NewGuid());
@@ -711,7 +711,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         result.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetApplicationDetailAsync_NoOwnershipFilter()
     {
         var userId = Guid.NewGuid();

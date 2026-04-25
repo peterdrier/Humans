@@ -27,7 +27,7 @@ public class ProfileArchitectureTests
 {
     // ── ProfileService ────────────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void ProfileService_LivesInHumansApplicationServicesProfileNamespace()
     {
         typeof(ProfileService).Namespace
@@ -35,7 +35,7 @@ public class ProfileArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void ProfileService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(ProfileService).GetConstructors().Single();
@@ -45,7 +45,7 @@ public class ProfileArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use IProfileRepository instead (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void ProfileService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(ProfileService).GetConstructors().Single();
@@ -57,7 +57,7 @@ public class ProfileArchitectureTests
             because: "caching is the decorator's concern (design-rules §5), not the service's");
     }
 
-    [Fact]
+    [HumansFact]
     public void ProfileService_TakesRepository()
     {
         var ctor = typeof(ProfileService).GetConstructors().Single();
@@ -66,7 +66,7 @@ public class ProfileArchitectureTests
         paramTypes.Should().Contain(typeof(IProfileRepository));
     }
 
-    [Fact]
+    [HumansFact]
     public void ProfileService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(ProfileService).GetConstructors().Single();
@@ -80,7 +80,7 @@ public class ProfileArchitectureTests
 
     // ── IProfileRepository ────────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void IProfileRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(IProfileRepository).Namespace
@@ -90,7 +90,7 @@ public class ProfileArchitectureTests
 
     // ── CachingProfileService ─────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void CachingProfileService_LivesInHumansInfrastructureServicesProfilesNamespace()
     {
         typeof(CachingProfileService).Namespace
@@ -98,7 +98,7 @@ public class ProfileArchitectureTests
                 because: "caching decorators live in Humans.Infrastructure.Services.{Section} alongside the IMemoryCache-backed invalidators they wrap (design-rules §5)");
     }
 
-    [Fact]
+    [HumansFact]
     public void CachingProfileService_ImplementsBothInterfaces()
     {
         typeof(CachingProfileService).Should().BeAssignableTo<IProfileService>();
@@ -107,7 +107,7 @@ public class ProfileArchitectureTests
 
     // ── ContactFieldService ───────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void ContactFieldService_LivesInHumansApplicationServicesProfileNamespace()
     {
         typeof(ContactFieldService).Namespace
@@ -115,7 +115,7 @@ public class ProfileArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void ContactFieldService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(ContactFieldService).GetConstructors().Single();
@@ -125,7 +125,7 @@ public class ProfileArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use IContactFieldRepository instead (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void ContactFieldService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(ContactFieldService).GetConstructors().Single();
@@ -139,7 +139,7 @@ public class ProfileArchitectureTests
 
     // ── UserEmailService ──────────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void UserEmailService_LivesInHumansApplicationServicesProfileNamespace()
     {
         typeof(UserEmailService).Namespace
@@ -147,7 +147,7 @@ public class ProfileArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void UserEmailService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(UserEmailService).GetConstructors().Single();
@@ -157,7 +157,7 @@ public class ProfileArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use IUserEmailRepository instead (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void UserEmailService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(UserEmailService).GetConstructors().Single();
@@ -171,7 +171,7 @@ public class ProfileArchitectureTests
 
     // ── CommunicationPreferenceService ────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void CommunicationPreferenceService_LivesInHumansApplicationServicesProfileNamespace()
     {
         typeof(CommunicationPreferenceService).Namespace
@@ -179,7 +179,7 @@ public class ProfileArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void CommunicationPreferenceService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(CommunicationPreferenceService).GetConstructors().Single();
@@ -189,7 +189,7 @@ public class ProfileArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use ICommunicationPreferenceRepository instead (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void CommunicationPreferenceService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(CommunicationPreferenceService).GetConstructors().Single();
@@ -203,7 +203,7 @@ public class ProfileArchitectureTests
 
     // ── AccountMergeService (issue #557 — Profile §15 Part 1) ─────────────────
 
-    [Fact]
+    [HumansFact]
     public void AccountMergeService_LivesInHumansApplicationServicesProfileNamespace()
     {
         typeof(AccountMergeService).Namespace
@@ -211,7 +211,7 @@ public class ProfileArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void AccountMergeService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(AccountMergeService).GetConstructors().Single();
@@ -221,7 +221,7 @@ public class ProfileArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use IAccountMergeRepository / IUserRepository / IUserEmailRepository / IProfileRepository instead (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void AccountMergeService_TakesAccountMergeRepository()
     {
         var ctor = typeof(AccountMergeService).GetConstructors().Single();
@@ -232,7 +232,7 @@ public class ProfileArchitectureTests
 
     // ── DuplicateAccountService (issue #557 — Profile §15 Part 1) ─────────────
 
-    [Fact]
+    [HumansFact]
     public void DuplicateAccountService_LivesInHumansApplicationServicesProfileNamespace()
     {
         typeof(DuplicateAccountService).Namespace
@@ -240,7 +240,7 @@ public class ProfileArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void DuplicateAccountService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(DuplicateAccountService).GetConstructors().Single();
@@ -252,7 +252,7 @@ public class ProfileArchitectureTests
 
     // ── IAccountMergeRepository ───────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void IAccountMergeRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(IAccountMergeRepository).Namespace

@@ -18,7 +18,7 @@ namespace Humans.Application.Tests.Infrastructure.GoogleWorkspace;
 /// </summary>
 public class GoogleWorkspaceSyncBridgeDependencyInjectionTests
 {
-    [Fact]
+    [HumansFact]
     public void Stubs_BindToEveryBridgeInterface()
     {
         var services = new ServiceCollection();
@@ -42,7 +42,7 @@ public class GoogleWorkspaceSyncBridgeDependencyInjectionTests
             .Should().BeOfType<StubGoogleDirectoryClient>();
     }
 
-    [Fact]
+    [HumansFact]
     public void RealImplementations_BindToEveryBridgeInterface()
     {
         // Real implementations don't talk to Google during construction —
@@ -75,7 +75,7 @@ public class GoogleWorkspaceSyncBridgeDependencyInjectionTests
             .Should().BeOfType<GoogleDirectoryClient>();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task StubClients_IsolatedInstances_HaveIndependentState()
     {
         // Each test gets a fresh stub so state from one test doesn't bleed

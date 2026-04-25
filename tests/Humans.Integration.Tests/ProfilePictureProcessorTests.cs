@@ -17,7 +17,7 @@ public class ProfilePictureProcessorTests
         return ms.ToArray();
     }
 
-    [Fact]
+    [HumansFact]
     public void ResizeProfilePicture_ProducesJpeg_ForHeicInput()
     {
         var heicData = LoadTestHeic();
@@ -33,7 +33,7 @@ public class ProfilePictureProcessorTests
         Assert.Equal(0xD8, result.Value.Data[1]);
     }
 
-    [Fact]
+    [HumansFact]
     public void ResizeProfilePicture_ResizesLargeHeic_ToMaxDimension()
     {
         var heicData = LoadTestHeic();
@@ -47,7 +47,7 @@ public class ProfilePictureProcessorTests
         Assert.True(longSide <= 1000, $"Long side {longSide} exceeds 1000px limit");
     }
 
-    [Fact]
+    [HumansFact]
     public void ResizeProfilePicture_ReturnsNull_ForCorruptData()
     {
         var corruptData = new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 };
@@ -57,7 +57,7 @@ public class ProfilePictureProcessorTests
         Assert.Null(result);
     }
 
-    [Fact]
+    [HumansFact]
     public void ResizeProfilePicture_StillWorksForJpeg()
     {
         using var testImage = new MagickImage(MagickColors.Red, 100, 100);

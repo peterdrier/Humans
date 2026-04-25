@@ -23,7 +23,7 @@ public class DriveActivityMonitorArchitectureTests
 {
     // ── DriveActivityMonitorService ──────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void DriveActivityMonitorService_LivesInHumansApplicationServicesGoogleIntegrationNamespace()
     {
         typeof(DriveActivityMonitorService).Namespace
@@ -31,7 +31,7 @@ public class DriveActivityMonitorArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void DriveActivityMonitorService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(DriveActivityMonitorService).GetConstructors().Single();
@@ -41,7 +41,7 @@ public class DriveActivityMonitorArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use IDriveActivityMonitorRepository instead (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void DriveActivityMonitorService_HasNoDbContextFactoryConstructorParameter()
     {
         var ctor = typeof(DriveActivityMonitorService).GetConstructors().Single();
@@ -54,7 +54,7 @@ public class DriveActivityMonitorArchitectureTests
             because: "IDbContextFactory belongs behind the repository boundary, not in an Application-layer service");
     }
 
-    [Fact]
+    [HumansFact]
     public void DriveActivityMonitorService_TakesConnectorAndRepository()
     {
         var ctor = typeof(DriveActivityMonitorService).GetConstructors().Single();
@@ -68,7 +68,7 @@ public class DriveActivityMonitorArchitectureTests
             because: "the list of monitored resources comes from the team-resource section service, not a cross-section DB read");
     }
 
-    [Fact]
+    [HumansFact]
     public void DriveActivityMonitorService_IsSealed()
     {
         typeof(DriveActivityMonitorService).IsSealed.Should().BeTrue(
@@ -77,7 +77,7 @@ public class DriveActivityMonitorArchitectureTests
 
     // ── Application assembly cleanliness ─────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void HumansApplicationAssembly_HasNoGoogleApisReferences()
     {
         // The Application project must never transitively pull Google.Apis.*.
@@ -91,7 +91,7 @@ public class DriveActivityMonitorArchitectureTests
                 because: "Humans.Application must stay free of Google SDK references; Google API calls live behind IGoogleDriveActivityClient in Humans.Infrastructure");
     }
 
-    [Fact]
+    [HumansFact]
     public void DriveActivityMonitorService_DoesNotReferenceGoogleSdkTypes()
     {
         // Paranoid double-check: the service's module should have no Google.Apis.*
@@ -116,7 +116,7 @@ public class DriveActivityMonitorArchitectureTests
 
     // ── IGoogleDriveActivityClient ───────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void IGoogleDriveActivityClient_LivesInApplicationInterfacesNamespace()
     {
         typeof(IGoogleDriveActivityClient).Namespace
@@ -124,7 +124,7 @@ public class DriveActivityMonitorArchitectureTests
                 because: "connector interfaces live alongside other application interfaces per design-rules §2b");
     }
 
-    [Fact]
+    [HumansFact]
     public void IGoogleDriveActivityClient_HasNoGoogleSdkTypesInSignatures()
     {
         // Every method parameter and return type must come from Humans.Application
@@ -161,7 +161,7 @@ public class DriveActivityMonitorArchitectureTests
 
     // ── IDriveActivityMonitorRepository ──────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void IDriveActivityMonitorRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(IDriveActivityMonitorRepository).Namespace
@@ -169,7 +169,7 @@ public class DriveActivityMonitorArchitectureTests
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
 
-    [Fact]
+    [HumansFact]
     public void DriveActivityMonitorRepository_IsSealed()
     {
         var repoType = typeof(DriveActivityMonitorRepository);

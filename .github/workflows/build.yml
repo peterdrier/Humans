@@ -75,3 +75,15 @@ jobs:
 
     - name: Enforce google_resources ownership
       run: bash scripts/check-google-resource-ownership.sh
+
+    - name: Forbid RS0030 suppressions in test code
+      # The BannedApiAnalyzers rule RS0030 enforces "no bare [Fact] / [Theory]
+      # in tests — use HumansFact / HumansTheory". The only legitimate
+      # suppression site is tests/Humans.Testing/ where HumansFactAttribute
+      # itself is declared. Anywhere else is a policy escape hatch and is
+      # forbidden — set a higher Timeout on [HumansFact] instead.
+      run: |
+        if grep -rn --include='*.cs' --exclude-dir=Humans.Testing 'RS0030' tests/; then
+          echo "::error::RS0030 suppressions in test code are forbidden. Use [HumansFact] / [HumansTheory] (or set Timeout = N) instead of suppressing the analyzer."
+          exit 1
+        fi

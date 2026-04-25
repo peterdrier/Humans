@@ -37,7 +37,7 @@ public class ShiftTests
         UpdatedAt = Instant.MinValue
     };
 
-    [Fact]
+    [HumansFact]
     public void GetAbsoluteStart_ResolvesCorrectly()
     {
         var es = CreateEventSettings(); // Gate opening: 2026-07-06, Europe/Madrid
@@ -51,7 +51,7 @@ public class ShiftTests
         start.Should().Be(expected);
     }
 
-    [Fact]
+    [HumansFact]
     public void GetAbsoluteEnd_ReturnsStartPlusDuration()
     {
         var es = CreateEventSettings();
@@ -63,7 +63,7 @@ public class ShiftTests
         end.Should().Be(start.Plus(Duration.FromHours(4)));
     }
 
-    [Fact]
+    [HumansFact]
     public void GetAbsoluteStart_NegativeDayOffset_ResolvesCorrectly()
     {
         var es = CreateEventSettings(); // Gate opening: 2026-07-06
@@ -76,7 +76,7 @@ public class ShiftTests
         start.Should().Be(expected);
     }
 
-    [Fact]
+    [HumansFact]
     public void OvernightShift_EndsNextDay()
     {
         var es = CreateEventSettings();
@@ -92,28 +92,28 @@ public class ShiftTests
         end.Should().Be(expectedEnd);
     }
 
-    [Fact]
+    [HumansFact]
     public void IsEarlyEntry_NegativeOffset_ReturnsTrue()
     {
         var shift = CreateShift(dayOffset: -1);
         shift.IsEarlyEntry.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public void IsEarlyEntry_ZeroOffset_ReturnsFalse()
     {
         var shift = CreateShift(dayOffset: 0);
         shift.IsEarlyEntry.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public void IsEarlyEntry_PositiveOffset_ReturnsFalse()
     {
         var shift = CreateShift(dayOffset: 3);
         shift.IsEarlyEntry.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public void GetShiftPeriod_NegativeOffset_ReturnsBuild()
     {
         var es = CreateEventSettings(eventEndOffset: 6);
@@ -121,7 +121,7 @@ public class ShiftTests
         shift.GetShiftPeriod(es).Should().Be(ShiftPeriod.Build);
     }
 
-    [Fact]
+    [HumansFact]
     public void GetShiftPeriod_ZeroOffset_ReturnsEvent()
     {
         var es = CreateEventSettings(eventEndOffset: 6);
@@ -129,7 +129,7 @@ public class ShiftTests
         shift.GetShiftPeriod(es).Should().Be(ShiftPeriod.Event);
     }
 
-    [Fact]
+    [HumansFact]
     public void GetShiftPeriod_EventEndOffset_ReturnsEvent()
     {
         var es = CreateEventSettings(eventEndOffset: 6);
@@ -137,7 +137,7 @@ public class ShiftTests
         shift.GetShiftPeriod(es).Should().Be(ShiftPeriod.Event);
     }
 
-    [Fact]
+    [HumansFact]
     public void GetShiftPeriod_EventEndOffsetPlusOne_ReturnsStrike()
     {
         var es = CreateEventSettings(eventEndOffset: 6);
@@ -145,14 +145,14 @@ public class ShiftTests
         shift.GetShiftPeriod(es).Should().Be(ShiftPeriod.Strike);
     }
 
-    [Fact]
+    [HumansFact]
     public void IsAllDay_DefaultsFalse()
     {
         var shift = new Shift();
         shift.IsAllDay.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public void IsAllDay_WhenTrue_DurationIgnoredForDisplay()
     {
         var shift = new Shift

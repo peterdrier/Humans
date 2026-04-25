@@ -6,7 +6,7 @@ namespace Humans.Application.Tests.Helpers;
 
 public class SlugHelperTests
 {
-    [Theory]
+    [HumansTheory]
     [InlineData("Camp Funhouse", "camp-funhouse")]
     [InlineData("  Spaced  Out  ", "spaced-out")]
     [InlineData("Über Cämp", "ber-c-mp")]
@@ -18,7 +18,7 @@ public class SlugHelperTests
         result.Should().Be(expected);
     }
 
-    [Theory]
+    [HumansTheory]
     [InlineData("register")]
     [InlineData("admin")]
     [InlineData("Register")]
@@ -28,7 +28,7 @@ public class SlugHelperTests
         SlugHelper.IsReservedCampSlug(slug).Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public void IsReservedSlug_NormalName_ReturnsFalse()
     {
         SlugHelper.IsReservedCampSlug("camp-funhouse").Should().BeFalse();

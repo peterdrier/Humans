@@ -38,7 +38,7 @@ public class ShiftSignupRepositoryTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HasActiveSignupAsync_ReturnsTrueForPendingOrConfirmed()
     {
         var userId = Guid.NewGuid();
@@ -50,7 +50,7 @@ public class ShiftSignupRepositoryTests : IDisposable
         (await _repo.HasActiveSignupAsync(userId, shiftId)).Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HasActiveSignupAsync_ReturnsFalseForBailedOrRefused()
     {
         var userId = Guid.NewGuid();
@@ -63,7 +63,7 @@ public class ShiftSignupRepositoryTests : IDisposable
         (await _repo.HasActiveSignupAsync(userId, shiftId)).Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetActiveShiftIdsForUserAsync_FiltersToPendingAndConfirmed()
     {
         var userId = Guid.NewGuid();
@@ -82,7 +82,7 @@ public class ShiftSignupRepositoryTests : IDisposable
         result.Should().BeEquivalentTo(new[] { active });
     }
 
-    [Fact]
+    [HumansFact(Timeout = 10000)]
     public async Task GetConfirmedCountsByShiftAsync_ExcludesNonConfirmedAndMissingShifts()
     {
         var shiftA = Guid.NewGuid();
@@ -100,14 +100,14 @@ public class ShiftSignupRepositoryTests : IDisposable
         counts.ContainsKey(shiftB).Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetConfirmedCountsByShiftAsync_EmptyInputReturnsEmpty()
     {
         var counts = await _repo.GetConfirmedCountsByShiftAsync(Array.Empty<Guid>());
         counts.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task Add_AndSaveChangesAsync_Persists()
     {
         var userId = Guid.NewGuid();
@@ -120,7 +120,7 @@ public class ShiftSignupRepositoryTests : IDisposable
             .Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDistinctEeUsersOnDayAsync_CountsDistinctConfirmedUsers()
     {
         var esId = Guid.NewGuid();

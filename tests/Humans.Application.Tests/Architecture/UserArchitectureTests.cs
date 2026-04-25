@@ -29,7 +29,7 @@ public class UserArchitectureTests
 {
     // ── UserService ──────────────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void UserService_LivesInHumansApplicationServicesUsersNamespace()
     {
         typeof(UserService).Namespace
@@ -37,7 +37,7 @@ public class UserArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void UserService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(UserService).GetConstructors().Single();
@@ -47,7 +47,7 @@ public class UserArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use IUserRepository instead (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void UserService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(UserService).GetConstructors().Single();
@@ -59,7 +59,7 @@ public class UserArchitectureTests
             because: "canonical User data is not IMemoryCache-backed; cross-section invalidation goes through IFullProfileInvalidator (design-rules §5)");
     }
 
-    [Fact]
+    [HumansFact]
     public void UserService_TakesRepository()
     {
         var ctor = typeof(UserService).GetConstructors().Single();
@@ -68,7 +68,7 @@ public class UserArchitectureTests
         paramTypes.Should().Contain(typeof(IUserRepository));
     }
 
-    [Fact]
+    [HumansFact]
     public void UserService_TakesFullProfileInvalidator()
     {
         var ctor = typeof(UserService).GetConstructors().Single();
@@ -78,7 +78,7 @@ public class UserArchitectureTests
             because: "UserService writes that change FullProfile-visible fields (DisplayName, GoogleEmail) must invalidate the Profile cache; the dependency proves the wire is in place so cache-staleness regressions fail at compile/test time rather than silently at runtime");
     }
 
-    [Fact]
+    [HumansFact]
     public void UserService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(UserService).GetConstructors().Single();
@@ -92,7 +92,7 @@ public class UserArchitectureTests
 
     // ── IUserRepository ──────────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void IUserRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(IUserRepository).Namespace
@@ -100,7 +100,7 @@ public class UserArchitectureTests
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
 
-    [Fact]
+    [HumansFact]
     public void UserRepository_IsSealed()
     {
         // Mirrors ProfileRepository — repository implementations are terminal; no subclass should
@@ -117,7 +117,7 @@ public class UserArchitectureTests
 
     // ── AccountProvisioningService ───────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void AccountProvisioningService_LivesInHumansApplicationServicesUsersNamespace()
     {
         typeof(AccountProvisioningService).Namespace
@@ -125,7 +125,7 @@ public class UserArchitectureTests
                 because: "AccountProvisioningService is part of the User section (issue #558) and must live with UserService in Application (design-rules §15i)");
     }
 
-    [Fact]
+    [HumansFact]
     public void AccountProvisioningService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(AccountProvisioningService).GetConstructors().Single();
@@ -135,7 +135,7 @@ public class UserArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use IUserRepository / IUserEmailRepository (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void AccountProvisioningService_TakesRepositoryAndUserEmailRepository()
     {
         var ctor = typeof(AccountProvisioningService).GetConstructors().Single();
@@ -147,7 +147,7 @@ public class UserArchitectureTests
 
     // ── UnsubscribeService ───────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void UnsubscribeService_LivesInHumansApplicationServicesUsersNamespace()
     {
         typeof(UnsubscribeService).Namespace
@@ -155,7 +155,7 @@ public class UserArchitectureTests
                 because: "UnsubscribeService operates on User state and is part of the User section (issue #558, design-rules §8 — Unsubscribe row)");
     }
 
-    [Fact]
+    [HumansFact]
     public void UnsubscribeService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(UnsubscribeService).GetConstructors().Single();
@@ -165,7 +165,7 @@ public class UserArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use IUserRepository (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void UnsubscribeService_TakesRepository()
     {
         var ctor = typeof(UnsubscribeService).GetConstructors().Single();

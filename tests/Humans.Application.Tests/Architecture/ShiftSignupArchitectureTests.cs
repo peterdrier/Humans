@@ -23,7 +23,7 @@ public class ShiftSignupArchitectureTests
 {
     // ── ShiftSignupService ──────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void ShiftSignupService_LivesInHumansApplicationServicesShiftsNamespace()
     {
         typeof(ShiftSignupService).Namespace
@@ -31,7 +31,7 @@ public class ShiftSignupArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void ShiftSignupService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(ShiftSignupService).GetConstructors().Single();
@@ -41,7 +41,7 @@ public class ShiftSignupArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use IShiftSignupRepository instead (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void ShiftSignupService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(ShiftSignupService).GetConstructors().Single();
@@ -53,7 +53,7 @@ public class ShiftSignupArchitectureTests
             because: "shift-signup reads are request-scoped; §15 Option A applies (no caching decorator warranted)");
     }
 
-    [Fact]
+    [HumansFact]
     public void ShiftSignupService_TakesRepository()
     {
         var ctor = typeof(ShiftSignupService).GetConstructors().Single();
@@ -62,7 +62,7 @@ public class ShiftSignupArchitectureTests
         paramTypes.Should().Contain(typeof(IShiftSignupRepository));
     }
 
-    [Fact]
+    [HumansFact]
     public void ShiftSignupService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(ShiftSignupService).GetConstructors().Single();
@@ -74,7 +74,7 @@ public class ShiftSignupArchitectureTests
             because: "Application services must not depend on store abstractions (design-rules §15); ShiftSignup Option A does not use a store at all");
     }
 
-    [Fact]
+    [HumansFact]
     public void ShiftSignupService_IsSealed()
     {
         typeof(ShiftSignupService).IsSealed.Should().BeTrue(
@@ -83,7 +83,7 @@ public class ShiftSignupArchitectureTests
 
     // ── IShiftSignupRepository ──────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void IShiftSignupRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(IShiftSignupRepository).Namespace
@@ -91,7 +91,7 @@ public class ShiftSignupArchitectureTests
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
 
-    [Fact]
+    [HumansFact]
     public void ShiftSignupRepository_IsSealed()
     {
         var repoType = typeof(ShiftSignupRepository);
@@ -100,7 +100,7 @@ public class ShiftSignupArchitectureTests
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
     }
 
-    [Fact]
+    [HumansFact]
     public void ShiftSignupRepository_NamespaceIsHumansInfrastructureRepositories()
     {
         var repoType = typeof(ShiftSignupRepository);

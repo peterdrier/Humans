@@ -78,7 +78,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_SuspendsNonCompliantUser()
     {
         var user = SetupUser();
@@ -94,7 +94,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_NoUsersToSuspend_DoesNothing()
     {
         _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
@@ -110,7 +110,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_SkipsAlreadySuspendedUsers()
     {
         // Profile service reports zero mutations — job should not send email.
@@ -131,7 +131,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_SkipsUsersMissingFromUserLookup()
     {
         var userId = Guid.NewGuid();
@@ -163,7 +163,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_SendsSuspensionEmail()
     {
         var user = SetupUser();
@@ -181,7 +181,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_SendsInAppNotification()
     {
         var user = SetupUser();
@@ -204,7 +204,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_RemovesFromTeamResources()
     {
         var user = SetupUser();
@@ -232,7 +232,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             teamId, user.Id, Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_LogsAuditEntry()
     {
         var user = SetupUser();
@@ -252,7 +252,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             Arg.Any<string?>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_InvalidatesCaches()
     {
         var user = SetupUser();
@@ -268,7 +268,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         _teamService.Received(1).RemoveMemberFromAllTeamsCache(user.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_ContinuesWhenGoogleSyncFails()
     {
         var user = SetupUser();

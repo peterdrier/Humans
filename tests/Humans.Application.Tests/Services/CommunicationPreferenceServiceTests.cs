@@ -120,7 +120,7 @@ public class CommunicationPreferenceServiceTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetPreferencesAsync_CreatesDefaultsForActiveCategories()
     {
         var userId = Guid.NewGuid();
@@ -141,7 +141,7 @@ public class CommunicationPreferenceServiceTests : IDisposable
         dbCount.Should().Be(8);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetPreferencesAsync_MarketingDefaultsToOptedOut()
     {
         var userId = Guid.NewGuid();
@@ -152,7 +152,7 @@ public class CommunicationPreferenceServiceTests : IDisposable
         marketing.OptedOut.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UpdatePreferenceAsync_RejectsAlwaysOnCategories()
     {
         var userId = Guid.NewGuid();
@@ -171,7 +171,7 @@ public class CommunicationPreferenceServiceTests : IDisposable
         campaignPref.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsOptedOutAsync_ReturnsFalseForAlwaysOnCategories()
     {
         var userId = Guid.NewGuid();
@@ -183,7 +183,7 @@ public class CommunicationPreferenceServiceTests : IDisposable
         campaignResult.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task AcceptsFacilitatedMessagesAsync_ReturnsTrueByDefault()
     {
         var userId = Guid.NewGuid();
@@ -193,7 +193,7 @@ public class CommunicationPreferenceServiceTests : IDisposable
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact(Timeout = 10000)]
     public async Task AcceptsFacilitatedMessagesAsync_ReturnsFalseWhenOptedOut()
     {
         var userId = Guid.NewGuid();
@@ -206,7 +206,7 @@ public class CommunicationPreferenceServiceTests : IDisposable
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public void ValidateUnsubscribeToken_WithValidToken_ReturnsValidStatusAndCorrectPayload()
     {
         var userId = Guid.NewGuid();
@@ -220,7 +220,7 @@ public class CommunicationPreferenceServiceTests : IDisposable
         decodedCategory.Should().Be(category);
     }
 
-    [Fact]
+    [HumansFact]
     public void ValidateUnsubscribeToken_WithGarbageString_ReturnsInvalidStatus()
     {
         // A random string is not a valid DataProtection payload — simulates a tampered token.
@@ -234,7 +234,7 @@ public class CommunicationPreferenceServiceTests : IDisposable
         decodedCategory.Should().Be(default(MessageCategory));
     }
 
-    [Fact]
+    [HumansFact]
     public void ValidateUnsubscribeToken_WithMalformedBase64_ReturnsInvalidStatus()
     {
         // Another tamper vector: valid-looking base64 that decrypts to garbage

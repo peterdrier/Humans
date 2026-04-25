@@ -113,7 +113,7 @@ public class MembershipCalculatorTests
             });
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ComputeStatusAsync_NotApprovedProfile_ReturnsPending()
     {
         var userId = Guid.NewGuid();
@@ -125,7 +125,7 @@ public class MembershipCalculatorTests
         result.Should().Be(MembershipStatus.Pending);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetMembershipSnapshotAsync_ReturnsConsolidatedState()
     {
         var userId = Guid.NewGuid();
@@ -149,7 +149,7 @@ public class MembershipCalculatorTests
 
     // --- GetRequiredTeamIdsForUserAsync tests ---
 
-    [Fact]
+    [HumansFact]
     public async Task GetRequiredTeamIdsForUserAsync_AlwaysIncludesVolunteers()
     {
         var userId = Guid.NewGuid();
@@ -159,7 +159,7 @@ public class MembershipCalculatorTests
         result.Should().Contain(SystemTeamIds.Volunteers);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetRequiredTeamIdsForUserAsync_IncludesCoordinators_WhenUserIsCoordinatorOfUserCreatedTeam()
     {
         var userId = Guid.NewGuid();
@@ -172,7 +172,7 @@ public class MembershipCalculatorTests
         result.Should().Contain(SystemTeamIds.Coordinators);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetRequiredTeamIdsForUserAsync_ExcludesCoordinators_WhenUserIsOnlyMember()
     {
         var userId = Guid.NewGuid();
@@ -185,7 +185,7 @@ public class MembershipCalculatorTests
         result.Should().NotContain(SystemTeamIds.Coordinators);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetRequiredTeamIdsForUserAsync_ExcludesCoordinators_WhenUserIsCoordinatorOfSystemTeam()
     {
         var userId = Guid.NewGuid();
@@ -199,7 +199,7 @@ public class MembershipCalculatorTests
         result.Should().NotContain(SystemTeamIds.Coordinators);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetRequiredTeamIdsForUserAsync_IncludesCurrentTeamMemberships()
     {
         var userId = Guid.NewGuid();
@@ -216,7 +216,7 @@ public class MembershipCalculatorTests
 
     // --- GetMembershipSnapshotAsync with Coordinators docs ---
 
-    [Fact]
+    [HumansFact]
     public async Task GetMembershipSnapshotAsync_IncludesCoordinatorsDocsForCoordinatorUser()
     {
         var userId = Guid.NewGuid();
@@ -249,7 +249,7 @@ public class MembershipCalculatorTests
         snapshot.MissingConsentVersionIds.Should().Contain(coordsVersionId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetMembershipSnapshotAsync_ExcludesCoordinatorsDocs_WhenUserIsNotCoordinator()
     {
         var userId = Guid.NewGuid();
@@ -280,7 +280,7 @@ public class MembershipCalculatorTests
 
     // --- GetRequiredTeamIdsForUserAsync: Colaboradors team ---
 
-    [Fact]
+    [HumansFact]
     public async Task GetRequiredTeamIdsForUserAsync_IncludesColaboradors_WhenUserIsColaborador()
     {
         var userId = Guid.NewGuid();
@@ -294,7 +294,7 @@ public class MembershipCalculatorTests
         result.Should().Contain(SystemTeamIds.Colaboradors);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetRequiredTeamIdsForUserAsync_ExcludesColaboradors_WhenUserIsNotColaborador()
     {
         var userId = Guid.NewGuid();
@@ -308,7 +308,7 @@ public class MembershipCalculatorTests
 
     // --- ComputeStatusAsync (additional tests) ---
 
-    [Fact]
+    [HumansFact]
     public async Task ComputeStatusAsync_NoProfile_ReturnsNone()
     {
         var userId = Guid.NewGuid();
@@ -318,7 +318,7 @@ public class MembershipCalculatorTests
         result.Should().Be(MembershipStatus.None);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ComputeStatusAsync_SuspendedProfile_ReturnsSuspended()
     {
         var userId = Guid.NewGuid();
@@ -329,7 +329,7 @@ public class MembershipCalculatorTests
         result.Should().Be(MembershipStatus.Suspended);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ComputeStatusAsync_ApprovedWithActiveRole_NoExpiredConsents_ReturnsActive()
     {
         var userId = Guid.NewGuid();
@@ -342,7 +342,7 @@ public class MembershipCalculatorTests
         result.Should().Be(MembershipStatus.Active);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ComputeStatusAsync_ApprovedWithExpiredConsents_ReturnsInactive()
     {
         var userId = Guid.NewGuid();
@@ -360,7 +360,7 @@ public class MembershipCalculatorTests
 
     // --- HasActiveRolesAsync tests ---
 
-    [Fact]
+    [HumansFact]
     public async Task HasActiveRolesAsync_ActiveRole_ReturnsTrue()
     {
         var userId = Guid.NewGuid();
@@ -371,7 +371,7 @@ public class MembershipCalculatorTests
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HasActiveRolesAsync_NoRoles_ReturnsFalse()
     {
         var userId = Guid.NewGuid();
@@ -383,7 +383,7 @@ public class MembershipCalculatorTests
 
     // --- HasAllRequiredConsentsAsync tests ---
 
-    [Fact]
+    [HumansFact]
     public async Task HasAllRequiredConsentsAsync_AllSigned_ReturnsTrue()
     {
         var userId = Guid.NewGuid();
@@ -396,7 +396,7 @@ public class MembershipCalculatorTests
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HasAllRequiredConsentsAsync_OneMissing_ReturnsFalse()
     {
         var userId = Guid.NewGuid();
@@ -411,7 +411,7 @@ public class MembershipCalculatorTests
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HasAllRequiredConsentsAsync_NoRequiredDocs_ReturnsTrue()
     {
         var userId = Guid.NewGuid();
@@ -423,7 +423,7 @@ public class MembershipCalculatorTests
 
     // --- HasAllRequiredConsentsForTeamAsync tests ---
 
-    [Fact]
+    [HumansFact]
     public async Task HasAllRequiredConsentsForTeamAsync_AllSigned_ReturnsTrue()
     {
         var userId = Guid.NewGuid();
@@ -437,7 +437,7 @@ public class MembershipCalculatorTests
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HasAllRequiredConsentsForTeamAsync_OneMissing_ReturnsFalse()
     {
         var userId = Guid.NewGuid();
@@ -449,7 +449,7 @@ public class MembershipCalculatorTests
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HasAllRequiredConsentsForTeamAsync_NoRequiredDocs_ReturnsTrue()
     {
         var userId = Guid.NewGuid();
@@ -462,7 +462,7 @@ public class MembershipCalculatorTests
 
     // --- HasAnyExpiredConsentsAsync tests ---
 
-    [Fact]
+    [HumansFact]
     public async Task HasAnyExpiredConsentsAsync_ExpiredUnsigned_ReturnsTrue()
     {
         var userId = Guid.NewGuid();
@@ -474,7 +474,7 @@ public class MembershipCalculatorTests
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HasAnyExpiredConsentsAsync_WithinGracePeriod_ReturnsFalse()
     {
         var userId = Guid.NewGuid();
@@ -486,7 +486,7 @@ public class MembershipCalculatorTests
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HasAnyExpiredConsentsAsync_AllSigned_ReturnsFalse()
     {
         var userId = Guid.NewGuid();
@@ -502,7 +502,7 @@ public class MembershipCalculatorTests
 
     // --- HasAnyExpiredConsentsForTeamAsync tests ---
 
-    [Fact]
+    [HumansFact]
     public async Task HasAnyExpiredConsentsForTeamAsync_ExpiredUnsigned_ReturnsTrue()
     {
         var userId = Guid.NewGuid();
@@ -515,7 +515,7 @@ public class MembershipCalculatorTests
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HasAnyExpiredConsentsForTeamAsync_WithinGracePeriod_ReturnsFalse()
     {
         var userId = Guid.NewGuid();
@@ -528,7 +528,7 @@ public class MembershipCalculatorTests
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HasAnyExpiredConsentsForTeamAsync_AllSigned_ReturnsFalse()
     {
         var userId = Guid.NewGuid();
@@ -545,7 +545,7 @@ public class MembershipCalculatorTests
 
     // --- GetMissingConsentVersionsAsync tests ---
 
-    [Fact]
+    [HumansFact]
     public async Task GetMissingConsentVersionsAsync_ReturnsMissingIds()
     {
         var userId = Guid.NewGuid();
@@ -560,7 +560,7 @@ public class MembershipCalculatorTests
         result.Should().ContainSingle().Which.Should().Be(v2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetMissingConsentVersionsAsync_AllSigned_ReturnsEmpty()
     {
         var userId = Guid.NewGuid();
@@ -573,7 +573,7 @@ public class MembershipCalculatorTests
         result.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetMissingConsentVersionsAsync_NoneSigned_ReturnsAll()
     {
         var userId = Guid.NewGuid();
@@ -591,7 +591,7 @@ public class MembershipCalculatorTests
 
     // --- GetUsersRequiringStatusUpdateAsync tests ---
 
-    [Fact]
+    [HumansFact]
     public async Task GetUsersRequiringStatusUpdateAsync_UsersWithActiveRolesAndExpiredConsents_ReturnsThem()
     {
         var userId = Guid.NewGuid();
@@ -605,7 +605,7 @@ public class MembershipCalculatorTests
         result.Should().Contain(userId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetUsersRequiringStatusUpdateAsync_UsersWithoutActiveRoles_ExcludesThem()
     {
         var userId = Guid.NewGuid();
@@ -618,7 +618,7 @@ public class MembershipCalculatorTests
         result.Should().NotContain(userId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetUsersRequiringStatusUpdateAsync_NoExpiredConsents_ReturnsEmpty()
     {
         var userId = Guid.NewGuid();
@@ -633,7 +633,7 @@ public class MembershipCalculatorTests
 
     // --- GetUsersWithAllRequiredConsentsAsync tests ---
 
-    [Fact]
+    [HumansFact]
     public async Task GetUsersWithAllRequiredConsentsAsync_AllSigned_ReturnsUser()
     {
         var userId = Guid.NewGuid();
@@ -646,7 +646,7 @@ public class MembershipCalculatorTests
         result.Should().Contain(userId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetUsersWithAllRequiredConsentsAsync_MissingConsent_ExcludesUser()
     {
         var userId = Guid.NewGuid();
@@ -657,7 +657,7 @@ public class MembershipCalculatorTests
         result.Should().NotContain(userId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetUsersWithAllRequiredConsentsAsync_EmptyInput_ReturnsEmpty()
     {
         SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid());
@@ -669,7 +669,7 @@ public class MembershipCalculatorTests
 
     // --- GetUsersWithAnyExpiredConsentsAsync tests ---
 
-    [Fact]
+    [HumansFact]
     public async Task GetUsersWithAnyExpiredConsentsAsync_ExpiredUnsigned_ReturnsUser()
     {
         var userId = Guid.NewGuid();
@@ -681,7 +681,7 @@ public class MembershipCalculatorTests
         result.Should().Contain(userId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetUsersWithAnyExpiredConsentsAsync_NoExpiredVersions_ReturnsEmpty()
     {
         var userId = Guid.NewGuid();
@@ -694,7 +694,7 @@ public class MembershipCalculatorTests
         result.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetUsersWithAnyExpiredConsentsAsync_EmptyInput_ReturnsEmpty()
     {
         SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 0,

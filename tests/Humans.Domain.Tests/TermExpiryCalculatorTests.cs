@@ -6,7 +6,7 @@ namespace Humans.Domain.Tests;
 
 public class TermExpiryCalculatorTests
 {
-    [Theory]
+    [HumansTheory]
     [InlineData(2026, 3, 15, 2029, 12, 31)]  // 2026 + 2 = 2028 (even) → 2029
     [InlineData(2027, 6, 1, 2029, 12, 31)]   // 2027 + 2 = 2029 (odd) → 2029
     [InlineData(2028, 1, 1, 2031, 12, 31)]   // 2028 + 2 = 2030 (even) → 2031
@@ -23,7 +23,7 @@ public class TermExpiryCalculatorTests
         result.Should().Be(new LocalDate(expectedYear, expectedMonth, expectedDay));
     }
 
-    [Fact]
+    [HumansFact]
     public void ComputeTermExpiry_AlwaysReturnsDec31()
     {
         var today = new LocalDate(2026, 6, 15);
@@ -34,7 +34,7 @@ public class TermExpiryCalculatorTests
         result.Day.Should().Be(31);
     }
 
-    [Fact]
+    [HumansFact]
     public void ComputeTermExpiry_AlwaysReturnsOddYear()
     {
         for (var year = 2024; year <= 2035; year++)

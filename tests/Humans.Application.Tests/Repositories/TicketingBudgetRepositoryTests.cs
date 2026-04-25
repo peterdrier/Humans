@@ -69,14 +69,14 @@ public sealed class TicketingBudgetRepositoryTests : IDisposable
     // GetPaidOrderSummariesAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetPaidOrderSummariesAsync_ReturnsEmpty_WhenNoOrders()
     {
         var result = await _repo.GetPaidOrderSummariesAsync();
         result.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetPaidOrderSummariesAsync_ExcludesNonPaidOrders()
     {
         var purchasedAt = Instant.FromUtc(2026, 3, 1, 12, 0);
@@ -95,7 +95,7 @@ public sealed class TicketingBudgetRepositoryTests : IDisposable
         result[0].TotalAmount.Should().Be(50m);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetPaidOrderSummariesAsync_CountsOnlyValidAndCheckedInAttendees()
     {
         var purchasedAt = Instant.FromUtc(2026, 3, 1, 12, 0);
@@ -114,7 +114,7 @@ public sealed class TicketingBudgetRepositoryTests : IDisposable
         result[0].TicketCount.Should().Be(3);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetPaidOrderSummariesAsync_ReturnsAllFieldsIncludingNullableFees()
     {
         var purchasedAt = Instant.FromUtc(2026, 3, 5, 10, 30);
@@ -132,7 +132,7 @@ public sealed class TicketingBudgetRepositoryTests : IDisposable
         summary.TicketCount.Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetPaidOrderSummariesAsync_ReturnsZeroTicketCount_WhenAllAttendeesVoid()
     {
         var purchasedAt = Instant.FromUtc(2026, 3, 1, 12, 0);

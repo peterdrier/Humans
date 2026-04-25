@@ -17,7 +17,7 @@ public class StubGoogleDirectoryClientTests
     private readonly StubGoogleDirectoryClient _client =
         new(NullLogger<StubGoogleDirectoryClient>.Instance);
 
-    [Fact]
+    [HumansFact]
     public async Task ListDomainUsersAsync_ReturnsDeterministicDomainWithPrimaryEmails()
     {
         var result = await _client.ListDomainUsersAsync();
@@ -28,7 +28,7 @@ public class StubGoogleDirectoryClientTests
             u.PrimaryEmail.Should().NotBeNullOrEmpty());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ListDomainGroupsAsync_ReturnsDeterministicGroupsWithIdsAndEmails()
     {
         var result = await _client.ListDomainGroupsAsync();
