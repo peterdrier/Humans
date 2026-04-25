@@ -29,6 +29,12 @@ public abstract class HumansCampControllerBase : HumansControllerBase
 
     protected async Task<(bool IsLead, bool IsCampAdmin)> ResolveCampViewerStateAsync(Camp camp, CancellationToken cancellationToken = default)
     {
+        var user = await GetCurrentUserAsync();
+        return await ResolveCampViewerStateAsync(camp, user, cancellationToken);
+    }
+
+    protected async Task<(bool IsLead, bool IsCampAdmin)> ResolveCampViewerStateAsync(Camp camp, User? user, CancellationToken cancellationToken = default)
+    {
         var canManage = (await _authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.Manage)).Succeeded;
         if (!canManage)
         {
@@ -36,7 +42,6 @@ public abstract class HumansCampControllerBase : HumansControllerBase
         }
 
         // Determine whether access is via lead or admin role for view-level distinctions
-        var user = await GetCurrentUserAsync();
         if (user is null)
         {
             return (false, false);
