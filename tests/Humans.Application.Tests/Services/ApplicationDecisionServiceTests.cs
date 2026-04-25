@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Services.Governance;
@@ -12,6 +11,7 @@ using Humans.Domain;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Humans.Infrastructure.Services.Metering;
 using Xunit;
 using MemberApplication = Humans.Domain.Entities.Application;
 using Humans.Application.Interfaces.AuditLog;
@@ -36,7 +36,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly INotificationService _notificationService = Substitute.For<INotificationService>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
-    private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
+    private readonly MetersService _meters = new(NullLogger<MetersService>.Instance);
     private readonly INavBadgeCacheInvalidator _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
     private readonly INotificationMeterCacheInvalidator _notificationMeter = Substitute.For<INotificationMeterCacheInvalidator>();
     private readonly IVotingBadgeCacheInvalidator _votingBadge = Substitute.For<IVotingBadgeCacheInvalidator>();
@@ -68,7 +68,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             _emailService,
             _notificationService,
             _syncJob,
-            _metrics,
+            _meters,
             _navBadge,
             _notificationMeter,
             _votingBadge,
@@ -79,6 +79,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
+        _meters.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -170,7 +171,6 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         result.Success.Should().BeTrue();
         var updated = await _dbContext.Applications.FirstAsync(a => a.Id == app.Id);
         updated.Status.Should().Be(ApplicationStatus.Withdrawn);
-        _metrics.Received().RecordApplicationProcessed("withdrawn");
     }
 
     [HumansFact]

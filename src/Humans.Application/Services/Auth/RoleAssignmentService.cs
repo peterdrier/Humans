@@ -251,6 +251,10 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
         string roleName, CancellationToken ct = default) =>
         _repository.GetActiveUserIdsInRoleAsync(roleName, _clock.GetCurrentInstant(), ct);
 
+    public Task<IReadOnlyList<(string RoleName, int Count)>> GetActiveCountsByRoleAsync(
+        CancellationToken ct = default) =>
+        _repository.GetActiveCountsByRoleAsync(_clock.GetCurrentInstant(), ct);
+
     public async Task<int> RevokeAllActiveAsync(Guid userId, CancellationToken ct = default)
     {
         var now = _clock.GetCurrentInstant();

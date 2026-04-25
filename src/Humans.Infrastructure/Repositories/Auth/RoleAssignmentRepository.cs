@@ -203,6 +203,21 @@ public sealed class RoleAssignmentRepository : IRoleAssignmentRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<(string RoleName, int Count)>> GetActiveCountsByRoleAsync(
+        Instant now,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var rows = await ctx.RoleAssignments
+            .AsNoTracking()
+            .Where(ra => ra.ValidFrom <= now && (ra.ValidTo == null || ra.ValidTo > now))
+            .GroupBy(ra => ra.RoleName)
+            .Select(g => new { Role = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+
+        return rows.Select(r => (r.Role, r.Count)).ToList();
+    }
+
     // ==========================================================================
     // Writes
     // ==========================================================================

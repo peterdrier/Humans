@@ -125,6 +125,15 @@ public interface IRoleAssignmentRepository
         Instant now,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns the count of active assignments (<c>ValidFrom &lt;= now</c> and
+    /// <c>ValidTo == null || ValidTo &gt; now</c>) grouped by role name. Used
+    /// by the <c>humans.role_assignments_active</c> metric.
+    /// </summary>
+    Task<IReadOnlyList<(string RoleName, int Count)>> GetActiveCountsByRoleAsync(
+        Instant now,
+        CancellationToken ct = default);
+
     // ==========================================================================
     // Writes
     // ==========================================================================
