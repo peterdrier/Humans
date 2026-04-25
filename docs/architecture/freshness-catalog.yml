@@ -160,6 +160,14 @@ mechanical:
       table owned by another section's repository) as a design rule
       violation per docs/architecture/design-rules.md §"Services own their data".
 
+  - id: data-model-index
+    target: docs/architecture/data-model.md
+    triggers:
+      - "src/Humans.Domain/Entities/**/*.cs"
+      - "src/Humans.Infrastructure/Data/Configurations/**/*.cs"
+    update: prompt
+    prompt-file: ".claude/skills/freshness-sweep/prompts/data-model-index.md"
+
 # Editorial doc trees — walked recursively for .md files. Each .md may include
 # inline freshness markers (freshness:triggers, freshness:auto, freshness:flag-on-change).
 editorial_trees: []
