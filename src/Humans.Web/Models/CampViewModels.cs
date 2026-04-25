@@ -214,3 +214,74 @@ public class CampSummaryRowViewModel
     public int YearsParticipating { get; set; }
     public List<CampLeadViewModel> Leads { get; set; } = new();
 }
+
+// Camp role admin (global role definitions)
+public class CampRoleDefinitionAdminRowViewModel
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int SlotCount { get; set; }
+    public int MinimumRequired { get; set; }
+    public int SortOrder { get; set; }
+    public bool IsRequired { get; set; }
+    public bool IsActive { get; set; }
+}
+
+public class CampRoleDefinitionFormViewModel
+{
+    public Guid? Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int SlotCount { get; set; } = 1;
+    public int MinimumRequired { get; set; } = 1;
+    public int SortOrder { get; set; }
+    public bool IsRequired { get; set; }
+}
+
+public class CampRolesAdminPageViewModel
+{
+    public IReadOnlyList<CampRoleDefinitionAdminRowViewModel> Rows { get; set; } = Array.Empty<CampRoleDefinitionAdminRowViewModel>();
+}
+
+// Per-camp role panel
+public class CampRoleSlotViewModel
+{
+    public int SlotIndex { get; set; }
+    public Guid? AssignmentId { get; set; }
+    public Guid? AssigneeUserId { get; set; }
+    public string? AssigneeDisplayName { get; set; }
+    public bool IsBeingPhasedOut { get; set; }
+}
+
+public class CampRoleRowViewModel
+{
+    public Guid CampRoleDefinitionId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public bool IsRequired { get; set; }
+    public int SlotCount { get; set; }
+    public int MinimumRequired { get; set; }
+    public List<CampRoleSlotViewModel> Slots { get; set; } = new();
+}
+
+public class CampRolesPanelViewModel
+{
+    public Guid CampSeasonId { get; set; }
+    public IReadOnlyList<CampRoleRowViewModel> Roles { get; set; } = Array.Empty<CampRoleRowViewModel>();
+    public bool HasOpenSeason { get; set; }
+}
+
+// Camp role compliance report
+public class CampComplianceRowViewModel
+{
+    public Guid CampId { get; set; }
+    public string CampSlug { get; set; } = string.Empty;
+    public string CampName { get; set; } = string.Empty;
+    public IReadOnlyList<string> MissingRoleNames { get; set; } = Array.Empty<string>();
+}
+
+public class CampComplianceReportViewModel
+{
+    public int Year { get; set; }
+    public IReadOnlyList<CampComplianceRowViewModel> Rows { get; set; } = Array.Empty<CampComplianceRowViewModel>();
+}
