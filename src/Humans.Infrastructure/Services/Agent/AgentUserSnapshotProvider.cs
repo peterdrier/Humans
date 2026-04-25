@@ -1,5 +1,11 @@
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Consent;
+using Humans.Application.Interfaces.Feedback;
+using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Models;
 
 namespace Humans.Infrastructure.Services.Agent;

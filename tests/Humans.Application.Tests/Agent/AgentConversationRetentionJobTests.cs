@@ -13,7 +13,7 @@ namespace Humans.Application.Tests.Agent;
 
 public class AgentConversationRetentionJobTests
 {
-    [Fact]
+    [HumansFact]
     public async Task Deletes_conversations_older_than_retention_days_only()
     {
         await using var db = InMemoryDb();
