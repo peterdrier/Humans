@@ -40,6 +40,24 @@ mechanical:
       `<!-- TODO: license -->` HTML comment next to its card and add a
       question to your return JSON asking Peter to confirm.
 
+  - id: docs-readme-index
+    target: docs/README.md
+    triggers:
+      - "docs/features/**/*.md"
+      - "docs/sections/**/*.md"
+      - "docs/guide/**/*.md"
+    update: prompt
+    prompt: |
+      Walk docs/features/, docs/sections/, and docs/guide/. For each .md file
+      (excluding SECTION-TEMPLATE.md, README.md, GettingStarted.md, Glossary.md),
+      derive a one-line description from the first paragraph of the file (or
+      the H1 + first sentence if the first paragraph is too long).
+
+      Update docs/README.md to list every doc found, grouped by directory,
+      using the existing table layout (file name → relative link → description).
+      Preserve any hand-written prose at the top of docs/README.md (intro,
+      pointers to architecture/, etc.). Only regenerate the indexed tables.
+
 # Editorial doc trees — walked recursively for .md files. Each .md may include
 # inline freshness markers (freshness:triggers, freshness:auto, freshness:flag-on-change).
 editorial_trees: []
