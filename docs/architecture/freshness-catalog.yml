@@ -1,0 +1,16 @@
+# Freshness catalog — see docs/superpowers/specs/2026-04-25-freshness-sweep-design.md
+# Consumed by /freshness-sweep (.claude/skills/freshness-sweep/SKILL.md)
+
+version: 1
+
+# Mechanical entries — fully auto-derived. Each entry declares trigger globs
+# (matched against `git diff --name-only <anchor>..upstream/main`) and an
+# update method (script or prompt).
+mechanical: []
+
+# Editorial doc trees — walked recursively for .md files. Each .md may include
+# inline freshness markers (freshness:triggers, freshness:auto, freshness:flag-on-change).
+editorial_trees: []
+
+# Files to exclude from both mechanical and editorial walks.
+ignore: []
