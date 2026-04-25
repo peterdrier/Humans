@@ -44,7 +44,7 @@ public class ShiftsController : HumansControllerBase
     }
 
     [HttpGet("")]
-    public async Task<IActionResult> Index(Guid? departmentId, string? fromDate, string? toDate, string? period, bool showFull = false, [FromQuery(Name = "tags")] List<Guid>? tagIds = null)
+    public async Task<IActionResult> Index(Guid? departmentId, string? fromDate, string? toDate, string? period, bool showFull = false, [FromQuery(Name = "tags")] List<Guid>? tagIds = null, string? sort = null)
     {
         var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
         if (currentUserNotFound is not null)
@@ -104,6 +104,46 @@ public class ShiftsController : HumansControllerBase
         var shiftTeamIds = filteredShifts.Select(u => u.Shift.Rota.TeamId).Distinct().ToList();
         var teamLookup = await _teamService.GetByIdsWithParentsAsync(shiftTeamIds);
 
+        // Map UrgentShift → ShiftDisplayItem (shared by both sort modes)
+        ShiftDisplayItem MapToDisplayItem(UrgentShift u)
+        {
+            var (start, end, shiftPeriod) = _shiftMgmt.ResolveShiftTimes(u.Shift, es);
+            return new ShiftDisplayItem
+            {
+                Shift = u.Shift,
+                AbsoluteStart = start,
+                AbsoluteEnd = end,
+                Period = shiftPeriod,
+                ConfirmedCount = u.ConfirmedCount,
+                RemainingSlots = u.RemainingSlots,
+                UrgencyScore = u.UrgencyScore,
+                Signups = u.Signups
+                    .Select(s => new ShiftSignupInfo(
+                        s.UserId, s.DisplayName, s.Status,
+                        s.HasProfilePicture ? $"/Profile/Picture?id={s.UserId}" : null))
+                    .ToList()
+            };
+        }
+
+        RotaShiftGroup BuildRotaGroup(IGrouping<Guid, UrgentShift> rotaGroup, string? deptName = null, string? deptSlug = null)
+        {
+            var rota = rotaGroup.OrderBy(x => x.Shift.Id).First().Shift.Rota;
+            var shifts = rotaGroup
+                .Select(MapToDisplayItem)
+                .OrderBy(s => s.AbsoluteStart)
+                .ToList();
+            return new RotaShiftGroup
+            {
+                Rota = rota,
+                Shifts = shifts,
+                DepartmentName = deptName,
+                DepartmentSlug = deptSlug,
+                MaxUrgencyScore = shifts.Count > 0 ? shifts.Max(s => s.UrgencyScore) : 0,
+                TotalConfirmed = shifts.Sum(s => s.ConfirmedCount),
+                TotalSlots = shifts.Sum(s => s.Shift.MaxVolunteers)
+            };
+        }
+
         // Group by department → rota → shift
         var departments = filteredShifts
             .GroupBy(u => u.Shift.Rota.TeamId)
@@ -111,48 +151,30 @@ public class ShiftsController : HumansControllerBase
             {
                 var firstShift = deptGroup.OrderBy(x => x.Shift.Id).First().Shift;
                 var team = teamLookup.TryGetValue(firstShift.Rota.TeamId, out var t) ? t : null;
+                var deptName = team?.Name ?? string.Empty;
+                var deptSlug = team?.Slug ?? string.Empty;
                 return new DepartmentShiftGroup
                 {
                     TeamId = firstShift.Rota.TeamId,
-                    TeamName = team?.Name ?? string.Empty,
-                    TeamSlug = team?.Slug ?? string.Empty,
+                    TeamName = deptName,
+                    TeamSlug = deptSlug,
                     Rotas = deptGroup
                         .GroupBy(u => u.Shift.RotaId)
-                        .Select(rotaGroup =>
-                        {
-                            var rota = rotaGroup.OrderBy(x => x.Shift.Id).First().Shift.Rota;
-                            return new RotaShiftGroup
-                            {
-                                Rota = rota,
-                                Shifts = rotaGroup
-                                    .Select(u =>
-                                    {
-                                        var (start, end, shiftPeriod) = _shiftMgmt.ResolveShiftTimes(u.Shift, es);
-                                        return new ShiftDisplayItem
-                                        {
-                                            Shift = u.Shift,
-                                            AbsoluteStart = start,
-                                            AbsoluteEnd = end,
-                                            Period = shiftPeriod,
-                                            ConfirmedCount = u.ConfirmedCount,
-                                            RemainingSlots = u.RemainingSlots,
-                                            Signups = u.Signups
-                                                .Select(s => new ShiftSignupInfo(
-                                                    s.UserId, s.DisplayName, s.Status,
-                                                    s.HasProfilePicture ? $"/Profile/Picture?id={s.UserId}" : null))
-                                                .ToList()
-                                        };
-                                    })
-                                    .OrderBy(s => s.AbsoluteStart)
-                                    .ToList()
-                            };
-                        })
+                        .Select(rg => BuildRotaGroup(rg, deptName, deptSlug))
                         .OrderBy(r => r.Rota.Name, StringComparer.Ordinal)
                         .ToList()
                 };
             })
             .OrderBy(d => d.TeamName, StringComparer.Ordinal)
             .ToList();
+
+        // Build urgency-ranked flat rota list (used when sort=urgency)
+        var isUrgencySort = string.Equals(sort, "urgency", StringComparison.OrdinalIgnoreCase);
+        var urgencyRankedRotas = isUrgencySort
+            ? departments.SelectMany(d => d.Rotas)
+                .OrderByDescending(r => r.MaxUrgencyScore)
+                .ToList()
+            : [];
 
         // Get department list for filter dropdown — if already unfiltered, reuse data
         List<DepartmentOption> allDepartments;
@@ -187,6 +209,8 @@ public class ShiftsController : HumansControllerBase
             Departments = departments,
             AllDepartments = allDepartments,
             ShowSignups = isPrivileged,
+            Sort = isUrgencySort ? "urgency" : null,
+            UrgencyRankedRotas = urgencyRankedRotas,
             AllTags = allTags.ToList(),
             FilterTagIds = activeTagFilter,
             UserPreferredTagIds = userPreferredTags.Select(t => t.Id).ToHashSet()
@@ -247,13 +271,14 @@ public class ShiftsController : HumansControllerBase
         return RedirectToAction(nameof(Index), BuildFilterRouteValues(departmentId, fromDate, toDate, period, tagIds));
     }
 
-    private static RouteValueDictionary BuildFilterRouteValues(Guid? departmentId, string? fromDate, string? toDate, string? period, List<Guid>? tagIds)
+    private static RouteValueDictionary BuildFilterRouteValues(Guid? departmentId, string? fromDate, string? toDate, string? period, List<Guid>? tagIds, string? sort = null)
     {
         var rv = new RouteValueDictionary();
         if (departmentId.HasValue) rv["departmentId"] = departmentId.Value;
         if (!string.IsNullOrEmpty(fromDate)) rv["fromDate"] = fromDate;
         if (!string.IsNullOrEmpty(toDate)) rv["toDate"] = toDate;
         if (!string.IsNullOrEmpty(period)) rv["period"] = period;
+        if (!string.IsNullOrEmpty(sort)) rv["sort"] = sort;
         if (tagIds is { Count: > 0 })
             for (var i = 0; i < tagIds.Count; i++)
                 rv[$"tags[{i}]"] = tagIds[i];

@@ -1634,6 +1634,11 @@
   <data name="Shifts_AllPhases" xml:space="preserve"><value>Alle Phasen</value></data>
   <data name="Shifts_HiddenBadge" xml:space="preserve"><value>Versteckt</value></data>
   <data name="Shifts_MatchesPrefs" xml:space="preserve"><value>Passt zu deinen Präferenzen</value></data>
+  <data name="Shifts_SortUrgency" xml:space="preserve"><value>Am dringendsten</value></data>
+  <data name="Shifts_SortDept" xml:space="preserve"><value>Nach Abteilung</value></data>
+  <data name="Shifts_SortUrgencyHint" xml:space="preserve"><value>Schichten, die am meisten Leute brauchen, zuerst</value></data>
+  <data name="Shifts_SortDeptHint" xml:space="preserve"><value>Schichten nach Abteilung gruppieren</value></data>
+  <data name="Shifts_SlotsFilled" xml:space="preserve"><value>Pl&#228;tze besetzt</value></data>
   <data name="Shifts_SignUpButton" xml:space="preserve"><value>Anmelden</value></data>
   <data name="Shifts_BrowsingClosed" xml:space="preserve"><value>Schichten-Übersicht ist noch nicht geöffnet. Schau später wieder!</value></data>
   <data name="Shifts_NoActiveEvent" xml:space="preserve"><value>Kein aktives Event konfiguriert. Ein Admin muss zuerst die Event-Einstellungen einrichten.</value></data>

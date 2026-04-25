@@ -1636,6 +1636,11 @@
   <data name="Shifts_AllPhases" xml:space="preserve"><value>Todas las fases</value></data>
   <data name="Shifts_HiddenBadge" xml:space="preserve"><value>Oculto</value></data>
   <data name="Shifts_MatchesPrefs" xml:space="preserve"><value>Coincide con tus preferencias</value></data>
+  <data name="Shifts_SortUrgency" xml:space="preserve"><value>Donde m&#225;s falta hacen</value></data>
+  <data name="Shifts_SortDept" xml:space="preserve"><value>Por departamento</value></data>
+  <data name="Shifts_SortUrgencyHint" xml:space="preserve"><value>Los turnos que necesitan gente primero</value></data>
+  <data name="Shifts_SortDeptHint" xml:space="preserve"><value>Agrupar turnos por departamento</value></data>
+  <data name="Shifts_SlotsFilled" xml:space="preserve"><value>plazas cubiertas</value></data>
   <data name="Shifts_SignUpButton" xml:space="preserve"><value>Inscribirse</value></data>
   <data name="Shifts_BrowsingClosed" xml:space="preserve"><value>La exploración de turnos aún no está abierta. ¡Vuelve más tarde!</value></data>
   <data name="Shifts_NoActiveEvent" xml:space="preserve"><value>No hay ningún evento activo configurado. Un administrador debe configurar los ajustes del evento primero.</value></data>
