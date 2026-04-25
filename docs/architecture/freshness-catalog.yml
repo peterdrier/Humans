@@ -199,9 +199,34 @@ mechanical:
       Process the freshness:auto block with id="suppressions" in
       docs/architecture/code-analysis.md per its inline prompt.
 
+  - id: reforge-history
+    target: docs/reforge-history.csv
+    triggers:
+      - "src/**/*.cs"
+      - "src/**/*.cshtml"
+    update: script
+    script: docs/scripts/generate-reforge-history.sh
+
 # Editorial doc trees — walked recursively for .md files. Each .md may include
 # inline freshness markers (freshness:triggers, freshness:auto, freshness:flag-on-change).
-editorial_trees: []
+editorial_trees:
+  - docs/sections/
+  - docs/features/
+  - docs/guide/
+  - docs/architecture/coding-rules.md
+  - docs/architecture/design-rules.md
+  - docs/architecture/code-review-rules.md
+  - docs/architecture/conventions.md
+  - docs/seed-data.md
 
 # Files to exclude from both mechanical and editorial walks.
-ignore: []
+ignore:
+  - docs/sections/SECTION-TEMPLATE.md
+  - docs/architecture/maintenance-log.md
+  - docs/architecture/tech-debt-*.md
+  - docs/architecture/screenshot-maintenance.md
+  - docs/admin-role-setup.md
+  - docs/google-service-account-setup.md
+  - docs/plans/**
+  - docs/specs/**
+  - docs/superpowers/**
