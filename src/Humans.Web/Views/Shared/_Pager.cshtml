@@ -33,7 +33,7 @@
 <nav aria-label="Pagination">
     <ul class="pagination">
         <li class="page-item @(current <= 1 ? "disabled" : "")">
-            <a class="page-link" asp-action="@Model.Action" asp-controller="@Model.Controller" asp-all-route-data="@RouteFor(current - 1)">Previous</a>
+            <a class="page-link" asp-action="@Model.Action" asp-all-route-data="@RouteFor(current - 1)">Previous</a>
         </li>
         @foreach (var p in pages)
         {
@@ -44,12 +44,12 @@
             else
             {
                 <li class="page-item @(p == current ? "active" : "")">
-                    <a class="page-link" asp-action="@Model.Action" asp-controller="@Model.Controller" asp-all-route-data="@RouteFor(p)">@p</a>
+                    <a class="page-link" asp-action="@Model.Action" asp-all-route-data="@RouteFor(p)">@p</a>
                 </li>
             }
         }
         <li class="page-item @(current >= Model.TotalPages ? "disabled" : "")">
-            <a class="page-link" asp-action="@Model.Action" asp-controller="@Model.Controller" asp-all-route-data="@RouteFor(current + 1)">Next</a>
+            <a class="page-link" asp-action="@Model.Action" asp-all-route-data="@RouteFor(current + 1)">Next</a>
         </li>
     </ul>
 </nav>
