@@ -364,6 +364,106 @@
             }
         </div>
 
+        @* Camp Roles (issue nobodies-collective#489) *@
+        @if (Model.RolesPanel.HasOpenSeason)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fa-solid fa-list-check me-1"></i> Roles (@Model.Year)
+                </div>
+                <div class="card-body">
+                    @if (Model.RolesPanel.Roles.Count == 0)
+                    {
+                        <p class="text-muted small mb-0">No camp roles defined yet. CampAdmin can add them at <a asp-controller="CampAdmin" asp-action="Roles">Camp roles</a>.</p>
+                    }
+                    else
+                    {
+                        @foreach (var role in Model.RolesPanel.Roles)
+                        {
+                            var filledCount = role.Slots.Count(s => s.AssignmentId.HasValue && !s.IsBeingPhasedOut);
+                            <div class="mb-3">
+                                <h6 class="mb-2">
+                                    @role.Name
+                                    @if (role.IsRequired)
+                                    {
+                                        <span class="badge bg-secondary">required</span>
+                                    }
+                                    <small class="text-muted">@filledCount / @role.SlotCount filled</small>
+                                </h6>
+                                @foreach (var slot in role.Slots)
+                                {
+                                    <div class="row align-items-center mb-2 g-2">
+                                        <div class="col-md-1"><small class="text-muted">slot @(slot.SlotIndex + 1)</small></div>
+                                        <div class="col-md-7">
+                                            @if (slot.AssignmentId.HasValue)
+                                            {
+                                                <span>
+                                                    @slot.AssigneeDisplayName
+                                                    @if (slot.IsBeingPhasedOut)
+                                                    {
+                                                        <small class="text-muted">(being phased out)</small>
+                                                    }
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <form asp-action="AssignRole" asp-route-slug="@Model.Slug" method="post" class="d-flex gap-2">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="campRoleDefinitionId" value="@role.CampRoleDefinitionId" />
+                                                    <input type="hidden" name="slotIndex" value="@slot.SlotIndex" />
+                                                    <input type="hidden" name="autoPromote" value="false" />
+                                                    <select name="assigneeUserId" class="form-select form-select-sm" required>
+                                                        <option value="">Pick a member…</option>
+                                                        @foreach (var m in Model.ActiveMembers)
+                                                        {
+                                                            <option value="@m.UserId">@m.DisplayName</option>
+                                                        }
+                                                    </select>
+                                                    <button class="btn btn-sm btn-outline-primary" type="submit" title="Assign selected member">
+                                                        <i class="fa-solid fa-check"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-secondary" type="button"
+                                                            data-bs-toggle="modal" data-bs-target="#autoPromoteModal-@role.CampRoleDefinitionId-@slot.SlotIndex"
+                                                            title="Add someone new and assign">
+                                                        <i class="fa-solid fa-user-plus"></i>
+                                                    </button>
+                                                </form>
+                                            }
+                                        </div>
+                                        <div class="col-md-4 text-end">
+                                            @if (slot.AssignmentId.HasValue)
+                                            {
+                                                <form asp-action="UnassignRole" asp-route-slug="@Model.Slug" asp-route-assignmentId="@slot.AssignmentId" method="post" class="d-inline">
+                                                    @Html.AntiForgeryToken()
+                                                    <button class="btn btn-sm btn-outline-danger" data-confirm="Remove this assignment?">
+                                                        <i class="fa-solid fa-xmark me-1"></i>Remove
+                                                    </button>
+                                                </form>
+                                            }
+                                        </div>
+                                    </div>
+                                    @if (!slot.AssignmentId.HasValue)
+                                    {
+                                        @await Html.PartialAsync("_AutoPromoteMemberModal", new ViewDataDictionary(ViewData)
+                                        {
+                                            ["RoleId"]    = role.CampRoleDefinitionId,
+                                            ["SlotIndex"] = slot.SlotIndex,
+                                            ["RoleName"]  = role.Name,
+                                            ["Slug"]      = Model.Slug,
+                                        })
+                                    }
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-light">No open season — barrio role assignments unavailable.</div>
+        }
+
         @* Image Management *@
         <div class="card mb-4">
             <div class="card-header">

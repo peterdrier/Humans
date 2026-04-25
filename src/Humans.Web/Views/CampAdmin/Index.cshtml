@@ -58,6 +58,28 @@
     </div>
 </div>
 
+@* Camp role tools *@
+<div class="row mb-4">
+    <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fa-solid fa-list-check me-2"></i>Camp roles</h5>
+                <p class="card-text">Manage the global list of role definitions: Consent Lead, Wellbeing Lead, LNT, Shit Ninja, Power, Build Lead, etc.</p>
+                <a asp-action="Roles" class="btn btn-primary">Manage roles</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fa-solid fa-clipboard-list me-2"></i>Required-role compliance</h5>
+                <p class="card-text">See which barrios are missing required roles for the current public year.</p>
+                <a asp-action="Compliance" class="btn btn-outline-primary">Open report</a>
+            </div>
+        </div>
+    </div>
+</div>
+
 @* Pending Approvals *@
 <div class="card mb-4">
     <div class="card-header">

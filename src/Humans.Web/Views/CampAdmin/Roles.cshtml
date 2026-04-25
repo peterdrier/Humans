@@ -1,0 +1,113 @@
+@model Humans.Web.Models.CampRolesAdminPageViewModel
+@{
+    ViewData["Title"] = "Camp roles";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Index">@Localizer["Camp_Plural"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Camp_AdminTitle"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Roles</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="mb-1">Camp roles</h1>
+        <p class="text-muted mb-0">Global role definitions applied to every barrio.</p>
+    </div>
+    <a asp-action="CreateRole" class="btn btn-primary">
+        <i class="fa-solid fa-plus me-1"></i>Add role
+    </a>
+</div>
+
+<vc:temp-data-alerts />
+
+<div class="card">
+    @if (Model.Rows.Count == 0)
+    {
+        <div class="card-body">
+            <p class="text-muted mb-0">No camp roles defined yet. Use <strong>Add role</strong> to create the first one.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Sort</th>
+                        <th>Name</th>
+                        <th class="text-end">Slots</th>
+                        <th class="text-end">Min required</th>
+                        <th>Required?</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Rows)
+                    {
+                        var rowClass = row.IsActive ? "" : "text-muted";
+                        <tr class="@rowClass">
+                            <td>@row.SortOrder</td>
+                            <td>
+                                <strong>@row.Name</strong>
+                                @if (!string.IsNullOrWhiteSpace(row.Description))
+                                {
+                                    <br />
+                                    <small class="text-muted">@row.Description</small>
+                                }
+                            </td>
+                            <td class="text-end">@row.SlotCount</td>
+                            <td class="text-end">@row.MinimumRequired</td>
+                            <td>
+                                @if (row.IsRequired)
+                                {
+                                    <span class="badge bg-secondary">Required</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Optional</span>
+                                }
+                            </td>
+                            <td>
+                                @if (row.IsActive)
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-light text-dark">Inactive</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <a asp-action="EditRole" asp-route-id="@row.Id" class="btn btn-outline-primary btn-sm">
+                                    <i class="fa-solid fa-pen-to-square me-1"></i>Edit
+                                </a>
+                                @if (row.IsActive)
+                                {
+                                    <form asp-action="DeactivateRole" asp-route-id="@row.Id" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-outline-warning btn-sm" data-confirm="Deactivate this role? Existing assignments will remain but it will no longer be assignable.">
+                                            <i class="fa-solid fa-eye-slash me-1"></i>Deactivate
+                                        </button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <form asp-action="ReactivateRole" asp-route-id="@row.Id" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-outline-success btn-sm">
+                                            <i class="fa-solid fa-rotate-left me-1"></i>Reactivate
+                                        </button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

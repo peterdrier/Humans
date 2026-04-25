@@ -1,0 +1,61 @@
+@model Humans.Web.Models.CampComplianceReportViewModel
+@{
+    ViewData["Title"] = $"Required role compliance — {Model.Year}";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Index">@Localizer["Camp_Plural"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Camp_AdminTitle"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Compliance</li>
+    </ol>
+</nav>
+
+<h1 class="mb-3">Required role compliance — @Model.Year</h1>
+
+<vc:temp-data-alerts />
+
+@if (Model.Rows.Count == 0)
+{
+    <div class="alert alert-success">
+        <i class="fa-solid fa-circle-check me-1"></i>
+        All active barrios have their required roles filled for @Model.Year.
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Barrio</th>
+                        <th>Missing roles</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Rows)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-controller="Camp" asp-action="Details" asp-route-slug="@row.CampSlug">@row.CampName</a>
+                            </td>
+                            <td>
+                                @foreach (var name in row.MissingRoleNames)
+                                {
+                                    <span class="badge bg-warning text-dark me-1">@name</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <a asp-controller="Camp" asp-action="Edit" asp-route-slug="@row.CampSlug" class="btn btn-outline-primary btn-sm">
+                                    <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Open
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

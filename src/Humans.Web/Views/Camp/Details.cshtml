@@ -224,6 +224,29 @@
             </div>
             }
         }
+
+        @* Camp Roles read-only summary (authenticated only, issue nobodies-collective#489) *@
+        @if (User.Identity?.IsAuthenticated == true && Model.RolesPanel.HasOpenSeason)
+        {
+            var rolesWithFills = Model.RolesPanel.Roles.Where(r => r.Slots.Any(s => s.AssignmentId.HasValue)).ToList();
+            if (rolesWithFills.Count > 0)
+            {
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="fa-solid fa-list-check me-1"></i> Roles
+                    </div>
+                    <div class="card-body">
+                        @foreach (var role in rolesWithFills.OrderBy(r => r.Name))
+                        {
+                            <p class="mb-1">
+                                <strong>@role.Name:</strong>
+                                @string.Join(", ", role.Slots.Where(s => s.AssignmentId.HasValue).Select(s => s.AssigneeDisplayName))
+                            </p>
+                        }
+                    </div>
+                </div>
+            }
+        }
     </div>
 
     <div class="col-md-4">
