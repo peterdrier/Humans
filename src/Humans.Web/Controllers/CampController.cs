@@ -118,7 +118,12 @@ public class CampController : HumansCampControllerBase
         var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp);
         var membership = await ResolveCurrentUserMembershipStateAsync(camp.Id);
 
-        return View(MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership));
+        var detailViewModel = MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership);
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            detailViewModel.RolesPanel = await BuildRolesPanelAsync(camp.Id, HttpContext.RequestAborted);
+        }
+        return View(detailViewModel);
     }
 
     [AllowAnonymous]
@@ -139,7 +144,12 @@ public class CampController : HumansCampControllerBase
         var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp);
         var membership = await ResolveCurrentUserMembershipStateAsync(camp.Id);
 
-        return View(nameof(Details), MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership));
+        var detailViewModel = MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership);
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            detailViewModel.RolesPanel = await BuildRolesPanelAsync(camp.Id, HttpContext.RequestAborted);
+        }
+        return View(nameof(Details), detailViewModel);
     }
 
     private async Task<CampMembershipStateViewModel> ResolveCurrentUserMembershipStateAsync(Guid campId)
@@ -376,6 +386,7 @@ public class CampController : HumansCampControllerBase
 
         var viewModel = MapToEditViewModel(editData);
         await PopulateEditMembersAsync(viewModel);
+        viewModel.RolesPanel = await BuildRolesPanelAsync(camp.Id, HttpContext.RequestAborted);
         return View(viewModel);
     }
 
@@ -975,6 +986,178 @@ public class CampController : HumansCampControllerBase
             .FirstOrDefault(s => s.Year == settings.PublicYear
                 && (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full));
         return season?.Id ?? Guid.Empty;
+    }
+
+    // ======================================================================
+    // Camp role assignments (per-camp, lead-managed)
+    // ======================================================================
+
+    [Authorize]
+    [HttpPost("{slug}/Roles/Assign")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AssignRole(
+        string slug,
+        Guid campRoleDefinitionId,
+        int slotIndex,
+        Guid assigneeUserId,
+        bool autoPromote,
+        CancellationToken cancellationToken)
+    {
+        var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null) return errorResult;
+
+        var seasonId = await ResolveOpenSeasonIdForCampAsync(camp.Id);
+        if (seasonId == Guid.Empty)
+        {
+            SetError("Camp has no open season.");
+            return RedirectToAction(nameof(Edit), new { slug });
+        }
+
+        var result = await _campService.AssignCampRoleAsync(
+            seasonId, campRoleDefinitionId, slotIndex, assigneeUserId, user.Id, autoPromote, cancellationToken);
+
+        if (result.Outcome is AssignCampRoleOutcome.Assigned or AssignCampRoleOutcome.AssignedWithAutoPromote)
+        {
+            if (result.Outcome == AssignCampRoleOutcome.AssignedWithAutoPromote && result.AssigneeUserId.HasValue)
+            {
+                try
+                {
+                    await _notificationService.SendAsync(
+                        NotificationSource.CampMembershipApproved,
+                        NotificationClass.Actionable,
+                        NotificationPriority.Normal,
+                        $"You're now a member of {result.CampName}",
+                        [result.AssigneeUserId.Value],
+                        body: $"You've been added as an active member of {result.CampName} for the current season.",
+                        actionUrl: $"/Camps/{result.CampSlug}",
+                        actionLabel: "View barrio",
+                        cancellationToken: cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send CampMembershipApproved notification for camp {Slug}", slug);
+                }
+            }
+
+            if (result.AssigneeUserId.HasValue)
+            {
+                try
+                {
+                    await _notificationService.SendAsync(
+                        NotificationSource.CampRoleAssigned,
+                        NotificationClass.Informational,
+                        NotificationPriority.Normal,
+                        $"You're now {result.RoleName} for {result.CampName}",
+                        [result.AssigneeUserId.Value],
+                        body: $"You've been assigned as {result.RoleName} for the current season at {result.CampName}.",
+                        actionUrl: $"/Camps/{result.CampSlug}",
+                        actionLabel: "View barrio",
+                        cancellationToken: cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send CampRoleAssigned notification for camp {Slug}", slug);
+                }
+            }
+
+            SetSuccess(result.Outcome == AssignCampRoleOutcome.AssignedWithAutoPromote
+                ? "Member added to barrio and assigned to role."
+                : "Role assigned.");
+        }
+        else
+        {
+            SetError(result.ErrorMessage ?? result.Outcome.ToString());
+        }
+
+        return RedirectToAction(nameof(Edit), new { slug });
+    }
+
+    [Authorize]
+    [HttpPost("{slug}/Roles/{assignmentId:guid}/Unassign")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UnassignRole(string slug, Guid assignmentId, CancellationToken cancellationToken)
+    {
+        var (errorResult, user, _) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            await _campService.UnassignCampRoleAsync(assignmentId, user.Id, cancellationToken);
+            SetSuccess("Role unassigned.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Unassign camp role failed for assignment {AssignmentId} in camp {Slug}", assignmentId, slug);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Edit), new { slug });
+    }
+
+    private async Task<CampRolesPanelViewModel> BuildRolesPanelAsync(Guid campId, CancellationToken cancellationToken)
+    {
+        var seasonId = await ResolveOpenSeasonIdForCampAsync(campId);
+        if (seasonId == Guid.Empty)
+        {
+            return new CampRolesPanelViewModel { HasOpenSeason = false };
+        }
+
+        var defs = await _campService.GetCampRoleDefinitionsAsync(includeDeactivated: false, cancellationToken);
+        var assignments = await _campService.GetCampRoleAssignmentsAsync(seasonId, cancellationToken);
+
+        var rows = defs
+            .OrderBy(d => d.SortOrder)
+            .Select(d =>
+            {
+                var slots = new List<CampRoleSlotViewModel>();
+                var perDefAssignments = assignments
+                    .Where(a => a.CampRoleDefinitionId == d.Id)
+                    .ToList();
+
+                for (var i = 0; i < d.SlotCount; i++)
+                {
+                    var hit = perDefAssignments.FirstOrDefault(a => a.SlotIndex == i);
+                    slots.Add(new CampRoleSlotViewModel
+                    {
+                        SlotIndex = i,
+                        AssignmentId = hit?.AssignmentId,
+                        AssigneeUserId = hit?.AssigneeUserId,
+                        AssigneeDisplayName = hit?.AssigneeDisplayName,
+                        IsBeingPhasedOut = false
+                    });
+                }
+
+                // Orphan high-slot rows (when SlotCount was lowered after assignment)
+                foreach (var orphan in perDefAssignments.Where(a => a.SlotIndex >= d.SlotCount))
+                {
+                    slots.Add(new CampRoleSlotViewModel
+                    {
+                        SlotIndex = orphan.SlotIndex,
+                        AssignmentId = orphan.AssignmentId,
+                        AssigneeUserId = orphan.AssigneeUserId,
+                        AssigneeDisplayName = orphan.AssigneeDisplayName,
+                        IsBeingPhasedOut = true
+                    });
+                }
+
+                return new CampRoleRowViewModel
+                {
+                    CampRoleDefinitionId = d.Id,
+                    Name = d.Name,
+                    IsRequired = d.IsRequired,
+                    SlotCount = d.SlotCount,
+                    MinimumRequired = d.MinimumRequired,
+                    Slots = slots
+                };
+            })
+            .ToList();
+
+        return new CampRolesPanelViewModel
+        {
+            CampSeasonId = seasonId,
+            Roles = rows,
+            HasOpenSeason = true
+        };
     }
 
     // ======================================================================

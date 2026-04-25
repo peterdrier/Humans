@@ -54,6 +54,7 @@ public class CampDetailViewModel
     public bool IsCurrentUserLead { get; set; }
     public bool IsCurrentUserCampAdmin { get; set; }
     public CampMembershipStateViewModel Membership { get; set; } = new();
+    public CampRolesPanelViewModel RolesPanel { get; set; } = new();
 }
 
 /// <summary>
@@ -150,6 +151,7 @@ public class CampEditViewModel : CampRegisterViewModel
     public List<CampHistoricalNameViewModel> ExistingHistoricalNames { get; set; } = new();
     public List<CampMemberRowViewModel> PendingMembers { get; set; } = new();
     public List<CampMemberRowViewModel> ActiveMembers { get; set; } = new();
+    public CampRolesPanelViewModel RolesPanel { get; set; } = new();
 }
 
 public class CampMemberRowViewModel
