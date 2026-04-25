@@ -32,8 +32,11 @@ public sealed class CampRoleRepository : ICampRoleRepository
     public async Task<bool> DefinitionNameExistsAsync(string name, Guid? excludingId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var lowered = name.ToLowerInvariant();
         var query = ctx.CampRoleDefinitions.AsNoTracking()
-            .Where(d => EF.Functions.ILike(d.Name, name));
+#pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
+            .Where(d => d.Name.ToLower() == lowered);
+#pragma warning restore MA0011
         if (excludingId is { } id)
             query = query.Where(d => d.Id != id);
         return await query.AnyAsync(ct);
