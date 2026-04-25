@@ -97,8 +97,20 @@ public class CampRoleAssignment
 - **Unique** `(CampSeasonId, CampRoleDefinitionId, SlotIndex)` — one occupant per slot.
 - Lookup `(CampSeasonId)` — drives camp edit and camp detail renders.
 - Lookup `(CampMemberId)` — drives "remove member" cascade.
+- Lookup `(CampRoleDefinitionId)` — drives the compliance-report join path. Confirm during planning whether `CampSeason(Status, Year)` is already indexed (likely added by an earlier camp PR); if not, add it in this migration.
 
 **Not unique:** `(CampSeasonId, CampRoleDefinitionId, CampMemberId)` — same human may intentionally hold both slot 0 and slot 1 of the same role.
+
+### EF behavior
+
+- `AssignedByUserId` — no nav prop (per design-rules §6c). Configure FK as `OnDelete(DeleteBehavior.Restrict)`, mirroring `TeamRoleAssignment.AssignedByUserId`. The migration reviewer will flag missing FK behavior otherwise.
+- `CampMemberId` — `OnDelete(DeleteBehavior.Cascade)` is intentional (matches the workflow rule "remove `CampMember` → delete role assignments"); no manual cascade needed in `CampService`.
+- `CampSeasonId` and `CampRoleDefinitionId` — `OnDelete(DeleteBehavior.Restrict)` (the season-cascade is handled at the service layer to also write audit rows; the role-def deactivation is soft-only).
+- Repository query that loads assignments for a camp-season MUST order by `(CampRoleDefinition.SortOrder, CampRoleAssignment.SlotIndex)` — the UI assumes this order when laying out slots.
+
+### DI wiring
+
+No new interfaces or services are introduced. `ICampRepository` and `CampService` gain new methods inline; their existing DI registrations cover them. No `Program.cs` changes.
 
 ### Seed data
 
@@ -120,7 +132,7 @@ Seeded by migration (idempotent — skips if a def with the same `Name` already 
 1. Camp Lead opens camp edit page; "Roles" section lists every **active** role definition.
 2. For each empty slot, an autocomplete picker shows humans searchable by display name, scoped to the current camp-season's `CampMember`s with `Status = Active`, with an affordance *"…not in the list? Add someone"* that opens the auto-promote modal.
 3. On submit:
-   - **Human is Active CampMember of this season** → insert `CampRoleAssignment`, write `CampRoleAssigned` audit entry, fire `CampRoleAssigned` in-app notification to the assignee (`MessageCategory.TeamUpdates`).
+   - **Human is Active CampMember of this season** → insert `CampRoleAssignment`, write `CampRoleAssigned` audit entry, fire `CampRoleAssigned` in-app notification to the assignee (`MessageCategory.TeamUpdates`). Notification body: "{LeadDisplayName} added you as {RoleName} for {CampName}." Click-through links to the camp detail page (`/Camps/{slug}`).
    - **Human is not yet a member, or is `Pending`, or was `Removed`** → auto-promote modal ("Add {name} as a camp member?"). On confirm:
      - In a single transaction: upsert to `CampMember(Status = Active, ConfirmedByUserId = currentLead, ConfirmedAt = now)` — insert new row if none, or mutate existing Pending/Removed row.
      - Insert `CampRoleAssignment`.
@@ -141,8 +153,8 @@ Seeded by migration (idempotent — skips if a def with the same `Name` already 
 
 | Trigger | Effect |
 |---|---|
-| `CampMember` → `Removed` | Delete all `CampRoleAssignment` rows for that member in that season. Audit: `CampRoleUnassigned` per removed row with a `cascade=member-removed` reason. |
-| `CampSeason.Status` → `Rejected` or `Withdrawn` | Delete all `CampRoleAssignment` rows for that season. Audit: one batch entry per season. |
+| `CampMember` → `Removed` | Delete all `CampRoleAssignment` rows for that member in that season. Audit: one `CampRoleUnassigned` row per deleted assignment with a `cascade=member-removed` reason in the metadata. |
+| `CampSeason.Status` → `Rejected` or `Withdrawn` | Delete all `CampRoleAssignment` rows for that season. Audit: one `CampRoleUnassigned` row per deleted assignment with a `cascade=season-{rejected|withdrawn}` reason in the metadata (consistent with member-removal: row-per-deletion, never batched). |
 | `CampRoleDefinition.DeactivatedAt` set | No cascade. Existing assignments remain visible; definition hidden from new-assignment UI and excluded from compliance report. |
 
 ### `SlotCount` lowered below current usage
@@ -156,6 +168,8 @@ CampAdmin toggles deactivation on the global role. Existing assignments remain r
 ### Required-role compliance report
 
 CampAdmin page at `/CampAdmin/Compliance`. For each `CampSeason` with `Status = Active` and `Year = CampSettings.PublicYear`, list required (non-deactivated) role definitions where `COUNT(CampRoleAssignment) = 0`. Links through to each camp's edit page.
+
+`CampSettings.PublicYear` is an `int` matching `CampSeason.Year` directly — same scalar comparison, no off-by-one at year transitions. The report scoped to a single year by design; cross-year compliance is out of scope.
 
 ## Authorization
 
@@ -270,6 +284,7 @@ Single POST that performs both mutations in one transaction.
 
 - Non-CampAdmin → 403 on `/CampAdmin/Roles` CRUD.
 - Non-lead → 403 on slot-assign for a camp they don't lead.
+- **Lead of camp A** trying to assign on **camp B** they don't lead → 403 (cross-camp authorization check, not just "is any kind of lead").
 - Anonymous request of `/Camps/{slug}` does not render the role section.
 - Authenticated non-lead request of `/Camps/{slug}` renders all role assignments.
 
