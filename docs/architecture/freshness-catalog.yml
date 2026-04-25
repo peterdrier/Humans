@@ -109,6 +109,32 @@ mechanical:
       Preserve the document header (the "Living document. Last updated: ..." line)
       and update the date.
 
+  - id: dependency-graph
+    target: docs/architecture/dependency-graph.md
+    triggers:
+      - "src/Humans.Application/**/*.cs"
+      - "src/Humans.Web/Program.cs"
+      - "src/Humans.Web/ServiceCollectionExtensions/**/*.cs"
+    update: prompt
+    prompt: |
+      Regenerate the Mermaid dependency graph in docs/architecture/dependency-graph.md.
+
+      Walk every service class under src/Humans.Application/Services/. For
+      each:
+      1. Read the constructor; identify every injected interface.
+      2. For each injected interface, follow it to its implementing service
+         to identify the section it belongs to (use the folder name under
+         src/Humans.Application/Services/ as the section).
+      3. Distinguish ctor-injected (solid arrow) from
+         IServiceProvider.GetRequiredService<T>() (dashed arrow with "lazy"
+         label).
+      4. Identify cross-cutting services (AuditLogService, EmailService,
+         NotificationService, RoleAssignmentService, HumansMetrics) — place
+         these on the right side of the graph as a separate cluster.
+
+      Preserve the document header ("How to read", classDef colors, and any
+      explanatory prose). Only regenerate the Mermaid diagram body.
+
 # Editorial doc trees — walked recursively for .md files. Each .md may include
 # inline freshness markers (freshness:triggers, freshness:auto, freshness:flag-on-change).
 editorial_trees: []
