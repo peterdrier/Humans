@@ -1,0 +1,58 @@
+name: Claude PR Review
+
+# Auto-review every PR against this repo using the official Anthropic
+# claude-code-action. Uses CLAUDE_CODE_OAUTH_TOKEN (generated via
+# `claude setup-token` against a Claude Pro/Max subscription) so review
+# runs bill against the subscription rather than the API.
+#
+# Mirrors the role Codex plays today: posts inline comments + a top-level
+# summary on every opened PR and on each new push.
+#
+# Setup (one-time, per repo):
+#   1. Run `claude setup-token` locally → copy the OAuth token.
+#   2. Add it as a repo secret named CLAUDE_CODE_OAUTH_TOKEN
+#      (Settings → Secrets and variables → Actions → New repository secret).
+#   3. Token is valid ~1 year; rotate by re-running setup-token.
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Review this pull request for the Nobodies Humans codebase.
+
+            Anchor your review on the project's own rule documents (read them
+            from the checkout):
+              - CLAUDE.md
+              - docs/architecture/coding-rules.md
+              - docs/architecture/code-review-rules.md
+              - docs/architecture/design-rules.md
+
+            For any section the PR touches, also consult the matching
+            invariant doc under docs/sections/ and the feature spec under
+            docs/features/.
+
+            Post inline comments for specific issues and a single top-level
+            summary comment on the PR. Cover correctness, security, the
+            project's design/coding rules (services own their data, no
+            cross-service DB access, NodaTime, append-only ConsentRecord,
+            no concurrency tokens, etc.), and adherence to documented
+            invariants. Do not flag stylistic nits.
+          claude_args: |
+            --max-turns 8
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr checks:*)"
