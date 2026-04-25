@@ -58,6 +58,36 @@ mechanical:
       Preserve any hand-written prose at the top of docs/README.md (intro,
       pointers to architecture/, etc.). Only regenerate the indexed tables.
 
+  - id: authorization-inventory
+    target: docs/authorization-inventory.md
+    triggers:
+      - "src/Humans.Web/Controllers/**/*.cs"
+      - "src/Humans.Application/**/*.cs"
+      - "src/Humans.Web/Authorization/**/*.cs"
+      - "src/Humans.Domain/Authorization/**/*.cs"
+    update: prompt
+    prompt: |
+      Regenerate docs/authorization-inventory.md from scratch.
+
+      Find every:
+      - [Authorize(Roles = ...)] / [Authorize(Policy = ...)] attribute on
+        controllers and actions
+      - RoleChecks.* / ShiftRoleChecks.* invocation
+      - IAuthorizationService.AuthorizeAsync call site
+      - Resource-based authorization handler (subclass of AuthorizationHandler<T, R>)
+
+      Group by section (Admin, Tickets, Teams, Profiles, Camps, etc. — match
+      the existing section headings).
+
+      Match the existing column layout: Controller | Scope | Roles | Source.
+      "Scope" is "Class" for class-level [Authorize], "Action" for
+      action-level. "Roles" is the comma-separated role list. "Source" names
+      the static field (e.g. RoleNames.Admin, RoleGroups.BoardOrAdmin) when
+      identifiable.
+
+      Preserve the file's existing intro paragraph and any non-table prose
+      at the top.
+
 # Editorial doc trees — walked recursively for .md files. Each .md may include
 # inline freshness markers (freshness:triggers, freshness:auto, freshness:flag-on-change).
 editorial_trees: []
