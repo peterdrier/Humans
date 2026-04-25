@@ -40,7 +40,7 @@ Save this for Phase 8 — `cd $REPO_ROOT` reliably leaves the worktree on teardo
 ## Phase 1: Resolve baseline
 
 1. Run `git fetch upstream main` (always, regardless of mode). If `upstream` remote is missing, error out with: "freshness-sweep requires an `upstream` remote pointing to nobodies-collective/Humans. Configure with: `git remote add upstream https://github.com/nobodies-collective/Humans.git`".
-2. **If `--since <ref>` was passed:** set `<previous-anchor>` to the resolved SHA of `<ref>` (`git rev-parse <ref>`). Skip steps 3-4.
+2. **If `--since <ref>` was passed:** set `<previous-anchor>` to the resolved SHA of `<ref>` (`git rev-parse <ref>`). Skip steps 3-5.
 3. **If `--full` mode:** skip steps 4-5. There is no previous anchor; report it as `none` in commit message and report file. The new anchor is `upstream/main` HEAD; jump to Phase 2.
 4. Resolve last anchor: `git log upstream/main --grep='freshness sweep' --format=%H -n 1`. Then read its commit message: `git log -1 <hash> --format=%B`. Extract the `(upstream@<sha>)` token from the message — that is the **previous anchor**.
 5. If no prior sweep commit found on upstream/main: warn ("No prior freshness sweep on upstream/main — falling back to full-scan"), set `<previous-anchor>` to `none`, and behave as `--full`.
@@ -212,51 +212,51 @@ If `--interactive` mode and any `questions` are non-empty after a batch: stop, a
    Previous anchor: <prev-sha-or-"none">
    ```
 
-2. Commit. Use the project's HEREDOC pattern via the Bash tool — the closing `EOF` MUST be at column 0 (no leading whitespace), with actual newlines between lines:
+2. Commit using the project's HEREDOC pattern via the Bash tool. **Critical: the closing `EOF` terminator MUST be at column 0 (no leading whitespace) when actually executed by the Bash tool.** The example below is intentionally rendered at column 0 — preserve that exact alignment when constructing your Bash invocation:
 
-   ```bash
-   git commit -m "$(cat <<'EOF'
-   docs: freshness sweep — 5 entries (upstream@abc1234)
+```bash
+git commit -m "$(cat <<'EOF'
+docs: freshness sweep — 5 entries (upstream@abc1234)
 
-   Updated:
-   - about-page-packages
-   - dev-stats
+Updated:
+- about-page-packages
+- dev-stats
 
-   Flagged for review (see docs/freshness/last-report.md):
-   - docs/sections/Teams.md
+Flagged for review (see docs/freshness/last-report.md):
+- docs/sections/Teams.md
 
-   Mode: diff
-   Previous anchor: def5678
+Mode: diff
+Previous anchor: def5678
 
-   Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
-   EOF
-   )"
-   ```
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)"
+```
 
 3. Push: `git push -u origin freshness-sweep/$TS`.
 
-4. Open PR. Note the heredoc terminator `EOF` MUST be at column 0:
+4. Open PR. Same column-0 `EOF` requirement as above:
 
-   ```bash
-   gh pr create --repo peterdrier/Humans --base main \
-     --title "docs: freshness sweep — N entries (upstream@<sha>)" \
-     --body "$(cat <<'EOF'
-   ## Summary
-   <bullets summarizing report>
+```bash
+gh pr create --repo peterdrier/Humans --base main \
+  --title "docs: freshness sweep — N entries (upstream@<sha>)" \
+  --body "$(cat <<'EOF'
+## Summary
+<bullets summarizing report>
 
-   ## Report
-   See `docs/freshness/last-report.md` (committed in this PR).
+## Report
+See `docs/freshness/last-report.md` (committed in this PR).
 
-   ## Test plan
-   - [ ] Skim the diff
-   - [ ] Read the report
-   - [ ] Verify flagged items in their original docs
-   - [ ] Merge if happy
+## Test plan
+- [ ] Skim the diff
+- [ ] Read the report
+- [ ] Verify flagged items in their original docs
+- [ ] Merge if happy
 
-   🤖 Generated with [Claude Code](https://claude.com/claude-code)
-   EOF
-   )"
-   ```
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+EOF
+)"
+```
 
 5. Print the PR URL.
 
