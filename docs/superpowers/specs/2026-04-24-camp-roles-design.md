@@ -53,6 +53,7 @@ public class CampRoleDefinition
     public string? Description { get; set; }
 
     public int SlotCount { get; set; } = 1;                  // >= 1
+    public int MinimumRequired { get; set; } = 1;            // 0 <= MinimumRequired <= SlotCount
     public int SortOrder { get; set; }
 
     public bool IsRequired { get; set; }                     // Drives compliance report
@@ -99,7 +100,7 @@ public class CampRoleAssignment
 - Lookup `(CampMemberId)` — drives "remove member" cascade.
 - Lookup `(CampRoleDefinitionId)` — drives the compliance-report join path. Confirm during planning whether `CampSeason(Status, Year)` is already indexed (likely added by an earlier camp PR); if not, add it in this migration.
 
-**Not unique:** `(CampSeasonId, CampRoleDefinitionId, CampMemberId)` — same human may intentionally hold both slot 0 and slot 1 of the same role.
+- **Unique** `(CampSeasonId, CampRoleDefinitionId, CampMemberId)` — same human cannot hold two slots of the same role in the same season. Cross-role assignments (e.g., Alice as Consent Lead + LNT) remain unrestricted.
 
 ### EF behavior
 
@@ -116,14 +117,16 @@ No new interfaces or services are introduced. `ICampRepository` and `CampService
 
 Seeded by migration (idempotent — skips if a def with the same `Name` already exists):
 
-| Name | IsRequired | SlotCount | SortOrder |
-|---|---|---|---|
-| Consent Lead | true | 2 | 10 |
-| Wellbeing Lead | true | 1 | 20 |
-| LNT | true | 1 | 30 |
-| Shit Ninja | true | 1 | 40 |
-| Power | false | 1 | 50 |
-| Build Lead | true | 2 | 60 |
+| Name | IsRequired | SlotCount | MinimumRequired | SortOrder |
+|---|---|---|---|---|
+| Consent Lead | true | 2 | 1 | 10 |
+| Wellbeing Lead | true | 1 | 1 | 20 |
+| LNT | true | 1 | 1 | 30 |
+| Shit Ninja | true | 1 | 1 | 40 |
+| Power | false | 1 | 0 | 50 |
+| Build Lead | true | 2 | 1 | 60 |
+
+`MinimumRequired < SlotCount` for **Consent Lead** and **Build Lead** captures the intent that small barrios fill one slot and bigger barrios fill both — compliance passes once the first slot is filled.
 
 ## Workflows
 
@@ -167,7 +170,7 @@ CampAdmin toggles deactivation on the global role. Existing assignments remain r
 
 ### Required-role compliance report
 
-CampAdmin page at `/CampAdmin/Compliance`. For each `CampSeason` with `Status = Active` and `Year = CampSettings.PublicYear`, list required (non-deactivated) role definitions where `COUNT(CampRoleAssignment) = 0`. Links through to each camp's edit page.
+CampAdmin page at `/CampAdmin/Compliance`. For each `CampSeason` with `Status = Active` and `Year = CampSettings.PublicYear`, list required (non-deactivated) role definitions where `COUNT(CampRoleAssignment) < MinimumRequired`. A role with `IsRequired = false` is ignored regardless of fill state. Links through to each camp's edit page.
 
 `CampSettings.PublicYear` is an `int` matching `CampSeason.Year` directly — same scalar comparison, no off-by-one at year transitions. The report scoped to a single year by design; cross-year compliance is out of scope.
 
@@ -261,8 +264,8 @@ Single POST that performs both mutations in one transaction.
 - Assign to empty slot writes `CampRoleAssignment` + audit log + notification.
 - Assign to occupied slot fails with a friendly error.
 - Assign with `SlotIndex >= SlotCount` rejected (defense-in-depth).
-- Same member can hold multiple slots of the same role in one season.
-- Same member can hold slots across multiple distinct roles in one season.
+- Same member **cannot** hold two slots of the same role in one season — DB-level uniqueness backstop + service-level error.
+- Same member **can** hold slots across multiple distinct roles in one season.
 
 **Auto-promote to CampMember**
 - Non-member → creates `CampMember(Active)` + assignment in one transaction, fires both notifications.
@@ -277,9 +280,11 @@ Single POST that performs both mutations in one transaction.
 - Deactivate role def → existing assignments preserved.
 
 **Compliance report**
-- Camp with all required roles having ≥1 assignment: not listed.
-- Camp missing one required role: listed with that role in missing-chips.
-- Optional roles unfilled: not listed.
+- Camp with all required roles having `COUNT >= MinimumRequired`: not listed.
+- Camp with one required role at `COUNT < MinimumRequired`: listed with that role in missing-chips.
+- Required role with `MinimumRequired = 1` and `SlotCount = 2`, only first slot filled: passes (e.g., Consent Lead in a small barrio).
+- Required role with `MinimumRequired = 1` and `SlotCount = 2`, neither slot filled: fails.
+- Optional (`IsRequired = false`) roles, regardless of fill: not listed.
 - Non-Active seasons (Pending/Rejected/Withdrawn): not listed.
 - Deactivated required roles: ignored by the report.
 
