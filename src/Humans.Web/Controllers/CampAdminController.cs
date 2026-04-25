@@ -361,4 +361,133 @@ public class CampAdminController : HumansControllerBase
 
         return RedirectToAction(nameof(Index));
     }
+
+    [HttpGet("Roles")]
+    public async Task<IActionResult> Roles(CancellationToken cancellationToken)
+    {
+        var defs = await _campService.GetCampRoleDefinitionsAsync(includeDeactivated: true, cancellationToken);
+        var vm = new CampRolesAdminPageViewModel
+        {
+            Rows = defs.Select(d => new CampRoleDefinitionAdminRowViewModel
+            {
+                Id = d.Id,
+                Name = d.Name,
+                Description = d.Description,
+                SlotCount = d.SlotCount,
+                MinimumRequired = d.MinimumRequired,
+                SortOrder = d.SortOrder,
+                IsRequired = d.IsRequired,
+                IsActive = d.DeactivatedAt is null,
+            }).ToList(),
+        };
+        return View(vm);
+    }
+
+    [HttpGet("Roles/Create")]
+    public IActionResult CreateRole() => View("RoleForm", new CampRoleDefinitionFormViewModel());
+
+    [HttpPost("Roles/Create")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateRole(CampRoleDefinitionFormViewModel form, CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid) return View("RoleForm", form);
+        var actor = (await GetCurrentUserAsync())!.Id;
+        try
+        {
+            await _campService.CreateCampRoleDefinitionAsync(
+                form.Name, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder, form.IsRequired,
+                actor, cancellationToken);
+        }
+        catch (InvalidOperationException ex)
+        {
+            ModelState.AddModelError(nameof(form.Name), ex.Message);
+            return View("RoleForm", form);
+        }
+        catch (ArgumentException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return View("RoleForm", form);
+        }
+        return RedirectToAction(nameof(Roles));
+    }
+
+    [HttpGet("Roles/{id:guid}/Edit")]
+    public async Task<IActionResult> EditRole(Guid id, CancellationToken cancellationToken)
+    {
+        var defs = await _campService.GetCampRoleDefinitionsAsync(includeDeactivated: true, cancellationToken);
+        var d = defs.FirstOrDefault(x => x.Id == id);
+        if (d is null) return NotFound();
+        return View("RoleForm", new CampRoleDefinitionFormViewModel
+        {
+            Id = d.Id,
+            Name = d.Name,
+            Description = d.Description,
+            SlotCount = d.SlotCount,
+            MinimumRequired = d.MinimumRequired,
+            SortOrder = d.SortOrder,
+            IsRequired = d.IsRequired,
+        });
+    }
+
+    [HttpPost("Roles/{id:guid}/Edit")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditRole(Guid id, CampRoleDefinitionFormViewModel form, CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            form.Id = id;
+            return View("RoleForm", form);
+        }
+        var actor = (await GetCurrentUserAsync())!.Id;
+        try
+        {
+            await _campService.UpdateCampRoleDefinitionAsync(id,
+                form.Name, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder, form.IsRequired,
+                actor, cancellationToken);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            form.Id = id;
+            return View("RoleForm", form);
+        }
+        return RedirectToAction(nameof(Roles));
+    }
+
+    [HttpPost("Roles/{id:guid}/Deactivate")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeactivateRole(Guid id, CancellationToken cancellationToken)
+    {
+        var actor = (await GetCurrentUserAsync())!.Id;
+        await _campService.DeactivateCampRoleDefinitionAsync(id, actor, cancellationToken);
+        return RedirectToAction(nameof(Roles));
+    }
+
+    [HttpPost("Roles/{id:guid}/Reactivate")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ReactivateRole(Guid id, CancellationToken cancellationToken)
+    {
+        var actor = (await GetCurrentUserAsync())!.Id;
+        await _campService.ReactivateCampRoleDefinitionAsync(id, actor, cancellationToken);
+        return RedirectToAction(nameof(Roles));
+    }
+
+    [HttpGet("Compliance")]
+    public async Task<IActionResult> Compliance(CancellationToken cancellationToken)
+    {
+        var settings = await _campService.GetSettingsAsync(cancellationToken);
+        var report = await _campService.GetCampRoleComplianceAsync(settings.PublicYear, cancellationToken);
+        var vm = new CampComplianceReportViewModel
+        {
+            Year = settings.PublicYear,
+            Rows = report.Select(r => new CampComplianceRowViewModel
+            {
+                CampId = r.CampId,
+                CampSlug = r.CampSlug,
+                CampName = r.CampName,
+                MissingRoleNames = r.MissingRoleNames,
+            }).ToList(),
+        };
+        return View(vm);
+    }
 }
