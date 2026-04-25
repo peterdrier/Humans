@@ -62,7 +62,7 @@ NEW_ROWS="$WORK_DIR/new-rows.md"
 awk '
   BEGIN { in_table = 0; preamble_done = 0 }
   /^## Codebase Growth/ { in_table = 1 }
-  in_table && /^\|[ -]+\|[ -]+\|/ && !preamble_done {
+  in_table && /^\|.*---/ && !preamble_done {
     print > preamble
     preamble_done = 1
     next
@@ -156,10 +156,15 @@ while IFS=' ' read -r day commit; do
   N=$((N+1))
   git checkout --quiet "$commit"
 
-  cs_data=$(find src -type f -name '*.cs' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | xargs -0 wc -l -c 2>/dev/null | tail -1 || echo "0 0")
-  cshtml_data=$(find src -type f -name '*.cshtml' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | xargs -0 wc -l -c 2>/dev/null | tail -1 || echo "0 0")
-  resx_data=$(find src -type f -name '*.resx' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | xargs -0 wc -l -c 2>/dev/null | tail -1 || echo "0 0")
-  js_data=$(find src -type f -name '*.js' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | xargs -0 wc -l -c 2>/dev/null | tail -1 || echo "0 0")
+  # Pipe through `cat` to wc, NOT `xargs -0 wc -l -c | tail -1`. When the file
+  # list exceeds the OS command-line limit (~8 KB on Windows), xargs splits
+  # into multiple wc invocations and each emits its own "total" line; `tail
+  # -1` then only sees the last batch's count. `cat` merges content into a
+  # single stream so wc sees the true total.
+  cs_data=$(find src -type f -name '*.cs' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l -c)
+  cshtml_data=$(find src -type f -name '*.cshtml' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l -c)
+  resx_data=$(find src -type f -name '*.resx' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l -c)
+  js_data=$(find src -type f -name '*.js' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l -c)
 
   cs_lines=$(echo "$cs_data" | awk '{print $1+0}')
   cshtml_lines=$(echo "$cshtml_data" | awk '{print $1+0}')
@@ -169,7 +174,7 @@ while IFS=' ' read -r day commit; do
   app_lines=$((cs_lines + cshtml_lines + resx_lines + js_lines))
   app_bytes=$(( $(echo "$cs_data" | awk '{print $2+0}') + $(echo "$cshtml_data" | awk '{print $2+0}') + $(echo "$resx_data" | awk '{print $2+0}') + $(echo "$js_data" | awk '{print $2+0}') ))
 
-  test_data=$(find . -type f -name '*.cs' -path '*Tests*' ! -path '*/Migrations/*' -print0 2>/dev/null | xargs -0 wc -l -c 2>/dev/null | tail -1 || echo "0 0")
+  test_data=$(find . -type f -name '*.cs' -path '*Tests*' ! -path '*/Migrations/*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l -c)
   test_lines=$(echo "$test_data" | awk '{print $1+0}')
   test_bytes=$(echo "$test_data" | awk '{print $2+0}')
 
