@@ -137,14 +137,18 @@ async function handleConfirm() {
 
     const confirmBtn  = document.getElementById('import-confirm-btn');
     const statusEl    = document.getElementById('import-status');
-    const token       = document.querySelector('input[name="__RequestVerificationToken"]').value;
+    const tokenEl = document.querySelector('input[name="__RequestVerificationToken"]');
+    if (!tokenEl) { showError('Security token missing. Please refresh the page.'); return; }
+    const token = tokenEl.value;
     const now         = new Date();
     const noteDate    = now.toISOString().slice(0, 16).replace('T', ' ');
     const note        = `Imported ${noteDate}`;
 
     confirmBtn.disabled = true;
-    statusEl.textContent = `Updating ${pendingImport.matched.length} polygon(s)…`;
-    statusEl.classList.remove('d-none');
+    if (statusEl) {
+        statusEl.textContent = `Updating ${pendingImport.matched.length} polygon(s)…`;
+        statusEl.classList.remove('d-none');
+    }
 
     let successCount = 0;
     const failures   = [];
@@ -168,14 +172,14 @@ async function handleConfirm() {
     bootstrap.Modal.getInstance(document.getElementById('import-preview-modal'))?.hide();
 
     const resultDiv = document.getElementById('import-result');
-    if (failures.length === 0) {
+    if (resultDiv && failures.length === 0) {
         resultDiv.className = 'alert alert-success mt-2';
         resultDiv.textContent = `${successCount} polygon(s) updated.`;
-    } else {
+    } else if (resultDiv) {
         resultDiv.className = 'alert alert-warning mt-2';
         resultDiv.textContent = `${successCount} updated, ${failures.length} failed: ${failures.join(', ')}.`;
     }
-    resultDiv.classList.remove('d-none');
+    resultDiv?.classList.remove('d-none');
     pendingImport = null;
     fileInput.value = '';
 }
