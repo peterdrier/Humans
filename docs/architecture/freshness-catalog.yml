@@ -88,6 +88,27 @@ mechanical:
       Preserve the file's existing intro paragraph and any non-table prose
       at the top.
 
+  - id: controller-architecture-audit
+    target: docs/controller-architecture-audit.md
+    triggers:
+      - "src/Humans.Web/Controllers/**/*.cs"
+    update: prompt
+    prompt: |
+      Regenerate the action-name audit in docs/controller-architecture-audit.md.
+
+      For every controller in src/Humans.Web/Controllers/:
+      1. List every public action method with its [HttpGet]/[HttpPost]/etc.
+         verb and route.
+      2. For each action, derive a Purpose line from the action name and
+         body comments.
+      3. Suggest a rename only if the action name violates the project's
+         action-name conventions documented in
+         docs/architecture/conventions.md (or note "OK" if it doesn't).
+
+      Match the existing column layout: Method | Route | Verb | Purpose | Suggestion.
+      Preserve the document header (the "Living document. Last updated: ..." line)
+      and update the date.
+
 # Editorial doc trees — walked recursively for .md files. Each .md may include
 # inline freshness markers (freshness:triggers, freshness:auto, freshness:flag-on-change).
 editorial_trees: []
