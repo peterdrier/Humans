@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Models;
@@ -125,9 +126,14 @@ public class ShiftSignupsBucketingTests
                 .Returns(signups);
         }
 
+        var teamService = Substitute.For<ITeamService>();
+        teamService.GetTeamNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci => (IReadOnlyDictionary<Guid, string>)((IReadOnlyCollection<Guid>)ci[0])
+                .ToDictionary(id => id, _ => "Test Dept"));
+
         var clock = new FakeClock(TestNow);
         var component = new ShiftSignupsViewComponent(
-            signupService, shiftMgmt, clock,
+            signupService, shiftMgmt, teamService, clock,
             NullLogger<ShiftSignupsViewComponent>.Instance);
 
         // Minimal ViewComponentContext for View() to work

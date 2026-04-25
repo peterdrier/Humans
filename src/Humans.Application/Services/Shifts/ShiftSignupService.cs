@@ -877,6 +877,8 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         var userSignups = await _repo.GetActiveSignupsForUserAsync(userId);
 
+        IReadOnlyDictionary<Guid, string>? teamNames = null;
+
         foreach (var existing in userSignups)
         {
             if (existing.ShiftId == targetShift.Id) continue;
@@ -890,9 +892,11 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
             {
                 var tz = DateTimeZoneProviders.Tzdb[existingEs.TimeZoneId];
                 var dateStr = existingStart.InZone(tz).ToString("ddd MMM d HH:mm", null);
-#pragma warning disable CS0618 // Rota.Team cross-domain nav, stitched in memory by ShiftManagementService
-                var teamName = existing.Shift.Rota.Team?.Name ?? "Unknown";
-#pragma warning restore CS0618
+
+                teamNames ??= await TeamService.GetTeamNamesByIdsAsync(
+                    userSignups.Select(s => s.Shift.Rota.TeamId).Distinct().ToList());
+                var teamName = teamNames.GetValueOrDefault(existing.Shift.Rota.TeamId, "Unknown");
+
                 return $"Time conflict with '{existing.Shift.Rota.Name}' ({teamName}, {dateStr}).";
             }
         }

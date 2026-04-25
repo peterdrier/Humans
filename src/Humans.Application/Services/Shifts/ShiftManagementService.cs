@@ -293,73 +293,11 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         await _repo.DeleteRotaCascadeAsync(rotaId);
     }
 
-    public async Task<Rota?> GetRotaByIdAsync(Guid rotaId)
-    {
-        var rota = await _repo.GetRotaByIdWithShiftsAsync(rotaId);
-        if (rota is null) return null;
+    public Task<Rota?> GetRotaByIdAsync(Guid rotaId) =>
+        _repo.GetRotaByIdWithShiftsAsync(rotaId);
 
-        // Historically Rota.Team was eager-loaded. Stitch it in memory via
-        // ITeamService so existing view code that reads rota.Team.Name still
-        // works without cross-domain .Include().
-        var team = await TeamService.GetTeamByIdAsync(rota.TeamId);
-        if (team is not null)
-        {
-#pragma warning disable CS0618 // Obsolete: cross-domain nav, stitched in memory
-            rota.Team = team;
-#pragma warning restore CS0618
-        }
-        return rota;
-    }
-
-    public async Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId)
-    {
-        var rotas = await _repo.GetRotasByDepartmentAsync(teamId, eventSettingsId);
-        if (rotas.Count == 0) return rotas;
-
-        // All rotas in this result are for the same team; resolve once.
-        var team = await TeamService.GetTeamByIdAsync(teamId);
-        if (team is not null)
-        {
-            foreach (var rota in rotas)
-            {
-#pragma warning disable CS0618 // Obsolete: cross-domain nav, stitched in memory
-                rota.Team = team;
-#pragma warning restore CS0618
-            }
-        }
-
-        // Stitch signup.User via IUserService — the repo deliberately does not
-        // .Include(s => s.User) (§15 no cross-domain navs). ShiftAdmin Index
-        // view reads signup.User.DisplayName / ProfilePictureUrl.
-        var userIds = rotas
-            .SelectMany(r => r.Shifts)
-            .SelectMany(s => s.ShiftSignups)
-            .Select(su => su.UserId)
-            .Distinct()
-            .ToList();
-
-        if (userIds.Count > 0)
-        {
-            var userLookup = await UserService.GetByIdsAsync(userIds);
-            foreach (var rota in rotas)
-            {
-                foreach (var shift in rota.Shifts)
-                {
-                    foreach (var signup in shift.ShiftSignups)
-                    {
-                        if (userLookup.TryGetValue(signup.UserId, out var user))
-                        {
-#pragma warning disable CS0618 // Obsolete: cross-domain nav, stitched in memory
-                            signup.User = user;
-#pragma warning restore CS0618
-                        }
-                    }
-                }
-            }
-        }
-
-        return rotas;
-    }
+    public Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId) =>
+        _repo.GetRotasByDepartmentAsync(teamId, eventSettingsId);
 
     // ============================================================
     // Bulk Shift Creation
@@ -490,21 +428,8 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         await _repo.DeleteShiftCascadeAsync(shiftId);
     }
 
-    public async Task<Shift?> GetShiftByIdAsync(Guid shiftId)
-    {
-        var shift = await _repo.GetShiftByIdAsync(shiftId);
-        if (shift is null) return null;
-
-        // Stitch Shift.Rota.Team via ITeamService — no cross-domain Include.
-        var team = await TeamService.GetTeamByIdAsync(shift.Rota.TeamId);
-        if (team is not null)
-        {
-#pragma warning disable CS0618 // Obsolete: cross-domain nav, stitched in memory
-            shift.Rota.Team = team;
-#pragma warning restore CS0618
-        }
-        return shift;
-    }
+    public Task<Shift?> GetShiftByIdAsync(Guid shiftId) =>
+        _repo.GetShiftByIdAsync(shiftId);
 
     public Task<IReadOnlyList<Shift>> GetShiftsByRotaAsync(Guid rotaId) =>
         _repo.GetShiftsByRotaAsync(rotaId);

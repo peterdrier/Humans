@@ -78,7 +78,7 @@ public interface IShiftSignupService
     Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null);
 
     /// <summary>
-    /// Gets a signup by primary key with Shift.Rota.Team included.
+    /// Gets a signup by primary key with Shift.Rota included.
     /// </summary>
     Task<ShiftSignup?> GetByIdAsync(Guid signupId);
 

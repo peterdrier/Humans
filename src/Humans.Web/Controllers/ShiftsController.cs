@@ -324,10 +324,18 @@ public class ShiftsController : HumansControllerBase
         var now = _clock.GetCurrentInstant();
         var model = new MyShiftsViewModel { EventSettings = es };
 
+        var mineTeamIds = signups
+            .Where(s => s.Shift?.Rota is not null)
+            .Select(s => s.Shift.Rota.TeamId)
+            .Distinct()
+            .ToList();
+        var mineTeamNames = mineTeamIds.Count == 0
+            ? (IReadOnlyDictionary<Guid, string>)new Dictionary<Guid, string>()
+            : await _teamService.GetTeamNamesByIdsAsync(mineTeamIds);
+
         foreach (var signup in signups)
         {
-#pragma warning disable CS0618 // Rota.Team cross-domain nav, stitched in memory by ShiftManagementService
-            if (signup.Shift?.Rota?.Team is null || es is null)
+            if (signup.Shift?.Rota is null || es is null)
             {
                 _logger.LogWarning(
                     "Skipping shift signup {SignupId} for user {UserId} because related shift data was missing",
@@ -339,11 +347,10 @@ public class ShiftsController : HumansControllerBase
             var item = new MySignupItem
             {
                 Signup = signup,
-                DepartmentName = signup.Shift.Rota.Team.Name,
+                DepartmentName = mineTeamNames.GetValueOrDefault(signup.Shift.Rota.TeamId, "Unknown"),
                 AbsoluteStart = signup.Shift.GetAbsoluteStart(es),
                 AbsoluteEnd = signup.Shift.GetAbsoluteEnd(es)
             };
-#pragma warning restore CS0618
 
             switch (signup.Status)
             {

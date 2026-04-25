@@ -66,6 +66,15 @@ public class VolController : HumansControllerBase
 
             var signups = await _signupService.GetByUserAsync(user.Id, es.Id);
 
+            var myShiftsTeamIds = signups
+                .Where(s => s.Shift?.Rota is not null)
+                .Select(s => s.Shift.Rota.TeamId)
+                .Distinct()
+                .ToList();
+            var myShiftsTeamNames = myShiftsTeamIds.Count == 0
+                ? (IReadOnlyDictionary<Guid, string>)new Dictionary<Guid, string>()
+                : await _teamService.GetTeamNamesByIdsAsync(myShiftsTeamIds);
+
             var model = new Models.Vol.MyShiftsViewModel
             {
                 EventSettings = es,
@@ -75,7 +84,7 @@ public class VolController : HumansControllerBase
                     DutyTitle = string.IsNullOrWhiteSpace(signup.Shift.Description)
                         ? signup.Shift.Rota.Name
                         : $"{signup.Shift.Rota.Name} — {signup.Shift.Description}",
-                    TeamName = signup.Shift.Rota.Team.Name,
+                    TeamName = myShiftsTeamNames.GetValueOrDefault(signup.Shift.Rota.TeamId, "Unknown"),
                     AbsoluteStart = signup.Shift.GetAbsoluteStart(es),
                     AbsoluteEnd = signup.Shift.GetAbsoluteEnd(es),
                     Status = signup.Status
@@ -175,17 +184,23 @@ public class VolController : HumansControllerBase
                 includeAdminOnly: isPrivileged, includeSignups: isPrivileged,
                 includeHidden: isPrivileged);
 
+            var browseTeamIds = browseShifts.Select(u => u.Shift.Rota.TeamId).Distinct().ToList();
+            var browseTeams = browseTeamIds.Count == 0
+                ? (IReadOnlyDictionary<Guid, Team>)new Dictionary<Guid, Team>()
+                : await _teamService.GetByIdsWithParentsAsync(browseTeamIds);
+
             // Group by department -> rota -> shift
             var departments = browseShifts
                 .GroupBy(u => u.Shift.Rota.TeamId)
                 .Select(deptGroup =>
                 {
                     var firstShift = deptGroup.OrderBy(x => x.Shift.Id).First().Shift;
+                    var deptTeam = browseTeams.GetValueOrDefault(firstShift.Rota.TeamId);
                     return new DepartmentShiftGroup
                     {
                         TeamId = firstShift.Rota.TeamId,
-                        TeamName = firstShift.Rota.Team.Name,
-                        TeamSlug = firstShift.Rota.Team.Slug,
+                        TeamName = deptTeam?.Name ?? "Unknown",
+                        TeamSlug = deptTeam?.Slug ?? string.Empty,
                         Rotas = deptGroup.GroupBy(u => u.Shift.RotaId)
                             .Select(rotaGroup =>
                             {
@@ -629,6 +644,11 @@ public class VolController : HumansControllerBase
 
             var urgentShifts = await _shiftMgmt.GetUrgentShiftsAsync(es.Id);
 
+            var urgentTeamIds = urgentShifts.Select(u => u.Shift.Rota.TeamId).Distinct().ToList();
+            var urgentTeams = urgentTeamIds.Count == 0
+                ? (IReadOnlyDictionary<Guid, Team>)new Dictionary<Guid, Team>()
+                : await _teamService.GetByIdsWithParentsAsync(urgentTeamIds);
+
             var model = new UrgentShiftsViewModel
             {
                 EventSettings = es,
@@ -637,7 +657,7 @@ public class VolController : HumansControllerBase
                     ShiftId = u.Shift.Id,
                     DutyTitle = u.Shift.Rota.Name + (string.IsNullOrEmpty(u.Shift.Description) ? "" : " — " + u.Shift.Description),
                     TeamName = u.DepartmentName,
-                    TeamSlug = u.Shift.Rota.Team.Slug,
+                    TeamSlug = urgentTeams.GetValueOrDefault(u.Shift.Rota.TeamId)?.Slug ?? string.Empty,
                     DayOffset = u.Shift.DayOffset,
                     StartTime = u.Shift.StartTime,
                     Duration = u.Shift.Duration,
