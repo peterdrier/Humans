@@ -43,4 +43,11 @@
     </PackageReference>
   </ItemGroup>
 
+  <!-- Shared HumansFact / HumansTheory attributes (1s default timeout, infinite forbidden) -->
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\HumansFactAttribute.cs" Link="Humans.Testing\HumansFactAttribute.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Humans.Testing\HumansTheoryAttribute.cs" Link="Humans.Testing\HumansTheoryAttribute.cs" />
+    <Using Include="Humans.Testing" />
+  </ItemGroup>
+
 </Project>
