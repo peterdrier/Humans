@@ -101,7 +101,7 @@ The old pattern (`_cache.GetOrCreateAsync($"entity:{id}", ...)` inside a service
 
 ## 5. Decorator Caching
 
-Services are cached by **wrapping them in a decorator**, not by inlining `IMemoryCache` calls. The decorator is registered via `services.Decorate<IProfileService, CachingProfileService>()` (Scrutor). Callers inject `IProfileService` and get the cached version transparently.
+Services are cached by **wrapping them in a decorator**, not by inlining `IMemoryCache` calls. The decorator is registered via a keyed-inner + factory-forward pattern: the inner is registered against `IProfileService` under a key (`AddKeyedScoped<IProfileService, ProfilesProfileService>(InnerServiceKey)`); the decorator is registered as itself (`AddSingleton<CachingProfileService>()`) and `IProfileService` is forwarded to it (`AddSingleton<IProfileService>(sp => sp.GetRequiredService<CachingProfileService>())`). See `Humans.Web/Extensions/Sections/ProfileSectionExtensions.cs` for the canonical wiring. Callers inject `IProfileService` and get the cached version transparently.
 
 ### 5a. Decorator Rules
 
