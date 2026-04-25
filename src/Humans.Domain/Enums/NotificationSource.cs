@@ -85,5 +85,8 @@ public enum NotificationSource
     CampMembershipRejected = 26,
 
     /// <summary>The season the human had requested to join was withdrawn or rejected.</summary>
-    CampMembershipSeasonClosed = 27
+    CampMembershipSeasonClosed = 27,
+
+    /// <summary>A camp role was assigned to a human (in-app + email if subscribed).</summary>
+    CampRoleAssigned = 28
 }
