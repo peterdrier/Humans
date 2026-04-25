@@ -600,7 +600,7 @@ public class CampServiceTests : IDisposable
     // Camp membership per season (issue nobodies-collective#488)
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task RequestCampMembershipAsync_OpenSeason_CreatesPending()
     {
         await SeedSettingsAsync();
@@ -617,7 +617,7 @@ public class CampServiceTests : IDisposable
         member.UserId.Should().Be(userId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RequestCampMembershipAsync_NoOpenSeason_ReturnsNoOpenSeason()
     {
         await SeedSettingsAsync();
@@ -631,7 +631,7 @@ public class CampServiceTests : IDisposable
         (await _dbContext.CampMembers.AsNoTracking().AnyAsync()).Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RequestCampMembershipAsync_AlreadyPending_IsIdempotent()
     {
         await SeedSettingsAsync();
@@ -648,7 +648,7 @@ public class CampServiceTests : IDisposable
         (await _dbContext.CampMembers.AsNoTracking().CountAsync()).Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ApproveCampMemberAsync_PendingRequest_SetsActiveAndNotifies()
     {
         await SeedSettingsAsync();
@@ -679,7 +679,7 @@ public class CampServiceTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ApproveCampMemberAsync_CrossCampMemberId_Throws()
     {
         // P1 fix: controller authorizes camp A, but attacker submits camp B's member id.
@@ -704,7 +704,7 @@ public class CampServiceTests : IDisposable
         memberB.Status.Should().Be(CampMemberStatus.Pending);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RejectCampMemberAsync_PendingRequest_SetsRemovedAndNotifies()
     {
         await SeedSettingsAsync();
@@ -733,7 +733,7 @@ public class CampServiceTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RejectCampMemberAsync_AllowsReRequest()
     {
         await SeedSettingsAsync();
@@ -750,7 +750,7 @@ public class CampServiceTests : IDisposable
         second.CampMemberId.Should().NotBe(first.CampMemberId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task WithdrawCampMembershipRequestAsync_Self_SetsRemoved()
     {
         await SeedSettingsAsync();
@@ -766,7 +766,7 @@ public class CampServiceTests : IDisposable
         member.Status.Should().Be(CampMemberStatus.Removed);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task WithdrawCampMembershipRequestAsync_OtherUser_Throws()
     {
         await SeedSettingsAsync();
@@ -780,7 +780,7 @@ public class CampServiceTests : IDisposable
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task LeaveCampAsync_ActiveMember_SetsRemoved()
     {
         await SeedSettingsAsync();
@@ -797,7 +797,7 @@ public class CampServiceTests : IDisposable
         member.Status.Should().Be(CampMemberStatus.Removed);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RemoveCampMemberAsync_ActiveMember_SetsRemoved()
     {
         await SeedSettingsAsync();
@@ -814,7 +814,7 @@ public class CampServiceTests : IDisposable
         member.Status.Should().Be(CampMemberStatus.Removed);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task WithdrawSeasonAsync_NotifiesPendingRequesters_DoesNotChangeMemberStatus()
     {
         // No more auto-withdraw cascade — just a notification out. Pending rows stay pending.
@@ -845,7 +845,7 @@ public class CampServiceTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetMembershipStateForCampAsync_ActiveMember_ReturnsActive()
     {
         await SeedSettingsAsync();
@@ -862,7 +862,7 @@ public class CampServiceTests : IDisposable
         state.OpenSeasonYear.Should().Be(2026);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetMembershipStateForCampAsync_NoSeason_ReturnsNoOpenSeason()
     {
         await SeedSettingsAsync();
@@ -873,7 +873,7 @@ public class CampServiceTests : IDisposable
         state.Status.Should().Be(CampMemberStatusSummary.NoOpenSeason);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetPendingMembershipCountForLeadAsync_CountsPendingOnActiveSeasonsForLeadsCamps()
     {
         await SeedSettingsAsync();
@@ -909,7 +909,7 @@ public class CampServiceTests : IDisposable
         (await _service.GetPendingMembershipCountForLeadAsync(leadUserId)).Should().Be(0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCampMembersAsync_IncludesLeadsAsActiveWithLeadBadge()
     {
         await SeedSettingsAsync();
@@ -944,7 +944,7 @@ public class CampServiceTests : IDisposable
         members.Active[0].IsLead.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCampMembershipsForUserAsync_ActiveMembership_IsReturned()
     {
         await SeedSettingsAsync();
