@@ -166,6 +166,12 @@ public interface IApplicationDecisionService
     Task<int> GetPendingApplicationCountAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Returns the count of approved applications (currently-valid asociado
+    /// memberships). Used by the <c>humans.asociados</c> metric.
+    /// </summary>
+    Task<int> GetApprovedApplicationCountAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Returns every <see cref="ApplicationStatus.Approved"/> application
     /// whose <c>TermExpiresAt</c> falls between <paramref name="today"/>
     /// (inclusive) and <paramref name="reminderThreshold"/> (inclusive) and

@@ -84,4 +84,11 @@ public interface IRoleAssignmentService
     /// </summary>
     Task<IReadOnlyList<Guid>> GetActiveUserIdsInRoleAsync(
         string roleName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the count of currently-active role assignments grouped by role
+    /// name. Used by the <c>humans.role_assignments_active</c> metric.
+    /// </summary>
+    Task<IReadOnlyList<(string RoleName, int Count)>> GetActiveCountsByRoleAsync(
+        CancellationToken ct = default);
 }

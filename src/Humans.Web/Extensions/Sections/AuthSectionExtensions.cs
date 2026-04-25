@@ -6,6 +6,7 @@ using Humans.Application.Services.Auth;
 using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Repositories.Auth;
 using Humans.Infrastructure.Services.Auth;
+using Humans.Infrastructure.Services.Metering;
 
 namespace Humans.Web.Extensions.Sections;
 
@@ -30,6 +31,9 @@ internal static class AuthSectionExtensions
         services.AddScoped<IMagicLinkUrlBuilder, MagicLinkUrlBuilder>();
         services.AddScoped<IMagicLinkRateLimiter, MagicLinkRateLimiter>();
         services.AddScoped<IMagicLinkService, MagicLinkService>();
+
+        // Metrics: Auth owns humans.role_assignments_active.
+        services.AddHostedService<AuthMetricsRegistrar>();
 
         return services;
     }
