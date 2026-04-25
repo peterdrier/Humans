@@ -226,6 +226,8 @@ If `--interactive` mode and any `questions` are non-empty after a batch: stop, a
 | Catalog YAML parse error | Error in Phase 3; nothing else runs |
 | Marker validation error in some doc | That doc is added to "Skipped (errors)" in the report; other entries continue |
 | Subagent fails (returns malformed JSON or errors) | That entry is skipped; other entries continue; failure recorded in "Skipped (errors)" |
+| Two entries write the same target | Schema validation rejects this at parse time |
+| Trigger glob matches no real path | Schema validator warns (likely typo or rename — config bug, not runtime error) |
 | Push fails (network, auth) | Worktree retained; user fixes credentials and re-runs Phase 7 manually |
 | `gh pr create` fails | Worktree retained; report and commit are on the branch; user opens PR manually |
 
