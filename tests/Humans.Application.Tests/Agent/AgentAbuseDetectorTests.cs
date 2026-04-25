@@ -6,7 +6,7 @@ namespace Humans.Application.Tests.Agent;
 
 public class AgentAbuseDetectorTests
 {
-    [Theory]
+    [HumansTheory]
     [InlineData("how do I join a team?", false)]
     [InlineData("what is my consent status?", false)]
     [InlineData("I want to hurt myself", true)]

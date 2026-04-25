@@ -14,7 +14,7 @@ namespace Humans.Application.Tests.Agent;
 
 public class AgentRateLimitHandlerTests
 {
-    [Fact]
+    [HumansFact]
     public async Task Allows_when_under_daily_cap()
     {
         var user = Guid.NewGuid();
@@ -31,7 +31,7 @@ public class AgentRateLimitHandlerTests
         context.HasSucceeded.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task Rejects_when_daily_messages_cap_hit()
     {
         var user = Guid.NewGuid();

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Consent;
 using Humans.Application.Models;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;

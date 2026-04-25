@@ -10,7 +10,7 @@ namespace Humans.Application.Tests.Agent;
 
 public class AgentPreloadCorpusBuilderTests
 {
-    [Fact]
+    [HumansFact]
     public async Task Tier1_includes_only_the_eight_highest_signal_sections()
     {
         var builder = MakeBuilder();
@@ -23,13 +23,13 @@ public class AgentPreloadCorpusBuilderTests
         text.Should().Contain("# Shifts");
         text.Should().Contain("# Tickets");
         text.Should().Contain("# Profiles");
-        text.Should().Contain("# Admin");
+        text.Should().Contain("# Auth");
         text.Should().NotContain("# Budget");
         text.Should().NotContain("# Camps");
         text.Should().NotContain("# CityPlanning");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task Tier2_includes_all_fourteen_sections()
     {
         var builder = MakeBuilder();
@@ -41,7 +41,7 @@ public class AgentPreloadCorpusBuilderTests
         text.Should().Contain("# Campaigns");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task Tier1_output_is_below_the_ITPM_budget()
     {
         var builder = MakeBuilder();
