@@ -1574,4 +1574,47 @@ public class CampService : ICampService
                 m.ConfirmedAt))
             .ToListAsync(cancellationToken);
     }
+
+    // ==========================================================================
+    // Camp role definitions and assignments (issue #489)
+    // Stubs only — real implementations land in subsequent commits with paired tests.
+    // ==========================================================================
+
+#pragma warning disable MA0025 // Implement the functionality (intentional stubs landing in follow-up commits)
+    public Task<IReadOnlyList<CampRoleDefinitionDto>> GetCampRoleDefinitionsAsync(
+        bool includeDeactivated, CancellationToken cancellationToken = default) =>
+        throw new NotImplementedException();
+
+    public Task<CampRoleDefinitionDto> CreateCampRoleDefinitionAsync(
+        string name, string? description, int slotCount, int minimumRequired, int sortOrder, bool isRequired,
+        Guid actorUserId, CancellationToken cancellationToken = default) =>
+        throw new NotImplementedException();
+
+    public Task<CampRoleDefinitionDto> UpdateCampRoleDefinitionAsync(
+        Guid roleDefinitionId, string name, string? description, int slotCount, int minimumRequired, int sortOrder, bool isRequired,
+        Guid actorUserId, CancellationToken cancellationToken = default) =>
+        throw new NotImplementedException();
+
+    public Task DeactivateCampRoleDefinitionAsync(Guid roleDefinitionId, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        throw new NotImplementedException();
+
+    public Task ReactivateCampRoleDefinitionAsync(Guid roleDefinitionId, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        throw new NotImplementedException();
+
+    public Task<IReadOnlyList<CampRoleAssignmentDto>> GetCampRoleAssignmentsAsync(
+        Guid campSeasonId, CancellationToken cancellationToken = default) =>
+        throw new NotImplementedException();
+
+    public Task<AssignCampRoleResult> AssignCampRoleAsync(
+        Guid campSeasonId, Guid campRoleDefinitionId, int slotIndex,
+        Guid assigneeUserId, Guid assignedByUserId, bool autoPromoteToMember,
+        CancellationToken cancellationToken = default) =>
+        throw new NotImplementedException();
+
+    public Task UnassignCampRoleAsync(Guid assignmentId, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        throw new NotImplementedException();
+
+    public Task<IReadOnlyList<CampComplianceRow>> GetCampRoleComplianceAsync(int year, CancellationToken cancellationToken = default) =>
+        throw new NotImplementedException();
+#pragma warning restore MA0025
 }

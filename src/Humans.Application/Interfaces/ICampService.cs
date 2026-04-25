@@ -154,6 +154,35 @@ public interface ICampService
     Task<CampMemberListData> GetCampMembersAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default);
 
+    // Camp role definitions (global, CampAdmin-managed)
+    Task<IReadOnlyList<CampRoleDefinitionDto>> GetCampRoleDefinitionsAsync(
+        bool includeDeactivated, CancellationToken cancellationToken = default);
+
+    Task<CampRoleDefinitionDto> CreateCampRoleDefinitionAsync(
+        string name, string? description, int slotCount, int minimumRequired, int sortOrder, bool isRequired,
+        Guid actorUserId, CancellationToken cancellationToken = default);
+
+    Task<CampRoleDefinitionDto> UpdateCampRoleDefinitionAsync(
+        Guid roleDefinitionId, string name, string? description, int slotCount, int minimumRequired, int sortOrder, bool isRequired,
+        Guid actorUserId, CancellationToken cancellationToken = default);
+
+    Task DeactivateCampRoleDefinitionAsync(Guid roleDefinitionId, Guid actorUserId, CancellationToken cancellationToken = default);
+    Task ReactivateCampRoleDefinitionAsync(Guid roleDefinitionId, Guid actorUserId, CancellationToken cancellationToken = default);
+
+    // Per-slot assignment
+    Task<IReadOnlyList<CampRoleAssignmentDto>> GetCampRoleAssignmentsAsync(
+        Guid campSeasonId, CancellationToken cancellationToken = default);
+
+    Task<AssignCampRoleResult> AssignCampRoleAsync(
+        Guid campSeasonId, Guid campRoleDefinitionId, int slotIndex,
+        Guid assigneeUserId, Guid assignedByUserId, bool autoPromoteToMember,
+        CancellationToken cancellationToken = default);
+
+    Task UnassignCampRoleAsync(Guid assignmentId, Guid actorUserId, CancellationToken cancellationToken = default);
+
+    // Compliance report
+    Task<IReadOnlyList<CampComplianceRow>> GetCampRoleComplianceAsync(int year, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Lists camps a human belongs to or has requested, grouped by year.
     /// Used for the human's own profile dashboard.
@@ -402,3 +431,50 @@ public record CampMembershipSummary(
     CampMemberStatus Status,
     Instant RequestedAt,
     Instant? ConfirmedAt);
+
+public sealed record CampRoleDefinitionDto(
+    Guid Id,
+    string Name,
+    string? Description,
+    int SlotCount,
+    int MinimumRequired,
+    int SortOrder,
+    bool IsRequired,
+    Instant? DeactivatedAt);
+
+public sealed record CampRoleAssignmentDto(
+    Guid AssignmentId,
+    Guid CampRoleDefinitionId,
+    string RoleName,
+    int SlotIndex,
+    Guid CampMemberId,
+    Guid AssigneeUserId,
+    string AssigneeDisplayName);
+
+public sealed record AssignCampRoleResult(
+    Guid AssignmentId,
+    AssignCampRoleOutcome Outcome,
+    Guid? AssigneeUserId = null,
+    string? RoleName = null,
+    string? CampSlug = null,
+    string? CampName = null,
+    string? ErrorMessage = null);
+
+public enum AssignCampRoleOutcome
+{
+    Assigned,
+    AssignedWithAutoPromote,
+    SlotOccupied,
+    AlreadyHoldsRole,
+    SlotIndexOutOfRange,
+    NoOpenSeason,
+    RoleDeactivated,
+    InvalidUser,
+}
+
+public sealed record CampComplianceRow(
+    Guid CampId,
+    string CampSlug,
+    string CampName,
+    int Year,
+    IReadOnlyList<string> MissingRoleNames);
