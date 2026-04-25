@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using System.Text.Json;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Campaigns;
@@ -30,8 +31,10 @@ public class ProcessEmailOutboxJob : IRecurringJob
     private readonly IEmailOutboxRepository _outboxRepo;
     private readonly ICampaignService _campaignService;
     private readonly IEmailTransport _transport;
-    private readonly IHumansMetrics _metrics;
     private readonly IMeter _outboxPendingMeter;
+    private readonly Counter<long> _emailSentCounter;
+    private readonly Counter<long> _emailFailedCounter;
+    private readonly Counter<long> _jobRunsCounter;
     private readonly IClock _clock;
     private readonly EmailSettings _settings;
     private readonly ILogger<ProcessEmailOutboxJob> _logger;
@@ -40,7 +43,6 @@ public class ProcessEmailOutboxJob : IRecurringJob
         IEmailOutboxRepository outboxRepo,
         ICampaignService campaignService,
         IEmailTransport transport,
-        IHumansMetrics metrics,
         IMeters meters,
         IClock clock,
         IOptions<EmailSettings> settings,
@@ -49,10 +51,18 @@ public class ProcessEmailOutboxJob : IRecurringJob
         _outboxRepo = outboxRepo;
         _campaignService = campaignService;
         _transport = transport;
-        _metrics = metrics;
         _outboxPendingMeter = meters.Declare(
             "humans.email_outbox_pending",
             new MeterMetadata("Emails pending in the outbox queue", "{emails}"));
+        _emailSentCounter = meters.RegisterCounter(
+            "humans.emails_sent_total",
+            new MeterMetadata("Total emails sent", "{emails}"));
+        _emailFailedCounter = meters.RegisterCounter(
+            "humans.email_failed_total",
+            new MeterMetadata("Total email send failures", "{emails}"));
+        _jobRunsCounter = meters.RegisterCounter(
+            "humans.job_runs_total",
+            new MeterMetadata("Total background job runs", "{runs}"));
         _clock = clock;
         _settings = settings.Value;
         _logger = logger;
@@ -117,7 +127,7 @@ public class ProcessEmailOutboxJob : IRecurringJob
 
                 // Success — mark as sent BEFORE throttle delay to avoid re-send on cancellation
                 await _outboxRepo.MarkSentAsync(message.Id, now, cancellationToken);
-                _metrics.RecordEmailSent(message.TemplateName);
+                _emailSentCounter.Add(1, new KeyValuePair<string, object?>("template", message.TemplateName));
 
                 // Update campaign grant status if applicable — routed via
                 // ICampaignService so the Campaigns section owns campaign_grants.
@@ -138,7 +148,7 @@ public class ProcessEmailOutboxJob : IRecurringJob
                 // Failure
                 var nextRetryAt = now + Duration.FromMinutes((long)Math.Pow(2, message.RetryCount + 1));
                 await _outboxRepo.MarkFailedAsync(message.Id, now, ex.Message, nextRetryAt, cancellationToken);
-                _metrics.RecordEmailFailed(message.TemplateName);
+                _emailFailedCounter.Add(1, new KeyValuePair<string, object?>("template", message.TemplateName));
 
                 // Update campaign grant status if applicable — routed via ICampaignService.
                 if (message.CampaignGrantId.HasValue)
@@ -164,6 +174,8 @@ public class ProcessEmailOutboxJob : IRecurringJob
         _outboxPendingMeter.Set(pendingCount);
 
         // 6. Record successful job run
-        _metrics.RecordJobRun("process_email_outbox", "success");
+        _jobRunsCounter.Add(1,
+            new KeyValuePair<string, object?>("job", "process_email_outbox"),
+            new KeyValuePair<string, object?>("result", "success"));
     }
 }

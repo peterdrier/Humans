@@ -1,3 +1,6 @@
+using System.Diagnostics.Metrics;
+using Humans.Application.Interfaces.Metering;
+using Humans.Application.Metering;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Extensions;
@@ -17,7 +20,7 @@ namespace Humans.Infrastructure.Jobs;
 /// Reads active team member user ids via <see cref="ITeamService"/> and user
 /// display data via <see cref="IUserService"/> so the job never touches
 /// <see cref="Humans.Infrastructure.Data.HumansDbContext"/> directly
-/// (design-rules §2c). Consent lookups remain on <see cref="IConsentRepository"/>
+/// (design-rules Â§2c). Consent lookups remain on <see cref="IConsentRepository"/>
 /// which is already the Legal &amp; Consent section's owned repository.
 /// </remarks>
 public class SyncLegalDocumentsJob : IRecurringJob
@@ -27,7 +30,7 @@ public class SyncLegalDocumentsJob : IRecurringJob
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
     private readonly IConsentRepository _consentRepository;
-    private readonly IHumansMetrics _metrics;
+    private readonly Counter<long> _jobRunsCounter;
     private readonly ILogger<SyncLegalDocumentsJob> _logger;
     private readonly IClock _clock;
 
@@ -37,7 +40,7 @@ public class SyncLegalDocumentsJob : IRecurringJob
         ITeamService teamService,
         IUserService userService,
         IConsentRepository consentRepository,
-        IHumansMetrics metrics,
+        IMeters meters,
         ILogger<SyncLegalDocumentsJob> logger,
         IClock clock)
     {
@@ -46,7 +49,9 @@ public class SyncLegalDocumentsJob : IRecurringJob
         _teamService = teamService;
         _userService = userService;
         _consentRepository = consentRepository;
-        _metrics = metrics;
+        _jobRunsCounter = meters.RegisterCounter(
+            "humans.job_runs_total",
+            new MeterMetadata("Total background job runs", "{runs}"));
         _logger = logger;
         _clock = clock;
     }
@@ -77,11 +82,15 @@ public class SyncLegalDocumentsJob : IRecurringJob
                 _logger.LogInformation("No legal document updates found");
             }
 
-            _metrics.RecordJobRun("sync_legal_documents", "success");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "sync_legal_documents"),
+                new KeyValuePair<string, object?>("result", "success"));
         }
         catch (Exception ex)
         {
-            _metrics.RecordJobRun("sync_legal_documents", "failure");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "sync_legal_documents"),
+                new KeyValuePair<string, object?>("result", "failure"));
             _logger.LogError(ex, "Error syncing legal documents");
             throw;
         }

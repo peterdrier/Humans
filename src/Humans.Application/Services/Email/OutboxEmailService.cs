@@ -1,10 +1,12 @@
+using System.Diagnostics.Metrics;
 using System.Globalization;
 using System.Text.Json;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Metering;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Metering;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
@@ -32,7 +34,7 @@ public sealed class OutboxEmailService : IEmailService
     private readonly IEmailRenderer _renderer;
     private readonly IEmailBodyComposer _bodyComposer;
     private readonly IImmediateOutboxProcessor _immediateProcessor;
-    private readonly IHumansMetrics _metrics;
+    private readonly Counter<long> _emailQueuedCounter;
     private readonly IClock _clock;
     private readonly ICommunicationPreferenceService _commPrefService;
     private readonly ILogger<OutboxEmailService> _logger;
@@ -43,7 +45,7 @@ public sealed class OutboxEmailService : IEmailService
         IEmailRenderer renderer,
         IEmailBodyComposer bodyComposer,
         IImmediateOutboxProcessor immediateProcessor,
-        IHumansMetrics metrics,
+        IMeters meters,
         IClock clock,
         ICommunicationPreferenceService commPrefService,
         ILogger<OutboxEmailService> logger)
@@ -53,7 +55,9 @@ public sealed class OutboxEmailService : IEmailService
         _renderer = renderer;
         _bodyComposer = bodyComposer;
         _immediateProcessor = immediateProcessor;
-        _metrics = metrics;
+        _emailQueuedCounter = meters.RegisterCounter(
+            "humans.email_queued_total",
+            new MeterMetadata("Total emails queued for sending", "{emails}"));
         _clock = clock;
         _commPrefService = commPrefService;
         _logger = logger;
@@ -362,7 +366,7 @@ public sealed class OutboxEmailService : IEmailService
 
         await _outboxRepo.AddAsync(message, cancellationToken);
 
-        _metrics.RecordEmailQueued("campaign_code");
+        _emailQueuedCounter.Add(1, new KeyValuePair<string, object?>("template", "campaign_code"));
         _logger.LogInformation(
             "Campaign code email queued for grant {GrantId} to {Recipient}",
             request.CampaignGrantId, request.RecipientEmail);
@@ -425,7 +429,7 @@ public sealed class OutboxEmailService : IEmailService
 
         await _outboxRepo.AddAsync(message, cancellationToken);
 
-        _metrics.RecordEmailQueued(templateName);
+        _emailQueuedCounter.Add(1, new KeyValuePair<string, object?>("template", templateName));
         _logger.LogInformation("Email queued: {TemplateName} to {Recipient}", templateName, recipientEmail);
 
         if (triggerImmediate)

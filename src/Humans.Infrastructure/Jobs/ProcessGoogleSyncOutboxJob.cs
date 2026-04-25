@@ -1,11 +1,14 @@
+using System.Diagnostics.Metrics;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Metering;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Metering;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 
@@ -44,6 +47,7 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
     private readonly IGoogleSyncService _googleSyncService;
     private readonly INotificationService _notificationService;
     private readonly IHumansMetrics _metrics;
+    private readonly Counter<long> _jobRunsCounter;
     private readonly IClock _clock;
     private readonly ILogger<ProcessGoogleSyncOutboxJob> _logger;
 
@@ -55,6 +59,7 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
         IGoogleSyncService googleSyncService,
         INotificationService notificationService,
         IHumansMetrics metrics,
+        IMeters meters,
         IClock clock,
         ILogger<ProcessGoogleSyncOutboxJob> logger)
     {
@@ -65,6 +70,9 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
         _googleSyncService = googleSyncService;
         _notificationService = notificationService;
         _metrics = metrics;
+        _jobRunsCounter = meters.RegisterCounter(
+            "humans.job_runs_total",
+            new MeterMetadata("Total background job runs", "{runs}"));
         _clock = clock;
         _logger = logger;
     }
@@ -200,11 +208,15 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
                 }
             }
 
-            _metrics.RecordJobRun("process_google_sync_outbox", "success");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "process_google_sync_outbox"),
+                new KeyValuePair<string, object?>("result", "success"));
         }
         catch (Exception ex)
         {
-            _metrics.RecordJobRun("process_google_sync_outbox", "failure");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "process_google_sync_outbox"),
+                new KeyValuePair<string, object?>("result", "failure"));
             _logger.LogError(ex, "Error processing Google sync outbox");
             throw;
         }

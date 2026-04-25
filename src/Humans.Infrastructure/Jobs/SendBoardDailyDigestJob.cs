@@ -1,3 +1,6 @@
+using System.Diagnostics.Metrics;
+using Humans.Application.Interfaces.Metering;
+using Humans.Application.Metering;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.DTOs;
@@ -25,7 +28,7 @@ namespace Humans.Infrastructure.Jobs;
 /// <see cref="IUserService"/>, <see cref="IProfileService"/>,
 /// <see cref="ITeamService"/>, <see cref="IRoleAssignmentService"/>) so the
 /// job never touches <see cref="Humans.Infrastructure.Data.HumansDbContext"/>
-/// directly (design-rules §2c).
+/// directly (design-rules Â§2c).
 /// </remarks>
 public class SendBoardDailyDigestJob : IRecurringJob
 {
@@ -37,7 +40,7 @@ public class SendBoardDailyDigestJob : IRecurringJob
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IEmailService _emailService;
     private readonly IMembershipCalculator _membershipCalculator;
-    private readonly IHumansMetrics _metrics;
+    private readonly Counter<long> _jobRunsCounter;
     private readonly ILogger<SendBoardDailyDigestJob> _logger;
     private readonly IClock _clock;
 
@@ -50,7 +53,7 @@ public class SendBoardDailyDigestJob : IRecurringJob
         IRoleAssignmentService roleAssignmentService,
         IEmailService emailService,
         IMembershipCalculator membershipCalculator,
-        IHumansMetrics metrics,
+        IMeters meters,
         ILogger<SendBoardDailyDigestJob> logger,
         IClock clock)
     {
@@ -62,7 +65,9 @@ public class SendBoardDailyDigestJob : IRecurringJob
         _roleAssignmentService = roleAssignmentService;
         _emailService = emailService;
         _membershipCalculator = membershipCalculator;
-        _metrics = metrics;
+        _jobRunsCounter = meters.RegisterCounter(
+            "humans.job_runs_total",
+            new MeterMetadata("Total background job runs", "{runs}"));
         _logger = logger;
         _clock = clock;
     }
@@ -84,7 +89,7 @@ public class SendBoardDailyDigestJob : IRecurringJob
         {
             var groups = new List<BoardDigestTierGroup>();
 
-            // 1. Volunteer approvals — routed via IAuditLogService.
+            // 1. Volunteer approvals â€” routed via IAuditLogService.
             var volunteerUserIds = await _auditLogService.GetEntityIdsForActionInWindowAsync(
                 windowStart, windowEnd, AuditAction.VolunteerApproved, cancellationToken);
 
@@ -99,7 +104,7 @@ public class SendBoardDailyDigestJob : IRecurringJob
                 groups.Add(new BoardDigestTierGroup("Volunteer", volunteerNames));
             }
 
-            // 2. Tier application approvals (Colaborador/Asociado) — routed via
+            // 2. Tier application approvals (Colaborador/Asociado) â€” routed via
             //    IApplicationDecisionService.
             var tierApprovals = await _applicationDecisionService.GetApprovedInWindowAsync(
                 windowStart, windowEnd, cancellationToken);
@@ -164,7 +169,9 @@ public class SendBoardDailyDigestJob : IRecurringJob
                 _logger.LogInformation(
                     "No approvals and no outstanding items on {Date}, skipping Board digest",
                     dateLabel);
-                _metrics.RecordJobRun("board_daily_digest", "skipped");
+                _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "board_daily_digest"),
+                new KeyValuePair<string, object?>("result", "skipped"));
                 return;
             }
 
@@ -215,14 +222,18 @@ public class SendBoardDailyDigestJob : IRecurringJob
                 sentCount++;
             }
 
-            _metrics.RecordJobRun("board_daily_digest", "success");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "board_daily_digest"),
+                new KeyValuePair<string, object?>("result", "success"));
             _logger.LogInformation(
                 "Board daily digest sent to {Count} Board members for {Date} ({TierCount} tier groups, {TotalApprovals} approvals, outstanding: {Outstanding})",
                 sentCount, dateLabel, groups.Count, groups.Sum(g => g.DisplayNames.Count), hasOutstandingItems);
         }
         catch (Exception ex)
         {
-            _metrics.RecordJobRun("board_daily_digest", "failure");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "board_daily_digest"),
+                new KeyValuePair<string, object?>("result", "failure"));
             _logger.LogError(ex, "Error sending Board daily digest for {Date}", dateLabel);
             throw;
         }

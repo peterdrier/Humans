@@ -1,15 +1,17 @@
+using System.Diagnostics.Metrics;
 using Humans.Application.DTOs;
+using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Metering;
+using Humans.Application.Metering;
 using Humans.Domain.Enums;
+using Humans.Infrastructure.Configuration;
+using Humans.Infrastructure.Helpers;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
-using Humans.Application.Interfaces;
-using Humans.Infrastructure.Configuration;
-using Humans.Infrastructure.Helpers;
-using Humans.Application.Interfaces.Email;
 
 namespace Humans.Infrastructure.Services;
 
@@ -20,20 +22,22 @@ namespace Humans.Infrastructure.Services;
 public class SmtpEmailService : IEmailService
 {
     private readonly EmailSettings _settings;
-    private readonly IHumansMetrics _metrics;
+    private readonly Counter<long> _emailSentCounter;
     private readonly ILogger<SmtpEmailService> _logger;
     private readonly IEmailRenderer _renderer;
     private readonly string _environmentName;
 
     public SmtpEmailService(
         IOptions<EmailSettings> settings,
-        IHumansMetrics metrics,
+        IMeters meters,
         ILogger<SmtpEmailService> logger,
         IEmailRenderer renderer,
         IHostEnvironment hostEnvironment)
     {
         _settings = settings.Value;
-        _metrics = metrics;
+        _emailSentCounter = meters.RegisterCounter(
+            "humans.emails_sent_total",
+            new MeterMetadata("Total emails sent", "{emails}"));
         _logger = logger;
         _renderer = renderer;
         _environmentName = hostEnvironment.EnvironmentName;
@@ -49,7 +53,7 @@ public class SmtpEmailService : IEmailService
     {
         var content = _renderer.RenderApplicationApproved(userName, tier, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("application_approved");
+        _emailSentCounter.Add(1, new KeyValuePair<string, object?>("template", "application_approved"));
     }
 
     /// <inheritdoc />
@@ -63,7 +67,7 @@ public class SmtpEmailService : IEmailService
     {
         var content = _renderer.RenderApplicationRejected(userName, tier, reason, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("application_rejected");
+        _emailSentCounter.Add(1, new KeyValuePair<string, object?>("template", "application_rejected"));
     }
 
     /// <inheritdoc />
@@ -88,7 +92,7 @@ public class SmtpEmailService : IEmailService
         var docs = documentNames.ToList();
         var content = _renderer.RenderReConsentsRequired(userName, docs, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("reconsents_required");
+        _emailSentCounter.Add(1, new KeyValuePair<string, object?>("template", "reconsents_required"));
     }
 
     /// <inheritdoc />
@@ -103,7 +107,7 @@ public class SmtpEmailService : IEmailService
         var docs = documentNames.ToList();
         var content = _renderer.RenderReConsentReminder(userName, docs, daysRemaining, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("reconsent_reminder");
+        _emailSentCounter.Add(1, new KeyValuePair<string, object?>("template", "reconsent_reminder"));
     }
 
     /// <inheritdoc />
@@ -115,7 +119,7 @@ public class SmtpEmailService : IEmailService
     {
         var content = _renderer.RenderWelcome(userName, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("welcome");
+        _emailSentCounter.Add(1, new KeyValuePair<string, object?>("template", "welcome"));
     }
 
     /// <inheritdoc />
@@ -128,7 +132,7 @@ public class SmtpEmailService : IEmailService
     {
         var content = _renderer.RenderAccessSuspended(userName, reason, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("access_suspended");
+        _emailSentCounter.Add(1, new KeyValuePair<string, object?>("template", "access_suspended"));
     }
 
     /// <inheritdoc />
@@ -142,7 +146,7 @@ public class SmtpEmailService : IEmailService
     {
         var content = _renderer.RenderEmailVerification(userName, toEmail, verificationUrl, isConflict, culture);
         await SendEmailAsync(toEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("email_verification");
+        _emailSentCounter.Add(1, new KeyValuePair<string, object?>("template", "email_verification"));
     }
 
     /// <inheritdoc />
@@ -156,7 +160,7 @@ public class SmtpEmailService : IEmailService
         var formattedDate = deletionDate.ToInvariantLongDate();
         var content = _renderer.RenderAccountDeletionRequested(userName, formattedDate, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("deletion_requested");
+        _emailSentCounter.Add(1, new KeyValuePair<string, object?>("template", "deletion_requested"));
     }
 
     /// <inheritdoc />
@@ -168,7 +172,7 @@ public class SmtpEmailService : IEmailService
     {
         var content = _renderer.RenderAccountDeleted(userName, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("account_deleted");
+        _emailSentCounter.Add(1, new KeyValuePair<string, object?>("template", "account_deleted"));
     }
 
     /// <inheritdoc />
@@ -184,7 +188,7 @@ public class SmtpEmailService : IEmailService
         var resourceList = resources.ToList();
         var content = _renderer.RenderAddedToTeam(userName, teamName, teamSlug, resourceList, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("added_to_team");
+        _emailSentCounter.Add(1, new KeyValuePair<string, object?>("template", "added_to_team"));
     }
 
     /// <inheritdoc />
@@ -197,7 +201,7 @@ public class SmtpEmailService : IEmailService
     {
         var content = _renderer.RenderSignupRejected(userName, reason, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("signup_rejected");
+        _emailSentCounter.Add(1, new KeyValuePair<string, object?>("template", "signup_rejected"));
     }
 
     /// <inheritdoc />
@@ -211,7 +215,7 @@ public class SmtpEmailService : IEmailService
     {
         var content = _renderer.RenderTermRenewalReminder(userName, tierName, expiresAt, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("term_renewal_reminder");
+        _emailSentCounter.Add(1, new KeyValuePair<string, object?>("template", "term_renewal_reminder"));
     }
 
     /// <inheritdoc />
@@ -226,7 +230,7 @@ public class SmtpEmailService : IEmailService
     {
         var content = _renderer.RenderBoardDailyDigest(name, date, groups, outstandingCounts, culture);
         await SendEmailAsync(email, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("board_daily_digest");
+        _emailSentCounter.Add(1, new KeyValuePair<string, object?>("template", "board_daily_digest"));
     }
 
     /// <inheritdoc />
@@ -240,7 +244,7 @@ public class SmtpEmailService : IEmailService
     {
         var content = _renderer.RenderAdminDailyDigest(name, date, counts, culture);
         await SendEmailAsync(email, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("admin_daily_digest");
+        _emailSentCounter.Add(1, new KeyValuePair<string, object?>("template", "admin_daily_digest"));
     }
 
     /// <inheritdoc />
@@ -251,7 +255,7 @@ public class SmtpEmailService : IEmailService
     {
         var content = _renderer.RenderFeedbackResponse(userName, originalDescription, responseMessage, reportLink, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken: cancellationToken);
-        _metrics.RecordEmailSent("feedback_response");
+        _emailSentCounter.Add(1, new KeyValuePair<string, object?>("template", "feedback_response"));
     }
 
     public async Task SendFacilitatedMessageAsync(
@@ -268,7 +272,7 @@ public class SmtpEmailService : IEmailService
             recipientName, senderName, messageText, includeContactInfo, senderEmail, culture);
         var replyTo = includeContactInfo ? senderEmail : null;
         await SendEmailAsync(recipientEmail, content.Subject, content.HtmlBody, cancellationToken, replyTo);
-        _metrics.RecordEmailSent("facilitated_message");
+        _emailSentCounter.Add(1, new KeyValuePair<string, object?>("template", "facilitated_message"));
     }
 
     public async Task SendMagicLinkLoginAsync(
@@ -277,7 +281,7 @@ public class SmtpEmailService : IEmailService
     {
         var content = _renderer.RenderMagicLinkLogin(displayName, magicLinkUrl, culture);
         await SendEmailAsync(toEmail, content.Subject, content.HtmlBody, ct);
-        _metrics.RecordEmailSent("magic_link_login");
+        _emailSentCounter.Add(1, new KeyValuePair<string, object?>("template", "magic_link_login"));
     }
 
     public async Task SendMagicLinkSignupAsync(
@@ -286,7 +290,7 @@ public class SmtpEmailService : IEmailService
     {
         var content = _renderer.RenderMagicLinkSignup(magicLinkUrl, culture);
         await SendEmailAsync(toEmail, content.Subject, content.HtmlBody, ct);
-        _metrics.RecordEmailSent("magic_link_signup");
+        _emailSentCounter.Add(1, new KeyValuePair<string, object?>("template", "magic_link_signup"));
     }
 
     public async Task SendWorkspaceCredentialsAsync(
@@ -295,7 +299,7 @@ public class SmtpEmailService : IEmailService
     {
         var content = _renderer.RenderWorkspaceCredentials(userName, workspaceEmail, tempPassword, culture);
         await SendEmailAsync(recoveryEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("workspace_credentials");
+        _emailSentCounter.Add(1, new KeyValuePair<string, object?>("template", "workspace_credentials"));
     }
 
     public async Task SendCampaignCodeAsync(CampaignCodeEmailRequest request, CancellationToken cancellationToken = default)
@@ -316,7 +320,7 @@ public class SmtpEmailService : IEmailService
             .Replace("{{Name}}", request.RecipientName, StringComparison.Ordinal);
 
         await SendEmailAsync(request.RecipientEmail, renderedSubject, renderedBody, cancellationToken, request.ReplyTo);
-        _metrics.RecordEmailSent("campaign_code");
+        _emailSentCounter.Add(1, new KeyValuePair<string, object?>("template", "campaign_code"));
     }
 
     private async Task SendEmailAsync(

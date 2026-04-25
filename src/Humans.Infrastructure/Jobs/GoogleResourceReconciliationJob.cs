@@ -1,3 +1,6 @@
+using System.Diagnostics.Metrics;
+using Humans.Application.Interfaces.Metering;
+using Humans.Application.Metering;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
@@ -16,20 +19,22 @@ public class GoogleResourceReconciliationJob : IRecurringJob
 {
     private readonly IGoogleSyncService _googleSyncService;
     private readonly INotificationService _notificationService;
-    private readonly IHumansMetrics _metrics;
+    private readonly Counter<long> _jobRunsCounter;
     private readonly ILogger<GoogleResourceReconciliationJob> _logger;
     private readonly IClock _clock;
 
     public GoogleResourceReconciliationJob(
         IGoogleSyncService googleSyncService,
         INotificationService notificationService,
-        IHumansMetrics metrics,
+        IMeters meters,
         ILogger<GoogleResourceReconciliationJob> logger,
         IClock clock)
     {
         _googleSyncService = googleSyncService;
         _notificationService = notificationService;
-        _metrics = metrics;
+        _jobRunsCounter = meters.RegisterCounter(
+            "humans.job_runs_total",
+            new MeterMetadata("Total background job runs", "{runs}"));
         _logger = logger;
         _clock = clock;
     }
@@ -110,12 +115,16 @@ public class GoogleResourceReconciliationJob : IRecurringJob
                 }
             }
 
-            _metrics.RecordJobRun("google_resource_reconciliation", "success");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "google_resource_reconciliation"),
+                new KeyValuePair<string, object?>("result", "success"));
             _logger.LogInformation("Completed Google resource reconciliation");
         }
         catch (Exception ex)
         {
-            _metrics.RecordJobRun("google_resource_reconciliation", "failure");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "google_resource_reconciliation"),
+                new KeyValuePair<string, object?>("result", "failure"));
             _logger.LogError(ex, "Error during Google resource reconciliation");
             throw;
         }

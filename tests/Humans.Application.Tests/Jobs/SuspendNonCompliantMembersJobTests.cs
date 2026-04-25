@@ -36,7 +36,6 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
     private readonly IFullProfileInvalidator _fullProfileInvalidator;
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator;
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator;
-    private readonly HumansMetricsService _metrics;
     private readonly MetersService _meters;
     private readonly FakeClock _clock;
     private readonly SuspendNonCompliantMembersJob _job;
@@ -57,9 +56,6 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         _roleAssignmentClaimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
         _shiftAuthorizationInvalidator = Substitute.For<IShiftAuthorizationInvalidator>();
         _clock = new FakeClock(Now);
-        _metrics = new HumansMetricsService(
-            Substitute.For<IServiceScopeFactory>(),
-            Substitute.For<ILogger<HumansMetricsService>>());
         _meters = new MetersService(Substitute.For<ILogger<MetersService>>());
         var logger = Substitute.For<ILogger<SuspendNonCompliantMembersJob>>();
 
@@ -72,12 +68,11 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             _userService, _profileService, _teamService, _membershipCalculator,
             _emailService, _notificationService, _googleSyncService, _auditLogService,
             _fullProfileInvalidator, _roleAssignmentClaimsInvalidator,
-            _shiftAuthorizationInvalidator, _metrics, _meters, logger, _clock);
+            _shiftAuthorizationInvalidator, _meters, logger, _clock);
     }
 
     public void Dispose()
     {
-        _metrics.Dispose();
         _meters.Dispose();
         GC.SuppressFinalize(this);
     }
