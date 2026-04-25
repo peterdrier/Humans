@@ -56,6 +56,123 @@ jobs:
         path: '**/test-results.trx'
         retention-days: 5
 
+  detect-migration-changes:
+    # Decides whether the Layer 2 verify-migrations-apply job runs. Cheap
+    # GitHub-hosted job so the heavy self-hosted job stays idle on PRs that
+    # don't touch migration-relevant code.
+    runs-on: ubuntu-latest
+    outputs:
+      migrations: ${{ steps.filter.outputs.migrations }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            migrations:
+              - 'src/Humans.Infrastructure/Migrations/**'
+              - 'src/Humans.Domain/**'
+              - '.github/workflows/build.yml'
+
+  verify-migrations-apply:
+    # Layer 2 EF migration check (nobodies-collective/Humans#590): apply every
+    # migration from scratch against a real Postgres and assert exit 0. Catches
+    # failures that pass `has-pending-model-changes` (Layer 1, in the build job
+    # above) but break at apply time — FK to a column that no longer exists,
+    # index on a column with the wrong type, ordering bugs.
+    #
+    # Runner pinning: `humans-host` is a custom label registered on
+    # humans-runner-1 and humans-runner-2 (Linux containers running on Peter's
+    # Windows dev box via Docker). The job is intentionally NOT eligible for
+    # nuc-runner (different physical machine) or GitHub-hosted runners. If
+    # both humans-host runners are offline the job queues until one comes
+    # back — the rest of CI is unaffected because this job only `needs:` the
+    # cheap detect-migration-changes job, not the main build/test job.
+    needs: detect-migration-changes
+    if: needs.detect-migration-changes.outputs.migrations == 'true'
+    runs-on: [self-hosted, humans-host]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Start ephemeral Postgres
+        id: pg
+        run: |
+          set -euo pipefail
+          # The runner is itself a container; create a job-scoped Docker
+          # network and attach both the runner and a fresh Postgres container
+          # to it so dotnet-ef can reach Postgres by container name.
+          NETWORK="humans-mig-net-${{ github.run_id }}-${{ github.run_attempt }}"
+          PG_CONTAINER="humans-mig-pg-${{ github.run_id }}-${{ github.run_attempt }}"
+          RUNNER_CONTAINER="$(hostname)"
+
+          docker network create "$NETWORK"
+          docker network connect "$NETWORK" "$RUNNER_CONTAINER"
+
+          docker run -d \
+            --name "$PG_CONTAINER" \
+            --network "$NETWORK" \
+            -e POSTGRES_USER=humans \
+            -e POSTGRES_PASSWORD=humans \
+            -e POSTGRES_DB=humans \
+            postgres:17-alpine
+
+          for i in $(seq 1 30); do
+            if docker exec "$PG_CONTAINER" pg_isready -U humans -d humans >/dev/null 2>&1; then
+              echo "Postgres ready after ${i}s"
+              break
+            fi
+            if [ "$i" = "30" ]; then
+              echo "::error::Postgres did not become ready within 30s"
+              docker logs "$PG_CONTAINER" || true
+              exit 1
+            fi
+            sleep 1
+          done
+
+          echo "network=$NETWORK" >> "$GITHUB_OUTPUT"
+          echo "container=$PG_CONTAINER" >> "$GITHUB_OUTPUT"
+
+      - name: Restore dependencies
+        run: dotnet restore Humans.slnx
+
+      - name: Build (Release)
+        run: dotnet build Humans.slnx --no-restore --configuration Release
+
+      - name: Apply migrations from scratch
+        env:
+          ConnectionStrings__DefaultConnection: "Host=${{ steps.pg.outputs.container }};Port=5432;Database=humans;Username=humans;Password=humans"
+        run: |
+          dotnet tool install --global dotnet-ef --version 10.0.*
+          dotnet ef database update \
+            --project src/Humans.Infrastructure \
+            --startup-project src/Humans.Web \
+            --no-build --configuration Release
+
+      - name: Verify model snapshot is in sync (post-apply)
+        env:
+          ConnectionStrings__DefaultConnection: "Host=${{ steps.pg.outputs.container }};Port=5432;Database=humans;Username=humans;Password=humans"
+        run: |
+          # Belt-and-suspenders: Layer 1 already runs this in the build job,
+          # but re-checking after a real apply guards against any state the
+          # apply step might have observed differently from a static check.
+          dotnet ef migrations has-pending-model-changes \
+            --project src/Humans.Infrastructure \
+            --startup-project src/Humans.Web \
+            --no-build --configuration Release
+
+      - name: Tear down ephemeral Postgres
+        if: always() && steps.pg.outputs.container != ''
+        run: |
+          docker rm -f "${{ steps.pg.outputs.container }}" || true
+          docker network disconnect "${{ steps.pg.outputs.network }}" "$(hostname)" || true
+          docker network rm "${{ steps.pg.outputs.network }}" || true
+
   code-quality:
     runs-on: ubuntu-latest
 
