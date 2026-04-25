@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.Constants;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Services;
+using Humans.Testing;
 using Xunit;
 
 namespace Humans.Application.Tests.Services;
@@ -18,7 +19,7 @@ public class GuideHtmlPostprocessorTests
 
     private static readonly GuideHtmlPostprocessor Processor = new();
 
-    [Fact]
+    [HumansFact]
     public void Rewrite_SiblingMdLink_BecomesGuideRoute()
     {
         const string html = """<a href="Profiles.md">Profiles</a>""";
@@ -28,7 +29,7 @@ public class GuideHtmlPostprocessorTests
         result.Should().Contain("""href="/Guide/Profiles" """.Trim());
     }
 
-    [Fact]
+    [HumansFact]
     public void Rewrite_SiblingMdWithFragment_PreservesFragment()
     {
         const string html = """<a href="Glossary.md#coordinator">Coordinator</a>""";
@@ -38,7 +39,7 @@ public class GuideHtmlPostprocessorTests
         result.Should().Contain("""href="/Guide/Glossary#coordinator" """.Trim());
     }
 
-    [Fact]
+    [HumansFact]
     public void Rewrite_SiblingMdCaseInsensitive_MatchesKnown()
     {
         const string html = """<a href="profiles.md">Profiles</a>""";
@@ -48,7 +49,7 @@ public class GuideHtmlPostprocessorTests
         result.Should().Contain("/Guide/Profiles");
     }
 
-    [Fact]
+    [HumansFact]
     public void Rewrite_UnknownSiblingMd_LeftAsExternal()
     {
         const string html = """<a href="NonExistent.md">Link</a>""";
@@ -60,7 +61,7 @@ public class GuideHtmlPostprocessorTests
         result.Should().Contain("target=\"_blank\"");
     }
 
-    [Fact]
+    [HumansFact]
     public void Rewrite_AppPathLink_LeftAsIs()
     {
         const string html = """<a href="/Profile/Me/Edit">Edit</a>""";
@@ -71,7 +72,7 @@ public class GuideHtmlPostprocessorTests
         result.Should().NotContain("target=\"_blank\"");
     }
 
-    [Fact]
+    [HumansFact]
     public void Rewrite_ExternalHttpLink_GetsNewTabAttrs()
     {
         const string html = """<a href="https://example.com/foo">x</a>""";
@@ -82,7 +83,7 @@ public class GuideHtmlPostprocessorTests
         result.Should().Contain("rel=\"noopener\"");
     }
 
-    [Fact]
+    [HumansFact]
     public void Rewrite_MailtoLink_LeftAsIs()
     {
         const string html = """<a href="mailto:a@b.com">a</a>""";
@@ -93,7 +94,7 @@ public class GuideHtmlPostprocessorTests
         result.Should().NotContain("target=\"_blank\"");
     }
 
-    [Fact]
+    [HumansFact]
     public void Rewrite_ParentRelativePath_BecomesGitHubBlobUrl()
     {
         const string html = """<a href="../sections/Teams.md">Section invariants</a>""";
@@ -104,7 +105,7 @@ public class GuideHtmlPostprocessorTests
         result.Should().Contain("target=\"_blank\"");
     }
 
-    [Fact]
+    [HumansFact]
     public void Rewrite_ImageShortPath_BecomesRawGitHubUrl()
     {
         const string html = """<img src="img/screenshot.png" alt="x" />""";
@@ -114,7 +115,7 @@ public class GuideHtmlPostprocessorTests
         result.Should().Contain("""src="https://raw.githubusercontent.com/nobodies-collective/Humans/main/docs/guide/img/screenshot.png" """.Trim());
     }
 
-    [Fact]
+    [HumansFact]
     public void Rewrite_ImageWithDocsGuidePrefix_AlsoRewritten()
     {
         const string html = """<img src="docs/guide/img/screenshot.png" alt="x" />""";
@@ -124,7 +125,7 @@ public class GuideHtmlPostprocessorTests
         result.Should().Contain("https://raw.githubusercontent.com/nobodies-collective/Humans/main/docs/guide/img/screenshot.png");
     }
 
-    [Fact]
+    [HumansFact]
     public void Rewrite_ImageAbsoluteUrl_LeftAsIs()
     {
         const string html = """<img src="https://cdn.example.com/x.png" alt="x" />""";
@@ -134,7 +135,7 @@ public class GuideHtmlPostprocessorTests
         result.Should().Contain("""src="https://cdn.example.com/x.png" """.Trim());
     }
 
-    [Fact]
+    [HumansFact]
     public void Rewrite_InlineCodeAppPath_WrappedInAnchor()
     {
         const string html = "<p>Go to <code>/Profile/Me</code> to view your profile.</p>";
@@ -144,7 +145,7 @@ public class GuideHtmlPostprocessorTests
         result.Should().Contain("""<a href="/Profile/Me" class="guide-app-path"><code>/Profile/Me</code></a>""");
     }
 
-    [Fact]
+    [HumansFact]
     public void Rewrite_InlineCodeAppPathWithSegments_WrappedInAnchor()
     {
         const string html = "<code>/Profile/Me/Edit</code>";
@@ -154,7 +155,7 @@ public class GuideHtmlPostprocessorTests
         result.Should().Contain("""href="/Profile/Me/Edit" """.Trim());
     }
 
-    [Fact]
+    [HumansFact]
     public void Rewrite_InlineCodeRouteTemplate_LeftAsIs()
     {
         // Routes with "{id}" placeholders should NOT be linked — clicking /Profile/{id} would 404.
@@ -166,7 +167,7 @@ public class GuideHtmlPostprocessorTests
         result.Should().Contain("<code>/Profile/{id}/Admin</code>");
     }
 
-    [Fact]
+    [HumansFact]
     public void Rewrite_InlineCodeNonPath_LeftAsIs()
     {
         // Not a path (doesn't start with "/") — it's a config key or a literal value.

@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Infrastructure.Services;
+using Humans.Testing;
 using Xunit;
 
 namespace Humans.Application.Tests.Services;
@@ -8,7 +9,7 @@ public class GuideMarkdownPreprocessorTests
 {
     private static readonly GuideMarkdownPreprocessor Preprocessor = new();
 
-    [Fact]
+    [HumansFact]
     public void Wrap_VolunteerBlock_WrapsWithDivVolunteerRole()
     {
         const string input = """
@@ -32,7 +33,7 @@ public class GuideMarkdownPreprocessorTests
         result.Should().Contain("</div>");
     }
 
-    [Fact]
+    [HumansFact]
     public void Wrap_CoordinatorWithParenthetical_CapturesRoles()
     {
         const string input = """
@@ -48,7 +49,7 @@ public class GuideMarkdownPreprocessorTests
         result.Should().Contain("<div data-guide-role=\"coordinator\" data-guide-roles=\"ConsentCoordinator\">");
     }
 
-    [Fact]
+    [HumansFact]
     public void Wrap_BoardAdminWithParenthetical_CapturesSystemRole()
     {
         const string input = """
@@ -62,7 +63,7 @@ public class GuideMarkdownPreprocessorTests
         result.Should().Contain("<div data-guide-role=\"boardadmin\" data-guide-roles=\"CampAdmin\">");
     }
 
-    [Fact]
+    [HumansFact]
     public void Wrap_HeadingWithGlossaryLink_StillMatches()
     {
         const string input = """
@@ -76,7 +77,7 @@ public class GuideMarkdownPreprocessorTests
         result.Should().Contain("<div data-guide-role=\"volunteer\" data-guide-roles=\"\">");
     }
 
-    [Fact]
+    [HumansFact]
     public void Wrap_ClosesDivBeforeNextSectionHeading()
     {
         const string input = """
@@ -101,7 +102,7 @@ public class GuideMarkdownPreprocessorTests
         secondOpen.Should().BeGreaterThan(firstClose);
     }
 
-    [Fact]
+    [HumansFact]
     public void Wrap_ClosesDivAtRelatedSectionsHeading()
     {
         const string input = """
@@ -125,7 +126,7 @@ public class GuideMarkdownPreprocessorTests
         related.Should().BeGreaterThan(close);
     }
 
-    [Fact]
+    [HumansFact]
     public void Wrap_NoAsAHeadings_ReturnsInputUnchanged()
     {
         const string input = """
@@ -145,7 +146,7 @@ public class GuideMarkdownPreprocessorTests
         result.Should().Be(input);
     }
 
-    [Fact]
+    [HumansFact]
     public void Wrap_BlankLineBeforeAndAfterDiv_SoMarkdigRendersInner()
     {
         const string input = """
@@ -162,7 +163,7 @@ public class GuideMarkdownPreprocessorTests
         result.Should().Contain("\n\n<div data-guide-role=\"volunteer\"");
     }
 
-    [Fact]
+    [HumansFact]
     public void Wrap_ParentheticalWithUnknownToken_OmitsFromDataAttributeButKeepsHeading()
     {
         const string input = """
@@ -182,7 +183,7 @@ public class GuideMarkdownPreprocessorTests
         result.Should().Contain("## As a Board member / Admin (Camp Admin, Mystery Role)");
     }
 
-    [Fact]
+    [HumansFact]
     public void Wrap_HeadingWithGlossaryLinkAndRoleParenthetical_PreservesLink()
     {
         // Regression: the heading has a markdown link whose URL is parenthesised,

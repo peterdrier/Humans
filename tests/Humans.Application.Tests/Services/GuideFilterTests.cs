@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.Models;
 using Humans.Application.Services;
 using Humans.Domain.Constants;
+using Humans.Testing;
 using Xunit;
 
 namespace Humans.Application.Tests.Services;
@@ -30,7 +31,7 @@ public class GuideFilterTests
         new(IsAuthenticated: true, IsTeamCoordinator: isCoord,
             SystemRoles: new HashSet<string>(systemRoles, StringComparer.Ordinal));
 
-    [Fact]
+    [HumansFact]
     public void Apply_Anonymous_KeepsOnlyVolunteerBlock()
     {
         var result = GuideFilter.Apply(Sample, GuideRoleContext.Anonymous);
@@ -42,7 +43,7 @@ public class GuideFilterTests
         result.Should().NotContain("Teams admin content.");
     }
 
-    [Fact]
+    [HumansFact]
     public void Apply_PlainVolunteer_SameAsAnonymous()
     {
         var result = GuideFilter.Apply(Sample, Roles(isCoord: false));
@@ -52,7 +53,7 @@ public class GuideFilterTests
         result.Should().NotContain("Teams admin content.");
     }
 
-    [Fact]
+    [HumansFact]
     public void Apply_TeamCoordinator_SeesVolunteerAndCoordinator()
     {
         var result = GuideFilter.Apply(Sample, Roles(isCoord: true));
@@ -62,7 +63,7 @@ public class GuideFilterTests
         result.Should().NotContain("Teams admin content.");
     }
 
-    [Fact]
+    [HumansFact]
     public void Apply_ConsentCoordinatorRoleOnly_SeesCoordinatorBlockByParenthetical()
     {
         var result = GuideFilter.Apply(Sample, Roles(isCoord: false, RoleNames.ConsentCoordinator));
@@ -71,7 +72,7 @@ public class GuideFilterTests
         result.Should().NotContain("Teams admin content.");
     }
 
-    [Fact]
+    [HumansFact]
     public void Apply_ConsentCoordinatorOnBareCoordinatorHeading_NotVisible()
     {
         const string bareCoord = """
@@ -86,7 +87,7 @@ public class GuideFilterTests
         result.Should().NotContain("Bare coord content.");
     }
 
-    [Fact]
+    [HumansFact]
     public void Apply_TeamsAdmin_SeesCoordinatorAndBoardOnTeamsFile()
     {
         // Within-file superset: seeing Board/Admin via (Teams Admin) implies seeing Coordinator too.
@@ -96,7 +97,7 @@ public class GuideFilterTests
         result.Should().Contain("Teams admin content.");
     }
 
-    [Fact]
+    [HumansFact]
     public void Apply_TeamsAdminOnTicketsFile_SeesNothingBeyondVolunteer()
     {
         const string ticketsLike = """
@@ -112,7 +113,7 @@ public class GuideFilterTests
         result.Should().NotContain("BA");
     }
 
-    [Fact]
+    [HumansFact]
     public void Apply_Admin_SeesEverything()
     {
         var result = GuideFilter.Apply(Sample, Roles(isCoord: false, RoleNames.Admin));
@@ -122,7 +123,7 @@ public class GuideFilterTests
         result.Should().Contain("Teams admin content.");
     }
 
-    [Fact]
+    [HumansFact]
     public void Apply_Board_SeesAllBoardAdminBlocksRegardlessOfParenthetical()
     {
         const string mixed = """
@@ -136,7 +137,7 @@ public class GuideFilterTests
         result.Should().Contain("Camp-scoped");
     }
 
-    [Fact]
+    [HumansFact]
     public void Apply_NoRoleDivs_ReturnsUnchanged()
     {
         const string plain = "<p>Glossary entries.</p>";

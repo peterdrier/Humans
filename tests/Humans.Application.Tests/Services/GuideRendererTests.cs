@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Microsoft.Extensions.Options;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Services;
+using Humans.Testing;
 using Xunit;
 
 namespace Humans.Application.Tests.Services;
@@ -21,7 +22,7 @@ public class GuideRendererTests
         new GuideMarkdownPreprocessor(),
         new GuideHtmlPostprocessor());
 
-    [Fact]
+    [HumansFact]
     public void Render_RoleSection_WrappedWithDiv()
     {
         const string markdown = """
@@ -39,7 +40,7 @@ public class GuideRendererTests
         html.Should().Contain("<div data-guide-role=\"volunteer\"");
     }
 
-    [Fact]
+    [HumansFact]
     public void Render_SiblingMdLink_RewrittenToGuideRoute()
     {
         const string markdown = "See [Profiles](Profiles.md) for details.";
@@ -49,7 +50,7 @@ public class GuideRendererTests
         html.Should().Contain("/Guide/Profiles");
     }
 
-    [Fact]
+    [HumansFact]
     public void Render_ImageShortPath_RewrittenToRawUrl()
     {
         const string markdown = "![x](img/screenshot.png)";
@@ -59,7 +60,7 @@ public class GuideRendererTests
         html.Should().Contain("raw.githubusercontent.com/nobodies-collective/Humans/main/docs/guide/img/screenshot.png");
     }
 
-    [Fact]
+    [HumansFact]
     public void Render_ExternalLink_GetsBlankTarget()
     {
         const string markdown = "[ex](https://example.com)";
@@ -69,7 +70,7 @@ public class GuideRendererTests
         html.Should().Contain("target=\"_blank\"");
     }
 
-    [Fact]
+    [HumansFact]
     public void Render_AppPathLink_LeftAsIs()
     {
         const string markdown = "[Edit](/Profile/Me/Edit)";
@@ -80,7 +81,7 @@ public class GuideRendererTests
         html.Should().NotContain("target=\"_blank\"");
     }
 
-    [Fact]
+    [HumansFact]
     public void Render_GlossaryFile_NoRoleWrappers()
     {
         const string markdown = """

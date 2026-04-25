@@ -1,13 +1,14 @@
 using AwesomeAssertions;
 using Humans.Application.Services;
 using Humans.Domain.Constants;
+using Humans.Testing;
 using Xunit;
 
 namespace Humans.Application.Tests.Services;
 
 public class GuideRolePrivilegeMapTests
 {
-    [Theory]
+    [HumansTheory]
     [InlineData("Camp Admin", RoleNames.CampAdmin)]
     [InlineData("camp admin", RoleNames.CampAdmin)]
     [InlineData("Teams Admin", RoleNames.TeamsAdmin)]
@@ -24,7 +25,7 @@ public class GuideRolePrivilegeMapTests
         role.Should().Be(expectedRole);
     }
 
-    [Theory]
+    [HumansTheory]
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("Unknown")]
@@ -35,7 +36,7 @@ public class GuideRolePrivilegeMapTests
         role.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public void ParseParenthetical_MultipleCommaSeparated_ReturnsAll()
     {
         var result = GuideRolePrivilegeMap.ParseParenthetical("Camp Admin, Finance Admin");
@@ -43,7 +44,7 @@ public class GuideRolePrivilegeMapTests
         result.Should().BeEquivalentTo([RoleNames.CampAdmin, RoleNames.FinanceAdmin]);
     }
 
-    [Fact]
+    [HumansFact]
     public void ParseParenthetical_UnknownTokensDropped()
     {
         var result = GuideRolePrivilegeMap.ParseParenthetical("Camp Admin, Gibberish");
@@ -51,7 +52,7 @@ public class GuideRolePrivilegeMapTests
         result.Should().BeEquivalentTo([RoleNames.CampAdmin]);
     }
 
-    [Fact]
+    [HumansFact]
     public void ParseParenthetical_NullOrEmpty_ReturnsEmpty()
     {
         GuideRolePrivilegeMap.ParseParenthetical(null).Should().BeEmpty();

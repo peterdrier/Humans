@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Humans.Application.Interfaces;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Services;
+using Humans.Testing;
 using Xunit;
 
 namespace Humans.Application.Tests.Services;
@@ -43,7 +44,7 @@ public class GuideContentServiceTests
             NullLogger<GuideContentService>.Instance);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetRenderedAsync_FirstCall_FetchesFromSource()
     {
         var source = new FakeSource();
@@ -55,7 +56,7 @@ public class GuideContentServiceTests
         source.Calls.Should().BeGreaterThan(0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetRenderedAsync_SecondCall_ServedFromCache()
     {
         var source = new FakeSource();
@@ -68,7 +69,7 @@ public class GuideContentServiceTests
         source.Calls.Should().Be(callsAfterFirst);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RefreshAllAsync_ClearsAndRefetches()
     {
         var source = new FakeSource();
@@ -81,7 +82,7 @@ public class GuideContentServiceTests
         source.Calls.Should().BeGreaterThan(callsBefore);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetRenderedAsync_UnknownFile_Throws()
     {
         var source = new FakeSource();
@@ -92,7 +93,7 @@ public class GuideContentServiceTests
         await act.Should().ThrowAsync<FileNotFoundException>();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetRenderedAsync_ColdCacheGitHubFailure_ThrowsUnavailable()
     {
         var source = new FakeSource { FailFor = _ => new InvalidOperationException("network down") };
@@ -103,7 +104,7 @@ public class GuideContentServiceTests
         await act.Should().ThrowAsync<GuideContentUnavailableException>();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetRenderedAsync_WarmCacheThenSourceFails_ServesStale()
     {
         var source = new FakeSource();

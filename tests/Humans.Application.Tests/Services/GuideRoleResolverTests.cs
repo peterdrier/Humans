@@ -8,6 +8,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
+using Humans.Testing;
 using Xunit;
 
 namespace Humans.Application.Tests.Services;
@@ -46,7 +47,7 @@ public class GuideRoleResolverTests : IDisposable
         return new ClaimsPrincipal(identity);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task Resolve_Anonymous_ReturnsAnonymousContext()
     {
         var resolver = new GuideRoleResolver(_db);
@@ -58,7 +59,7 @@ public class GuideRoleResolverTests : IDisposable
         result.SystemRoles.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task Resolve_AuthWithAdminRole_ReportsSystemRoles()
     {
         var resolver = new GuideRoleResolver(_db);
@@ -70,7 +71,7 @@ public class GuideRoleResolverTests : IDisposable
         result.SystemRoles.Should().Contain([RoleNames.Admin, RoleNames.Board]);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task Resolve_ActiveTeamCoordinator_IsTeamCoordinatorTrue()
     {
         var userId = Guid.NewGuid();
@@ -102,7 +103,7 @@ public class GuideRoleResolverTests : IDisposable
         result.IsTeamCoordinator.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task Resolve_FormerTeamCoordinator_IsTeamCoordinatorFalse()
     {
         var userId = Guid.NewGuid();
@@ -135,7 +136,7 @@ public class GuideRoleResolverTests : IDisposable
         result.IsTeamCoordinator.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task Resolve_MemberButNotCoordinator_IsTeamCoordinatorFalse()
     {
         var userId = Guid.NewGuid();
