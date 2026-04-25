@@ -52,4 +52,6 @@ public class CampSeason
 
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }
+
+    public ICollection<CampRoleAssignment> RoleAssignments { get; } = new List<CampRoleAssignment>();
 }

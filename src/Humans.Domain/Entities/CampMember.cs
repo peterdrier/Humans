@@ -32,4 +32,6 @@ public class CampMember
     public Instant? RemovedAt { get; set; }
     public Guid? RemovedByUserId { get; set; }
     public User? RemovedByUser { get; set; }
+
+    public ICollection<CampRoleAssignment> RoleAssignments { get; } = new List<CampRoleAssignment>();
 }
