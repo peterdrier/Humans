@@ -230,3 +230,7 @@ ignore:
   - docs/plans/**
   - docs/specs/**
   - docs/superpowers/**
+  # Guide meta files — narrative cover material, not tied to a specific feature
+  - docs/guide/README.md
+  - docs/guide/GettingStarted.md
+  - docs/guide/Glossary.md

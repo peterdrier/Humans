@@ -42,7 +42,7 @@ Save this for Phase 8 — `cd $REPO_ROOT` reliably leaves the worktree on teardo
 1. Run `git fetch upstream main` (always, regardless of mode). If `upstream` remote is missing, error out with: "freshness-sweep requires an `upstream` remote pointing to nobodies-collective/Humans. Configure with: `git remote add upstream https://github.com/nobodies-collective/Humans.git`".
 2. **If `--since <ref>` was passed:** set `<previous-anchor>` to the resolved SHA of `<ref>` (`git rev-parse <ref>`). Skip steps 3-5.
 3. **If `--full` mode:** skip steps 4-5. There is no previous anchor; report it as `none` in commit message and report file. The new anchor is `upstream/main` HEAD; jump to Phase 2.
-4. Resolve last anchor: `git log upstream/main --grep='freshness sweep' --format=%H -n 1`. Then read its commit message: `git log -1 <hash> --format=%B`. Extract the `(upstream@<sha>)` token from the message — that is the **previous anchor**.
+4. Resolve last anchor: `git log upstream/main --grep='(upstream@' --extended-regexp --format=%H -n 1`. The grep matches the anchor *token* embedded in every prior sweep commit message — using the loose phrase "freshness sweep" would risk false positives from any later commit that mentions the phrase (e.g. "revert freshness sweep change"). Then read its commit message: `git log -1 <hash> --format=%B`. Extract the `(upstream@<sha>)` token from the message — that is the **previous anchor**.
 5. If no prior sweep commit found on upstream/main: warn ("No prior freshness sweep on upstream/main — falling back to full-scan"), set `<previous-anchor>` to `none`, and behave as `--full`.
 
 The new anchor — recorded in this run's commit message — is always `upstream/main` HEAD as of the fetch in step 1.

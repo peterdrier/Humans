@@ -65,11 +65,14 @@ Two artifacts ship together:
 ### Lifecycle of one diff run
 
 1. **Resolve baseline.** `git fetch upstream main`. Find the most recent sweep
-   commit on `upstream/main` via `git log upstream/main --grep='freshness sweep'
-   --format=%H -n 1`. Extract the anchor hash from its commit message
-   (`(upstream@<sha>)` token). If absent → fall back to full-scan and warn.
-   Anchor hashes only ever live on `upstream/main` because the fork's `main`
-   gets rebased on production promotion.
+   commit on `upstream/main` via `git log upstream/main --grep='(upstream@'
+   --extended-regexp --format=%H -n 1`. The grep pattern matches the anchor
+   *token* (`(upstream@<sha>)`) that every sweep commit message embeds —
+   matching the loose phrase "freshness sweep" would risk false positives
+   from any later commit that happens to mention the phrase. Extract the
+   anchor hash from the matched commit's message. If no match → fall back
+   to full-scan and warn. Anchor hashes only ever live on `upstream/main`
+   because the fork's `main` gets rebased on production promotion.
 
 2. **Create worktree.** `git worktree add
    .worktrees/freshness-sweep-<timestamp> -b
@@ -117,6 +120,16 @@ When an earlier freshness sweep PR has merged to `origin/main` but not yet been
 promoted to `upstream/main`, the next sweep finds the *previous* anchor on
 `upstream/main` and reprocesses the same diff. Auto-updates are no-ops (files
 already match), nothing commits, exit clean. Wasted CPU but correct output.
+
+This holds for the auto-update path. Editorial entries with `freshness:flag-on-change`
+or unmarked editorial docs would, in principle, re-fire on every diff run between
+promotions — same triggers, same flags. The skill suppresses this noise via the
+"no PR if no `files_changed`" rule (Phase 6 step 3): a sweep that produced only
+flags and no auto-updates exits without committing, pushing, or opening a PR.
+The flags are surfaced in the next sweep that *does* have auto-updates — that
+sweep ships the report file alongside the auto-changes, so the human sees the
+flags then. Net effect: flag-only sweeps are silent; flags only surface when
+something else also changed and a PR is being opened anyway.
 
 ### Failure modes
 
@@ -275,7 +288,7 @@ skill. Frontmatter follows the existing project skill pattern (see
 ```
 /freshness-sweep                     # default: diff mode, batch
 /freshness-sweep --full              # full-scan; ignores anchor; weekly cadence
-/freshness-sweep --interactive       # stops at every question instead of accumulating
+/freshness-sweep --interactive       # stop at every question instead of accumulating (see "Interactive mode" below)
 /freshness-sweep --since <ref>       # override anchor (debugging, recovery)
 /freshness-sweep --scope <pattern>   # only run entries whose id matches glob
 ```
@@ -315,6 +328,20 @@ Each subagent returns:
 
 Mechanical script-driven entries do not use subagents; the skill runs the
 script directly and inspects `git status` to detect file changes.
+
+### Interactive mode
+
+Default behaviour is **batch**: the skill processes every dirty entry without
+pausing for input, and any `questions` returned by subagents are accumulated
+into the report under "Questions" for later review.
+
+`--interactive` changes that to: after each batch of subagents completes, if
+any returned non-empty `questions`, the skill stops, prints the questions in
+the terminal, and waits for a typed answer. The answer is fed back into the
+relevant subagent (re-dispatch with the answer appended to the prompt) and
+the run continues. Use this when you're at the keyboard and want to clear
+ambiguities as they arise instead of triaging them post-PR. The mode does
+not change PR behaviour — a single PR is still opened at the end.
 
 ### Report format
 
@@ -376,9 +403,9 @@ committed alongside the updates so it renders in the PR. Sections:
 
 | Tree | Approx files | Bootstrap status |
 |---|---|---|
-| `docs/sections/` | 19 + 1 template (ignored) | Markers retrofitted in bootstrap pass; `Teams.md` SystemTeamIds → `freshness:auto`; data-model field tables → `freshness:auto` per section |
+| `docs/sections/` | 20 + 1 template (ignored) | Markers retrofitted in bootstrap pass; `Teams.md` SystemTeamIds → `freshness:auto`; data-model field tables → `freshness:auto` per section |
 | `docs/features/` | ~40 | Top-of-doc `freshness:triggers` only; no sub-block markers at v1 (specs stay narrative) |
-| `docs/guide/` | ~17 | Top-of-doc `freshness:triggers` pointing at the controller/view backing each guide page |
+| `docs/guide/` | 17 + 3 meta files (ignored: `README.md`, `GettingStarted.md`, `Glossary.md`) | Top-of-doc `freshness:triggers` pointing at the controller/view backing each guide page |
 | `docs/architecture/coding-rules.md` | 1 | `freshness:triggers` on `Directory.Build.props`, analyzer config |
 | `docs/architecture/design-rules.md` | 1 | `freshness:triggers` on `src/Humans.Application/**`, `src/Humans.Domain/**` |
 | `docs/architecture/code-review-rules.md` | 1 | `freshness:flag-on-change` only |
