@@ -27,7 +27,7 @@ public class GoogleWorkspaceUserServiceTests
             _client, NullLogger<GoogleWorkspaceUserService>.Instance);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ListAccountsAsync_DelegatesToClient()
     {
         IReadOnlyList<WorkspaceUserAccount> expected =
@@ -41,7 +41,7 @@ public class GoogleWorkspaceUserServiceTests
         result.Should().BeSameAs(expected);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetAccountAsync_DelegatesToClient_AndReturnsNullWhenMissing()
     {
         _client.GetAccountAsync("missing@nobodies.team", Arg.Any<CancellationToken>())
@@ -53,7 +53,7 @@ public class GoogleWorkspaceUserServiceTests
         await _client.Received(1).GetAccountAsync("missing@nobodies.team", Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ProvisionAccountAsync_ForwardsAllArguments()
     {
         var expected = new WorkspaceUserAccount(
@@ -72,7 +72,7 @@ public class GoogleWorkspaceUserServiceTests
             Arg.Any<CancellationToken>());
     }
 
-    [Theory]
+    [HumansTheory]
     [InlineData("")]
     [InlineData("   ")]
     [InlineData(null)]
@@ -87,7 +87,7 @@ public class GoogleWorkspaceUserServiceTests
             default!, default!, default!, default!, default, default);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SuspendAccountAsync_DelegatesToClient()
     {
         await _service.SuspendAccountAsync("target@nobodies.team");
@@ -96,7 +96,7 @@ public class GoogleWorkspaceUserServiceTests
             "target@nobodies.team", Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ReactivateAccountAsync_DelegatesToClient()
     {
         await _service.ReactivateAccountAsync("target@nobodies.team");
@@ -105,7 +105,7 @@ public class GoogleWorkspaceUserServiceTests
             "target@nobodies.team", Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ResetPasswordAsync_DelegatesToClient()
     {
         await _service.ResetPasswordAsync("target@nobodies.team", "NewP@ss");

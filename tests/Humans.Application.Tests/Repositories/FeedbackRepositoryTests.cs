@@ -37,14 +37,14 @@ public sealed class FeedbackRepositoryTests : IDisposable
     // GetByIdAsync / FindForMutationAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetByIdAsync_ReturnsNull_WhenNotFound()
     {
         var result = await _repo.GetByIdAsync(Guid.NewGuid());
         result.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetByIdAsync_IncludesAggregateLocalMessagesOrderedByCreatedAt()
     {
         var reportId = Guid.NewGuid();
@@ -73,7 +73,7 @@ public sealed class FeedbackRepositoryTests : IDisposable
         result.Messages.Last().Content.Should().Be("second");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task FindForMutationAsync_ReturnsTrackedEntity()
     {
         var reportId = Guid.NewGuid();
@@ -107,7 +107,7 @@ public sealed class FeedbackRepositoryTests : IDisposable
     // GetListAsync filters
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetListAsync_FiltersByAssignedTeam_AndOrdersByCreatedAtDesc()
     {
         var teamA = Guid.NewGuid();
@@ -151,7 +151,7 @@ public sealed class FeedbackRepositoryTests : IDisposable
         filtered[0].AssignedToTeamId.Should().Be(teamA);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetListAsync_UnassignedOnly_ReturnsReportsWithNoAssignment()
     {
         var user = Guid.NewGuid();
@@ -196,7 +196,7 @@ public sealed class FeedbackRepositoryTests : IDisposable
     // GetActionableCountAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetActionableCountAsync_CountsOpenWithoutAdminReplyAndReporterAfterAdmin()
     {
         var user = Guid.NewGuid();
@@ -249,7 +249,7 @@ public sealed class FeedbackRepositoryTests : IDisposable
     // GetReporterCountsAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetReporterCountsAsync_GroupsByUserId_AndCounts()
     {
         var u1 = Guid.NewGuid();
@@ -272,7 +272,7 @@ public sealed class FeedbackRepositoryTests : IDisposable
     // AddMessageAndSaveReportAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task AddMessageAndSaveReportAsync_PersistsMessageAndUpdatesReport_InOneSaveChanges()
     {
         var reportId = Guid.NewGuid();
@@ -317,7 +317,7 @@ public sealed class FeedbackRepositoryTests : IDisposable
     // GetMessagesAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetMessagesAsync_ReturnsMessagesOrderedByCreatedAtAscending()
     {
         var reportId = Guid.NewGuid();
@@ -349,7 +349,7 @@ public sealed class FeedbackRepositoryTests : IDisposable
     // GetForUserExportAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetForUserExportAsync_ReturnsOnlyForUser_AndIncludesMessages()
     {
         var me = Guid.NewGuid();

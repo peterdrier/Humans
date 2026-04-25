@@ -75,7 +75,7 @@ public class RoleAssignmentServiceTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HasOverlappingAssignmentAsync_NoAssignments_ReturnsFalse()
     {
         var userId = Guid.NewGuid();
@@ -85,7 +85,7 @@ public class RoleAssignmentServiceTests : IDisposable
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HasOverlappingAssignmentAsync_PastEndedWindow_ReturnsFalse()
     {
         var userId = Guid.NewGuid();
@@ -100,7 +100,7 @@ public class RoleAssignmentServiceTests : IDisposable
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HasOverlappingAssignmentAsync_OpenEndedActiveWindow_ReturnsTrue()
     {
         var userId = Guid.NewGuid();
@@ -115,7 +115,7 @@ public class RoleAssignmentServiceTests : IDisposable
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HasOverlappingAssignmentAsync_FutureWindow_ReturnsTrue()
     {
         var userId = Guid.NewGuid();
@@ -130,7 +130,7 @@ public class RoleAssignmentServiceTests : IDisposable
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HasOverlappingAssignmentAsync_DifferentRole_ReturnsFalse()
     {
         var userId = Guid.NewGuid();
@@ -145,7 +145,7 @@ public class RoleAssignmentServiceTests : IDisposable
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task AssignRoleAsync_InvalidatesCachedClaimsForUser()
     {
         var userId = Guid.NewGuid();
@@ -161,7 +161,7 @@ public class RoleAssignmentServiceTests : IDisposable
         _navBadge.Received(1).Invalidate();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task EndRoleAsync_InvalidatesCachedClaimsForUser()
     {
         var userId = Guid.NewGuid();
@@ -182,7 +182,7 @@ public class RoleAssignmentServiceTests : IDisposable
         _navBadge.Received(1).Invalidate();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetByUserIdAsync_StitchesUserAndCreatedByUserNavs()
     {
         var userId = Guid.NewGuid();
@@ -207,7 +207,7 @@ public class RoleAssignmentServiceTests : IDisposable
 #pragma warning restore CS0618
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFilteredAsync_StitchesNavsForAllReturnedAssignments()
     {
         var user1 = Guid.NewGuid();
@@ -230,7 +230,7 @@ public class RoleAssignmentServiceTests : IDisposable
 #pragma warning restore CS0618
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RevokeAllActiveAsync_EndsAllActive_AndInvalidatesClaims()
     {
         var userId = Guid.NewGuid();
@@ -249,7 +249,7 @@ public class RoleAssignmentServiceTests : IDisposable
         _claimsInvalidator.Received(1).Invalidate(userId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task AssignRoleAsync_RoleAlreadyActive_ReturnsFailure()
     {
         var userId = Guid.NewGuid();
@@ -264,7 +264,7 @@ public class RoleAssignmentServiceTests : IDisposable
         result.ErrorKey.Should().Be("RoleAlreadyActive");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task EndRoleAsync_NotFound_ReturnsFailure()
     {
         var result = await _service.EndRoleAsync(Guid.NewGuid(), Guid.NewGuid(), null);
@@ -273,7 +273,7 @@ public class RoleAssignmentServiceTests : IDisposable
         result.ErrorKey.Should().Be("NotFound");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ContributeForUserAsync_ReturnsRoleAssignmentsSlice()
     {
         var userId = Guid.NewGuid();

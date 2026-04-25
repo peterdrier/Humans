@@ -338,7 +338,7 @@ public class AccountProvisioningServiceTests
             NullLogger<AccountProvisioningService>.Instance);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task FindOrCreateUserByEmailAsync_CreatesNewUser_WhenNoExistingAccount()
     {
         var result = await _service.FindOrCreateUserByEmailAsync(
@@ -357,7 +357,7 @@ public class AccountProvisioningServiceTests
         userEmail.IsVerified.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task FindOrCreateUserByEmailAsync_FindsExisting_ByPrimaryEmail()
     {
         // Seed an existing user
@@ -392,7 +392,7 @@ public class AccountProvisioningServiceTests
         result.User.Id.Should().Be(existingUser.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task FindOrCreateUserByEmailAsync_FindsExisting_BySecondaryEmail()
     {
         // Seed a user with a secondary email
@@ -438,7 +438,7 @@ public class AccountProvisioningServiceTests
         result.User.Id.Should().Be(existingUser.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task FindOrCreateUserByEmailAsync_DoesNotCreateDuplicates()
     {
         // Create the first time
@@ -455,7 +455,7 @@ public class AccountProvisioningServiceTests
         result2.User.Id.Should().Be(result1.User.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task FindOrCreateUserByEmailAsync_HandlesMultipleSources()
     {
         // First call from TicketTailor
@@ -475,7 +475,7 @@ public class AccountProvisioningServiceTests
         result2.User.ContactSource.Should().Be(ContactSource.TicketTailor);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task FindOrCreateUserByEmailAsync_SetsContactSource_OnSelfRegisteredUser()
     {
         // Seed a self-registered user (no ContactSource)
@@ -512,7 +512,7 @@ public class AccountProvisioningServiceTests
         result.User.ContactSource.Should().Be(ContactSource.TicketTailor);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task FindOrCreateUserByEmailAsync_UsesEmailPrefix_WhenDisplayNameEmpty()
     {
         var result = await _service.FindOrCreateUserByEmailAsync(
@@ -522,7 +522,7 @@ public class AccountProvisioningServiceTests
         result.User.DisplayName.Should().Be("grace");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task FindOrCreateUserByEmailAsync_IsIdempotent_MultipleCalls()
     {
         var result1 = await _service.FindOrCreateUserByEmailAsync(

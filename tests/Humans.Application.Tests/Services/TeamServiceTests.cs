@@ -142,7 +142,7 @@ public class TeamServiceTests : IDisposable
     // IsUserAdminAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserAdminAsync_ActiveAdminRole_ReturnsTrue()
     {
         var user = SeedUser();
@@ -155,7 +155,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserAdminAsync_NoRoleAssignment_ReturnsFalse()
     {
         var user = SeedUser();
@@ -166,7 +166,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserAdminAsync_ExpiredRole_ReturnsFalse()
     {
         var user = SeedUser();
@@ -180,7 +180,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserAdminAsync_FutureRole_ReturnsFalse()
     {
         var user = SeedUser();
@@ -193,7 +193,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserAdminAsync_BoardRoleOnly_ReturnsFalse()
     {
         var user = SeedUser();
@@ -210,7 +210,7 @@ public class TeamServiceTests : IDisposable
     // IsUserBoardMemberAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserBoardMemberAsync_ActiveBoardRole_ReturnsTrue()
     {
         var user = SeedUser();
@@ -223,7 +223,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserBoardMemberAsync_NoRoleAssignment_ReturnsFalse()
     {
         var user = SeedUser();
@@ -234,7 +234,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserBoardMemberAsync_ExpiredRole_ReturnsFalse()
     {
         var user = SeedUser();
@@ -248,7 +248,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserBoardMemberAsync_AdminRoleOnly_ReturnsFalse()
     {
         var user = SeedUser();
@@ -265,7 +265,7 @@ public class TeamServiceTests : IDisposable
     // IsUserCoordinatorOfTeamAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserCoordinatorOfTeamAsync_ActiveCoordinator_ReturnsTrue()
     {
         var user = SeedUser();
@@ -278,7 +278,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserCoordinatorOfTeamAsync_MemberNotCoordinator_ReturnsFalse()
     {
         var user = SeedUser();
@@ -291,7 +291,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserCoordinatorOfTeamAsync_LeftTeam_ReturnsFalse()
     {
         var user = SeedUser();
@@ -305,7 +305,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserCoordinatorOfTeamAsync_CoordinatorOfDifferentTeam_ReturnsFalse()
     {
         var user = SeedUser();
@@ -319,7 +319,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserCoordinatorOfTeamAsync_CoordinatorOfParentTeam_ReturnsTrueForChildTeam()
     {
         var user = SeedUser();
@@ -334,7 +334,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserCoordinatorOfTeamAsync_MemberOfParentTeam_NotCoordinator_ReturnsFalseForChildTeam()
     {
         var user = SeedUser();
@@ -349,7 +349,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserCoordinatorOfTeamAsync_SubTeamManager_ReturnsTrue_ForOwnSubTeam()
     {
         var user = SeedUser();
@@ -366,7 +366,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserCoordinatorOfTeamAsync_SubTeamManager_ReturnsFalse_ForSiblingSubTeam()
     {
         var user = SeedUser();
@@ -385,7 +385,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserCoordinatorOfTeamAsync_SubTeamManager_ReturnsFalse_ForParentDepartment()
     {
         var user = SeedUser();
@@ -406,7 +406,7 @@ public class TeamServiceTests : IDisposable
     // CanUserApproveRequestsForTeamAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task CanUserApproveRequestsForTeamAsync_Admin_ReturnsTrue()
     {
         var user = SeedUser();
@@ -420,7 +420,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CanUserApproveRequestsForTeamAsync_BoardMember_ReturnsTrue()
     {
         var user = SeedUser();
@@ -434,7 +434,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CanUserApproveRequestsForTeamAsync_CoordinatorOfTeam_ReturnsTrue()
     {
         var user = SeedUser();
@@ -447,7 +447,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CanUserApproveRequestsForTeamAsync_CoordinatorOfParentTeam_ReturnsTrueForChildTeam()
     {
         var user = SeedUser();
@@ -462,7 +462,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CanUserApproveRequestsForTeamAsync_RegularMember_ReturnsFalse()
     {
         var user = SeedUser();
@@ -475,7 +475,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CanUserApproveRequestsForTeamAsync_NoRelation_ReturnsFalse()
     {
         var user = SeedUser();
@@ -491,7 +491,7 @@ public class TeamServiceTests : IDisposable
     // IsUserMemberOfTeamAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserMemberOfTeamAsync_ActiveMember_ReturnsTrue()
     {
         var user = SeedUser();
@@ -504,7 +504,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserMemberOfTeamAsync_LeftTeam_ReturnsFalse()
     {
         var user = SeedUser();
@@ -517,7 +517,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserMemberOfTeamAsync_NotMember_ReturnsFalse()
     {
         var user = SeedUser();
@@ -533,7 +533,7 @@ public class TeamServiceTests : IDisposable
     // GetTeamBySlugAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetTeamBySlugAsync_ExistingSlug_ReturnsTeamWithActiveMembers()
     {
         var user = SeedUser();
@@ -550,7 +550,7 @@ public class TeamServiceTests : IDisposable
         result.Members.Should().ContainSingle();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetTeamBySlugAsync_NonExistentSlug_ReturnsNull()
     {
         await _dbContext.SaveChangesAsync();
@@ -560,7 +560,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetTeamBySlugAsync_IncludesUserNavigation()
     {
         var user = SeedUser(displayName: "Alice");
@@ -578,7 +578,7 @@ public class TeamServiceTests : IDisposable
     // GetTeamByIdAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetTeamByIdAsync_ExistingId_ReturnsTeamWithActiveMembers()
     {
         var user = SeedUser();
@@ -594,7 +594,7 @@ public class TeamServiceTests : IDisposable
         result!.Members.Should().ContainSingle();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetTeamByIdAsync_NonExistentId_ReturnsNull()
     {
         var result = await _service.GetTeamByIdAsync(Guid.NewGuid());
@@ -606,7 +606,7 @@ public class TeamServiceTests : IDisposable
     // GetAllTeamsAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetAllTeamsAsync_ReturnsOnlyActiveTeams()
     {
         SeedTeam("Active");
@@ -619,7 +619,7 @@ public class TeamServiceTests : IDisposable
         result[0].Name.Should().Be("Active");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetAllTeamsAsync_OrderedByName()
     {
         SeedTeam("Charlie");
@@ -634,7 +634,7 @@ public class TeamServiceTests : IDisposable
             cfg => cfg.WithStrictOrdering());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetAllTeamsAsync_IncludesOnlyActiveMembers()
     {
         var team = SeedTeam("Alpha");
@@ -650,7 +650,7 @@ public class TeamServiceTests : IDisposable
         result.Single().Members.Should().ContainSingle();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetAllTeamsAsync_NoTeams_ReturnsEmpty()
     {
         var result = await _service.GetAllTeamsAsync();
@@ -662,7 +662,7 @@ public class TeamServiceTests : IDisposable
     // GetUserCreatedTeamsAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetUserCreatedTeamsAsync_ExcludesSystemTeams()
     {
         SeedTeam("User Team");
@@ -675,7 +675,7 @@ public class TeamServiceTests : IDisposable
         result[0].Name.Should().Be("User Team");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetUserCreatedTeamsAsync_ExcludesInactiveTeams()
     {
         SeedTeam("Active");
@@ -688,7 +688,7 @@ public class TeamServiceTests : IDisposable
         result[0].Name.Should().Be("Active");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetUserCreatedTeamsAsync_OrderedByName()
     {
         SeedTeam("Zebra");
@@ -705,7 +705,7 @@ public class TeamServiceTests : IDisposable
     // GetUserTeamsAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetUserTeamsAsync_ReturnsActiveMembershipsOnly()
     {
         var user = SeedUser();
@@ -722,7 +722,7 @@ public class TeamServiceTests : IDisposable
         result[0].TeamId.Should().Be(teamA.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetUserTeamsAsync_IncludesTeamNavigation()
     {
         var user = SeedUser();
@@ -736,7 +736,7 @@ public class TeamServiceTests : IDisposable
         result.Single().Team.Name.Should().Be("Alpha");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetUserTeamsAsync_NoMemberships_ReturnsEmpty()
     {
         var user = SeedUser();
@@ -751,7 +751,7 @@ public class TeamServiceTests : IDisposable
     // GetMyTeamMembershipsAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetMyTeamMembershipsAsync_Coordinator_GetsPendingCountsForManageableNonSystemTeams()
     {
         var user = SeedUser(displayName: "Coordinator");
@@ -772,7 +772,7 @@ public class TeamServiceTests : IDisposable
         result.Single(m => m.TeamId == systemTeam.Id).CanLeave.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetMyTeamMembershipsAsync_BoardMember_GetsPendingCountsForRegularMemberships()
     {
         var user = SeedUser(displayName: "Board Human");
@@ -796,7 +796,7 @@ public class TeamServiceTests : IDisposable
     // GetTeamDetailAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetTeamDetailAsync_AnonymousViewer_OnlySeesPublicTeamCoordinatorsAndPublicChildren()
     {
         var coordinator = SeedUser(displayName: "Coordinator");
@@ -830,7 +830,7 @@ public class TeamServiceTests : IDisposable
         result.RoleDefinitions.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetTeamDetailAsync_AuthenticatedCoordinator_ReturnsViewerStateMembersAndPendingCount()
     {
         var coordinator = SeedUser(displayName: "Coordinator");
@@ -867,7 +867,7 @@ public class TeamServiceTests : IDisposable
     // GetPendingRequestsForApproverAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetPendingRequestsForApproverAsync_BoardMember_ReturnsAllPending()
     {
         var approver = SeedUser();
@@ -886,7 +886,7 @@ public class TeamServiceTests : IDisposable
         result.Should().HaveCount(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetPendingRequestsForApproverAsync_Coordinator_ReturnsOnlyOwnTeamRequests()
     {
         var coordinator = SeedUser();
@@ -905,7 +905,7 @@ public class TeamServiceTests : IDisposable
         result[0].TeamId.Should().Be(teamA.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetPendingRequestsForApproverAsync_CoordinatorOfParent_IncludesChildTeamRequests()
     {
         var coordinator = SeedUser();
@@ -923,7 +923,7 @@ public class TeamServiceTests : IDisposable
         result[0].TeamId.Should().Be(child.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetPendingRequestsForApproverAsync_RegularUser_ReturnsEmpty()
     {
         var user = SeedUser();
@@ -937,7 +937,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetPendingRequestsForApproverAsync_ExcludesNonPendingRequests()
     {
         var approver = SeedUser();
@@ -959,7 +959,7 @@ public class TeamServiceTests : IDisposable
     // GetPendingRequestsForTeamAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetPendingRequestsForTeamAsync_ReturnsPendingOnly()
     {
         var team = SeedTeam("Alpha");
@@ -975,7 +975,7 @@ public class TeamServiceTests : IDisposable
         result[0].UserId.Should().Be(u1.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetPendingRequestsForTeamAsync_NoRequests_ReturnsEmpty()
     {
         var team = SeedTeam("Alpha");
@@ -986,7 +986,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetPendingRequestsForTeamAsync_OrderedByRequestedAt()
     {
         var team = SeedTeam("Alpha");
@@ -1023,7 +1023,7 @@ public class TeamServiceTests : IDisposable
     // GetUserPendingRequestAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetUserPendingRequestAsync_HasPending_ReturnsRequest()
     {
         var team = SeedTeam("Alpha");
@@ -1037,7 +1037,7 @@ public class TeamServiceTests : IDisposable
         result!.UserId.Should().Be(user.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetUserPendingRequestAsync_NoRequest_ReturnsNull()
     {
         var team = SeedTeam("Alpha");
@@ -1049,7 +1049,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetUserPendingRequestAsync_ApprovedRequest_ReturnsNull()
     {
         var team = SeedTeam("Alpha");
@@ -1066,7 +1066,7 @@ public class TeamServiceTests : IDisposable
     // GetTeamMembersAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetTeamMembersAsync_ReturnsOnlyActiveMembers()
     {
         var team = SeedTeam("Alpha");
@@ -1083,7 +1083,7 @@ public class TeamServiceTests : IDisposable
         result[0].UserId.Should().Be(active.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetTeamMembersAsync_OrderedByRoleThenJoinedAt()
     {
         var team = SeedTeam("Alpha");
@@ -1130,7 +1130,7 @@ public class TeamServiceTests : IDisposable
         result[1].UserId.Should().Be(memberLate.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetTeamMembersAsync_IncludesUserNavigation()
     {
         var team = SeedTeam("Alpha");
@@ -1144,7 +1144,7 @@ public class TeamServiceTests : IDisposable
         result.Single().User.DisplayName.Should().Be("Alice");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetTeamMembersAsync_NoMembers_ReturnsEmpty()
     {
         var team = SeedTeam("Alpha");
@@ -1159,7 +1159,7 @@ public class TeamServiceTests : IDisposable
     // GetPendingRequestCountsByTeamIdsAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetPendingRequestCountsByTeamIdsAsync_ReturnsCounts()
     {
         var teamA = SeedTeam("Alpha");
@@ -1178,7 +1178,7 @@ public class TeamServiceTests : IDisposable
         result[teamB.Id].Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetPendingRequestCountsByTeamIdsAsync_ExcludesNonPending()
     {
         var team = SeedTeam("Alpha");
@@ -1193,7 +1193,7 @@ public class TeamServiceTests : IDisposable
         result[team.Id].Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetPendingRequestCountsByTeamIdsAsync_EmptyInput_ReturnsEmptyDict()
     {
         var result = await _service.GetPendingRequestCountsByTeamIdsAsync([]);
@@ -1201,7 +1201,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetPendingRequestCountsByTeamIdsAsync_TeamWithNoPending_ReturnsZero()
     {
         var team = SeedTeam("Alpha");
@@ -1216,7 +1216,7 @@ public class TeamServiceTests : IDisposable
     // GetNonSystemTeamNamesByUserIdsAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetNonSystemTeamNamesByUserIdsAsync_ReturnsTeamNamesGroupedByUser()
     {
         var u1 = SeedUser(displayName: "U1");
@@ -1236,7 +1236,7 @@ public class TeamServiceTests : IDisposable
         result[u2.Id].Should().ContainSingle("Alpha");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetNonSystemTeamNamesByUserIdsAsync_ExcludesSystemTeams()
     {
         var user = SeedUser();
@@ -1251,7 +1251,7 @@ public class TeamServiceTests : IDisposable
         result[user.Id].Should().ContainSingle("User Team");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetNonSystemTeamNamesByUserIdsAsync_ExcludesLeftMembers()
     {
         var user = SeedUser();
@@ -1265,7 +1265,7 @@ public class TeamServiceTests : IDisposable
         result.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetNonSystemTeamNamesByUserIdsAsync_EmptyInput_ReturnsEmptyDict()
     {
         var result = await _service.GetNonSystemTeamNamesByUserIdsAsync([]);
@@ -1277,7 +1277,7 @@ public class TeamServiceTests : IDisposable
     // GetAllTeamsForAdminAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetAllTeamsForAdminAsync_ReturnsPaginatedResults()
     {
         SeedTeam("Alpha");
@@ -1291,7 +1291,7 @@ public class TeamServiceTests : IDisposable
         totalCount.Should().Be(3);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetAllTeamsForAdminAsync_SecondPage_ReturnsRemainingItems()
     {
         SeedTeam("Alpha");
@@ -1305,7 +1305,7 @@ public class TeamServiceTests : IDisposable
         totalCount.Should().Be(3);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetAllTeamsForAdminAsync_IncludesMembers()
     {
         var team = SeedTeam("Alpha");
@@ -1318,7 +1318,7 @@ public class TeamServiceTests : IDisposable
         items.Single().Members.Should().ContainSingle();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetAllTeamsForAdminAsync_IncludesJoinRequests()
     {
         var team = SeedTeam("Alpha");
@@ -1331,7 +1331,7 @@ public class TeamServiceTests : IDisposable
         items.Single().JoinRequests.Should().ContainSingle();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetAllTeamsForAdminAsync_IncludesInactiveTeams()
     {
         SeedTeam("Active");
@@ -1344,7 +1344,7 @@ public class TeamServiceTests : IDisposable
         items.Should().HaveCount(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetAllTeamsForAdminAsync_SystemTeamsOrderedFirst()
     {
         SeedTeam("Zebra");
@@ -1362,7 +1362,7 @@ public class TeamServiceTests : IDisposable
     // AddMemberToTeamAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task AddMemberToTeamAsync_ValidUser_CreatesMembership()
     {
         var actor = SeedUser(displayName: "Actor");
@@ -1383,7 +1383,7 @@ public class TeamServiceTests : IDisposable
         memberInDb.Should().NotBeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task AddMemberToTeamAsync_AlreadyMember_Throws()
     {
         var actor = SeedUser(displayName: "Actor");
@@ -1398,7 +1398,7 @@ public class TeamServiceTests : IDisposable
             .WithMessage("*already a member*");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task AddMemberToTeamAsync_SystemTeam_Throws()
     {
         var actor = SeedUser(displayName: "Actor");
@@ -1412,7 +1412,7 @@ public class TeamServiceTests : IDisposable
             .WithMessage("*system team*");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task LeaveTeamAsync_RemovesManagementAssignments_InvalidatesShiftAuthorizationCache()
     {
         var user = SeedUser();
@@ -1429,7 +1429,7 @@ public class TeamServiceTests : IDisposable
         _cache.TryGetValue(CacheKeys.ShiftAuthorization(user.Id), out _).Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetRosterAsync_ExpandsSlotsAndSortsByPriorityThenName()
     {
         var alphaTeam = SeedTeam("Alpha");
@@ -1494,7 +1494,7 @@ public class TeamServiceTests : IDisposable
         result[2].PriorityBadgeClass.Should().Be("bg-light text-dark");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetRosterAsync_AppliesPriorityStatusAndPeriodFilters()
     {
         var team = SeedTeam("Alpha");
@@ -1544,7 +1544,7 @@ public class TeamServiceTests : IDisposable
     // GetAdminTeamListAsync — PendingShiftSignupCount
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetAdminTeamListAsync_CountsPendingShiftSignupsForActiveEvent()
     {
         var team = SeedTeam("Dept A");
@@ -1574,7 +1574,7 @@ public class TeamServiceTests : IDisposable
         summary.PendingShiftSignupCount.Should().Be(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetAdminTeamListAsync_ReturnsZeroPendingShifts_WhenNoActiveEvent()
     {
         var team = SeedTeam("Dept B");
@@ -1598,7 +1598,7 @@ public class TeamServiceTests : IDisposable
     // DeleteTeamAsync — #494: revoke Google access when a team is soft-deleted
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task DeleteTeamAsync_ClosesActiveMemberships()
     {
         // Arrange
@@ -1646,7 +1646,7 @@ public class TeamServiceTests : IDisposable
             Arg.Any<Guid>(), Arg.Any<GoogleResourceType?>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DeleteTeamAsync_NoActiveMembers_StillSoftDeletes()
     {
         var team = SeedTeam("Empty Team");

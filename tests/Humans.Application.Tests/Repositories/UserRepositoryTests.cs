@@ -53,7 +53,7 @@ public sealed class UserRepositoryTests : IDisposable
     // TrySetGoogleEmailAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task TrySetGoogleEmailAsync_ReturnsFalse_WhenUserDoesNotExist()
     {
         var result = await _repo.TrySetGoogleEmailAsync(
@@ -62,7 +62,7 @@ public sealed class UserRepositoryTests : IDisposable
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task TrySetGoogleEmailAsync_SetsValueAndReturnsTrue_WhenGoogleEmailIsNull()
     {
         var user = await SeedUserAsync(googleEmail: null);
@@ -74,7 +74,7 @@ public sealed class UserRepositoryTests : IDisposable
         reloaded.GoogleEmail.Should().Be("new@nobodies.team");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task TrySetGoogleEmailAsync_DoesNotOverwrite_WhenGoogleEmailAlreadySet()
     {
         var user = await SeedUserAsync(googleEmail: "existing@nobodies.team");
@@ -90,14 +90,14 @@ public sealed class UserRepositoryTests : IDisposable
     // UpdateDisplayNameAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task UpdateDisplayNameAsync_ReturnsFalse_WhenUserDoesNotExist()
     {
         var result = await _repo.UpdateDisplayNameAsync(Guid.NewGuid(), "Nobody", default);
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UpdateDisplayNameAsync_UpdatesAndReturnsTrue_WhenUserExists()
     {
         var user = await SeedUserAsync();
@@ -113,7 +113,7 @@ public sealed class UserRepositoryTests : IDisposable
     // SetDeletionPendingAsync / ClearDeletionAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task SetDeletionPendingAsync_SetsBothFieldsAndReturnsTrue()
     {
         var user = await SeedUserAsync();
@@ -128,7 +128,7 @@ public sealed class UserRepositoryTests : IDisposable
         reloaded.DeletionScheduledFor.Should().Be(scheduled);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ClearDeletionAsync_ClearsAllDeletionFieldsIncludingEligibleAfter()
     {
         var user = await SeedUserAsync();
@@ -150,7 +150,7 @@ public sealed class UserRepositoryTests : IDisposable
     // UpsertParticipationAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task UpsertParticipationAsync_CreatesNewRecord_WhenNoneExists()
     {
         var userId = Guid.NewGuid();
@@ -169,7 +169,7 @@ public sealed class UserRepositoryTests : IDisposable
         persisted.Id.Should().Be(result.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UpsertParticipationAsync_UpdatesExistingNonAttendedRecord()
     {
         var userId = Guid.NewGuid();
@@ -193,7 +193,7 @@ public sealed class UserRepositoryTests : IDisposable
         result.DeclaredAt.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UpsertParticipationAsync_IsNoOp_WhenExistingStatusIsAttended()
     {
         var userId = Guid.NewGuid();
@@ -223,7 +223,7 @@ public sealed class UserRepositoryTests : IDisposable
     // RemoveParticipationAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task RemoveParticipationAsync_RemovesWhenSourceMatchesAndStatusNotAttended()
     {
         var userId = Guid.NewGuid();
@@ -246,7 +246,7 @@ public sealed class UserRepositoryTests : IDisposable
         remaining.Should().Be(0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RemoveParticipationAsync_DoesNotRemove_WhenSourceMismatch()
     {
         var userId = Guid.NewGuid();
@@ -269,7 +269,7 @@ public sealed class UserRepositoryTests : IDisposable
         remaining.Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RemoveParticipationAsync_DoesNotRemove_WhenStatusIsAttended()
     {
         var userId = Guid.NewGuid();
@@ -296,7 +296,7 @@ public sealed class UserRepositoryTests : IDisposable
     // BackfillParticipationsAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task BackfillParticipationsAsync_AddsNewAndUpdatesExistingNonAttended_PreservingAttended()
     {
         var userNewId = Guid.NewGuid();

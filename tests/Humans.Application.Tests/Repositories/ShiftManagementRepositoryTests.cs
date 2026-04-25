@@ -40,7 +40,7 @@ public sealed class ShiftManagementRepositoryTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetActiveEventSettingsAsync_ReturnsActive_IgnoresInactive()
     {
         var active = NewEvent(isActive: true);
@@ -54,7 +54,7 @@ public sealed class ShiftManagementRepositoryTests : IDisposable
         result!.Id.Should().Be(active.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task AnyOtherActiveEventSettingsAsync_ExcludesGivenId()
     {
         var es = NewEvent(isActive: true);
@@ -65,7 +65,7 @@ public sealed class ShiftManagementRepositoryTests : IDisposable
         (await _repo.AnyOtherActiveEventSettingsAsync(excludingId: null)).Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetShiftDayOffsetsForRotaAsync_ReturnsDistinctDays()
     {
         var (es, rota) = await SeedRotaAsync(RotaPeriod.Build);
@@ -80,14 +80,14 @@ public sealed class ShiftManagementRepositoryTests : IDisposable
         days.Should().BeEquivalentTo(new[] { -3, -2 });
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetConfirmedSignupCountsByShiftAsync_EmptyInput_ReturnsEmpty()
     {
         var result = await _repo.GetConfirmedSignupCountsByShiftAsync(Array.Empty<Guid>());
         result.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SetVolunteerTagPreferencesAsync_ReplacesExisting()
     {
         var userId = Guid.NewGuid();
@@ -114,7 +114,7 @@ public sealed class ShiftManagementRepositoryTests : IDisposable
         preferences.Should().BeEquivalentTo(new[] { tagB.Id, tagC.Id });
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetActiveEventIdAsync_ReturnsEmpty_WhenEventInactive()
     {
         var es = NewEvent(isActive: false);

@@ -97,7 +97,7 @@ public class TicketSyncServiceTests : IDisposable
     // SyncOrdersAndAttendeesAsync_InsertsNewOrders
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_InsertsNewOrders()
     {
         var orders = new List<VendorOrderDto>
@@ -125,7 +125,7 @@ public class TicketSyncServiceTests : IDisposable
     // SyncOrdersAndAttendeesAsync_MatchesOrderToUserByEmail
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_MatchesOrderToUserByEmail()
     {
         var userId = Guid.NewGuid();
@@ -156,7 +156,7 @@ public class TicketSyncServiceTests : IDisposable
     // SyncOrdersAndAttendeesAsync_UpsertDoesNotCreateDuplicates
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_UpsertDoesNotCreateDuplicates()
     {
         var orders = new List<VendorOrderDto>
@@ -193,7 +193,7 @@ public class TicketSyncServiceTests : IDisposable
     // SyncOrdersAndAttendeesAsync_MatchesDiscountCodeToCampaignGrant
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_ForwardsDiscountCodesToCampaignService()
     {
         // Order uses a discount code — TicketSyncService is expected to aggregate
@@ -229,7 +229,7 @@ public class TicketSyncServiceTests : IDisposable
     // SyncOrdersAndAttendeesAsync_SetsErrorStateOnFailure
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_TransientError_ReturnsGracefully()
     {
         _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -244,7 +244,7 @@ public class TicketSyncServiceTests : IDisposable
         syncState.LastError.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_NonTransientError_SetsErrorState()
     {
         _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -264,7 +264,7 @@ public class TicketSyncServiceTests : IDisposable
     // SyncOrdersAndAttendeesAsync_SkipsWhenEventIdNotConfigured
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_SkipsWhenEventIdNotConfigured()
     {
         // Create a service with empty EventId
@@ -302,7 +302,7 @@ public class TicketSyncServiceTests : IDisposable
     // SyncOrdersAndAttendeesAsync_AttendeeUpsertDoesNotCreateDuplicates
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_AttendeeUpsertDoesNotCreateDuplicates()
     {
         var orders = new List<VendorOrderDto>
@@ -333,7 +333,7 @@ public class TicketSyncServiceTests : IDisposable
         dbAttendees[0].AttendeeName.Should().Be("Alice");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_ComputesVatUsingOnlyNonVoidTickets()
     {
         var orders = new List<VendorOrderDto>
@@ -358,7 +358,7 @@ public class TicketSyncServiceTests : IDisposable
         order.VatAmount.Should().Be(28.64m);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_StoresZeroVatForRefundedOrCancelledOrders()
     {
         var orders = new List<VendorOrderDto>
@@ -392,7 +392,7 @@ public class TicketSyncServiceTests : IDisposable
     // SyncOrdersAndAttendeesAsync_HandlesRealisticScale
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task SyncOrdersAndAttendeesAsync_HandlesRealisticScale()
     {
         var orders = Enumerable.Range(1, 500)

@@ -76,7 +76,7 @@ public class CampServiceTests : IDisposable
     // CreateCampAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task CreateCampAsync_NewCamp_CreatesCampWithPendingSeason()
     {
         await SeedSettingsAsync();
@@ -105,7 +105,7 @@ public class CampServiceTests : IDisposable
         lead.Role.Should().Be(CampLeadRole.CoLead);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CreateCampAsync_ReservedSlug_ThrowsInvalidOperation()
     {
         await SeedSettingsAsync();
@@ -123,7 +123,7 @@ public class CampServiceTests : IDisposable
     // ApproveSeasonAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task ApproveSeasonAsync_PendingSeason_SetsActive()
     {
         await SeedSettingsAsync();
@@ -144,7 +144,7 @@ public class CampServiceTests : IDisposable
     // RejectSeasonAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task RejectSeasonAsync_PendingSeason_SetsRejected()
     {
         await SeedSettingsAsync();
@@ -162,7 +162,7 @@ public class CampServiceTests : IDisposable
     // OptInToSeasonAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task OptInToSeasonAsync_ReturningCamp_AutoApproves()
     {
         await SeedSettingsAsync();
@@ -182,7 +182,7 @@ public class CampServiceTests : IDisposable
         newSeason.BlurbLong.Should().Be("A fun camp for everyone"); // copied
     }
 
-    [Fact]
+    [HumansFact]
     public async Task OptInToSeasonAsync_PreviouslyRejected_GoesPending()
     {
         await SeedSettingsAsync();
@@ -199,7 +199,7 @@ public class CampServiceTests : IDisposable
         newSeason.Status.Should().Be(CampSeasonStatus.Pending);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task OptInToSeasonAsync_PendingOnly_GoesPending()
     {
         await SeedSettingsAsync();
@@ -219,7 +219,7 @@ public class CampServiceTests : IDisposable
     // AddLeadAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task AddLeadAsync_UnderMax_AddsLead()
     {
         await SeedSettingsAsync();
@@ -231,7 +231,7 @@ public class CampServiceTests : IDisposable
         lead.UserId.Should().Be(newLeadId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task AddLeadAsync_AtMaxLeads_Throws()
     {
         await SeedSettingsAsync();
@@ -244,7 +244,7 @@ public class CampServiceTests : IDisposable
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*maximum*");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RemoveLeadAsync_LastLead_Throws()
     {
         await SeedSettingsAsync();
@@ -259,7 +259,7 @@ public class CampServiceTests : IDisposable
     // IsUserCampLeadAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserCampLeadAsync_ActiveLead_ReturnsTrue()
     {
         await SeedSettingsAsync();
@@ -270,7 +270,7 @@ public class CampServiceTests : IDisposable
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserCampLeadAsync_NonLead_ReturnsFalse()
     {
         await SeedSettingsAsync();
@@ -283,7 +283,7 @@ public class CampServiceTests : IDisposable
     // Public projections
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetCampPublicSummariesForYearAsync_ReturnsSortedProjectedSummaries()
     {
         await SeedSettingsAsync();
@@ -358,7 +358,7 @@ public class CampServiceTests : IDisposable
         summaries[1].IsSwissCamp.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCampPlacementSummariesForYearAsync_ReturnsSortedPlacementData()
     {
         await SeedSettingsAsync();
@@ -420,7 +420,7 @@ public class CampServiceTests : IDisposable
         placements[1].Status.Should().Be(nameof(CampSeasonStatus.Active));
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCampDetailAsync_UsesPublicYearAndFallsBackToLatestSeason()
     {
         await SeedSettingsAsync();
@@ -471,7 +471,7 @@ public class CampServiceTests : IDisposable
         detail.CurrentSeason.IsNameLocked.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCampDetailAsync_ExplicitYearWithoutFallback_ReturnsNullWhenSeasonMissing()
     {
         await SeedSettingsAsync();
@@ -501,7 +501,7 @@ public class CampServiceTests : IDisposable
         detail.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetSettingsAsync_AfterSetPublicYearAsync_ReturnsInvalidatedSettings()
     {
         await SeedSettingsAsync();
@@ -517,7 +517,7 @@ public class CampServiceTests : IDisposable
         updated.PublicYear.Should().Be(2027);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCampPublicSummariesForYearAsync_AfterUploadImageAsync_RefreshesCachedImage()
     {
         await SeedSettingsAsync();
@@ -553,7 +553,7 @@ public class CampServiceTests : IDisposable
     // ChangeSeasonNameAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task ChangeSeasonNameAsync_LogsOldNameToHistory()
     {
         await SeedSettingsAsync();
@@ -573,7 +573,7 @@ public class CampServiceTests : IDisposable
         historical!.Name.Should().Be("Test Camp");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ChangeSeasonNameAsync_AfterLockDate_Throws()
     {
         await SeedSettingsAsync();

@@ -50,7 +50,7 @@ public class DriveActivityMonitorServiceTests
             NullLogger<DriveActivityMonitorService>.Instance);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CheckForAnomalousActivityAsync_WithNoResources_ReturnsZeroAndDoesNotHitApi()
     {
         _teamResources.GetActiveDriveFoldersAsync(Arg.Any<CancellationToken>())
@@ -63,7 +63,7 @@ public class DriveActivityMonitorServiceTests
         await _repository.DidNotReceiveWithAnyArgs().PersistAnomaliesAsync(default!, default, default);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CheckForAnomalousActivityAsync_FiltersSelfInitiatedChangesByEmailAndClientId()
     {
         var resource = BuildResource("Drive-One");
@@ -90,7 +90,7 @@ public class DriveActivityMonitorServiceTests
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CheckForAnomalousActivityAsync_RecordsAnomalyForThirdPartyChange()
     {
         var resource = BuildResource("Sensitive-Drive");
@@ -118,7 +118,7 @@ public class DriveActivityMonitorServiceTests
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CheckForAnomalousActivityAsync_ResolvesPeopleIdViaDirectoryConnector()
     {
         var resource = BuildResource("Resolved-Drive");
@@ -147,7 +147,7 @@ public class DriveActivityMonitorServiceTests
         await _client.Received(1).TryResolvePersonEmailAsync("people/9999", Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CheckForAnomalousActivityAsync_FallsBackToLocalDbWhenDirectoryLookupFails()
     {
         var resource = BuildResource("Fallback-Drive");
@@ -174,7 +174,7 @@ public class DriveActivityMonitorServiceTests
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CheckForAnomalousActivityAsync_WithPartialFailure_DoesNotAdvanceMarker()
     {
         var ok = BuildResource("Ok-Drive");
@@ -200,7 +200,7 @@ public class DriveActivityMonitorServiceTests
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CheckForAnomalousActivityAsync_DownGradesResourceNotFoundToWarning()
     {
         var missing = BuildResource("Missing-Drive");
@@ -219,7 +219,7 @@ public class DriveActivityMonitorServiceTests
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CheckForAnomalousActivityAsync_WithUnconfiguredClient_DoesNotAdvanceMarker()
     {
         // Simulates running the monitor in dev against StubGoogleDriveActivityClient:
@@ -241,7 +241,7 @@ public class DriveActivityMonitorServiceTests
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CheckForAnomalousActivityAsync_UsesLookbackDefault_OnFirstRun()
     {
         var resource = BuildResource("First-Drive");

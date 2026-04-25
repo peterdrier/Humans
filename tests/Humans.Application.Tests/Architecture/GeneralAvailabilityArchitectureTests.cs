@@ -23,7 +23,7 @@ public class GeneralAvailabilityArchitectureTests
 {
     // ── GeneralAvailabilityService ──────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void GeneralAvailabilityService_LivesInHumansApplicationServicesShiftsNamespace()
     {
         typeof(GeneralAvailabilityService).Namespace
@@ -31,7 +31,7 @@ public class GeneralAvailabilityArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void GeneralAvailabilityService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(GeneralAvailabilityService).GetConstructors().Single();
@@ -41,7 +41,7 @@ public class GeneralAvailabilityArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use IGeneralAvailabilityRepository instead (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void GeneralAvailabilityService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(GeneralAvailabilityService).GetConstructors().Single();
@@ -53,7 +53,7 @@ public class GeneralAvailabilityArchitectureTests
             because: "canonical availability data is not IMemoryCache-backed; §15 Option A applies (no caching decorator warranted)");
     }
 
-    [Fact]
+    [HumansFact]
     public void GeneralAvailabilityService_TakesRepository()
     {
         var ctor = typeof(GeneralAvailabilityService).GetConstructors().Single();
@@ -62,7 +62,7 @@ public class GeneralAvailabilityArchitectureTests
         paramTypes.Should().Contain(typeof(IGeneralAvailabilityRepository));
     }
 
-    [Fact]
+    [HumansFact]
     public void GeneralAvailabilityService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(GeneralAvailabilityService).GetConstructors().Single();
@@ -76,7 +76,7 @@ public class GeneralAvailabilityArchitectureTests
 
     // ── IGeneralAvailabilityRepository ──────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void IGeneralAvailabilityRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(IGeneralAvailabilityRepository).Namespace
@@ -84,7 +84,7 @@ public class GeneralAvailabilityArchitectureTests
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
 
-    [Fact]
+    [HumansFact]
     public void GeneralAvailabilityRepository_IsSealed()
     {
         var repoType = typeof(GeneralAvailabilityRepository);

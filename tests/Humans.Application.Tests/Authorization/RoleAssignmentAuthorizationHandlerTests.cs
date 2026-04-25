@@ -19,7 +19,7 @@ public sealed class RoleAssignmentAuthorizationHandlerTests
 
     // --- Admin override ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.Admin)]
     [InlineData(RoleNames.Board)]
     [InlineData(RoleNames.TeamsAdmin)]
@@ -40,7 +40,7 @@ public sealed class RoleAssignmentAuthorizationHandlerTests
 
     // --- Board access ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.Board)]
     [InlineData(RoleNames.HumanAdmin)]
     [InlineData(RoleNames.TeamsAdmin)]
@@ -58,7 +58,7 @@ public sealed class RoleAssignmentAuthorizationHandlerTests
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task Board_CannotManageAdminRole()
     {
         var user = CreateUserWithRoles(RoleNames.Board);
@@ -68,7 +68,7 @@ public sealed class RoleAssignmentAuthorizationHandlerTests
 
     // --- HumanAdmin access ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData(RoleNames.Board)]
     [InlineData(RoleNames.HumanAdmin)]
     [InlineData(RoleNames.TeamsAdmin)]
@@ -86,7 +86,7 @@ public sealed class RoleAssignmentAuthorizationHandlerTests
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HumanAdmin_CannotManageAdminRole()
     {
         var user = CreateUserWithRoles(RoleNames.HumanAdmin);
@@ -96,7 +96,7 @@ public sealed class RoleAssignmentAuthorizationHandlerTests
 
     // --- Denial cases ---
 
-    [Fact]
+    [HumansFact]
     public async Task RegularUser_DeniedForAnyRole()
     {
         var user = CreateUserWithRoles();
@@ -104,7 +104,7 @@ public sealed class RoleAssignmentAuthorizationHandlerTests
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UnauthenticatedUser_Denied()
     {
         var user = new ClaimsPrincipal(new ClaimsIdentity());
@@ -112,7 +112,7 @@ public sealed class RoleAssignmentAuthorizationHandlerTests
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task TeamsAdmin_CannotManageRoles()
     {
         var user = CreateUserWithRoles(RoleNames.TeamsAdmin);
@@ -120,7 +120,7 @@ public sealed class RoleAssignmentAuthorizationHandlerTests
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task FinanceAdmin_CannotManageRoles()
     {
         var user = CreateUserWithRoles(RoleNames.FinanceAdmin);

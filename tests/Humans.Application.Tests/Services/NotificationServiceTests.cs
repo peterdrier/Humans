@@ -68,7 +68,7 @@ public class NotificationServiceTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendAsync_CreatesOneNotificationPerUser()
     {
         var user1 = Guid.NewGuid();
@@ -101,7 +101,7 @@ public class NotificationServiceTests : IDisposable
         });
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendAsync_PersistsActionLabelAndTargetGroupName()
     {
         var userId = Guid.NewGuid();
@@ -120,7 +120,7 @@ public class NotificationServiceTests : IDisposable
         notification.TargetGroupName.Should().Be("Coordinators");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendAsync_EmptyRecipientList_DoesNothing()
     {
         await _service.SendAsync(
@@ -134,7 +134,7 @@ public class NotificationServiceTests : IDisposable
         count.Should().Be(0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendAsync_SkipsInformationalWhenInboxDisabled()
     {
         var userId = Guid.NewGuid();
@@ -161,7 +161,7 @@ public class NotificationServiceTests : IDisposable
         count.Should().Be(0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendAsync_ActionableNotSuppressedByInboxDisabled()
     {
         var userId = Guid.NewGuid();
@@ -188,7 +188,7 @@ public class NotificationServiceTests : IDisposable
         count.Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendToTeamAsync_CreatesSharedNotification()
     {
         var teamId = Guid.NewGuid();
@@ -218,7 +218,7 @@ public class NotificationServiceTests : IDisposable
         notification.Recipients.Select(r => r.UserId).Should().Contain(user2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendToRoleAsync_CreatesSharedNotificationForRoleHolders()
     {
         var user1 = Guid.NewGuid();
@@ -245,7 +245,7 @@ public class NotificationServiceTests : IDisposable
         notification.Recipients.Should().HaveCount(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendAsync_InvalidatesPerUserBadgeCache()
     {
         var userId = Guid.NewGuid();

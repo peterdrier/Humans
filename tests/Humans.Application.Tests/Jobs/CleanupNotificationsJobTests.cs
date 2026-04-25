@@ -45,7 +45,7 @@ public class CleanupNotificationsJobTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DeletesResolvedNotificationsOlderThan7Days()
     {
         var now = _clock.GetCurrentInstant();
@@ -99,7 +99,7 @@ public class CleanupNotificationsJobTests : IDisposable
         remaining.Select(n => n.Title).Should().Contain("Unresolved actionable");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DeletesStaleInformationalNotificationsOlderThan30Days()
     {
         var now = _clock.GetCurrentInstant();

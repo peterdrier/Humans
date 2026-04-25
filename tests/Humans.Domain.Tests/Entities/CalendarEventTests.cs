@@ -10,7 +10,7 @@ public class CalendarEventTests
     private static readonly Instant Jan1 = Instant.FromUtc(2026, 1, 1, 10, 0);
     private static readonly Instant Jan1End = Instant.FromUtc(2026, 1, 1, 11, 0);
 
-    [Fact]
+    [HumansFact]
     public void TimedEvent_requires_EndUtc()
     {
         var ev = new CalendarEvent
@@ -31,7 +31,7 @@ public class CalendarEventTests
         errors.Should().ContainMatch("*EndUtc*");
     }
 
-    [Fact]
+    [HumansFact]
     public void AllDayEvent_allows_null_EndUtc()
     {
         var ev = new CalendarEvent
@@ -52,7 +52,7 @@ public class CalendarEventTests
         errors.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public void RecurrenceRule_without_timezone_is_invalid()
     {
         var ev = new CalendarEvent
@@ -75,7 +75,7 @@ public class CalendarEventTests
         errors.Should().ContainMatch("*RecurrenceTimezone*");
     }
 
-    [Fact]
+    [HumansFact]
     public void RecurrenceTimezone_without_rule_is_invalid()
     {
         var ev = new CalendarEvent
@@ -98,7 +98,7 @@ public class CalendarEventTests
         errors.Should().ContainMatch("*RecurrenceTimezone*");
     }
 
-    [Fact]
+    [HumansFact]
     public void StartAfterEnd_is_invalid()
     {
         var ev = new CalendarEvent

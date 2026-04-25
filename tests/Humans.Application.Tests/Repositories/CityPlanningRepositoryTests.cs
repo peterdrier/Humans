@@ -36,7 +36,7 @@ public sealed class CityPlanningRepositoryTests : IDisposable
     // SavePolygonAndAppendHistoryAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task SavePolygonAndAppendHistoryAsync_FirstCall_CreatesPolygonAndHistory()
     {
         var campSeasonId = Guid.NewGuid();
@@ -55,7 +55,7 @@ public sealed class CityPlanningRepositoryTests : IDisposable
         (await _dbContext.CampPolygonHistories.AsNoTracking().CountAsync()).Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SavePolygonAndAppendHistoryAsync_SecondCall_UpdatesPolygonAppendsHistory()
     {
         var campSeasonId = Guid.NewGuid();
@@ -80,7 +80,7 @@ public sealed class CityPlanningRepositoryTests : IDisposable
     // Read operations
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetPolygonsByCampSeasonIdsAsync_ReturnsMatchingRowsOnly()
     {
         var matching = Guid.NewGuid();
@@ -98,14 +98,14 @@ public sealed class CityPlanningRepositoryTests : IDisposable
         result[0].CampSeasonId.Should().Be(matching);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetPolygonsByCampSeasonIdsAsync_EmptyInput_ReturnsEmpty()
     {
         var result = await _repo.GetPolygonsByCampSeasonIdsAsync([]);
         result.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCampSeasonIdsWithPolygonAsync_ReturnsMatchingIdsOnly()
     {
         var withPolygon = Guid.NewGuid();
@@ -120,7 +120,7 @@ public sealed class CityPlanningRepositoryTests : IDisposable
         result.Should().ContainSingle().Which.Should().Be(withPolygon);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetHistoryForCampSeasonAsync_ReturnsDescendingByModifiedAt()
     {
         var campSeasonId = Guid.NewGuid();
@@ -139,14 +139,14 @@ public sealed class CityPlanningRepositoryTests : IDisposable
         result[1].AreaSqm.Should().Be(100.0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetHistoryEntryAsync_ReturnsNull_WhenNotMatching()
     {
         var result = await _repo.GetHistoryEntryAsync(Guid.NewGuid(), Guid.NewGuid());
         result.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetHistoryEntryAsync_DoesNotCrossCampSeasonId()
     {
         var a = Guid.NewGuid();
@@ -166,14 +166,14 @@ public sealed class CityPlanningRepositoryTests : IDisposable
     // CityPlanningSettings operations
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetSettingsByYearAsync_ReturnsNull_WhenNotFound()
     {
         var result = await _repo.GetSettingsByYearAsync(2030);
         result.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetOrCreateSettingsAsync_CreatesRow_WhenNotFound()
     {
         var now = _clock.GetCurrentInstant();
@@ -187,7 +187,7 @@ public sealed class CityPlanningRepositoryTests : IDisposable
             .Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetOrCreateSettingsAsync_IsIdempotent()
     {
         var now = _clock.GetCurrentInstant();
@@ -198,7 +198,7 @@ public sealed class CityPlanningRepositoryTests : IDisposable
             .Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task MutateSettingsAsync_CreatesRow_WhenMissing()
     {
         var now = _clock.GetCurrentInstant();
@@ -209,7 +209,7 @@ public sealed class CityPlanningRepositoryTests : IDisposable
         result.UpdatedAt.Should().Be(now);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task MutateSettingsAsync_AppliesChange_AndSetsUpdatedAt()
     {
         _dbContext.CityPlanningSettings.Add(new CityPlanningSettings

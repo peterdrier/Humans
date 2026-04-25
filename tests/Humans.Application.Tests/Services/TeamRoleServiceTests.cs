@@ -120,7 +120,7 @@ public class TeamRoleServiceTests : IDisposable
     // CreateRoleDefinitionAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task CreateRoleDefinitionAsync_SystemTeam_Throws()
     {
         var admin = SeedUser("Admin");
@@ -136,7 +136,7 @@ public class TeamRoleServiceTests : IDisposable
             .WithMessage("*system team*");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CreateRoleDefinitionAsync_ValidInput_CreatesDefinition()
     {
         var admin = SeedUser("Admin");
@@ -165,7 +165,7 @@ public class TeamRoleServiceTests : IDisposable
     // DeleteRoleDefinitionAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task DeleteRoleDefinitionAsync_ManagementRoleWithAssignments_Throws()
     {
         var admin = SeedUser("Admin");
@@ -187,7 +187,7 @@ public class TeamRoleServiceTests : IDisposable
     // UpdateRoleDefinitionAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task UpdateRoleDefinitionAsync_CannotReduceSlotsBelowFilled()
     {
         var admin = SeedUser("Admin");
@@ -210,7 +210,7 @@ public class TeamRoleServiceTests : IDisposable
             .WithMessage("*Cannot reduce slot count*");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UpdateRoleDefinitionAsync_SetIsManagement_WhenAnotherRoleAlreadyManagement_Throws()
     {
         var admin = SeedUser("Admin");
@@ -228,7 +228,7 @@ public class TeamRoleServiceTests : IDisposable
             .WithMessage("*already marked as the management role*");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UpdateRoleDefinitionAsync_SetIsManagement_WhenNoOtherManagement_Succeeds()
     {
         var admin = SeedUser("Admin");
@@ -253,7 +253,7 @@ public class TeamRoleServiceTests : IDisposable
     /// cache stayed stale. Repository now eager-loads
     /// <c>Assignments.TeamMember</c>.
     /// </summary>
-    [Fact]
+    [HumansFact]
     public async Task UpdateRoleDefinitionAsync_FlipIsManagementWithAssignees_InvalidatesShiftAuthPerAssignee()
     {
         var admin = SeedUser("Admin");
@@ -282,7 +282,7 @@ public class TeamRoleServiceTests : IDisposable
     // SetRoleIsManagementAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task SetRoleIsManagementAsync_ClearWithAssignedMembers_DemotesCoordinators()
     {
         var admin = SeedUser("Admin");
@@ -305,7 +305,7 @@ public class TeamRoleServiceTests : IDisposable
         memberInDb!.Role.Should().Be(TeamMemberRole.Member);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SetRoleIsManagementAsync_SetWithAssignedMembers_Throws()
     {
         var admin = SeedUser("Admin");
@@ -327,7 +327,7 @@ public class TeamRoleServiceTests : IDisposable
     // AssignToRoleAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task AssignToRoleAsync_ValidMember_CreatesAssignment()
     {
         var admin = SeedUser("Admin");
@@ -349,7 +349,7 @@ public class TeamRoleServiceTests : IDisposable
         inDb.Should().NotBeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task AssignToRoleAsync_NonMember_AutoAddsToTeam()
     {
         var admin = SeedUser("Admin");
@@ -371,7 +371,7 @@ public class TeamRoleServiceTests : IDisposable
         memberInDb.Should().NotBeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task AssignToRoleAsync_AllSlotsFilled_Throws()
     {
         var admin = SeedUser("Admin");
@@ -391,7 +391,7 @@ public class TeamRoleServiceTests : IDisposable
             .WithMessage("*slots*filled*");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task AssignToRoleAsync_ManagementRole_SetsTeamMemberRoleToCoordinator()
     {
         var admin = SeedUser("Admin");
@@ -414,7 +414,7 @@ public class TeamRoleServiceTests : IDisposable
     // UnassignFromRoleAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task UnassignFromRoleAsync_NonManagementRole_RemovesAssignment()
     {
         var admin = SeedUser("Admin");
@@ -434,7 +434,7 @@ public class TeamRoleServiceTests : IDisposable
         assignments.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UnassignFromRoleAsync_OnlyManagementAssignment_DemotesToMember()
     {
         var admin = SeedUser("Admin");
@@ -454,7 +454,7 @@ public class TeamRoleServiceTests : IDisposable
         memberInDb!.Role.Should().Be(TeamMemberRole.Member);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UnassignFromRoleAsync_MultipleManagementAssignments_KeepsCoordinatorRole()
     {
         var admin = SeedUser("Admin");
@@ -490,7 +490,7 @@ public class TeamRoleServiceTests : IDisposable
     // LeaveTeamAsync — role assignment cleanup
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task LeaveTeamAsync_CleansUpRoleAssignments()
     {
         var admin = SeedUser("Admin");

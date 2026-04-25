@@ -112,7 +112,7 @@ public class FeedbackServiceTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SubmitFeedbackAsync_CreatesReport()
     {
         var userId = Guid.NewGuid();
@@ -132,7 +132,7 @@ public class FeedbackServiceTests : IDisposable
         _navBadge.Received(1).Invalidate();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SubmitFeedbackAsync_SetsAdditionalContext()
     {
         var userId = Guid.NewGuid();
@@ -146,7 +146,7 @@ public class FeedbackServiceTests : IDisposable
         report.AdditionalContext.Should().Be("Volunteer, Coordinator");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UpdateStatusAsync_SetsResolvedFields_WhenTerminal()
     {
         var report = await CreateTestReport();
@@ -160,7 +160,7 @@ public class FeedbackServiceTests : IDisposable
         updated.ResolvedByUserId.Should().NotBeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UpdateStatusAsync_ClearsResolvedFields_WhenReopened()
     {
         var actorId = Guid.NewGuid();
@@ -175,7 +175,7 @@ public class FeedbackServiceTests : IDisposable
         updated.ResolvedByUserId.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFeedbackListAsync_FiltersByStatus()
     {
         await CreateTestReport(FeedbackStatus.Open);
@@ -187,7 +187,7 @@ public class FeedbackServiceTests : IDisposable
         results.Should().HaveCount(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFeedbackListAsync_StitchesReporterNav()
     {
         var userId = Guid.NewGuid();
@@ -206,7 +206,7 @@ public class FeedbackServiceTests : IDisposable
 #pragma warning restore CS0618
     }
 
-    [Fact]
+    [HumansFact]
     public async Task PostMessageAsync_AdminMessage_SetsLastAdminMessageAt_And_SendsEmail()
     {
         var userId = Guid.NewGuid();
@@ -249,7 +249,7 @@ public class FeedbackServiceTests : IDisposable
             $"/Feedback/{report.Id}", "en", Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task PostMessageAsync_ReporterMessage_SetsLastReporterMessageAt_NoEmail()
     {
         var userId = Guid.NewGuid();
@@ -283,7 +283,7 @@ public class FeedbackServiceTests : IDisposable
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetActionableCountAsync_CountsOpenWithNoReply_And_AwaitingAdmin()
     {
         var userId = Guid.NewGuid();
@@ -340,7 +340,7 @@ public class FeedbackServiceTests : IDisposable
         count.Should().Be(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDistinctReportersAsync_ResolvesNamesFromUserService_AndOrdersAlphabetically()
     {
         var bobId = Guid.NewGuid();

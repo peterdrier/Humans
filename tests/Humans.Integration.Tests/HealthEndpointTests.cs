@@ -9,7 +9,7 @@ public class HealthEndpointTests : IntegrationTestBase
 {
     public HealthEndpointTests(HumansWebApplicationFactory factory) : base(factory) { }
 
-    [Fact]
+    [HumansFact]
     public async Task LivenessEndpoint_ReturnsOk()
     {
         var response = await Client.GetAsync("/health/live");
@@ -17,7 +17,7 @@ public class HealthEndpointTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ReadinessEndpoint_ReturnsResponse()
     {
         var response = await Client.GetAsync("/health/ready");
@@ -28,7 +28,7 @@ public class HealthEndpointTests : IntegrationTestBase
         response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.ServiceUnavailable);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DetailedHealthEndpoint_ReturnsJsonWithStatus()
     {
         var response = await Client.GetAsync("/health");

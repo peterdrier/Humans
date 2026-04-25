@@ -95,7 +95,7 @@ public sealed class TicketQueryServiceTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetSalesAggregatesAsync_ExcludesVoidTicketsFromCountsAndVipDonations()
     {
         var orderId = Guid.NewGuid();
@@ -163,7 +163,7 @@ public sealed class TicketQueryServiceTests : IDisposable
         quarterly.VipDonations.Should().Be(400m - TicketConstants.VipThresholdEuros);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetSalesAggregatesAsync_ExcludesRefundedAndCancelledOrders()
     {
         await _dbContext.TicketOrders.AddRangeAsync(
@@ -188,7 +188,7 @@ public sealed class TicketQueryServiceTests : IDisposable
     // GetOrdersPageAsync tests
     // ====================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetOrdersPageAsync_ReturnsPagedResults()
     {
         for (var i = 0; i < 5; i++)
@@ -208,7 +208,7 @@ public sealed class TicketQueryServiceTests : IDisposable
         result.Rows.Should().HaveCount(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetOrdersPageAsync_FiltersbyPaymentStatus()
     {
         _dbContext.TicketOrders.Add(MakeOrder("ord_paid", TicketPaymentStatus.Paid,
@@ -224,7 +224,7 @@ public sealed class TicketQueryServiceTests : IDisposable
         result.Rows.Single().VendorOrderId.Should().Be("ord_paid");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetOrdersPageAsync_SortsByAmount()
     {
         _dbContext.TicketOrders.Add(MakeOrder("ord_cheap", TicketPaymentStatus.Paid,
@@ -244,7 +244,7 @@ public sealed class TicketQueryServiceTests : IDisposable
     // GetAttendeesPageAsync tests
     // ====================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetAttendeesPageAsync_ReturnsPagedResults()
     {
         var order = MakeOrder("ord_1", TicketPaymentStatus.Paid,
@@ -259,7 +259,7 @@ public sealed class TicketQueryServiceTests : IDisposable
         result.Rows.Should().HaveCount(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetAttendeesPageAsync_FiltersByTicketType()
     {
         var orderId = Guid.NewGuid();
@@ -307,7 +307,7 @@ public sealed class TicketQueryServiceTests : IDisposable
         result.Rows.Single().TicketTypeName.Should().Be("VIP");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetAttendeesPageAsync_FiltersByOrderId()
     {
         _dbContext.TicketOrders.Add(MakeOrder("ord_A", TicketPaymentStatus.Paid,
@@ -326,7 +326,7 @@ public sealed class TicketQueryServiceTests : IDisposable
     // GetWhoHasntBoughtAsync tests
     // ====================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetWhoHasntBoughtAsync_ReturnsActiveHumansWithTicketStatus()
     {
         var userWithTicket = CreateUser("Has Ticket", "hasticket@example.com");
@@ -360,7 +360,7 @@ public sealed class TicketQueryServiceTests : IDisposable
         result.Humans.Should().Contain(h => h.UserId == userWithout.Id && !h.HasTicket);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetWhoHasntBoughtAsync_FiltersByTicketStatus()
     {
         var userWithTicket = CreateUser("Has Ticket", "has@example.com");
@@ -398,7 +398,7 @@ public sealed class TicketQueryServiceTests : IDisposable
     // Export tests
     // ====================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetAttendeeExportDataAsync_ReturnsAllAttendeesOrderedByName()
     {
         var orderId = Guid.NewGuid();
@@ -448,7 +448,7 @@ public sealed class TicketQueryServiceTests : IDisposable
         rows[0].VendorOrderId.Should().Be("ord_export");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetOrderExportDataAsync_ReturnsAllOrdersWithDetails()
     {
         _dbContext.TicketOrders.Add(MakeOrder("ord_old", TicketPaymentStatus.Paid,

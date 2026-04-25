@@ -36,7 +36,7 @@ public class GeneralAvailabilityServiceTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SetAvailability_CreatesRecord()
     {
         var userId = Guid.NewGuid();
@@ -52,7 +52,7 @@ public class GeneralAvailabilityServiceTests : IDisposable
         record!.AvailableDayOffsets.Should().BeEquivalentTo(new[] { -3, -2, -1 });
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SetAvailability_UpdatesExistingRecord()
     {
         var userId = Guid.NewGuid();
@@ -73,7 +73,7 @@ public class GeneralAvailabilityServiceTests : IDisposable
         records[0].AvailableDayOffsets.Should().BeEquivalentTo(new[] { 0, 1, 2 });
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetAvailableVolunteers_ReturnsMatchingDayOffset()
     {
         var user1Id = Guid.NewGuid();
@@ -92,14 +92,14 @@ public class GeneralAvailabilityServiceTests : IDisposable
         available.Select(a => a.UserId).Should().BeEquivalentTo(new[] { user1Id, user2Id });
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetByUserAsync_ReturnsNullWhenMissing()
     {
         var result = await _service.GetByUserAsync(Guid.NewGuid(), Guid.NewGuid());
         result.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DeleteAsync_RemovesExistingRecord()
     {
         var userId = Guid.NewGuid();
@@ -115,7 +115,7 @@ public class GeneralAvailabilityServiceTests : IDisposable
         after.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DeleteAsync_NoOpWhenMissing()
     {
         // Should not throw when there's no matching record.

@@ -26,7 +26,7 @@ public class NotificationsArchitectureTests
 {
     // ── NotificationService ──────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void NotificationService_LivesInHumansApplicationServicesNotificationsNamespace()
     {
         typeof(NotificationService).Namespace
@@ -34,7 +34,7 @@ public class NotificationsArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void NotificationService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(NotificationService).GetConstructors().Single();
@@ -44,7 +44,7 @@ public class NotificationsArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use INotificationRepository instead (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void NotificationService_TakesRepository()
     {
         var ctor = typeof(NotificationService).GetConstructors().Single();
@@ -53,7 +53,7 @@ public class NotificationsArchitectureTests
         paramTypes.Should().Contain(typeof(INotificationRepository));
     }
 
-    [Fact]
+    [HumansFact]
     public void NotificationService_TakesRecipientResolver_NotDbContext()
     {
         // The NotificationService reaches teams and role holders via a thin
@@ -72,14 +72,14 @@ public class NotificationsArchitectureTests
 
     // ── NotificationInboxService ─────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void NotificationInboxService_LivesInHumansApplicationServicesNotificationsNamespace()
     {
         typeof(NotificationInboxService).Namespace
             .Should().Be("Humans.Application.Services.Notifications");
     }
 
-    [Fact]
+    [HumansFact]
     public void NotificationInboxService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(NotificationInboxService).GetConstructors().Single();
@@ -89,7 +89,7 @@ public class NotificationsArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use INotificationRepository instead");
     }
 
-    [Fact]
+    [HumansFact]
     public void NotificationInboxService_TakesRepositoryAndUserService()
     {
         // Display-name stitching runs through IUserService.GetByIdsAsync rather
@@ -103,14 +103,14 @@ public class NotificationsArchitectureTests
 
     // ── NotificationMeterProvider ────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void NotificationMeterProvider_LivesInHumansApplicationServicesNotificationsNamespace()
     {
         typeof(NotificationMeterProvider).Namespace
             .Should().Be("Humans.Application.Services.Notifications");
     }
 
-    [Fact]
+    [HumansFact]
     public void NotificationMeterProvider_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(NotificationMeterProvider).GetConstructors().Single();
@@ -120,7 +120,7 @@ public class NotificationsArchitectureTests
                 because: "the meter provider must reach every non-owned table via its owning section service (design-rules §2c)");
     }
 
-    [Fact]
+    [HumansFact]
     public void NotificationMeterProvider_TakesCrossSectionInterfaces()
     {
         // The meter provider computes badge counts by calling into each owning
@@ -138,7 +138,7 @@ public class NotificationsArchitectureTests
         paramTypeNames.Should().Contain("IApplicationDecisionService");
     }
 
-    [Fact]
+    [HumansFact]
     public void NotificationMeterProvider_TakesNoRepositoryDependency()
     {
         // The meter provider does not own notifications/notification_recipients
@@ -155,7 +155,7 @@ public class NotificationsArchitectureTests
 
     // ── INotificationRepository ──────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void INotificationRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(INotificationRepository).Namespace
@@ -163,7 +163,7 @@ public class NotificationsArchitectureTests
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
 
-    [Fact]
+    [HumansFact]
     public void NotificationRepository_IsSealed()
     {
         var repoType = typeof(NotificationRepository);

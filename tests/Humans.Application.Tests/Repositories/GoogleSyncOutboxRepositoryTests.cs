@@ -43,7 +43,7 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
         _seedContext.Dispose();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CountPendingAsync_CountsOnlyUnprocessed()
     {
         Seed(processedAt: null); // pending
@@ -56,7 +56,7 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
         count.Should().Be(3);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CountFailedAsync_UnprocessedWithError_IncludesPermanent()
     {
         Seed(processedAt: null); // pending, no error
@@ -69,7 +69,7 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
         count.Should().Be(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CountStaleAsync_ExcludesPermanentFailures()
     {
         Seed(processedAt: null, lastError: "transient-1");
@@ -82,7 +82,7 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
         count.Should().Be(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CountTransientRetriesAsync_RequiresRetryCountAboveZero()
     {
         Seed(processedAt: null, retryCount: 0, lastError: "first-attempt"); // excluded (never retried)
@@ -96,7 +96,7 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
         count.Should().Be(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetRecentAsync_OrdersByOccurredAtDescending_AndAppliesTakeLimit()
     {
         var oldest = Seed(occurredAt: Instant.FromUtc(2026, 4, 20, 10, 0));
@@ -110,7 +110,7 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
         page[1].Id.Should().Be(middle);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetProcessingBatchAsync_ExcludesProcessedPermanentAndExhaustedRows_OrdersByOldest()
     {
         var oldest = Seed(occurredAt: Instant.FromUtc(2026, 4, 20, 10, 0));
@@ -124,7 +124,7 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
         batch.Select(e => e.Id).Should().Equal(oldest, newest);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task MarkProcessedAsync_StampsProcessedAtAndClearsLastError()
     {
         var id = Seed(lastError: "transient");
@@ -138,7 +138,7 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
         stored.FailedPermanently.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task MarkProcessedAsync_MissingRow_NoThrow()
     {
         var act = async () => await _repository.MarkProcessedAsync(Guid.NewGuid(), Instant.FromUtc(2026, 4, 23, 14, 0));
@@ -146,7 +146,7 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
         await act.Should().NotThrowAsync();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task MarkPermanentlyFailedAsync_SetsFlagProcessedAtAndTruncatesLastError()
     {
         var id = Seed();
@@ -161,7 +161,7 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
         stored.LastError.Should().HaveLength(4000);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IncrementRetryAsync_BelowMax_IncrementsWithoutMarkingPermanent()
     {
         var id = Seed(retryCount: 1);
@@ -178,7 +178,7 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
         stored.ProcessedAt.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IncrementRetryAsync_AtMax_MarksPermanentAndStampsProcessedAt()
     {
         var id = Seed(retryCount: 4);
@@ -194,7 +194,7 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
         stored.LastError.Should().Be("final");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IncrementRetryAsync_MissingRow_ReturnsFalseZero()
     {
         var (exhausted, retryCount) = await _repository.IncrementRetryAsync(

@@ -36,7 +36,7 @@ public sealed class CampAuthorizationHandlerTests
 
     // --- Admin override ---
 
-    [Fact]
+    [HumansFact]
     public async Task Admin_CanManageAnyCamp()
     {
         var user = CreateUserWithRoles(RoleNames.Admin);
@@ -49,7 +49,7 @@ public sealed class CampAuthorizationHandlerTests
 
     // --- CampAdmin override ---
 
-    [Fact]
+    [HumansFact]
     public async Task CampAdmin_CanManageAnyCamp()
     {
         var user = CreateUserWithRoles(RoleNames.CampAdmin);
@@ -62,7 +62,7 @@ public sealed class CampAuthorizationHandlerTests
 
     // --- Camp lead access ---
 
-    [Fact]
+    [HumansFact]
     public async Task CampLead_CanManageOwnCamp()
     {
         var user = CreateUser(UserId);
@@ -73,7 +73,7 @@ public sealed class CampAuthorizationHandlerTests
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CampLead_CannotManageOtherCamp()
     {
         var user = CreateUser(UserId);
@@ -86,7 +86,7 @@ public sealed class CampAuthorizationHandlerTests
 
     // --- Denial cases ---
 
-    [Fact]
+    [HumansFact]
     public async Task RegularUser_DeniedOnAnyCamp()
     {
         var regularUserId = Guid.NewGuid();
@@ -102,7 +102,7 @@ public sealed class CampAuthorizationHandlerTests
 
     // --- Edge cases ---
 
-    [Fact]
+    [HumansFact]
     public async Task UnauthenticatedUser_Denied()
     {
         var user = new ClaimsPrincipal(new ClaimsIdentity());
@@ -113,7 +113,7 @@ public sealed class CampAuthorizationHandlerTests
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UserWithInvalidIdClaim_Denied()
     {
         var claims = new List<Claim>

@@ -37,7 +37,7 @@ public sealed class CampRepositoryTests : IDisposable
     // SlugExistsAsync / CreateCampAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task SlugExistsAsync_ReturnsTrue_WhenCampPresent()
     {
         var camp = await SeedCampAsync("test-camp");
@@ -47,7 +47,7 @@ public sealed class CampRepositoryTests : IDisposable
         exists.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SlugExistsAsync_ReturnsFalse_WhenNoMatch()
     {
         var exists = await _repo.SlugExistsAsync("no-such-camp");
@@ -55,7 +55,7 @@ public sealed class CampRepositoryTests : IDisposable
         exists.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CreateCampAsync_PersistsAllAggregateRows()
     {
         var camp = BuildCamp("new-camp");
@@ -86,7 +86,7 @@ public sealed class CampRepositoryTests : IDisposable
     // IsUserActiveLeadAsync / CountActiveLeadsAsync / GetActiveLeadUserIdsAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserActiveLeadAsync_ReturnsTrue_WhenActive()
     {
         var userId = Guid.NewGuid();
@@ -98,7 +98,7 @@ public sealed class CampRepositoryTests : IDisposable
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserActiveLeadAsync_ReturnsFalse_WhenLeft()
     {
         var userId = Guid.NewGuid();
@@ -110,7 +110,7 @@ public sealed class CampRepositoryTests : IDisposable
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetActiveLeadUserIdsAsync_ReturnsDistinctActiveLeadUsers()
     {
         var userA = Guid.NewGuid();
@@ -132,7 +132,7 @@ public sealed class CampRepositoryTests : IDisposable
     // SeasonExistsAsync / HasApprovedSeasonAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task SeasonExistsAsync_ReturnsTrue_WhenPresent()
     {
         var camp = await SeedCampAsync("season-camp");
@@ -141,7 +141,7 @@ public sealed class CampRepositoryTests : IDisposable
         (await _repo.SeasonExistsAsync(camp.Id, 2026)).Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SeasonExistsAsync_ReturnsFalse_WhenDifferentYear()
     {
         var camp = await SeedCampAsync("other-year");
@@ -150,7 +150,7 @@ public sealed class CampRepositoryTests : IDisposable
         (await _repo.SeasonExistsAsync(camp.Id, 2027)).Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HasApprovedSeasonAsync_ReturnsTrue_WhenAnyActiveFullOrWithdrawn()
     {
         var camp = await SeedCampAsync("approved-camp");
@@ -160,7 +160,7 @@ public sealed class CampRepositoryTests : IDisposable
         (await _repo.HasApprovedSeasonAsync(camp.Id)).Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task HasApprovedSeasonAsync_ReturnsFalse_WhenAllPendingOrRejected()
     {
         var camp = await SeedCampAsync("never-approved");
@@ -174,7 +174,7 @@ public sealed class CampRepositoryTests : IDisposable
     // GetPublicCampsForYearAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetPublicCampsForYearAsync_ReturnsActiveAndFull_ExcludesPendingAndRejected()
     {
         var activeCamp = await SeedCampAsync("active");
@@ -195,7 +195,7 @@ public sealed class CampRepositoryTests : IDisposable
     // Image tests
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task CountImagesAsync_ReturnsCount()
     {
         var camp = await SeedCampAsync("image-camp");
@@ -228,7 +228,7 @@ public sealed class CampRepositoryTests : IDisposable
     // Settings tests
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetSettingsReadOnlyAsync_ReturnsRow()
     {
         _dbContext.CampSettings.Add(new CampSettings
@@ -245,7 +245,7 @@ public sealed class CampRepositoryTests : IDisposable
         settings!.PublicYear.Should().Be(2026);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task OpenSeasonAsync_AddsWhenMissing_ReturnsTrue()
     {
         await SeedSettingsAsync();
@@ -257,7 +257,7 @@ public sealed class CampRepositoryTests : IDisposable
         settings.OpenSeasons.Should().Contain(2027);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task OpenSeasonAsync_NoOp_WhenAlreadyOpen()
     {
         await SeedSettingsAsync();

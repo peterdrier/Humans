@@ -43,14 +43,14 @@ public sealed class DriveActivityMonitorRepositoryTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetLastRunTimestampAsync_ReturnsNull_WhenNoRowExists()
     {
         var result = await _repository.GetLastRunTimestampAsync();
         result.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetLastRunTimestampAsync_ReturnsNull_WhenValueIsEmpty()
     {
         _seedContext.SystemSettings.Add(new SystemSetting
@@ -64,7 +64,7 @@ public sealed class DriveActivityMonitorRepositoryTests : IDisposable
         result.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetLastRunTimestampAsync_ReturnsNull_WhenValueIsUnparsable()
     {
         _seedContext.SystemSettings.Add(new SystemSetting
@@ -78,7 +78,7 @@ public sealed class DriveActivityMonitorRepositoryTests : IDisposable
         result.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetLastRunTimestampAsync_RoundTripsStoredValue()
     {
         var expected = Instant.FromUtc(2026, 4, 22, 10, 15, 30);
@@ -95,7 +95,7 @@ public sealed class DriveActivityMonitorRepositoryTests : IDisposable
         result.Should().Be(expected);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task PersistAnomaliesAsync_InsertsAnomaliesAndAdvancesMarkerAtomically()
     {
         var marker = Instant.FromUtc(2026, 4, 22, 11, 0);
@@ -122,7 +122,7 @@ public sealed class DriveActivityMonitorRepositoryTests : IDisposable
         marker2.Should().Be(marker);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task PersistAnomaliesAsync_WithNullMarker_InsertsAnomaliesButDoesNotAdvanceMarker()
     {
         var existingMarker = Instant.FromUtc(2026, 4, 21, 9, 0);
@@ -153,7 +153,7 @@ public sealed class DriveActivityMonitorRepositoryTests : IDisposable
         marker.Should().Be(existingMarker, because: "null newLastRunAt means the partial failure path — marker should not advance");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task PersistAnomaliesAsync_WithNoAnomaliesAndNullMarker_IsNoOp()
     {
         await _repository.PersistAnomaliesAsync(
@@ -164,7 +164,7 @@ public sealed class DriveActivityMonitorRepositoryTests : IDisposable
         (await verify.SystemSettings.CountAsync()).Should().Be(0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task PersistAnomaliesAsync_UpdatesExistingMarkerRowInPlace()
     {
         var original = Instant.FromUtc(2026, 4, 21, 9, 0);
@@ -186,14 +186,14 @@ public sealed class DriveActivityMonitorRepositoryTests : IDisposable
         rows[0].Value.Should().Be(NodaTime.Text.InstantPattern.General.Format(next));
     }
 
-    [Fact]
+    [HumansFact]
     public async Task TryResolveEmailByGoogleUserIdAsync_ReturnsNull_WhenLoginNotFound()
     {
         var result = await _repository.TryResolveEmailByGoogleUserIdAsync("nonexistent");
         result.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task TryResolveEmailByGoogleUserIdAsync_ReturnsEmail_WhenGoogleLoginExists()
     {
         var user = new User
@@ -217,7 +217,7 @@ public sealed class DriveActivityMonitorRepositoryTests : IDisposable
         result.Should().Be("known@example.com");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task TryResolveEmailByGoogleUserIdAsync_IgnoresNonGoogleLoginsWithSameProviderKey()
     {
         var user = new User

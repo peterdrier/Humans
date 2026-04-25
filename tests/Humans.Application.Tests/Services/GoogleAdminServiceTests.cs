@@ -63,7 +63,7 @@ public class GoogleAdminServiceTests
 
     // --- GetWorkspaceAccountListAsync ---
 
-    [Fact]
+    [HumansFact]
     public async Task GetWorkspaceAccountListAsync_ReturnsAccountsWithMatchedUsers()
     {
         var userId = Guid.NewGuid();
@@ -106,7 +106,7 @@ public class GoogleAdminServiceTests
         alice.IsUsedAsPrimary.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetWorkspaceAccountListAsync_PicksVerifiedWinner_WhenDuplicateEmailMatches()
     {
         // user_emails may hold both a verified and unverified row for the
@@ -152,7 +152,7 @@ public class GoogleAdminServiceTests
         dup.IsUsedAsPrimary.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetWorkspaceAccountListAsync_ReturnsErrorOnException()
     {
         _workspaceUserService.ListAccountsAsync(Arg.Any<CancellationToken>())
@@ -166,7 +166,7 @@ public class GoogleAdminServiceTests
 
     // --- ProvisionStandaloneAccountAsync ---
 
-    [Fact]
+    [HumansFact]
     public async Task ProvisionStandaloneAccountAsync_CreatesAccountAndAudits()
     {
         _workspaceUserService.GetAccountAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -191,7 +191,7 @@ public class GoogleAdminServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ProvisionStandaloneAccountAsync_ReturnsErrorIfAlreadyExists()
     {
         _workspaceUserService.GetAccountAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -205,7 +205,7 @@ public class GoogleAdminServiceTests
         result.ErrorMessage.Should().Contain("already exists in Google Workspace");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ProvisionStandaloneAccountAsync_RejectsWhenPrefixInUseByUserEmail()
     {
         _userEmailService.IsEmailLinkedToAnyUserAsync(
@@ -231,7 +231,7 @@ public class GoogleAdminServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ProvisionStandaloneAccountAsync_RejectsWhenPrefixInUseByGoogleEmail()
     {
         var ownerId = Guid.NewGuid();
@@ -261,7 +261,7 @@ public class GoogleAdminServiceTests
             Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ProvisionStandaloneAccountAsync_RejectsWhenPrefixCollidesWithTeamGoogleGroup()
     {
         _userEmailService.IsEmailLinkedToAnyUserAsync(
@@ -290,7 +290,7 @@ public class GoogleAdminServiceTests
 
     // --- SuspendAccountAsync ---
 
-    [Fact]
+    [HumansFact]
     public async Task SuspendAccountAsync_SuspendsAndAudits()
     {
         var result = await _service.SuspendAccountAsync(
@@ -303,7 +303,7 @@ public class GoogleAdminServiceTests
             .SuspendAccountAsync("test@nobodies.team", Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SuspendAccountAsync_ReturnsErrorOnFailure()
     {
         _workspaceUserService.SuspendAccountAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -318,7 +318,7 @@ public class GoogleAdminServiceTests
 
     // --- ReactivateAccountAsync ---
 
-    [Fact]
+    [HumansFact]
     public async Task ReactivateAccountAsync_ReactivatesAndAudits()
     {
         var result = await _service.ReactivateAccountAsync(
@@ -333,7 +333,7 @@ public class GoogleAdminServiceTests
 
     // --- ResetPasswordAsync ---
 
-    [Fact]
+    [HumansFact]
     public async Task ResetPasswordAsync_ResetsAndReturnsNewPassword()
     {
         var result = await _service.ResetPasswordAsync(
@@ -349,7 +349,7 @@ public class GoogleAdminServiceTests
 
     // --- LinkAccountAsync ---
 
-    [Fact]
+    [HumansFact]
     public async Task LinkAccountAsync_LinksEmailAndSetsGoogleEmail()
     {
         var userId = Guid.NewGuid();
@@ -379,7 +379,7 @@ public class GoogleAdminServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task LinkAccountAsync_ReturnsErrorIfUserNotFound()
     {
         _userService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -392,7 +392,7 @@ public class GoogleAdminServiceTests
         result.ErrorMessage.Should().Contain("not found");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task LinkAccountAsync_ReturnsErrorIfEmailConflict()
     {
         var userId = Guid.NewGuid();
@@ -414,7 +414,7 @@ public class GoogleAdminServiceTests
 
     // --- ApplyEmailBackfillAsync ---
 
-    [Fact]
+    [HumansFact]
     public async Task ApplyEmailBackfillAsync_UpdatesEmailsAndReturnsCount()
     {
         var userId = Guid.NewGuid();
@@ -435,7 +435,7 @@ public class GoogleAdminServiceTests
             userId, "new@example.com", Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ApplyEmailBackfillAsync_SkipsUsersWithNoCorrection()
     {
         var userId = Guid.NewGuid();
@@ -448,7 +448,7 @@ public class GoogleAdminServiceTests
             Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ApplyEmailBackfillAsync_RecordsErrorWhenUserMissing()
     {
         var userId = Guid.NewGuid();
@@ -469,7 +469,7 @@ public class GoogleAdminServiceTests
 
     // --- LinkGroupToTeamAsync ---
 
-    [Fact]
+    [HumansFact]
     public async Task LinkGroupToTeamAsync_LinksGroupAndSaves()
     {
         var teamId = Guid.NewGuid();
@@ -489,7 +489,7 @@ public class GoogleAdminServiceTests
             teamId, "test-team", Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task LinkGroupToTeamAsync_ReturnsErrorIfTeamNotFound()
     {
         _teamService.SetGoogleGroupPrefixAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -501,7 +501,7 @@ public class GoogleAdminServiceTests
         result.ErrorMessage.Should().Contain("not found");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task LinkGroupToTeamAsync_RevertsOnError()
     {
         var teamId = Guid.NewGuid();
@@ -524,7 +524,7 @@ public class GoogleAdminServiceTests
 
     // --- GetActiveTeamsAsync ---
 
-    [Fact]
+    [HumansFact]
     public async Task GetActiveTeamsAsync_ReturnsOnlyActiveTeamsOrdered()
     {
         _teamService.GetActiveTeamOptionsAsync(Arg.Any<CancellationToken>())

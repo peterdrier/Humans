@@ -25,7 +25,7 @@ public class TicketingBudgetArchitectureTests
 {
     // ── TicketingBudgetService ───────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void TicketingBudgetService_LivesInHumansApplicationServicesTicketsNamespace()
     {
         typeof(TicketingBudgetService).Namespace
@@ -33,7 +33,7 @@ public class TicketingBudgetArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void TicketingBudgetService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(TicketingBudgetService).GetConstructors().Single();
@@ -43,7 +43,7 @@ public class TicketingBudgetArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use ITicketingBudgetRepository instead (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void TicketingBudgetService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(TicketingBudgetService).GetConstructors().Single();
@@ -55,7 +55,7 @@ public class TicketingBudgetArchitectureTests
             because: "TicketingBudgetService is a batch-style bridge; no per-request caching is warranted (design-rules §15 + Governance/User precedent for decorator-less sections)");
     }
 
-    [Fact]
+    [HumansFact]
     public void TicketingBudgetService_TakesRepository()
     {
         var ctor = typeof(TicketingBudgetService).GetConstructors().Single();
@@ -64,7 +64,7 @@ public class TicketingBudgetArchitectureTests
         paramTypes.Should().Contain(typeof(ITicketingBudgetRepository));
     }
 
-    [Fact]
+    [HumansFact]
     public void TicketingBudgetService_TakesBudgetServiceForCrossSectionWrites()
     {
         var ctor = typeof(TicketingBudgetService).GetConstructors().Single();
@@ -74,7 +74,7 @@ public class TicketingBudgetArchitectureTests
             because: "ticketing_projections and budget_line_items are Budget-owned; all mutations route through IBudgetService (design-rules §2c, §8)");
     }
 
-    [Fact]
+    [HumansFact]
     public void TicketingBudgetService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(TicketingBudgetService).GetConstructors().Single();
@@ -88,7 +88,7 @@ public class TicketingBudgetArchitectureTests
 
     // ── ITicketingBudgetRepository ───────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void ITicketingBudgetRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(ITicketingBudgetRepository).Namespace
@@ -96,7 +96,7 @@ public class TicketingBudgetArchitectureTests
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
 
-    [Fact]
+    [HumansFact]
     public void TicketingBudgetRepository_IsSealed()
     {
         // Mirrors ProfileRepository / UserRepository — repository implementations are terminal;

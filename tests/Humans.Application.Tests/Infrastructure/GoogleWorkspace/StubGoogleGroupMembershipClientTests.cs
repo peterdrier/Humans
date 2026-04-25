@@ -17,7 +17,7 @@ public class StubGoogleGroupMembershipClientTests
     private readonly StubGoogleGroupMembershipClient _client =
         new(NullLogger<StubGoogleGroupMembershipClient>.Instance);
 
-    [Fact]
+    [HumansFact]
     public async Task ListMembershipsAsync_EmptyGroup_ReturnsEmptyList()
     {
         var result = await _client.ListMembershipsAsync("group-1");
@@ -26,7 +26,7 @@ public class StubGoogleGroupMembershipClientTests
         result.Memberships.Should().NotBeNull().And.BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CreateMembershipAsync_NewMember_ReturnsAdded()
     {
         var result = await _client.CreateMembershipAsync("group-1", "alice@nobodies.team");
@@ -35,7 +35,7 @@ public class StubGoogleGroupMembershipClientTests
         result.Error.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CreateMembershipAsync_DuplicateMember_ReturnsAlreadyExists()
     {
         await _client.CreateMembershipAsync("group-1", "alice@nobodies.team");
@@ -47,7 +47,7 @@ public class StubGoogleGroupMembershipClientTests
         second.Error.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ListMembershipsAsync_AfterAdds_ReturnsAllMembers()
     {
         await _client.CreateMembershipAsync("group-1", "alice@nobodies.team");
@@ -63,7 +63,7 @@ public class StubGoogleGroupMembershipClientTests
                 because: "the stub's resource-name shape mirrors the real client so deletes flow through unchanged"));
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DeleteMembershipAsync_ExistingName_RemovesFromList()
     {
         await _client.CreateMembershipAsync("group-1", "alice@nobodies.team");
@@ -77,7 +77,7 @@ public class StubGoogleGroupMembershipClientTests
         listAfter.Memberships.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DeleteMembershipAsync_MissingName_Returns404Error()
     {
         var result = await _client.DeleteMembershipAsync("groups/missing/memberships/nope");
@@ -87,7 +87,7 @@ public class StubGoogleGroupMembershipClientTests
             because: "missing memberships surface as 404 errors matching Google's HTTP behaviour");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task MembershipOperations_AreIsolatedPerGroup()
     {
         await _client.CreateMembershipAsync("group-1", "alice@nobodies.team");

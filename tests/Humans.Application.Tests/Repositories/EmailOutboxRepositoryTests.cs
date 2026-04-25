@@ -38,7 +38,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     // AddAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task AddAsync_PersistsRow()
     {
         var msg = BuildMessage();
@@ -53,7 +53,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     // Stats-shape reads
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetTotalCountAsync_CountsAllRows()
     {
         await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Queued));
@@ -64,7 +64,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         total.Should().Be(3);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCountByStatusAsync_CountsOnlyMatchingStatus()
     {
         await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Queued));
@@ -78,7 +78,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         sent.Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetSentCountSinceAsync_OnlyCountsSentAfterCutoff()
     {
         var now = _clock.GetCurrentInstant();
@@ -93,7 +93,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         recent.Should().Be(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetRecentAsync_ReturnsNewestFirstAndRespectsLimit()
     {
         // Older to newer
@@ -109,7 +109,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         recent.Select(m => m.Id).Should().Equal(msg3.Id, msg2.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetForUserAsync_ReturnsUserMessagesInDescendingCreatedAtOrder()
     {
         var userId = Guid.NewGuid();
@@ -127,7 +127,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         forUser.Select(m => m.Id).Should().Equal(newer.Id, older.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCountForUserAsync_OnlyCountsUsersRows()
     {
         var userId = Guid.NewGuid();
@@ -138,7 +138,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         (await _repo.GetCountForUserAsync(userId)).Should().Be(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetPendingCountAsync_OnlyCountsUnsentBelowRetryCap()
     {
         await _repo.AddAsync(BuildMessage(status: EmailOutboxStatus.Queued));
@@ -155,7 +155,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     // Retry / Discard
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task RetryAsync_ResetsStatusAndCountersAndReturnsRecipient()
     {
         var msg = BuildMessage(status: EmailOutboxStatus.Failed, retryCount: 3);
@@ -175,14 +175,14 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         reloaded.PickedUpAt.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RetryAsync_ReturnsNullWhenMessageMissing()
     {
         var result = await _repo.RetryAsync(Guid.NewGuid());
         result.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DiscardAsync_DeletesAndReturnsRecipient()
     {
         var msg = BuildMessage();
@@ -194,7 +194,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         (await _dbContext.EmailOutboxMessages.CountAsync()).Should().Be(0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DiscardAsync_ReturnsNullWhenMessageMissing()
     {
         var result = await _repo.DiscardAsync(Guid.NewGuid());
@@ -205,7 +205,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     // Processor helpers
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetProcessingBatchAsync_FiltersOnAllCriteria()
     {
         var now = _clock.GetCurrentInstant();
@@ -232,7 +232,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         batch.Select(m => m.Id).Should().BeEquivalentTo(new[] { eligible.Id, stalePickedUp.Id });
     }
 
-    [Fact]
+    [HumansFact]
     public async Task MarkPickedUpAsync_SetsPickedUpAtForAllIds()
     {
         var m1 = BuildMessage();
@@ -251,7 +251,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         all.Single(x => x.Id == untouched.Id).PickedUpAt.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task MarkSentAsync_FlipsStatusAndClearsPickedUpAt()
     {
         var msg = BuildMessage(status: EmailOutboxStatus.Queued);
@@ -268,14 +268,14 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         reloaded.PickedUpAt.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task MarkSentAsync_ReturnsFalseWhenMessageMissing()
     {
         var result = await _repo.MarkSentAsync(Guid.NewGuid(), Instant.FromUtc(2026, 4, 1, 0, 0));
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task MarkFailedAsync_SetsFailureFieldsAndIncrementsRetry()
     {
         var msg = BuildMessage(status: EmailOutboxStatus.Queued, retryCount: 1);
@@ -295,7 +295,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         reloaded.PickedUpAt.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task MarkFailedAsync_TruncatesLongErrors()
     {
         var msg = BuildMessage();
@@ -313,7 +313,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     // Cleanup
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task DeleteSentOlderThanAsync_RemovesOnlyOldSentMessages()
     {
         var now = _clock.GetCurrentInstant();
@@ -340,14 +340,14 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     // Pause flag
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetSendingPausedAsync_ReturnsFalseWhenRowAbsent()
     {
         var paused = await _repo.GetSendingPausedAsync();
         paused.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SetSendingPausedAsync_InsertsRowWhenAbsent()
     {
         await _repo.SetSendingPausedAsync(true);
@@ -360,7 +360,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         row.Value.Should().Be("true");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SetSendingPausedAsync_UpdatesExistingRow()
     {
         _dbContext.SystemSettings.Add(new SystemSetting { Key = SystemSettingKeys.IsEmailSendingPaused, Value = "true" });

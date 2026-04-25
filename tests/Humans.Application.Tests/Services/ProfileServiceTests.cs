@@ -105,7 +105,7 @@ public class ProfileServiceTests : IDisposable
 
     // --- Profile save flow ---
 
-    [Fact]
+    [HumansFact]
     public async Task SaveProfileAsync_NewProfile_CreatesProfile()
     {
         var userId = Guid.NewGuid();
@@ -121,7 +121,7 @@ public class ProfileServiceTests : IDisposable
         profile.LastName.Should().Be("Doe");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SaveProfileAsync_ExistingProfile_UpdatesFields()
     {
         var userId = Guid.NewGuid();
@@ -136,7 +136,7 @@ public class ProfileServiceTests : IDisposable
         profile.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SaveProfileAsync_UpdatesUserDisplayName()
     {
         var userId = Guid.NewGuid();
@@ -148,7 +148,7 @@ public class ProfileServiceTests : IDisposable
         await _userService.Received().UpdateDisplayNameAsync(userId, "New Display Name", Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SaveProfileAsync_ParsesBirthday_ValidDate()
     {
         var userId = Guid.NewGuid();
@@ -161,7 +161,7 @@ public class ProfileServiceTests : IDisposable
         profile.DateOfBirth.Should().Be(new LocalDate(4, 2, 14));
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SaveProfileAsync_ParsesBirthday_InvalidDay_SetsNull()
     {
         var userId = Guid.NewGuid();
@@ -174,7 +174,7 @@ public class ProfileServiceTests : IDisposable
         profile.DateOfBirth.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SaveProfileAsync_RemoveProfilePicture_ClearsData()
     {
         var userId = Guid.NewGuid();
@@ -188,7 +188,7 @@ public class ProfileServiceTests : IDisposable
         profile.ProfilePictureContentType.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SaveProfileAsync_CallsSetConsentCheckPending()
     {
         var userId = Guid.NewGuid();
@@ -202,7 +202,7 @@ public class ProfileServiceTests : IDisposable
 
     // --- Profile save flow: tier application during initial setup ---
 
-    [Fact]
+    [HumansFact]
     public async Task SaveProfileAsync_InitialSetup_Colaborador_CreatesApplication()
     {
         var userId = Guid.NewGuid();
@@ -223,7 +223,7 @@ public class ProfileServiceTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SaveProfileAsync_InitialSetup_Volunteer_NoApplication()
     {
         var userId = Guid.NewGuid();
@@ -238,7 +238,7 @@ public class ProfileServiceTests : IDisposable
             Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SaveProfileAsync_InitialSetup_ExistingPendingApp_DoesNotDuplicate()
     {
         var userId = Guid.NewGuid();
@@ -270,7 +270,7 @@ public class ProfileServiceTests : IDisposable
             Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SaveProfileAsync_ApprovedProfile_IgnoresTierSelection()
     {
         var userId = Guid.NewGuid();
@@ -289,7 +289,7 @@ public class ProfileServiceTests : IDisposable
 
     // --- Deletion request flow ---
 
-    [Fact]
+    [HumansFact]
     public async Task RequestDeletionAsync_ValidUser_SetsDeletionDates()
     {
         var userId = Guid.NewGuid();
@@ -306,7 +306,7 @@ public class ProfileServiceTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RequestDeletionAsync_RevokesTeamMemberships()
     {
         var userId = Guid.NewGuid();
@@ -318,7 +318,7 @@ public class ProfileServiceTests : IDisposable
         await _teamService.Received().RevokeAllMembershipsAsync(userId, Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RequestDeletionAsync_RevokesRoleAssignments()
     {
         var userId = Guid.NewGuid();
@@ -330,7 +330,7 @@ public class ProfileServiceTests : IDisposable
         await _roleAssignmentService.Received().RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RequestDeletionAsync_AlreadyPending_ReturnsError()
     {
         var userId = Guid.NewGuid();
@@ -345,7 +345,7 @@ public class ProfileServiceTests : IDisposable
         result.ErrorKey.Should().Be("AlreadyPending");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RequestDeletionAsync_WritesAuditLog()
     {
         var userId = Guid.NewGuid();
@@ -360,7 +360,7 @@ public class ProfileServiceTests : IDisposable
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RequestDeletionAsync_SendsDeletionEmail()
     {
         var userId = Guid.NewGuid();
@@ -377,7 +377,7 @@ public class ProfileServiceTests : IDisposable
 
     // --- Cancel deletion flow ---
 
-    [Fact]
+    [HumansFact]
     public async Task CancelDeletionAsync_PendingDeletion_ClearsDates()
     {
         var userId = Guid.NewGuid();
@@ -392,7 +392,7 @@ public class ProfileServiceTests : IDisposable
         await _userService.Received().ClearDeletionAsync(userId, Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CancelDeletionAsync_NoDeletion_ReturnsError()
     {
         var userId = Guid.NewGuid();
@@ -407,7 +407,7 @@ public class ProfileServiceTests : IDisposable
 
     // --- Simple lookups ---
 
-    [Fact]
+    [HumansFact]
     public async Task GetProfileAsync_ExistingUser_ReturnsProfile()
     {
         var userId = Guid.NewGuid();
@@ -419,7 +419,7 @@ public class ProfileServiceTests : IDisposable
         result!.UserId.Should().Be(userId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetProfileAsync_NoProfile_ReturnsNull()
     {
         var userId = Guid.NewGuid();
@@ -430,7 +430,7 @@ public class ProfileServiceTests : IDisposable
         result.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetProfilePictureAsync_WithPicture_ReturnsData()
     {
         var userId = Guid.NewGuid();
@@ -444,7 +444,7 @@ public class ProfileServiceTests : IDisposable
         contentType.Should().Be("image/png");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetProfilePictureAsync_NoPicture_ReturnsNulls()
     {
         var userId = Guid.NewGuid();
@@ -457,7 +457,7 @@ public class ProfileServiceTests : IDisposable
         contentType.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetProfilePictureAsync_NoProfile_ReturnsNulls()
     {
         var (data, contentType) = await _service.GetProfilePictureAsync(Guid.NewGuid());
@@ -466,7 +466,7 @@ public class ProfileServiceTests : IDisposable
         contentType.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetTierCountsAsync_CorrectCounts()
     {
         // 1 Colaborador non-suspended, 1 Colaborador suspended, 1 Asociado non-suspended
@@ -490,7 +490,7 @@ public class ProfileServiceTests : IDisposable
 
     // --- Index/edit data ---
 
-    [Fact]
+    [HumansFact]
     public async Task GetProfileIndexDataAsync_ReturnsProfileAndLatestApp()
     {
         var userId = Guid.NewGuid();
@@ -520,7 +520,7 @@ public class ProfileServiceTests : IDisposable
         pendingConsentCount.Should().Be(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetProfileIndexDataAsync_NoProfile_ReturnsNulls()
     {
         var userId = Guid.NewGuid();
@@ -535,7 +535,7 @@ public class ProfileServiceTests : IDisposable
         latestApp.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetProfileEditDataAsync_SubmittedApp_IsTierLocked()
     {
         var userId = Guid.NewGuid();
@@ -560,7 +560,7 @@ public class ProfileServiceTests : IDisposable
         pendingApp.Should().NotBeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetProfileEditDataAsync_ApprovedApp_IsTierLocked()
     {
         var userId = Guid.NewGuid();
@@ -586,7 +586,7 @@ public class ProfileServiceTests : IDisposable
         pendingApp.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetProfileEditDataAsync_NoApps_NotLocked()
     {
         var userId = Guid.NewGuid();
@@ -599,7 +599,7 @@ public class ProfileServiceTests : IDisposable
         pendingApp.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetProfileEditDataAsync_NoProfile_ReturnsNulls()
     {
         var userId = Guid.NewGuid();
@@ -614,7 +614,7 @@ public class ProfileServiceTests : IDisposable
 
     // --- Batch/filtered queries ---
 
-    [Fact]
+    [HumansFact]
     public async Task GetCustomPictureInfoByUserIdsAsync_WithPictures_ReturnsTuples()
     {
         var u1 = Guid.NewGuid();
@@ -629,7 +629,7 @@ public class ProfileServiceTests : IDisposable
         result.Should().HaveCount(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCustomPictureInfoByUserIdsAsync_EmptyInput_ReturnsEmpty()
     {
         var result = await _service.GetCustomPictureInfoByUserIdsAsync(Array.Empty<Guid>());
@@ -637,7 +637,7 @@ public class ProfileServiceTests : IDisposable
         result.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetBirthdayProfilesAsync_MatchesMonth_OrderedByDay()
     {
         var u1 = Guid.NewGuid();
@@ -668,7 +668,7 @@ public class ProfileServiceTests : IDisposable
         result[1].BirthdayDay.Should().Be(20);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetBirthdayProfilesAsync_ExcludesSuspended()
     {
         var u1 = Guid.NewGuid();
@@ -692,7 +692,7 @@ public class ProfileServiceTests : IDisposable
         result[0].UserId.Should().Be(u2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetBirthdayProfilesAsync_NoMatches_ReturnsEmpty()
     {
         var userId = Guid.NewGuid();
@@ -710,7 +710,7 @@ public class ProfileServiceTests : IDisposable
         result.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetApprovedProfilesWithLocationAsync_ReturnsApprovedWithCoordinates()
     {
         var userId = Guid.NewGuid();
@@ -732,7 +732,7 @@ public class ProfileServiceTests : IDisposable
         result[0].Longitude.Should().Be(-3.0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetApprovedProfilesWithLocationAsync_ExcludesSuspendedAndUnapproved()
     {
         var u1 = Guid.NewGuid();
@@ -765,7 +765,7 @@ public class ProfileServiceTests : IDisposable
 
     // --- Admin queries ---
 
-    [Fact]
+    [HumansFact]
     public async Task GetFilteredHumansAsync_NoFilter_ReturnsAll()
     {
         var u1 = Guid.NewGuid();
@@ -781,7 +781,7 @@ public class ProfileServiceTests : IDisposable
         result.Should().HaveCount(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFilteredHumansAsync_SearchByEmail()
     {
         var u1 = Guid.NewGuid();
@@ -801,7 +801,7 @@ public class ProfileServiceTests : IDisposable
         result[0].UserId.Should().Be(u2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFilteredHumansAsync_SearchByDisplayName()
     {
         var u1 = Guid.NewGuid();
@@ -820,7 +820,7 @@ public class ProfileServiceTests : IDisposable
         result[0].UserId.Should().Be(u2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFilteredHumansAsync_StatusActive()
     {
         var u1 = Guid.NewGuid();
@@ -855,7 +855,7 @@ public class ProfileServiceTests : IDisposable
         result[0].UserId.Should().Be(u1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFilteredHumansAsync_StatusPending()
     {
         var u1 = Guid.NewGuid();
@@ -890,7 +890,7 @@ public class ProfileServiceTests : IDisposable
         result[0].UserId.Should().Be(u2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFilteredHumansAsync_StatusSuspended()
     {
         var u1 = Guid.NewGuid();
@@ -925,7 +925,7 @@ public class ProfileServiceTests : IDisposable
         result[0].UserId.Should().Be(u1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetAdminHumanDetailAsync_ReturnsFullDetail()
     {
         var userId = Guid.NewGuid();
@@ -969,7 +969,7 @@ public class ProfileServiceTests : IDisposable
         result.RoleAssignments.Should().HaveCount(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetAdminHumanDetailAsync_NonExistent_ReturnsNull()
     {
         _userService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -982,7 +982,7 @@ public class ProfileServiceTests : IDisposable
 
     // --- Cooldown and export ---
 
-    [Fact]
+    [HumansFact]
     public async Task GetEmailCooldownInfoAsync_WithinCooldown_ReturnsFalse()
     {
         var userId = Guid.NewGuid();
@@ -1005,7 +1005,7 @@ public class ProfileServiceTests : IDisposable
         pendingEmailId.Should().Be(emailId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetEmailCooldownInfoAsync_AfterCooldown_ReturnsTrue()
     {
         var userId = Guid.NewGuid();
@@ -1028,7 +1028,7 @@ public class ProfileServiceTests : IDisposable
         pendingEmailId.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetEmailCooldownInfoAsync_NoVerificationSent_ReturnsTrue()
     {
         var userId = Guid.NewGuid();
@@ -1053,7 +1053,7 @@ public class ProfileServiceTests : IDisposable
 
     // --- Search (via static helpers, exercised directly since inner returns empty) ---
 
-    [Fact]
+    [HumansFact]
     public async Task SearchHumansAsync_MatchesByDisplayName()
     {
         var userId = Guid.NewGuid();
@@ -1070,7 +1070,7 @@ public class ProfileServiceTests : IDisposable
         results[0].MatchField.Should().Be("Name");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SearchHumansAsync_MatchesByCity()
     {
         var userId = Guid.NewGuid();
@@ -1087,7 +1087,7 @@ public class ProfileServiceTests : IDisposable
         results[0].MatchField.Should().Be("City");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SearchHumansAsync_MatchesByBio()
     {
         var userId = Guid.NewGuid();
@@ -1105,7 +1105,7 @@ public class ProfileServiceTests : IDisposable
         results[0].MatchSnippet.Should().Contain("fire dancing");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SearchHumansAsync_ExcludesSuspended()
     {
         var u1 = Guid.NewGuid();
@@ -1126,7 +1126,7 @@ public class ProfileServiceTests : IDisposable
         results[0].UserId.Should().Be(u2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SearchHumansAsync_ExcludesUnapproved()
     {
         var u1 = Guid.NewGuid();
@@ -1147,7 +1147,7 @@ public class ProfileServiceTests : IDisposable
         results[0].UserId.Should().Be(u2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SearchHumansAsync_NoMatch_ReturnsEmpty()
     {
         var userId = Guid.NewGuid();
@@ -1164,7 +1164,7 @@ public class ProfileServiceTests : IDisposable
 
     // --- DB-backed fallback paths (§15 invariant: base service must work without decorator) ---
 
-    [Fact]
+    [HumansFact]
     public async Task GetBirthdayProfilesAsync_BaseService_LoadsFromRepositoryAndFilters()
     {
         var u1 = Guid.NewGuid();
@@ -1193,7 +1193,7 @@ public class ProfileServiceTests : IDisposable
         result[1].Day.Should().Be(20);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetApprovedProfilesWithLocationAsync_BaseService_LoadsFromRepositoryAndFilters()
     {
         var u1 = Guid.NewGuid();
@@ -1223,7 +1223,7 @@ public class ProfileServiceTests : IDisposable
         result[0].City.Should().Be("Madrid");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SearchApprovedUsersAsync_BaseService_LoadsFromRepositoryAndFilters()
     {
         var u1 = Guid.NewGuid();
@@ -1246,7 +1246,7 @@ public class ProfileServiceTests : IDisposable
         result[0].DisplayName.Should().Be("Unique Sparkle");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SearchHumansAsync_BaseService_LoadsFromRepositoryAndFilters()
     {
         var u1 = Guid.NewGuid();
@@ -1271,7 +1271,7 @@ public class ProfileServiceTests : IDisposable
         result[0].MatchField.Should().Be("City");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFilteredHumansAsync_BaseService_LoadsFromRepositoryAndReturnsRows()
     {
         var u1 = Guid.NewGuid();
@@ -1302,7 +1302,7 @@ public class ProfileServiceTests : IDisposable
 
     // --- GetFullProfileAsync ---
 
-    [Fact]
+    [HumansFact]
     public async Task GetFullProfileAsync_ReturnsStitchedProjection_WhenProfileExists()
     {
         var userId = Guid.NewGuid();
@@ -1337,7 +1337,7 @@ public class ProfileServiceTests : IDisposable
         result.CVEntries.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFullProfileAsync_ReturnsNull_WhenProfileMissing()
     {
         var userId = Guid.NewGuid();
@@ -1347,7 +1347,7 @@ public class ProfileServiceTests : IDisposable
         result.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFullProfileAsync_ReturnsNull_WhenUserMissing()
     {
         // Seed a profile but no user. _userService.GetByIdAsync is an NSubstitute
@@ -1367,7 +1367,7 @@ public class ProfileServiceTests : IDisposable
         result.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFullProfileAsync_PopulatesNotificationEmail_WhenVerifiedTargetExists()
     {
         var userId = Guid.NewGuid();
@@ -1402,7 +1402,7 @@ public class ProfileServiceTests : IDisposable
 
     // --- SaveCVEntriesAsync ---
 
-    [Fact]
+    [HumansFact]
     public async Task SaveCVEntriesAsync_DelegatesToRepository()
     {
         // Arrange: mock repository that knows about a seeded profile
@@ -1434,7 +1434,7 @@ public class ProfileServiceTests : IDisposable
             .ReconcileCVEntriesAsync(profileId, entries, Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SaveCVEntriesAsync_NoOp_WhenUserHasNoProfile()
     {
         // Arrange: mock repository that returns null (no profile)

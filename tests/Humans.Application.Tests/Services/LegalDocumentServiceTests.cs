@@ -31,7 +31,7 @@ public class LegalDocumentServiceTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public void GetAvailableDocuments_ReturnsStatutes()
     {
         var documents = _service.GetAvailableDocuments();
@@ -44,7 +44,7 @@ public class LegalDocumentServiceTests : IDisposable
         statutes.FilePrefix.Should().Be("ESTATUTOS");
     }
 
-    [Fact]
+    [HumansFact]
     public void GetAvailableDocuments_ReturnsReadOnlyList()
     {
         var documents = _service.GetAvailableDocuments();
@@ -52,7 +52,7 @@ public class LegalDocumentServiceTests : IDisposable
         documents.Should().BeAssignableTo<IReadOnlyList<LegalDocumentDefinition>>();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDocumentContentAsync_UnknownSlug_ReturnsEmptyDictionary()
     {
         var result = await _service.GetDocumentContentAsync("nonexistent");
@@ -60,7 +60,7 @@ public class LegalDocumentServiceTests : IDisposable
         result.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDocumentContentAsync_GitHubFailure_ReturnsEmptyDictionary()
     {
         _connector.ThrowOnFetch = true;
@@ -70,7 +70,7 @@ public class LegalDocumentServiceTests : IDisposable
         result.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDocumentContentAsync_CachesResult()
     {
         _connector.Content = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -94,7 +94,7 @@ public class LegalDocumentServiceTests : IDisposable
         _cache.TryGetValue(CacheKeys.LegalDocument("statutes"), out _).Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public void CacheKey_LegalDocument_FormatsCorrectly()
     {
         CacheKeys.LegalDocument("statutes").Should().Be("Legal:statutes");

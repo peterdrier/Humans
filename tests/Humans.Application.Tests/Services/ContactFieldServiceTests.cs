@@ -52,7 +52,7 @@ public class ContactFieldServiceTests : IDisposable
 
     #region GetViewerAccessLevelAsync Tests
 
-    [Fact]
+    [HumansFact]
     public async Task GetViewerAccessLevel_WhenSelf_ReturnsBoardOnly()
     {
         var userId = Guid.NewGuid();
@@ -62,7 +62,7 @@ public class ContactFieldServiceTests : IDisposable
         result.Should().Be(ContactFieldVisibility.BoardOnly);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetViewerAccessLevel_WhenBoardMember_ReturnsBoardOnly()
     {
         var ownerId = Guid.NewGuid();
@@ -75,7 +75,7 @@ public class ContactFieldServiceTests : IDisposable
         result.Should().Be(ContactFieldVisibility.BoardOnly);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetViewerAccessLevel_WhenCoordinator_ReturnsCoordinatorsAndBoard()
     {
         var ownerId = Guid.NewGuid();
@@ -95,7 +95,7 @@ public class ContactFieldServiceTests : IDisposable
         result.Should().Be(ContactFieldVisibility.CoordinatorsAndBoard);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetViewerAccessLevel_WhenSharesTeam_ReturnsMyTeams()
     {
         var ownerId = Guid.NewGuid();
@@ -120,7 +120,7 @@ public class ContactFieldServiceTests : IDisposable
         result.Should().Be(ContactFieldVisibility.MyTeams);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetViewerAccessLevel_WhenNoSharedTeams_ReturnsAllActiveProfiles()
     {
         var ownerId = Guid.NewGuid();
@@ -144,7 +144,7 @@ public class ContactFieldServiceTests : IDisposable
         result.Should().Be(ContactFieldVisibility.AllActiveProfiles);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetViewerAccessLevel_WhenOnlySharesVolunteersTeam_ReturnsAllActiveProfiles()
     {
         // Volunteers team is excluded from "shared team" visibility
@@ -171,7 +171,7 @@ public class ContactFieldServiceTests : IDisposable
         result.Should().Be(ContactFieldVisibility.AllActiveProfiles);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetViewerAccessLevel_WhenSharesNonVolunteersTeam_ReturnsMyTeams()
     {
         // Sharing a non-Volunteers team should grant MyTeams visibility
@@ -204,7 +204,7 @@ public class ContactFieldServiceTests : IDisposable
 
     #region GetVisibleContactFieldsAsync Tests
 
-    [Fact]
+    [HumansFact]
     public async Task GetVisibleContactFields_WhenProfileNotFound_ReturnsEmptyList()
     {
         var result = await _service.GetVisibleContactFieldsAsync(Guid.NewGuid(), Guid.NewGuid());
@@ -212,7 +212,7 @@ public class ContactFieldServiceTests : IDisposable
         result.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetVisibleContactFields_FiltersFieldsByVisibility()
     {
         // Arrange
@@ -236,7 +236,7 @@ public class ContactFieldServiceTests : IDisposable
         result[0].Label.Should().Be("Phone");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetVisibleContactFields_SelfSeesAllFields()
     {
         // Arrange
@@ -254,7 +254,7 @@ public class ContactFieldServiceTests : IDisposable
 
     #region SaveContactFieldsAsync Tests
 
-    [Fact]
+    [HumansFact]
     public async Task SaveContactFields_CreatesNewFields()
     {
         // Arrange
@@ -275,7 +275,7 @@ public class ContactFieldServiceTests : IDisposable
         savedFields.Should().HaveCount(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SaveContactFields_UpdatesExistingFields()
     {
         // Arrange
@@ -309,7 +309,7 @@ public class ContactFieldServiceTests : IDisposable
         savedField.Visibility.Should().Be(ContactFieldVisibility.BoardOnly);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SaveContactFields_DeletesRemovedFields()
     {
         // Arrange
@@ -338,7 +338,7 @@ public class ContactFieldServiceTests : IDisposable
         remainingFields.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SaveContactFields_WithInvalidValueOnNonEmailField_Succeeds()
     {
         // Non-email fields should not be validated as email

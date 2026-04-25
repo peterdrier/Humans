@@ -29,7 +29,7 @@ public class GoogleIntegrationArchitectureTests
 {
     // ── EmailProvisioningService ─────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void EmailProvisioningService_LivesInHumansApplicationServicesGoogleIntegrationNamespace()
     {
         typeof(EmailProvisioningService).Namespace
@@ -37,7 +37,7 @@ public class GoogleIntegrationArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void EmailProvisioningService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(EmailProvisioningService).GetConstructors().Single();
@@ -47,7 +47,7 @@ public class GoogleIntegrationArchitectureTests
                 because: "services in Humans.Application must never take DbContext — cross-section reads go through service interfaces (design-rules §2b, §9)");
     }
 
-    [Fact]
+    [HumansFact]
     public void EmailProvisioningService_HasNoDbContextFactoryConstructorParameter()
     {
         var ctor = typeof(EmailProvisioningService).GetConstructors().Single();
@@ -60,7 +60,7 @@ public class GoogleIntegrationArchitectureTests
             because: "IDbContextFactory belongs behind a repository or another service boundary, not in an Application-layer service");
     }
 
-    [Fact]
+    [HumansFact]
     public void EmailProvisioningService_HasNoUserManagerConstructorParameter()
     {
         var ctor = typeof(EmailProvisioningService).GetConstructors().Single();
@@ -72,7 +72,7 @@ public class GoogleIntegrationArchitectureTests
             because: "User mutations go through IUserService (design-rules §9); UserManager is an Identity-framework concern that belongs to controllers/AccountProvisioningService");
     }
 
-    [Fact]
+    [HumansFact]
     public void EmailProvisioningService_DependenciesGoThroughSectionServiceInterfaces()
     {
         var ctor = typeof(EmailProvisioningService).GetConstructors().Single();
@@ -88,7 +88,7 @@ public class GoogleIntegrationArchitectureTests
             because: "Google Workspace Users API calls go through the IGoogleWorkspaceUserService bridge interface (design-rules §13)");
     }
 
-    [Fact]
+    [HumansFact]
     public void EmailProvisioningService_HasNoGoogleApisImports()
     {
         // The Google Workspace Users API bridge lives behind IGoogleWorkspaceUserService.
@@ -103,7 +103,7 @@ public class GoogleIntegrationArchitectureTests
                 because: "Application-layer services must not import Google SDK types; the Google API bridge is IGoogleWorkspaceUserService (design-rules §13)");
     }
 
-    [Fact]
+    [HumansFact]
     public void EmailProvisioningService_IsSealed()
     {
         typeof(EmailProvisioningService).IsSealed.Should().BeTrue(
@@ -112,7 +112,7 @@ public class GoogleIntegrationArchitectureTests
 
     // ── GoogleWorkspaceSyncService (§15 Part 2b, issue #575) ─────────────────
 
-    [Fact]
+    [HumansFact]
     public void GoogleWorkspaceSyncService_LivesInHumansApplicationServicesGoogleIntegrationNamespace()
     {
         typeof(GoogleWorkspaceSyncService).Namespace
@@ -120,7 +120,7 @@ public class GoogleIntegrationArchitectureTests
                 because: "§15 Part 2b (#575) moved the service out of Humans.Infrastructure — see design-rules §15i");
     }
 
-    [Fact]
+    [HumansFact]
     public void GoogleWorkspaceSyncService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(GoogleWorkspaceSyncService).GetConstructors().Single();
@@ -130,7 +130,7 @@ public class GoogleIntegrationArchitectureTests
                 because: "services in Humans.Application must never take DbContext — writes go through IGoogleResourceRepository, reads through sibling service interfaces (design-rules §2b, §9)");
     }
 
-    [Fact]
+    [HumansFact]
     public void GoogleWorkspaceSyncService_HasNoDbContextFactoryConstructorParameter()
     {
         var ctor = typeof(GoogleWorkspaceSyncService).GetConstructors().Single();
@@ -143,7 +143,7 @@ public class GoogleIntegrationArchitectureTests
             because: "IDbContextFactory belongs behind a repository or another service boundary — it was retired in §15 Part 2b");
     }
 
-    [Fact]
+    [HumansFact]
     public void GoogleWorkspaceSyncService_DependenciesGoThroughBridgesAndSectionServiceInterfaces()
     {
         var ctor = typeof(GoogleWorkspaceSyncService).GetConstructors().Single();
@@ -168,7 +168,7 @@ public class GoogleIntegrationArchitectureTests
         paramTypes.Should().Contain(typeof(IGoogleSyncOutboxRepository));
     }
 
-    [Fact]
+    [HumansFact]
     public void GoogleWorkspaceSyncService_HasNoGoogleApisAssemblyReference()
     {
         var assembly = typeof(GoogleWorkspaceSyncService).Assembly;
@@ -180,7 +180,7 @@ public class GoogleIntegrationArchitectureTests
                 because: "Humans.Application must stay free of Google SDK references — SDK calls route through bridge interfaces (design-rules §13)");
     }
 
-    [Fact]
+    [HumansFact]
     public void GoogleWorkspaceSyncService_IsSealed()
     {
         typeof(GoogleWorkspaceSyncService).IsSealed.Should().BeTrue(

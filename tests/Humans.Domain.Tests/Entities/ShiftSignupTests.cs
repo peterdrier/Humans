@@ -32,7 +32,7 @@ public class ShiftSignupTests
         UpdatedAt = Now
     };
 
-    [Fact]
+    [HumansFact]
     public void Confirm_FromPending_SetsConfirmedAndReviewer()
     {
         var signup = CreatePendingSignup();
@@ -46,7 +46,7 @@ public class ShiftSignupTests
         signup.UpdatedAt.Should().Be(Now);
     }
 
-    [Fact]
+    [HumansFact]
     public void Confirm_FromConfirmed_Throws()
     {
         var signup = CreateConfirmedSignup();
@@ -56,7 +56,7 @@ public class ShiftSignupTests
         act.Should().Throw<InvalidOperationException>();
     }
 
-    [Fact]
+    [HumansFact]
     public void Refuse_FromPending_SetsRefusedAndReviewer()
     {
         var signup = CreatePendingSignup();
@@ -70,7 +70,7 @@ public class ShiftSignupTests
         signup.StatusReason.Should().Be("Not enough experience");
     }
 
-    [Fact]
+    [HumansFact]
     public void Refuse_FromConfirmed_Throws()
     {
         var signup = CreateConfirmedSignup();
@@ -80,7 +80,7 @@ public class ShiftSignupTests
         act.Should().Throw<InvalidOperationException>();
     }
 
-    [Fact]
+    [HumansFact]
     public void Bail_FromConfirmed_SetsBailed()
     {
         var signup = CreateConfirmedSignup();
@@ -93,7 +93,7 @@ public class ShiftSignupTests
         signup.StatusReason.Should().Be("Schedule conflict");
     }
 
-    [Fact]
+    [HumansFact]
     public void Bail_FromPending_SetsBailed()
     {
         var signup = CreatePendingSignup();
@@ -104,7 +104,7 @@ public class ShiftSignupTests
         signup.StatusReason.Should().Be("Changed my mind");
     }
 
-    [Fact]
+    [HumansFact]
     public void Bail_FromRefused_Throws()
     {
         var signup = CreatePendingSignup();
@@ -115,7 +115,7 @@ public class ShiftSignupTests
         act.Should().Throw<InvalidOperationException>();
     }
 
-    [Fact]
+    [HumansFact]
     public void MarkNoShow_FromConfirmed_SetsNoShow()
     {
         var signup = CreateConfirmedSignup();
@@ -128,7 +128,7 @@ public class ShiftSignupTests
         signup.ReviewedByUserId.Should().Be(reviewerId);
     }
 
-    [Fact]
+    [HumansFact]
     public void MarkNoShow_FromPending_Throws()
     {
         var signup = CreatePendingSignup();
@@ -138,7 +138,7 @@ public class ShiftSignupTests
         act.Should().Throw<InvalidOperationException>();
     }
 
-    [Fact]
+    [HumansFact]
     public void Cancel_FromConfirmed_SetsCancelled()
     {
         var signup = CreateConfirmedSignup();
@@ -149,7 +149,7 @@ public class ShiftSignupTests
         signup.StatusReason.Should().Be("Shift deactivated");
     }
 
-    [Fact]
+    [HumansFact]
     public void Cancel_FromPending_SetsCancelled()
     {
         var signup = CreatePendingSignup();
@@ -159,7 +159,7 @@ public class ShiftSignupTests
         signup.Status.Should().Be(SignupStatus.Cancelled);
     }
 
-    [Fact]
+    [HumansFact]
     public void Cancel_FromBailed_Throws()
     {
         var signup = CreateConfirmedSignup();
