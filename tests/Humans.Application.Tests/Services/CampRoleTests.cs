@@ -652,6 +652,139 @@ public class CampRoleTests : IDisposable
             Arg.Any<string?>());
     }
 
+    // ==========================================================================
+    // GetCampRoleComplianceAsync
+    // ==========================================================================
+
+    /// <summary>
+    /// Deactivates all 6 HasData-seeded role definitions so compliance tests can
+    /// assert on a known, custom set of roles without interference from seeds.
+    /// </summary>
+    private async Task DeactivateAllSeededRolesAsync()
+    {
+        var now = _clock.GetCurrentInstant();
+        var seeded = await _dbContext.CampRoleDefinitions.ToListAsync();
+        foreach (var def in seeded)
+        {
+            if (def.DeactivatedAt is null)
+            {
+                def.DeactivatedAt = now;
+                def.UpdatedAt = now;
+            }
+        }
+        await _dbContext.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task GetCampRoleComplianceAsync_OmitsCampWithAllRequiredRolesFilled()
+    {
+        await DeactivateAllSeededRolesAsync();
+
+        var (_, seasonId) = await SeedCampSeasonAsync(slug: "all-filled-camp", year: 2026);
+        var consentLead = await SeedRoleDefinitionAsync(
+            "Consent Lead Test", slotCount: 2, minimumRequired: 1, isRequired: true, sortOrder: 10);
+        var lnt = await SeedRoleDefinitionAsync(
+            "LNT Test", slotCount: 1, minimumRequired: 1, isRequired: true, sortOrder: 30);
+
+        var (consentUserId, _) = await SeedCampMemberAsync(seasonId, CampMemberStatus.Active);
+        var (lntUserId, _) = await SeedCampMemberAsync(seasonId, CampMemberStatus.Active);
+        var assignedBy = Guid.NewGuid();
+
+        var consentAssign = await _service.AssignCampRoleAsync(
+            seasonId, consentLead.Id, slotIndex: 0,
+            assigneeUserId: consentUserId, assignedByUserId: assignedBy, autoPromoteToMember: false);
+        consentAssign.Outcome.Should().Be(AssignCampRoleOutcome.Assigned);
+
+        var lntAssign = await _service.AssignCampRoleAsync(
+            seasonId, lnt.Id, slotIndex: 0,
+            assigneeUserId: lntUserId, assignedByUserId: assignedBy, autoPromoteToMember: false);
+        lntAssign.Outcome.Should().Be(AssignCampRoleOutcome.Assigned);
+
+        var rows = await _service.GetCampRoleComplianceAsync(2026);
+        rows.Should().NotContain(r => string.Equals(r.CampSlug, "all-filled-camp", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task GetCampRoleComplianceAsync_FlagsRequiredRoleBelowMinimum()
+    {
+        await DeactivateAllSeededRolesAsync();
+
+        var (_, _) = await SeedCampSeasonAsync(slug: "missing-camp", year: 2026);
+        await SeedRoleDefinitionAsync(
+            "Consent Lead Test", slotCount: 2, minimumRequired: 1, isRequired: true, sortOrder: 10);
+        await SeedRoleDefinitionAsync(
+            "LNT Test", slotCount: 1, minimumRequired: 1, isRequired: true, sortOrder: 30);
+
+        var rows = await _service.GetCampRoleComplianceAsync(2026);
+        rows.Should().ContainSingle(r => string.Equals(r.CampSlug, "missing-camp", StringComparison.Ordinal));
+        var camp = rows.Single(r => string.Equals(r.CampSlug, "missing-camp", StringComparison.Ordinal));
+        camp.MissingRoleNames.Should().BeEquivalentTo(["Consent Lead Test", "LNT Test"]);
+    }
+
+    [Fact]
+    public async Task GetCampRoleComplianceAsync_RequiredRole_FirstSlotFilledPasses_WhenMinimumIsOne()
+    {
+        await DeactivateAllSeededRolesAsync();
+
+        var (_, seasonId) = await SeedCampSeasonAsync(slug: "first-slot-camp", year: 2026);
+        var consentLead = await SeedRoleDefinitionAsync(
+            "Consent Lead Test", slotCount: 2, minimumRequired: 1, isRequired: true, sortOrder: 10);
+
+        var (userId, _) = await SeedCampMemberAsync(seasonId, CampMemberStatus.Active);
+        var assignedBy = Guid.NewGuid();
+
+        var assign = await _service.AssignCampRoleAsync(
+            seasonId, consentLead.Id, slotIndex: 0,
+            assigneeUserId: userId, assignedByUserId: assignedBy, autoPromoteToMember: false);
+        assign.Outcome.Should().Be(AssignCampRoleOutcome.Assigned);
+
+        var rows = await _service.GetCampRoleComplianceAsync(2026);
+        // The role was filled to its MinimumRequired (1 of 2 slots), so it should NOT
+        // appear in MissingRoleNames for any camp.
+        rows.Where(r => string.Equals(r.CampSlug, "first-slot-camp", StringComparison.Ordinal))
+            .SelectMany(r => r.MissingRoleNames)
+            .Should().NotContain("Consent Lead Test");
+    }
+
+    [Fact]
+    public async Task GetCampRoleComplianceAsync_IgnoresOptionalAndDeactivatedRoles()
+    {
+        await DeactivateAllSeededRolesAsync();
+
+        var (_, _) = await SeedCampSeasonAsync(slug: "ignored-camp", year: 2026);
+
+        // Optional role, unfilled — should be ignored.
+        await SeedRoleDefinitionAsync(
+            "Optional Role", slotCount: 1, minimumRequired: 0, isRequired: false, sortOrder: 100);
+
+        // Deactivated required role, unfilled — should be ignored.
+        var deactivated = await SeedRoleDefinitionAsync(
+            "Deactivated Required Role", slotCount: 1, minimumRequired: 1, isRequired: true, sortOrder: 200);
+        await _service.DeactivateCampRoleDefinitionAsync(deactivated.Id, Guid.NewGuid());
+
+        var rows = await _service.GetCampRoleComplianceAsync(2026);
+        rows.Should().NotContain(r => string.Equals(r.CampSlug, "ignored-camp", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(CampSeasonStatus.Pending)]
+    [InlineData(CampSeasonStatus.Rejected)]
+    [InlineData(CampSeasonStatus.Withdrawn)]
+    public async Task GetCampRoleComplianceAsync_OmitsNonActiveSeasons(CampSeasonStatus status)
+    {
+        await DeactivateAllSeededRolesAsync();
+
+        var slug = $"non-active-{status}";
+        var (_, _) = await SeedCampSeasonAsync(slug: slug, status: status, year: 2026);
+        await SeedRoleDefinitionAsync(
+            "Required Role", slotCount: 1, minimumRequired: 1, isRequired: true, sortOrder: 10);
+
+        var rows = await _service.GetCampRoleComplianceAsync(2026);
+        // Even though the required role is unfilled, the season is not Active and
+        // must be excluded from the compliance report.
+        rows.Should().NotContain(r => string.Equals(r.CampSlug, slug, StringComparison.Ordinal));
+    }
+
     [Theory]
     [InlineData(CampSeasonStatus.Rejected)]
     [InlineData(CampSeasonStatus.Withdrawn)]

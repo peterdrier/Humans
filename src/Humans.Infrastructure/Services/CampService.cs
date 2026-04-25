@@ -1619,8 +1619,8 @@ public class CampService : ICampService
 
     // ==========================================================================
     // Camp role definitions and assignments (issue #489)
-    // Definition CRUD is implemented; assign/unassign/get-assignments/compliance
-    // remain as stubs (see #pragma below) and land in subsequent phases.
+    // All 9 service methods are implemented: definition CRUD, assign/unassign,
+    // get-assignments, and compliance reporting.
     // ==========================================================================
 
     public async Task<IReadOnlyList<CampRoleDefinitionDto>> GetCampRoleDefinitionsAsync(
@@ -1890,8 +1890,39 @@ public class CampService : ICampService
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
-#pragma warning disable MA0025 // Implement the functionality (intentional stubs landing in follow-up commits)
-    public Task<IReadOnlyList<CampComplianceRow>> GetCampRoleComplianceAsync(int year, CancellationToken cancellationToken = default) =>
-        throw new NotImplementedException();
-#pragma warning restore MA0025
+    public async Task<IReadOnlyList<CampComplianceRow>> GetCampRoleComplianceAsync(int year, CancellationToken cancellationToken = default)
+    {
+        var requiredRoles = await _dbContext.CampRoleDefinitions
+            .Where(d => d.IsRequired && d.DeactivatedAt == null)
+            .OrderBy(d => d.SortOrder)
+            .Select(d => new { d.Id, d.Name, d.MinimumRequired })
+            .ToListAsync(cancellationToken);
+        if (requiredRoles.Count == 0) return Array.Empty<CampComplianceRow>();
+
+        var seasons = await _dbContext.CampSeasons
+            .Include(s => s.Camp)
+            .Where(s => s.Year == year && s.Status == CampSeasonStatus.Active)
+            .ToListAsync(cancellationToken);
+
+        var seasonIds = seasons.Select(s => s.Id).ToList();
+        var assignmentCounts = await _dbContext.CampRoleAssignments
+            .Where(a => seasonIds.Contains(a.CampSeasonId))
+            .GroupBy(a => new { a.CampSeasonId, a.CampRoleDefinitionId })
+            .Select(g => new { g.Key.CampSeasonId, g.Key.CampRoleDefinitionId, Count = g.Count() })
+            .ToListAsync(cancellationToken);
+
+        var rows = new List<CampComplianceRow>();
+        foreach (var s in seasons)
+        {
+            var missing = new List<string>();
+            foreach (var role in requiredRoles)
+            {
+                var count = assignmentCounts.FirstOrDefault(c => c.CampSeasonId == s.Id && c.CampRoleDefinitionId == role.Id)?.Count ?? 0;
+                if (count < role.MinimumRequired) missing.Add(role.Name);
+            }
+            if (missing.Count > 0)
+                rows.Add(new CampComplianceRow(s.Camp.Id, s.Camp.Slug, s.Name, s.Year, missing));
+        }
+        return rows;
+    }
 }
