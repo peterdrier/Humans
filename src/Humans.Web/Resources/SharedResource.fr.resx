@@ -1424,6 +1424,7 @@
   <data name="CityPlanning_SaveButton" xml:space="preserve"><value>Enregistrer</value></data>
   <data name="CityPlanning_HistoryButton" xml:space="preserve"><value>Historique</value></data>
   <data name="CityPlanning_AdminLink" xml:space="preserve"><value>Admin</value></data>
+  <data name="CityPlanning_GoToPlacementMap" xml:space="preserve"><value>Aller à la carte de placement</value></data>
   <data name="CityPlanning_Admin_Title" xml:space="preserve"><value>Admin Carte des Barrios</value></data>
   <data name="CityPlanning_Admin_ViewMap" xml:space="preserve"><value>Voir la carte</value></data>
   <data name="CityPlanning_Admin_PlacementPhaseCard" xml:space="preserve"><value>Phase de Placement</value></data>
