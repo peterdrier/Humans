@@ -168,6 +168,26 @@ mechanical:
     update: prompt
     prompt-file: ".claude/skills/freshness-sweep/prompts/data-model-index.md"
 
+  - id: guid-reservations
+    target: docs/guid-reservations.md
+    triggers:
+      - "src/Humans.Infrastructure/Data/Configurations/**/*.cs"
+      - "src/Humans.Domain/Constants/**/*.cs"
+    update: prompt
+    prompt: |
+      Regenerate the "Current Reservations" table in docs/guid-reservations.md.
+
+      Walk src/Humans.Domain/Constants/ and src/Humans.Infrastructure/Data/Configurations/.
+      Find every deterministic GUID literal (`new Guid("0000...")` or string
+      literals in HasData/HasData<T>). Group GUIDs by their leading 4-hex
+      block (e.g., `0001`, `0002`).
+
+      For each block, derive Purpose from the file path / class name and
+      Source as a relative link to that file.
+
+      Preserve the document's prose sections ("Rules", and the explanatory
+      intro). Only regenerate the table.
+
 # Editorial doc trees — walked recursively for .md files. Each .md may include
 # inline freshness markers (freshness:triggers, freshness:auto, freshness:flag-on-change).
 editorial_trees: []
