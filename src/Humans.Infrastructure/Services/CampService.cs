@@ -1708,15 +1708,116 @@ public class CampService : ICampService
         }
     }
 
+    public async Task<AssignCampRoleResult> AssignCampRoleAsync(
+        Guid campSeasonId, Guid campRoleDefinitionId, int slotIndex,
+        Guid assigneeUserId, Guid assignedByUserId, bool autoPromoteToMember,
+        CancellationToken cancellationToken = default)
+    {
+        var def = await _dbContext.CampRoleDefinitions
+            .FirstOrDefaultAsync(d => d.Id == campRoleDefinitionId, cancellationToken);
+        if (def is null)
+            return new AssignCampRoleResult(Guid.Empty, AssignCampRoleOutcome.RoleDeactivated, ErrorMessage: "Role not found.");
+        if (def.DeactivatedAt is not null)
+            return new AssignCampRoleResult(Guid.Empty, AssignCampRoleOutcome.RoleDeactivated, ErrorMessage: "Role is deactivated.");
+        if (slotIndex < 0 || slotIndex >= def.SlotCount)
+            return new AssignCampRoleResult(Guid.Empty, AssignCampRoleOutcome.SlotIndexOutOfRange, ErrorMessage: $"Slot {slotIndex} is out of range for {def.Name}.");
+
+        var season = await _dbContext.CampSeasons
+            .Include(s => s.Camp)
+            .FirstOrDefaultAsync(s => s.Id == campSeasonId, cancellationToken);
+        if (season is null || (season.Status != CampSeasonStatus.Active && season.Status != CampSeasonStatus.Full))
+            return new AssignCampRoleResult(Guid.Empty, AssignCampRoleOutcome.NoOpenSeason, ErrorMessage: "Season is not open for membership.");
+
+        // Slot occupancy
+        if (await _dbContext.CampRoleAssignments.AnyAsync(a =>
+                a.CampSeasonId == campSeasonId && a.CampRoleDefinitionId == campRoleDefinitionId && a.SlotIndex == slotIndex, cancellationToken))
+            return new AssignCampRoleResult(Guid.Empty, AssignCampRoleOutcome.SlotOccupied, ErrorMessage: "Slot is already filled.");
+
+        // Resolve or promote CampMember
+        var member = await _dbContext.CampMembers
+            .FirstOrDefaultAsync(m => m.CampSeasonId == campSeasonId && m.UserId == assigneeUserId && m.Status != CampMemberStatus.Removed,
+                cancellationToken);
+        var outcome = AssignCampRoleOutcome.Assigned;
+        var now = _clock.GetCurrentInstant();
+
+        if (member is null)
+        {
+            // No row, or only a Removed row (filtered out above).
+            if (!autoPromoteToMember)
+                return new AssignCampRoleResult(Guid.Empty, AssignCampRoleOutcome.InvalidUser, ErrorMessage: "User is not an active member of this season.");
+            member = new CampMember
+            {
+                Id = Guid.NewGuid(),
+                CampSeasonId = campSeasonId,
+                UserId = assigneeUserId,
+                Status = CampMemberStatus.Active,
+                RequestedAt = now,
+                ConfirmedAt = now,
+                ConfirmedByUserId = assignedByUserId,
+            };
+            _dbContext.CampMembers.Add(member);
+            await _auditLogService.LogAsync(
+                AuditAction.CampMemberApproved,
+                entityType: nameof(CampMember),
+                entityId: member.Id,
+                description: $"Auto-promoted user {assigneeUserId} to Active for camp '{season.Camp.Slug}' season {season.Year} via role assignment.",
+                actorUserId: assignedByUserId);
+            outcome = AssignCampRoleOutcome.AssignedWithAutoPromote;
+        }
+        else if (member.Status == CampMemberStatus.Pending)
+        {
+            if (!autoPromoteToMember)
+                return new AssignCampRoleResult(Guid.Empty, AssignCampRoleOutcome.InvalidUser, ErrorMessage: "User has only a pending request — confirm first.");
+            member.Status = CampMemberStatus.Active;
+            member.ConfirmedAt = now;
+            member.ConfirmedByUserId = assignedByUserId;
+            await _auditLogService.LogAsync(
+                AuditAction.CampMemberApproved,
+                entityType: nameof(CampMember),
+                entityId: member.Id,
+                description: $"Auto-approved pending request for user {assigneeUserId} via role assignment.",
+                actorUserId: assignedByUserId);
+            outcome = AssignCampRoleOutcome.AssignedWithAutoPromote;
+        }
+
+        // Within-role uniqueness — same human can't hold two slots of one role
+        if (await _dbContext.CampRoleAssignments.AnyAsync(a =>
+                a.CampSeasonId == campSeasonId && a.CampRoleDefinitionId == campRoleDefinitionId && a.CampMemberId == member.Id, cancellationToken))
+            return new AssignCampRoleResult(Guid.Empty, AssignCampRoleOutcome.AlreadyHoldsRole, ErrorMessage: "This human already holds this role for this season.");
+
+        var assignment = new CampRoleAssignment
+        {
+            Id = Guid.NewGuid(),
+            CampRoleDefinitionId = def.Id,
+            CampSeasonId = season.Id,
+            CampMemberId = member.Id,
+            SlotIndex = slotIndex,
+            AssignedAt = now,
+            AssignedByUserId = assignedByUserId,
+        };
+        _dbContext.CampRoleAssignments.Add(assignment);
+
+        await _auditLogService.LogAsync(
+            AuditAction.CampRoleAssigned,
+            entityType: nameof(CampRoleAssignment),
+            entityId: assignment.Id,
+            description: $"Assigned slot {slotIndex + 1} of '{def.Name}' to member {member.Id} for camp '{season.Camp.Slug}' season {season.Year}.",
+            actorUserId: assignedByUserId);
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return new AssignCampRoleResult(
+            AssignmentId: assignment.Id,
+            Outcome: outcome,
+            AssigneeUserId: assigneeUserId,
+            RoleName: def.Name,
+            CampSlug: season.Camp.Slug,
+            CampName: season.Name);
+    }
+
 #pragma warning disable MA0025 // Implement the functionality (intentional stubs landing in follow-up commits)
     public Task<IReadOnlyList<CampRoleAssignmentDto>> GetCampRoleAssignmentsAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default) =>
-        throw new NotImplementedException();
-
-    public Task<AssignCampRoleResult> AssignCampRoleAsync(
-        Guid campSeasonId, Guid campRoleDefinitionId, int slotIndex,
-        Guid assigneeUserId, Guid assignedByUserId, bool autoPromoteToMember,
-        CancellationToken cancellationToken = default) =>
         throw new NotImplementedException();
 
     public Task UnassignCampRoleAsync(Guid assignmentId, Guid actorUserId, CancellationToken cancellationToken = default) =>

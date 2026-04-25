@@ -240,4 +240,314 @@ public class CampRoleTests : IDisposable
         // Ordering: results sorted by SortOrder ascending across the full set
         withDeactivated.Select(d => d.SortOrder).Should().BeInAscendingOrder();
     }
+
+    // ==========================================================================
+    // AssignCampRoleAsync — test helpers
+    // ==========================================================================
+
+    private async Task<(Guid CampId, Guid SeasonId)> SeedCampSeasonAsync(
+        string slug = "test-camp",
+        CampSeasonStatus status = CampSeasonStatus.Active,
+        int year = 2026)
+    {
+        var creatorUserId = Guid.NewGuid();
+        _dbContext.Users.Add(new User
+        {
+            Id = creatorUserId,
+            UserName = $"creator-{creatorUserId}",
+            Email = $"creator-{creatorUserId}@example.com",
+            DisplayName = "Test Creator",
+        });
+        var camp = new Camp
+        {
+            Id = Guid.NewGuid(),
+            Slug = slug,
+            ContactEmail = "x@example.com",
+            ContactPhone = "",
+            CreatedByUserId = creatorUserId,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant(),
+        };
+        var season = new CampSeason
+        {
+            Id = Guid.NewGuid(),
+            CampId = camp.Id,
+            Year = year,
+            Name = $"{slug}-{year}",
+            Status = status,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant(),
+        };
+        _dbContext.Camps.Add(camp);
+        _dbContext.CampSeasons.Add(season);
+        await _dbContext.SaveChangesAsync();
+        return (camp.Id, season.Id);
+    }
+
+    private async Task<(Guid UserId, Guid MemberId)> SeedCampMemberAsync(
+        Guid seasonId, CampMemberStatus status = CampMemberStatus.Active)
+    {
+        var userId = Guid.NewGuid();
+        _dbContext.Users.Add(new User
+        {
+            Id = userId,
+            UserName = $"member-{userId}",
+            Email = $"{userId}@example.com",
+            DisplayName = "Test Member",
+        });
+        var member = new CampMember
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = seasonId,
+            UserId = userId,
+            Status = status,
+            RequestedAt = _clock.GetCurrentInstant(),
+            ConfirmedAt = status == CampMemberStatus.Active ? _clock.GetCurrentInstant() : (Instant?)null,
+        };
+        _dbContext.CampMembers.Add(member);
+        await _dbContext.SaveChangesAsync();
+        return (userId, member.Id);
+    }
+
+    private async Task<Guid> SeedHumanUserAsync()
+    {
+        var userId = Guid.NewGuid();
+        _dbContext.Users.Add(new User
+        {
+            Id = userId,
+            UserName = $"user-{userId}",
+            Email = $"{userId}@example.com",
+            DisplayName = "Other Human",
+        });
+        await _dbContext.SaveChangesAsync();
+        return userId;
+    }
+
+    private async Task<CampRoleDefinition> SeedRoleDefinitionAsync(
+        string name = "Test Role",
+        int slotCount = 1,
+        int minimumRequired = 1,
+        bool isRequired = true,
+        int sortOrder = 100)
+    {
+        var dto = await _service.CreateCampRoleDefinitionAsync(
+            name, null, slotCount, minimumRequired, sortOrder, isRequired,
+            actorUserId: Guid.NewGuid());
+        return await _dbContext.CampRoleDefinitions.FirstAsync(d => d.Id == dto.Id);
+    }
+
+    // ==========================================================================
+    // AssignCampRoleAsync
+    // ==========================================================================
+
+    [Fact]
+    public async Task AssignCampRoleAsync_HappyPath_PersistsAssignmentAndReturnsAssignee()
+    {
+        var (_, seasonId) = await SeedCampSeasonAsync(slug: "happy-camp", year: 2026);
+        var (userId, _) = await SeedCampMemberAsync(seasonId, CampMemberStatus.Active);
+        var role = await SeedRoleDefinitionAsync("Happy Role", slotCount: 1);
+        var assignedBy = Guid.NewGuid();
+
+        var result = await _service.AssignCampRoleAsync(
+            campSeasonId: seasonId,
+            campRoleDefinitionId: role.Id,
+            slotIndex: 0,
+            assigneeUserId: userId,
+            assignedByUserId: assignedBy,
+            autoPromoteToMember: false);
+
+        result.Outcome.Should().Be(AssignCampRoleOutcome.Assigned);
+        result.AssigneeUserId.Should().Be(userId);
+        result.RoleName.Should().Be("Happy Role");
+        result.CampSlug.Should().Be("happy-camp");
+        result.CampName.Should().Be("happy-camp-2026");
+        result.AssignmentId.Should().NotBe(Guid.Empty);
+
+        var row = await _dbContext.CampRoleAssignments.FirstOrDefaultAsync(a => a.Id == result.AssignmentId);
+        row.Should().NotBeNull();
+        row!.CampRoleDefinitionId.Should().Be(role.Id);
+        row.CampSeasonId.Should().Be(seasonId);
+        row.SlotIndex.Should().Be(0);
+        row.AssignedByUserId.Should().Be(assignedBy);
+        row.AssignedAt.Should().Be(_clock.GetCurrentInstant());
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CampRoleAssigned,
+            nameof(CampRoleAssignment),
+            row.Id,
+            Arg.Any<string>(),
+            assignedBy,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
+    }
+
+    [Fact]
+    public async Task AssignCampRoleAsync_RejectsOccupiedSlot()
+    {
+        var (_, seasonId) = await SeedCampSeasonAsync();
+        var (firstUserId, _) = await SeedCampMemberAsync(seasonId, CampMemberStatus.Active);
+        var (secondUserId, _) = await SeedCampMemberAsync(seasonId, CampMemberStatus.Active);
+        var role = await SeedRoleDefinitionAsync("Solo Role", slotCount: 1);
+        var assignedBy = Guid.NewGuid();
+
+        var first = await _service.AssignCampRoleAsync(
+            seasonId, role.Id, slotIndex: 0,
+            assigneeUserId: firstUserId, assignedByUserId: assignedBy, autoPromoteToMember: false);
+        first.Outcome.Should().Be(AssignCampRoleOutcome.Assigned);
+
+        var second = await _service.AssignCampRoleAsync(
+            seasonId, role.Id, slotIndex: 0,
+            assigneeUserId: secondUserId, assignedByUserId: assignedBy, autoPromoteToMember: false);
+
+        second.Outcome.Should().Be(AssignCampRoleOutcome.SlotOccupied);
+        second.AssignmentId.Should().Be(Guid.Empty);
+
+        // Only the first assignment should be persisted.
+        var assignments = await _dbContext.CampRoleAssignments
+            .Where(a => a.CampSeasonId == seasonId && a.CampRoleDefinitionId == role.Id)
+            .ToListAsync();
+        assignments.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task AssignCampRoleAsync_RejectsSameMemberInDifferentSlotsOfSameRole()
+    {
+        var (_, seasonId) = await SeedCampSeasonAsync();
+        var (userId, _) = await SeedCampMemberAsync(seasonId, CampMemberStatus.Active);
+        var role = await SeedRoleDefinitionAsync("Two-slot Role", slotCount: 2, minimumRequired: 1);
+        var assignedBy = Guid.NewGuid();
+
+        var first = await _service.AssignCampRoleAsync(
+            seasonId, role.Id, slotIndex: 0,
+            assigneeUserId: userId, assignedByUserId: assignedBy, autoPromoteToMember: false);
+        first.Outcome.Should().Be(AssignCampRoleOutcome.Assigned);
+
+        var second = await _service.AssignCampRoleAsync(
+            seasonId, role.Id, slotIndex: 1,
+            assigneeUserId: userId, assignedByUserId: assignedBy, autoPromoteToMember: false);
+
+        second.Outcome.Should().Be(AssignCampRoleOutcome.AlreadyHoldsRole);
+        second.AssignmentId.Should().Be(Guid.Empty);
+
+        var assignments = await _dbContext.CampRoleAssignments
+            .Where(a => a.CampSeasonId == seasonId && a.CampRoleDefinitionId == role.Id)
+            .ToListAsync();
+        assignments.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task AssignCampRoleAsync_AutoPromotesNonMember()
+    {
+        var (_, seasonId) = await SeedCampSeasonAsync(slug: "auto-camp", year: 2026);
+        var userId = await SeedHumanUserAsync();
+        var role = await SeedRoleDefinitionAsync("Auto Role", slotCount: 1);
+        var assignedBy = Guid.NewGuid();
+
+        var result = await _service.AssignCampRoleAsync(
+            seasonId, role.Id, slotIndex: 0,
+            assigneeUserId: userId, assignedByUserId: assignedBy, autoPromoteToMember: true);
+
+        result.Outcome.Should().Be(AssignCampRoleOutcome.AssignedWithAutoPromote);
+        result.AssigneeUserId.Should().Be(userId);
+        result.RoleName.Should().Be("Auto Role");
+
+        var member = await _dbContext.CampMembers
+            .FirstOrDefaultAsync(m => m.CampSeasonId == seasonId && m.UserId == userId);
+        member.Should().NotBeNull();
+        member!.Status.Should().Be(CampMemberStatus.Active);
+        member.ConfirmedAt.Should().Be(_clock.GetCurrentInstant());
+        member.ConfirmedByUserId.Should().Be(assignedBy);
+
+        // Both audit calls fired: membership approval + role assignment.
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CampMemberApproved,
+            nameof(CampMember),
+            member.Id,
+            Arg.Any<string>(),
+            assignedBy,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CampRoleAssigned,
+            nameof(CampRoleAssignment),
+            result.AssignmentId,
+            Arg.Any<string>(),
+            assignedBy,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
+    }
+
+    [Fact]
+    public async Task AssignCampRoleAsync_WithoutAutoPromote_RejectsNonMember()
+    {
+        var (_, seasonId) = await SeedCampSeasonAsync();
+        var userId = await SeedHumanUserAsync();
+        var role = await SeedRoleDefinitionAsync("No-Auto Role", slotCount: 1);
+        var assignedBy = Guid.NewGuid();
+
+        var result = await _service.AssignCampRoleAsync(
+            seasonId, role.Id, slotIndex: 0,
+            assigneeUserId: userId, assignedByUserId: assignedBy, autoPromoteToMember: false);
+
+        result.Outcome.Should().Be(AssignCampRoleOutcome.InvalidUser);
+        result.AssignmentId.Should().Be(Guid.Empty);
+
+        var member = await _dbContext.CampMembers
+            .FirstOrDefaultAsync(m => m.CampSeasonId == seasonId && m.UserId == userId);
+        member.Should().BeNull();
+
+        var assignments = await _dbContext.CampRoleAssignments
+            .Where(a => a.CampSeasonId == seasonId)
+            .ToListAsync();
+        assignments.Should().BeEmpty();
+
+        // No audit calls should have been made for an outright rejection.
+        await _auditLog.DidNotReceive().LogAsync(
+            AuditAction.CampRoleAssigned,
+            Arg.Any<string>(),
+            Arg.Any<Guid>(),
+            Arg.Any<string>(),
+            Arg.Any<Guid>(),
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
+    }
+
+    [Fact]
+    public async Task AssignCampRoleAsync_AutoPromotesPendingMember()
+    {
+        var (_, seasonId) = await SeedCampSeasonAsync();
+        var (userId, memberId) = await SeedCampMemberAsync(seasonId, CampMemberStatus.Pending);
+        var role = await SeedRoleDefinitionAsync("Pending Auto Role", slotCount: 1);
+        var assignedBy = Guid.NewGuid();
+
+        var result = await _service.AssignCampRoleAsync(
+            seasonId, role.Id, slotIndex: 0,
+            assigneeUserId: userId, assignedByUserId: assignedBy, autoPromoteToMember: true);
+
+        result.Outcome.Should().Be(AssignCampRoleOutcome.AssignedWithAutoPromote);
+
+        var member = await _dbContext.CampMembers.FirstAsync(m => m.Id == memberId);
+        member.Status.Should().Be(CampMemberStatus.Active);
+        member.ConfirmedAt.Should().Be(_clock.GetCurrentInstant());
+        member.ConfirmedByUserId.Should().Be(assignedBy);
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CampMemberApproved,
+            nameof(CampMember),
+            memberId,
+            Arg.Any<string>(),
+            assignedBy,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CampRoleAssigned,
+            nameof(CampRoleAssignment),
+            result.AssignmentId,
+            Arg.Any<string>(),
+            assignedBy,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
+    }
 }
