@@ -85,5 +85,8 @@ public enum NotificationSource
     CampMembershipRejected = 26,
 
     /// <summary>A human requested membership in a camp (notifies leads).</summary>
-    CampMembershipRequested = 27
+    CampMembershipRequested = 27,
+
+    /// <summary>A human was assigned to a camp role slot.</summary>
+    CampRoleAssigned = 28
 }

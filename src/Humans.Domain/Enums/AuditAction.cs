@@ -81,4 +81,10 @@ public enum AuditAction
     GoogleResourceInheritanceDriftCorrected,
     FeedbackAssignmentChanged,
     GoogleEmailRenamed,
+    CampRoleDefinitionCreated,
+    CampRoleDefinitionUpdated,
+    CampRoleDefinitionDeactivated,
+    CampRoleDefinitionReactivated,
+    CampRoleAssigned,
+    CampRoleUnassigned,
 }
