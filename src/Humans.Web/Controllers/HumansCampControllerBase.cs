@@ -27,15 +27,6 @@ public abstract class HumansCampControllerBase : HumansControllerBase
         return _campService.GetCampBySlugAsync(slug, cancellationToken);
     }
 
-    protected async Task<(bool IsLead, bool IsCampAdmin)> ResolveCampViewerStateAsync(
-        Camp camp,
-        User? currentUser = null,
-        CancellationToken cancellationToken = default)
-    {
-        var user = await GetCurrentUserAsync();
-        return await ResolveCampViewerStateAsync(camp, user, cancellationToken);
-    }
-
     protected async Task<(bool IsLead, bool IsCampAdmin)> ResolveCampViewerStateAsync(Camp camp, User? user, CancellationToken cancellationToken = default)
     {
         var canManage = (await _authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.Manage)).Succeeded;
