@@ -948,7 +948,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<List<string>> GetAvailableTicketTypesAsync() => throw new NotSupportedException();
         public Task<Humans.Application.DTOs.CodeTrackingData> GetCodeTrackingDataAsync(string? search) => throw new NotSupportedException();
         public Task<Humans.Application.DTOs.OrdersPageResult> GetOrdersPageAsync(string? search, string sortBy, bool sortDesc, int page, int pageSize, string? filterPaymentStatus, string? filterTicketType, bool? filterMatched) => throw new NotSupportedException();
-        public Task<Humans.Application.DTOs.AttendeesPageResult> GetAttendeesPageAsync(string? search, string sortBy, bool sortDesc, int page, int pageSize, string? filterTicketType, string? filterStatus, bool? filterMatched, string? filterOrderId) => throw new NotSupportedException();
+        public Task<Humans.Application.DTOs.AttendeesPageResult> GetAttendeesPageAsync(string? search, string sortBy, bool sortDesc, int page, int pageSize, string? filterTicketType, string? filterStatus, bool? filterMatched, string? filterOrderId, bool filterMultipleTickets = false) => throw new NotSupportedException();
         public Task<Humans.Application.DTOs.WhoHasntBoughtResult> GetWhoHasntBoughtAsync(string? search, string? filterTeam, string? filterTier, string? filterTicketStatus, int page, int pageSize) => throw new NotSupportedException();
         public Task<List<Humans.Application.DTOs.AttendeeExportRow>> GetAttendeeExportDataAsync() => throw new NotSupportedException();
         public Task<List<Humans.Application.DTOs.OrderExportRow>> GetOrderExportDataAsync() => throw new NotSupportedException();

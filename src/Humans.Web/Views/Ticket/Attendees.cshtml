@@ -36,6 +36,14 @@
                 <option value="false" selected="@(Model.FilterMatched == false ? "selected" : null)">Unmatched</option>
             </select>
         </div>
+        <div class="col-md-auto">
+            <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" name="filterMultipleTickets" value="true" id="filterMultipleTickets" checked="@(Model.FilterMultipleTickets ? "checked" : null)" />
+                <label class="form-check-label" for="filterMultipleTickets" title="Buyers (matched human or unmatched email) with more than one ticket">
+                    Buyers with &gt;1 ticket
+                </label>
+            </div>
+        </div>
         <div class="col-auto">
             <button type="submit" class="btn btn-primary"><i class="fa-solid fa-search"></i> Filter</button>
         </div>
@@ -51,12 +59,12 @@
         <table class="table table-sm table-hover">
             <thead>
                 <tr>
-                    <th><a asp-action="Attendees" asp-route-sortBy="name" asp-route-sortDesc="@(string.Equals(Model.SortBy, "name", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "false")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterStatus="@Model.FilterStatus" asp-route-filterMatched="@Model.FilterMatched" asp-route-filterOrderId="@Model.FilterOrderId">Name</a></th>
+                    <th><a asp-action="Attendees" asp-route-sortBy="name" asp-route-sortDesc="@(string.Equals(Model.SortBy, "name", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "false")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterStatus="@Model.FilterStatus" asp-route-filterMatched="@Model.FilterMatched" asp-route-filterOrderId="@Model.FilterOrderId" asp-route-filterMultipleTickets="@Model.FilterMultipleTickets">Name</a></th>
                     <th>Email</th>
-                    <th><a asp-action="Attendees" asp-route-sortBy="type" asp-route-sortDesc="@(string.Equals(Model.SortBy, "type", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "false")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterStatus="@Model.FilterStatus" asp-route-filterMatched="@Model.FilterMatched" asp-route-filterOrderId="@Model.FilterOrderId">Ticket Type</a></th>
-                    <th><a asp-action="Attendees" asp-route-sortBy="price" asp-route-sortDesc="@(string.Equals(Model.SortBy, "price", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "true")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterStatus="@Model.FilterStatus" asp-route-filterMatched="@Model.FilterMatched" asp-route-filterOrderId="@Model.FilterOrderId">Price</a></th>
+                    <th><a asp-action="Attendees" asp-route-sortBy="type" asp-route-sortDesc="@(string.Equals(Model.SortBy, "type", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "false")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterStatus="@Model.FilterStatus" asp-route-filterMatched="@Model.FilterMatched" asp-route-filterOrderId="@Model.FilterOrderId" asp-route-filterMultipleTickets="@Model.FilterMultipleTickets">Ticket Type</a></th>
+                    <th><a asp-action="Attendees" asp-route-sortBy="price" asp-route-sortDesc="@(string.Equals(Model.SortBy, "price", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "true")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterStatus="@Model.FilterStatus" asp-route-filterMatched="@Model.FilterMatched" asp-route-filterOrderId="@Model.FilterOrderId" asp-route-filterMultipleTickets="@Model.FilterMultipleTickets">Price</a></th>
                     <th>VIP Split</th>
-                    <th><a asp-action="Attendees" asp-route-sortBy="status" asp-route-sortDesc="@(string.Equals(Model.SortBy, "status", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "false")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterStatus="@Model.FilterStatus" asp-route-filterMatched="@Model.FilterMatched" asp-route-filterOrderId="@Model.FilterOrderId">Status</a></th>
+                    <th><a asp-action="Attendees" asp-route-sortBy="status" asp-route-sortDesc="@(string.Equals(Model.SortBy, "status", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "false")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterStatus="@Model.FilterStatus" asp-route-filterMatched="@Model.FilterMatched" asp-route-filterOrderId="@Model.FilterOrderId" asp-route-filterMultipleTickets="@Model.FilterMultipleTickets">Status</a></th>
                     <th>Matched Human</th>
                     <th>Order</th>
                 </tr>
@@ -123,24 +131,8 @@
         </table>
     </div>
 
-    <!-- Pagination -->
-    @if (Model.TotalPages > 1)
-    {
-        <nav>
-            <ul class="pagination">
-                <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
-                    <a class="page-link" asp-action="Attendees" asp-route-page="@(Model.Page - 1)" asp-route-search="@Model.Search" asp-route-sortBy="@Model.SortBy" asp-route-sortDesc="@Model.SortDesc" asp-route-pageSize="@Model.PageSize" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterStatus="@Model.FilterStatus" asp-route-filterMatched="@Model.FilterMatched" asp-route-filterOrderId="@Model.FilterOrderId">Previous</a>
-                </li>
-                @for (var i = 1; i <= Model.TotalPages; i++)
-                {
-                    <li class="page-item @(i == Model.Page ? "active" : "")">
-                        <a class="page-link" asp-action="Attendees" asp-route-page="@i" asp-route-search="@Model.Search" asp-route-sortBy="@Model.SortBy" asp-route-sortDesc="@Model.SortDesc" asp-route-pageSize="@Model.PageSize" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterStatus="@Model.FilterStatus" asp-route-filterMatched="@Model.FilterMatched" asp-route-filterOrderId="@Model.FilterOrderId">@i</a>
-                    </li>
-                }
-                <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
-                    <a class="page-link" asp-action="Attendees" asp-route-page="@(Model.Page + 1)" asp-route-search="@Model.Search" asp-route-sortBy="@Model.SortBy" asp-route-sortDesc="@Model.SortDesc" asp-route-pageSize="@Model.PageSize" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterStatus="@Model.FilterStatus" asp-route-filterMatched="@Model.FilterMatched" asp-route-filterOrderId="@Model.FilterOrderId">Next</a>
-                </li>
-            </ul>
-        </nav>
+    @{
+        var pagerModel = new PagerViewModel { TotalPages = Model.TotalPages, CurrentPage = Model.Page, Action = "Attendees" };
     }
+    <partial name="_Pager" model="pagerModel" />
 </div>

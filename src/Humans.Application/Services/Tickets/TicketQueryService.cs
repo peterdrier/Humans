@@ -470,7 +470,8 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
     public async Task<AttendeesPageResult> GetAttendeesPageAsync(
         string? search, string sortBy, bool sortDesc,
         int page, int pageSize,
-        string? filterTicketType, string? filterStatus, bool? filterMatched, string? filterOrderId)
+        string? filterTicketType, string? filterStatus, bool? filterMatched, string? filterOrderId,
+        bool filterMultipleTickets = false)
     {
         TicketAttendeeStatus? parsedStatus = null;
         if (!string.IsNullOrEmpty(filterStatus) &&
@@ -481,7 +482,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
 
         var (rawRows, totalCount) = await _ticketRepository.GetAttendeesPageAsync(
             search, sortBy, sortDesc, page, pageSize,
-            filterTicketType, parsedStatus, filterMatched, filterOrderId);
+            filterTicketType, parsedStatus, filterMatched, filterOrderId, filterMultipleTickets);
 
         var rows = await HydrateAttendeeMatchedUserNamesAsync(rawRows);
         return new AttendeesPageResult { Rows = rows, TotalCount = totalCount };
