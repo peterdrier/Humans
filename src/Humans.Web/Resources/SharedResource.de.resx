@@ -1454,6 +1454,17 @@
   <data name="CityPlanning_Admin_ExportCard" xml:space="preserve"><value>Exportieren</value></data>
   <data name="CityPlanning_Admin_ExportDescription" xml:space="preserve"><value>Alle Barrio-Polygone für {0} als GeoJSON FeatureCollection herunterladen.</value></data>
   <data name="CityPlanning_Admin_DownloadGeoJson" xml:space="preserve"><value>GeoJSON herunterladen ({0})</value></data>
+  <data name="CityPlanning_Admin_ImportCard" xml:space="preserve"><value>Polygone importieren</value></data>
+  <data name="CityPlanning_Admin_ImportDescription" xml:space="preserve"><value>Lade eine GeoJSON FeatureCollection hoch, um Barrio-Polygone für {0} zu aktualisieren. Features werden anhand der Eigenschaft campName oder campSlug zugeordnet.</value></data>
+  <data name="CityPlanning_Admin_ImportFileLabel" xml:space="preserve"><value>GeoJSON-Datei</value></data>
+  <data name="CityPlanning_Admin_ImportPreviewBtn" xml:space="preserve"><value>Vorschau</value></data>
+  <data name="CityPlanning_Admin_ImportModalTitle" xml:space="preserve"><value>Importvorschau</value></data>
+  <data name="CityPlanning_Admin_ImportWillBeUpdated" xml:space="preserve"><value>Werden aktualisiert</value></data>
+  <data name="CityPlanning_Admin_ImportCampHeader" xml:space="preserve"><value>Barrio</value></data>
+  <data name="CityPlanning_Admin_ImportPreviousArea" xml:space="preserve"><value>Bisherige Fläche</value></data>
+  <data name="CityPlanning_Admin_ImportNewArea" xml:space="preserve"><value>Neue Fläche</value></data>
+  <data name="CityPlanning_Admin_ImportUnrecognized" xml:space="preserve"><value>Nicht erkannte Features (werden übersprungen)</value></data>
+  <data name="CityPlanning_Admin_ImportConfirmBtn" xml:space="preserve"><value>Import bestätigen</value></data>
   <data name="CityPlanning_HistoryTitle" xml:space="preserve"><value>Polygon-Verlauf</value></data>
   <data name="CityPlanning_Loading" xml:space="preserve"><value>Wird geladen…</value></data>
   <data name="CityPlanning_Help_WhenIsIt" xml:space="preserve"><value>Wann ist es?</value></data>

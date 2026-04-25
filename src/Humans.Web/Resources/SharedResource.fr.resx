@@ -1454,6 +1454,17 @@
   <data name="CityPlanning_Admin_ExportCard" xml:space="preserve"><value>Exporter</value></data>
   <data name="CityPlanning_Admin_ExportDescription" xml:space="preserve"><value>Télécharger tous les polygones de barrios pour {0} en tant que GeoJSON FeatureCollection.</value></data>
   <data name="CityPlanning_Admin_DownloadGeoJson" xml:space="preserve"><value>Télécharger GeoJSON ({0})</value></data>
+  <data name="CityPlanning_Admin_ImportCard" xml:space="preserve"><value>Importer des polygones</value></data>
+  <data name="CityPlanning_Admin_ImportDescription" xml:space="preserve"><value>Téléversez une FeatureCollection GeoJSON pour mettre à jour en bloc les polygones des barrios pour {0}. Les entités sont associées par la propriété campName ou campSlug.</value></data>
+  <data name="CityPlanning_Admin_ImportFileLabel" xml:space="preserve"><value>Fichier GeoJSON</value></data>
+  <data name="CityPlanning_Admin_ImportPreviewBtn" xml:space="preserve"><value>Aperçu</value></data>
+  <data name="CityPlanning_Admin_ImportModalTitle" xml:space="preserve"><value>Aperçu de l'import</value></data>
+  <data name="CityPlanning_Admin_ImportWillBeUpdated" xml:space="preserve"><value>Seront mis à jour</value></data>
+  <data name="CityPlanning_Admin_ImportCampHeader" xml:space="preserve"><value>Barrio</value></data>
+  <data name="CityPlanning_Admin_ImportPreviousArea" xml:space="preserve"><value>Surface précédente</value></data>
+  <data name="CityPlanning_Admin_ImportNewArea" xml:space="preserve"><value>Nouvelle surface</value></data>
+  <data name="CityPlanning_Admin_ImportUnrecognized" xml:space="preserve"><value>Entités non reconnues (seront ignorées)</value></data>
+  <data name="CityPlanning_Admin_ImportConfirmBtn" xml:space="preserve"><value>Confirmer l'import</value></data>
   <data name="CityPlanning_HistoryTitle" xml:space="preserve"><value>Historique des polygones</value></data>
   <data name="CityPlanning_Loading" xml:space="preserve"><value>Chargement…</value></data>
   <data name="CityPlanning_Help_WhenIsIt" xml:space="preserve"><value>C'est quand ?</value></data>

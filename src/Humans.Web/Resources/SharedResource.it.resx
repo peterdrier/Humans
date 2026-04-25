@@ -1454,6 +1454,17 @@
   <data name="CityPlanning_Admin_ExportCard" xml:space="preserve"><value>Esporta</value></data>
   <data name="CityPlanning_Admin_ExportDescription" xml:space="preserve"><value>Scarica tutti i poligoni dei barrios per {0} come GeoJSON FeatureCollection.</value></data>
   <data name="CityPlanning_Admin_DownloadGeoJson" xml:space="preserve"><value>Scarica GeoJSON ({0})</value></data>
+  <data name="CityPlanning_Admin_ImportCard" xml:space="preserve"><value>Importa poligoni</value></data>
+  <data name="CityPlanning_Admin_ImportDescription" xml:space="preserve"><value>Carica una FeatureCollection GeoJSON per aggiornare in blocco i poligoni dei barrio per {0}. Le feature vengono abbinate dalla proprietà campName o campSlug.</value></data>
+  <data name="CityPlanning_Admin_ImportFileLabel" xml:space="preserve"><value>File GeoJSON</value></data>
+  <data name="CityPlanning_Admin_ImportPreviewBtn" xml:space="preserve"><value>Anteprima</value></data>
+  <data name="CityPlanning_Admin_ImportModalTitle" xml:space="preserve"><value>Anteprima importazione</value></data>
+  <data name="CityPlanning_Admin_ImportWillBeUpdated" xml:space="preserve"><value>Verranno aggiornati</value></data>
+  <data name="CityPlanning_Admin_ImportCampHeader" xml:space="preserve"><value>Barrio</value></data>
+  <data name="CityPlanning_Admin_ImportPreviousArea" xml:space="preserve"><value>Area precedente</value></data>
+  <data name="CityPlanning_Admin_ImportNewArea" xml:space="preserve"><value>Nuova area</value></data>
+  <data name="CityPlanning_Admin_ImportUnrecognized" xml:space="preserve"><value>Feature non riconosciute (verranno saltate)</value></data>
+  <data name="CityPlanning_Admin_ImportConfirmBtn" xml:space="preserve"><value>Conferma importazione</value></data>
   <data name="CityPlanning_HistoryTitle" xml:space="preserve"><value>Cronologia poligoni</value></data>
   <data name="CityPlanning_Loading" xml:space="preserve"><value>Caricamento…</value></data>
   <data name="CityPlanning_Help_WhenIsIt" xml:space="preserve"><value>Quando si svolge?</value></data>

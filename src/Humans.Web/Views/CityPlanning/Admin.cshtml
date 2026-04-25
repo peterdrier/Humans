@@ -191,16 +191,16 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header fw-semibold">
-                    <i class="fa-solid fa-file-import me-1"></i> Import polygons (@settings.Year)
+                    <i class="fa-solid fa-file-import me-1"></i> @Localizer["CityPlanning_Admin_ImportCard"] (@settings.Year)
                 </div>
                 <div class="card-body">
-                    <p class="mb-2">Upload a GeoJSON FeatureCollection to bulk-update camp polygons for @settings.Year. Features are matched by <code>campName</code> or <code>campSlug</code> property.</p>
+                    <p class="mb-2">@string.Format(Localizer["CityPlanning_Admin_ImportDescription"].Value, settings.Year)</p>
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold">GeoJSON file</label>
+                        <label class="form-label small fw-semibold">@Localizer["CityPlanning_Admin_ImportFileLabel"]</label>
                         <input type="file" id="import-file-input" accept=".geojson,.json,application/geo+json" class="form-control form-control-sm" />
                     </div>
                     <button id="import-preview-btn" type="button" class="btn btn-primary btn-sm">
-                        <i class="fa-solid fa-eye me-1"></i> Preview import
+                        <i class="fa-solid fa-eye me-1"></i> @Localizer["CityPlanning_Admin_ImportPreviewBtn"]
                     </button>
                     <div id="import-error" class="text-danger small mt-2 d-none"></div>
                     <div id="import-result" class="d-none mt-2"></div>
@@ -216,34 +216,34 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="import-preview-modal-label">
-                    <i class="fa-solid fa-file-import me-1"></i> Import preview
+                    <i class="fa-solid fa-file-import me-1"></i> @Localizer["CityPlanning_Admin_ImportModalTitle"]
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <h6 class="mb-2">Will be updated</h6>
+                <h6 class="mb-2">@Localizer["CityPlanning_Admin_ImportWillBeUpdated"]</h6>
                 <table class="table table-sm table-bordered mb-3">
                     <thead class="table-light">
                         <tr>
-                            <th>Camp</th>
-                            <th class="text-end">Previous area</th>
-                            <th class="text-end">New area</th>
+                            <th>@Localizer["CityPlanning_Admin_ImportCampHeader"]</th>
+                            <th class="text-end">@Localizer["CityPlanning_Admin_ImportPreviousArea"]</th>
+                            <th class="text-end">@Localizer["CityPlanning_Admin_ImportNewArea"]</th>
                         </tr>
                     </thead>
                     <tbody id="import-matched-body"></tbody>
                 </table>
 
                 <div id="import-unrecognized-section" class="d-none">
-                    <h6 class="text-warning mb-1"><i class="fa-solid fa-triangle-exclamation me-1"></i> Unrecognized features (will be skipped)</h6>
+                    <h6 class="text-warning mb-1"><i class="fa-solid fa-triangle-exclamation me-1"></i> @Localizer["CityPlanning_Admin_ImportUnrecognized"]</h6>
                     <ul id="import-unrecognized-list" class="small text-muted mb-0"></ul>
                 </div>
 
                 <div id="import-status" class="text-muted small mt-3 d-none"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">@Localizer["Common_Cancel"]</button>
                 <button type="button" id="import-confirm-btn" class="btn btn-primary btn-sm">
-                    <i class="fa-solid fa-check me-1"></i> Confirm import
+                    <i class="fa-solid fa-check me-1"></i> @Localizer["CityPlanning_Admin_ImportConfirmBtn"]
                 </button>
             </div>
         </div>

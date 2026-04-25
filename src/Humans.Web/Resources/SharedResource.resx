@@ -1471,6 +1471,17 @@
   <data name="CityPlanning_Admin_ExportCard" xml:space="preserve"><value>Export</value></data>
   <data name="CityPlanning_Admin_ExportDescription" xml:space="preserve"><value>Download all camp polygons for {0} as a GeoJSON FeatureCollection.</value><comment>{0} = year</comment></data>
   <data name="CityPlanning_Admin_DownloadGeoJson" xml:space="preserve"><value>Download GeoJSON ({0})</value><comment>{0} = year</comment></data>
+  <data name="CityPlanning_Admin_ImportCard" xml:space="preserve"><value>Import polygons</value></data>
+  <data name="CityPlanning_Admin_ImportDescription" xml:space="preserve"><value>Upload a GeoJSON FeatureCollection to bulk-update camp polygons for {0}. Features are matched by campName or campSlug property.</value><comment>{0} = year</comment></data>
+  <data name="CityPlanning_Admin_ImportFileLabel" xml:space="preserve"><value>GeoJSON file</value></data>
+  <data name="CityPlanning_Admin_ImportPreviewBtn" xml:space="preserve"><value>Preview import</value></data>
+  <data name="CityPlanning_Admin_ImportModalTitle" xml:space="preserve"><value>Import preview</value></data>
+  <data name="CityPlanning_Admin_ImportWillBeUpdated" xml:space="preserve"><value>Will be updated</value></data>
+  <data name="CityPlanning_Admin_ImportCampHeader" xml:space="preserve"><value>Camp</value></data>
+  <data name="CityPlanning_Admin_ImportPreviousArea" xml:space="preserve"><value>Previous area</value></data>
+  <data name="CityPlanning_Admin_ImportNewArea" xml:space="preserve"><value>New area</value></data>
+  <data name="CityPlanning_Admin_ImportUnrecognized" xml:space="preserve"><value>Unrecognized features (will be skipped)</value></data>
+  <data name="CityPlanning_Admin_ImportConfirmBtn" xml:space="preserve"><value>Confirm import</value></data>
   <!-- History offcanvas -->
   <data name="CityPlanning_HistoryTitle" xml:space="preserve"><value>Polygon History</value></data>
   <data name="CityPlanning_Loading" xml:space="preserve"><value>Loading…</value></data>

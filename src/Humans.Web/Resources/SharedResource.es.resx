@@ -1456,6 +1456,17 @@
   <data name="CityPlanning_Admin_ExportCard" xml:space="preserve"><value>Exportar</value></data>
   <data name="CityPlanning_Admin_ExportDescription" xml:space="preserve"><value>Descargar todos los polígonos de barrios de {0} como GeoJSON FeatureCollection.</value></data>
   <data name="CityPlanning_Admin_DownloadGeoJson" xml:space="preserve"><value>Descargar GeoJSON ({0})</value></data>
+  <data name="CityPlanning_Admin_ImportCard" xml:space="preserve"><value>Importar polígonos</value></data>
+  <data name="CityPlanning_Admin_ImportDescription" xml:space="preserve"><value>Sube un GeoJSON FeatureCollection para actualizar en bloque los polígonos de barrios de {0}. Las entidades se emparejan por la propiedad campName o campSlug.</value></data>
+  <data name="CityPlanning_Admin_ImportFileLabel" xml:space="preserve"><value>Archivo GeoJSON</value></data>
+  <data name="CityPlanning_Admin_ImportPreviewBtn" xml:space="preserve"><value>Vista previa</value></data>
+  <data name="CityPlanning_Admin_ImportModalTitle" xml:space="preserve"><value>Vista previa de la importación</value></data>
+  <data name="CityPlanning_Admin_ImportWillBeUpdated" xml:space="preserve"><value>Se actualizarán</value></data>
+  <data name="CityPlanning_Admin_ImportCampHeader" xml:space="preserve"><value>Barrio</value></data>
+  <data name="CityPlanning_Admin_ImportPreviousArea" xml:space="preserve"><value>Área anterior</value></data>
+  <data name="CityPlanning_Admin_ImportNewArea" xml:space="preserve"><value>Área nueva</value></data>
+  <data name="CityPlanning_Admin_ImportUnrecognized" xml:space="preserve"><value>Entidades no reconocidas (se omitirán)</value></data>
+  <data name="CityPlanning_Admin_ImportConfirmBtn" xml:space="preserve"><value>Confirmar importación</value></data>
   <data name="CityPlanning_HistoryTitle" xml:space="preserve"><value>Historial de polígonos</value></data>
   <data name="CityPlanning_Loading" xml:space="preserve"><value>Cargando…</value></data>
   <data name="CityPlanning_Help_WhenIsIt" xml:space="preserve"><value>¿Cuándo es?</value></data>

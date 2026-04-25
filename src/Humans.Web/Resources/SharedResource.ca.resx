@@ -1456,6 +1456,17 @@
   <data name="CityPlanning_Admin_ExportCard" xml:space="preserve"><value>Exportar</value></data>
   <data name="CityPlanning_Admin_ExportDescription" xml:space="preserve"><value>Descarregar tots els polígons de barrios de {0} com a GeoJSON FeatureCollection.</value></data>
   <data name="CityPlanning_Admin_DownloadGeoJson" xml:space="preserve"><value>Descarregar GeoJSON ({0})</value></data>
+  <data name="CityPlanning_Admin_ImportCard" xml:space="preserve"><value>Importar polígons</value></data>
+  <data name="CityPlanning_Admin_ImportDescription" xml:space="preserve"><value>Puja una FeatureCollection GeoJSON per actualitzar en bloc els polígons de barrios de {0}. Les entitats s'associen per la propietat campName o campSlug.</value></data>
+  <data name="CityPlanning_Admin_ImportFileLabel" xml:space="preserve"><value>Fitxer GeoJSON</value></data>
+  <data name="CityPlanning_Admin_ImportPreviewBtn" xml:space="preserve"><value>Vista prèvia</value></data>
+  <data name="CityPlanning_Admin_ImportModalTitle" xml:space="preserve"><value>Vista prèvia de la importació</value></data>
+  <data name="CityPlanning_Admin_ImportWillBeUpdated" xml:space="preserve"><value>S'actualitzaran</value></data>
+  <data name="CityPlanning_Admin_ImportCampHeader" xml:space="preserve"><value>Barrio</value></data>
+  <data name="CityPlanning_Admin_ImportPreviousArea" xml:space="preserve"><value>Àrea anterior</value></data>
+  <data name="CityPlanning_Admin_ImportNewArea" xml:space="preserve"><value>Àrea nova</value></data>
+  <data name="CityPlanning_Admin_ImportUnrecognized" xml:space="preserve"><value>Entitats no reconegudes (s'ometran)</value></data>
+  <data name="CityPlanning_Admin_ImportConfirmBtn" xml:space="preserve"><value>Confirmar importació</value></data>
   <data name="CityPlanning_HistoryTitle" xml:space="preserve"><value>Historial de polígons</value></data>
   <data name="CityPlanning_Loading" xml:space="preserve"><value>Carregant…</value></data>
   <data name="CityPlanning_Help_WhenIsIt" xml:space="preserve"><value>Quan és?</value></data>
