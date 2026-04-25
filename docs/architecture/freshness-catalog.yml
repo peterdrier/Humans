@@ -6,7 +6,15 @@ version: 1
 # Mechanical entries — fully auto-derived. Each entry declares trigger globs
 # (matched against `git diff --name-only <anchor>..upstream/main`) and an
 # update method (script or prompt).
-mechanical: []
+mechanical:
+  - id: dev-stats
+    target: docs/development-stats.md
+    triggers:
+      - "src/**/*.cs"
+      - "src/**/*.cshtml"
+      - "src/**/*.razor"
+    update: script
+    script: docs/scripts/generate-stats.sh
 
 # Editorial doc trees — walked recursively for .md files. Each .md may include
 # inline freshness markers (freshness:triggers, freshness:auto, freshness:flag-on-change).
