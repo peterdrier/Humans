@@ -1465,6 +1465,17 @@
   <data name="CityPlanning_Admin_ImportNewArea" xml:space="preserve"><value>Nuova area</value></data>
   <data name="CityPlanning_Admin_ImportUnrecognized" xml:space="preserve"><value>Feature non riconosciute (verranno saltate)</value></data>
   <data name="CityPlanning_Admin_ImportConfirmBtn" xml:space="preserve"><value>Conferma importazione</value></data>
+  <data name="CityPlanning_Admin_ImportSelectFileError" xml:space="preserve"><value>Seleziona un file GeoJSON.</value></data>
+  <data name="CityPlanning_Admin_ImportInvalidJsonError" xml:space="preserve"><value>File non valido — JSON non valido.</value></data>
+  <data name="CityPlanning_Admin_ImportNotFeatureCollectionError" xml:space="preserve"><value>Il file deve essere una FeatureCollection GeoJSON.</value></data>
+  <data name="CityPlanning_Admin_ImportFetchStateError" xml:space="preserve"><value>Impossibile caricare l'elenco dei barrio. Riprova.</value></data>
+  <data name="CityPlanning_Admin_ImportNoCampsMatched" xml:space="preserve"><value>Nessun barrio corrispondente.</value></data>
+  <data name="CityPlanning_Admin_ImportTokenMissingError" xml:space="preserve"><value>Token di sicurezza mancante. Aggiorna la pagina.</value></data>
+  <data name="CityPlanning_Admin_ImportFileTooLargeError" xml:space="preserve"><value>File troppo grande (max 10 MB).</value></data>
+  <data name="CityPlanning_Admin_ImportNotPolygonSuffix" xml:space="preserve"><value>(non è un poligono)</value></data>
+  <data name="CityPlanning_Admin_ImportUpdating" xml:space="preserve"><value>Aggiornamento di {0} poligono/i…</value></data>
+  <data name="CityPlanning_Admin_ImportSuccess" xml:space="preserve"><value>{0} poligono/i aggiornato/i.</value></data>
+  <data name="CityPlanning_Admin_ImportPartialFailure" xml:space="preserve"><value>{0} aggiornato/i, {1} non riuscito/i: {2}.</value></data>
   <data name="CityPlanning_HistoryTitle" xml:space="preserve"><value>Cronologia poligoni</value></data>
   <data name="CityPlanning_Loading" xml:space="preserve"><value>Caricamento…</value></data>
   <data name="CityPlanning_Help_WhenIsIt" xml:space="preserve"><value>Quando si svolge?</value></data>

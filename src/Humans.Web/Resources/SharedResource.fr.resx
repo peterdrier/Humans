@@ -1465,6 +1465,17 @@
   <data name="CityPlanning_Admin_ImportNewArea" xml:space="preserve"><value>Nouvelle surface</value></data>
   <data name="CityPlanning_Admin_ImportUnrecognized" xml:space="preserve"><value>Entités non reconnues (seront ignorées)</value></data>
   <data name="CityPlanning_Admin_ImportConfirmBtn" xml:space="preserve"><value>Confirmer l'import</value></data>
+  <data name="CityPlanning_Admin_ImportSelectFileError" xml:space="preserve"><value>Veuillez sélectionner un fichier GeoJSON.</value></data>
+  <data name="CityPlanning_Admin_ImportInvalidJsonError" xml:space="preserve"><value>Fichier non valide — JSON non valide.</value></data>
+  <data name="CityPlanning_Admin_ImportNotFeatureCollectionError" xml:space="preserve"><value>Le fichier doit être une FeatureCollection GeoJSON.</value></data>
+  <data name="CityPlanning_Admin_ImportFetchStateError" xml:space="preserve"><value>Impossible de charger la liste des barrios. Veuillez réessayer.</value></data>
+  <data name="CityPlanning_Admin_ImportNoCampsMatched" xml:space="preserve"><value>Aucun barrio correspondant.</value></data>
+  <data name="CityPlanning_Admin_ImportTokenMissingError" xml:space="preserve"><value>Jeton de sécurité manquant. Veuillez actualiser la page.</value></data>
+  <data name="CityPlanning_Admin_ImportFileTooLargeError" xml:space="preserve"><value>Fichier trop volumineux (max. 10 Mo).</value></data>
+  <data name="CityPlanning_Admin_ImportNotPolygonSuffix" xml:space="preserve"><value>(pas un polygone)</value></data>
+  <data name="CityPlanning_Admin_ImportUpdating" xml:space="preserve"><value>Mise à jour de {0} polygone(s)…</value></data>
+  <data name="CityPlanning_Admin_ImportSuccess" xml:space="preserve"><value>{0} polygone(s) mis à jour.</value></data>
+  <data name="CityPlanning_Admin_ImportPartialFailure" xml:space="preserve"><value>{0} mis à jour, {1} en échec : {2}.</value></data>
   <data name="CityPlanning_HistoryTitle" xml:space="preserve"><value>Historique des polygones</value></data>
   <data name="CityPlanning_Loading" xml:space="preserve"><value>Chargement…</value></data>
   <data name="CityPlanning_Help_WhenIsIt" xml:space="preserve"><value>C'est quand ?</value></data>

@@ -107,7 +107,7 @@ Each updated polygon receives a `CampPolygonHistory` entry:
 
 | Field | Value |
 |---|---|
-| `Note` | `"Imported 2026-04-25"` (ISO date of import) |
+| `Note` | `"Imported 2026-04-25 14:30"` (UTC, format `Imported YYYY-MM-DD HH:mm`) |
 | `ModifiedByUserId` | Authenticated admin user |
 | `ModifiedAt` | Server timestamp at save time |
 | `GeoJson` | New polygon geometry |

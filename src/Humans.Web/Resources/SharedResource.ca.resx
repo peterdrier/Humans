@@ -1467,6 +1467,17 @@
   <data name="CityPlanning_Admin_ImportNewArea" xml:space="preserve"><value>Àrea nova</value></data>
   <data name="CityPlanning_Admin_ImportUnrecognized" xml:space="preserve"><value>Entitats no reconegudes (s'ometran)</value></data>
   <data name="CityPlanning_Admin_ImportConfirmBtn" xml:space="preserve"><value>Confirmar importació</value></data>
+  <data name="CityPlanning_Admin_ImportSelectFileError" xml:space="preserve"><value>Selecciona un fitxer GeoJSON.</value></data>
+  <data name="CityPlanning_Admin_ImportInvalidJsonError" xml:space="preserve"><value>Fitxer no vàlid — JSON no vàlid.</value></data>
+  <data name="CityPlanning_Admin_ImportNotFeatureCollectionError" xml:space="preserve"><value>El fitxer ha de ser una FeatureCollection GeoJSON.</value></data>
+  <data name="CityPlanning_Admin_ImportFetchStateError" xml:space="preserve"><value>No s'ha pogut carregar la llista de barrios. Torna-ho a provar.</value></data>
+  <data name="CityPlanning_Admin_ImportNoCampsMatched" xml:space="preserve"><value>Cap barrio coincideix.</value></data>
+  <data name="CityPlanning_Admin_ImportTokenMissingError" xml:space="preserve"><value>Manca el testimoni de seguretat. Torna a carregar la pàgina.</value></data>
+  <data name="CityPlanning_Admin_ImportFileTooLargeError" xml:space="preserve"><value>Fitxer massa gran (màx. 10 MB).</value></data>
+  <data name="CityPlanning_Admin_ImportNotPolygonSuffix" xml:space="preserve"><value>(no és un polígon)</value></data>
+  <data name="CityPlanning_Admin_ImportUpdating" xml:space="preserve"><value>Actualitzant {0} polígon(s)…</value></data>
+  <data name="CityPlanning_Admin_ImportSuccess" xml:space="preserve"><value>{0} polígon(s) actualitzat(s).</value></data>
+  <data name="CityPlanning_Admin_ImportPartialFailure" xml:space="preserve"><value>{0} actualitzat(s), {1} fallit(s): {2}.</value></data>
   <data name="CityPlanning_HistoryTitle" xml:space="preserve"><value>Historial de polígons</value></data>
   <data name="CityPlanning_Loading" xml:space="preserve"><value>Carregant…</value></data>
   <data name="CityPlanning_Help_WhenIsIt" xml:space="preserve"><value>Quan és?</value></data>

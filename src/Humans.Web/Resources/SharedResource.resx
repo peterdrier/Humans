@@ -1482,6 +1482,17 @@
   <data name="CityPlanning_Admin_ImportNewArea" xml:space="preserve"><value>New area</value></data>
   <data name="CityPlanning_Admin_ImportUnrecognized" xml:space="preserve"><value>Unrecognized features (will be skipped)</value></data>
   <data name="CityPlanning_Admin_ImportConfirmBtn" xml:space="preserve"><value>Confirm import</value></data>
+  <data name="CityPlanning_Admin_ImportSelectFileError" xml:space="preserve"><value>Please select a GeoJSON file.</value></data>
+  <data name="CityPlanning_Admin_ImportInvalidJsonError" xml:space="preserve"><value>Invalid file — not valid JSON.</value></data>
+  <data name="CityPlanning_Admin_ImportNotFeatureCollectionError" xml:space="preserve"><value>File must be a GeoJSON FeatureCollection.</value></data>
+  <data name="CityPlanning_Admin_ImportFetchStateError" xml:space="preserve"><value>Could not load camp list. Please try again.</value></data>
+  <data name="CityPlanning_Admin_ImportNoCampsMatched" xml:space="preserve"><value>No camps matched.</value></data>
+  <data name="CityPlanning_Admin_ImportTokenMissingError" xml:space="preserve"><value>Security token missing. Please refresh the page.</value></data>
+  <data name="CityPlanning_Admin_ImportFileTooLargeError" xml:space="preserve"><value>File is too large (max 10 MB).</value></data>
+  <data name="CityPlanning_Admin_ImportNotPolygonSuffix" xml:space="preserve"><value>(not a polygon)</value></data>
+  <data name="CityPlanning_Admin_ImportUpdating" xml:space="preserve"><value>Updating {0} polygon(s)…</value><comment>{0} = count</comment></data>
+  <data name="CityPlanning_Admin_ImportSuccess" xml:space="preserve"><value>{0} polygon(s) updated.</value><comment>{0} = success count</comment></data>
+  <data name="CityPlanning_Admin_ImportPartialFailure" xml:space="preserve"><value>{0} updated, {1} failed: {2}.</value><comment>{0} = success count, {1} = fail count, {2} = comma-separated camp names</comment></data>
   <!-- History offcanvas -->
   <data name="CityPlanning_HistoryTitle" xml:space="preserve"><value>Polygon History</value></data>
   <data name="CityPlanning_Loading" xml:space="preserve"><value>Loading…</value></data>
