@@ -144,11 +144,17 @@ jobs:
       - name: Build (Release)
         run: dotnet build Humans.slnx --no-restore --configuration Release
 
+      - name: Install dotnet-ef
+        run: |
+          dotnet tool install --global dotnet-ef --version 10.0.*
+          # GitHub-hosted ubuntu has the global tools dir on PATH by default;
+          # this self-hosted Linux runner does not. Persist for later steps.
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
       - name: Apply migrations from scratch
         env:
           ConnectionStrings__DefaultConnection: "Host=${{ steps.pg.outputs.container }};Port=5432;Database=humans;Username=humans;Password=humans"
         run: |
-          dotnet tool install --global dotnet-ef --version 10.0.*
           dotnet ef database update \
             --project src/Humans.Infrastructure \
             --startup-project src/Humans.Web \
