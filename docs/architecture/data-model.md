@@ -16,6 +16,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | UserEmail | [Profiles](../sections/Profiles.md) | |
 | ContactField | [Profiles](../sections/Profiles.md) | |
 | CommunicationPreference | [Profiles](../sections/Profiles.md) | |
+| ProfileLanguage | [Profiles](../sections/Profiles.md) | |
 | VolunteerHistoryEntry | [Profiles](../sections/Profiles.md) | Sub-aggregate of Profile. |
 | AccountMergeRequest | [Profiles](../sections/Profiles.md) | `AccountMergeService` + `DuplicateAccountService` live in `Humans.Application.Services.Profile/`. |
 | Application | [Governance](../sections/Governance.md) | |
@@ -30,7 +31,6 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | TeamJoinRequestStateHistory | [Teams](../sections/Teams.md) | Append-only (§12). |
 | TeamRoleDefinition | [Teams](../sections/Teams.md) | |
 | TeamRoleAssignment | [Teams](../sections/Teams.md) | |
-| TeamPage | [Teams](../sections/Teams.md) | |
 | GoogleResource | [Teams](../sections/Teams.md) | Team Resources sub-aggregate. |
 | Camp / CampSeason / CampLead / CampImage / CampHistoricalName / CampSettings | [Camps](../sections/Camps.md) | |
 | CampMember | [Camps](../sections/Camps.md) | Per-season, post-hoc human/camp affiliation (Pending/Active/Removed). Partial unique on `(CampSeasonId, UserId) WHERE Status <> 'Removed'`. |

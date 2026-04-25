@@ -32,6 +32,7 @@ graph LR
     classDef calendar fill:#06b6d4,color:#fff
     classDef dashboard fill:#f43f5e,color:#fff
     classDef notifications fill:#a855f7,color:#fff
+    classDef gdpr fill:#0f172a,color:#fff
     classDef crosscut fill:#334155,color:#fff
 
     %% ── Cross-cutting services (hub) ──
@@ -65,6 +66,7 @@ graph LR
 
     AppDec[ApplicationDecisionService]:::governance
     MembershipCalc[MembershipCalculator]:::governance
+    MemQuery[MembershipQuery]:::governance
 
     LegalDoc[LegalDocumentService]:::legal
     AdminLegal[AdminLegalDocumentService]:::legal
@@ -92,12 +94,20 @@ graph LR
     AcctProv[AccountProvisioningService]:::users
     Unsub[UnsubscribeService]:::users
 
+    MagicLink[MagicLinkService]:::auth
+
     Cal[CalendarService]:::calendar
 
     Dash[DashboardService]:::dashboard
 
+    NotifEmitter[NotificationEmitter]:::notifications
+    NotifInbox[NotificationInboxService]:::notifications
+    NotifResolver[NotificationRecipientResolver]:::notifications
     NotifMeter[NotificationMeterProvider]:::notifications
     OutboxEmail[OutboxEmailService]:::notifications
+    EmailOutbox[EmailOutboxService]:::notifications
+
+    Gdpr[GdprExportService]:::gdpr
 
     %% ═══════════════════════════════════
     %% Ctor-injected dependencies (solid)
@@ -121,6 +131,7 @@ graph LR
     Contact --> CommPref
     Contact --> Audit
     UEmail --> User
+    CommPref --> Audit
     Merge --> Team
     Merge --> Role
     Merge --> Audit
@@ -130,7 +141,7 @@ graph LR
 
     %% Teams section
     Team --> ShiftMgmt
-    Team --> Notif
+    Team --> NotifEmitter
     Team --> Audit
     TPage --> Team
     TPage --> Prof
@@ -144,6 +155,7 @@ graph LR
 
     %% Camps section
     Camp --> User
+    Camp --> NotifEmitter
     Camp --> Audit
     CampContact --> Email
     CampContact --> Audit
@@ -155,6 +167,7 @@ graph LR
     CityPlan --> User
 
     %% Shifts section
+    ShiftMgmt --> Audit
     ShiftSign --> ShiftMgmt
     ShiftSign --> Notif
     ShiftSign --> Audit
@@ -168,8 +181,11 @@ graph LR
     AppDec --> Metrics
     AppDec --> Audit
     MembershipCalc --> Prof
+    MembershipCalc --> MemQuery
     MembershipCalc --> User
     MembershipCalc --> LegalSync
+    MemQuery --> Team
+    MemQuery --> Role
 
     %% Legal section
     AdminLegal --> LegalSync
@@ -178,6 +194,7 @@ graph LR
     LegalSync --> Notif
     Consent --> Onboard
     Consent --> LegalSync
+    Consent --> NotifInbox
     Consent --> Prof
     Consent --> Metrics
 
@@ -232,8 +249,8 @@ graph LR
     Onboard --> MembershipCalc
     Onboard --> Email
     Onboard --> Notif
+    Onboard --> NotifInbox
     Onboard --> Metrics
-    Onboard --> Audit
 
     %% Feedback section
     Feedback --> User
@@ -248,12 +265,15 @@ graph LR
 
     %% Users section
     User --> Team
+    AcctProv --> Audit
     Unsub --> CommPref
 
     %% Auth section
     Role --> User
-    Role --> Notif
+    Role --> NotifEmitter
     Role --> Audit
+    MagicLink --> UEmail
+    MagicLink --> Email
 
     %% Calendar section
     Cal --> Team
@@ -267,13 +287,23 @@ graph LR
     Dash --> ShiftSign
     Dash --> TicketQ
     Dash --> User
+    Dash --> Team
 
-    %% Notifications / Email crosscuts
+    %% Notifications cluster
+    Notif --> NotifEmitter
+    Notif --> NotifResolver
+    Notif --> CommPref
+    NotifEmitter --> CommPref
+    NotifInbox --> User
+    NotifResolver --> Team
+    NotifResolver --> Role
     NotifMeter --> Prof
     NotifMeter --> User
+    NotifMeter --> GSyncSvc
     NotifMeter --> Team
     NotifMeter --> TicketSync
     NotifMeter --> AppDec
+    NotifMeter --> Camp
     OutboxEmail --> UEmail
     OutboxEmail --> CommPref
     OutboxEmail --> Metrics
@@ -285,6 +315,8 @@ graph LR
 
     Team -. "lazy" .-> User
     Team -. "lazy" .-> TRes
+    Team -. "lazy" .-> Role
+    Team -. "lazy" .-> Email
     User -. "lazy" .-> Prof
     User -. "lazy" .-> Role
     User -. "lazy" .-> ShiftMgmt
@@ -297,6 +329,7 @@ graph LR
     ShiftMgmt -. "lazy" .-> User
     ShiftSign -. "lazy" .-> Team
     UEmail -. "lazy" .-> Merge
+    GSyncSvc -. "lazy" .-> TRes
 ```
 
 ## Cycles broken by lazy-resolution

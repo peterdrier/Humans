@@ -10,10 +10,13 @@ Runs during `dotnet build`:
 <!-- freshness:auto id="suppressions" prompt-file=".claude/skills/freshness-sweep/prompts/suppressions.md" -->
 
 **Common suppressions in `Directory.Build.props`:**
+- `CS1591` - Missing XML comment for publicly visible type or member
 - `MA0048` - File name must match type name
 - `MA0016` - Prefer collection abstraction
 - `MA0026` - Fix TODO comments
 - `MA0051` - Method too long (>60 lines)
+- `VSTHRD200` - Use "Async" suffix for async methods (not required for ASP.NET Core controller actions)
+- `xUnit1051` - Pass TestContext.Current.CancellationToken to methods accepting CancellationToken (test projects only)
 
 <!-- /freshness:auto -->
 
