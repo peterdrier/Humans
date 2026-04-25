@@ -69,4 +69,4 @@ public record CampPolygonHistoryEntryDto(
     string Note,
     string GeoJson);
 
-public record SaveCampPolygonRequest(string GeoJson, double AreaSqm);
+public record SaveCampPolygonRequest(string GeoJson, double AreaSqm, string? Note = null);

@@ -103,6 +103,7 @@ public class CityPlanningApiController : ControllerBase
 
         var (polygon, _) = await _cityPlanningService.SaveCampPolygonAsync(
             campSeasonId, request.GeoJson, request.AreaSqm, userId,
+            note: request.Note ?? "Saved",
             cancellationToken: cancellationToken);
 
         var soundZone = await _campService.GetCampSeasonSoundZoneAsync(campSeasonId, cancellationToken);
