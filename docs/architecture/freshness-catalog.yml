@@ -135,6 +135,31 @@ mechanical:
       Preserve the document header ("How to read", classDef colors, and any
       explanatory prose). Only regenerate the Mermaid diagram body.
 
+  - id: service-data-access-map
+    target: docs/architecture/service-data-access-map.md
+    triggers:
+      - "src/Humans.Application/Services/**/*.cs"
+      - "src/Humans.Infrastructure/Repositories/**/*.cs"
+      - "src/Humans.Infrastructure/Data/HumansDbContext.cs"
+    update: prompt
+    prompt: |
+      Regenerate docs/architecture/service-data-access-map.md.
+
+      For every service under src/Humans.Application/Services/, identify:
+      1. Which repository interfaces it depends on.
+      2. Which database tables those repositories ultimately access (resolve
+         via the HumansDbContext.cs DbSet<> declarations).
+      3. Which IMemoryCache keys the service reads/writes.
+
+      Group by section (use folder name under Services/). Match the existing
+      section headings and table layout. Preserve the intro paragraph and
+      Table of Contents.
+
+      Note: at scale ~500 users with single-server deployment, this map is
+      diagnostic — call out cross-section table reads (a service reading a
+      table owned by another section's repository) as a design rule
+      violation per docs/architecture/design-rules.md §"Services own their data".
+
 # Editorial doc trees — walked recursively for .md files. Each .md may include
 # inline freshness markers (freshness:triggers, freshness:auto, freshness:flag-on-change).
 editorial_trees: []
