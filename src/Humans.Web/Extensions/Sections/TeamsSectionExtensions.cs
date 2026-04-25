@@ -6,6 +6,7 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Teams;
+using Humans.Infrastructure.Services.Metering;
 using TeamsTeamPageService = Humans.Application.Services.Teams.TeamPageService;
 using TeamsTeamService = Humans.Application.Services.Teams.TeamService;
 
@@ -46,6 +47,10 @@ internal static class TeamsSectionExtensions
         services.AddScoped<IActiveTeamsCacheInvalidator, ActiveTeamsCacheInvalidator>();
 
         services.AddScoped<ISystemTeamSync, SystemTeamSyncJob>();
+
+        // Metrics: Teams owns humans.teams (multi-measurement by status),
+        // humans.team_join_requests_pending, and humans.google_resources.
+        services.AddHostedService<TeamsMetricsRegistrar>();
 
         return services;
     }
