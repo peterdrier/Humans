@@ -412,29 +412,32 @@ After the skill itself ships, the marker retrofit is the next job. Approach:
 Estimated: one Claude session (~1–2 hours of Peter's attention spread across
 batches of agent output). One-time cost.
 
-## Open questions
+## Open questions (resolved)
 
-1. **`docs/README.md` as a catalog entry.** Worth automating, or hand-maintain?
-   The doc is small but does index `features/`, so it drifts when features are
-   added/renamed. Recommendation: include.
+1. **`docs/README.md` as a catalog entry.** Resolved: **include**. Listed as
+   `docs-readme-index` in the mechanical inventory.
 
-2. **`reforge-history.csv` regeneration.** No script visible in
-   `docs/scripts/`. The CSV looks append-only (one row per commit). Need to
-   confirm whether there's a current regeneration path or whether the entry is
-   deferred until someone authors one.
-
-3. **Feature-spec sub-block markers.** v1 leaves `docs/features/` flag-only.
-   If certain feature specs have stable objective sub-blocks (e.g., the
-   acceptance-criteria checklist), graduating those into `freshness:auto`
-   blocks could be a v2 task — depends on whether they actually drift.
+2. **`reforge-history.csv` regeneration.** Resolved: **rebuild the regeneration
+   script as part of v1.** The CSV was previously produced via the `reforge`
+   tool (an existing skill — see `.claude/skills/reforge/`), but no script in
+   `docs/scripts/` currently invokes it. Implementation must include an
+   investigation step that reconstructs how the tool was driven and persists
+   the invocation as `docs/scripts/generate-reforge-history.sh` (or similar)
+   so the catalog entry can refer to it. Until the script exists, the entry
+   should be flagged as `update: script` with a `tbd-script` placeholder
+   and the implementation plan must close the gap before v1 ships.
 
 ## Future work (not v1)
 
 - Cron / scheduled background runs (daily diff, weekly full).
 - Auto-merging if CI is green and report has zero flags.
-- Sub-block markers in `docs/features/`.
+- Sub-block markers in `docs/features/`. v1 leaves them flag-only. If certain
+  feature specs have stable objective sub-blocks (e.g., acceptance-criteria
+  checklists), graduating those into `freshness:auto` blocks could be a v2
+  task — depends on whether they actually drift in practice.
 - Cross-tree consistency checks (e.g., warn when an entity is documented in
   two section docs, or when a feature spec references a section that doesn't
   exist).
 - `--dry-run` mode that prints the planned actions without writing or
   committing anything (useful for validating catalog changes).
+
