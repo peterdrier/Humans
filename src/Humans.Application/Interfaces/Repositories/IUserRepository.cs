@@ -59,6 +59,15 @@ public interface IUserRepository
     Task<IReadOnlyList<Guid>> GetAllUserIdsAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Returns the count of users with a non-null <c>DeletionScheduledFor</c>
+    /// (deletion has been scheduled for a specific time). Distinct from
+    /// <see cref="GetPendingDeletionCountAsync"/> which counts requested-but-
+    /// not-yet-scheduled deletions. Used by the <c>humans.pending_deletions</c>
+    /// metric.
+    /// </summary>
+    Task<int> GetScheduledDeletionCountAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the language distribution of the given user ids, grouped by
     /// <see cref="User.PreferredLanguage"/>. Used by the admin dashboard to
     /// render language stats for approved humans after the caller has

@@ -8,6 +8,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Services.Metering;
 using Xunit;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Caching;
@@ -36,6 +37,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator;
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator;
     private readonly HumansMetricsService _metrics;
+    private readonly MetersService _meters;
     private readonly FakeClock _clock;
     private readonly SuspendNonCompliantMembersJob _job;
 
@@ -58,6 +60,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         _metrics = new HumansMetricsService(
             Substitute.For<IServiceScopeFactory>(),
             Substitute.For<ILogger<HumansMetricsService>>());
+        _meters = new MetersService(Substitute.For<ILogger<MetersService>>());
         var logger = Substitute.For<ILogger<SuspendNonCompliantMembersJob>>();
 
         // Default: ITeamService.GetUserTeamsAsync returns empty list so tests
@@ -69,12 +72,13 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             _userService, _profileService, _teamService, _membershipCalculator,
             _emailService, _notificationService, _googleSyncService, _auditLogService,
             _fullProfileInvalidator, _roleAssignmentClaimsInvalidator,
-            _shiftAuthorizationInvalidator, _metrics, logger, _clock);
+            _shiftAuthorizationInvalidator, _metrics, _meters, logger, _clock);
     }
 
     public void Dispose()
     {
         _metrics.Dispose();
+        _meters.Dispose();
         GC.SuppressFinalize(this);
     }
 
