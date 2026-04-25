@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Octokit;
+using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Infrastructure.Configuration;
 
@@ -23,7 +24,10 @@ public sealed class GitHubGuideContentSource : IGuideContentSource
         _logger = logger;
 
         _client = new GitHubClient(new ProductHeaderValue("NobodiesHumansGuide"));
-        var token = guideSettings.Value.AccessToken ?? gitHubSettings.Value.AccessToken;
+        // Empty string from env-var wiring is treated the same as null — fall back to GitHubSettings.
+        var token = string.IsNullOrEmpty(guideSettings.Value.AccessToken)
+            ? gitHubSettings.Value.AccessToken
+            : guideSettings.Value.AccessToken;
         if (!string.IsNullOrEmpty(token))
         {
             _client.Credentials = new Credentials(token);

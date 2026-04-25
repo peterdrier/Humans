@@ -34,7 +34,7 @@ If you are a **Camp Lead** and placement is open, you also get tools to place an
 
 You can only edit your own camp's polygon, and only while placement is open. To change it after placement closes, ask a map admin.
 
-## As a Board member / Admin (City Planning Admin)
+## As a Board member / Admin (Camp Admin)
 
 Map admin access is held by **Camp Admin**, **[Admin](Glossary.md#admin)**, and members of the **City Planning team** (slug `city-planning`). Map admins act on any polygon at any time — the placement-open restriction doesn't apply to you.
 
