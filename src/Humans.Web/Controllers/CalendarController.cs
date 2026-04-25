@@ -192,13 +192,7 @@ public class CalendarController : HumansControllerBase
         var team = await _teams.GetTeamByIdAsync(form.OwningTeamId, ct);
         if (team is null) return NotFound();
 
-        var zone = DateTimeZoneProviders.Tzdb[form.RecurrenceTimezone];
-        if (!TryResolveStartEnd(form, zone, out var start, out var end))
-        {
-            form.TeamOptions = await GetSelectableTeamsAsync(ct);
-            return View(form);
-        }
-
+        TryResolveStartEnd(form, out var start, out var end);
         if (!ModelState.IsValid)
         {
             form.TeamOptions = await GetSelectableTeamsAsync(ct);
@@ -255,13 +249,7 @@ public class CalendarController : HumansControllerBase
         var ev = await _calendar.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
-        var zone = DateTimeZoneProviders.Tzdb[form.RecurrenceTimezone];
-        if (!TryResolveStartEnd(form, zone, out var start, out var end))
-        {
-            form.TeamOptions = await GetSelectableTeamsAsync(ct);
-            return View(form);
-        }
-
+        TryResolveStartEnd(form, out var start, out var end);
         if (!ModelState.IsValid)
         {
             form.TeamOptions = await GetSelectableTeamsAsync(ct);
@@ -278,46 +266,49 @@ public class CalendarController : HumansControllerBase
         return RedirectToAction(nameof(Event), new { id });
     }
 
-    /// <summary>
-    /// Resolves the form's Start/End instants based on whether IsAllDay is set.
-    /// All-day events use date-only inputs and store half-open [00:00, EndDate+1 00:00).
-    /// Timed events use the datetime-local inputs as-is. ModelState errors are pushed
-    /// to the relevant fields on validation failure.
-    /// </summary>
-    private bool TryResolveStartEnd(CalendarEventFormViewModel form, DateTimeZone zone, out Instant start, out Instant? end)
+    // All-day events store half-open [Start 00:00, EndDate+1 00:00) so the display
+    // helper recovers the inclusive end date with a one-tick subtraction. Adds
+    // ModelState errors instead of throwing on bad input (e.g. unknown timezone).
+    private void TryResolveStartEnd(CalendarEventFormViewModel form, out Instant start, out Instant? end)
     {
         start = default;
         end = null;
+
+        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(form.RecurrenceTimezone ?? string.Empty);
+        if (zone is null)
+        {
+            ModelState.AddModelError(nameof(form.RecurrenceTimezone), "Unknown IANA timezone.");
+            return;
+        }
 
         if (form.IsAllDay)
         {
             if (form.StartDateLocal is not { } startDt)
             {
                 ModelState.AddModelError(nameof(form.StartDateLocal), "Start date is required.");
-                return false;
+                return;
             }
             var startDate = LocalDate.FromDateTime(startDt);
             var inclusiveEnd = form.EndDateLocal is { } endDt ? LocalDate.FromDateTime(endDt) : startDate;
             if (inclusiveEnd < startDate)
             {
                 ModelState.AddModelError(nameof(form.EndDateLocal), "End date must be on or after the start date.");
-                return false;
+                return;
             }
             start = startDate.AtMidnight().InZoneLeniently(zone).ToInstant();
             end = inclusiveEnd.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
-            return true;
+            return;
         }
 
         if (form.StartLocal is not { } startLocal)
         {
             ModelState.AddModelError(nameof(form.StartLocal), "Start is required.");
-            return false;
+            return;
         }
         start = LocalDateTime.FromDateTime(startLocal).InZoneLeniently(zone).ToInstant();
         end = form.EndLocal is { } elo
             ? LocalDateTime.FromDateTime(elo).InZoneLeniently(zone).ToInstant()
             : null;
-        return true;
     }
 
     [HttpPost("Event/{id:guid}/Delete")]

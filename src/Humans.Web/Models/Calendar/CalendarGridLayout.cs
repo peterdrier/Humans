@@ -3,30 +3,11 @@ using NodaTime;
 
 namespace Humans.Web.Models.Calendar;
 
-/// <summary>
-/// Presentation helpers for rendering the Calendar month grid.
-///
-/// The grid shows each week as a single <c>&lt;tr&gt;</c> with seven <c>&lt;td&gt;</c> day cells.
-/// Multi-day events need to appear on every day they cover, visually connected across
-/// cells — so we pre-compute a per-week layout that assigns each multi-day occurrence
-/// to a fixed "slot" (vertical band) inside the week row. The same slot index in each
-/// covered day renders a bar stripe; the start day renders the title, continuation days
-/// render just the bar. Banners cap at <see cref="MaxBannerSlots"/> slots per week.
-///
-/// Single-day timed events remain per-cell, rendered below the banner slots.
-/// </summary>
 public static class CalendarGridLayout
 {
     public const int MaxPerCell = 3;
     public const int MaxBannerSlots = 3;
 
-    /// <summary>
-    /// Computes a banner layout for a week. Returns:
-    /// <list type="bullet">
-    ///   <item>Banners placed into slots (one row per banner, spanning the days it covers within the week).</item>
-    ///   <item>Per-day lists of single-day occurrences (timed events that do not span days).</item>
-    /// </list>
-    /// </summary>
     public static WeekLayout BuildWeekLayout(
         LocalDate weekStart,
         IReadOnlyList<CalendarOccurrence> weekOccurrences,

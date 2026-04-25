@@ -38,6 +38,7 @@ public class CalendarEventFormViewModel
 
     public string? RecurrenceRule { get; set; }
 
+    [Required]
     public string RecurrenceTimezone { get; set; } = "Europe/Madrid";
 
     public IReadOnlyList<TeamOption> TeamOptions { get; set; } = Array.Empty<TeamOption>();

@@ -24,7 +24,7 @@ A community-calendar event belonging to a team. May be a single event or a recur
 | LocationUrl | string (2000) | Optional |
 | OwningTeamId | Guid | FK → Team (`OnDelete: Restrict`) — **FK only**, no nav |
 | StartUtc | Instant | First (or only) occurrence start in UTC |
-| EndUtc | Instant? | Required iff `IsAllDay = false` |
+| EndUtc | Instant? | Required iff `IsAllDay = false`. For all-day events, set to half-open exclusive midnight (`EndDate + 1 day` 00:00 in `RecurrenceTimezone`). May be null on legacy single-day all-day rows |
 | IsAllDay | bool | All-day event |
 | RecurrenceRule | string (500)? | RFC 5545 RRULE (no `RRULE:` prefix). Null = single event |
 | RecurrenceTimezone | string (100)? | IANA TZ. Required iff `RecurrenceRule` is set |
@@ -78,7 +78,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 - Every mutating action (create / update / delete / cancel-occurrence / override-occurrence) writes an `AuditLogEntry` with the actor's user ID.
 - Title is required (non-null, non-empty).
 - `StartUtc` is required.
-- `EndUtc` is required for timed events (`IsAllDay = false`). For all-day events it is optional — null means a single-day event, set means a multi-day all-day range.
+- `EndUtc` is required for timed events (`IsAllDay = false`). For all-day events created or edited via the calendar form, `EndUtc` is set to half-open exclusive midnight (`StartDate.PlusDays(InclusiveDays).AtMidnight()` in `RecurrenceTimezone`); the display layer recovers the inclusive end date by subtracting one tick before projecting to local. Legacy all-day rows may still have null `EndUtc` (treated as single-day).
 - `StartUtc <= EndUtc` when both are non-null.
 - `RecurrenceRule` and `RecurrenceTimezone` are set together, or neither is set (all-or-nothing invariant).
 - `RecurrenceTimezone` defaults to `"Europe/Madrid"` if not specified on a recurring event.

@@ -120,10 +120,6 @@
                                             }
                                             <a class="calendar-banner-link" asp-action="Event" asp-route-id="@banner.Occurrence.EventId">@banner.Occurrence.Title</a>
                                         }
-                                        else if (openLeft)
-                                        {
-                                            <span class="calendar-banner-cue calendar-banner-cue-muted" aria-hidden="true">&larr;</span>
-                                        }
                                         @if (openRight && isEnd)
                                         {
                                             <span class="calendar-banner-cue ms-auto" aria-hidden="true">&rarr;</span>
