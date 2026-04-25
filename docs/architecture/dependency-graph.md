@@ -333,7 +333,7 @@ When adding a new cross-service call, default to ctor injection. Reach for the l
 
 ## Notes on architectural follow-ups
 
-- **#580** — `HumansMetricsService` push-model inversion: sections register their own metrics instead of the service spidering across every section. After that lands, the current `Metrics` node becomes pure registry infrastructure with zero outgoing edges.
+- **#580 — DONE (2026-04-25).** `HumansMetricsService` push-model inversion: sections register their own metrics instead of the service spidering across every section. `IHumansMetrics` and `HumansMetricsService` are deleted. The cross-cutting `humans.job_runs_total` counter is registered at every Hangfire job's call site (`ProcessEmailOutboxJob`, `ProcessGoogleSyncOutboxJob`, `SystemTeamSyncJob`, `SuspendNonCompliantMembersJob`, `SendBoardDailyDigestJob`, `SendAdminDailyDigestJob`, `CleanupNotificationsJob`, `CleanupEmailOutboxJob`, `DriveActivityMonitorJob`, `GoogleResourceProvisionJob`, `GoogleResourceReconciliationJob`, `ProcessAccountDeletionsJob`, `SendReConsentReminderJob`, `SyncLegalDocumentsJob`, `TermRenewalReminderJob`) — it does not belong to one section.
 - **#581** — `NotificationMeterProvider` push-model inversion: same pattern as #580 for the navbar-badge meter counts. Post-inversion, `NotifMeter` has zero outgoing edges.
 - **#570** — final slice (Google-writing jobs through service interfaces) doesn't change service→service edges; it affects Job → Service edges, which aren't part of this graph.
 - The Profile section owns `FullProfile` and `IFullProfileInvalidator` as its canonical stitched-DTO implementation of §15. Other sections apply §15's caching decorator and `Full<X>` DTO layers selectively (not universally), as stitching demand warrants.

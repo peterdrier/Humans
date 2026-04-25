@@ -115,6 +115,7 @@ Per design-rules §8, each `system_settings` key is owned by the consuming secti
   - `IEmailBodyComposer` (Application) — renders a message into `HtmlBody`/`PlainTextBody` given a template name + model. SDK-free.
   - `IImmediateOutboxProcessor` (Infrastructure) — drives MailKit/SMTP (`HangfireImmediateOutboxProcessor` in prod; `StubEmailTransport` in dev). Never referenced from Application.
 - **GDPR:** `EmailOutboxService` implements `IUserDataContributor`.
+- **Metrics**: `humans.email_outbox_pending`, `humans.emails_sent_total`, `humans.email_queued_total`, `humans.email_failed_total`. Registered by `ProcessEmailOutboxJob` (gauge + counters), `SmtpEmailService` (counters), and `OutboxEmailService` (counters).
 
 ### Touch-and-clean guidance
 

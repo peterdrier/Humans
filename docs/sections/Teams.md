@@ -165,6 +165,7 @@ Stored as string via `HasConversion<string>()`.
 - `TeamResourceService` uses `IGoogleResourceRepository` + the `ITeamResourceGoogleClient` connector (PR #274).
 - **Decorator decision — no caching decorator.** `TeamService` keeps a short-TTL `IMemoryCache` projection at `CacheKeys.ActiveTeams` (10-minute TTL) inside the service itself (same precedent as Camps per §15f / §15i).
 - **Cross-domain navs `[Obsolete]`-marked:** `TeamMember.User`, `TeamJoinRequest.User`, `TeamJoinRequest.ReviewedByUser`, `TeamRoleAssignment.AssignedByUser`, `TeamJoinRequestStateHistory.ChangedByUser`. `TeamService` populates them in-memory via `IUserService.GetByIdsAsync` (§6b); controllers/views still read them under file-wide `#pragma warning disable CS0618` pragmas pending the cross-cutting User-nav strip (§15i).
+- **Metrics**: `humans.teams`, `humans.team_join_requests_pending`, `humans.google_resources`. Registered by `TeamsMetricsRegistrar` (gauges).
 
 ### Target repositories
 
