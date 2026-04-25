@@ -85,6 +85,25 @@ public class CampRoleServiceTests : IDisposable
         result.Should().HaveCount(2);
     }
 
+    [HumansFact]
+    public async Task GetDefinitionById_returns_definition_when_found()
+    {
+        var def = await SeedDefinitionAsync("Build Lead");
+
+        var result = await _service.GetDefinitionByIdAsync(def.Id);
+
+        result.Should().NotBeNull();
+        result!.Name.Should().Be("Build Lead");
+    }
+
+    [HumansFact]
+    public async Task GetDefinitionById_returns_null_when_not_found()
+    {
+        var result = await _service.GetDefinitionByIdAsync(Guid.NewGuid());
+
+        result.Should().BeNull();
+    }
+
     private async Task<CampRoleDefinition> SeedDefinitionAsync(
         string name = "Consent Lead", int slotCount = 2, int minimumRequired = 1,
         bool isRequired = true, bool deactivated = false)
