@@ -150,8 +150,40 @@ public sealed class CampRoleService : ICampRoleService
         return true;
     }
 
-    public Task<CampRolesPanelData> BuildPanelAsync(Guid campSeasonId, CancellationToken ct = default)
-        => throw new NotSupportedException();
+    public async Task<CampRolesPanelData> BuildPanelAsync(Guid campSeasonId, CancellationToken ct = default)
+    {
+        var definitions = await _repo.ListDefinitionsAsync(includeDeactivated: false, ct);
+        var assignments = await _repo.GetAssignmentsForSeasonAsync(campSeasonId, ct);
+
+        var memberUserIds = assignments.Select(a => a.CampMember.UserId).Distinct().ToList();
+        IReadOnlyDictionary<Guid, User> users = memberUserIds.Count == 0
+            ? new Dictionary<Guid, User>()
+            : await _userService.GetByIdsAsync(memberUserIds, ct);
+
+        var rows = definitions.Select(def =>
+        {
+            var defAssignments = assignments
+                .Where(a => a.CampRoleDefinitionId == def.Id)
+                .OrderBy(a => a.AssignedAt)
+                .ToList();
+
+            var filled = defAssignments.Select(a =>
+            {
+                var displayName = users.TryGetValue(a.CampMember.UserId, out var u)
+                    ? u.DisplayName ?? "(unknown)"
+                    : "(unknown)";
+                return new CampRolesPanelSlot(a.Id, a.CampMemberId, a.CampMember.UserId, displayName);
+            }).ToList();
+
+            var current = filled.Count;
+            var empty = Math.Max(0, def.SlotCount - current);
+            var overCapacity = current > def.SlotCount;
+
+            return new CampRolesPanelRow(def, filled, empty, overCapacity, current);
+        }).ToList();
+
+        return new CampRolesPanelData(campSeasonId, rows);
+    }
 
     public async Task<AssignCampRoleOutcome> AssignAsync(
         Guid campSeasonId, Guid roleDefinitionId, Guid campMemberId, Guid actorUserId, CancellationToken ct = default)

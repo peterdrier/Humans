@@ -396,6 +396,73 @@ public class CampRoleServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task BuildPanel_returns_one_row_per_active_definition_with_filled_and_empty_slots()
+    {
+        var (camp, season) = await SeedCampWithSeasonAsync();
+        var def1 = await SeedDefinitionAsync("Consent Lead", slotCount: 2);
+        var def2 = await SeedDefinitionAsync("LNT", slotCount: 1);
+        var member1 = await SeedActiveMemberAsync(season.Id);
+        var member2 = await SeedActiveMemberAsync(season.Id);
+
+        _dbContext.CampRoleAssignments.Add(
+            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id,
+                                      CampRoleDefinitionId = def1.Id, CampMemberId = member1.Id,
+                                      AssignedAt = _clock.GetCurrentInstant(), AssignedByUserId = _actorUserId });
+        await _dbContext.SaveChangesAsync();
+
+        var users = new Dictionary<Guid, User>
+        {
+            [member1.UserId] = new User { Id = member1.UserId, DisplayName = "Member One" },
+            [member2.UserId] = new User { Id = member2.UserId, DisplayName = "Member Two" },
+        };
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(users));
+
+        var panel = await _service.BuildPanelAsync(season.Id);
+
+        panel.Rows.Should().HaveCount(2);
+        var row1 = panel.Rows.First(r => r.Definition.Id == def1.Id);
+        row1.FilledSlots.Should().HaveCount(1);
+        row1.EmptySlotCount.Should().Be(1);
+        row1.OverCapacity.Should().BeFalse();
+        row1.FilledSlots[0].DisplayName.Should().Be("Member One");
+
+        var row2 = panel.Rows.First(r => r.Definition.Id == def2.Id);
+        row2.FilledSlots.Should().BeEmpty();
+        row2.EmptySlotCount.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task BuildPanel_marks_OverCapacity_when_assignments_exceed_SlotCount()
+    {
+        var (camp, season) = await SeedCampWithSeasonAsync();
+        var def = await SeedDefinitionAsync(slotCount: 1);
+        var m1 = await SeedActiveMemberAsync(season.Id);
+        var m2 = await SeedActiveMemberAsync(season.Id);
+
+        await _dbContext.CampRoleAssignments.AddRangeAsync(
+            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def.Id, CampMemberId = m1.Id, AssignedAt = _clock.GetCurrentInstant(), AssignedByUserId = _actorUserId },
+            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def.Id, CampMemberId = m2.Id, AssignedAt = _clock.GetCurrentInstant(), AssignedByUserId = _actorUserId });
+        await _dbContext.SaveChangesAsync();
+
+        var users = new Dictionary<Guid, User>
+        {
+            [m1.UserId] = new User { Id = m1.UserId, DisplayName = "Alpha" },
+            [m2.UserId] = new User { Id = m2.UserId, DisplayName = "Beta" },
+        };
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(users));
+
+        var panel = await _service.BuildPanelAsync(season.Id);
+
+        var row = panel.Rows.Single();
+        row.OverCapacity.Should().BeTrue();
+        row.FilledSlots.Should().HaveCount(2);
+        row.EmptySlotCount.Should().Be(0);
+        row.CurrentCount.Should().Be(2);
+    }
+
+    [HumansFact]
     public async Task RemoveAllForMember_deletes_all_assignments_for_one_member()
     {
         var (camp, season) = await SeedCampWithSeasonAsync();
