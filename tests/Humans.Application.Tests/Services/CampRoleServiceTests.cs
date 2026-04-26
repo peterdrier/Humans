@@ -366,6 +366,35 @@ public class CampRoleServiceTests : IDisposable
         outcome.Should().Be(AssignCampRoleOutcome.RoleDeactivated);
     }
 
+    [HumansFact]
+    public async Task Unassign_deletes_assignment_and_audits()
+    {
+        var (camp, season) = await SeedCampWithSeasonAsync();
+        var def = await SeedDefinitionAsync();
+        var member = await SeedActiveMemberAsync(season.Id);
+        _campService.GetCampMemberStatusAsync(member.Id, default)
+            .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Active));
+
+        await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId);
+        var assignment = await _dbContext.CampRoleAssignments.FirstAsync();
+
+        var ok = await _service.UnassignAsync(assignment.Id, _actorUserId);
+
+        ok.Should().BeTrue();
+        (await _dbContext.CampRoleAssignments.CountAsync()).Should().Be(0);
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CampRoleUnassigned, nameof(CampRoleAssignment),
+            assignment.Id, Arg.Any<string>(), _actorUserId, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task Unassign_returns_false_when_not_found()
+    {
+        var ok = await _service.UnassignAsync(Guid.NewGuid(), _actorUserId);
+        ok.Should().BeFalse();
+    }
+
     private async Task<CampRoleDefinition> SeedDefinitionAsync(
         string name = "Consent Lead", int slotCount = 2, int minimumRequired = 1,
         bool isRequired = true, bool deactivated = false)
