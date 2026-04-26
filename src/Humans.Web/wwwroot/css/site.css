@@ -448,16 +448,38 @@ h5, .h5 { font-size: 1.1rem; }
 }
 
 .btn-warning {
-    background-color: var(--h-amber);
-    border-color: var(--h-amber);
+    background-color: var(--h-umber);
+    border-color: var(--h-umber);
     color: var(--h-text-on-dark);
     border-radius: var(--h-radius);
     font-weight: 700;
 }
 
 .btn-warning:hover {
-    background-color: var(--h-amber-dark);
-    border-color: var(--h-amber-dark);
+    background-color: var(--h-aged-ink-light);
+    border-color: var(--h-aged-ink-light);
+    color: var(--h-text-on-dark);
+}
+
+.btn-outline-warning {
+    border-color: var(--h-umber);
+    color: var(--h-umber);
+    border-radius: var(--h-radius);
+    font-weight: 700;
+    transition: all 0.2s ease;
+}
+
+.btn-outline-warning:hover {
+    background-color: var(--h-umber);
+    border-color: var(--h-umber);
+    color: var(--h-text-on-dark);
+}
+
+.btn-outline-warning:focus,
+.btn-outline-warning.active,
+.btn-outline-warning:active {
+    background-color: var(--h-umber);
+    border-color: var(--h-umber);
     color: var(--h-text-on-dark);
 }
 
