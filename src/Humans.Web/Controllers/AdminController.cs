@@ -51,8 +51,12 @@ public class AdminController : HumansControllerBase
         _cacheStatsProvider = cacheStatsProvider;
     }
 
+    // Dashboard is reachable by any admin-shaped role (FinanceAdmin etc.) so the
+    // top-nav "Admin" link doesn't dead-end at 403. Sidebar items inside still
+    // filter per-item, and all dashboard tiles are aggregate counts that are
+    // safe across roles. Other AdminController actions remain AdminOnly.
     [HttpGet("")]
-    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [Authorize(Policy = PolicyNames.AnyAdminRole)]
     public async Task<IActionResult> Index(
         [FromServices] IProfileService profileService,
         [FromServices] IShiftManagementService shifts,
