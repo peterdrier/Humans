@@ -297,7 +297,7 @@ public class BudgetServiceTests : IAsyncLifetime
             await ctx.SaveChangesAsync();
         }
 
-        var act = () => _service.CreateGroupAsync(_yearId, "Logistics", false, Guid.NewGuid());
+        var act = () => _service.CreateGroupAsync(_yearId, "Logistics", "logistics", false, Guid.NewGuid());
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*closed*");

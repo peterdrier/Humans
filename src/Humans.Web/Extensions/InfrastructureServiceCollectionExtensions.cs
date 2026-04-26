@@ -33,6 +33,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddShiftsSection();
         services.AddCalendarSection();
         services.AddTicketsSection();
+        services.AddFinanceSection(configuration);
         services.AddFeedbackSection();
         services.AddNotificationsSection();
         services.AddLegalAndConsentSection();

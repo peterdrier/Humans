@@ -1,0 +1,39 @@
+@model IReadOnlyList<Humans.Application.DTOs.Finance.HoldedTransactionDto>
+
+@if (Model.Count == 0)
+{
+    <p class="text-muted small mb-0">No actuals for this category yet.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr>
+                    <th>Doc #</th>
+                    <th>Date</th>
+                    <th>Vendor</th>
+                    <th class="text-end">Total</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var t in Model)
+            {
+                <tr>
+                    <td>@t.HoldedDocNumber</td>
+                    <td>@t.Date.ToString("yyyy-MM-dd", null)</td>
+                    <td>@t.ContactName</td>
+                    <td class="text-end">@t.Total.ToString("N2")</td>
+                    <td>
+                        @if (!string.IsNullOrEmpty(t.HoldedDeepLinkUrl))
+                        {
+                            <a href="@t.HoldedDeepLinkUrl" target="_blank" rel="noopener">Open</a>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

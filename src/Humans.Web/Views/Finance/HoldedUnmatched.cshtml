@@ -1,0 +1,60 @@
+@model Humans.Web.ViewModels.Finance.HoldedUnmatchedViewModel
+@{
+    ViewData["Title"] = "Holded — Unmatched";
+}
+
+<h2>Unmatched Holded documents</h2>
+
+@if (TempData["HoldedReassignWarning"] is string warning)
+{
+    <div class="alert alert-warning">@warning</div>
+}
+
+@if (Model.Unmatched.Count == 0)
+{
+    <p>No unmatched documents — every Holded purchase is mapped to a budget category.</p>
+}
+else
+{
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Doc #</th><th>Date</th><th>Vendor</th><th>Total</th>
+                <th>Tags</th><th>Reason</th><th>→ Holded</th><th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var row in Model.Unmatched)
+        {
+            <tr>
+                <td>@row.HoldedDocNumber</td>
+                <td>@row.Date</td>
+                <td>@row.ContactName</td>
+                <td>@row.Total.ToString("N2") @row.Currency.ToUpperInvariant()</td>
+                <td>@(row.Tags.Count == 0 ? "—" : string.Join(", ", row.Tags))</td>
+                <td>@row.MatchStatusReason</td>
+                <td>
+                    @if (row.HoldedDeepLinkUrl is not null)
+                    {
+                        <a href="@row.HoldedDeepLinkUrl" target="_blank" rel="noopener">Open</a>
+                    }
+                </td>
+                <td>
+                    <form asp-action="HoldedReassign" method="post" class="d-flex gap-2">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="holdedDocId" value="@row.HoldedDocId" />
+                        <select name="budgetCategoryId" class="form-select form-select-sm">
+                            <option value="">— pick category —</option>
+                            @foreach (var cat in Model.AvailableCategories)
+                            {
+                                <option value="@cat.Id">@cat.BudgetGroup?.Name › @cat.Name</option>
+                            }
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-primary">Assign</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}

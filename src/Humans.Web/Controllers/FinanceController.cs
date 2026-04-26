@@ -1,10 +1,14 @@
+using Humans.Application.DTOs.Finance;
 using Humans.Application.Interfaces.Budget;
+using Humans.Application.Interfaces.Finance;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Services.Finance;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
+using Humans.Web.ViewModels.Finance;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -20,6 +24,8 @@ public class FinanceController : HumansControllerBase
     private readonly ITeamService _teamService;
     private readonly ITicketingBudgetService _ticketingBudgetService;
     private readonly ITicketQueryService _ticketQueryService;
+    private readonly IHoldedSyncService _holdedSyncService;
+    private readonly IHoldedTransactionService _holdedTransactions;
     private readonly IClock _clock;
     private readonly ILogger<FinanceController> _logger;
 
@@ -28,6 +34,8 @@ public class FinanceController : HumansControllerBase
         ITeamService teamService,
         ITicketingBudgetService ticketingBudgetService,
         ITicketQueryService ticketQueryService,
+        IHoldedSyncService holdedSyncService,
+        IHoldedTransactionService holdedTransactions,
         IClock clock,
         UserManager<User> userManager,
         ILogger<FinanceController> logger)
@@ -37,15 +45,19 @@ public class FinanceController : HumansControllerBase
         _teamService = teamService;
         _ticketingBudgetService = ticketingBudgetService;
         _ticketQueryService = ticketQueryService;
+        _holdedSyncService = holdedSyncService;
+        _holdedTransactions = holdedTransactions;
         _clock = clock;
         _logger = logger;
     }
 
     [HttpGet("")]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(CancellationToken ct)
     {
         try
         {
+            ViewData["HoldedSync"] = await _holdedSyncService.GetSyncDashboardAsync(ct);
+
             var activeYear = await _budgetService.GetActiveYearAsync();
             if (activeYear is null)
             {
@@ -55,6 +67,7 @@ public class FinanceController : HumansControllerBase
 
             var allYears = await _budgetService.GetAllYearsAsync();
             var model = await BuildFinanceOverviewAsync(activeYear, allYears);
+            ViewData["HoldedActuals"] = await _holdedTransactions.GetActualSumsByCategoryAsync(activeYear.Id, ct);
             return View("YearDetail", model);
         }
         catch (Exception ex)
@@ -66,7 +79,7 @@ public class FinanceController : HumansControllerBase
     }
 
     [HttpGet("Years/{id:guid}")]
-    public async Task<IActionResult> YearDetail(Guid id)
+    public async Task<IActionResult> YearDetail(Guid id, CancellationToken ct)
     {
         try
         {
@@ -75,6 +88,7 @@ public class FinanceController : HumansControllerBase
 
             var allYears = await _budgetService.GetAllYearsAsync();
             var model = await BuildFinanceOverviewAsync(year, allYears);
+            ViewData["HoldedActuals"] = await _holdedTransactions.GetActualSumsByCategoryAsync(year.Id, ct);
             return View(model);
         }
         catch (Exception ex)
@@ -83,6 +97,13 @@ public class FinanceController : HumansControllerBase
             SetError("Failed to load budget year.");
             return RedirectToAction(nameof(Index));
         }
+    }
+
+    [HttpGet("HoldedByCategory/{id:guid}")]
+    public async Task<IActionResult> HoldedByCategory(Guid id, CancellationToken ct)
+    {
+        var rows = await _holdedTransactions.GetByCategoryAsync(id, ct);
+        return PartialView("_HoldedTransactionList", rows);
     }
 
     [HttpGet("Categories/{id:guid}")]
@@ -287,14 +308,16 @@ public class FinanceController : HumansControllerBase
 
     [HttpPost("Groups/Create")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateGroup(Guid budgetYearId, string name, bool isRestricted)
+    public async Task<IActionResult> CreateGroup(Guid budgetYearId, string name, string? slug, bool isRestricted)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
+        var resolvedSlug = string.IsNullOrWhiteSpace(slug) ? SlugNormalizer.Normalize(name) : SlugNormalizer.Normalize(slug);
+
         try
         {
-            await _budgetService.CreateGroupAsync(budgetYearId, name, isRestricted, user.Id);
+            await _budgetService.CreateGroupAsync(budgetYearId, name, resolvedSlug, isRestricted, user.Id);
             SetSuccess($"Group '{name}' created.");
             return RedirectToAction(nameof(Admin));
         }
@@ -308,14 +331,16 @@ public class FinanceController : HumansControllerBase
 
     [HttpPost("Groups/{id:guid}/Update")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateGroup(Guid id, string name, int sortOrder, bool isRestricted)
+    public async Task<IActionResult> UpdateGroup(Guid id, string name, string? slug, int sortOrder, bool isRestricted)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
+        var resolvedSlug = string.IsNullOrWhiteSpace(slug) ? SlugNormalizer.Normalize(name) : SlugNormalizer.Normalize(slug);
+
         try
         {
-            await _budgetService.UpdateGroupAsync(id, name, sortOrder, isRestricted, user.Id);
+            await _budgetService.UpdateGroupAsync(id, name, resolvedSlug, sortOrder, isRestricted, user.Id);
             SetSuccess($"Group '{name}' updated.");
             return RedirectToAction(nameof(Admin));
         }
@@ -350,15 +375,17 @@ public class FinanceController : HumansControllerBase
 
     [HttpPost("Categories/Create")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateCategory(Guid budgetGroupId, string name, decimal allocatedAmount,
+    public async Task<IActionResult> CreateCategory(Guid budgetGroupId, string name, string? slug, decimal allocatedAmount,
         ExpenditureType expenditureType, Guid? teamId, Guid budgetYearId)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
+        var resolvedSlug = string.IsNullOrWhiteSpace(slug) ? SlugNormalizer.Normalize(name) : SlugNormalizer.Normalize(slug);
+
         try
         {
-            await _budgetService.CreateCategoryAsync(budgetGroupId, name, allocatedAmount, expenditureType, teamId, user.Id);
+            await _budgetService.CreateCategoryAsync(budgetGroupId, name, resolvedSlug, allocatedAmount, expenditureType, teamId, user.Id);
             SetSuccess($"Category '{name}' created.");
             return RedirectToAction(nameof(YearDetail), new { id = budgetYearId });
         }
@@ -372,15 +399,17 @@ public class FinanceController : HumansControllerBase
 
     [HttpPost("Categories/{id:guid}/Update")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateCategory(Guid id, string name, decimal allocatedAmount,
+    public async Task<IActionResult> UpdateCategory(Guid id, string name, string? slug, decimal allocatedAmount,
         ExpenditureType expenditureType)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
+        var resolvedSlug = string.IsNullOrWhiteSpace(slug) ? SlugNormalizer.Normalize(name) : SlugNormalizer.Normalize(slug);
+
         try
         {
-            await _budgetService.UpdateCategoryAsync(id, name, allocatedAmount, expenditureType, user.Id);
+            await _budgetService.UpdateCategoryAsync(id, name, resolvedSlug, allocatedAmount, expenditureType, user.Id);
             SetSuccess($"Category '{name}' updated.");
             return RedirectToAction(nameof(CategoryDetail), new { id });
         }
@@ -556,6 +585,53 @@ public class FinanceController : HumansControllerBase
         }
 
         return RedirectToAction(nameof(YearDetail), new { id = yearId });
+    }
+
+    // --- Holded Actions ---
+
+    [HttpGet("HoldedUnmatched")]
+    public async Task<IActionResult> HoldedUnmatched(CancellationToken ct)
+    {
+        var unmatched = await _holdedTransactions.GetUnmatchedAsync(ct);
+        var activeYear = await _budgetService.GetActiveYearAsync();
+        var categories = activeYear is null
+            ? Array.Empty<BudgetCategory>()
+            : await _budgetService.GetCategoriesByYearAsync(activeYear.Id, ct);
+        var vm = new HoldedUnmatchedViewModel(unmatched, categories);
+        return View(vm);
+    }
+
+    [HttpGet("HoldedTags")]
+    public async Task<IActionResult> HoldedTags(CancellationToken ct)
+    {
+        var activeYear = await _budgetService.GetActiveYearAsync();
+        var inventory = activeYear is null
+            ? Array.Empty<HoldedTagInventoryRow>()
+            : await _budgetService.GetTagInventoryAsync(activeYear.Id, ct);
+        return View(inventory);
+    }
+
+    [HttpPost("HoldedSyncRun")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> HoldedSyncRun(CancellationToken ct)
+    {
+        var result = await _holdedSyncService.SyncAsync(ct);
+        TempData["HoldedSyncMessage"] =
+            $"Synced {result.DocsFetched} docs ({result.Matched} matched, {result.Unmatched} unmatched).";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost("HoldedReassign")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> HoldedReassign(string holdedDocId, Guid budgetCategoryId, CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var outcome = await _holdedSyncService.ReassignAsync(holdedDocId, budgetCategoryId, user.Id, ct);
+        if (outcome.Warning is not null)
+            TempData["HoldedReassignWarning"] = outcome.Warning;
+        return RedirectToAction(nameof(HoldedUnmatched));
     }
 
     /// <summary>

@@ -93,15 +93,25 @@
         <div class="card-body">
             <form asp-action="UpdateCategory" asp-route-id="@Model.Id" method="post" class="row g-3 align-items-end">
                 @Html.AntiForgeryToken()
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label">Name</label>
                     <input type="text" name="name" class="form-control" value="@Model.Name" required />
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Allocated Amount (&euro;)</label>
+                    <label class="form-label">Holded tag slug</label>
+                    <input type="text" name="slug" class="form-control" value="@Model.Slug" />
+                    <small class="form-text text-muted">
+                        Lowercase, no spaces / accents / symbols. Used as part of the Holded tag.
+                        <strong class="text-warning d-block">
+                            Existing Holded tags using the old slug will become unmatched on next sync — fix tags in Holded after saving.
+                        </strong>
+                    </small>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Allocated (&euro;)</label>
                     <input type="number" name="allocatedAmount" class="form-control" step="0.01" value="@Model.AllocatedAmount" required />
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label">Expenditure Type</label>
                     <select name="expenditureType" class="form-select">
                         @if (Model.ExpenditureType == ExpenditureType.OpEx)

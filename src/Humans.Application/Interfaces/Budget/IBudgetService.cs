@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using Humans.Application.DTOs.Finance;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -63,15 +64,21 @@ public interface IBudgetService
     int GetActualTicketsSold(BudgetGroup ticketingGroup);
 
     // Budget Groups
-    Task<BudgetGroup> CreateGroupAsync(Guid budgetYearId, string name, bool isRestricted, Guid actorUserId);
-    Task UpdateGroupAsync(Guid groupId, string name, int sortOrder, bool isRestricted, Guid actorUserId);
+    Task<BudgetGroup> CreateGroupAsync(Guid budgetYearId, string name, string slug, bool isRestricted, Guid actorUserId);
+    Task UpdateGroupAsync(Guid groupId, string name, string slug, int sortOrder, bool isRestricted, Guid actorUserId);
     Task DeleteGroupAsync(Guid groupId, Guid actorUserId);
 
     // Budget Categories
     Task<BudgetCategory?> GetCategoryByIdAsync(Guid id);
-    Task<BudgetCategory> CreateCategoryAsync(Guid budgetGroupId, string name, decimal allocatedAmount, ExpenditureType expenditureType, Guid? teamId, Guid actorUserId);
-    Task UpdateCategoryAsync(Guid categoryId, string name, decimal allocatedAmount, ExpenditureType expenditureType, Guid actorUserId);
+    Task<BudgetCategory> CreateCategoryAsync(Guid budgetGroupId, string name, string slug, decimal allocatedAmount, ExpenditureType expenditureType, Guid? teamId, Guid actorUserId);
+    Task UpdateCategoryAsync(Guid categoryId, string name, string slug, decimal allocatedAmount, ExpenditureType expenditureType, Guid actorUserId);
     Task DeleteCategoryAsync(Guid categoryId, Guid actorUserId);
+
+    // Finance section consumers — read-only Slug-aware lookups
+    Task<BudgetCategory?> GetCategoryBySlugAsync(Guid budgetYearId, string groupSlug, string categorySlug, CancellationToken ct = default);
+    Task<BudgetYear?> GetYearForDateAsync(LocalDate date, CancellationToken ct = default);
+    Task<IReadOnlyList<BudgetCategory>> GetCategoriesByYearAsync(Guid budgetYearId, CancellationToken ct = default);
+    Task<IReadOnlyList<HoldedTagInventoryRow>> GetTagInventoryAsync(Guid budgetYearId, CancellationToken ct = default);
 
     // Budget Line Items
     Task<BudgetLineItem?> GetLineItemByIdAsync(Guid id);

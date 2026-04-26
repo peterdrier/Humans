@@ -185,18 +185,28 @@
                                     <label class="form-label form-label-sm">Name</label>
                                     <input type="text" name="name" class="form-control form-control-sm" value="@group.Name" required />
                                 </div>
+                                <div class="col-md-3">
+                                    <label class="form-label form-label-sm">Holded tag slug</label>
+                                    <input type="text" name="slug" class="form-control form-control-sm" value="@group.Slug" />
+                                    <small class="form-text text-muted">
+                                        Lowercase, no spaces / accents / symbols. Used as part of the Holded tag.
+                                        <strong class="text-warning d-block">
+                                            Existing Holded tags using the old slug will become unmatched on next sync — fix tags in Holded after saving.
+                                        </strong>
+                                    </small>
+                                </div>
                                 <div class="col-md-2">
                                     <label class="form-label form-label-sm">Sort Order</label>
                                     <input type="number" name="sortOrder" class="form-control form-control-sm" value="@group.SortOrder" />
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-2">
                                     <div class="form-check mt-4">
                                         <input class="form-check-input" type="checkbox" name="isRestricted" value="true" id="restricted-@group.Id" @(group.IsRestricted ? "checked" : null) />
                                         <input type="hidden" name="isRestricted" value="false" />
                                         <label class="form-check-label" for="restricted-@group.Id">Restricted</label>
                                     </div>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-1">
                                     <button type="submit" class="btn btn-primary btn-sm">Save</button>
                                 </div>
                             </form>
@@ -209,9 +219,16 @@
                     <form asp-action="CreateGroup" method="post" class="row g-2 align-items-end">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="budgetYearId" value="@budgetYear.Id" />
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label form-label-sm">Group Name</label>
                             <input type="text" name="name" class="form-control form-control-sm" placeholder="New group name" required />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label form-label-sm">Holded tag slug</label>
+                            <input type="text" name="slug" class="form-control form-control-sm" placeholder="auto from name" />
+                            <small class="form-text text-muted">
+                                Lowercase, no spaces / accents / symbols. Used as part of the Holded tag.
+                            </small>
                         </div>
                         <div class="col-md-3">
                             <div class="form-check mt-4">
@@ -220,7 +237,7 @@
                                 <label class="form-check-label" for="newGroupRestricted-@budgetYear.Id">Restricted</label>
                             </div>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-3">
                             <button type="submit" class="btn btn-outline-primary btn-sm">
                                 <i class="fa-solid fa-plus me-1"></i>Add Group
                             </button>

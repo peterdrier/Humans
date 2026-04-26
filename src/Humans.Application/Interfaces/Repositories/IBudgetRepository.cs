@@ -160,19 +160,21 @@ public interface IBudgetRepository
     Task<BudgetGroup> CreateGroupAsync(
         Guid budgetYearId,
         string name,
+        string slug,
         bool isRestricted,
         Guid actorUserId,
         Instant now,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Updates a budget group's name, sort order, and restricted flag,
+    /// Updates a budget group's name, slug, sort order, and restricted flag,
     /// appending field-level audit entries for each changed field. Throws if
     /// the year is closed. Returns <c>true</c> if the group existed.
     /// </summary>
     Task<bool> UpdateGroupAsync(
         Guid groupId,
         string name,
+        string slug,
         int sortOrder,
         bool isRestricted,
         Guid actorUserId,
@@ -200,6 +202,39 @@ public interface IBudgetRepository
     /// </summary>
     Task<BudgetCategory?> GetCategoryByIdAsync(Guid id, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns a single category resolved by (year, group slug, category slug).
+    /// Slugs are stable identifiers used by the Finance section to map Holded
+    /// tags back to budget categories. Returns null if no match.
+    /// </summary>
+    Task<BudgetCategory?> GetCategoryBySlugAsync(
+        Guid budgetYearId, string groupSlug, string categorySlug, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the (non-deleted) budget year whose <c>Year</c> string matches
+    /// the calendar year of <paramref name="date"/>, or null if none. Used by
+    /// Finance to resolve which budget year a Holded document belongs to from
+    /// its document date.
+    /// </summary>
+    Task<BudgetYear?> GetYearForDateAsync(LocalDate date, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every category in a budget year with its owning group included
+    /// (line items not loaded). Ordered by group sort order then category sort
+    /// order. Detached. Used by Finance for tag-inventory and reconciliation.
+    /// </summary>
+    Task<IReadOnlyList<BudgetCategory>> GetCategoriesByYearAsync(
+        Guid budgetYearId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns flattened (Year, Group, Category) tuples for every category in a
+    /// budget year, suitable for materializing the
+    /// <see cref="Humans.Application.DTOs.Finance.HoldedTagInventoryRow"/>
+    /// projection in the Application layer.
+    /// </summary>
+    Task<IReadOnlyList<(BudgetYear Year, BudgetGroup Group, BudgetCategory Category)>> GetTagInventoryRowsAsync(
+        Guid budgetYearId, CancellationToken ct = default);
+
     // ==========================================================================
     // Budget Categories — atomic mutations
     // ==========================================================================
@@ -212,6 +247,7 @@ public interface IBudgetRepository
     Task<BudgetCategory> CreateCategoryAsync(
         Guid budgetGroupId,
         string name,
+        string slug,
         decimal allocatedAmount,
         ExpenditureType expenditureType,
         Guid? teamId,
@@ -220,13 +256,14 @@ public interface IBudgetRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Updates a category's name, allocation, and expenditure type with
+    /// Updates a category's name, slug, allocation, and expenditure type with
     /// field-level audit entries. Throws if the year is closed. Returns
     /// <c>true</c> if the category existed.
     /// </summary>
     Task<bool> UpdateCategoryAsync(
         Guid categoryId,
         string name,
+        string slug,
         decimal allocatedAmount,
         ExpenditureType expenditureType,
         Guid actorUserId,

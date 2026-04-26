@@ -1,0 +1,33 @@
+@model IReadOnlyList<Humans.Application.DTOs.Finance.HoldedTagInventoryRow>
+@{
+    ViewData["Title"] = "Holded — Tag inventory";
+}
+
+<h2>Holded tag inventory</h2>
+<p class="text-muted">Tag each Holded purchase with one of these tags so it lands in the right budget category.</p>
+
+@if (Model.Count == 0)
+{
+    <p>No active budget year, or no categories defined.</p>
+}
+else
+{
+    <table class="table table-sm">
+        <thead><tr><th>Year</th><th>Group</th><th>Category</th><th>Holded Tag</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var row in Model)
+        {
+            <tr>
+                <td>@row.Year</td>
+                <td>@row.GroupName</td>
+                <td>@row.CategoryName</td>
+                <td><code>@row.Tag</code></td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                            onclick="navigator.clipboard.writeText('@row.Tag')">Copy</button>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}

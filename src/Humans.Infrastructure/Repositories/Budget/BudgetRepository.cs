@@ -494,6 +494,7 @@ public sealed class BudgetRepository : IBudgetRepository
     public async Task<BudgetGroup> CreateGroupAsync(
         Guid budgetYearId,
         string name,
+        string slug,
         bool isRestricted,
         Guid actorUserId,
         Instant now,
@@ -516,6 +517,7 @@ public sealed class BudgetRepository : IBudgetRepository
             Id = Guid.NewGuid(),
             BudgetYearId = budgetYearId,
             Name = name,
+            Slug = slug,
             SortOrder = maxSortOrder + 1,
             IsRestricted = isRestricted,
             IsDepartmentGroup = false,
@@ -535,6 +537,7 @@ public sealed class BudgetRepository : IBudgetRepository
     public async Task<bool> UpdateGroupAsync(
         Guid groupId,
         string name,
+        string slug,
         int sortOrder,
         bool isRestricted,
         Guid actorUserId,
@@ -555,6 +558,14 @@ public sealed class BudgetRepository : IBudgetRepository
                 nameof(BudgetGroup.Name), group.Name, name,
                 actorUserId, now);
             group.Name = name;
+        }
+
+        if (!string.Equals(group.Slug, slug, StringComparison.Ordinal))
+        {
+            AddFieldAudit(ctx, group.BudgetYearId, nameof(BudgetGroup), group.Id,
+                nameof(BudgetGroup.Slug), group.Slug, slug,
+                actorUserId, now);
+            group.Slug = slug;
         }
 
         if (group.SortOrder != sortOrder)
@@ -630,6 +641,59 @@ public sealed class BudgetRepository : IBudgetRepository
             .FirstOrDefaultAsync(c => c.Id == id, ct);
     }
 
+    public async Task<BudgetCategory?> GetCategoryBySlugAsync(
+        Guid budgetYearId, string groupSlug, string categorySlug, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.BudgetCategories
+            .AsNoTracking()
+            .Where(c => c.Slug == categorySlug
+                        && c.BudgetGroup!.Slug == groupSlug
+                        && c.BudgetGroup.BudgetYearId == budgetYearId)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<BudgetYear?> GetYearForDateAsync(LocalDate date, CancellationToken ct = default)
+    {
+        // BudgetYear.Year is a string per the existing model (e.g., "2026").
+        // Match by calendar year-of-date; if no year row carries that string, return null.
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var yearStr = date.Year.ToString(CultureInfo.InvariantCulture);
+        return await ctx.BudgetYears
+            .AsNoTracking()
+            .Where(y => !y.IsDeleted && y.Year == yearStr)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<BudgetCategory>> GetCategoriesByYearAsync(
+        Guid budgetYearId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.BudgetCategories
+            .AsNoTracking()
+            .Where(c => c.BudgetGroup!.BudgetYearId == budgetYearId)
+            .Include(c => c.BudgetGroup)
+            .OrderBy(c => c.BudgetGroup!.SortOrder).ThenBy(c => c.SortOrder)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<(BudgetYear Year, BudgetGroup Group, BudgetCategory Category)>> GetTagInventoryRowsAsync(
+        Guid budgetYearId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var rows = await ctx.BudgetCategories
+            .AsNoTracking()
+            .Where(c => c.BudgetGroup!.BudgetYearId == budgetYearId)
+            .Select(c => new
+            {
+                Year = c.BudgetGroup!.BudgetYear,
+                Group = c.BudgetGroup,
+                Category = c
+            })
+            .ToListAsync(ct);
+        return rows.Select(r => (r.Year!, r.Group, r.Category)).ToList();
+    }
+
     // ==========================================================================
     // Budget Categories — atomic mutations
     // ==========================================================================
@@ -637,6 +701,7 @@ public sealed class BudgetRepository : IBudgetRepository
     public async Task<BudgetCategory> CreateCategoryAsync(
         Guid budgetGroupId,
         string name,
+        string slug,
         decimal allocatedAmount,
         ExpenditureType expenditureType,
         Guid? teamId,
@@ -660,6 +725,7 @@ public sealed class BudgetRepository : IBudgetRepository
             Id = Guid.NewGuid(),
             BudgetGroupId = budgetGroupId,
             Name = name,
+            Slug = slug,
             AllocatedAmount = allocatedAmount,
             ExpenditureType = expenditureType,
             TeamId = teamId,
@@ -680,6 +746,7 @@ public sealed class BudgetRepository : IBudgetRepository
     public async Task<bool> UpdateCategoryAsync(
         Guid categoryId,
         string name,
+        string slug,
         decimal allocatedAmount,
         ExpenditureType expenditureType,
         Guid actorUserId,
@@ -703,6 +770,14 @@ public sealed class BudgetRepository : IBudgetRepository
                 nameof(BudgetCategory.Name), category.Name, name,
                 actorUserId, now);
             category.Name = name;
+        }
+
+        if (!string.Equals(category.Slug, slug, StringComparison.Ordinal))
+        {
+            AddFieldAudit(ctx, budgetYearId, nameof(BudgetCategory), category.Id,
+                nameof(BudgetCategory.Slug), category.Slug, slug,
+                actorUserId, now);
+            category.Slug = slug;
         }
 
         if (category.AllocatedAmount != allocatedAmount)
