@@ -485,4 +485,64 @@ public class CampAdminController : HumansControllerBase
             return View("RoleForm", form);
         }
     }
+
+    [HttpPost("Roles/{id:guid}/Deactivate")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeactivateRole(Guid id, CancellationToken ct)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null) return Unauthorized();
+
+        try
+        {
+            var ok = await _campRoleService.DeactivateDefinitionAsync(id, user.Id, ct);
+            if (!ok) return NotFound();
+            SetSuccess("Camp role deactivated.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "DeactivateRole failed for {RoleId}.", id);
+            SetError("Failed to deactivate camp role.");
+        }
+        return RedirectToAction(nameof(Roles));
+    }
+
+    [HttpPost("Roles/{id:guid}/Reactivate")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ReactivateRole(Guid id, CancellationToken ct)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null) return Unauthorized();
+
+        try
+        {
+            var ok = await _campRoleService.ReactivateDefinitionAsync(id, user.Id, ct);
+            if (!ok) return NotFound();
+            SetSuccess("Camp role reactivated.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "ReactivateRole failed for {RoleId}.", id);
+            SetError("Failed to reactivate camp role.");
+        }
+        return RedirectToAction(nameof(Roles));
+    }
+
+    [HttpGet("Compliance")]
+    public async Task<IActionResult> Compliance(int? year, CancellationToken ct)
+    {
+        var settings = await _campService.GetSettingsAsync(ct);
+        var resolvedYear = year ?? settings.PublicYear;
+        var report = await _campRoleService.GetComplianceReportAsync(resolvedYear, ct);
+
+        var vm = new CampRoleComplianceViewModel
+        {
+            Year = report.Year,
+            Camps = report.Camps.Select(c => new CampRoleComplianceCampRowViewModel(
+                c.CampId, c.CampName, c.CampSlug, c.CampSeasonId,
+                c.Roles.Select(r => new CampRoleComplianceRoleRowViewModel(r.DefinitionName, r.MinimumRequired, r.Filled, r.IsMet)).ToList(),
+                c.IsCompliant)).ToList(),
+        };
+        return View(vm);
+    }
 }
