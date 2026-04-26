@@ -20,6 +20,8 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Admin;
+using Humans.Web.Services;
 using Humans.Domain.Entities;
 using Humans.Web.Extensions;
 using Microsoft.Extensions.Caching.Memory;
@@ -319,6 +321,9 @@ builder.Services.AddHealthChecks()
     .AddCheck<GoogleWorkspaceHealthCheck>("google-workspace");
 
 builder.Services.AddHumansInfrastructure(builder.Configuration, builder.Environment, configRegistry);
+
+// Web-layer services (depend on Web-only infrastructure like InMemoryLogSink / Hangfire)
+builder.Services.AddScoped<IAdminDashboardService, AdminDashboardService>();
 
 // Configure Response Compression
 builder.Services.AddResponseCompression(options =>
