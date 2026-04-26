@@ -36,12 +36,16 @@ public interface IAccountDeletionService
     /// Admin-initiated purge: anonymizes the identity on the <c>User</c> row
     /// (display name + email replaced with sentinels, <c>UserEmail</c> rows
     /// removed) and invalidates the caches that key off the user's identity
-    /// (FullProfile, ActiveTeams) so downstream consumers see the purged view
-    /// before TTL expiry. Returns <c>NotFound</c> if the user does not exist.
-    /// Used by <c>AdminController.PurgeHuman</c> when an operator removes a
-    /// human outside the normal 30-day grace period.
+    /// (FullProfile, ActiveTeams, role-assignment claims, shift-authorization)
+    /// so downstream consumers see the purged view before TTL expiry. Writes
+    /// an <see cref="Domain.Enums.AuditAction.AccountPurged"/> audit-log entry
+    /// keyed by <paramref name="actorId"/> (the admin running the purge) so
+    /// the trail survives a subsequent right-of-access request. Returns
+    /// <c>NotFound</c> if the user does not exist. Used by
+    /// <c>AdminController.PurgeHuman</c> when an operator removes a human
+    /// outside the normal 30-day grace period.
     /// </summary>
-    Task<OnboardingResult> PurgeAsync(Guid userId, CancellationToken ct = default);
+    Task<OnboardingResult> PurgeAsync(Guid userId, Guid? actorId = null, CancellationToken ct = default);
 
     /// <summary>
     /// Scheduled-job entry point: completes the GDPR expiry cascade for a user

@@ -131,6 +131,11 @@ public class AccountDeletionServiceTests
         await _emailService.Received(1).SendAccountDeletionRequestedAsync(
             user.Email!, user.DisplayName,
             Arg.Any<DateTime>(), user.PreferredLanguage, Arg.Any<CancellationToken>());
+
+        // Shift-authorization cache must drop in-orchestrator (parity with
+        // PurgeAsync / AnonymizeExpiredAccountAsync) so direct callers don't
+        // depend on the Profile caching decorator for correctness.
+        _shiftAuthorizationInvalidator.Received(1).Invalidate(userId);
     }
 
     [HumansFact]
@@ -183,6 +188,23 @@ public class AccountDeletionServiceTests
         // off identity must also drop on admin purge.
         _roleAssignmentClaimsInvalidator.Received(1).Invalidate(userId);
         _shiftAuthorizationInvalidator.Received(1).Invalidate(userId);
+    }
+
+    [HumansFact]
+    public async Task PurgeAsync_Success_WritesAuditLogWithActorAndDisplayName()
+    {
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        _userService.PurgeOwnDataAsync(userId, Arg.Any<CancellationToken>()).Returns("Test Human");
+
+        await _service.PurgeAsync(userId, actorId);
+
+        // GDPR right-of-access depends on this audit row surviving the purge.
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.AccountPurged, nameof(User), userId,
+            Arg.Is<string>(s => s.Contains("Test Human")),
+            actorId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     // ==========================================================================

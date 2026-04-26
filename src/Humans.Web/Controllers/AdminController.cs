@@ -89,7 +89,7 @@ public class AdminController : HumansControllerBase
             await _userManager.RemoveLoginAsync(user, login.LoginProvider, login.ProviderKey);
         }
 
-        var result = await _accountDeletionService.PurgeAsync(id);
+        var result = await _accountDeletionService.PurgeAsync(id, currentUser?.Id);
         if (!result.Success)
         {
             return NotFound();

@@ -31,8 +31,13 @@ namespace Humans.Application.Services.Users.AccountLifecycle;
 /// </para>
 /// <para>
 /// Lazy-resolves <see cref="IProfileService"/> via <see cref="IServiceProvider"/>
-/// because ProfileService itself depends on IUserService — an eager injection
-/// would deadlock the DI graph at construction.
+/// to break the Profile ↔ AccountDeletion DI cycle: <see cref="IProfileService"/>
+/// eagerly injects <see cref="IAccountDeletionService"/> (so that
+/// <c>CachingProfileService</c> can fire post-success cache side effects on
+/// <c>RequestDeletionAsync</c>), so this service must lazy-resolve
+/// <see cref="IProfileService"/> back to invoke the cascade's
+/// profile-anonymization step. See <c>docs/architecture/dependency-graph.md</c>
+/// cycle #2.
 /// </para>
 /// </remarks>
 public sealed class AccountDeletionService : IAccountDeletionService
@@ -51,8 +56,8 @@ public sealed class AccountDeletionService : IAccountDeletionService
     private readonly IClock _clock;
     private readonly ILogger<AccountDeletionService> _logger;
 
-    // Lazy-resolved: ProfileService → IUserService, so eager injection would
-    // cycle at construction. Only called on deletion paths, so the extra
+    // Lazy-resolved to break the Profile ↔ AccountDeletion DI cycle (see
+    // class remarks). Only called on the expiry-cascade path, so the extra
     // resolve cost is irrelevant.
     private IProfileService ProfileService => _serviceProvider.GetRequiredService<IProfileService>();
 
@@ -138,6 +143,14 @@ public sealed class AccountDeletionService : IAccountDeletionService
                 ct);
         }
 
+        // 6. Drop the shift-authorization cache so coordinator privilege
+        //    reverts immediately rather than waiting out the 60-second TTL.
+        //    Parity with PurgeAsync / AnonymizeExpiredAccountAsync — keeps the
+        //    invalidation co-located with the orchestrating mutation so direct
+        //    callers of IAccountDeletionService don't depend on routing through
+        //    the Profile caching decorator for correctness.
+        _shiftAuthorizationInvalidator.Invalidate(userId);
+
         return new OnboardingResult(true);
     }
 
@@ -145,7 +158,7 @@ public sealed class AccountDeletionService : IAccountDeletionService
     // Admin-initiated immediate purge
     // ==========================================================================
 
-    public async Task<OnboardingResult> PurgeAsync(Guid userId, CancellationToken ct = default)
+    public async Task<OnboardingResult> PurgeAsync(Guid userId, Guid? actorId = null, CancellationToken ct = default)
     {
         // Purge is identity-only at the User aggregate — renames + drops
         // UserEmail rows and locks out the account. Own-data deletion lives
@@ -166,6 +179,23 @@ public sealed class AccountDeletionService : IAccountDeletionService
         // shift-authorization cache (60 s TTL on shift-coordinator privilege).
         _roleAssignmentClaimsInvalidator.Invalidate(userId);
         _shiftAuthorizationInvalidator.Invalidate(userId);
+
+        // GDPR audit trail: admin-initiated purge is irreversible identity
+        // collapse. Record the actor + the pre-purge display name so a
+        // subsequent right-of-access request can answer "when was my data
+        // erased and by whom?". (Right-of-access reads the audit log.)
+        var description = $"Admin-initiated purge: identity collapsed (was \"{displayName}\")";
+        if (actorId is Guid actor)
+        {
+            await _auditLogService.LogAsync(
+                AuditAction.AccountPurged, nameof(User), userId, description, actor);
+        }
+        else
+        {
+            await _auditLogService.LogAsync(
+                AuditAction.AccountPurged, nameof(User), userId, description,
+                jobName: nameof(AccountDeletionService));
+        }
 
         return new OnboardingResult(true);
     }

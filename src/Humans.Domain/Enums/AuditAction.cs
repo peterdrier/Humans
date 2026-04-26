@@ -93,4 +93,5 @@ public enum AuditAction
     CampRoleDefinitionReactivated,
     CampRoleAssigned,
     CampRoleUnassigned,
+    AccountPurged,
 }
