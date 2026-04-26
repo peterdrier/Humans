@@ -61,6 +61,22 @@ public class AdminSidebarViewComponentTests
     }
 
     [HumansFact]
+    public async Task Active_Item_Match_Requires_Both_Controller_And_Action()
+    {
+        // Regression: when on /Admin/Logs, only the Logs sidebar item should be active.
+        // Previously a controller-only match made all 5 items under controller="Admin"
+        // (Logs, DbStats, CacheStats, Configuration, AudienceSegmentation) light up.
+        var auth = AlwaysAllow();
+        var sut = MakeSut(auth, "Admin", "Logs");
+        var result = await sut.InvokeAsync() as ViewViewComponentResult;
+        var model = result!.ViewData!.Model as AdminSidebarViewModel;
+        var allItems = model!.Groups.SelectMany(g => g.Items).ToList();
+        var activeItems = allItems.Where(i => i.IsActive).ToList();
+        activeItems.Should().HaveCount(1);
+        activeItems.Single().LabelKey.Should().Be("AdminNav_Logs");
+    }
+
+    [HumansFact]
     public async Task Hides_Dev_Group_In_Production()
     {
         var env = Substitute.For<IWebHostEnvironment>();
