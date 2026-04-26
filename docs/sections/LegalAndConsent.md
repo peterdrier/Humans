@@ -97,7 +97,7 @@ Cross-aggregate nav `ConsentRecord.DocumentVersion` — still declared and walke
 
 **Owning services:** `LegalDocumentService`, `AdminLegalDocumentService`, `LegalDocumentSyncService` (document-side), `ConsentService` (consent-side) — all in `Humans.Application.Services.Legal` / `Humans.Application.Services.Consent`.
 **Owned tables:** `legal_documents`, `document_versions`, `consent_records`
-**Status:** (A) Fully migrated. Both halves of the section live in `Humans.Application.Services.*` and route persistence through owning-section repositories.
+**Status:** (A) Migrated, with one cross-domain nav strip deferred (`LegalDocument.Team` — see Repositories block below for details). Both halves of the section live in `Humans.Application.Services.*` and route persistence through owning-section repositories.
 
 ### Repositories
 

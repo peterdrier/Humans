@@ -38,7 +38,7 @@ Departments and sub-teams, join requests, role definitions, team pages, and link
 
 **Table:** `teams`
 
-Aggregate-local navs kept: `Team.ParentTeam`, `Team.ChildTeams`, `Team.Members`, `Team.JoinRequests`, `Team.RoleDefinitions`.
+Aggregate-local navs kept: `Team.ParentTeam`, `Team.ChildTeams`, `Team.Members`, `Team.JoinRequests`, `Team.RoleDefinitions`. Public/member team page content lives directly on the row as `PageContent` / `PageContentUpdatedAt` / `PageContentUpdatedByUserId` columns (no separate `team_pages` table or entity).
 
 ### TeamMember
 
@@ -71,12 +71,6 @@ Named role slots on a team (name, description, slot count, priorities, sort orde
 **Table:** `team_role_assignments`
 
 Assigns a team member to a specific slot in a role definition. Aggregate-local: `TeamRoleAssignment.TeamRoleDefinition`, `TeamRoleAssignment.TeamMember`. Cross-domain nav `TeamRoleAssignment.AssignedByUser → AssignedByUserId` (target: FK-only).
-
-### TeamPage
-
-**Table:** `team_pages`
-
-Aggregate-local back-ref: `TeamPage.Team`.
 
 ### GoogleResource
 
@@ -183,12 +177,11 @@ Stored as string via `HasConversion<string>()`.
 
 ## Architecture
 
-**Owning services:** `TeamService`, `TeamPageService`, `TeamResourceService`
-**Owned tables:** `teams`, `team_members`, `team_join_requests`, `team_join_request_state_history`, `team_role_definitions`, `team_role_assignments`, `team_pages`, `google_resources`
-**Status:** (A) Migrated (2026-04-23). All three services — `TeamPageService`, `TeamResourceService`, and `TeamService` — now live in `Humans.Application.Services.Teams`.
+**Owning services:** `TeamService`, `TeamResourceService`
+**Owned tables:** `teams`, `team_members`, `team_join_requests`, `team_join_request_state_history`, `team_role_definitions`, `team_role_assignments`, `google_resources`
+**Status:** (A) Migrated (2026-04-23). Both services — `TeamResourceService` and `TeamService` — now live in `Humans.Application.Services.Teams`.
 
 - `TeamService` goes through `ITeamRepository` for owned-table access and routes every cross-section read through the public service interface (`IUserService`, `IRoleAssignmentService`, `IShiftManagementService`, `ITeamResourceService`).
-- `TeamPageService` is a pure composer (PR #270 — no repository needed).
 - `TeamResourceService` uses `IGoogleResourceRepository` + the `ITeamResourceGoogleClient` connector (PR #274).
 - **Decorator decision — no caching decorator.** `TeamService` keeps a short-TTL `IMemoryCache` projection at `CacheKeys.ActiveTeams` (10-minute TTL) inside the service itself (same precedent as Camps per §15f / §15i).
 - **Cross-domain navs `[Obsolete]`-marked:** `TeamMember.User`, `TeamJoinRequest.User`, `TeamJoinRequest.ReviewedByUser`, `TeamRoleAssignment.AssignedByUser`, `TeamJoinRequestStateHistory.ChangedByUser`. `TeamService` populates them in-memory via `IUserService.GetByIdsAsync` (§6b); controllers/views still read them under file-wide `#pragma warning disable CS0618` pragmas pending the cross-cutting User-nav strip (§15i).
@@ -198,9 +191,6 @@ Stored as string via `HasConversion<string>()`.
 - **`ITeamRepository`** — owns `teams`, `team_members`, `team_join_requests`, `team_join_request_state_history`, `team_role_definitions`, `team_role_assignments`
   - Aggregate-local navs kept: `Team.ParentTeam`, `Team.ChildTeams`, `Team.Members`, `Team.JoinRequests`, `Team.RoleDefinitions`, `TeamJoinRequest.StateHistory`, `TeamMember.Team`, `TeamRoleDefinition.Team`, `TeamRoleAssignment.TeamRoleDefinition`, `TeamRoleAssignment.TeamMember`
   - Cross-domain navs stripped: `TeamMember.User → TeamMember.UserId`, `TeamJoinRequest.User → TeamJoinRequest.UserId`, `TeamJoinRequest.ReviewedByUser → TeamJoinRequest.ReviewedByUserId`, `TeamRoleAssignment.AssignedByUser → TeamRoleAssignment.AssignedByUserId`, `TeamJoinRequestStateHistory.ChangedByUser → TeamJoinRequestStateHistory.ChangedByUserId`
-- **`ITeamPageRepository`** — owns `team_pages`
-  - Aggregate-local navs kept: `TeamPage.Team` (back-ref within Teams section)
-  - Cross-domain navs stripped: none
 - **`IGoogleResourceRepository`** (landed 2026-04-22, PR for sub-task nobodies-collective/Humans#540c) — owns `google_resources` (Team Resources sub-aggregate).
   - Aggregate-local navs kept: `GoogleResource.Team` back-ref is still declared but never `Include`-d by the repository (the one consumer, `GoogleController`, only reads `resource.Name`).
   - Cross-domain navs stripped: none.

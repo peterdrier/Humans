@@ -277,10 +277,11 @@ services.
 
 ### MembershipCalculator (Scoped)
 
-No repository. Pure read computation over `IConsentService`,
-`ILegalDocumentSyncService`, `IProfileService`, `IRoleAssignmentService`,
-`ITeamService`, `IUserService`, `ISystemTeamSync`. No DB access, no
-cache.
+No repository. Pure read computation over `IProfileService`,
+`IMembershipQuery` (fan-out to team + role-assignment + system-team-sync
+reads, breaks a DI cycle), `IUserService`, `ILegalDocumentSyncService`,
+`IConsentService` (resolved lazily via `IServiceProvider` to break a
+second DI cycle), and `IClock`. No DB access, no cache.
 
 ### MembershipQuery (Scoped)
 
