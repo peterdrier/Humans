@@ -23,6 +23,14 @@
 
 <vc:temp-data-alerts />
 
+@if (!Model.CanManage && !Model.IsPlacementOpen)
+{
+    <div class="alert alert-info mb-3">
+        <i class="fa-solid fa-lock me-1"></i>
+        Container placement is currently closed. Contact city planning to request changes.
+    </div>
+}
+
 @if (Model.Containers.Count == 0)
 {
     <div class="alert alert-secondary">No containers registered for this season yet.</div>
