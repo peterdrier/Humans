@@ -1,10 +1,13 @@
+using Humans.Application.DTOs.Finance;
 using Humans.Application.Interfaces.Budget;
+using Humans.Application.Interfaces.Finance;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
+using Humans.Web.ViewModels.Finance;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -20,6 +23,8 @@ public class FinanceController : HumansControllerBase
     private readonly ITeamService _teamService;
     private readonly ITicketingBudgetService _ticketingBudgetService;
     private readonly ITicketQueryService _ticketQueryService;
+    private readonly IHoldedSyncService _holdedSyncService;
+    private readonly IHoldedTransactionService _holdedTransactions;
     private readonly IClock _clock;
     private readonly ILogger<FinanceController> _logger;
 
@@ -28,6 +33,8 @@ public class FinanceController : HumansControllerBase
         ITeamService teamService,
         ITicketingBudgetService ticketingBudgetService,
         ITicketQueryService ticketQueryService,
+        IHoldedSyncService holdedSyncService,
+        IHoldedTransactionService holdedTransactions,
         IClock clock,
         UserManager<User> userManager,
         ILogger<FinanceController> logger)
@@ -37,6 +44,8 @@ public class FinanceController : HumansControllerBase
         _teamService = teamService;
         _ticketingBudgetService = ticketingBudgetService;
         _ticketQueryService = ticketQueryService;
+        _holdedSyncService = holdedSyncService;
+        _holdedTransactions = holdedTransactions;
         _clock = clock;
         _logger = logger;
     }
@@ -556,6 +565,53 @@ public class FinanceController : HumansControllerBase
         }
 
         return RedirectToAction(nameof(YearDetail), new { id = yearId });
+    }
+
+    // --- Holded Actions ---
+
+    [HttpGet("HoldedUnmatched")]
+    public async Task<IActionResult> HoldedUnmatched(CancellationToken ct)
+    {
+        var unmatched = await _holdedTransactions.GetUnmatchedAsync(ct);
+        var activeYear = await _budgetService.GetActiveYearAsync();
+        var categories = activeYear is null
+            ? Array.Empty<BudgetCategory>()
+            : await _budgetService.GetCategoriesByYearAsync(activeYear.Id, ct);
+        var vm = new HoldedUnmatchedViewModel(unmatched, categories);
+        return View(vm);
+    }
+
+    [HttpGet("HoldedTags")]
+    public async Task<IActionResult> HoldedTags(CancellationToken ct)
+    {
+        var activeYear = await _budgetService.GetActiveYearAsync();
+        var inventory = activeYear is null
+            ? Array.Empty<HoldedTagInventoryRow>()
+            : await _budgetService.GetTagInventoryAsync(activeYear.Id, ct);
+        return View(inventory);
+    }
+
+    [HttpPost("HoldedSyncRun")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> HoldedSyncRun(CancellationToken ct)
+    {
+        var result = await _holdedSyncService.SyncAsync(ct);
+        TempData["HoldedSyncMessage"] =
+            $"Synced {result.DocsFetched} docs ({result.Matched} matched, {result.Unmatched} unmatched).";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost("HoldedReassign")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> HoldedReassign(string holdedDocId, Guid budgetCategoryId, CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var outcome = await _holdedSyncService.ReassignAsync(holdedDocId, budgetCategoryId, user.Id, ct);
+        if (outcome.Warning is not null)
+            TempData["HoldedReassignWarning"] = outcome.Warning;
+        return RedirectToAction(nameof(HoldedUnmatched));
     }
 
     /// <summary>
