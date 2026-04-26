@@ -15,6 +15,9 @@ public interface IHoldedSyncService
 
     /// <summary>Manually assigns a doc to a category and pushes the corrected tag back to Holded (best-effort).</summary>
     Task<ReassignOutcome> ReassignAsync(string holdedDocId, Guid budgetCategoryId, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>Returns the singleton sync state plus the current unmatched-doc count for the /Finance dashboard card.</summary>
+    Task<HoldedSyncDashboardDto> GetSyncDashboardAsync(CancellationToken ct = default);
 }
 
 /// <summary>

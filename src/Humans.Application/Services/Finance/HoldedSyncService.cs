@@ -239,4 +239,21 @@ public sealed class HoldedSyncService : IHoldedSyncService
 
         return new ReassignOutcome(LocalMatchSaved: true, TagPushedToHolded: true, Warning: null);
     }
+
+    /// <summary>
+    /// Project the singleton <c>HoldedSyncState</c> plus the live unmatched
+    /// count into a single DTO for the /Finance dashboard card. Goes directly
+    /// to the repository (no <c>HoldedTransactionService</c> indirection).
+    /// </summary>
+    public async Task<HoldedSyncDashboardDto> GetSyncDashboardAsync(CancellationToken ct = default)
+    {
+        var state = await _repository.GetSyncStateAsync(ct);
+        var unmatched = await _repository.CountUnmatchedAsync(ct);
+        return new HoldedSyncDashboardDto(
+            state.LastSyncAt,
+            state.SyncStatus,
+            state.LastError,
+            state.LastSyncedDocCount,
+            unmatched);
+    }
 }

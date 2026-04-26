@@ -51,10 +51,12 @@ public class FinanceController : HumansControllerBase
     }
 
     [HttpGet("")]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(CancellationToken ct)
     {
         try
         {
+            ViewData["HoldedSync"] = await _holdedSyncService.GetSyncDashboardAsync(ct);
+
             var activeYear = await _budgetService.GetActiveYearAsync();
             if (activeYear is null)
             {

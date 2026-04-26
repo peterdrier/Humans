@@ -63,6 +63,15 @@
 
 <vc:temp-data-alerts />
 
+@if (TempData["HoldedSyncMessage"] is string holdedSyncMsg)
+{
+    <div class="alert alert-success">@holdedSyncMsg</div>
+}
+@if (ViewData["HoldedSync"] is Humans.Application.DTOs.Finance.HoldedSyncDashboardDto holdedDash)
+{
+    <partial name="_HoldedSyncCard" model="holdedDash" />
+}
+
 <!-- Inline Summary Cards -->
 <div class="row mb-4">
     <div class="col-md-4">
