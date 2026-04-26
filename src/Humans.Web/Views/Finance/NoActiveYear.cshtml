@@ -12,6 +12,15 @@
 
 <vc:temp-data-alerts />
 
+@if (TempData["HoldedSyncMessage"] is string holdedSyncMsg)
+{
+    <div class="alert alert-success">@holdedSyncMsg</div>
+}
+@if (ViewData["HoldedSync"] is Humans.Application.DTOs.Finance.HoldedSyncDashboardDto holdedDash)
+{
+    <partial name="_HoldedSyncCard" model="holdedDash" />
+}
+
 <div class="card">
     <div class="card-body text-center py-5">
         <i class="fa-solid fa-chart-pie text-muted" style="font-size: 3rem;"></i>
