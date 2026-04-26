@@ -1,5 +1,6 @@
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Camps;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
@@ -83,11 +84,35 @@ public class DevSeedController : HumansControllerBase
             return errorResult;
         }
 
+        var seeds = new CreateCampRoleDefinitionInput[]
+        {
+            new("Consent Lead", null, SlotCount: 2, MinimumRequired: 1, SortOrder: 10, IsRequired: true),
+            new("LNT",          null, SlotCount: 1, MinimumRequired: 1, SortOrder: 20, IsRequired: true),
+            new("Shit Ninja",   null, SlotCount: 1, MinimumRequired: 1, SortOrder: 30, IsRequired: true),
+            new("Power",        null, SlotCount: 1, MinimumRequired: 0, SortOrder: 40, IsRequired: false),
+            new("Build Lead",   null, SlotCount: 2, MinimumRequired: 1, SortOrder: 50, IsRequired: true),
+        };
+
         try
         {
-            var seeder = _serviceProvider.GetRequiredService<DevelopmentCampRoleSeeder>();
-            var result = await seeder.SeedAsync(user.Id, cancellationToken);
-            SetSuccess($"Camp roles seeded: {result.RolesCreated} created, {result.RolesAlreadyExisted} already existed.");
+            var campRoleService = _serviceProvider.GetRequiredService<ICampRoleService>();
+            var existing = await campRoleService.ListDefinitionsAsync(includeDeactivated: true, cancellationToken);
+            var existingNames = existing.Select(d => d.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            int created = 0;
+            int skipped = 0;
+            foreach (var input in seeds)
+            {
+                if (existingNames.Contains(input.Name))
+                {
+                    skipped++;
+                    continue;
+                }
+                await campRoleService.CreateDefinitionAsync(input, user.Id, cancellationToken);
+                created++;
+            }
+
+            SetSuccess($"Camp roles seeded: {created} created, {skipped} already existed.");
         }
         catch (Exception ex)
         {
