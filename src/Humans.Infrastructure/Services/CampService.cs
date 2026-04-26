@@ -923,6 +923,49 @@ public class CampService : ICampService
             userId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
+        // Auto-link the lead as an Active CampMember of the camp's open season (if any).
+        var openSeason = await _dbContext.CampSeasons
+            .Where(s => s.CampId == campId
+                        && (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full))
+            .OrderByDescending(s => s.Year)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (openSeason is not null)
+        {
+            var existingMember = await _dbContext.CampMembers
+                .FirstOrDefaultAsync(m => m.CampSeasonId == openSeason.Id && m.UserId == userId && m.Status != CampMemberStatus.Removed,
+                    cancellationToken);
+            if (existingMember is null)
+            {
+                var newMember = new CampMember
+                {
+                    Id = Guid.NewGuid(),
+                    CampSeasonId = openSeason.Id,
+                    UserId = userId,
+                    Status = CampMemberStatus.Active,
+                    RequestedAt = now,
+                    ConfirmedAt = now,
+                    ConfirmedByUserId = userId,
+                };
+                _dbContext.CampMembers.Add(newMember);
+                await _auditLogService.LogAsync(
+                    AuditAction.CampMemberApproved, nameof(CampMember), newMember.Id,
+                    $"Auto-linked as Active member via lead promotion for camp {campId} season {openSeason.Year}.",
+                    userId,
+                    relatedEntityId: campId, relatedEntityType: nameof(Camp));
+            }
+            else if (existingMember.Status == CampMemberStatus.Pending)
+            {
+                existingMember.Status = CampMemberStatus.Active;
+                existingMember.ConfirmedAt = now;
+                existingMember.ConfirmedByUserId = userId;
+                await _auditLogService.LogAsync(
+                    AuditAction.CampMemberApproved, nameof(CampMember), existingMember.Id,
+                    "Auto-approved pending request via lead promotion.",
+                    userId,
+                    relatedEntityId: campId, relatedEntityType: nameof(Camp));
+            }
+        }
+
         await _dbContext.SaveChangesAsync(cancellationToken);
         await _systemTeamSync.SyncBarrioLeadsMembershipForUserAsync(userId, cancellationToken);
 

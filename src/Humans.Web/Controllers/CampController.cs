@@ -1006,6 +1006,12 @@ public class CampController : HumansCampControllerBase
         var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null) return errorResult;
 
+        if (assigneeUserId == Guid.Empty)
+        {
+            SetError("Please search and select a human first.");
+            return RedirectToAction(nameof(Edit), new { slug });
+        }
+
         var seasonId = await ResolveOpenSeasonIdForCampAsync(camp.Id);
         if (seasonId == Guid.Empty)
         {

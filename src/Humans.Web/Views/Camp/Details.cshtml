@@ -240,7 +240,15 @@
                         {
                             <p class="mb-1">
                                 <strong>@role.Name:</strong>
-                                @string.Join(", ", role.Slots.Where(s => s.AssignmentId.HasValue).Select(s => s.AssigneeDisplayName))
+                                @{
+                                    var assignees = role.Slots.Where(s => s.AssignmentId.HasValue && s.AssigneeUserId.HasValue).ToList();
+                                }
+                                @for (var i = 0; i < assignees.Count; i++)
+                                {
+                                    var slot = assignees[i];
+                                    <human-link user-id="@slot.AssigneeUserId!.Value" display-name="@slot.AssigneeDisplayName" />
+                                    @(i < assignees.Count - 1 ? ", " : "")
+                                }
                             </p>
                         }
                     </div>

@@ -381,6 +381,10 @@
                         @foreach (var role in Model.RolesPanel.Roles)
                         {
                             var filledCount = role.Slots.Count(s => s.AssignmentId.HasValue && !s.IsBeingPhasedOut);
+                            var alreadyAssignedToThisRole = role.Slots
+                                .Where(s => s.AssigneeUserId.HasValue)
+                                .Select(s => s.AssigneeUserId!.Value)
+                                .ToHashSet();
                             <div class="mb-3">
                                 <h6 class="mb-2">
                                     @role.Name
@@ -414,7 +418,7 @@
                                                     <input type="hidden" name="autoPromote" value="false" />
                                                     <select name="assigneeUserId" class="form-select form-select-sm" required>
                                                         <option value="">Pick a member…</option>
-                                                        @foreach (var m in Model.ActiveMembers)
+                                                        @foreach (var m in Model.ActiveMembers.Where(m => !alreadyAssignedToThisRole.Contains(m.UserId)))
                                                         {
                                                             <option value="@m.UserId">@m.DisplayName</option>
                                                         }
@@ -442,16 +446,7 @@
                                             }
                                         </div>
                                     </div>
-                                    @if (!slot.AssignmentId.HasValue)
-                                    {
-                                        @await Html.PartialAsync("_AutoPromoteMemberModal", new ViewDataDictionary(ViewData)
-                                        {
-                                            ["RoleId"]    = role.CampRoleDefinitionId,
-                                            ["SlotIndex"] = slot.SlotIndex,
-                                            ["RoleName"]  = role.Name,
-                                            ["Slug"]      = Model.Slug,
-                                        })
-                                    }
+                                    @* Modal hoisted to end of body — see bottom of view *@
                                 }
                             </div>
                         }
@@ -592,6 +587,24 @@
 </div>
 
 <partial name="_MarkdownHelp" />
+
+@* Auto-promote modals — hoisted to end of body so the Bootstrap backdrop renders above any card stacking context. *@
+@if (Model.RolesPanel.HasOpenSeason)
+{
+    foreach (var role in Model.RolesPanel.Roles)
+    {
+        foreach (var slot in role.Slots.Where(s => !s.AssignmentId.HasValue))
+        {
+            @await Html.PartialAsync("_AutoPromoteMemberModal", new ViewDataDictionary(ViewData)
+            {
+                ["RoleId"]    = role.CampRoleDefinitionId,
+                ["SlotIndex"] = slot.SlotIndex,
+                ["RoleName"]  = role.Name,
+                ["Slug"]      = Model.Slug,
+            })
+        }
+    }
+}
 
 @section Scripts {
     <partial name="_LinksEditorScripts" />

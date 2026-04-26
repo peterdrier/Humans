@@ -28,9 +28,8 @@
                     </p>
                     <div class="mb-3">
                         <label class="form-label">Human</label>
-                        <input type="text" name="assigneeUserId" class="form-control" required
-                               placeholder="User GUID — picker comes later" />
-                        <div class="form-text">A proper humans-picker will replace this input in a later issue.</div>
+                        <partial name="_HumanSearchInput" view-data='@(new ViewDataDictionary(ViewData) { { "FieldName", "assigneeUserId" }, { "IdSuffix", $"assignRole-{roleId}-{slotIndex}" } })' />
+                        <div class="form-text">Search by name to find them.</div>
                     </div>
                 </div>
                 <div class="modal-footer">

@@ -1,8 +1,11 @@
 @{
     var fieldName = ViewData["FieldName"] as string ?? "userId";
-    var inputId = "human-search-" + fieldName;
-    var dropdownId = "human-search-dropdown-" + fieldName;
-    var hiddenId = "human-search-hidden-" + fieldName;
+    // IdSuffix lets callers render multiple instances on one page (e.g. one per modal)
+    // without DOM-id collisions. The form `name` stays as fieldName for the model binder.
+    var idSuffix = ViewData["IdSuffix"] as string ?? fieldName;
+    var inputId = "human-search-" + idSuffix;
+    var dropdownId = "human-search-dropdown-" + idSuffix;
+    var hiddenId = "human-search-hidden-" + idSuffix;
 }
 
 <div class="human-search-wrapper position-relative" style="flex: 1;">
