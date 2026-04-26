@@ -1,103 +1,31 @@
-@inject IWebHostEnvironment HostEnv
+@model Humans.Web.Models.AdminDashboardViewModel
 @{
-    ViewData["Title"] = "Admin Tools";
+    ViewData["Title"] = Localizer["AdminNav_Dashboard"];
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0">Admin Tools</h1>
-    <vc:access-matrix section="Admin" />
+<div class="page-head">
+    <div>
+        <h1 class="title">@Localizer["AdminDashboard_Greeting", Model.GreetingFirstName]</h1>
+        <p class="sub">
+            @Localizer["AdminDashboard_Subtitle",
+                Model.ActiveHumans,
+                Model.ShiftCoveragePercent,
+                Model.OpenFeedback,
+                Model.SystemAllNormal ? Localizer["AdminDashboard_AllSystemsNormal"].Value : Localizer["AdminDashboard_NeedsAttention"].Value]
+        </p>
+    </div>
 </div>
 
-<vc:temp-data-alerts />
+<partial name="_DashboardStats" model="Model" />
 
-<div class="row">
-    <div class="col-md-6">
-        <div class="card mb-4">
-            <div class="card-header">System Operations</div>
-            <div class="list-group list-group-flush">
-                <a asp-action="Configuration" class="list-group-item list-group-item-action">
-                    <i class="fa-solid fa-gear me-2"></i>Configuration Status
-                </a>
-                <a asp-controller="Email" asp-action="EmailPreview" class="list-group-item list-group-item-action">
-                    <i class="fa-solid fa-envelope me-2"></i>Email Preview
-                </a>
-                <a asp-controller="Email" asp-action="EmailOutbox" class="list-group-item list-group-item-action">
-                    <i class="fa-solid fa-inbox me-2"></i>Email Outbox
-                </a>
-                <a asp-controller="Google" asp-action="Index" class="list-group-item list-group-item-action">
-                    <i class="fa-brands fa-google me-2"></i>Google Integration
-                </a>
-                <a href="/hangfire" class="list-group-item list-group-item-action">
-                    <i class="fa-solid fa-clock-rotate-left me-2"></i>@Localizer["Admin_BackgroundJobs"]
-                </a>
-                <form asp-action="ClearHangfireLocks" method="post" class="list-group-item list-group-item-action list-group-item-warning">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-link text-decoration-none p-0 text-dark" data-confirm="Clear all Hangfire locks? You may need to restart the app afterwards.">
-                        <i class="fa-solid fa-unlock me-2"></i>Clear Hangfire Locks
-                    </button>
-                </form>
-                <a asp-controller="Campaign" asp-action="Index" class="list-group-item list-group-item-action">
-                    <i class="fa-solid fa-bullhorn me-2"></i>Campaigns
-                </a>
-                <a asp-action="Logs" class="list-group-item list-group-item-action">
-                    <i class="fa-solid fa-triangle-exclamation me-2"></i>Application Logs
-                </a>
-                <a asp-action="DbStats" class="list-group-item list-group-item-action">
-                    <i class="fa-solid fa-database me-2"></i>Database Query Statistics
-                </a>
-                <a asp-action="CacheStats" class="list-group-item list-group-item-action">
-                    <i class="fa-solid fa-bolt me-2"></i>Cache Statistics
-                </a>
-                <a asp-controller="Google" asp-action="Accounts" class="list-group-item list-group-item-action">
-                    <i class="fa-solid fa-at me-2"></i>@@nobodies.team Accounts
-                </a>
-                <a asp-controller="AdminMerge" asp-action="Index" class="list-group-item list-group-item-action">
-                    <i class="fa-solid fa-code-merge me-2"></i>Account Merge Requests
-                </a>
-                <a asp-controller="AdminDuplicateAccounts" asp-action="Index" class="list-group-item list-group-item-action">
-                    <i class="fa-solid fa-clone me-2"></i>Duplicate Account Detection
-                </a>
-                <a asp-action="AudienceSegmentation" class="list-group-item list-group-item-action">
-                    <i class="fa-solid fa-chart-pie me-2"></i>Audience Segmentation
-                </a>
-            </div>
+<partial name="_DashboardStaffing" model="Model" />
+
+<div class="split-panels">
+    <div class="card">
+        <div class="card-head">
+            <h3>@Localizer["AdminDashboard_RecentActivity"]</h3>
+            <small>@Localizer["AdminDashboard_RecentActivity_Caption"]</small>
         </div>
-
-    </div>
-
-    <div class="col-md-6">
-        <div class="card mb-4">
-            <div class="card-header">Quick Links</div>
-            <div class="list-group list-group-flush">
-                <a asp-controller="Board" asp-action="Index" class="list-group-item list-group-item-action">
-                    <i class="fa-solid fa-gauge-high me-2"></i>Board Dashboard
-                </a>
-                <a href="/health/ready" target="_blank" rel="noopener noreferrer" class="list-group-item list-group-item-action">
-                    <i class="fa-solid fa-heart-pulse me-2"></i>@Localizer["Admin_ViewHealthCheck"]
-                </a>
-            </div>
-        </div>
-
-        @if (!HostEnv.IsProduction())
-        {
-        <div class="card mb-4 border-info">
-            <div class="card-header bg-info text-white">Seed Development Data</div>
-            <div class="card-body">
-                <p class="text-muted mb-3">Populate this environment with realistic demo data.</p>
-                <div class="d-flex gap-2">
-                    <form asp-controller="DevSeed" asp-action="SeedBudget" method="post">
-                        <button type="submit" class="btn btn-outline-info">
-                            <i class="fa-solid fa-coins me-1"></i> Seed Budget Data
-                        </button>
-                    </form>
-                    <form asp-controller="DevSeed" asp-action="SeedCampRoles" method="post">
-                        <button type="submit" class="btn btn-outline-info">
-                            <i class="fa-solid fa-user-tag me-1"></i> Seed Camp Roles
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-        }
+        <partial name="_DashboardActivity" model="Model.RecentActivity" />
     </div>
 </div>
