@@ -184,6 +184,10 @@ public class AccountDeletionServiceTests
         result.Success.Should().BeTrue();
         await _userService.Received(1).PurgeOwnDataAsync(userId, Arg.Any<CancellationToken>());
         _teamService.Received(1).InvalidateActiveTeamsCache();
+        // Parity with AnonymizeExpiredAccountAsync: per-user caches that key
+        // off identity must also drop on admin purge.
+        _roleAssignmentClaimsInvalidator.Received(1).Invalidate(userId);
+        _shiftAuthorizationInvalidator.Received(1).Invalidate(userId);
     }
 
     // ==========================================================================
@@ -196,7 +200,7 @@ public class AccountDeletionServiceTests
         var userId = Guid.NewGuid();
         _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns((User?)null);
 
-        var result = await _service.AnonymizeExpiredAccountAsync(userId, _clock.GetCurrentInstant());
+        var result = await _service.AnonymizeExpiredAccountAsync(userId);
 
         result.Should().BeNull();
         await _teamService.DidNotReceiveWithAnyArgs().RevokeAllMembershipsAsync(default, default);
@@ -207,7 +211,6 @@ public class AccountDeletionServiceTests
     {
         var userId = Guid.NewGuid();
         var user = MakeUser(userId, email: "expired@example.com");
-        var now = _clock.GetCurrentInstant();
         var signupId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
 
@@ -221,7 +224,7 @@ public class AccountDeletionServiceTests
                 OriginalDisplayName: "Expired Human",
                 PreferredLanguage: "es"));
 
-        var result = await _service.AnonymizeExpiredAccountAsync(userId, now);
+        var result = await _service.AnonymizeExpiredAccountAsync(userId);
 
         result.Should().NotBeNull();
         result!.OriginalEmail.Should().Be("expired@example.com");
@@ -252,7 +255,7 @@ public class AccountDeletionServiceTests
         _userService.ApplyExpiredDeletionAnonymizationAsync(userId, Arg.Any<CancellationToken>())
             .Returns((ExpiredDeletionAnonymizationResult?)null);
 
-        var result = await _service.AnonymizeExpiredAccountAsync(userId, _clock.GetCurrentInstant());
+        var result = await _service.AnonymizeExpiredAccountAsync(userId);
 
         result.Should().NotBeNull();
         result!.OriginalEmail.Should().Be("gone@example.com");
@@ -278,7 +281,7 @@ public class AccountDeletionServiceTests
         _roleAssignmentService.RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>())
             .Returns<int>(_ => throw new InvalidOperationException("boom"));
 
-        var act = () => _service.AnonymizeExpiredAccountAsync(userId, _clock.GetCurrentInstant());
+        var act = () => _service.AnonymizeExpiredAccountAsync(userId);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         await _userService.DidNotReceive().ApplyExpiredDeletionAnonymizationAsync(

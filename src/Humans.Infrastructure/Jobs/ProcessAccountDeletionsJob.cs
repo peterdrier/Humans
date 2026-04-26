@@ -85,7 +85,7 @@ public class ProcessAccountDeletionsJob : IRecurringJob
                 try
                 {
                     var summary = await _accountDeletionService.AnonymizeExpiredAccountAsync(
-                        userId, now, cancellationToken);
+                        userId, cancellationToken);
 
                     if (summary is null)
                     {

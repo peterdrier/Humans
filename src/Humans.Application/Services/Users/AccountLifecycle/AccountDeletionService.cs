@@ -160,6 +160,13 @@ public sealed class AccountDeletionService : IAccountDeletionService
         // invalidation — belongs here, not in UserService.
         _teamService.InvalidateActiveTeamsCache();
 
+        // Match the cache-invalidation surface of AnonymizeExpiredAccountAsync
+        // so the admin purge path doesn't leave stale per-user caches behind:
+        // role-assignment claims (used by authorization handlers) and the
+        // shift-authorization cache (60 s TTL on shift-coordinator privilege).
+        _roleAssignmentClaimsInvalidator.Invalidate(userId);
+        _shiftAuthorizationInvalidator.Invalidate(userId);
+
         return new OnboardingResult(true);
     }
 
@@ -168,7 +175,7 @@ public sealed class AccountDeletionService : IAccountDeletionService
     // ==========================================================================
 
     public async Task<AnonymizedAccountSummary?> AnonymizeExpiredAccountAsync(
-        Guid userId, Instant now, CancellationToken ct = default)
+        Guid userId, CancellationToken ct = default)
     {
         // Capture the identity slice BEFORE any writes so the caller can send
         // the confirmation email / emit audit entries even if the User-aggregate

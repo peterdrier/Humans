@@ -1,5 +1,4 @@
 using Humans.Application.Interfaces.Onboarding;
-using NodaTime;
 
 namespace Humans.Application.Interfaces.Users;
 
@@ -60,5 +59,5 @@ public interface IAccountDeletionService
     /// between enumeration and cascade start.
     /// </summary>
     Task<AnonymizedAccountSummary?> AnonymizeExpiredAccountAsync(
-        Guid userId, Instant now, CancellationToken ct = default);
+        Guid userId, CancellationToken ct = default);
 }
