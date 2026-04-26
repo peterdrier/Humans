@@ -6,108 +6,146 @@
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Index">@Localizer["Camp_Plural"]</a></li>
-        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Camp_AdminTitle"]</a></li>
+        <li class="breadcrumb-item"><a asp-controller="CampAdmin" asp-action="Index">@Localizer["Camp_AdminTitle"]</a></li>
         <li class="breadcrumb-item active" aria-current="page">Roles</li>
     </ol>
 </nav>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-        <h1 class="mb-1">Camp roles</h1>
-        <p class="text-muted mb-0">Global role definitions applied to every barrio.</p>
-    </div>
-    <a asp-action="CreateRole" class="btn btn-primary">
-        <i class="fa-solid fa-plus me-1"></i>Add role
-    </a>
-</div>
+<h1>Camp roles</h1>
+<p class="text-muted">Global role definitions applied to every barrio. Slot assignments happen on each barrio's edit page.</p>
 
 <vc:temp-data-alerts />
 
-<div class="card">
-    @if (Model.Rows.Count == 0)
+@if (Model.Rows.Any())
+{
+    @foreach (var row in Model.Rows.OrderBy(r => r.SortOrder).ThenBy(r => r.Name))
     {
-        <div class="card-body">
-            <p class="text-muted mb-0">No camp roles defined yet. Use <strong>Add role</strong> to create the first one.</p>
-        </div>
-    }
-    else
-    {
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>Sort</th>
-                        <th>Name</th>
-                        <th class="text-end">Slots</th>
-                        <th class="text-end">Min required</th>
-                        <th>Required?</th>
-                        <th>Status</th>
-                        <th class="text-end">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var row in Model.Rows)
+        <div class="card mb-4 @(row.IsActive ? string.Empty : "border-warning")">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0 d-inline">@row.Name</h5>
+                    @if (row.IsRequired)
                     {
-                        var rowClass = row.IsActive ? "" : "text-muted";
-                        <tr class="@rowClass">
-                            <td>@row.SortOrder</td>
-                            <td>
-                                <strong>@row.Name</strong>
-                                @if (!string.IsNullOrWhiteSpace(row.Description))
-                                {
-                                    <br />
-                                    <small class="text-muted">@row.Description</small>
-                                }
-                            </td>
-                            <td class="text-end">@row.SlotCount</td>
-                            <td class="text-end">@row.MinimumRequired</td>
-                            <td>
-                                @if (row.IsRequired)
-                                {
-                                    <span class="badge bg-secondary">Required</span>
-                                }
-                                else
-                                {
-                                    <span class="text-muted">Optional</span>
-                                }
-                            </td>
-                            <td>
-                                @if (row.IsActive)
-                                {
-                                    <span class="badge bg-success">Active</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-light text-dark">Inactive</span>
-                                }
-                            </td>
-                            <td class="text-end">
-                                <a asp-action="EditRole" asp-route-id="@row.Id" class="btn btn-outline-primary btn-sm">
-                                    <i class="fa-solid fa-pen-to-square me-1"></i>Edit
-                                </a>
-                                @if (row.IsActive)
-                                {
-                                    <form asp-action="DeactivateRole" asp-route-id="@row.Id" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-outline-warning btn-sm" data-confirm="Deactivate this role? Existing assignments will remain but it will no longer be assignable.">
-                                            <i class="fa-solid fa-eye-slash me-1"></i>Deactivate
-                                        </button>
-                                    </form>
-                                }
-                                else
-                                {
-                                    <form asp-action="ReactivateRole" asp-route-id="@row.Id" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-outline-success btn-sm">
-                                            <i class="fa-solid fa-rotate-left me-1"></i>Reactivate
-                                        </button>
-                                    </form>
-                                }
-                            </td>
-                        </tr>
+                        <span class="badge bg-secondary ms-2">required</span>
                     }
-                </tbody>
-            </table>
+                    else
+                    {
+                        <span class="badge bg-light text-dark ms-2">optional</span>
+                    }
+                    @if (!row.IsActive)
+                    {
+                        <span class="badge bg-warning text-dark ms-1"><i class="fa-solid fa-eye-slash me-1"></i>deactivated</span>
+                    }
+                </div>
+                <div class="d-flex gap-2">
+                    @if (row.IsActive)
+                    {
+                        <form asp-action="DeactivateRole" asp-route-id="@row.Id" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-outline-warning"
+                                    data-confirm="Deactivate '@row.Name'? Existing assignments stay; the role is hidden from new-assignment UI and from the compliance report.">
+                                Deactivate
+                            </button>
+                        </form>
+                    }
+                    else
+                    {
+                        <form asp-action="ReactivateRole" asp-route-id="@row.Id" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-outline-success">Reactivate</button>
+                        </form>
+                    }
+                </div>
+            </div>
+            <div class="card-body">
+                <form asp-action="EditRole" asp-route-id="@row.Id" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Name</label>
+                            <input type="text" class="form-control" name="Name" value="@row.Name" required maxlength="100" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Slot count</label>
+                            <input type="number" class="form-control" name="SlotCount" value="@row.SlotCount" min="1" required />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Min required</label>
+                            <input type="number" class="form-control" name="MinimumRequired" value="@row.MinimumRequired" min="0" required />
+                            <div class="form-text small">0 ≤ Min ≤ Slots</div>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Sort</label>
+                            <input type="number" class="form-control" name="SortOrder" value="@row.SortOrder" />
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">Save</button>
+                        </div>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="isRequired-@row.Id"
+                               name="IsRequired" value="true" @(row.IsRequired ? "checked" : null) />
+                        <input type="hidden" name="IsRequired" value="false" />
+                        <label class="form-check-label" for="isRequired-@row.Id">Required (in compliance report)</label>
+                        <div class="form-text">When checked, the compliance report flags any barrio whose live assignments fall below <strong>Min required</strong>.</div>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" name="Description" rows="2" maxlength="2000">@row.Description</textarea>
+                    </div>
+                </form>
+            </div>
         </div>
     }
+}
+else
+{
+    <div class="alert alert-info">No camp roles defined yet — use the form below to add one.</div>
+}
+
+<div class="card mb-4">
+    <div class="card-header"><strong>Add new role</strong></div>
+    <div class="card-body">
+        <form asp-action="CreateRole" method="post">
+            @Html.AntiForgeryToken()
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Name</label>
+                    <input type="text" class="form-control" name="Name" required maxlength="100" placeholder="e.g. Fire Safety Lead" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Slot count</label>
+                    <input type="number" class="form-control" name="SlotCount" value="1" min="1" required />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Min required</label>
+                    <input type="number" class="form-control" name="MinimumRequired" value="1" min="0" required />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Sort</label>
+                    <input type="number" class="form-control" name="SortOrder" value="@((Model.Rows.Any() ? Model.Rows.Max(r => r.SortOrder) : 0) + 10)" />
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="fa-solid fa-plus me-1"></i>Add
+                    </button>
+                </div>
+            </div>
+            <div class="mt-3 form-check">
+                <input type="checkbox" class="form-check-input" id="isRequired-new"
+                       name="IsRequired" value="true" checked />
+                <input type="hidden" name="IsRequired" value="false" />
+                <label class="form-check-label" for="isRequired-new">Required (in compliance report)</label>
+            </div>
+            <div class="mt-3">
+                <label class="form-label">Description</label>
+                <textarea class="form-control" name="Description" rows="2" maxlength="2000"></textarea>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="mt-3">
+    <a asp-action="Index" class="btn btn-outline-secondary">Back to camp admin</a>
+    <a asp-action="Compliance" class="btn btn-outline-primary">Compliance report</a>
 </div>

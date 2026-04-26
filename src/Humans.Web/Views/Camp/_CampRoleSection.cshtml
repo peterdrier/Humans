@@ -1,0 +1,94 @@
+@model Humans.Web.Models.CampRolesPanelViewModel
+
+@{
+    var canManage = (bool)(ViewData["CanManage"] ?? false);
+    var slug = (string)(ViewData["Slug"] ?? string.Empty);
+    // Render only roles that have at least one filled slot (or, for managers, all role rows incl. empty).
+    var visibleRoles = canManage
+        ? Model.Roles
+        : Model.Roles.Where(r => r.Slots.Any(s => s.AssignmentId.HasValue)).ToList();
+}
+
+@if (Model.HasOpenSeason && visibleRoles.Any())
+{
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fa-solid fa-list-check me-1"></i> Roles</h5>
+            @if (canManage && !string.IsNullOrEmpty(slug))
+            {
+                <a href="@Url.Action("Edit", "Camp", new { slug })#roles"
+                   class="btn btn-sm btn-outline-primary">Edit roles</a>
+            }
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Role</th>
+                        <th>Slot</th>
+                        <th>Assigned To</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var role in visibleRoles)
+                {
+                    var slotsToRender = role.Slots
+                        .Where(s => canManage || s.AssignmentId.HasValue)
+                        .OrderBy(s => s.SlotIndex)
+                        .ToList();
+                    var rowSpan = Math.Max(slotsToRender.Count, 1);
+
+                    @for (var i = 0; i < slotsToRender.Count; i++)
+                    {
+                        var slot = slotsToRender[i];
+                        <tr>
+                            @if (i == 0)
+                            {
+                                <td rowspan="@rowSpan">
+                                    <strong>@role.Name</strong>
+                                    @if (role.IsDeactivated)
+                                    {
+                                        <span class="badge bg-warning text-dark ms-1">deactivated</span>
+                                    }
+                                    else if (role.IsRequired)
+                                    {
+                                        <span class="badge bg-secondary ms-1">required</span>
+                                    }
+                                </td>
+                            }
+                            <td>@(slot.SlotIndex + 1)</td>
+                            <td>
+                                @if (slot.AssignmentId.HasValue && slot.AssigneeUserId.HasValue)
+                                {
+                                    <human-link user-id="@slot.AssigneeUserId.Value" display-name="@slot.AssigneeDisplayName" />
+                                    @if (slot.IsBeingPhasedOut)
+                                    {
+                                        <small class="text-muted ms-1">(being phased out)</small>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-muted fst-italic">Open</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (slotsToRender.Count == 0)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@role.Name</strong>
+                                @if (role.IsRequired)
+                                {
+                                    <span class="badge bg-secondary ms-1">required</span>
+                                }
+                            </td>
+                            <td colspan="2"><span class="text-muted fst-italic">Open</span></td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

@@ -225,35 +225,14 @@
             }
         }
 
-        @* Camp Roles read-only summary (authenticated only, issue nobodies-collective#489) *@
-        @if (User.Identity?.IsAuthenticated == true && Model.RolesPanel.HasOpenSeason)
+        @* Camp Roles section (authenticated only; mirrors Team _RosterSection pattern) *@
+        @if (User.Identity?.IsAuthenticated == true)
         {
-            var rolesWithFills = Model.RolesPanel.Roles.Where(r => r.Slots.Any(s => s.AssignmentId.HasValue)).ToList();
-            if (rolesWithFills.Count > 0)
+            @await Html.PartialAsync("_CampRoleSection", Model.RolesPanel, new ViewDataDictionary(ViewData)
             {
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <i class="fa-solid fa-list-check me-1"></i> Roles
-                    </div>
-                    <div class="card-body">
-                        @foreach (var role in rolesWithFills.OrderBy(r => r.Name))
-                        {
-                            <p class="mb-1">
-                                <strong>@role.Name:</strong>
-                                @{
-                                    var assignees = role.Slots.Where(s => s.AssignmentId.HasValue && s.AssigneeUserId.HasValue).ToList();
-                                }
-                                @for (var i = 0; i < assignees.Count; i++)
-                                {
-                                    var slot = assignees[i];
-                                    <human-link user-id="@slot.AssigneeUserId!.Value" display-name="@slot.AssigneeDisplayName" />
-                                    @(i < assignees.Count - 1 ? ", " : "")
-                                }
-                            </p>
-                        }
-                    </div>
-                </div>
-            }
+                ["CanManage"] = Model.IsCurrentUserLead || Model.IsCurrentUserCampAdmin,
+                ["Slug"] = Model.Slug
+            })
         }
     </div>
 

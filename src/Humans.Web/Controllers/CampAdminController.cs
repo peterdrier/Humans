@@ -383,73 +383,41 @@ public class CampAdminController : HumansControllerBase
         return View(vm);
     }
 
-    [HttpGet("Roles/Create")]
-    public IActionResult CreateRole() => View("RoleForm", new CampRoleDefinitionFormViewModel());
-
+    // Create + Edit are inline on Roles.cshtml (mirrors TeamAdmin/Roles.cshtml). No separate form view.
     [HttpPost("Roles/Create")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateRole(CampRoleDefinitionFormViewModel form, CancellationToken cancellationToken)
     {
-        if (!ModelState.IsValid) return View("RoleForm", form);
         var actor = (await GetCurrentUserAsync())!.Id;
         try
         {
             await _campService.CreateCampRoleDefinitionAsync(
                 form.Name, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder, form.IsRequired,
                 actor, cancellationToken);
+            SetSuccess($"Camp role '{form.Name}' added.");
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
         {
-            ModelState.AddModelError(nameof(form.Name), ex.Message);
-            return View("RoleForm", form);
-        }
-        catch (ArgumentException ex)
-        {
-            ModelState.AddModelError(string.Empty, ex.Message);
-            return View("RoleForm", form);
+            SetError(ex.Message);
         }
         return RedirectToAction(nameof(Roles));
-    }
-
-    [HttpGet("Roles/{id:guid}/Edit")]
-    public async Task<IActionResult> EditRole(Guid id, CancellationToken cancellationToken)
-    {
-        var defs = await _campService.GetCampRoleDefinitionsAsync(includeDeactivated: true, cancellationToken);
-        var d = defs.FirstOrDefault(x => x.Id == id);
-        if (d is null) return NotFound();
-        return View("RoleForm", new CampRoleDefinitionFormViewModel
-        {
-            Id = d.Id,
-            Name = d.Name,
-            Description = d.Description,
-            SlotCount = d.SlotCount,
-            MinimumRequired = d.MinimumRequired,
-            SortOrder = d.SortOrder,
-            IsRequired = d.IsRequired,
-        });
     }
 
     [HttpPost("Roles/{id:guid}/Edit")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditRole(Guid id, CampRoleDefinitionFormViewModel form, CancellationToken cancellationToken)
     {
-        if (!ModelState.IsValid)
-        {
-            form.Id = id;
-            return View("RoleForm", form);
-        }
         var actor = (await GetCurrentUserAsync())!.Id;
         try
         {
             await _campService.UpdateCampRoleDefinitionAsync(id,
                 form.Name, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder, form.IsRequired,
                 actor, cancellationToken);
+            SetSuccess($"Camp role '{form.Name}' updated.");
         }
         catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
         {
-            ModelState.AddModelError(string.Empty, ex.Message);
-            form.Id = id;
-            return View("RoleForm", form);
+            SetError(ex.Message);
         }
         return RedirectToAction(nameof(Roles));
     }
