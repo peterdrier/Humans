@@ -1,3 +1,18 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Profile/ProfileService.cs
+  src/Humans.Application/Services/Teams/TeamService.cs
+  src/Humans.Application/Services/Teams/TeamPageService.cs
+  src/Humans.Web/Controllers/ProfileController.cs
+  src/Humans.Web/Controllers/TeamController.cs
+  src/Humans.Web/Views/Profile/Edit.cshtml
+  src/Humans.Web/Views/Team/Birthdays.cshtml
+  src/Humans.Domain/Entities/Profile.cs
+  src/Humans.Infrastructure/Data/Configurations/Profiles/**
+-->
+<!-- freshness:flag-on-change
+  Profile picture upload/serve route, birthday calendar view, and DOB privacy rules — review when Profile entity, ProfileController picture endpoint, or the team birthdays view change.
+-->
+
 # Profile Pictures & Birthday Calendar
 
 ## Business Context

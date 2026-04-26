@@ -1,3 +1,17 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Campaigns/**
+  src/Humans.Application/Services/Users/UnsubscribeService.cs
+  src/Humans.Web/Controllers/CampaignController.cs
+  src/Humans.Web/Controllers/UnsubscribeController.cs
+  src/Humans.Domain/Entities/Campaign.cs
+  src/Humans.Domain/Entities/CampaignCode.cs
+  src/Humans.Domain/Entities/CampaignGrant.cs
+  src/Humans.Infrastructure/Data/Configurations/Campaigns/**
+-->
+<!-- freshness:flag-on-change
+  Campaign workflow, wave-send eligibility, unsubscribe behavior, or self-service code lookup may have shifted; verify states/routes/auth still match.
+-->
+
 # Feature 22: Campaigns
 
 ## Business Context

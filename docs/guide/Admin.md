@@ -1,3 +1,29 @@
+<!-- freshness:triggers
+  src/Humans.Web/Views/Admin/**
+  src/Humans.Web/Views/Board/**
+  src/Humans.Web/Views/Profile/AdminList.cshtml
+  src/Humans.Web/Views/Profile/AdminDetail.cshtml
+  src/Humans.Web/Views/AdminDuplicateAccounts/**
+  src/Humans.Web/Views/AdminMerge/**
+  src/Humans.Web/Views/Notification/**
+  src/Humans.Web/Controllers/AdminController.cs
+  src/Humans.Web/Controllers/BoardController.cs
+  src/Humans.Web/Controllers/AdminDuplicateAccountsController.cs
+  src/Humans.Web/Controllers/AdminMergeController.cs
+  src/Humans.Web/Controllers/AdminLegalDocumentsController.cs
+  src/Humans.Web/Controllers/NotificationController.cs
+  src/Humans.Application/Services/AuditLog/**
+  src/Humans.Application/Services/Notifications/**
+  src/Humans.Application/Services/Profile/AccountMergeService.cs
+  src/Humans.Application/Services/Profile/DuplicateAccountService.cs
+  src/Humans.Application/Services/Auth/RoleAssignmentService.cs
+  src/Humans.Application/Services/Users/AccountProvisioningService.cs
+  src/Humans.Application/Services/GoogleIntegration/SyncSettingsService.cs
+-->
+<!-- freshness:flag-on-change
+  Global control panel — humans list, audit log, notifications, sync settings, duplicate/merge resolution, and admin diagnostics. Review when admin views, role-management surface, or sync-mode plumbing changes.
+-->
+
 # Admin
 
 ## What this section is for

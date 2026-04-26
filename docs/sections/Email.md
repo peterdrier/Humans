@@ -1,3 +1,14 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Email/**
+  src/Humans.Domain/Entities/EmailOutboxMessage.cs
+  src/Humans.Infrastructure/Data/Configurations/Email/**
+  src/Humans.Infrastructure/Repositories/EmailOutboxRepository.cs
+  src/Humans.Web/Controllers/EmailController.cs
+-->
+<!-- freshness:flag-on-change
+  Outbox queue/retry semantics, pause flag ownership, and SDK-free composer/processor split — review when Email service/repository/entity change.
+-->
+
 # Email — Section Invariants
 
 Transactional email outbox: queue, render, deliver, retry, pause/resume. Backs campaign sends, onboarding welcome, shift notifications, feedback replies.

@@ -1,3 +1,24 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Shifts/**
+  src/Humans.Domain/Entities/Rota.cs
+  src/Humans.Domain/Entities/Shift.cs
+  src/Humans.Domain/Entities/ShiftSignup.cs
+  src/Humans.Domain/Entities/ShiftTag.cs
+  src/Humans.Domain/Entities/EventSettings.cs
+  src/Humans.Domain/Entities/EventParticipation.cs
+  src/Humans.Domain/Entities/GeneralAvailability.cs
+  src/Humans.Domain/Entities/VolunteerEventProfile.cs
+  src/Humans.Domain/Entities/VolunteerTagPreference.cs
+  src/Humans.Infrastructure/Data/Configurations/Shifts/**
+  src/Humans.Web/Controllers/ShiftsController.cs
+  src/Humans.Web/Controllers/ShiftAdminController.cs
+  src/Humans.Web/Controllers/ShiftDashboardController.cs
+  src/Humans.Web/Controllers/VolController.cs
+-->
+<!-- freshness:flag-on-change
+  Shift signup state machine, capacity ceilings, range-block atomicity, voluntelling rules, and coordinator/manager scope — review when Shifts services/entities/controllers change.
+-->
+
 # Shifts — Section Invariants
 
 Event shifts, rotas, signups, range blocks, event settings, general availability, per-event volunteer profiles.

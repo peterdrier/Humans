@@ -1,3 +1,15 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Calendar/**
+  src/Humans.Infrastructure/Services/CalendarService.cs
+  src/Humans.Domain/Entities/CalendarEvent.cs
+  src/Humans.Domain/Entities/CalendarEventException.cs
+  src/Humans.Infrastructure/Data/Configurations/Calendar/**
+  src/Humans.Web/Controllers/CalendarController.cs
+-->
+<!-- freshness:flag-on-change
+  Calendar event/recurrence rules, soft-delete, audit-log triggers, and open-edit authorization model — review when Calendar service/entities/controller change.
+-->
+
 # Calendar — Section Invariants
 
 Community calendar: one-off and recurring events per team, with per-occurrence overrides/cancellations.

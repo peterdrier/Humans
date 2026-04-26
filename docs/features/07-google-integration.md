@@ -1,3 +1,24 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/GoogleIntegration/**
+  src/Humans.Application/Services/Teams/TeamResourceService.cs
+  src/Humans.Web/Controllers/GoogleController.cs
+  src/Humans.Web/Views/Google/**
+  src/Humans.Domain/Entities/GoogleResource.cs
+  src/Humans.Domain/Entities/GoogleSyncOutboxEvent.cs
+  src/Humans.Domain/Entities/SyncServiceSettings.cs
+  src/Humans.Domain/Constants/GoogleSyncOutboxEventTypes.cs
+  src/Humans.Infrastructure/Data/Configurations/GoogleResourceConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/GoogleSyncOutboxEventConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/SyncServiceSettingsConfiguration.cs
+  src/Humans.Infrastructure/Jobs/GoogleResourceReconciliationJob.cs
+  src/Humans.Infrastructure/Jobs/GoogleResourceProvisionJob.cs
+  src/Humans.Infrastructure/Jobs/ProcessGoogleSyncOutboxJob.cs
+  src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs
+-->
+<!-- freshness:flag-on-change
+  IGoogleSyncService surface, ITeamResourceService, sync mode/action enums, drift detection, error classification, and /Google routes — review when Google integration services, jobs, or controllers change.
+-->
+
 # Google Integration
 
 ## Business Context

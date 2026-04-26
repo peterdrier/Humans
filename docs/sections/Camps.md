@@ -1,3 +1,24 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Camps/**
+  src/Humans.Domain/Entities/Camp.cs
+  src/Humans.Domain/Entities/CampSeason.cs
+  src/Humans.Domain/Entities/CampLead.cs
+  src/Humans.Domain/Entities/CampMember.cs
+  src/Humans.Domain/Entities/CampImage.cs
+  src/Humans.Domain/Entities/CampHistoricalName.cs
+  src/Humans.Domain/Entities/CampSettings.cs
+  src/Humans.Infrastructure/Data/Configurations/Camps/**
+  src/Humans.Infrastructure/Repositories/CampRepository.cs
+  src/Humans.Web/Controllers/CampController.cs
+  src/Humans.Web/Controllers/CampAdminController.cs
+  src/Humans.Web/Controllers/CampApiController.cs
+  src/Humans.Web/Authorization/Requirements/CampAuthorizationHandler.cs
+  src/Humans.Web/Authorization/Requirements/CampOperationRequirement.cs
+-->
+<!-- freshness:flag-on-change
+  Camp/Season lifecycle, lead/membership authorization, public-year settings, and notification triggers — review when Camp services/entities/controllers/auth handlers change.
+-->
+
 # Camps — Section Invariants
 
 Themed community camps (Barrios) with per-year season registrations, leads, images, and renaming history.

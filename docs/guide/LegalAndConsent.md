@@ -1,3 +1,25 @@
+<!-- freshness:triggers
+  src/Humans.Web/Views/Consent/**
+  src/Humans.Web/Views/Legal/**
+  src/Humans.Web/Views/Profile/Privacy.cshtml
+  src/Humans.Web/Views/Admin/LegalDocuments.cshtml
+  src/Humans.Web/Views/Admin/CreateLegalDocument.cshtml
+  src/Humans.Web/Views/Admin/EditLegalDocument.cshtml
+  src/Humans.Web/Controllers/ConsentController.cs
+  src/Humans.Web/Controllers/LegalController.cs
+  src/Humans.Web/Controllers/AdminLegalDocumentsController.cs
+  src/Humans.Application/Services/Consent/**
+  src/Humans.Application/Services/Legal/**
+  src/Humans.Application/Services/Gdpr/**
+  src/Humans.Domain/Entities/LegalDocument.cs
+  src/Humans.Domain/Entities/DocumentVersion.cs
+  src/Humans.Domain/Entities/ConsentRecord.cs
+  src/Humans.Infrastructure/Data/Configurations/Legal/**
+-->
+<!-- freshness:flag-on-change
+  Consent signing flow, document versioning, Consent Coordinator queue, immutability of consent records, and GDPR data export/deletion. Review when consent/legal views, services, or entities change.
+-->
+
 # Legal & Consent
 
 ## What this section is for

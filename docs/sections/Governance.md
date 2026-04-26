@@ -1,3 +1,20 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Governance/**
+  src/Humans.Domain/Entities/Application.cs
+  src/Humans.Domain/Entities/ApplicationStateHistory.cs
+  src/Humans.Domain/Entities/BoardVote.cs
+  src/Humans.Infrastructure/Data/Configurations/ApplicationConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/ApplicationStateHistoryConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/BoardVoteConfiguration.cs
+  src/Humans.Infrastructure/Repositories/ApplicationRepository.cs
+  src/Humans.Web/Controllers/ApplicationController.cs
+  src/Humans.Web/Controllers/BoardController.cs
+  src/Humans.Web/Controllers/GovernanceController.cs
+-->
+<!-- freshness:flag-on-change
+  Application state machine, Board voting flow, term-expiry calculation, and BoardVote deletion-on-finalize — review when Governance service/entities/controllers change.
+-->
+
 # Governance — Section Invariants
 
 Colaborador and Asociado tier applications, Board voting workflow, term lifecycle. **Not** volunteer onboarding — that lives under `docs/sections/Onboarding.md` and is explicitly a separate track.

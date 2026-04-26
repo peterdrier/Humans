@@ -1,3 +1,17 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Tickets/**
+  src/Humans.Infrastructure/Services/TicketQueryService.cs
+  src/Humans.Domain/Entities/TicketOrder.cs
+  src/Humans.Domain/Entities/TicketAttendee.cs
+  src/Humans.Domain/Entities/TicketSyncState.cs
+  src/Humans.Domain/Constants/TicketConstants.cs
+  src/Humans.Infrastructure/Data/Configurations/Tickets/**
+  src/Humans.Web/Controllers/TicketController.cs
+-->
+<!-- freshness:flag-on-change
+  Vendor sync flow, Stripe-fee enrichment, auto-matching to humans by email, and EventParticipation derivation rules — review when Tickets services/entities/controller change.
+-->
+
 # Tickets — Section Invariants
 
 External ticket vendor sync (orders + attendees), Stripe-fee enrichment, auto-matching to humans by email, event-participation derivation.

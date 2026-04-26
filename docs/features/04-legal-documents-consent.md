@@ -1,3 +1,23 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Legal/**
+  src/Humans.Application/Services/Consent/**
+  src/Humans.Web/Controllers/LegalController.cs
+  src/Humans.Web/Controllers/ConsentController.cs
+  src/Humans.Web/Controllers/AdminLegalDocumentsController.cs
+  src/Humans.Web/Views/Legal/**
+  src/Humans.Web/Views/Consent/**
+  src/Humans.Domain/Entities/LegalDocument.cs
+  src/Humans.Domain/Entities/DocumentVersion.cs
+  src/Humans.Domain/Entities/ConsentRecord.cs
+  src/Humans.Domain/Constants/SystemTeamIds.cs
+  src/Humans.Infrastructure/Data/Configurations/Legal/**
+  src/Humans.Infrastructure/Jobs/SyncLegalDocumentsJob.cs
+  src/Humans.Infrastructure/Jobs/SendReConsentReminderJob.cs
+-->
+<!-- freshness:flag-on-change
+  Document/consent data model, sync flow, immutability triggers, and admin CRUD routes — review when Legal/Consent services, controllers, or entities change.
+-->
+
 # Legal Documents & Consent Management
 
 ## Business Context

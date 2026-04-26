@@ -1,3 +1,15 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Notifications/**
+  src/Humans.Domain/Entities/Notification.cs
+  src/Humans.Domain/Entities/NotificationRecipient.cs
+  src/Humans.Infrastructure/Data/Configurations/Notifications/**
+  src/Humans.Infrastructure/Repositories/NotificationRepository.cs
+  src/Humans.Web/Controllers/NotificationController.cs
+-->
+<!-- freshness:flag-on-change
+  Notification fan-out semantics, meter-vs-stored distinction, role-scoped dispatch, and inbox state machine — review when Notifications services/entities/controller change.
+-->
+
 # Notifications — Section Invariants
 
 In-app notification fan-out (stored events + per-user inbox) and live meter counts (computed, not stored). Cross-cut fan-in section: every other section dispatches through `INotificationService` on state changes.

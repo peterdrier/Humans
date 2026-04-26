@@ -1,3 +1,7 @@
+<!-- freshness:flag-on-change
+  Cross-cutting conventions (domain invariants, transaction boundary, caching, authorization, time, configuration, rendering, testing, exceptions). Flag if any architectural pattern shift in src/** invalidates a stated convention.
+-->
+
 # App Conventions
 
 Cross-cutting conventions for how we build this app.

@@ -1,3 +1,17 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Profile/**
+  src/Humans.Application/Services/Gdpr/**
+  src/Humans.Web/Controllers/ProfileController.cs
+  src/Humans.Web/Controllers/ProfileApiController.cs
+  src/Humans.Web/Views/Profile/**
+  src/Humans.Domain/Entities/Profile.cs
+  src/Humans.Infrastructure/Data/Configurations/Profiles/**
+  src/Humans.Infrastructure/Jobs/ProcessAccountDeletionsJob.cs
+-->
+<!-- freshness:flag-on-change
+  Profile fields, edit page sections, visibility matrix, and GDPR export/deletion workflow — review when Profile entity, ProfileService, or ProfileController change.
+-->
+
 # Profiles
 
 ## Business Context

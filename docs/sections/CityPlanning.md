@@ -1,3 +1,17 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/CityPlanning/**
+  src/Humans.Domain/Entities/CityPlanningSettings.cs
+  src/Humans.Domain/Entities/CampPolygon.cs
+  src/Humans.Domain/Entities/CampPolygonHistory.cs
+  src/Humans.Infrastructure/Data/Configurations/CityPlanning/**
+  src/Humans.Infrastructure/Repositories/CityPlanningRepository.cs
+  src/Humans.Web/Controllers/CityPlanningController.cs
+  src/Humans.Web/Controllers/CityPlanningApiController.cs
+-->
+<!-- freshness:flag-on-change
+  Polygon edit authorization (lead vs city-planning team vs CampAdmin), placement-open gating, and append-only history rules — review when CityPlanning service/entities/controllers change.
+-->
+
 # City Planning — Section Invariants
 
 Interactive map for camp barrio placement: polygon editing, placement phase control, append-only history.

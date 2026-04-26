@@ -1,3 +1,20 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Auth/**
+  src/Humans.Domain/Entities/RoleAssignment.cs
+  src/Humans.Domain/Constants/RoleNames.cs
+  src/Humans.Domain/Constants/RoleGroups.cs
+  src/Humans.Infrastructure/Data/Configurations/Auth/**
+  src/Humans.Infrastructure/Repositories/RoleAssignmentRepository.cs
+  src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
+  src/Humans.Web/Authorization/PolicyNames.cs
+  src/Humans.Web/Authorization/RoleChecks.cs
+  src/Humans.Web/Authorization/Requirements/**
+  src/Humans.Application/Authorization/**
+-->
+<!-- freshness:flag-on-change
+  Role-assignment temporal invariants, magic-link rate-limit/replay rules, and role-name constants — review when Auth services, role constants, or claims transformation change.
+-->
+
 # Auth — Section Invariants
 
 Role assignments (temporal), magic-link login/signup, claims transformation.

@@ -1,3 +1,20 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Onboarding/**
+  src/Humans.Application/Services/Profile/ProfileService.cs
+  src/Humans.Application/Services/Users/UserService.cs
+  src/Humans.Application/Services/Users/AccountProvisioningService.cs
+  src/Humans.Application/Services/Consent/**
+  src/Humans.Infrastructure/Services/ConsentService.cs
+  src/Humans.Application/Services/Governance/ApplicationDecisionService.cs
+  src/Humans.Application/Services/Teams/TeamService.cs
+  src/Humans.Web/Controllers/OnboardingReviewController.cs
+  src/Humans.Web/Controllers/AccountController.cs
+  src/Humans.Web/Authorization/MembershipRequiredFilter.cs
+-->
+<!-- freshness:flag-on-change
+  Onboarding orchestration across Profile/Consent/Governance/Teams, membership gate, and IOnboardingEligibilityQuery seam — review when OnboardingService or any of its cross-section dependencies change.
+-->
+
 # Onboarding — Section Invariants
 
 Pure orchestrator over Profiles, Legal & Consent, Teams, and Governance. Owns no tables.

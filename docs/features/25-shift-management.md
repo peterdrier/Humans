@@ -1,3 +1,25 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Shifts/**
+  src/Humans.Web/Controllers/ShiftsController.cs
+  src/Humans.Web/Controllers/ShiftAdminController.cs
+  src/Humans.Web/Controllers/ShiftDashboardController.cs
+  src/Humans.Web/Authorization/ShiftRoleChecks.cs
+  src/Humans.Web/Authorization/PolicyNames.cs
+  src/Humans.Domain/Entities/EventSettings.cs
+  src/Humans.Domain/Entities/Rota.cs
+  src/Humans.Domain/Entities/Shift.cs
+  src/Humans.Domain/Entities/ShiftSignup.cs
+  src/Humans.Domain/Entities/ShiftTag.cs
+  src/Humans.Domain/Entities/GeneralAvailability.cs
+  src/Humans.Domain/Entities/VolunteerEventProfile.cs
+  src/Humans.Domain/Entities/VolunteerTagPreference.cs
+  src/Humans.Infrastructure/Data/Configurations/Shifts/**
+  src/Humans.Web/ViewComponents/ShiftSignupsViewComponent.cs
+-->
+<!-- freshness:flag-on-change
+  Shift entities, state machine, urgency scoring, dashboard panels, routes, or coordinator/admin auth may have changed; reconcile US-25.* and the data model table.
+-->
+
 # Shift Management
 
 ## Business Context

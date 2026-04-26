@@ -1,3 +1,14 @@
+<!-- freshness:triggers
+  src/Humans.Web/Controllers/ProfileController.cs
+  src/Humans.Web/Models/ShiftViewModels.cs
+  src/Humans.Web/Views/Profile/ShiftInfo.cshtml
+  src/Humans.Application/Services/Shifts/ShiftSignupService.cs
+  src/Humans.Domain/Entities/VolunteerEventProfile.cs
+-->
+<!-- freshness:flag-on-change
+  Wizard step content, quirk vocabulary (time-preference values), or the rule that dietary/medical lives elsewhere may have changed.
+-->
+
 # 33 — Shift Preference Wizard
 
 ## Business Context

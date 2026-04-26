@@ -1,3 +1,25 @@
+<!-- freshness:triggers
+  src/Humans.Web/Views/Profile/**
+  src/Humans.Web/Controllers/ProfileController.cs
+  src/Humans.Web/Controllers/ProfileApiController.cs
+  src/Humans.Web/Controllers/ContactsController.cs
+  src/Humans.Web/ViewComponents/ProfileCardViewComponent.cs
+  src/Humans.Web/ViewComponents/UserAvatarViewComponent.cs
+  src/Humans.Application/Services/Profile/**
+  src/Humans.Application/Services/Users/UserService.cs
+  src/Humans.Application/Services/Gdpr/**
+  src/Humans.Domain/Entities/Profile.cs
+  src/Humans.Domain/Entities/ProfileLanguage.cs
+  src/Humans.Domain/Entities/ContactField.cs
+  src/Humans.Domain/Entities/UserEmail.cs
+  src/Humans.Domain/Entities/CommunicationPreference.cs
+  src/Humans.Domain/Entities/User.cs
+  src/Humans.Infrastructure/Data/Configurations/Profiles/**
+-->
+<!-- freshness:flag-on-change
+  Personal profile, contact-field visibility, email management, communication preferences, search, GDPR export/deletion, and admin profile actions (suspend/approve/reject/roles). Review when profile views, services, or entities change.
+-->
+
 # Profiles
 
 ## What this section is for

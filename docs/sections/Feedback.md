@@ -1,3 +1,16 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Feedback/**
+  src/Humans.Domain/Entities/FeedbackReport.cs
+  src/Humans.Domain/Entities/FeedbackMessage.cs
+  src/Humans.Infrastructure/Data/Configurations/Feedback/**
+  src/Humans.Infrastructure/Repositories/FeedbackRepository.cs
+  src/Humans.Web/Controllers/FeedbackController.cs
+  src/Humans.Web/Controllers/FeedbackApiController.cs
+-->
+<!-- freshness:flag-on-change
+  Feedback report lifecycle, screenshot validation, message thread invariants, and admin-vs-reporter authorization — review when Feedback service/entities/controllers change.
+-->
+
 # Feedback — Section Invariants
 
 In-app feedback reports (bugs, feature requests, questions) with screenshots and a reporter↔admin conversation thread.

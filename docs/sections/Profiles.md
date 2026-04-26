@@ -1,3 +1,23 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Profile/**
+  src/Humans.Domain/Entities/Profile.cs
+  src/Humans.Domain/Entities/ContactField.cs
+  src/Humans.Domain/Entities/UserEmail.cs
+  src/Humans.Domain/Entities/CommunicationPreference.cs
+  src/Humans.Domain/Entities/VolunteerHistoryEntry.cs
+  src/Humans.Domain/Entities/AccountMergeRequest.cs
+  src/Humans.Infrastructure/Data/Configurations/Profiles/**
+  src/Humans.Web/Controllers/ProfileController.cs
+  src/Humans.Web/Controllers/ProfileApiController.cs
+  src/Humans.Web/Controllers/ContactsController.cs
+  src/Humans.Web/Controllers/AdminDuplicateAccountsController.cs
+  src/Humans.Web/Controllers/AdminMergeController.cs
+  src/Humans.Web/Views/Profile/**
+-->
+<!-- freshness:flag-on-change
+  Profile data model, contact-field visibility tiers, FullProfile caching/invalidation, GDPR contributor wiring, and merge/duplicate flows — review when Profile services/entities/controllers/views change.
+-->
+
 # Profiles — Section Invariants
 
 Per-human personal data: profile, contact fields, emails, communication preferences. The reference implementation for the §15 caching architecture.

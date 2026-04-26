@@ -1,3 +1,25 @@
+<!-- freshness:triggers
+  src/Humans.Web/Views/Application/**
+  src/Humans.Web/Views/OnboardingReview/BoardVoting.cshtml
+  src/Humans.Web/Views/OnboardingReview/BoardVotingDetail.cshtml
+  src/Humans.Web/Views/Governance/**
+  src/Humans.Web/Controllers/ApplicationController.cs
+  src/Humans.Web/Controllers/OnboardingReviewController.cs
+  src/Humans.Web/Controllers/GovernanceController.cs
+  src/Humans.Application/Services/Governance/**
+  src/Humans.Application/Services/Auth/RoleAssignmentService.cs
+  src/Humans.Domain/Entities/Application.cs
+  src/Humans.Domain/Entities/ApplicationStateHistory.cs
+  src/Humans.Domain/Entities/BoardVote.cs
+  src/Humans.Domain/Entities/RoleAssignment.cs
+  src/Humans.Domain/Constants/RoleNames.cs
+  src/Humans.Domain/Constants/RoleGroups.cs
+  src/Humans.Domain/Constants/SystemTeamIds.cs
+-->
+<!-- freshness:flag-on-change
+  Tier application workflow (Submitted/Approved/Rejected/Withdrawn), Board voting dashboard, finalization, term expiry, and role-assignment management. Review when governance views, services, entities, or role constants change.
+-->
+
 # Governance
 
 ## What this section is for

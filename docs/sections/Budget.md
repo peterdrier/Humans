@@ -1,3 +1,18 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Budget/**
+  src/Humans.Domain/Entities/Budget*.cs
+  src/Humans.Domain/Entities/TicketingProjection.cs
+  src/Humans.Infrastructure/Data/Configurations/Budget/**
+  src/Humans.Infrastructure/Repositories/BudgetRepository.cs
+  src/Humans.Web/Controllers/BudgetController.cs
+  src/Humans.Web/Controllers/FinanceController.cs
+  src/Humans.Web/Authorization/Requirements/BudgetAuthorizationHandler.cs
+  src/Humans.Web/Authorization/Requirements/BudgetOperationRequirement.cs
+-->
+<!-- freshness:flag-on-change
+  Budget lifecycle, restricted/ticketing-group rules, append-only audit log, and resource-based authorization — review when Budget services/entities/controllers/auth handlers change.
+-->
+
 # Budget — Section Invariants
 
 Fiscal-year budgets (Draft/Active/Closed), groups, categories, line items, append-only audit log.

@@ -1,3 +1,23 @@
+<!-- freshness:triggers
+  src/Humans.Web/Views/Team/**
+  src/Humans.Web/Views/TeamAdmin/**
+  src/Humans.Web/Controllers/TeamController.cs
+  src/Humans.Web/Controllers/TeamAdminController.cs
+  src/Humans.Web/Controllers/HumansTeamControllerBase.cs
+  src/Humans.Application/Services/Teams/**
+  src/Humans.Domain/Entities/Team.cs
+  src/Humans.Domain/Entities/TeamMember.cs
+  src/Humans.Domain/Entities/TeamJoinRequest.cs
+  src/Humans.Domain/Entities/TeamJoinRequestStateHistory.cs
+  src/Humans.Domain/Entities/TeamRoleAssignment.cs
+  src/Humans.Domain/Entities/TeamRoleDefinition.cs
+  src/Humans.Domain/Constants/SystemTeamIds.cs
+  src/Humans.Infrastructure/Data/Configurations/Teams/**
+-->
+<!-- freshness:flag-on-change
+  Team directory, join/leave/approval flow, sub-team scoping, role slots, public team page editing, system-team sync, and Teams Admin actions. Review when team views, services, entities, or system-team constants change.
+-->
+
 # Teams
 
 ## What this section is for

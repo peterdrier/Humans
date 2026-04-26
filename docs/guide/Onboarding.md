@@ -1,3 +1,25 @@
+<!-- freshness:triggers
+  src/Humans.Web/Views/Account/**
+  src/Humans.Web/Views/Guest/**
+  src/Humans.Web/Views/Home/**
+  src/Humans.Web/Views/Profile/Edit.cshtml
+  src/Humans.Web/Views/Profile/ShiftInfo.cshtml
+  src/Humans.Web/Views/Consent/**
+  src/Humans.Web/Views/OnboardingReview/Index.cshtml
+  src/Humans.Web/Views/OnboardingReview/Detail.cshtml
+  src/Humans.Web/Controllers/AccountController.cs
+  src/Humans.Web/Controllers/GuestController.cs
+  src/Humans.Web/Controllers/HomeController.cs
+  src/Humans.Web/Controllers/OnboardingReviewController.cs
+  src/Humans.Application/Services/Onboarding/**
+  src/Humans.Application/Services/Auth/MagicLinkService.cs
+  src/Humans.Application/Services/Consent/**
+  src/Humans.Web/Authorization/MembershipRequiredFilter.cs
+-->
+<!-- freshness:flag-on-change
+  Sign-up paths (Google OAuth, magic link), profile setup wizard, consent gate, Consent Coordinator clearance, and Volunteer activation. Review when onboarding services, account views, or membership filter change.
+-->
+
 # Onboarding
 
 ## What this section is for

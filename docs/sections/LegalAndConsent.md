@@ -1,3 +1,19 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Legal/**
+  src/Humans.Application/Services/Consent/**
+  src/Humans.Infrastructure/Services/ConsentService.cs
+  src/Humans.Domain/Entities/LegalDocument.cs
+  src/Humans.Domain/Entities/DocumentVersion.cs
+  src/Humans.Domain/Entities/ConsentRecord.cs
+  src/Humans.Infrastructure/Data/Configurations/Legal/**
+  src/Humans.Web/Controllers/LegalController.cs
+  src/Humans.Web/Controllers/ConsentController.cs
+  src/Humans.Web/Controllers/AdminLegalDocumentsController.cs
+-->
+<!-- freshness:flag-on-change
+  ConsentRecord append-only DB-trigger invariant, document sync from GitHub, and consent-coordinator review gate — review when Legal/Consent services/entities/controllers change.
+-->
+
 # Legal & Consent — Section Invariants
 
 Legal documents synced from GitHub, per-version consent records (append-only), the Consent Coordinator review gate.

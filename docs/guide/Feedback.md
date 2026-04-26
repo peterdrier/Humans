@@ -1,3 +1,17 @@
+<!-- freshness:triggers
+  src/Humans.Web/Views/Feedback/**
+  src/Humans.Web/Controllers/FeedbackController.cs
+  src/Humans.Web/Controllers/FeedbackApiController.cs
+  src/Humans.Web/ViewComponents/FeedbackWidgetViewComponent.cs
+  src/Humans.Application/Services/Feedback/**
+  src/Humans.Domain/Entities/FeedbackReport.cs
+  src/Humans.Domain/Entities/FeedbackMessage.cs
+  src/Humans.Infrastructure/Data/Configurations/Feedback/**
+-->
+<!-- freshness:flag-on-change
+  Floating feedback widget, submission flow, my-reports view, FeedbackAdmin triage, status transitions, and GitHub linkage. Review when feedback views, controllers, services, or entities change.
+-->
+
 # Feedback
 
 ## What this section is for

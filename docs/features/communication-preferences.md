@@ -1,3 +1,14 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Profile/CommunicationPreferenceService.cs
+  src/Humans.Web/Controllers/ProfileController.cs
+  src/Humans.Web/Controllers/UnsubscribeController.cs
+  src/Humans.Domain/Entities/CommunicationPreference.cs
+  src/Humans.Infrastructure/Data/Configurations/Profiles/CommunicationPreferenceConfiguration.cs
+-->
+<!-- freshness:flag-on-change
+  Category list, always-on/locked rules, ticketing lock, or facilitated-message opt-out behavior may have shifted.
+-->
+
 # Communication Preferences
 
 ## Business Context

@@ -1,3 +1,23 @@
+<!-- freshness:triggers
+  src/Humans.Web/Views/Camp/**
+  src/Humans.Web/Views/CampAdmin/**
+  src/Humans.Web/Controllers/CampController.cs
+  src/Humans.Web/Controllers/CampAdminController.cs
+  src/Humans.Web/Controllers/CampApiController.cs
+  src/Humans.Web/Controllers/HumansCampControllerBase.cs
+  src/Humans.Application/Services/Camps/**
+  src/Humans.Domain/Entities/Camp.cs
+  src/Humans.Domain/Entities/CampSeason.cs
+  src/Humans.Domain/Entities/CampLead.cs
+  src/Humans.Domain/Entities/CampImage.cs
+  src/Humans.Domain/Entities/CampHistoricalName.cs
+  src/Humans.Domain/Entities/CampSettings.cs
+  src/Humans.Infrastructure/Data/Configurations/Camps/**
+-->
+<!-- freshness:flag-on-change
+  Camps directory, registration, season lifecycle, lead/co-lead management, name lock, public JSON API, and Camp Admin dashboard. Review when camp views, controllers, services, or entities change.
+-->
+
 # Camps
 
 ## What this section is for

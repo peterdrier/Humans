@@ -1,3 +1,25 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Camps/**
+  src/Humans.Web/Controllers/CampController.cs
+  src/Humans.Web/Controllers/CampAdminController.cs
+  src/Humans.Web/Controllers/CampApiController.cs
+  src/Humans.Web/Controllers/HumansCampControllerBase.cs
+  src/Humans.Web/Views/Camp/**
+  src/Humans.Web/Views/CampAdmin/**
+  src/Humans.Domain/Entities/Camp.cs
+  src/Humans.Domain/Entities/CampSeason.cs
+  src/Humans.Domain/Entities/CampLead.cs
+  src/Humans.Domain/Entities/CampMember.cs
+  src/Humans.Domain/Entities/CampImage.cs
+  src/Humans.Domain/Entities/CampHistoricalName.cs
+  src/Humans.Domain/Entities/CampSettings.cs
+  src/Humans.Infrastructure/Data/Configurations/Camps/**
+  src/Humans.Infrastructure/Data/Configurations/CampMemberConfiguration.cs
+-->
+<!-- freshness:flag-on-change
+  Camp registration/season approval workflow, CampMember per-season affiliation, lead management, and route table — review when Camp services, controllers, or entities change.
+-->
+
 # Camps
 
 ## Business Context

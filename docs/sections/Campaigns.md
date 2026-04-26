@@ -1,3 +1,16 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Campaigns/**
+  src/Humans.Domain/Entities/Campaign.cs
+  src/Humans.Domain/Entities/CampaignCode.cs
+  src/Humans.Domain/Entities/CampaignGrant.cs
+  src/Humans.Infrastructure/Data/Configurations/Campaigns/**
+  src/Humans.Infrastructure/Repositories/CampaignRepository.cs
+  src/Humans.Web/Controllers/CampaignController.cs
+-->
+<!-- freshness:flag-on-change
+  Campaign lifecycle, code import/grant rules, wave email triggers, and unsubscribe handling — review when Campaign service/entities/controller change.
+-->
+
 # Campaigns — Section Invariants
 
 Bulk code-distribution campaigns: codes imported or generated, assigned to humans, delivered via email waves.

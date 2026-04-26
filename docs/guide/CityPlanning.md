@@ -1,3 +1,17 @@
+<!-- freshness:triggers
+  src/Humans.Web/Views/CityPlanning/**
+  src/Humans.Web/Controllers/CityPlanningController.cs
+  src/Humans.Web/Controllers/CityPlanningApiController.cs
+  src/Humans.Application/Services/CityPlanning/**
+  src/Humans.Domain/Entities/CityPlanningSettings.cs
+  src/Humans.Domain/Entities/CampPolygon.cs
+  src/Humans.Domain/Entities/CampPolygonHistory.cs
+  src/Humans.Infrastructure/Data/Configurations/CityPlanning/**
+-->
+<!-- freshness:flag-on-change
+  Map view, polygon edit/save/restore flow, placement-phase toggle, overlay uploads, GeoJSON export, and City Planning team admin access. Review when map views, controllers, or entities change.
+-->
+
 # City Planning
 
 ## What this section is for

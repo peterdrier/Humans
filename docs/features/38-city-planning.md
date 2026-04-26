@@ -1,3 +1,19 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/CityPlanning/**
+  src/Humans.Web/Controllers/CityPlanningController.cs
+  src/Humans.Web/Controllers/CityPlanningApiController.cs
+  src/Humans.Web/Hubs/CityPlanningHub.cs
+  src/Humans.Web/Authorization/RoleChecks.cs
+  src/Humans.Domain/Entities/CityPlanningSettings.cs
+  src/Humans.Domain/Entities/CampPolygon.cs
+  src/Humans.Domain/Entities/CampPolygonHistory.cs
+  src/Humans.Infrastructure/Data/Configurations/CityPlanning/**
+  src/Humans.Web/wwwroot/js/city-planning/**
+-->
+<!-- freshness:flag-on-change
+  Polygon entities, MVC/API/SignalR routes, sound-zone color encoding, or map-admin authorization may have shifted.
+-->
+
 # City Planning
 
 ## Business Context

@@ -1,3 +1,19 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/GoogleIntegration/**
+  src/Humans.Infrastructure/Services/GoogleWorkspaceSyncService.cs
+  src/Humans.Domain/Entities/SyncServiceSettings.cs
+  src/Humans.Domain/Entities/GoogleSyncOutboxEvent.cs
+  src/Humans.Domain/Entities/GoogleResource.cs
+  src/Humans.Domain/Constants/GoogleSyncOutboxEventTypes.cs
+  src/Humans.Infrastructure/Data/Configurations/SyncServiceSettingsConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/GoogleSyncOutboxEventConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/GoogleResourceConfiguration.cs
+  src/Humans.Web/Controllers/GoogleController.cs
+-->
+<!-- freshness:flag-on-change
+  Sync mode invariants, Shared-Drive-only constraint, GoogleEmailStatus rules, and reconciliation gateway operations — review when Google Integration services/entities/controller change.
+-->
+
 # Google Integration — Section Invariants
 
 Shared-Drive-only Google resource sync: Drive folders, Groups, Workspace accounts, reconciliation, Drive-activity monitoring.

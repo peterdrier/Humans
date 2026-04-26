@@ -1,3 +1,31 @@
+<!-- freshness:triggers
+  src/Humans.Web/Views/Shifts/**
+  src/Humans.Web/Views/ShiftAdmin/**
+  src/Humans.Web/Views/ShiftDashboard/**
+  src/Humans.Web/Views/Vol/**
+  src/Humans.Web/Views/Profile/ShiftInfo.cshtml
+  src/Humans.Web/Controllers/ShiftsController.cs
+  src/Humans.Web/Controllers/ShiftAdminController.cs
+  src/Humans.Web/Controllers/ShiftDashboardController.cs
+  src/Humans.Web/Controllers/VolController.cs
+  src/Humans.Web/ViewComponents/ShiftSignupsViewComponent.cs
+  src/Humans.Web/Authorization/ShiftRoleChecks.cs
+  src/Humans.Application/Services/Shifts/**
+  src/Humans.Domain/Entities/Rota.cs
+  src/Humans.Domain/Entities/Shift.cs
+  src/Humans.Domain/Entities/ShiftSignup.cs
+  src/Humans.Domain/Entities/ShiftTag.cs
+  src/Humans.Domain/Entities/EventSettings.cs
+  src/Humans.Domain/Entities/EventParticipation.cs
+  src/Humans.Domain/Entities/VolunteerEventProfile.cs
+  src/Humans.Domain/Entities/VolunteerTagPreference.cs
+  src/Humans.Domain/Entities/GeneralAvailability.cs
+  src/Humans.Infrastructure/Data/Configurations/Shifts/**
+-->
+<!-- freshness:flag-on-change
+  Shift browsing/signup, rota management, signup approvals, event settings (early-entry capacity, browsing toggle), shift preferences wizard, and NoInfoAdmin/VolunteerCoordinator scoping. Review when shift views, services, or entities change.
+-->
+
 # Shifts
 
 ## What this section is for

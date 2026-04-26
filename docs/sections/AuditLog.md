@@ -1,3 +1,15 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/AuditLog/**
+  src/Humans.Domain/Entities/AuditLogEntry.cs
+  src/Humans.Infrastructure/Data/Configurations/AuditLog/**
+  src/Humans.Infrastructure/Repositories/AuditLogRepository.cs
+  src/Humans.Application/Interfaces/Repositories/IAuditLogRepository.cs
+  src/Humans.Application/Interfaces/IAuditLogService.cs
+-->
+<!-- freshness:flag-on-change
+  Audit log append-only invariant, AuditAction enum surface, and self-persisting semantics — review when AuditLog service/repo/entity changes.
+-->
+
 # Audit Log — Section Invariants
 
 Append-only system audit trail: who did what, when, to which entity. Used by every section that performs a privileged or irreversible action. Enforced append-only per design-rules §12.

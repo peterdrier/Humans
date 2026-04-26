@@ -1,3 +1,19 @@
+<!-- freshness:triggers
+  src/Humans.Web/Views/Campaign/**
+  src/Humans.Web/Views/Unsubscribe/**
+  src/Humans.Web/Controllers/CampaignController.cs
+  src/Humans.Web/Controllers/UnsubscribeController.cs
+  src/Humans.Application/Services/Campaigns/**
+  src/Humans.Application/Services/Users/UnsubscribeService.cs
+  src/Humans.Domain/Entities/Campaign.cs
+  src/Humans.Domain/Entities/CampaignCode.cs
+  src/Humans.Domain/Entities/CampaignGrant.cs
+  src/Humans.Infrastructure/Data/Configurations/Campaigns/**
+-->
+<!-- freshness:flag-on-change
+  Campaign lifecycle (Draft/Active/Completed), code import, wave send, grant assignment, unsubscribe flow, and My Codes profile section. Review when campaign views, services, or entities change.
+-->
+
 # Campaigns
 
 ## What this section is for

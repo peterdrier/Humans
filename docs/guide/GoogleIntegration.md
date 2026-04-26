@@ -1,3 +1,21 @@
+<!-- freshness:triggers
+  src/Humans.Web/Views/Google/**
+  src/Humans.Web/Views/TeamAdmin/Resources.cshtml
+  src/Humans.Web/Controllers/GoogleController.cs
+  src/Humans.Application/Services/GoogleIntegration/**
+  src/Humans.Application/Services/Teams/TeamResourceService.cs
+  src/Humans.Domain/Entities/GoogleResource.cs
+  src/Humans.Domain/Entities/GoogleSyncOutboxEvent.cs
+  src/Humans.Domain/Entities/SyncServiceSettings.cs
+  src/Humans.Domain/Constants/GoogleSyncOutboxEventTypes.cs
+  src/Humans.Infrastructure/Data/Configurations/GoogleResourceConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/GoogleSyncOutboxEventConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/SyncServiceSettingsConfiguration.cs
+-->
+<!-- freshness:flag-on-change
+  Sync mode plumbing, drift detection, workspace account provisioning, Drive activity monitor, and team-resource linking. Review when Google services, sync settings, or related entities change.
+-->
+
 # Google Integration
 
 ## What this section is for

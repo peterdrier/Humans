@@ -1,3 +1,14 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/GuideFilter.cs
+  src/Humans.Application/Services/GuideRolePrivilegeMap.cs
+  src/Humans.Web/Controllers/GuideController.cs
+  src/Humans.Web/Views/Guide/**
+  docs/guide/**
+-->
+<!-- freshness:flag-on-change
+  Guide page role-scoped block visibility, cache TTL, and refresh trigger rules — review when GuideController/GuideFilter/GuideRolePrivilegeMap or guide markdown content changes.
+-->
+
 # Guide — Section Invariants
 
 ## Concepts

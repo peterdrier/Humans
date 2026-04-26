@@ -1,3 +1,23 @@
+<!-- freshness:triggers
+  src/Humans.Web/Controllers/AdminController.cs
+  src/Humans.Web/Controllers/AdminDuplicateAccountsController.cs
+  src/Humans.Web/Controllers/AdminMergeController.cs
+  src/Humans.Web/Controllers/BoardController.cs
+  src/Humans.Web/Controllers/ProfileController.cs
+  src/Humans.Web/Controllers/GoogleController.cs
+  src/Humans.Web/Controllers/ContactsController.cs
+  src/Humans.Web/Authorization/PolicyNames.cs
+  src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
+  src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
+  src/Humans.Web/Views/Admin/**
+  src/Humans.Web/Views/Board/**
+  src/Humans.Domain/Constants/RoleNames.cs
+  src/Humans.Domain/Constants/RoleGroups.cs
+-->
+<!-- freshness:flag-on-change
+  Admin/Board/Profile/Google route tables, role catalog, dashboard metrics, and authorization split between Admin and Board areas — review when admin-area controllers, role names, or authorization policies change.
+-->
+
 # Administration
 
 ## Business Context

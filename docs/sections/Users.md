@@ -1,3 +1,15 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Users/**
+  src/Humans.Domain/Entities/User.cs
+  src/Humans.Domain/Entities/EventParticipation.cs
+  src/Humans.Infrastructure/Data/Configurations/Users/**
+  src/Humans.Web/Controllers/AccountController.cs
+  src/Humans.Web/Controllers/UnsubscribeController.cs
+-->
+<!-- freshness:flag-on-change
+  User entity surface, OAuth-vs-magic-link provisioning, event-participation monotonicity, unsubscribe token rules, and Identity-framework §2a exception — review when Users services/entity/controllers change.
+-->
+
 # Users/Identity — Section Invariants
 
 The User aggregate and its identity surface. Profile-adjacent User properties (Google email preference, contact import, campaign unsubscribe) are documented under [`Profiles.md`](Profiles.md#user-identity-extension) because the Profile decorator stitches them into `FullProfile`; this section owns the entity itself, the identity framework extensions, and cross-event participation state.

@@ -1,3 +1,17 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Feedback/**
+  src/Humans.Web/Controllers/FeedbackController.cs
+  src/Humans.Web/Controllers/FeedbackApiController.cs
+  src/Humans.Web/ViewComponents/FeedbackWidgetViewComponent.cs
+  src/Humans.Web/ViewComponents/NavBadgesViewComponent.cs
+  src/Humans.Domain/Entities/FeedbackReport.cs
+  src/Humans.Domain/Entities/FeedbackMessage.cs
+  src/Humans.Infrastructure/Data/Configurations/Feedback/**
+-->
+<!-- freshness:flag-on-change
+  Feedback entities, controller routes, API surface, status transitions, or FeedbackAdmin auth rules may have changed; verify the auth matrix and routes table.
+-->
+
 # 27 — Feedback System
 
 ## Business Context

@@ -1,3 +1,16 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Profile/ContactService.cs
+  src/Humans.Application/Services/Profile/UserEmailService.cs
+  src/Humans.Application/Services/Users/UserService.cs
+  src/Humans.Web/Controllers/ContactsController.cs
+  src/Humans.Web/Controllers/AccountController.cs
+  src/Humans.Domain/Entities/User.cs
+  src/Humans.Infrastructure/Data/Configurations/Users/UserConfiguration.cs
+-->
+<!-- freshness:flag-on-change
+  Contact identification (ContactSource/LastLoginAt), admin contact CRUD routes, or first-login claim flow may have changed.
+-->
+
 # Feature 29: Contact Accounts
 
 ## Business Context

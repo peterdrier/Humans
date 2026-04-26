@@ -1,3 +1,17 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Shifts/ShiftManagementService.cs
+  src/Humans.Application/Services/Shifts/ShiftSignupService.cs
+  src/Humans.Web/Controllers/ShiftsController.cs
+  src/Humans.Web/Controllers/ShiftAdminController.cs
+  src/Humans.Web/Authorization/ShiftRoleChecks.cs
+  src/Humans.Web/Views/Shifts/**
+  src/Humans.Web/Views/ShiftAdmin/**
+  src/Humans.Web/ViewComponents/UserAvatarViewComponent.cs
+-->
+<!-- freshness:flag-on-change
+  Privileged-viewer signup display (name list / avatar row), the includeSignups flag, or column wiring on the browse/admin pages may have changed.
+-->
+
 # 26 — Shift Signup Visibility
 
 ## Business Context

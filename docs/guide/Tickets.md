@@ -1,3 +1,18 @@
+<!-- freshness:triggers
+  src/Humans.Web/Views/Ticket/**
+  src/Humans.Web/Controllers/TicketController.cs
+  src/Humans.Application/Services/Tickets/**
+  src/Humans.Domain/Entities/TicketAttendee.cs
+  src/Humans.Domain/Entities/TicketOrder.cs
+  src/Humans.Domain/Entities/TicketSyncState.cs
+  src/Humans.Domain/Entities/TicketingProjection.cs
+  src/Humans.Domain/Constants/TicketConstants.cs
+  src/Humans.Infrastructure/Data/Configurations/Tickets/**
+-->
+<!-- freshness:flag-on-change
+  Ticket dashboard, sales/attendees/orders views, sync triggering, codes/redemption, gate list, and Volunteer Ticket Coverage. Review when ticket views, sync service, or ticket entities change.
+-->
+
 # Tickets
 
 ## What this section is for
