@@ -1556,6 +1556,24 @@ public sealed class CampService : ICampService, IUserDataContributor
             relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
     }
 
+    public async Task<Guid> AddCampMemberAsLeadAsync(Guid campSeasonId, Guid userId, Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        var now = _clock.GetCurrentInstant();
+        var result = await _repo.AddActiveMembershipAsync(campSeasonId, userId, now, actorUserId, cancellationToken);
+
+        if (result.Outcome != CampMemberInsertOutcome.AlreadyActive)
+        {
+            await _auditLog.LogAsync(
+                AuditAction.CampMemberAddedByLead,
+                nameof(CampMember), result.MemberId,
+                "Lead added human as active camp member.",
+                actorUserId,
+                relatedEntityId: userId, relatedEntityType: nameof(User));
+        }
+
+        return result.MemberId;
+    }
+
     public async Task WithdrawCampMembershipRequestAsync(
         Guid campMemberId, Guid userId, CancellationToken cancellationToken = default)
     {

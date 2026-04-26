@@ -139,6 +139,14 @@ public interface ICampService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Lead-driven add: creates a CampMember with Status=Active directly, bypassing
+    /// the request/approve flow. Used by the "Add active member" button on the camp Edit
+    /// page. Idempotent — if an Active membership already exists, returns its id without
+    /// auditing again. Authorization is the caller's responsibility (CampOperationRequirement.Manage).
+    /// </summary>
+    Task<Guid> AddCampMemberAsLeadAsync(Guid campSeasonId, Guid userId, Guid actorUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Human withdraws their own pending request. Scoped to the caller's user id.
     /// </summary>
     Task WithdrawCampMembershipRequestAsync(

@@ -728,6 +728,41 @@ public sealed class CampRepository : ICampRepository
         }
     }
 
+    public async Task<CampMemberInsertResult> AddActiveMembershipAsync(
+        Guid campSeasonId, Guid userId, Instant now, Guid confirmedByUserId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var existing = await ctx.CampMembers.FirstOrDefaultAsync(
+            m => m.CampSeasonId == campSeasonId && m.UserId == userId, ct);
+
+        if (existing is not null)
+        {
+            if (existing.Status == CampMemberStatus.Active)
+                return new CampMemberInsertResult(existing.Id, CampMemberInsertOutcome.AlreadyActive);
+
+            // promote pending → active
+            existing.Status = CampMemberStatus.Active;
+            existing.ConfirmedAt = now;
+            existing.ConfirmedByUserId = confirmedByUserId;
+            await ctx.SaveChangesAsync(ct);
+            return new CampMemberInsertResult(existing.Id, CampMemberInsertOutcome.Created);
+        }
+
+        var newMember = new CampMember
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = campSeasonId,
+            UserId = userId,
+            Status = CampMemberStatus.Active,
+            RequestedAt = now,
+            ConfirmedAt = now,
+            ConfirmedByUserId = confirmedByUserId,
+        };
+        ctx.CampMembers.Add(newMember);
+        await ctx.SaveChangesAsync(ct);
+        return new CampMemberInsertResult(newMember.Id, CampMemberInsertOutcome.Created);
+    }
+
     public async Task<CampMember?> GetMemberForCampMutationAsync(
         Guid campMemberId, Guid scopedCampId, CancellationToken ct = default)
     {

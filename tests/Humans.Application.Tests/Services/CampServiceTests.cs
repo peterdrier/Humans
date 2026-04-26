@@ -815,6 +815,59 @@ public class CampServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task AddCampMemberAsLead_creates_active_member_and_audits()
+    {
+        // Seed a camp + season + a target user
+        var camp = new Camp { Id = Guid.NewGuid(), Slug = "test-camp" };
+        var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Active };
+        var targetUserId = Guid.NewGuid();
+        var leadUserId = Guid.NewGuid();
+        _dbContext.Camps.Add(camp);
+        _dbContext.CampSeasons.Add(season);
+        await _dbContext.SaveChangesAsync();
+
+        var memberId = await _service.AddCampMemberAsLeadAsync(season.Id, targetUserId, leadUserId);
+
+        memberId.Should().NotBe(Guid.Empty);
+        var member = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == memberId);
+        member.UserId.Should().Be(targetUserId);
+        member.Status.Should().Be(CampMemberStatus.Active);
+        member.ConfirmedByUserId.Should().Be(leadUserId);
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CampMemberAddedByLead,
+            nameof(CampMember), memberId,
+            Arg.Any<string>(), leadUserId, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task AddCampMemberAsLead_returns_existing_id_when_already_active()
+    {
+        var camp = new Camp { Id = Guid.NewGuid(), Slug = "test-camp-2" };
+        var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Active };
+        var userId = Guid.NewGuid();
+        var existing = new CampMember
+        {
+            Id = Guid.NewGuid(), CampSeasonId = season.Id, UserId = userId,
+            Status = CampMemberStatus.Active, RequestedAt = _clock.GetCurrentInstant(),
+            ConfirmedAt = _clock.GetCurrentInstant(), ConfirmedByUserId = Guid.NewGuid(),
+        };
+        _dbContext.Camps.Add(camp);
+        _dbContext.CampSeasons.Add(season);
+        _dbContext.CampMembers.Add(existing);
+        await _dbContext.SaveChangesAsync();
+
+        var leadId = Guid.NewGuid();
+        var memberId = await _service.AddCampMemberAsLeadAsync(season.Id, userId, leadId);
+
+        memberId.Should().Be(existing.Id);
+        // No new audit log for an already-active member.
+        await _auditLog.DidNotReceive().LogAsync(
+            AuditAction.CampMemberAddedByLead, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
     public async Task WithdrawSeasonAsync_NotifiesPendingRequesters_DoesNotChangeMemberStatus()
     {
         // No more auto-withdraw cascade — just a notification out. Pending rows stay pending.
