@@ -53,10 +53,10 @@ public class AdminSidebarViewComponentTests
         var result = await sut.InvokeAsync() as ViewViewComponentResult;
         var model = result!.ViewData!.Model as AdminSidebarViewModel;
         var ticketsItem = model!.Groups.SelectMany(g => g.Items)
-            .Single(i => i.LabelKey == "AdminNav_Tickets");
+            .Single(i => string.Equals(i.LabelKey, "AdminNav_Tickets", StringComparison.Ordinal));
         ticketsItem.IsActive.Should().BeTrue();
         var volunteersItem = model.Groups.SelectMany(g => g.Items)
-            .Single(i => i.LabelKey == "AdminNav_Volunteers");
+            .Single(i => string.Equals(i.LabelKey, "AdminNav_Volunteers", StringComparison.Ordinal));
         volunteersItem.IsActive.Should().BeFalse();
     }
 
