@@ -15,8 +15,9 @@ function updateMarqueeEl(el, start, cur) {
 }
 
 function selectVerticesInRect(mode, state, rect) {
-    if (!Array.isArray(state.feature?.coordinates?.[0])) return;
-    const coords    = state.feature.coordinates[0];
+    const freshFeature = mode.getFeature(state.featureId);
+    if (!Array.isArray(freshFeature?.coordinates?.[0])) return;
+    const coords    = freshFeature.coordinates[0];
     const featureId = state.featureId;
     const newSelected = [];
 
