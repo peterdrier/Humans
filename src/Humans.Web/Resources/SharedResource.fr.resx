@@ -1696,6 +1696,7 @@
   <data name="Shifts_GeneralAvailability" xml:space="preserve"><value>Disponibilité générale</value></data>
   <data name="Shifts_AvailabilityHelp" xml:space="preserve"><value>Indiquez les jours où vous êtes disponible. Les coordinateurs peuvent voir qui est disponible lors de l'attribution des quarts.</value></data>
   <data name="Shifts_SaveAvailability" xml:space="preserve"><value>Enregistrer la disponibilité</value></data>
+  <data name="Shifts_DaysSelected" xml:space="preserve"><value>jours sélectionnés</value></data>
   <data name="Shifts_SlotsFull" xml:space="preserve"><value>Certains jours ont encore besoin d'aide, mais tous les créneaux disponibles sont complets. Reviens plus tard au cas où des places se libèrent.</value></data>
 
   <data name="ShiftDash_Title" xml:space="preserve"><value>Tableau de bord des quarts</value></data>
