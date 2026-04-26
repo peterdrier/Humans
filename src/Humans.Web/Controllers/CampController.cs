@@ -446,7 +446,6 @@ public class CampController : HumansCampControllerBase
             Description = r.Definition.Description,
             SlotCount = r.Definition.SlotCount,
             MinimumRequired = r.Definition.MinimumRequired,
-            IsRequired = r.Definition.IsRequired,
             FilledSlots = r.FilledSlots
                 .Select(s => new CampRoleSlotViewModel(s.AssignmentId, s.CampMemberId, s.UserId, s.DisplayName))
                 .ToList(),

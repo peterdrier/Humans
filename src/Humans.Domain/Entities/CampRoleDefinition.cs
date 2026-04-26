@@ -19,13 +19,10 @@ public class CampRoleDefinition
     /// <summary>How many slot rows the camp Edit view renders per season. Service enforces as a soft cap on assignment.</summary>
     public int SlotCount { get; set; } = 1;
 
-    /// <summary>How many slots must be filled for the camp to be compliant. 0 ≤ MinimumRequired ≤ SlotCount.</summary>
+    /// <summary>How many slots must be filled for the camp to be compliant. 0 ≤ MinimumRequired ≤ SlotCount. 0 = role not tracked in the compliance report.</summary>
     public int MinimumRequired { get; set; } = 1;
 
     public int SortOrder { get; set; }
-
-    /// <summary>True if the compliance report should track this role.</summary>
-    public bool IsRequired { get; set; }
 
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }

@@ -29,7 +29,7 @@ Themed community camps (Barrios) with per-year season registrations, leads, imag
 - A **Camp Season** is a per-year registration for a camp, containing the year-specific name, description, community info, and placement details.
 - A **Camp Lead** is a human responsible for managing a camp. Leads have a role: Primary or CoLead.
 - A **Camp Member** is a human's post-hoc, per-season affiliation with a camp. The app does **not** admit humans to a camp — each camp runs its own process. A CampMember row exists so the app knows who belongs to which camp for per-camp roles (e.g. LNT lead), Early Entry allocations, and notifications. Status: Pending → Active → Removed. `Removed` is a soft-delete tombstone so re-requesting creates a new row.
-- A **Camp Role Definition** is a CampAdmin-managed catalogue row describing a per-camp role with a slot count, compliance threshold (`MinimumRequired`), sort order, and `IsRequired` flag. The catalogue ships empty — CampAdmin creates every definition. Soft-deleted via `DeactivatedAt` so historical assignments survive removal from the active catalogue.
+- A **Camp Role Definition** is a CampAdmin-managed catalogue row describing a per-camp role with a slot count, compliance threshold (`MinimumRequired`), and sort order. `MinimumRequired = 0` means the role is optional and not tracked in the compliance report; `MinimumRequired ≥ 1` means the compliance report tracks it with that threshold. The catalogue ships empty — CampAdmin creates every definition. Soft-deleted via `DeactivatedAt` so historical assignments survive removal from the active catalogue.
 - A **Camp Role Assignment** is a per-season binding of a `CampMember` to a `CampRoleDefinition`. The "Camp Lead" concept is **not** a Camp Role Definition in this PR — lead authz still flows through the `CampLead` entity until a follow-up issue retires it.
 - **Camp Settings** is a singleton controlling which year is public (shown in the directory) and which seasons accept new registrations.
 
@@ -109,7 +109,6 @@ CampAdmin-managed catalogue of per-camp roles. Soft-deleted via `DeactivatedAt`;
 | SlotCount | int | Default 1; soft cap enforced in service, not in DB |
 | MinimumRequired | int | Default 1; cross-field validation enforces `0 ≤ MinimumRequired ≤ SlotCount` |
 | SortOrder | int | Display order on Camp Edit roles panel |
-| IsRequired | bool | True if compliance report tracks this role |
 | DeactivatedAt | Instant? | Null = active; non-null hides from new-assignment UI |
 | CreatedAt | Instant | |
 | UpdatedAt | Instant | |

@@ -60,7 +60,6 @@ public sealed class CampRoleService : ICampRoleService
             SlotCount = input.SlotCount,
             MinimumRequired = input.MinimumRequired,
             SortOrder = input.SortOrder,
-            IsRequired = input.IsRequired,
             CreatedAt = now,
             UpdatedAt = now,
         };
@@ -99,7 +98,6 @@ public sealed class CampRoleService : ICampRoleService
             def.SlotCount = input.SlotCount;
             def.MinimumRequired = input.MinimumRequired;
             def.SortOrder = input.SortOrder;
-            def.IsRequired = input.IsRequired;
             def.UpdatedAt = now;
         }, ct);
 
@@ -288,7 +286,7 @@ public sealed class CampRoleService : ICampRoleService
     public async Task<CampRoleComplianceReport> GetComplianceReportAsync(int year, CancellationToken ct = default)
     {
         var requiredDefs = (await _repo.ListDefinitionsAsync(includeDeactivated: false, ct))
-            .Where(d => d.IsRequired)
+            .Where(d => d.MinimumRequired > 0)
             .ToList();
 
         var camps = await _campService.GetCampSeasonsForComplianceAsync(year, ct);

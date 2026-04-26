@@ -312,9 +312,8 @@ CampRoleDefinition
 ├── Name: string [unique]
 ├── Description: string? [Markdown]
 ├── SlotCount: int (default 1) — how many slot rows render per camp-season; soft cap enforced in service
-├── MinimumRequired: int (default 1) — slots required for compliance; 0 ≤ MinimumRequired ≤ SlotCount
+├── MinimumRequired: int (default 1) — slots required for compliance; 0 ≤ MinimumRequired ≤ SlotCount; 0 = role not tracked in the compliance report
 ├── SortOrder: int — display order on the Camp Edit roles panel
-├── IsRequired: bool — true if the compliance report tracks this role
 ├── DeactivatedAt: Instant? (null = active)
 ├── CreatedAt: Instant
 └── UpdatedAt: Instant

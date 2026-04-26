@@ -20,8 +20,6 @@ public sealed class CampRoleDefinitionFormViewModel : IValidatableObject
 
     public int SortOrder { get; set; }
 
-    public bool IsRequired { get; set; }
-
     public IEnumerable<ValidationResult> Validate(ValidationContext _)
     {
         if (MinimumRequired > SlotCount)

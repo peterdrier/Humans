@@ -109,13 +109,13 @@ public class CampRoleServiceTests : IDisposable
     {
         var input = new CreateCampRoleDefinitionInput(
             Name: "Sound Lead", Description: "Manages sound system",
-            SlotCount: 1, MinimumRequired: 1, SortOrder: 60, IsRequired: false);
+            SlotCount: 1, MinimumRequired: 0, SortOrder: 60);
 
         var result = await _service.CreateDefinitionAsync(input, _actorUserId);
 
         result.Name.Should().Be("Sound Lead");
         result.SlotCount.Should().Be(1);
-        result.IsRequired.Should().BeFalse();
+        result.MinimumRequired.Should().Be(0);
 
         // Audit happens AFTER save (I1 fix)
         await _auditLog.Received(1).LogAsync(
@@ -134,7 +134,7 @@ public class CampRoleServiceTests : IDisposable
 
         var input = new CreateCampRoleDefinitionInput(
             Name: "Consent Lead", Description: null,
-            SlotCount: 1, MinimumRequired: 1, SortOrder: 99, IsRequired: false);
+            SlotCount: 1, MinimumRequired: 1, SortOrder: 99);
 
         var act = async () => await _service.CreateDefinitionAsync(input, _actorUserId);
 
@@ -146,7 +146,7 @@ public class CampRoleServiceTests : IDisposable
     {
         var input = new CreateCampRoleDefinitionInput(
             Name: "Bad Role", Description: null,
-            SlotCount: 1, MinimumRequired: 2, SortOrder: 99, IsRequired: true);
+            SlotCount: 1, MinimumRequired: 2, SortOrder: 99);
 
         var act = async () => await _service.CreateDefinitionAsync(input, _actorUserId);
 
@@ -160,7 +160,7 @@ public class CampRoleServiceTests : IDisposable
 
         var input = new UpdateCampRoleDefinitionInput(
             Name: "New Name", Description: "Updated description",
-            SlotCount: 2, MinimumRequired: 1, SortOrder: 99, IsRequired: false);
+            SlotCount: 2, MinimumRequired: 0, SortOrder: 99);
 
         var ok = await _service.UpdateDefinitionAsync(def.Id, input, _actorUserId);
 
@@ -168,7 +168,7 @@ public class CampRoleServiceTests : IDisposable
         var updated = await _service.GetDefinitionByIdAsync(def.Id);
         updated!.Name.Should().Be("New Name");
         updated.SlotCount.Should().Be(2);
-        updated.IsRequired.Should().BeFalse();
+        updated.MinimumRequired.Should().Be(0);
 
         await _auditLog.Received(1).LogAsync(
             AuditAction.CampRoleDefinitionUpdated,
@@ -188,7 +188,7 @@ public class CampRoleServiceTests : IDisposable
         var input = new UpdateCampRoleDefinitionInput(
             Name: "Consent Lead", Description: null,
             SlotCount: def2.SlotCount, MinimumRequired: def2.MinimumRequired,
-            SortOrder: def2.SortOrder, IsRequired: def2.IsRequired);
+            SortOrder: def2.SortOrder);
 
         var act = async () => await _service.UpdateDefinitionAsync(def2.Id, input, _actorUserId);
 
@@ -200,7 +200,7 @@ public class CampRoleServiceTests : IDisposable
     {
         var input = new UpdateCampRoleDefinitionInput(
             Name: "Anything", Description: null,
-            SlotCount: 1, MinimumRequired: 0, SortOrder: 0, IsRequired: false);
+            SlotCount: 1, MinimumRequired: 0, SortOrder: 0);
 
         var ok = await _service.UpdateDefinitionAsync(Guid.NewGuid(), input, _actorUserId);
 
@@ -472,7 +472,7 @@ public class CampRoleServiceTests : IDisposable
     public async Task ComplianceReport_marks_camp_compliant_when_all_required_roles_meet_minimum()
     {
         var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
-        var consent = await SeedDefinitionAsync("Consent Lead", slotCount: 2, minimumRequired: 1, isRequired: true);
+        var consent = await SeedDefinitionAsync("Consent Lead", slotCount: 2, minimumRequired: 1);
         var member = await SeedActiveMemberAsync(season.Id);
 
         _dbContext.CampRoleAssignments.Add(
@@ -494,7 +494,7 @@ public class CampRoleServiceTests : IDisposable
     public async Task ComplianceReport_marks_camp_noncompliant_when_required_role_unfilled()
     {
         var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
-        await SeedDefinitionAsync("LNT", slotCount: 1, minimumRequired: 1, isRequired: true);
+        await SeedDefinitionAsync("LNT", slotCount: 1, minimumRequired: 1);
 
         _campService.GetCampSeasonsForComplianceAsync(2026, default)
             .Returns(new[] { (camp.Id, season.Name, camp.Slug, season.Id) });
@@ -510,7 +510,7 @@ public class CampRoleServiceTests : IDisposable
     public async Task ComplianceReport_ignores_non_required_roles()
     {
         var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
-        await SeedDefinitionAsync("Power", slotCount: 1, minimumRequired: 0, isRequired: false);
+        await SeedDefinitionAsync("Power", slotCount: 1, minimumRequired: 0);
 
         _campService.GetCampSeasonsForComplianceAsync(2026, default)
             .Returns(new[] { (camp.Id, season.Name, camp.Slug, season.Id) });
@@ -542,7 +542,7 @@ public class CampRoleServiceTests : IDisposable
 
     private async Task<CampRoleDefinition> SeedDefinitionAsync(
         string name = "Consent Lead", int slotCount = 2, int minimumRequired = 1,
-        bool isRequired = true, bool deactivated = false)
+        bool deactivated = false)
     {
         var def = new CampRoleDefinition
         {
@@ -550,7 +550,6 @@ public class CampRoleServiceTests : IDisposable
             Name = name,
             SlotCount = slotCount,
             MinimumRequired = minimumRequired,
-            IsRequired = isRequired,
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant(),
             DeactivatedAt = deactivated ? _clock.GetCurrentInstant() : null,

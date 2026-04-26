@@ -86,11 +86,11 @@ public class DevSeedController : HumansControllerBase
 
         var seeds = new CreateCampRoleDefinitionInput[]
         {
-            new("Consent Lead", null, SlotCount: 2, MinimumRequired: 1, SortOrder: 10, IsRequired: true),
-            new("LNT",          null, SlotCount: 1, MinimumRequired: 1, SortOrder: 20, IsRequired: true),
-            new("Shit Ninja",   null, SlotCount: 1, MinimumRequired: 1, SortOrder: 30, IsRequired: true),
-            new("Power",        null, SlotCount: 1, MinimumRequired: 0, SortOrder: 40, IsRequired: false),
-            new("Build Lead",   null, SlotCount: 2, MinimumRequired: 1, SortOrder: 50, IsRequired: true),
+            new("Consent Lead", null, SlotCount: 2, MinimumRequired: 1, SortOrder: 10),
+            new("LNT",          null, SlotCount: 1, MinimumRequired: 1, SortOrder: 20),
+            new("Shit Ninja",   null, SlotCount: 1, MinimumRequired: 1, SortOrder: 30),
+            new("Power",        null, SlotCount: 1, MinimumRequired: 0, SortOrder: 40),
+            new("Build Lead",   null, SlotCount: 2, MinimumRequired: 1, SortOrder: 50),
         };
 
         try

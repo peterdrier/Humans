@@ -51,13 +51,11 @@ public sealed record CreateCampRoleDefinitionInput(
     string? Description,
     int SlotCount,
     int MinimumRequired,
-    int SortOrder,
-    bool IsRequired);
+    int SortOrder);
 
 public sealed record UpdateCampRoleDefinitionInput(
     string Name,
     string? Description,
     int SlotCount,
     int MinimumRequired,
-    int SortOrder,
-    bool IsRequired);
+    int SortOrder);

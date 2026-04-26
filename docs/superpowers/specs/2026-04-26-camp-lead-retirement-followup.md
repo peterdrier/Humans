@@ -8,7 +8,7 @@ This was deliberately split out of #489 — that PR was already a re-implementat
 
 ## Acceptance criteria
 
-- [ ] Seed a system role definition "Camp Lead" with a stable, well-known GUID. Properties: `IsRequired = true`, `MinimumRequired = 1`, default `SlotCount = 2`. Marked **undeletable** (and unrenameable) — CampAdmin can adjust `SlotCount` but cannot deactivate, rename, or remove the row.
+- [ ] Seed a system role definition "Camp Lead" with a stable, well-known GUID. Properties: `MinimumRequired = 1`, default `SlotCount = 2`. Marked **undeletable** (and unrenameable) — CampAdmin can adjust `SlotCount` but cannot deactivate, rename, or remove the row.
 - [ ] Data migration: for every existing row in `camp_leads` (active rows only), create a corresponding `CampMember(Status = Active)` for the camp's open season (or most recent open season if none) and a `CampRoleAssignment` for the Camp Lead definition. Migration is idempotent and reversible; deletion of the Camp Lead role row is impossible while assignments exist (FK with `OnDelete(Restrict)` already in place).
 - [ ] Repoint `CampAuthorizationHandler.IsUserCampLeadAsync` from `CampLead` lookup to `CampRoleAssignment` lookup against the Camp Lead role definition.
 - [ ] `ICampService.IsUserCampLeadAsync(userId, campId)` becomes a pass-through to `ICampRoleService` lookup. `GetCampsByLeadUserIdAsync` and `GetCampLeadSeasonIdForYearAsync` similarly switch their data source.

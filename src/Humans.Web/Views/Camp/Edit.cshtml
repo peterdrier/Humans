@@ -297,7 +297,7 @@
                             <div class="mb-3">
                                 <h6 class="mb-1">
                                     @role.Name
-                                    @if (role.IsRequired)
+                                    @if (role.MinimumRequired > 0)
                                     {
                                         <span class="badge bg-secondary">required</span>
                                     }

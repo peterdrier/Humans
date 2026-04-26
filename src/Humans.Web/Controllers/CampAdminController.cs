@@ -400,7 +400,7 @@ public class CampAdminController : HumansControllerBase
     }
 
     private static CampRoleDefinitionListRowViewModel MapRow(CampRoleDefinition d) =>
-        new(d.Id, d.Name, d.Description, d.SlotCount, d.MinimumRequired, d.SortOrder, d.IsRequired, d.IsActive);
+        new(d.Id, d.Name, d.Description, d.SlotCount, d.MinimumRequired, d.SortOrder, d.IsActive);
 
     [HttpGet("Roles/Create")]
     public IActionResult CreateRole() => View("RoleForm", new CampRoleDefinitionFormViewModel());
@@ -418,7 +418,7 @@ public class CampAdminController : HumansControllerBase
         try
         {
             var input = new CreateCampRoleDefinitionInput(
-                form.Name, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder, form.IsRequired);
+                form.Name, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder);
             await _campRoleService.CreateDefinitionAsync(input, user.Id, ct);
             SetSuccess($"Created camp role '{form.Name}'.");
             return RedirectToAction(nameof(Roles));
@@ -449,7 +449,6 @@ public class CampAdminController : HumansControllerBase
             SlotCount = def.SlotCount,
             MinimumRequired = def.MinimumRequired,
             SortOrder = def.SortOrder,
-            IsRequired = def.IsRequired,
         });
     }
 
@@ -467,7 +466,7 @@ public class CampAdminController : HumansControllerBase
         try
         {
             var input = new UpdateCampRoleDefinitionInput(
-                form.Name, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder, form.IsRequired);
+                form.Name, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder);
             var ok = await _campRoleService.UpdateDefinitionAsync(id, input, user.Id, ct);
             if (!ok) return NotFound();
             SetSuccess($"Updated camp role '{form.Name}'.");

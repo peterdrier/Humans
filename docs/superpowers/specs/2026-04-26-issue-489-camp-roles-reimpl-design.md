@@ -23,7 +23,7 @@
 | **D1** | Restore the spec's `IsPublic` flag (issue AC7: anonymous users see public roles on Camp Details). | **Drop entirely.** All role visibility is auth-gated. Issue #489 will be updated with a ratification comment as part of this PR. |
 | **D2** | Frank's auto-promote-on-assignment feature (creates CampMember(Active) in the same transaction). | **Drop auto-promote.** Replace with a separate, explicit "lead adds active member to camp" action that uses the existing `_HumanSearchInput` partial and produces an audit entry ("Bob added Phil to camp Foo"). After membership exists, role assignment proceeds by the spec's normal path. **Camp Lead → role retirement is split to a follow-up issue** — Camp Lead is NOT seeded as a role definition in this PR; existing `CampLead` entity and authz are unchanged here. |
 | **D3** | Frank's 6th seed row "Wellbeing Lead" (beyond spec). | **Moot.** No seed at all — see "No seed" section below. CampAdmin creates every definition via the GUI. |
-| **D4** | Frank's `MinimumRequired` field (separates compliance threshold from slot cap). | **Keep.** Compliance = `IsRequired && filledCount >= MinimumRequired`. Add cross-field validation at the viewmodel layer (`0 ≤ MinimumRequired ≤ SlotCount`). |
+| **D4** | Frank's `MinimumRequired` field (separates compliance threshold from slot cap). | **Keep — and collapse.** `IsRequired` was redundant (`IsRequired = MinimumRequired > 0`); dropped post-implementation. Compliance = `MinimumRequired > 0 && filledCount >= MinimumRequired`. Cross-field validation at the viewmodel layer enforces `0 ≤ MinimumRequired ≤ SlotCount`. |
 | **D5** | Frank's per-slot index storage (`SlotIndex` column + DB unique on `(season, role, slotIndex)`). | **Drop SlotIndex.** Storage is `(season, role, campMember)` unique. Service layer enforces `count < SlotCount` before insert. Slots are a display concern: the view orders existing assignments and pads with empty rows up to `SlotCount`. |
 
 ---
@@ -52,13 +52,10 @@ public class CampRoleDefinition
     /// <summary>How many slot rows the view renders per camp-season. Soft cap; service enforces.</summary>
     public int SlotCount { get; set; } = 1;
 
-    /// <summary>How many slots must be filled for compliance. 0 ≤ MinimumRequired ≤ SlotCount.</summary>
+    /// <summary>How many slots must be filled for compliance. 0 ≤ MinimumRequired ≤ SlotCount. 0 = role not tracked in the compliance report.</summary>
     public int MinimumRequired { get; set; } = 1;
 
     public int SortOrder { get; set; }
-
-    /// <summary>True if the compliance report should track this role.</summary>
-    public bool IsRequired { get; set; }
 
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }
@@ -104,7 +101,7 @@ Single new migration `AddCampRoles` immediately after main's `20260424160739_Add
 
 The catalogue ships empty. There are **no default role definitions**. Per [feedback_db_enforcement_minimal](../../../C:/Users/PeterDrier/.claude/projects/H--source-Humans/memory/feedback_db_enforcement_minimal.md) and Peter's instruction on this PR: "no manual SQL ever, no HasData. The point of this is that CampAdmin can create roles. There are no default ones."
 
-CampAdmin uses the new GUI to create every definition (name, description, slot count, sort order, `IsRequired`, `MinimumRequired`) at runtime. If a dev/QA seeder is ever wanted for ergonomics, it is a separate dev-only tool that calls `ICampRoleService.CreateDefinitionAsync` through the service API — never the database directly.
+CampAdmin uses the new GUI to create every definition (name, description, slot count, sort order, `MinimumRequired`) at runtime. If a dev/QA seeder is ever wanted for ergonomics, it is a separate dev-only tool that calls `ICampRoleService.CreateDefinitionAsync` through the service API — never the database directly.
 
 ---
 
@@ -191,7 +188,7 @@ public interface ICampRoleService
 - **I1** (audit-log-before-save in `CreateDefinitionAsync` / `UpdateDefinitionAsync`) — order in service is `_repo.Add(...)` → `SaveChangesAsync` → `_auditLog.LogAsync`.
 - **I2** (Deactivate/Reactivate try/catch + logging) — controller actions follow the existing CampAdminController pattern of wrapping service calls.
 - **I5** (`AssignAsync` `DbUpdateException` handling) — service catches `DbUpdateException` from the unique index and returns `AlreadyHoldsRole` outcome.
-- **I6** (compliance report orphan inflation) — moot; no slot index, no orphans. Compliance is `assignments.Count(a => !a.Definition.DeactivatedAt.HasValue) >= def.MinimumRequired` for definitions where `IsRequired = true`.
+- **I6** (compliance report orphan inflation) — moot; no slot index, no orphans. Compliance is `assignments.Count(a => !a.Definition.DeactivatedAt.HasValue) >= def.MinimumRequired` for definitions where `MinimumRequired > 0`.
 
 ---
 
@@ -205,7 +202,7 @@ Ported from Frank's `Roles.cshtml` minus the IsPublic column. Lists active and d
 
 ### `Views/CampAdmin/RoleForm.cshtml` (new)
 
-Ported from Frank's. **No IsPublic toggle.** Fields: `Name`, `Description` (markdown), `SlotCount`, `MinimumRequired`, `SortOrder`, `IsRequired`. Cross-field validation at the viewmodel layer enforces `0 ≤ MinimumRequired ≤ SlotCount`.
+Ported from Frank's. **No IsPublic toggle, no IsRequired toggle.** Fields: `Name`, `Description` (markdown), `SlotCount`, `MinimumRequired`, `SortOrder`. Cross-field validation at the viewmodel layer enforces `0 ≤ MinimumRequired ≤ SlotCount`. `MinimumRequired = 0` means the role is optional and absent from compliance reports.
 
 ### `Views/CampAdmin/Compliance.cshtml` (new)
 
