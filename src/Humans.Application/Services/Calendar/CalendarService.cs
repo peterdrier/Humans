@@ -246,6 +246,7 @@ public sealed class CalendarService : ICalendarService
     public async Task<CalendarEvent> CreateEventAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default)
     {
         ValidateRecurrenceRule(dto.RecurrenceRule);
+        ValidateTimezone(dto.RecurrenceTimezone);
 
         var now = _clock.GetCurrentInstant();
 
@@ -302,6 +303,16 @@ public sealed class CalendarService : ICalendarService
         }
     }
 
+    // Validate the timezone at write time so service callers (jobs, tests, future API endpoints)
+    // can't slip an unknown ID past the controller-layer guard and then crash inside
+    // ComputeRecurrenceUntilUtc / occurrence expansion. Internal so tests can call it directly.
+    internal static void ValidateTimezone(string? tz)
+    {
+        if (string.IsNullOrWhiteSpace(tz)) return;
+        if (DateTimeZoneProviders.Tzdb.GetZoneOrNull(tz) is null)
+            throw new ValidationException($"Recurrence timezone is unknown: '{tz}'.");
+    }
+
     // Denormalise RRULE UNTIL (or the last occurrence for COUNT-bounded rules) into an Instant
     // so the SQL window prefilter can skip events that cannot possibly contribute occurrences
     // inside `[from, to]`. Returns null only for truly open-ended rules.
@@ -321,7 +332,8 @@ public sealed class CalendarService : ICalendarService
             {
                 // RFC 5545 allows UNTIL as either DATE-TIME (YYYYMMDDTHHMMSS[Z]) or DATE (YYYYMMDD).
                 var invariant = System.Globalization.CultureInfo.InvariantCulture;
-                var zone = DateTimeZoneProviders.Tzdb[tz];
+                var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(tz);
+                if (zone is null) return null;
 
                 if (val.EndsWith('Z'))
                 {
@@ -380,6 +392,7 @@ public sealed class CalendarService : ICalendarService
     public async Task<CalendarEvent> UpdateEventAsync(Guid id, UpdateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
     {
         ValidateRecurrenceRule(dto.RecurrenceRule);
+        ValidateTimezone(dto.RecurrenceTimezone);
 
         var now = _clock.GetCurrentInstant();
         CalendarEvent? mutated = null;

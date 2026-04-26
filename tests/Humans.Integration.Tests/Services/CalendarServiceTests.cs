@@ -327,6 +327,33 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
     }
 
     [HumansFact]
+    public async Task UpdateEvent_rejects_malformed_rrule()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
+        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+
+        var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
+            "Original", null, null, null, team.Id,
+            Instant.FromUtc(2026, 5, 1, 17, 0),
+            Instant.FromUtc(2026, 5, 1, 18, 0), false, null, null), uid);
+
+        var act = async () => await svc.UpdateEventAsync(ev.Id, new UpdateCalendarEventDto(
+            "Updated", null, null, null, team.Id,
+            Instant.FromUtc(2026, 5, 2, 17, 0),
+            Instant.FromUtc(2026, 5, 2, 18, 0),
+            false,
+            RecurrenceRule: "FREQ=NOT_A_REAL_FREQ",
+            RecurrenceTimezone: "Europe/Madrid"), uid);
+
+        await act.Should().ThrowAsync<ValidationException>()
+            .WithMessage("*Recurrence rule is malformed*");
+    }
+
+    [HumansFact]
     public async Task DeleteEvent_soft_deletes_and_hides_from_queries()
     {
         await using var scope = _factory.Services.CreateAsyncScope();

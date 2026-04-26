@@ -15,6 +15,9 @@ namespace Humans.Application.Tests.Services;
 /// <list type="bullet">
 ///   <item><see cref="CalendarService.ValidateRecurrenceRule"/> — rejects malformed
 ///     RRULEs so they cannot persist and blow up later occurrence expansion.</item>
+///   <item><see cref="CalendarService.ValidateTimezone"/> — rejects unknown timezone
+///     IDs at the service boundary so non-controller callers can't slip past the
+///     web-layer guard and crash inside occurrence expansion.</item>
 ///   <item>NodaTime Tzdb contract — <c>GetZoneOrNull</c> returns null for unknown IDs
 ///     (which is what the CalendarController timezone guard depends on) and the indexer
 ///     throws the way the original bug reported.</item>
@@ -43,6 +46,28 @@ public class CalendarServiceValidationTests
         var act = () => CalendarService.ValidateRecurrenceRule(rrule);
         act.Should().Throw<ValidationException>()
             .WithMessage("*Recurrence rule is malformed*");
+    }
+
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("  ")]
+    [InlineData("Europe/Madrid")]
+    [InlineData("UTC")]
+    public void ValidateTimezone_valid_input_does_not_throw(string? tz)
+    {
+        var act = () => CalendarService.ValidateTimezone(tz);
+        act.Should().NotThrow();
+    }
+
+    [HumansTheory]
+    [InlineData("Europe/Madird")]
+    [InlineData("Not/A/Real/Zone")]
+    public void ValidateTimezone_unknown_input_throws_ValidationException(string tz)
+    {
+        var act = () => CalendarService.ValidateTimezone(tz);
+        act.Should().Throw<ValidationException>()
+            .WithMessage("*Recurrence timezone is unknown*");
     }
 
     // The three tests below document the NodaTime Tzdb contract the CalendarController

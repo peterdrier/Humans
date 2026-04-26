@@ -382,7 +382,12 @@ public class CalendarController : HumansControllerBase
         var ev = await _calendar.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
-        var zone = DateTimeZoneProviders.Tzdb[form.RecurrenceTimezone];
+        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(form.RecurrenceTimezone);
+        if (zone is null)
+        {
+            ModelState.AddModelError(nameof(form.RecurrenceTimezone), "Unknown timezone.");
+            return View("OccurrenceEdit", form);
+        }
         var original = OccurrenceOverrideFormViewModel.ParseOriginal(originalStartUtc);
 
         Instant? overrideStart = form.OverrideStartLocal is { } s

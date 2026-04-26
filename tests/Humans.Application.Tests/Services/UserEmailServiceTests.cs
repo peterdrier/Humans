@@ -115,7 +115,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task DeleteEmailAsync_OAuthEmail_DoesNotInvalidate()
+    public async Task DeleteEmailAsync_OAuthEmail_ThrowsValidationException()
     {
         var userId = Guid.NewGuid();
         var emailId = Guid.NewGuid();
