@@ -1060,12 +1060,26 @@ public class ProfileController : HumansControllerBase
             return RedirectToAction(nameof(Edit));
         }
 
+        // SSRF guard: only fetch from Google's avatar host. The URL came from a
+        // Google OAuth claim, but we don't trust the stored value blindly — refuse
+        // anything that isn't HTTPS and on a *.googleusercontent.com host.
+        if (!Uri.TryCreate(user.ProfilePictureUrl, UriKind.Absolute, out var pictureUri)
+            || !string.Equals(pictureUri.Scheme, Uri.UriSchemeHttps
+, StringComparison.Ordinal) || !pictureUri.Host.EndsWith(".googleusercontent.com", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning(
+                "Refusing to import Google photo for user {UserId}: URL is not a trusted Google host",
+                user.Id);
+            SetError(_localizer["Profile_ImportGooglePhoto_NotGoogleUrl"].Value);
+            return RedirectToAction(nameof(Edit));
+        }
+
         byte[] rawBytes;
         string fetchedContentType;
         try
         {
             var httpClient = _httpClientFactory.CreateClient(GoogleAvatarHttpClientName);
-            using var response = await httpClient.GetAsync(user.ProfilePictureUrl, ct);
+            using var response = await httpClient.GetAsync(pictureUri, ct);
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning(

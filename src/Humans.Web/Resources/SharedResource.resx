@@ -935,7 +935,6 @@
   <data name="Profile_DateOfBirth" xml:space="preserve"><value>Birthday</value></data>
   <data name="Profile_PictureTooLarge" xml:space="preserve"><value>Profile picture must be under 20MB.</value></data>
   <data name="Profile_PictureInvalidFormat" xml:space="preserve"><value>Profile picture must be JPEG, PNG, WebP, or HEIC format.</value></data>
-  <data name="ProfileEdit_GoogleAvatar" xml:space="preserve"><value>(Google avatar)</value></data>
   <data name="ProfileEdit_PictureHelp" xml:space="preserve"><value>Upload a JPEG, PNG, WebP, or HEIC image (max 20MB). Large images are automatically resized.</value></data>
   <data name="ProfileEdit_RemovePicture" xml:space="preserve"><value>Remove custom picture</value></data>
   <data name="ProfileEdit_ImportGooglePhoto" xml:space="preserve"><value>Import my Google photo</value></data>
@@ -946,6 +945,7 @@
   <data name="Profile_ImportGooglePhoto_AlreadyHasCustom" xml:space="preserve"><value>You already have a custom profile picture. Remove it first to import your Google photo.</value></data>
   <data name="Profile_ImportGooglePhoto_FetchFailed" xml:space="preserve"><value>We couldn't fetch your Google photo. Please try again later or upload one directly.</value></data>
   <data name="Profile_ImportGooglePhoto_InvalidFormat" xml:space="preserve"><value>Your Google photo couldn't be processed — unsupported format or bad response from Google.</value></data>
+  <data name="Profile_ImportGooglePhoto_NotGoogleUrl" xml:space="preserve"><value>We couldn't import your Google photo — the stored avatar URL doesn't look like a Google address. Please upload one directly instead.</value></data>
   <data name="ProfileEdit_DateOfBirthHelp" xml:space="preserve"><value>Only month and day are stored — we don't collect birth year.</value></data>
   <data name="Profile_Month" xml:space="preserve"><value>Month</value></data>
   <data name="Profile_Day" xml:space="preserve"><value>Day</value></data>

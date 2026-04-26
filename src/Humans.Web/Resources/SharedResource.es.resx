@@ -921,7 +921,6 @@
   <data name="Profile_DateOfBirth" xml:space="preserve"><value>Cumplea&#xF1;os</value></data>
   <data name="Profile_PictureTooLarge" xml:space="preserve"><value>La foto de perfil debe ser inferior a 20MB.</value></data>
   <data name="Profile_PictureInvalidFormat" xml:space="preserve"><value>La foto de perfil debe estar en formato JPEG, PNG, WebP o HEIC.</value></data>
-  <data name="ProfileEdit_GoogleAvatar" xml:space="preserve"><value>(avatar de Google)</value></data>
   <data name="ProfileEdit_PictureHelp" xml:space="preserve"><value>Suba una imagen JPEG, PNG, WebP o HEIC (m&#xE1;x. 20MB). Las im&#xE1;genes grandes se redimensionan autom&#xE1;ticamente.</value></data>
   <data name="ProfileEdit_RemovePicture" xml:space="preserve"><value>Eliminar foto personalizada</value></data>
   <data name="ProfileEdit_ImportGooglePhoto" xml:space="preserve"><value>Importar mi foto de Google</value></data>
@@ -932,6 +931,7 @@
   <data name="Profile_ImportGooglePhoto_AlreadyHasCustom" xml:space="preserve"><value>Ya tienes una foto de perfil personalizada. Elim&#xED;nala primero para importar tu foto de Google.</value></data>
   <data name="Profile_ImportGooglePhoto_FetchFailed" xml:space="preserve"><value>No pudimos obtener tu foto de Google. Int&#xE9;ntalo m&#xE1;s tarde o sube una directamente.</value></data>
   <data name="Profile_ImportGooglePhoto_InvalidFormat" xml:space="preserve"><value>No se pudo procesar tu foto de Google: formato no admitido o respuesta err&#xF3;nea.</value></data>
+  <data name="Profile_ImportGooglePhoto_NotGoogleUrl" xml:space="preserve"><value>No pudimos importar tu foto de Google: la URL del avatar guardado no parece ser una direcci&#xF3;n de Google. Sube una directamente.</value></data>
   <data name="ProfileEdit_DateOfBirthHelp" xml:space="preserve"><value>Solo visible para usted y la junta directiva. Se usa para el calendario de cumplea&#xF1;os.</value></data>
   <data name="TeamDetail_TeamCoordinators" xml:space="preserve"><value>Coordinadores</value></data>
 

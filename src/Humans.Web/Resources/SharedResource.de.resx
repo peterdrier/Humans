@@ -916,7 +916,6 @@
   <data name="Profile_DateOfBirth" xml:space="preserve"><value>Geburtstag</value></data>
   <data name="Profile_PictureTooLarge" xml:space="preserve"><value>Das Profilbild darf maximal 20MB gro&#xDF; sein.</value></data>
   <data name="Profile_PictureInvalidFormat" xml:space="preserve"><value>Das Profilbild muss im JPEG-, PNG-, WebP- oder HEIC-Format sein.</value></data>
-  <data name="ProfileEdit_GoogleAvatar" xml:space="preserve"><value>(Google-Avatar)</value></data>
   <data name="ProfileEdit_PictureHelp" xml:space="preserve"><value>Laden Sie ein JPEG-, PNG-, WebP- oder HEIC-Bild hoch (max. 20MB). Gro&#xDF;e Bilder werden automatisch verkleinert.</value></data>
   <data name="ProfileEdit_RemovePicture" xml:space="preserve"><value>Benutzerdefiniertes Bild entfernen</value></data>
   <data name="ProfileEdit_ImportGooglePhoto" xml:space="preserve"><value>Mein Google-Foto importieren</value></data>
@@ -927,6 +926,7 @@
   <data name="Profile_ImportGooglePhoto_AlreadyHasCustom" xml:space="preserve"><value>Du hast bereits ein benutzerdefiniertes Profilbild. Entferne es zuerst, um dein Google-Foto zu importieren.</value></data>
   <data name="Profile_ImportGooglePhoto_FetchFailed" xml:space="preserve"><value>Dein Google-Foto konnte nicht abgerufen werden. Versuche es sp&#xE4;ter erneut oder lade direkt eines hoch.</value></data>
   <data name="Profile_ImportGooglePhoto_InvalidFormat" xml:space="preserve"><value>Dein Google-Foto konnte nicht verarbeitet werden: Nicht unterst&#xFC;tztes Format oder fehlerhafte Antwort von Google.</value></data>
+  <data name="Profile_ImportGooglePhoto_NotGoogleUrl" xml:space="preserve"><value>Dein Google-Foto konnte nicht importiert werden: Die gespeicherte Avatar-URL sieht nicht nach einer Google-Adresse aus. Bitte lade direkt ein Foto hoch.</value></data>
   <data name="ProfileEdit_DateOfBirthHelp" xml:space="preserve"><value>Nur f&#xFC;r Sie und den Vorstand sichtbar. Wird f&#xFC;r den Geburtstagskalender verwendet.</value></data>
   <data name="TeamDetail_TeamCoordinators" xml:space="preserve"><value>Koordinatoren</value></data>
 

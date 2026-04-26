@@ -916,7 +916,6 @@
   <data name="Profile_DateOfBirth" xml:space="preserve"><value>Anniversaire</value></data>
   <data name="Profile_PictureTooLarge" xml:space="preserve"><value>La photo de profil doit faire moins de 20 Mo.</value></data>
   <data name="Profile_PictureInvalidFormat" xml:space="preserve"><value>La photo de profil doit &#xEA;tre au format JPEG, PNG, WebP ou HEIC.</value></data>
-  <data name="ProfileEdit_GoogleAvatar" xml:space="preserve"><value>(avatar Google)</value></data>
   <data name="ProfileEdit_PictureHelp" xml:space="preserve"><value>T&#xE9;l&#xE9;chargez une image JPEG, PNG, WebP ou HEIC (max. 20 Mo). Les grandes images sont redimensionn&#xE9;es automatiquement.</value></data>
   <data name="ProfileEdit_RemovePicture" xml:space="preserve"><value>Supprimer la photo personnalis&#xE9;e</value></data>
   <data name="ProfileEdit_ImportGooglePhoto" xml:space="preserve"><value>Importer ma photo Google</value></data>
@@ -927,6 +926,7 @@
   <data name="Profile_ImportGooglePhoto_AlreadyHasCustom" xml:space="preserve"><value>Tu as d&#xE9;j&#xE0; une photo de profil personnalis&#xE9;e. Supprime-la d'abord pour importer ta photo Google.</value></data>
   <data name="Profile_ImportGooglePhoto_FetchFailed" xml:space="preserve"><value>Impossible de r&#xE9;cup&#xE9;rer ta photo Google. R&#xE9;essaie plus tard ou t&#xE9;l&#xE9;charge-en une directement.</value></data>
   <data name="Profile_ImportGooglePhoto_InvalidFormat" xml:space="preserve"><value>Ta photo Google n'a pas pu &#xEA;tre trait&#xE9;e : format non pris en charge ou mauvaise r&#xE9;ponse de Google.</value></data>
+  <data name="Profile_ImportGooglePhoto_NotGoogleUrl" xml:space="preserve"><value>Impossible d'importer ta photo Google : l'URL de l'avatar enregistr&#xE9;e ne ressemble pas &#xE0; une adresse Google. T&#xE9;l&#xE9;charge-en une directement.</value></data>
   <data name="ProfileEdit_DateOfBirthHelp" xml:space="preserve"><value>Visible uniquement par vous et le conseil d'administration. Utilis&#xE9; pour le calendrier des anniversaires.</value></data>
   <data name="TeamDetail_TeamCoordinators" xml:space="preserve"><value>Coordinateurs</value></data>
 
