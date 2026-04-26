@@ -160,19 +160,21 @@ public interface IBudgetRepository
     Task<BudgetGroup> CreateGroupAsync(
         Guid budgetYearId,
         string name,
+        string slug,
         bool isRestricted,
         Guid actorUserId,
         Instant now,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Updates a budget group's name, sort order, and restricted flag,
+    /// Updates a budget group's name, slug, sort order, and restricted flag,
     /// appending field-level audit entries for each changed field. Throws if
     /// the year is closed. Returns <c>true</c> if the group existed.
     /// </summary>
     Task<bool> UpdateGroupAsync(
         Guid groupId,
         string name,
+        string slug,
         int sortOrder,
         bool isRestricted,
         Guid actorUserId,
@@ -245,6 +247,7 @@ public interface IBudgetRepository
     Task<BudgetCategory> CreateCategoryAsync(
         Guid budgetGroupId,
         string name,
+        string slug,
         decimal allocatedAmount,
         ExpenditureType expenditureType,
         Guid? teamId,
@@ -253,13 +256,14 @@ public interface IBudgetRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Updates a category's name, allocation, and expenditure type with
+    /// Updates a category's name, slug, allocation, and expenditure type with
     /// field-level audit entries. Throws if the year is closed. Returns
     /// <c>true</c> if the category existed.
     /// </summary>
     Task<bool> UpdateCategoryAsync(
         Guid categoryId,
         string name,
+        string slug,
         decimal allocatedAmount,
         ExpenditureType expenditureType,
         Guid actorUserId,

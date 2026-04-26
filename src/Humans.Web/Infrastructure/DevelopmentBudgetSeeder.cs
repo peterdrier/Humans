@@ -2,6 +2,7 @@ using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Services.Finance;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -210,21 +211,28 @@ public sealed class DevelopmentBudgetSeeder
             ?? throw new InvalidOperationException($"Budget year {budgetYear.Id} not found after creation");
 
         var departmentGroup = currentYear.Groups.Single(g => g.IsDepartmentGroup);
-        await _budgetService.UpdateGroupAsync(departmentGroup.Id, departmentGroup.Name, 0, departmentGroup.IsRestricted, actorUserId);
+        await _budgetService.UpdateGroupAsync(departmentGroup.Id, departmentGroup.Name,
+            string.IsNullOrWhiteSpace(departmentGroup.Slug) ? SlugNormalizer.Normalize(departmentGroup.Name) : departmentGroup.Slug,
+            0, departmentGroup.IsRestricted, actorUserId);
 
         var sharedServicesGroup = currentYear.Groups.FirstOrDefault(g =>
             string.Equals(g.Name, "Shared Services", StringComparison.Ordinal));
 
         if (sharedServicesGroup is null)
         {
-            sharedServicesGroup = await _budgetService.CreateGroupAsync(budgetYear.Id, "Shared Services", false, actorUserId);
+            sharedServicesGroup = await _budgetService.CreateGroupAsync(
+                budgetYear.Id, "Shared Services", SlugNormalizer.Normalize("Shared Services"), false, actorUserId);
             groupsCreated++;
         }
 
-        await _budgetService.UpdateGroupAsync(sharedServicesGroup.Id, sharedServicesGroup.Name, 1, sharedServicesGroup.IsRestricted, actorUserId);
+        await _budgetService.UpdateGroupAsync(sharedServicesGroup.Id, sharedServicesGroup.Name,
+            string.IsNullOrWhiteSpace(sharedServicesGroup.Slug) ? SlugNormalizer.Normalize(sharedServicesGroup.Name) : sharedServicesGroup.Slug,
+            1, sharedServicesGroup.IsRestricted, actorUserId);
 
         var ticketingGroup = currentYear.Groups.Single(g => g.IsTicketingGroup);
-        await _budgetService.UpdateGroupAsync(ticketingGroup.Id, ticketingGroup.Name, 2, ticketingGroup.IsRestricted, actorUserId);
+        await _budgetService.UpdateGroupAsync(ticketingGroup.Id, ticketingGroup.Name,
+            string.IsNullOrWhiteSpace(ticketingGroup.Slug) ? SlugNormalizer.Normalize(ticketingGroup.Name) : ticketingGroup.Slug,
+            2, ticketingGroup.IsRestricted, actorUserId);
 
         var categoriesCreated = 0;
         var lineItemsCreated = 0;
@@ -247,7 +255,8 @@ public sealed class DevelopmentBudgetSeeder
             if (category is null)
             {
                 category = await _budgetService.CreateCategoryAsync(
-                    departmentGroup.Id, teamSeed.Name, teamSeed.AllocatedAmount, teamSeed.ExpenditureType, team.Id, actorUserId);
+                    departmentGroup.Id, teamSeed.Name, SlugNormalizer.Normalize(teamSeed.Name),
+                    teamSeed.AllocatedAmount, teamSeed.ExpenditureType, team.Id, actorUserId);
                 categoriesCreated++;
             }
 
@@ -262,7 +271,8 @@ public sealed class DevelopmentBudgetSeeder
             if (category is null)
             {
                 category = await _budgetService.CreateCategoryAsync(
-                    sharedServicesGroup.Id, sharedSeed.Name, sharedSeed.AllocatedAmount, sharedSeed.ExpenditureType, null, actorUserId);
+                    sharedServicesGroup.Id, sharedSeed.Name, SlugNormalizer.Normalize(sharedSeed.Name),
+                    sharedSeed.AllocatedAmount, sharedSeed.ExpenditureType, null, actorUserId);
                 categoriesCreated++;
             }
 
@@ -277,7 +287,8 @@ public sealed class DevelopmentBudgetSeeder
             if (category is null)
             {
                 category = await _budgetService.CreateCategoryAsync(
-                    ticketingGroup.Id, ticketSeed.Name, ticketSeed.AllocatedAmount, ticketSeed.ExpenditureType, null, actorUserId);
+                    ticketingGroup.Id, ticketSeed.Name, SlugNormalizer.Normalize(ticketSeed.Name),
+                    ticketSeed.AllocatedAmount, ticketSeed.ExpenditureType, null, actorUserId);
                 categoriesCreated++;
             }
 
@@ -350,6 +361,7 @@ public sealed class DevelopmentBudgetSeeder
         Action onLineItemCreated)
     {
         await _budgetService.UpdateCategoryAsync(category.Id, category.Name,
+            string.IsNullOrWhiteSpace(category.Slug) ? SlugNormalizer.Normalize(category.Name) : category.Slug,
             lineItems.Sum(li => li.Amount), category.ExpenditureType, actorUserId);
 
         foreach (var lineItem in lineItems)
