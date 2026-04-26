@@ -2,7 +2,9 @@ using System.Text.Json;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Metering;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Metering;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
@@ -29,6 +31,7 @@ public class ProcessEmailOutboxJob : IRecurringJob
     private readonly ICampaignService _campaignService;
     private readonly IEmailTransport _transport;
     private readonly IHumansMetrics _metrics;
+    private readonly IMeter _outboxPendingMeter;
     private readonly IClock _clock;
     private readonly EmailSettings _settings;
     private readonly ILogger<ProcessEmailOutboxJob> _logger;
@@ -38,6 +41,7 @@ public class ProcessEmailOutboxJob : IRecurringJob
         ICampaignService campaignService,
         IEmailTransport transport,
         IHumansMetrics metrics,
+        IMeters meters,
         IClock clock,
         IOptions<EmailSettings> settings,
         ILogger<ProcessEmailOutboxJob> logger)
@@ -46,6 +50,9 @@ public class ProcessEmailOutboxJob : IRecurringJob
         _campaignService = campaignService;
         _transport = transport;
         _metrics = metrics;
+        _outboxPendingMeter = meters.Declare(
+            "humans.email_outbox_pending",
+            new MeterMetadata("Emails pending in the outbox queue", "{emails}"));
         _clock = clock;
         _settings = settings.Value;
         _logger = logger;
@@ -154,7 +161,7 @@ public class ProcessEmailOutboxJob : IRecurringJob
 
         // 5. Set outbox_pending gauge
         var pendingCount = await _outboxRepo.GetPendingCountAsync(_settings.OutboxMaxRetries, cancellationToken);
-        _metrics.SetEmailOutboxPending(pendingCount);
+        _outboxPendingMeter.Set(pendingCount);
 
         // 6. Record successful job run
         _metrics.RecordJobRun("process_email_outbox", "success");

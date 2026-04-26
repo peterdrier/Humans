@@ -28,7 +28,7 @@ Open **My Feedback** from your profile dropdown, or go to `/Feedback`. You see y
 
 When an admin posts a message on one of your reports, you receive an email in your preferred language with the reply and a direct link back to the report.
 
-## As a Board member / Admin
+## As a Board member / Admin (Feedback Admin)
 
 The capabilities below require the **FeedbackAdmin** or **Admin** role. FeedbackAdmin is scoped to feedback triage only — it does not grant any other admin power.
 

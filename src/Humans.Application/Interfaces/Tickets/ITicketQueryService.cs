@@ -86,7 +86,8 @@ public interface ITicketQueryService
     Task<AttendeesPageResult> GetAttendeesPageAsync(
         string? search, string sortBy, bool sortDesc,
         int page, int pageSize,
-        string? filterTicketType, string? filterStatus, bool? filterMatched, string? filterOrderId);
+        string? filterTicketType, string? filterStatus, bool? filterMatched, string? filterOrderId,
+        bool filterMultipleTickets = false);
 
     /// <summary>
     /// Get data for the "who hasn't bought" page: all active humans with ticket match status,

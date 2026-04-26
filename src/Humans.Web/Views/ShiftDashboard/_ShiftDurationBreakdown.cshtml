@@ -1,0 +1,63 @@
+@using Humans.Application.DTOs
+@model IReadOnlyList<ShiftDurationBreakdownRow>
+
+@{
+    if (Model.Count == 0) { return; }
+
+    static string PctClass(double pct) =>
+        pct >= 80 ? "bg-success" : pct >= 60 ? "bg-warning text-dark" : "bg-danger";
+
+    static double SlotPct(int filled, int total) => total == 0 ? 0 : 100.0 * filled / total;
+
+    var totalSlots = Model.Sum(r => r.TotalSlots);
+    var totalFilled = Model.Sum(r => r.FilledSlots);
+    var totalPct = SlotPct(totalFilled, totalSlots);
+}
+
+<div class="card mb-4">
+    <div class="card-header">
+        <strong>@Localizer["ShiftDash_DurationMix_Title"]</strong>
+        <span class="text-muted small ms-2">@Localizer["ShiftDash_DurationMix_Subtitle"]</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>@Localizer["ShiftDash_DurationMix_Col_Duration"]</th>
+                    <th class="text-end">@Localizer["ShiftDash_DurationMix_Col_Slots"]</th>
+                    <th class="text-end">@Localizer["ShiftDash_DurationMix_Col_Filled"]</th>
+                    <th class="text-end">@Localizer["ShiftDash_DurationMix_Col_Pct"]</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model)
+                {
+                    var pct = SlotPct(row.FilledSlots, row.TotalSlots);
+                    <tr>
+                        <td>
+                            @if (row.IsAllDay)
+                            {
+                                <span class="badge bg-info me-1">@Localizer["ShiftDash_DurationMix_FullDay"]</span>
+                            }
+                            else
+                            {
+                                @string.Format(Localizer["ShiftDash_DurationMix_HourLabel"].Value, row.DurationHours)
+                            }
+                        </td>
+                        <td class="text-end">@row.TotalSlots</td>
+                        <td class="text-end">@row.FilledSlots</td>
+                        <td class="text-end"><span class="badge @PctClass(pct)">@pct.ToString("0")%</span></td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot class="table-light">
+                <tr>
+                    <th>@Localizer["ShiftDash_DurationMix_Total"]</th>
+                    <th class="text-end">@totalSlots</th>
+                    <th class="text-end">@totalFilled</th>
+                    <th class="text-end"><span class="badge @PctClass(totalPct)">@totalPct.ToString("0")%</span></th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>

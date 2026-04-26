@@ -73,24 +73,9 @@ public class ShiftSignup
     // Navigation properties
 
     /// <summary>
-    /// Navigation property to the volunteer.
-    /// </summary>
-    public User User { get; set; } = null!;
-
-    /// <summary>
     /// Navigation property to the shift.
     /// </summary>
     public Shift Shift { get; set; } = null!;
-
-    /// <summary>
-    /// Navigation property to the user who enrolled the volunteer.
-    /// </summary>
-    public User? EnrolledByUser { get; set; }
-
-    /// <summary>
-    /// Navigation property to the user who reviewed the signup.
-    /// </summary>
-    public User? ReviewedByUser { get; set; }
 
     // State transition methods
 

@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Models;
@@ -32,7 +33,7 @@ public class ShiftSignupsBucketingTests
 
     private readonly Guid _userId = Guid.NewGuid();
 
-    [Fact]
+    [HumansFact]
     public async Task InProgressConfirmedShift_BucketedAsUpcoming()
     {
         // Shift started at 08:00 (4h ago), ends at 16:00 (4h from now) → still in progress
@@ -43,7 +44,7 @@ public class ShiftSignupsBucketingTests
         model.Past.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task EndedConfirmedShift_BucketedAsPast()
     {
         // Shift started at 06:00, ended at 10:00 (2h ago) → past
@@ -54,7 +55,7 @@ public class ShiftSignupsBucketingTests
         model.Upcoming.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task FutureConfirmedShift_BucketedAsUpcoming()
     {
         // Shift starts tomorrow at 08:00 → future
@@ -65,7 +66,7 @@ public class ShiftSignupsBucketingTests
         model.Past.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task PendingShift_BucketedAsPending()
     {
         var signup = MakeSignup(SignupStatus.Pending, dayOffset: 1, startHour: 8, durationHours: 4);
@@ -76,7 +77,7 @@ public class ShiftSignupsBucketingTests
         model.Past.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task NoShowShift_BucketedAsPast()
     {
         var signup = MakeSignup(SignupStatus.NoShow, dayOffset: 0, startHour: 6, durationHours: 4);
@@ -85,7 +86,7 @@ public class ShiftSignupsBucketingTests
         model.Past.Should().HaveCount(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task BailedShift_BucketedAsPast()
     {
         var signup = MakeSignup(SignupStatus.Bailed, dayOffset: 0, startHour: 6, durationHours: 4);
@@ -94,7 +95,7 @@ public class ShiftSignupsBucketingTests
         model.Past.Should().HaveCount(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ServiceError_ReturnsEmptyModel()
     {
         var signupService = Substitute.For<IShiftSignupService>();
@@ -125,9 +126,14 @@ public class ShiftSignupsBucketingTests
                 .Returns(signups);
         }
 
+        var teamService = Substitute.For<ITeamService>();
+        teamService.GetTeamNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci => (IReadOnlyDictionary<Guid, string>)((IReadOnlyCollection<Guid>)ci[0])
+                .ToDictionary(id => id, _ => "Test Dept"));
+
         var clock = new FakeClock(TestNow);
         var component = new ShiftSignupsViewComponent(
-            signupService, shiftMgmt, clock,
+            signupService, shiftMgmt, teamService, clock,
             NullLogger<ShiftSignupsViewComponent>.Instance);
 
         // Minimal ViewComponentContext for View() to work
@@ -146,8 +152,7 @@ public class ShiftSignupsBucketingTests
 
     private static ShiftSignup MakeSignup(SignupStatus status, int dayOffset, int startHour, int durationHours)
     {
-        var team = new Team { Id = Guid.NewGuid(), Name = "Test Dept" };
-        var rota = new Rota { Id = Guid.NewGuid(), Team = team, Priority = ShiftPriority.Normal };
+        var rota = new Rota { Id = Guid.NewGuid(), TeamId = Guid.NewGuid(), Priority = ShiftPriority.Normal };
         var shift = new Shift
         {
             Id = Guid.NewGuid(),

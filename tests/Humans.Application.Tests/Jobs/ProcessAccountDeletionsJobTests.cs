@@ -56,7 +56,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_NoDueAccounts_DoesNotCallAnonymize()
     {
         _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>())
@@ -70,7 +70,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
             default!, default!, default, default);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_AnonymizesAndLogsAndEmailsEachDueAccount()
     {
         var userId = Guid.NewGuid();
@@ -109,7 +109,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_NullSummary_SkipsAndContinues()
     {
         var vanishedId = Guid.NewGuid();
@@ -133,7 +133,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
             Arg.Any<string>(), "Test User", Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_SkipsEmailWhenOriginalEmailIsNull()
     {
         var userId = Guid.NewGuid();
@@ -158,7 +158,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_ContinuesProcessingAfterIndividualFailure()
     {
         var user1 = Guid.NewGuid();

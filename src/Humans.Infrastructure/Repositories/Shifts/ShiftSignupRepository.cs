@@ -50,7 +50,6 @@ public sealed class ShiftSignupRepository : IShiftSignupRepository
     {
         var query = _dbContext.ShiftSignups
             .AsNoTracking()
-            .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.Team)
             .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
             .Where(d => d.UserId == userId);
 
@@ -66,7 +65,6 @@ public sealed class ShiftSignupRepository : IShiftSignupRepository
         return await _dbContext.ShiftSignups
             .AsNoTracking()
             .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
-            .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.Team)
             .Where(d => d.UserId == userId &&
                         (d.Status == SignupStatus.Confirmed || d.Status == SignupStatus.Pending))
             .ToListAsync(ct);
@@ -75,13 +73,12 @@ public sealed class ShiftSignupRepository : IShiftSignupRepository
     public Task<ShiftSignup?> GetByIdAsync(Guid signupId, CancellationToken ct = default) =>
         _dbContext.ShiftSignups
             .AsNoTracking()
-            .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.Team)
+            .Include(d => d.Shift).ThenInclude(s => s.Rota)
             .FirstOrDefaultAsync(d => d.Id == signupId, ct);
 
     public Task<ShiftSignup?> GetByIdForMutationAsync(Guid signupId, CancellationToken ct = default) =>
         _dbContext.ShiftSignups
             .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
-            .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.Team)
             .Include(d => d.Shift).ThenInclude(s => s.ShiftSignups)
             .FirstOrDefaultAsync(d => d.Id == signupId, ct);
 
@@ -90,7 +87,6 @@ public sealed class ShiftSignupRepository : IShiftSignupRepository
     {
         var query = _dbContext.ShiftSignups
             .Include(s => s.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
-            .Include(s => s.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.Team)
             .Include(s => s.Shift).ThenInclude(s => s.ShiftSignups)
             .Where(s => s.SignupBlockId == signupBlockId);
 
@@ -110,7 +106,6 @@ public sealed class ShiftSignupRepository : IShiftSignupRepository
     public async Task<IReadOnlyList<ShiftSignup>> GetByShiftAsync(Guid shiftId, CancellationToken ct = default) =>
         await _dbContext.ShiftSignups
             .AsNoTracking()
-            .Include(d => d.User)
             .Include(d => d.Shift)
                 .ThenInclude(s => s.Rota)
             .Where(d => d.ShiftId == shiftId)
@@ -121,9 +116,7 @@ public sealed class ShiftSignupRepository : IShiftSignupRepository
         Guid userId, CancellationToken ct = default) =>
         await _dbContext.ShiftSignups
             .AsNoTracking()
-            .Include(s => s.Shift).ThenInclude(sh => sh.Rota).ThenInclude(r => r.Team)
             .Include(s => s.Shift).ThenInclude(sh => sh.Rota).ThenInclude(r => r.EventSettings)
-            .Include(s => s.ReviewedByUser)
             .Where(s => s.UserId == userId && s.Status == SignupStatus.NoShow)
             .OrderByDescending(s => s.ReviewedAt)
             .ToListAsync(ct);
@@ -186,7 +179,6 @@ public sealed class ShiftSignupRepository : IShiftSignupRepository
         _dbContext.Shifts
             .AsNoTracking()
             .Include(s => s.Rota).ThenInclude(r => r.EventSettings)
-            .Include(s => s.Rota).ThenInclude(r => r.Team)
             .Include(s => s.ShiftSignups)
             .FirstOrDefaultAsync(s => s.Id == shiftId, ct);
 

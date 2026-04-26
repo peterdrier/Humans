@@ -252,6 +252,14 @@ function showToast(message, type) {
     toastEl.addEventListener('hidden.bs.toast', function () { toastEl.remove(); });
 }
 
+// Initialize Bootstrap tooltips for any element with data-bs-toggle="tooltip"
+(function () {
+    if (typeof bootstrap === 'undefined' || !bootstrap.Tooltip) return;
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+        new bootstrap.Tooltip(el);
+    });
+})();
+
 // Human profile popover (lazy-loaded on first hover)
 (function () {
     var cache = {};

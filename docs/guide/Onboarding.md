@@ -57,7 +57,7 @@ If you hold the **Consent Coordinator** role, your work in onboarding is reviewi
 
 If you hold the **Volunteer Coordinator** role, you have read-only access to the same queue so you can assist new humans, but you cannot clear, flag, or reject.
 
-## As a Board member / Admin
+## As a Board member / Admin (Human Admin)
 
 Board members and Admins can do everything a Consent Coordinator can, plus:
 

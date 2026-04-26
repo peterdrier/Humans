@@ -132,6 +132,22 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Includes: name, slug, status, contact info, leads, season data (languages, member count, placement, vibes)
 - CSV file named `barrios-{year}.csv`
 
+### US-20.12: Tell Humans I'm in a camp this season
+**As an** authenticated human
+**I want to** tell Humans which camp I've joined this season
+**So that** I can receive per-camp notifications, be assigned to per-camp roles (e.g. LNT lead), and claim Early Entry allocations — without the app claiming to manage the camp's real membership.
+
+**Acceptance Criteria:**
+- On a camp's detail page, an authenticated human with no existing membership sees a "Request to join for {year}" button (only when the camp has an Active or Full season for the public year).
+- Copy on the request card explicitly states that this does NOT join you to the camp — do that through the camp's own process first.
+- A pending request can be withdrawn by the requester; an active membership can be left by the member.
+- Membership state (Pending / Active) is never rendered on anonymous views.
+- Leads and CampAdmin see pending requests on the camp edit page with Approve / Reject buttons, and active members with a Remove button.
+- Approve / Reject mutations are scoped to the authorizing camp — a lead of camp A cannot mutate camp B's memberships by submitting a crafted member id.
+- Concurrent duplicate "request" submissions resolve idempotently — the second one returns the winning row instead of a 500.
+- When a season is rejected or withdrawn, pending requesters receive a notification. Pending rows are left as-is (so if the season is later reactivated, the request is still live).
+- A human's profile page shows a "My Barrios" panel grouping their memberships by year.
+
 ## Data Model
 
 ### Camp
@@ -209,9 +225,43 @@ CampSettings
 - **CampHistoricalName**: Id, CampId, Name, Year (int?), Source (CampNameSource), CreatedAt
 - **CampImage**: Id, CampId, FileName, StoragePath, ContentType, SortOrder, UploadedAt
 
+### CampMember (per-season affiliation, issue nobodies-collective#488)
+
+Post-hoc record that a human is in a camp for a given season. The app does not
+admit humans to a camp — each camp runs its own process (website, spreadsheet,
+WhatsApp). This row exists so the app can attach per-camp roles (LNT lead, etc.),
+Early Entry allocations, and notifications to the right humans.
+
+```
+CampMember
+├── Id: Guid
+├── CampSeasonId: Guid (FK → CampSeason, ON DELETE CASCADE)
+├── UserId: Guid
+├── Status: CampMemberStatus (Pending | Active | Removed)
+├── RequestedAt: Instant
+├── ConfirmedAt: Instant?
+├── ConfirmedByUserId: Guid?
+├── RemovedAt: Instant?
+└── RemovedByUserId: Guid?
+```
+
+- Partial unique index `IX_camp_members_active_unique` on
+  `(CampSeasonId, UserId) WHERE Status <> 'Removed'` — at most one live row per
+  (season, user). Removed rows are tombstones kept for audit and allow
+  re-requesting.
+- The request flow is idempotent: a concurrent duplicate insert that races past
+  the pre-check is caught (`23505`) and resolved to the winning row.
+- Mutations by leads / CampAdmin (approve, reject, remove) are scoped by the
+  authorizing camp id: a member id belonging to a different camp resolves to
+  "not found" rather than being mutated cross-camp.
+- When a season is rejected or withdrawn, pending requesters receive a
+  `CampMembershipSeasonClosed` notification. Membership rows are not
+  auto-mutated — if the season is reactivated the pending request is still live.
+
 ### Enums
 ```
 CampSeasonStatus: Pending(0), Active(1), Full(2), Rejected(4), Withdrawn(5)
+CampMemberStatus: Pending(0), Active(1), Removed(2)
 CampLeadRole: Primary(0), CoLead(1)
 CampVibe: Adult(0), ChillOut(1), ElectronicMusic(2), Games(3), Queer(4), Sober(5), Lecture(6), LiveMusic(7), Wellness(8), Workshop(9)
 CampNameSource: Manual(0), NameChange(1)

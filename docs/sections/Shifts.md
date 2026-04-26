@@ -137,17 +137,17 @@ Stored as string via `HasConversion<string>()`.
 
 **Owning services:** `ShiftManagementService`, `ShiftSignupService`, `GeneralAvailabilityService`
 **Owned tables:** `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availabilities`, `volunteer_event_profiles` (plus `shift_tags` and `volunteer_tag_preferences` — pending §8 confirmation)
-**Status:** (B) Partially migrated. `ShiftSignupService` and `GeneralAvailabilityService` are migrated (sub-tasks nobodies-collective/Humans#541b / #541c, 2026-04-22). `ShiftManagementService` remains in `Humans.Infrastructure/Services/` with direct `HumansDbContext`, pending sub-task nobodies-collective/Humans#541a.
+**Status:** (A) Fully migrated. `ShiftManagementService`, `ShiftSignupService`, and `GeneralAvailabilityService` all live in `Humans.Application.Services.Shifts` and route through `IShiftManagementRepository` / `IShiftSignupRepository` / `IGeneralAvailabilityRepository`. Cross-domain navs on Shifts-owned entities (`Rota.Team`, `ShiftSignup.User` / `EnrolledByUser` / `ReviewedByUser`, `VolunteerEventProfile.User`, `VolunteerTagPreference.User`) deleted 2026-04-25 in nobodies-collective/Humans#541 final pass; FKs stay wired in EF via the typed-FK form.
 
 ### Target repositories
 
 - **`IShiftManagementRepository`** — owns `rotas`, `shifts`, `event_settings` (and the shift-tag tables once §8 ownership is confirmed).
   - Aggregate-local navs kept: `Rota.Shifts`, `Rota.EventSettings`, `Rota.Tags`, `Shift.Rota`, `Shift.ShiftSignups` (read-side), `EventSettings.Rotas`
   - Cross-domain navs stripped: `Rota.Team` (Teams); any `.Select(r => new { r.Team.Id, r.Team.Name })` projections
-- **`IShiftSignupRepository`** — owns `shift_signups` — **LANDED 2026-04-22** (sub-task nobodies-collective/Humans#541b)
+- **`IShiftSignupRepository`** — owns `shift_signups` — **LANDED 2026-04-22 (#541b), nav-strip COMPLETED 2026-04-25 (#541 final pass)**
   - Aggregate-local navs kept: `ShiftSignup.Shift`, `Shift.Rota`, `Rota.EventSettings` (read-only projection chain), `Shift.ShiftSignups` (capacity counts)
-  - Cross-domain navs **deliberately preserved** in this PR on `GetByShiftAsync` (`.Include(d => d.User)`) and `GetNoShowHistoryAsync` (`.Include(s => s.ReviewedByUser)`): Razor views read `signup.User.DisplayName` / `signup.ReviewedByUser.DisplayName`. Moving those reads to an in-memory stitch via `IUserService.GetByIdsAsync` is out of scope for this PR — tracked with the wider User-entity nav strip in §15i. `ShiftSignup.EnrolledByUser` and `Rota.Team` are **not** included in any repo read path and are safe targets for the nav-strip follow-up.
-  - **Within-section cross-service reads also live here temporarily:** `rotas`/`shifts` (owned by `ShiftManagementService`, pending #541a), `volunteer_event_profiles`/`general_availabilities`/`volunteer_tag_preferences` (GDPR contributor reads, pending #541a and #541c surface expansion). These move out when those migrations land.
+  - Cross-domain navs **stripped**: `.Include(d => d.User)` and `.Include(s => s.ReviewedByUser)` removed from `GetByShiftAsync` and `GetNoShowHistoryAsync`. The ShiftAdmin view reads display fields from a `Dictionary<Guid, User>` populated by the controller via `IUserService.GetByIdsAsync`; `ProfileController` NoShow history resolves `ReviewedByUser` and team-name lookups via service interfaces. `Rota.Team` `.Include` chain stripped from every repo method; team names resolve via `ITeamService.GetTeamNamesByIdsAsync`.
+  - **Within-section cross-service reads also live here temporarily:** `rotas` / `shifts` (owned by `ShiftManagementService`, pending #541a), `volunteer_event_profiles` / `general_availabilities` / `volunteer_tag_preferences` (GDPR contributor reads, pending #541a and #541c surface expansion). These move out when those migrations land.
 - **`IVolunteerEventProfileRepository`** — owns `volunteer_event_profiles`.
   - Aggregate-local navs kept: none beyond the row itself.
   - Cross-domain navs stripped: `VolunteerEventProfile.User`.
@@ -164,27 +164,28 @@ Stored as string via `HasConversion<string>()`.
 
 ### Current violations
 
-- **Cross-domain `.Include()` calls:**
-  - `ShiftManagementService.cs:216, 280, 488, 538, 546` — `.Include(r => r.Team)` / `.ThenInclude(r => r.Team)` (Teams). Pending #541a.
-  - ~~`ShiftSignupService.cs:57, 687, 802, 849, 862, 888, 918`~~ — service migrated in #541b. `.ThenInclude(r => r.Team)` occurrences now live inside `IShiftSignupRepository` and are acceptable within-section cross-service reads until the Teams-nav strip happens.
-  - `ShiftSignupRepository.GetByShiftAsync` — `.Include(d => d.User)` (Users/Identity). Deliberately preserved — tracked in §15i.
-  - `ShiftSignupRepository.GetNoShowHistoryAsync` — `.Include(s => s.ReviewedByUser)` (Users/Identity). Deliberately preserved — tracked in §15i.
-  - ~~`GeneralAvailabilityService.cs:60` — `.Include(g => g.User)` (Users/Identity)~~ — resolved 2026-04-22 in #541c (nav stripped from entity; FK preserved).
+- **Cross-domain `.Include()` calls:** all stripped 2026-04-25 (#541 final pass).
+  - ~~`ShiftManagementService.cs:216, 280, 488, 538, 546` — `.Include(r => r.Team)` / `.ThenInclude(r => r.Team)` (Teams)~~ — resolved.
+  - ~~`ShiftSignupService.cs:57, 687, 802, 849, 862, 888, 918`~~ — service migrated in #541b.
+  - ~~`ShiftSignupRepository.GetByShiftAsync` — `.Include(d => d.User)`~~ — stripped 2026-04-25.
+  - ~~`ShiftSignupRepository.GetNoShowHistoryAsync` — `.Include(s => s.ReviewedByUser)`~~ — stripped 2026-04-25.
+  - ~~`GeneralAvailabilityService.cs:60` — `.Include(g => g.User)`~~ — resolved 2026-04-22 in #541c (nav stripped from entity; FK preserved).
 - **Cross-section direct DbContext reads:** None found. Role checks go through `_roleAssignmentService` (Auth), team lookups through `ITeamService` (Teams). The `.Select(r => new { r.Team.Id, r.Team.Name })` projection at `ShiftManagementService.cs:864` is the only direct Teams-table touch and is covered under cross-domain `.Include`/nav-walk above.
 - **Within-section cross-service direct DbContext reads:**
   - `ShiftSignupService` reads `_dbContext.Rotas` (`:326, 510`), `_dbContext.Shifts` (`:55, 257`), and `_dbContext.EventSettings` (via `.Include` chains) — all owned by `ShiftManagementService` per §8. Acceptable once both are behind repos and the dependency is expressed as `IShiftManagementRepository` → `IShiftSignupRepository`.
 - **Inline `IMemoryCache` usage in service methods:**
   - `ShiftManagementService.cs:97` — `_cache.GetOrCreateAsync(CacheKeys.ShiftAuthorization(userId), ...)` wrapping `TeamService.GetUserCoordinatedTeamIdsAsync(userId)`. Per §4/§5 this cache belongs in the Teams caching decorator, not here. Drop the `shift-auth` cache and let Teams own the result.
   - No `_cache.` references in `ShiftSignupService` or `GeneralAvailabilityService`.
-- **Cross-domain nav properties on this section's entities:**
-  - `Rota.Team` (→ Teams)
-  - `ShiftSignup.User`, `ShiftSignup.EnrolledByUser`, `ShiftSignup.ReviewedByUser` (→ Users/Identity)
-  - `VolunteerEventProfile.User` (→ Users/Identity)
-  - ~~`GeneralAvailability.User`~~ — stripped 2026-04-22 in #541c; `GeneralAvailability.EventSettings` is section-local and still present
-  - `VolunteerTagPreference.User` (→ Users/Identity) — entity not listed in §8
+- **Cross-domain nav properties on this section's entities:** all deleted 2026-04-25 (#541 final pass). FKs stay wired in EF via the typed-FK form (`HasOne<Team>().WithMany().HasForeignKey(...)`).
+  - ~~`Rota.Team`~~ — deleted 2026-04-25.
+  - `Shift` has no cross-domain nav (clean).
+  - ~~`ShiftSignup.User`, `ShiftSignup.EnrolledByUser`, `ShiftSignup.ReviewedByUser`~~ — deleted 2026-04-25.
+  - ~~`VolunteerEventProfile.User`~~ — deleted 2026-04-25.
+  - ~~`GeneralAvailability.User`~~ — stripped 2026-04-22 in #541c; `GeneralAvailability.EventSettings` is section-local and still present.
+  - ~~`VolunteerTagPreference.User`~~ — deleted 2026-04-25.
 - **§8 gaps (tables touched by this section but not listed under Shifts):**
   - `shift_tags` — read/written at `ShiftManagementService.cs:878, 886, 896, 907, 924`. Likely Shifts.
-  - `volunteer_tag_preferences` — read/written at `:939, 949, 953, 957`. Likely Shifts. Flag: §8 needs an explicit decision.
+  - `volunteer_tag_preferences` — read/written at `:939, 949, 953, 957`. Likely Shifts. Flag: §8 needs an explicit decision; assumed Shifts-owned for the repository split.
 
 ### Touch-and-clean guidance
 

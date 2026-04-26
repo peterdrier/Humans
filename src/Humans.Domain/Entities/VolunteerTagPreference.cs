@@ -22,11 +22,6 @@ public class VolunteerTagPreference
     public Guid ShiftTagId { get; init; }
 
     /// <summary>
-    /// Navigation property to the volunteer.
-    /// </summary>
-    public User User { get; set; } = null!;
-
-    /// <summary>
     /// Navigation property to the shift tag.
     /// </summary>
     public ShiftTag ShiftTag { get; set; } = null!;

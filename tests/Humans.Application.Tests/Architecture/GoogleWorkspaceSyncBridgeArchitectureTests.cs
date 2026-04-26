@@ -34,7 +34,7 @@ public class GoogleWorkspaceSyncBridgeArchitectureTests
 
     // ── Namespace + location ─────────────────────────────────────────────────
 
-    [Theory]
+    [HumansTheory]
     [MemberData(nameof(BridgeInterfaceCases))]
     public void BridgeInterface_LivesInApplicationInterfacesNamespace(Type bridge)
     {
@@ -43,7 +43,7 @@ public class GoogleWorkspaceSyncBridgeArchitectureTests
                 because: "connector interfaces live alongside other Application interfaces per design-rules §2b");
     }
 
-    [Theory]
+    [HumansTheory]
     [MemberData(nameof(BridgeInterfaceCases))]
     public void BridgeInterface_LivesInApplicationAssembly(Type bridge)
     {
@@ -54,7 +54,7 @@ public class GoogleWorkspaceSyncBridgeArchitectureTests
 
     // ── Shape-neutral surface ────────────────────────────────────────────────
 
-    [Theory]
+    [HumansTheory]
     [MemberData(nameof(BridgeInterfaceCases))]
     public void BridgeInterface_HasNoGoogleSdkTypesInSignatures(Type bridge)
     {
@@ -82,7 +82,7 @@ public class GoogleWorkspaceSyncBridgeArchitectureTests
 
     // ── Assembly cleanliness ─────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void HumansApplication_HasNoGoogleApisAssemblyReference()
     {
         // Structural guarantee: the Application csproj does not
@@ -98,7 +98,7 @@ public class GoogleWorkspaceSyncBridgeArchitectureTests
                 because: "Humans.Application must stay free of Google SDK references; Google API calls live behind bridge interfaces in Humans.Infrastructure");
     }
 
-    [Theory]
+    [HumansTheory]
     [MemberData(nameof(BridgeInterfaceCases))]
     public void BridgeInterface_DoesNotReferenceGoogleSdkTypes(Type bridge)
     {

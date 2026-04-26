@@ -80,4 +80,10 @@ public enum AuditAction
     CalendarEventDeleted,
     CalendarOccurrenceCancelled,
     CalendarOccurrenceOverridden,
+    CampMemberRequested,
+    CampMemberApproved,
+    CampMemberRejected,
+    CampMemberWithdrawn,
+    CampMemberLeft,
+    CampMemberRemoved,
 }

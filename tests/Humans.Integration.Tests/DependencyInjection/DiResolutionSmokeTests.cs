@@ -20,7 +20,7 @@ public class DiResolutionSmokeTests : IClassFixture<HumansWebApplicationFactory>
         _factory = factory;
     }
 
-    [Fact(Timeout = 60000)]
+    [HumansFact(Timeout = 60000)]
     public async Task All_application_registrations_resolve_from_a_real_app_scope()
     {
         await using var scope = _factory.Services.CreateAsyncScope();

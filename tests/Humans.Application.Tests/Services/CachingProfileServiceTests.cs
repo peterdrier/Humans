@@ -45,7 +45,7 @@ public class CachingProfileServiceTests
         return new CachingProfileService(_profileRepository, _userEmailRepository, scopeFactory);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFullProfileAsync_DictMiss_DelegatesToInnerAndPopulatesDict()
     {
         var userId = Guid.NewGuid();
@@ -64,7 +64,7 @@ public class CachingProfileServiceTests
         await _inner.Received(1).GetFullProfileAsync(userId, Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFullProfileAsync_DictMissReturnsNull_DoesNotPopulateDict()
     {
         var userId = Guid.NewGuid();
@@ -81,7 +81,7 @@ public class CachingProfileServiceTests
         await _inner.Received(2).GetFullProfileAsync(userId, Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SaveProfileAsync_RefreshesDictEntry_InsteadOfEviction()
     {
         var userId = Guid.NewGuid();
@@ -116,7 +116,7 @@ public class CachingProfileServiceTests
         await _inner.Received(1).GetFullProfileAsync(userId, Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SaveCVEntriesAsync_RefreshesDictEntry()
     {
         var userId = Guid.NewGuid();
@@ -156,7 +156,7 @@ public class CachingProfileServiceTests
         await _inner.Received(1).GetFullProfileAsync(userId, Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task InvalidateAsync_ExistingUser_ReloadsEntry()
     {
         var userId = Guid.NewGuid();
@@ -187,7 +187,7 @@ public class CachingProfileServiceTests
         await _inner.Received(1).GetFullProfileAsync(userId, Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task InvalidateAsync_DeletedUser_RemovesEntry()
     {
         var userId = Guid.NewGuid();
@@ -212,7 +212,7 @@ public class CachingProfileServiceTests
         await _inner.Received(2).GetFullProfileAsync(userId, Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SaveProfileLanguagesAsync_RefreshesDictEntry_WhenCached()
     {
         var userId = Guid.NewGuid();
@@ -245,7 +245,7 @@ public class CachingProfileServiceTests
         await _inner.Received(1).GetFullProfileAsync(userId, Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task WarmAllAsync_PopulatesDictForAllProfiles()
     {
         var userA = Guid.NewGuid();
@@ -280,7 +280,7 @@ public class CachingProfileServiceTests
         await _inner.DidNotReceive().GetFullProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task WarmAllAsync_EmptyRepository_IsNoOp()
     {
         _profileRepository.GetAllAsync(Arg.Any<CancellationToken>())
@@ -297,7 +297,7 @@ public class CachingProfileServiceTests
             .GetAllNotificationTargetEmailsAsync(Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task WarmAllAsync_SkipsProfilesWithMissingUser()
     {
         var userA = Guid.NewGuid();

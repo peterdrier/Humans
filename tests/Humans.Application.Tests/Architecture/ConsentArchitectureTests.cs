@@ -34,7 +34,7 @@ public class ConsentArchitectureTests
 {
     // ── ConsentService ───────────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void ConsentService_LivesInHumansApplicationServicesConsentNamespace()
     {
         typeof(ConsentService).Namespace
@@ -42,7 +42,7 @@ public class ConsentArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void ConsentService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(ConsentService).GetConstructors().Single();
@@ -52,7 +52,7 @@ public class ConsentArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use IConsentRepository instead (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void ConsentService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(ConsentService).GetConstructors().Single();
@@ -64,7 +64,7 @@ public class ConsentArchitectureTests
             because: "canonical Consent data is not IMemoryCache-backed; append-only semantics + per-user reads do not justify a decorator");
     }
 
-    [Fact]
+    [HumansFact]
     public void ConsentService_TakesRepository()
     {
         var ctor = typeof(ConsentService).GetConstructors().Single();
@@ -73,7 +73,7 @@ public class ConsentArchitectureTests
         paramTypes.Should().Contain(typeof(IConsentRepository));
     }
 
-    [Fact]
+    [HumansFact]
     public void ConsentService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(ConsentService).GetConstructors().Single();
@@ -87,7 +87,7 @@ public class ConsentArchitectureTests
 
     // ── IConsentRepository ───────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void IConsentRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(IConsentRepository).Namespace
@@ -95,7 +95,7 @@ public class ConsentArchitectureTests
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
 
-    [Fact]
+    [HumansFact]
     public void ConsentRepository_IsSealed()
     {
         // Mirrors ProfileRepository / UserRepository / AuditLogRepository — repository implementations are terminal;
@@ -113,7 +113,7 @@ public class ConsentArchitectureTests
     /// test fails if a future refactor adds a method whose name implies
     /// mutation of existing rows.
     /// </summary>
-    [Fact]
+    [HumansFact]
     public void IConsentRepository_HasNoUpdateOrDeleteOrRemoveMethods()
     {
         var methods = typeof(IConsentRepository)
@@ -136,7 +136,7 @@ public class ConsentArchitectureTests
     /// method. Pins the append-only surface so removing the only write
     /// primitive fails the suite immediately.
     /// </summary>
-    [Fact]
+    [HumansFact]
     public void IConsentRepository_HasAddAsyncMethod()
     {
         var addAsync = typeof(IConsentRepository)

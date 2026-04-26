@@ -45,7 +45,7 @@ public class ShiftUrgencyTests
             NullLogger<ShiftManagementService>.Instance);
     }
 
-    [Fact]
+    [HumansFact]
     public void CalculateScore_NormalPriority_5Remaining_4h_ReturnsExpected()
     {
         // Base: remaining=5, priority=Normal(1), duration=4h, understaffed=false(1) → 20
@@ -58,7 +58,7 @@ public class ShiftUrgencyTests
         score.Should().BeApproximately(20 * 1.08, 0.5);
     }
 
-    [Fact]
+    [HumansFact]
     public void CalculateScore_EssentialPriority_2Remaining_8h_Understaffed_ReturnsExpected()
     {
         // Base: remaining=2, priority=Essential(6), duration=8h, understaffed=true(2) → 192
@@ -71,7 +71,7 @@ public class ShiftUrgencyTests
         score.Should().BeApproximately(192 * 1.08, 5);
     }
 
-    [Fact]
+    [HumansFact]
     public void CalculateScore_FullyStaffed_ReturnsZero()
     {
         var shift = MakeShift(ShiftPriority.Important, minVol: 2, maxVol: 5, durationHours: 4);
@@ -82,7 +82,7 @@ public class ShiftUrgencyTests
         score.Should().Be(0);
     }
 
-    [Fact]
+    [HumansFact]
     public void CalculateScore_ImminentShift_RanksHigherThanDistantWithMoreSlots()
     {
         // A shift tomorrow with 5 empty slots should outrank a shift 30 days out with 20 slots
@@ -108,7 +108,7 @@ public class ShiftUrgencyTests
         tomorrowScore.Should().BeGreaterThan(distantScore);
     }
 
-    [Fact]
+    [HumansFact]
     public void ApplyPeriodDiverseLimit_EnsuresEventAndStrikeRepresented()
     {
         // 3 build shifts with highest scores, 1 event, 1 strike
@@ -141,7 +141,7 @@ public class ShiftUrgencyTests
         result.Should().Contain(u => u.Shift.GetShiftPeriod(es) == ShiftPeriod.Build);
     }
 
-    [Fact]
+    [HumansFact]
     public void ApplyPeriodDiverseLimit_OnlyBuildShifts_TakesTopN()
     {
         var es = new EventSettings
@@ -165,7 +165,7 @@ public class ShiftUrgencyTests
         result[0].UrgencyScore.Should().BeGreaterThanOrEqualTo(result[1].UrgencyScore);
     }
 
-    [Fact]
+    [HumansFact]
     public void ApplyPeriodDiverseLimit_FewShifts_ReturnsAll()
     {
         var es = new EventSettings
@@ -187,7 +187,7 @@ public class ShiftUrgencyTests
         result.Should().HaveCount(2); // Only 2 available, returns all
     }
 
-    [Fact]
+    [HumansFact]
     public void ApplyPeriodDiverseLimit_ResultIsSortedByScoreDescending()
     {
         var es = new EventSettings
@@ -232,7 +232,7 @@ public class ShiftUrgencyTests
 
     private static UrgentShift MakeUrgentShift(int dayOffset, double score, int remaining)
     {
-        var rota = new Rota { Priority = ShiftPriority.Normal, Team = new Team { Name = "Test" } };
+        var rota = new Rota { Priority = ShiftPriority.Normal, TeamId = Guid.NewGuid() };
         var shift = new Shift
         {
             Id = Guid.NewGuid(),

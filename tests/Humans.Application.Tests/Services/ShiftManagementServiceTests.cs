@@ -95,7 +95,7 @@ public class ShiftManagementServiceTests : IDisposable
     // CreateBuildStrikeShiftsAsync
     // ============================================================
 
-    [Fact]
+    [HumansFact]
     public async Task CreateBuildStrikeShifts_CreatesOneAllDayShiftPerDay()
     {
         // Arrange: rota with Period=Build, staffing grid for days -3 to -1
@@ -124,7 +124,7 @@ public class ShiftManagementServiceTests : IDisposable
         shifts.Select(s => s.DayOffset).Should().BeEquivalentTo(new[] { -3, -2, -1 });
     }
 
-    [Fact]
+    [HumansFact(Timeout = 10000)]
     public async Task CreateBuildStrikeShifts_SetsCorrectMinMaxPerDay()
     {
         // Arrange: staffing grid with varying min/max per day
@@ -155,7 +155,7 @@ public class ShiftManagementServiceTests : IDisposable
         shifts[2].MaxVolunteers.Should().Be(6);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CreateBuildStrikeShifts_RejectsEventPeriodRota()
     {
         // Arrange: rota with Period=Event
@@ -176,7 +176,7 @@ public class ShiftManagementServiceTests : IDisposable
     // GenerateEventShiftsAsync
     // ============================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GenerateEventShifts_CreatesCartesianProduct()
     {
         // Arrange: event rota, days 0-2, slots [(08:00, 4h), (14:00, 4h)]
@@ -207,7 +207,7 @@ public class ShiftManagementServiceTests : IDisposable
         startTimes.Should().Contain(new LocalTime(14, 0));
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GenerateEventShifts_RejectsBuildPeriodRota()
     {
         // Arrange: rota with Period=Build
@@ -228,7 +228,7 @@ public class ShiftManagementServiceTests : IDisposable
     // GetBrowseShiftsAsync — includeSignups
     // ============================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetBrowseShifts_IncludeSignups_ReturnsConfirmedAndPendingOnly()
     {
         // Arrange
@@ -253,7 +253,7 @@ public class ShiftManagementServiceTests : IDisposable
         signups.Select(s => s.DisplayName).Should().BeEquivalentTo(["Alice", "Bob"]);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetBrowseShifts_IncludeSignups_ConfirmedBeforePending()
     {
         // Arrange
@@ -278,7 +278,7 @@ public class ShiftManagementServiceTests : IDisposable
         signups[1].Status.Should().Be(SignupStatus.Pending);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetBrowseShifts_WithoutIncludeSignups_ReturnsEmptySignups()
     {
         // Arrange
@@ -393,7 +393,6 @@ public class ShiftManagementServiceTests : IDisposable
         _dbContext.Rotas.Add(rota);
 
         rota.EventSettings = es;
-        rota.Team = team;
 
         return (es, rota);
     }
@@ -402,7 +401,7 @@ public class ShiftManagementServiceTests : IDisposable
     // IsDeptCoordinatorAsync — sub-team manager support
     // ============================================================
 
-    [Fact]
+    [HumansFact]
     public async Task IsDeptCoordinatorAsync_SubTeamManager_ReturnsTrue_ForOwnSubTeam()
     {
         var userId = Guid.NewGuid();
@@ -417,7 +416,7 @@ public class ShiftManagementServiceTests : IDisposable
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsDeptCoordinatorAsync_SubTeamManager_ReturnsFalse_ForSiblingSubTeam()
     {
         var userId = Guid.NewGuid();
@@ -447,7 +446,7 @@ public class ShiftManagementServiceTests : IDisposable
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsDeptCoordinatorAsync_SubTeamManager_ReturnsFalse_ForParentDepartment()
     {
         var userId = Guid.NewGuid();
@@ -476,7 +475,7 @@ public class ShiftManagementServiceTests : IDisposable
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsDeptCoordinatorAsync_DepartmentCoordinator_ReturnsTrue_ForChildSubTeam()
     {
         var userId = Guid.NewGuid();

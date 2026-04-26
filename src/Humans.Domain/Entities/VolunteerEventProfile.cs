@@ -72,7 +72,4 @@ public class VolunteerEventProfile
     /// When this profile was last updated.
     /// </summary>
     public Instant UpdatedAt { get; set; }
-
-    // Navigation
-    public User User { get; set; } = null!;
 }

@@ -1455,6 +1455,28 @@
   <data name="CityPlanning_Admin_ExportCard" xml:space="preserve"><value>Exporter</value></data>
   <data name="CityPlanning_Admin_ExportDescription" xml:space="preserve"><value>Télécharger tous les polygones de barrios pour {0} en tant que GeoJSON FeatureCollection.</value></data>
   <data name="CityPlanning_Admin_DownloadGeoJson" xml:space="preserve"><value>Télécharger GeoJSON ({0})</value></data>
+  <data name="CityPlanning_Admin_ImportCard" xml:space="preserve"><value>Importer des polygones</value></data>
+  <data name="CityPlanning_Admin_ImportDescription" xml:space="preserve"><value>Téléversez une FeatureCollection GeoJSON pour mettre à jour en bloc les polygones des barrios pour {0}. Les entités sont associées par la propriété campName ou campSlug.</value></data>
+  <data name="CityPlanning_Admin_ImportFileLabel" xml:space="preserve"><value>Fichier GeoJSON</value></data>
+  <data name="CityPlanning_Admin_ImportPreviewBtn" xml:space="preserve"><value>Aperçu</value></data>
+  <data name="CityPlanning_Admin_ImportModalTitle" xml:space="preserve"><value>Aperçu de l'import</value></data>
+  <data name="CityPlanning_Admin_ImportWillBeUpdated" xml:space="preserve"><value>Seront mis à jour</value></data>
+  <data name="CityPlanning_Admin_ImportCampHeader" xml:space="preserve"><value>Barrio</value></data>
+  <data name="CityPlanning_Admin_ImportPreviousArea" xml:space="preserve"><value>Surface précédente</value></data>
+  <data name="CityPlanning_Admin_ImportNewArea" xml:space="preserve"><value>Nouvelle surface</value></data>
+  <data name="CityPlanning_Admin_ImportUnrecognized" xml:space="preserve"><value>Entités non reconnues (seront ignorées)</value></data>
+  <data name="CityPlanning_Admin_ImportConfirmBtn" xml:space="preserve"><value>Confirmer l'import</value></data>
+  <data name="CityPlanning_Admin_ImportSelectFileError" xml:space="preserve"><value>Veuillez sélectionner un fichier GeoJSON.</value></data>
+  <data name="CityPlanning_Admin_ImportInvalidJsonError" xml:space="preserve"><value>Fichier non valide — JSON non valide.</value></data>
+  <data name="CityPlanning_Admin_ImportNotFeatureCollectionError" xml:space="preserve"><value>Le fichier doit être une FeatureCollection GeoJSON.</value></data>
+  <data name="CityPlanning_Admin_ImportFetchStateError" xml:space="preserve"><value>Impossible de charger la liste des barrios. Veuillez réessayer.</value></data>
+  <data name="CityPlanning_Admin_ImportNoCampsMatched" xml:space="preserve"><value>Aucun barrio correspondant.</value></data>
+  <data name="CityPlanning_Admin_ImportTokenMissingError" xml:space="preserve"><value>Jeton de sécurité manquant. Veuillez actualiser la page.</value></data>
+  <data name="CityPlanning_Admin_ImportFileTooLargeError" xml:space="preserve"><value>Fichier trop volumineux (max. 10 Mo).</value></data>
+  <data name="CityPlanning_Admin_ImportNotPolygonSuffix" xml:space="preserve"><value>(pas un polygone)</value></data>
+  <data name="CityPlanning_Admin_ImportUpdating" xml:space="preserve"><value>Mise à jour de {0} polygone(s)…</value></data>
+  <data name="CityPlanning_Admin_ImportSuccess" xml:space="preserve"><value>{0} polygone(s) mis à jour.</value></data>
+  <data name="CityPlanning_Admin_ImportPartialFailure" xml:space="preserve"><value>{0} mis à jour, {1} en échec : {2}.</value></data>
   <data name="CityPlanning_HistoryTitle" xml:space="preserve"><value>Historique des polygones</value></data>
   <data name="CityPlanning_Loading" xml:space="preserve"><value>Chargement…</value></data>
   <data name="CityPlanning_Help_WhenIsIt" xml:space="preserve"><value>C'est quand ?</value></data>
@@ -1733,7 +1755,7 @@
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>Si vous n'êtes pas satisfait de notre réponse, vous avez le droit de déposer une plainte auprès de l'Agence Espagnole de Protection des Données (AEPD) à {0}.</value><comment>{0} = AEPD URL</comment></data>
 
 
-  <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Quarts remplis</value></data>
+  <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Places remplies</value></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Détenteurs de billets</value></data>
   <data name="ShiftDash_Overview_TicketHoldersSubline" xml:space="preserve"><value>humans qui ont payé</value></data>
   <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve"><value>Ticket holding humans</value></data>
@@ -1747,12 +1769,12 @@
 
   <data name="ShiftDash_PeriodFilter_Label" xml:space="preserve"><value>Affichage :</value></data>
   <data name="ShiftDash_PeriodFilter_All" xml:space="preserve"><value>Tout</value></data>
-  <data name="ShiftDash_PeriodFilter_BuildDays" xml:space="preserve"><value>Jours de montage</value></data>
-  <data name="ShiftDash_PeriodFilter_EventShifts" xml:space="preserve"><value>Quarts de l'événement</value></data>
+  <data name="ShiftDash_PeriodFilter_BuildDays" xml:space="preserve"><value>Montage</value></data>
+  <data name="ShiftDash_PeriodFilter_EventShifts" xml:space="preserve"><value>Événement</value></data>
   <data name="ShiftDash_PeriodFilter_Strike" xml:space="preserve"><value>Démontage</value></data>
 
   <data name="ShiftDash_Departments_Title" xml:space="preserve"><value>Départements</value></data>
-  <data name="ShiftDash_Departments_SortNote" xml:space="preserve"><value>triés par % de remplissage le plus bas en premier</value></data>
+  <data name="ShiftDash_Departments_SortNote" xml:space="preserve"><value>triés par % de places remplies le plus bas en premier</value></data>
   <data name="ShiftDash_Departments_Col_Department" xml:space="preserve"><value>Département</value></data>
   <data name="ShiftDash_Departments_Col_Total" xml:space="preserve"><value>Total</value></data>
   <data name="ShiftDash_Departments_Col_Filled" xml:space="preserve"><value>Remplis</value></data>

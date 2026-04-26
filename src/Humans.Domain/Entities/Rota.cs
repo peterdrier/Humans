@@ -81,11 +81,6 @@ public class Rota
     public EventSettings EventSettings { get; set; } = null!;
 
     /// <summary>
-    /// Navigation property to the department (parent team).
-    /// </summary>
-    public Team Team { get; set; } = null!;
-
-    /// <summary>
     /// Navigation property to shifts within this rota.
     /// </summary>
     public ICollection<Shift> Shifts { get; } = new List<Shift>();

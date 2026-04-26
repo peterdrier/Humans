@@ -678,6 +678,7 @@ public sealed class TicketRepository : ITicketRepository
         TicketAttendeeStatus? filterStatus,
         bool? filterMatched,
         string? filterOrderId,
+        bool filterMultipleTickets,
         CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -706,6 +707,27 @@ public sealed class TicketRepository : ITicketRepository
             query = query.Where(a => a.MatchedUserId != null);
         else if (filterMatched == false)
             query = query.Where(a => a.MatchedUserId == null);
+
+        if (filterMultipleTickets)
+        {
+            var dupMatchedIds = ctx.TicketAttendees
+                .Where(a => a.MatchedUserId != null)
+                .GroupBy(a => a.MatchedUserId!.Value)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key);
+
+#pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
+            var dupEmails = ctx.TicketAttendees
+                .Where(a => a.MatchedUserId == null && a.AttendeeEmail != null)
+                .GroupBy(a => a.AttendeeEmail!.ToLower())
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key);
+
+            query = query.Where(a =>
+                (a.MatchedUserId != null && dupMatchedIds.Contains(a.MatchedUserId!.Value)) ||
+                (a.MatchedUserId == null && a.AttendeeEmail != null && dupEmails.Contains(a.AttendeeEmail.ToLower())));
+#pragma warning restore MA0011
+        }
 
         var totalCount = await query.CountAsync(ct);
 

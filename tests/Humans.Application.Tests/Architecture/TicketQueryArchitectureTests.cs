@@ -31,7 +31,7 @@ public class TicketQueryArchitectureTests
 {
     // ── TicketQueryService ───────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void TicketQueryService_LivesInHumansApplicationServicesTicketsNamespace()
     {
         typeof(TicketQueryService).Namespace
@@ -39,14 +39,14 @@ public class TicketQueryArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void TicketQueryService_IsSealed()
     {
         typeof(TicketQueryService).IsSealed.Should().BeTrue(
             because: "Application-layer services are sealed to prevent ad-hoc subclassing; new behavior belongs on the interface");
     }
 
-    [Fact]
+    [HumansFact]
     public void TicketQueryService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(TicketQueryService).GetConstructors().Single();
@@ -56,7 +56,7 @@ public class TicketQueryArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use ITicketRepository (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void TicketQueryService_TakesRepository()
     {
         var ctor = typeof(TicketQueryService).GetConstructors().Single();
@@ -66,7 +66,7 @@ public class TicketQueryArchitectureTests
             because: "all ticket-table access must flow through ITicketRepository");
     }
 
-    [Fact]
+    [HumansFact]
     public void TicketQueryService_RoutesCrossSectionReadsThroughServices()
     {
         var ctor = typeof(TicketQueryService).GetConstructors().Single();
@@ -82,7 +82,7 @@ public class TicketQueryArchitectureTests
         paramTypes.Should().Contain(typeof(IShiftManagementService));
     }
 
-    [Fact]
+    [HumansFact]
     public void TicketQueryService_TakesNoOtherSectionRepository()
     {
         var ctor = typeof(TicketQueryService).GetConstructors().Single();
@@ -99,7 +99,7 @@ public class TicketQueryArchitectureTests
 
     // ── ITicketRepository ────────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void ITicketRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(ITicketRepository).Namespace
@@ -107,7 +107,7 @@ public class TicketQueryArchitectureTests
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
 
-    [Fact]
+    [HumansFact]
     public void TicketRepository_IsSealed()
     {
         var repoType = typeof(TicketRepository);

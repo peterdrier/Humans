@@ -213,13 +213,14 @@ public class TicketController : HumansControllerBase
         string? search, string sortBy = "name", bool sortDesc = false,
         int page = 1, int pageSize = 25,
         string? filterTicketType = null, string? filterStatus = null,
-        bool? filterMatched = null, string? filterOrderId = null)
+        bool? filterMatched = null, string? filterOrderId = null,
+        bool filterMultipleTickets = false)
     {
         pageSize = pageSize.ClampPageSize();
 
         var result = await _ticketQueryService.GetAttendeesPageAsync(
             search, sortBy, sortDesc, page, pageSize,
-            filterTicketType, filterStatus, filterMatched, filterOrderId);
+            filterTicketType, filterStatus, filterMatched, filterOrderId, filterMultipleTickets);
 
         var model = new TicketAttendeesViewModel
         {
@@ -252,6 +253,7 @@ public class TicketController : HumansControllerBase
             FilterStatus = filterStatus,
             FilterMatched = filterMatched,
             FilterOrderId = filterOrderId,
+            FilterMultipleTickets = filterMultipleTickets,
             AvailableTicketTypes = await _ticketQueryService.GetAvailableTicketTypesAsync(),
         };
 

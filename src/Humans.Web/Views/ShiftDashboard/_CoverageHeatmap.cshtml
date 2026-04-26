@@ -1,0 +1,78 @@
+@using Humans.Application.DTOs
+@using Humans.Domain.Enums
+@model CoverageHeatmap
+
+@{
+    if (Model.Rotas.Count == 0 || Model.Days.Count == 0) { return; }
+
+    static string CellClass(int total, int filled)
+    {
+        if (total == 0) return "bg-light text-muted";   // No shift that day for this rota.
+        var pct = 100.0 * filled / total;
+        if (pct >= 80) return "bg-success text-white";
+        if (pct >= 60) return "bg-warning text-dark";
+        return "bg-danger text-white";                   // Under-staffed (including zero-confirmed).
+    }
+
+    static string CellLabel(int total, int filled) =>
+        total == 0 ? "—" : $"{filled}/{total}";
+
+    static string PeriodBadgeClass(ShiftPeriod period) => period switch
+    {
+        ShiftPeriod.Build  => "bg-info",
+        ShiftPeriod.Event  => "bg-success",
+        ShiftPeriod.Strike => "bg-secondary",
+        _                  => "bg-light"
+    };
+}
+
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>@Localizer["ShiftDash_Heatmap_Title"]</strong>
+        <span class="text-muted small">@Localizer["ShiftDash_Heatmap_Subtitle"]</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-bordered mb-0" style="table-layout: fixed;">
+            <thead class="table-light">
+                <tr>
+                    <th style="min-width: 360px; width: 360px; position: sticky; left: 0; background: var(--bs-table-bg); z-index: 2;">@Localizer["ShiftDash_Heatmap_Col_Team"]</th>
+                    @foreach (var day in Model.Days)
+                    {
+                        <th class="text-center" style="min-width: 72px; font-size: 0.75rem;">
+                            <div>@day.DateLabel</div>
+                            <span class="badge @PeriodBadgeClass(day.Period)">@day.Period</span>
+                        </th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Rotas)
+                {
+                    <tr>
+                        <td style="min-width: 360px; width: 360px; position: sticky; left: 0; background: var(--bs-body-bg); z-index: 1; font-size: 0.875rem; white-space: nowrap;">
+                            @if (!string.Equals(row.DepartmentName, row.RotaName, StringComparison.Ordinal))
+                            {
+                                <div class="text-muted small">@row.DepartmentName</div>
+                            }
+                            <div>@row.RotaName</div>
+                        </td>
+                        @foreach (var cell in row.Cells)
+                        {
+                            var tooltip = cell.TotalSlots == 0
+                                ? string.Format(Localizer["ShiftDash_Heatmap_Tooltip_None"].Value, row.RotaName)
+                                : string.Format(Localizer["ShiftDash_Heatmap_Tooltip_Filled"].Value, row.RotaName, cell.FilledSlots, cell.TotalSlots);
+                            <td class="text-center @CellClass(cell.TotalSlots, cell.FilledSlots)"
+                                title="@tooltip"
+                                style="font-size: 0.8rem; font-weight: 600;">
+                                @CellLabel(cell.TotalSlots, cell.FilledSlots)
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer small text-muted">
+        @Localizer["ShiftDash_Heatmap_Legend"]
+    </div>
+</div>

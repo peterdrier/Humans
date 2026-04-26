@@ -66,6 +66,11 @@
         }
         <vc:profile-card user-id="@Model.UserId" view-mode="@cardViewMode" />
 
+        @if (Model.IsOwnProfile)
+        {
+            <vc:my-camps />
+        }
+
         @if (!Model.IsOwnProfile && Model.CanViewShiftSignups)
         {
             <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" display-name="@Model.DisplayName" />

@@ -40,6 +40,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddAuditLogSection();
         services.AddGdprSection();
         services.AddAdminSection();
+        services.AddGuideSection(configuration);
 
         return services;
     }

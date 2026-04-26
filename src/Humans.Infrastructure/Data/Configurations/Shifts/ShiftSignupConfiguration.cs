@@ -25,7 +25,8 @@ public class ShiftSignupConfiguration : IEntityTypeConfiguration<ShiftSignup>
         builder.HasIndex(d => d.ShiftId);
         builder.HasIndex(d => new { d.ShiftId, d.Status });
 
-        builder.HasOne(d => d.User)
+        // Cross-section FKs to User — typed-FK form, no navigation properties.
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(d => d.UserId)
             .OnDelete(DeleteBehavior.Restrict);
@@ -35,12 +36,12 @@ public class ShiftSignupConfiguration : IEntityTypeConfiguration<ShiftSignup>
             .HasForeignKey(d => d.ShiftId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(d => d.EnrolledByUser)
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(d => d.EnrolledByUserId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        builder.HasOne(d => d.ReviewedByUser)
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(d => d.ReviewedByUserId)
             .OnDelete(DeleteBehavior.SetNull);

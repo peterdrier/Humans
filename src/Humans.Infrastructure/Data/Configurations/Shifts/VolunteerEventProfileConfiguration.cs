@@ -32,7 +32,8 @@ public class VolunteerEventProfileConfiguration : IEntityTypeConfiguration<Volun
         builder.Property(v => v.DietaryPreference).HasMaxLength(200);
         builder.Property(v => v.MedicalConditions).HasMaxLength(4000);
 
-        builder.HasOne(v => v.User)
+        // Cross-section FK to User — typed-FK form, no navigation property.
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(v => v.UserId)
             .OnDelete(DeleteBehavior.Cascade);

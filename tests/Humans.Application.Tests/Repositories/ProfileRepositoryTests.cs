@@ -33,7 +33,7 @@ public sealed class ProfileRepositoryTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact(Timeout = 10000)]
     public async Task ReconcileCVEntriesAsync_AddsUpdatesAndRemovesEntries()
     {
         // Arrange: profile with two existing CV entries
@@ -102,7 +102,7 @@ public sealed class ProfileRepositoryTests : IDisposable
         persisted[1].UpdatedAt.Should().Be(afterAdvance);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ReconcileCVEntriesAsync_DoesNotBumpUpdatedAt_WhenFieldsUnchanged()
     {
         var profileId = Guid.NewGuid();
@@ -137,7 +137,7 @@ public sealed class ProfileRepositoryTests : IDisposable
         persisted.UpdatedAt.Should().Be(seededAt);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ReconcileCVEntriesAsync_PreservesIdAndCreatedAt_WhenDateOrEventNameChanges()
     {
         // The whole point of Id-keyed reconcile: editing Date or EventName

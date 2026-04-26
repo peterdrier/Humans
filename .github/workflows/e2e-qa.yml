@@ -4,9 +4,6 @@ on:
   push:
     branches: [main]
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   e2e:
     if: github.repository == 'peterdrier/Humans'
@@ -16,9 +13,9 @@ jobs:
         working-directory: tests/e2e
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
 
@@ -60,7 +57,7 @@ jobs:
           BASE_URL: https://humans.n.burn.camp
 
       - name: Upload test report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always() && steps.wait-for-deploy.outputs.found == 'true'
         with:
           name: playwright-report

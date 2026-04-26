@@ -1,0 +1,2 @@
+T:Xunit.FactAttribute;Use Humans.Testing.HumansFactAttribute (5s default timeout). Bare [Fact] is forbidden by project policy. Override per-test with [HumansFact(Timeout = N)] where N > 0.
+T:Xunit.TheoryAttribute;Use Humans.Testing.HumansTheoryAttribute (5s default timeout). Bare [Theory] is forbidden by project policy. Override per-test with [HumansTheory(Timeout = N)] where N > 0.

@@ -29,6 +29,14 @@ internal static class ConfigurationMetadataExtensions
             configuration.GetRequiredSetting(configRegistry, "GitHub:Repository", "GitHub");
             configuration.GetRequiredSetting(configRegistry, "GitHub:AccessToken", "GitHub", isSensitive: true);
 
+            // Guide settings
+            configuration.GetOptionalSetting(configRegistry, "Guide:Owner", "Guide");
+            configuration.GetOptionalSetting(configRegistry, "Guide:Repository", "Guide");
+            configuration.GetOptionalSetting(configRegistry, "Guide:Branch", "Guide");
+            configuration.GetOptionalSetting(configRegistry, "Guide:FolderPath", "Guide");
+            configuration.GetOptionalSetting(configRegistry, "Guide:CacheTtlHours", "Guide");
+            configuration.GetOptionalSetting(configRegistry, "Guide:AccessToken", "Guide", isSensitive: true);
+
             // Google Maps
             configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
 

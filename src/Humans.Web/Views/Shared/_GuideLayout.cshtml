@@ -1,0 +1,50 @@
+@model Humans.Web.Models.GuideViewModel
+
+<div class="row">
+    <aside class="col-md-3 mb-4">
+        <nav class="nav flex-column" aria-label="Guide navigation">
+            @foreach (var group in Model.Sidebar.Entries.GroupBy(e => e.Group))
+            {
+                <div class="text-uppercase text-muted small mt-3 mb-1">@group.Key</div>
+                @foreach (var entry in group)
+                {
+                    var active = string.Equals(entry.Stem, Model.Sidebar.ActiveStem, StringComparison.OrdinalIgnoreCase);
+                    <a class="nav-link @(active ? "active fw-bold" : "")"
+                       asp-controller="Guide" asp-action="Document" asp-route-name="@entry.Stem">
+                        @entry.DisplayName
+                    </a>
+                }
+            }
+        </nav>
+    </aside>
+    <section class="col-md-9">
+        @if (!string.IsNullOrEmpty(Model.FileStem) && !string.Equals(Model.FileStem, "README", StringComparison.OrdinalIgnoreCase))
+        {
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a asp-controller="Guide" asp-action="Index">Guide</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">@Model.Title</li>
+                </ol>
+            </nav>
+        }
+
+        @if (TempData["GuideRefreshStatus"] is string status)
+        {
+            <div class="alert alert-info">@status</div>
+        }
+
+        <article class="guide-content">
+            @Model.Html
+        </article>
+
+        @if (User.IsInRole(Humans.Domain.Constants.RoleNames.Admin))
+        {
+            <form asp-action="Refresh" method="post" class="mt-4">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-secondary btn-sm">
+                    Refresh from GitHub
+                </button>
+            </form>
+        }
+    </section>
+</div>

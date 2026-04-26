@@ -34,7 +34,7 @@ public class StubGoogleGroupProvisioningClientTests
         SpamModerationLevel: "MODERATE",
         EnableCollaborativeInbox: true);
 
-    [Fact]
+    [HumansFact]
     public async Task CreateGroupAsync_NewGroup_ReturnsNumericId()
     {
         var result = await _client.CreateGroupAsync(
@@ -44,7 +44,7 @@ public class StubGoogleGroupProvisioningClientTests
         result.GroupNumericId.Should().NotBeNullOrEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CreateGroupAsync_Duplicate_ReportsConflict()
     {
         await _client.CreateGroupAsync(
@@ -59,7 +59,7 @@ public class StubGoogleGroupProvisioningClientTests
             because: "mirrors Google's behaviour when a group with the same email already exists");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task LookupGroupIdAsync_ExistingGroup_RoundTripsId()
     {
         var created = await _client.CreateGroupAsync(
@@ -71,7 +71,7 @@ public class StubGoogleGroupProvisioningClientTests
         lookup.GroupNumericId.Should().Be(created.GroupNumericId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task LookupGroupIdAsync_Missing_Returns404()
     {
         var result = await _client.LookupGroupIdAsync("nope@nobodies.team");
@@ -81,7 +81,7 @@ public class StubGoogleGroupProvisioningClientTests
         result.Error!.StatusCode.Should().Be(404);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetGroupSettingsAsync_BeforeUpdate_Returns404()
     {
         var result = await _client.GetGroupSettingsAsync("team-c@nobodies.team");
@@ -91,7 +91,7 @@ public class StubGoogleGroupProvisioningClientTests
         result.Error!.StatusCode.Should().Be(404);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UpdateThenGet_RoundTripsExpectedFields()
     {
         var expected = BuildExpected();

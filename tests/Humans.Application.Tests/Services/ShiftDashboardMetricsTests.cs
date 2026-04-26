@@ -64,7 +64,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_EmptyDatabase_ReturnsZeroCounters()
     {
         var es = await SeedEventAsync();
@@ -73,6 +73,8 @@ public class ShiftDashboardMetricsTests : IDisposable
 
         result.TotalShifts.Should().Be(0);
         result.FilledShifts.Should().Be(0);
+        result.TotalSlots.Should().Be(0);
+        result.FilledSlots.Should().Be(0);
         result.TicketHolderCount.Should().Be(0);
         result.TicketHoldersEngaged.Should().Be(0);
         result.NonTicketSignups.Should().Be(0);
@@ -80,7 +82,45 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.Departments.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
+    public async Task GetDashboardOverview_SumsSlotTotalsAcrossShifts()
+    {
+        // Slot-level counters are independent from "shift at min" counters:
+        // a shift can be below min yet still contribute filled slots toward TotalSlots.
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var rota = await SeedRotaAsync(team, es, RotaPeriod.Event);
+
+        var s1 = await SeedShiftAsync(rota, dayOffset: 1, min: 3, max: 5);
+        await SeedSignupsAsync(s1, SignupStatus.Confirmed, count: 2); // below min — 0 shifts at min, 2 slots filled
+        var s2 = await SeedShiftAsync(rota, dayOffset: 2, min: 1, max: 4);
+        await SeedSignupsAsync(s2, SignupStatus.Confirmed, count: 4); // at max — 1 shift at min, 4 slots filled
+
+        var result = await _service.GetDashboardOverviewAsync(es.Id);
+
+        result.TotalShifts.Should().Be(2);
+        result.FilledShifts.Should().Be(1);
+        result.TotalSlots.Should().Be(9);
+        result.FilledSlots.Should().Be(6);
+    }
+
+    [HumansFact]
+    public async Task GetDashboardOverview_FilledSlotsCapsAtMaxVolunteers()
+    {
+        // Overfilling a shift (confirmed > max) must not inflate FilledSlots beyond MaxVolunteers.
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var rota = await SeedRotaAsync(team, es, RotaPeriod.Event);
+        var shift = await SeedShiftAsync(rota, dayOffset: 1, min: 1, max: 3);
+        await SeedSignupsAsync(shift, SignupStatus.Confirmed, count: 5);
+
+        var result = await _service.GetDashboardOverviewAsync(es.Id);
+
+        result.TotalSlots.Should().Be(3);
+        result.FilledSlots.Should().Be(3);
+    }
+
+    [HumansFact]
     public async Task GetDashboardOverview_MinVolunteersMinusOne_NotFilled()
     {
         var es = await SeedEventAsync();
@@ -95,7 +135,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.FilledShifts.Should().Be(0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_MinVolunteersExactly_Filled()
     {
         var es = await SeedEventAsync();
@@ -109,7 +149,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.FilledShifts.Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_PendingSignupsDoNotCountAsFilled()
     {
         var es = await SeedEventAsync();
@@ -123,7 +163,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.FilledShifts.Should().Be(0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_AdminOnlyAndHiddenRotaShiftsExcluded()
     {
         var es = await SeedEventAsync();
@@ -139,7 +179,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.TotalShifts.Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_TicketHolderAndEngagementCounters()
     {
         var es = await SeedEventAsync();
@@ -170,7 +210,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.NonTicketSignups.Should().Be(1); // only D
     }
 
-    [Fact]
+    [HumansFact(Timeout = 10000)]
     public async Task GetDashboardOverview_StalePending_ThresholdExact3Days_NotStale()
     {
         var es = await SeedEventAsync();
@@ -196,7 +236,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.StalePendingCount.Should().Be(0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_StalePending_JustPastThreshold_CountsAsStale()
     {
         var es = await SeedEventAsync();
@@ -222,7 +262,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.StalePendingCount.Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_NoSubteamRotas_DepartmentSubgroupsEmpty()
     {
         var es = await SeedEventAsync();
@@ -236,7 +276,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.Departments[0].Subgroups.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_WithSubteamRotas_ProducesSubgroupsWithDirectPinned()
     {
         var es = await SeedEventAsync();
@@ -268,25 +308,32 @@ public class ShiftDashboardMetricsTests : IDisposable
         var infraRow = result.Departments.Single(d => string.Equals(d.DepartmentName, "Infrastructure", StringComparison.Ordinal));
         infraRow.TotalShifts.Should().Be(6);
         infraRow.FilledShifts.Should().Be(3); // 1 direct + 2 power
+        infraRow.TotalSlots.Should().Be(18); // 6 shifts × max=3
+        infraRow.FilledSlots.Should().Be(5); // 1 direct + 2 power shifts × 2 confirmed
         infraRow.Subgroups.Should().HaveCount(3);
 
         // "Direct" pinned first regardless of fill %.
         infraRow.Subgroups[0].IsDirect.Should().BeTrue();
         infraRow.Subgroups[0].Name.Should().Be("Direct");
 
-        // Remaining: Plumbing before Power (lower fill %).
+        // Remaining subgroups sorted by lowest slot fill % first:
+        // Plumbing (0/6 = 0%) before Power (4/6 ≈ 67%).
         infraRow.Subgroups[1].Name.Should().Be("Plumbing");
         infraRow.Subgroups[2].Name.Should().Be("Power");
 
         // Invariant: subgroup totals sum to department totals.
         infraRow.Subgroups.Sum(s => s.TotalShifts).Should().Be(infraRow.TotalShifts);
         infraRow.Subgroups.Sum(s => s.FilledShifts).Should().Be(infraRow.FilledShifts);
+        infraRow.Subgroups.Sum(s => s.TotalSlots).Should().Be(infraRow.TotalSlots);
+        infraRow.Subgroups.Sum(s => s.FilledSlots).Should().Be(infraRow.FilledSlots);
         infraRow.Subgroups.Sum(s => s.SlotsRemaining).Should().Be(infraRow.SlotsRemaining);
         infraRow.Subgroups.Sum(s => s.Event.Total).Should().Be(infraRow.Event.Total);
         infraRow.Subgroups.Sum(s => s.Event.Filled).Should().Be(infraRow.Event.Filled);
+        infraRow.Subgroups.Sum(s => s.Event.TotalSlots).Should().Be(infraRow.Event.TotalSlots);
+        infraRow.Subgroups.Sum(s => s.Event.FilledSlots).Should().Be(infraRow.Event.FilledSlots);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardOverview_DepartmentsSortedByLowestFillPercentFirst()
     {
         var es = await SeedEventAsync();
@@ -309,7 +356,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.Departments[1].DepartmentName.Should().Be("Gate");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCoordinatorActivity_TeamsWithoutPendingExcluded()
     {
         var es = await SeedEventAsync();
@@ -338,7 +385,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result[0].Coordinators[0].DisplayName.Should().Be("coord");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCoordinatorActivity_RangeSignup_CountsAsOneBlockNotOneRowPerDay()
     {
         var es = await SeedEventAsync();
@@ -375,7 +422,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result[0].PendingSignupCount.Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCoordinatorActivity_SortsByOldestLoginFirst()
     {
         var es = await SeedEventAsync();
@@ -403,7 +450,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result[1].TeamName.Should().Be("A");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardTrends_SevenDayWindow_ReturnsSevenPointsEndingToday()
     {
         var es = await SeedEventAsync();
@@ -417,7 +464,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.Should().OnlyContain(p => p.NewSignups == 0 && p.NewTicketSales == 0 && p.DistinctLogins == 0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDashboardTrends_CountsSignupsInToday()
     {
         var es = await SeedEventAsync();
@@ -441,6 +488,217 @@ public class ShiftDashboardMetricsTests : IDisposable
 
         result[^1].NewSignups.Should().Be(1);
         result.Take(6).Should().OnlyContain(p => p.NewSignups == 0);
+    }
+
+    // ================================================================
+    // GetDailyDepartmentStaffingAsync
+    // ================================================================
+
+    [HumansFact]
+    public async Task GetDailyDepartmentStaffing_EventPeriod_ReturnsEmpty()
+    {
+        // Event day-over-day mix is deliberately omitted by design — the planning
+        // flow for event shifts is different. Only Build and Strike produce data.
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var rota = await SeedRotaAsync(team, es, RotaPeriod.Event);
+        var shift = await SeedShiftAsync(rota, dayOffset: 2, min: 1, max: 3);
+        await SeedSignupsAsync(shift, SignupStatus.Confirmed, count: 2);
+
+        var result = await _service.GetDailyDepartmentStaffingAsync(es.Id, ShiftPeriod.Event);
+
+        result.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetDailyDepartmentStaffing_NullPeriod_ReturnsEmpty()
+    {
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var rota = await SeedRotaAsync(team, es, RotaPeriod.Build);
+        var shift = await SeedShiftAsync(rota, dayOffset: -3, min: 1, max: 3);
+        await SeedSignupsAsync(shift, SignupStatus.Confirmed, count: 1);
+
+        var result = await _service.GetDailyDepartmentStaffingAsync(es.Id, period: null);
+
+        result.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetDailyDepartmentStaffing_BuildPeriod_CountsOnlyConfirmed()
+    {
+        // Pending signups must not inflate on-site counts — the chart is about
+        // who is actually confirmed to show up that day.
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Build");
+        var rota = await SeedRotaAsync(team, es, RotaPeriod.Build);
+        var shift = await SeedShiftAsync(rota, dayOffset: -3, min: 1, max: 5);
+        await SeedSignupsAsync(shift, SignupStatus.Confirmed, count: 2);
+        await SeedSignupsAsync(shift, SignupStatus.Pending, count: 3);
+
+        var result = await _service.GetDailyDepartmentStaffingAsync(es.Id, ShiftPeriod.Build);
+
+        var dayRow = result.SingleOrDefault(r => r.Date == es.GateOpeningDate.PlusDays(-3));
+        dayRow.Should().NotBeNull();
+        dayRow!.Departments.Should().ContainSingle(d => string.Equals(d.DepartmentName, "Build", StringComparison.Ordinal))
+            .Which.ConfirmedCount.Should().Be(2);
+    }
+
+    [HumansFact]
+    public async Task GetDailyDepartmentStaffing_NonPromotedSubteam_RollsUpToParent()
+    {
+        // Subteam shifts that AREN'T promoted to directory must roll up into the
+        // parent department's stacked-bar segment, not appear as a separate one.
+        var es = await SeedEventAsync();
+        var infra = await SeedTeamAsync("Infrastructure");
+        var power = await SeedTeamAsync("Power", parentId: infra.Id); // not promoted
+        var powerRota = await SeedRotaAsync(power, es, RotaPeriod.Build);
+        var shift = await SeedShiftAsync(powerRota, dayOffset: -2, min: 1, max: 5);
+        await SeedSignupsAsync(shift, SignupStatus.Confirmed, count: 3);
+
+        var result = await _service.GetDailyDepartmentStaffingAsync(es.Id, ShiftPeriod.Build);
+
+        var dayRow = result.Single(r => r.Date == es.GateOpeningDate.PlusDays(-2));
+        dayRow.Departments.Should().ContainSingle();
+        dayRow.Departments[0].DepartmentName.Should().Be("Infrastructure");
+        dayRow.Departments[0].ConfirmedCount.Should().Be(3);
+    }
+
+    // ================================================================
+    // GetShiftDurationBreakdownAsync
+    // ================================================================
+
+    [HumansFact]
+    public async Task GetShiftDurationBreakdown_NullPeriod_ReturnsEmpty()
+    {
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var rota = await SeedRotaAsync(team, es, RotaPeriod.Event);
+        await SeedShiftAsync(rota, dayOffset: 1, min: 1, max: 3);
+
+        var result = await _service.GetShiftDurationBreakdownAsync(es.Id, period: null);
+
+        result.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetShiftDurationBreakdown_AllDayShifts_CollapseIntoSingleBucket()
+    {
+        // Full-day shifts share one bucket regardless of nominal duration
+        // (6 h, 8 h, 10 h all render as "Full day" on the breakdown chart).
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var rota = await SeedRotaAsync(team, es, RotaPeriod.Event);
+        await SeedAllDayShiftAsync(rota, dayOffset: 1, nominalHours: 6, min: 1, max: 3);
+        await SeedAllDayShiftAsync(rota, dayOffset: 2, nominalHours: 8, min: 1, max: 4);
+
+        var result = await _service.GetShiftDurationBreakdownAsync(es.Id, ShiftPeriod.Event);
+
+        result.Should().ContainSingle(r => r.IsAllDay);
+        result.Single(r => r.IsAllDay).TotalSlots.Should().Be(7);
+    }
+
+    [HumansFact]
+    public async Task GetShiftDurationBreakdown_DistinctHourlyDurations_GetSeparateBuckets()
+    {
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var rota = await SeedRotaAsync(team, es, RotaPeriod.Event);
+        await SeedHourlyShiftAsync(rota, dayOffset: 1, hours: 2, min: 1, max: 3);
+        await SeedHourlyShiftAsync(rota, dayOffset: 2, hours: 4, min: 1, max: 5);
+        await SeedHourlyShiftAsync(rota, dayOffset: 3, hours: 4, min: 1, max: 5);
+
+        var result = await _service.GetShiftDurationBreakdownAsync(es.Id, ShiftPeriod.Event);
+
+        result.Should().HaveCount(2);
+        result.Should().Contain(r => !r.IsAllDay && r.DurationHours == 2 && r.TotalSlots == 3);
+        result.Should().Contain(r => !r.IsAllDay && r.DurationHours == 4 && r.TotalSlots == 10);
+    }
+
+    // ================================================================
+    // GetCoverageHeatmapAsync
+    // ================================================================
+
+    [HumansFact]
+    public async Task GetCoverageHeatmap_PromotedSubteam_GetsOwnRow()
+    {
+        // A subteam promoted to the directory gets its own heatmap row.
+        // Its shifts must NOT also appear under the parent team's row
+        // (the "no-overlap" invariant).
+        var es = await SeedEventAsync();
+        var infra = await SeedTeamAsync("Infrastructure");
+        var power = await SeedTeamAsync("Power", parentId: infra.Id, isPromotedToDirectory: true);
+
+        var infraRota = await SeedRotaAsync(infra, es, RotaPeriod.Event);
+        var powerRota = await SeedRotaAsync(power, es, RotaPeriod.Event);
+        await SeedShiftAsync(infraRota, dayOffset: 1, min: 1, max: 3);
+        await SeedShiftAsync(powerRota, dayOffset: 1, min: 1, max: 4);
+
+        var result = await _service.GetCoverageHeatmapAsync(es.Id, ShiftPeriod.Event);
+
+        result.Rotas.Should().HaveCount(2);
+        result.Rotas.Should().ContainSingle(r => string.Equals(r.RotaName, "Infrastructure", StringComparison.Ordinal))
+            .Which.Cells.Sum(c => c.TotalSlots).Should().Be(3);
+        result.Rotas.Should().ContainSingle(r => string.Equals(r.RotaName, "Power", StringComparison.Ordinal))
+            .Which.Cells.Sum(c => c.TotalSlots).Should().Be(4);
+    }
+
+    [HumansFact]
+    public async Task GetCoverageHeatmap_NonPromotedSubteam_RollsUpToParent()
+    {
+        // Non-promoted subteam: shifts appear only in the parent's row, never
+        // as a separate row (no-overlap in the other direction).
+        var es = await SeedEventAsync();
+        var infra = await SeedTeamAsync("Infrastructure");
+        var plumbing = await SeedTeamAsync("Plumbing", parentId: infra.Id); // not promoted
+        var infraRota = await SeedRotaAsync(infra, es, RotaPeriod.Event);
+        var plumbingRota = await SeedRotaAsync(plumbing, es, RotaPeriod.Event);
+
+        await SeedShiftAsync(infraRota, dayOffset: 1, min: 1, max: 2);
+        await SeedShiftAsync(plumbingRota, dayOffset: 1, min: 1, max: 3);
+
+        var result = await _service.GetCoverageHeatmapAsync(es.Id, ShiftPeriod.Event);
+
+        result.Rotas.Should().ContainSingle();
+        result.Rotas[0].RotaName.Should().Be("Infrastructure");
+        result.Rotas[0].Cells.Sum(c => c.TotalSlots).Should().Be(5);
+        result.Rotas.Should().NotContain(r => string.Equals(r.RotaName, "Plumbing", StringComparison.Ordinal));
+    }
+
+    [HumansFact]
+    public async Task GetCoverageHeatmap_FilledSlotsCapAtMaxVolunteers()
+    {
+        // Overfilled shifts must not inflate heatmap cell counts — same cap rule
+        // as the overview card, applied per cell.
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var rota = await SeedRotaAsync(team, es, RotaPeriod.Event);
+        var shift = await SeedShiftAsync(rota, dayOffset: 1, min: 1, max: 3);
+        await SeedSignupsAsync(shift, SignupStatus.Confirmed, count: 5);
+
+        var result = await _service.GetCoverageHeatmapAsync(es.Id, ShiftPeriod.Event);
+
+        var cell = result.Rotas.Single().Cells.Single(c => c.TotalSlots > 0);
+        cell.TotalSlots.Should().Be(3);
+        cell.FilledSlots.Should().Be(3);
+    }
+
+    [HumansFact]
+    public async Task GetCoverageHeatmap_DayPeriodClassification_UsesShiftPeriodEnum()
+    {
+        // Day-column period tagging must use the ShiftPeriod enum, not English
+        // strings — previously the service emitted "Set-up"/"Event"/"Strike"
+        // which coupled the view to magic values.
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var rota = await SeedRotaAsync(team, es, RotaPeriod.Event);
+        await SeedShiftAsync(rota, dayOffset: 1, min: 1, max: 2);
+
+        var result = await _service.GetCoverageHeatmapAsync(es.Id, period: null);
+
+        result.Days.Should().Contain(d => d.DayOffset < 0 && d.Period == ShiftPeriod.Build);
+        result.Days.Should().Contain(d => d.DayOffset >= 0 && d.DayOffset <= es.EventEndOffset && d.Period == ShiftPeriod.Event);
+        result.Days.Should().Contain(d => d.DayOffset > es.EventEndOffset && d.Period == ShiftPeriod.Strike);
     }
 
     // ================================================================
@@ -468,7 +726,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         return es;
     }
 
-    private async Task<Team> SeedTeamAsync(string name, Guid? parentId = null)
+    private async Task<Team> SeedTeamAsync(string name, Guid? parentId = null, bool isPromotedToDirectory = false)
     {
         var team = new Team
         {
@@ -477,6 +735,7 @@ public class ShiftDashboardMetricsTests : IDisposable
             Slug = name.ToLowerInvariant(),
             IsActive = true,
             ParentTeamId = parentId,
+            IsPromotedToDirectory = isPromotedToDirectory,
             CreatedAt = TestNow,
             UpdatedAt = TestNow,
         };
@@ -517,6 +776,46 @@ public class ShiftDashboardMetricsTests : IDisposable
             MinVolunteers = min,
             MaxVolunteers = max,
             AdminOnly = adminOnly,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow,
+        };
+        _dbContext.Shifts.Add(shift);
+        await _dbContext.SaveChangesAsync();
+        return shift;
+    }
+
+    private async Task<Shift> SeedAllDayShiftAsync(Rota rota, int dayOffset, double nominalHours, int min, int max)
+    {
+        var shift = new Shift
+        {
+            Id = Guid.NewGuid(),
+            RotaId = rota.Id,
+            DayOffset = dayOffset,
+            StartTime = new LocalTime(8, 0),
+            Duration = Duration.FromHours(nominalHours),
+            IsAllDay = true,
+            MinVolunteers = min,
+            MaxVolunteers = max,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow,
+        };
+        _dbContext.Shifts.Add(shift);
+        await _dbContext.SaveChangesAsync();
+        return shift;
+    }
+
+    private async Task<Shift> SeedHourlyShiftAsync(Rota rota, int dayOffset, int hours, int min, int max)
+    {
+        var shift = new Shift
+        {
+            Id = Guid.NewGuid(),
+            RotaId = rota.Id,
+            DayOffset = dayOffset,
+            StartTime = new LocalTime(9, 0),
+            Duration = Duration.FromHours(hours),
+            IsAllDay = false,
+            MinVolunteers = min,
+            MaxVolunteers = max,
             CreatedAt = TestNow,
             UpdatedAt = TestNow,
         };
@@ -649,7 +948,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<List<string>> GetAvailableTicketTypesAsync() => throw new NotSupportedException();
         public Task<Humans.Application.DTOs.CodeTrackingData> GetCodeTrackingDataAsync(string? search) => throw new NotSupportedException();
         public Task<Humans.Application.DTOs.OrdersPageResult> GetOrdersPageAsync(string? search, string sortBy, bool sortDesc, int page, int pageSize, string? filterPaymentStatus, string? filterTicketType, bool? filterMatched) => throw new NotSupportedException();
-        public Task<Humans.Application.DTOs.AttendeesPageResult> GetAttendeesPageAsync(string? search, string sortBy, bool sortDesc, int page, int pageSize, string? filterTicketType, string? filterStatus, bool? filterMatched, string? filterOrderId) => throw new NotSupportedException();
+        public Task<Humans.Application.DTOs.AttendeesPageResult> GetAttendeesPageAsync(string? search, string sortBy, bool sortDesc, int page, int pageSize, string? filterTicketType, string? filterStatus, bool? filterMatched, string? filterOrderId, bool filterMultipleTickets = false) => throw new NotSupportedException();
         public Task<Humans.Application.DTOs.WhoHasntBoughtResult> GetWhoHasntBoughtAsync(string? search, string? filterTeam, string? filterTier, string? filterTicketStatus, int page, int pageSize) => throw new NotSupportedException();
         public Task<List<Humans.Application.DTOs.AttendeeExportRow>> GetAttendeeExportDataAsync() => throw new NotSupportedException();
         public Task<List<Humans.Application.DTOs.OrderExportRow>> GetOrderExportDataAsync() => throw new NotSupportedException();

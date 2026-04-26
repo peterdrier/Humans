@@ -1473,6 +1473,28 @@
   <data name="CityPlanning_Admin_ExportCard" xml:space="preserve"><value>Export</value></data>
   <data name="CityPlanning_Admin_ExportDescription" xml:space="preserve"><value>Download all camp polygons for {0} as a GeoJSON FeatureCollection.</value><comment>{0} = year</comment></data>
   <data name="CityPlanning_Admin_DownloadGeoJson" xml:space="preserve"><value>Download GeoJSON ({0})</value><comment>{0} = year</comment></data>
+  <data name="CityPlanning_Admin_ImportCard" xml:space="preserve"><value>Import polygons</value></data>
+  <data name="CityPlanning_Admin_ImportDescription" xml:space="preserve"><value>Upload a GeoJSON FeatureCollection to bulk-update camp polygons for {0}. Features are matched by campName or campSlug property.</value><comment>{0} = year</comment></data>
+  <data name="CityPlanning_Admin_ImportFileLabel" xml:space="preserve"><value>GeoJSON file</value></data>
+  <data name="CityPlanning_Admin_ImportPreviewBtn" xml:space="preserve"><value>Preview import</value></data>
+  <data name="CityPlanning_Admin_ImportModalTitle" xml:space="preserve"><value>Import preview</value></data>
+  <data name="CityPlanning_Admin_ImportWillBeUpdated" xml:space="preserve"><value>Will be updated</value></data>
+  <data name="CityPlanning_Admin_ImportCampHeader" xml:space="preserve"><value>Camp</value></data>
+  <data name="CityPlanning_Admin_ImportPreviousArea" xml:space="preserve"><value>Previous area</value></data>
+  <data name="CityPlanning_Admin_ImportNewArea" xml:space="preserve"><value>New area</value></data>
+  <data name="CityPlanning_Admin_ImportUnrecognized" xml:space="preserve"><value>Unrecognized features (will be skipped)</value></data>
+  <data name="CityPlanning_Admin_ImportConfirmBtn" xml:space="preserve"><value>Confirm import</value></data>
+  <data name="CityPlanning_Admin_ImportSelectFileError" xml:space="preserve"><value>Please select a GeoJSON file.</value></data>
+  <data name="CityPlanning_Admin_ImportInvalidJsonError" xml:space="preserve"><value>Invalid file — not valid JSON.</value></data>
+  <data name="CityPlanning_Admin_ImportNotFeatureCollectionError" xml:space="preserve"><value>File must be a GeoJSON FeatureCollection.</value></data>
+  <data name="CityPlanning_Admin_ImportFetchStateError" xml:space="preserve"><value>Could not load camp list. Please try again.</value></data>
+  <data name="CityPlanning_Admin_ImportNoCampsMatched" xml:space="preserve"><value>No camps matched.</value></data>
+  <data name="CityPlanning_Admin_ImportTokenMissingError" xml:space="preserve"><value>Security token missing. Please refresh the page.</value></data>
+  <data name="CityPlanning_Admin_ImportFileTooLargeError" xml:space="preserve"><value>File is too large (max 10 MB).</value></data>
+  <data name="CityPlanning_Admin_ImportNotPolygonSuffix" xml:space="preserve"><value>(not a polygon)</value></data>
+  <data name="CityPlanning_Admin_ImportUpdating" xml:space="preserve"><value>Updating {0} polygon(s)…</value><comment>{0} = count</comment></data>
+  <data name="CityPlanning_Admin_ImportSuccess" xml:space="preserve"><value>{0} polygon(s) updated.</value><comment>{0} = success count</comment></data>
+  <data name="CityPlanning_Admin_ImportPartialFailure" xml:space="preserve"><value>{0} updated, {1} failed: {2}.</value><comment>{0} = success count, {1} = fail count, {2} = comma-separated camp names</comment></data>
   <!-- History offcanvas -->
   <data name="CityPlanning_HistoryTitle" xml:space="preserve"><value>Polygon History</value></data>
   <data name="CityPlanning_Loading" xml:space="preserve"><value>Loading…</value></data>
@@ -1753,7 +1775,7 @@
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>If you are not satisfied with our response, you have the right to lodge a complaint with the Spanish Data Protection Agency (AEPD) at {0}.</value><comment>{0} = AEPD URL</comment></data>
 
 
-  <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Shifts filled</value></data>
+  <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Slots filled</value></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Ticket holders</value></data>
   <data name="ShiftDash_Overview_TicketHoldersSubline" xml:space="preserve"><value>humans who have paid</value></data>
   <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve"><value>Ticket holding humans</value></data>
@@ -1767,12 +1789,36 @@
 
   <data name="ShiftDash_PeriodFilter_Label" xml:space="preserve"><value>Showing:</value></data>
   <data name="ShiftDash_PeriodFilter_All" xml:space="preserve"><value>All</value></data>
-  <data name="ShiftDash_PeriodFilter_BuildDays" xml:space="preserve"><value>Build days</value></data>
-  <data name="ShiftDash_PeriodFilter_EventShifts" xml:space="preserve"><value>Event-time shifts</value></data>
+  <data name="ShiftDash_PeriodFilter_BuildDays" xml:space="preserve"><value>Set-up</value></data>
+  <data name="ShiftDash_PeriodFilter_EventShifts" xml:space="preserve"><value>Event</value></data>
   <data name="ShiftDash_PeriodFilter_Strike" xml:space="preserve"><value>Strike</value></data>
 
   <data name="ShiftDash_Departments_Title" xml:space="preserve"><value>Departments</value></data>
-  <data name="ShiftDash_Departments_SortNote" xml:space="preserve"><value>sorted by lowest fill % first</value></data>
+  <data name="ShiftDash_Departments_SortNote" xml:space="preserve"><value>sorted by lowest slot fill % first</value></data>
+  <data name="ShiftDash_Countdown_Label" xml:space="preserve"><value>Countdown to feet on the ground</value></data>
+  <data name="ShiftDash_Countdown_Days" xml:space="preserve"><value>{0} days</value><comment>{0} = whole days</comment></data>
+  <data name="ShiftDash_Countdown_Weeks" xml:space="preserve"><value>({0} weeks)</value></data>
+  <data name="ShiftDash_Countdown_WeeksAndDays" xml:space="preserve"><value>({0} weeks, {1} days)</value></data>
+  <data name="ShiftDash_Countdown_FirstDay" xml:space="preserve"><value>first build day: {0}</value></data>
+  <data name="ShiftDash_Countdown_Today" xml:space="preserve"><value>Feet on the ground — today!</value></data>
+  <data name="ShiftDash_Countdown_InProgress" xml:space="preserve"><value>Event in progress — day {0} since build started</value></data>
+  <data name="ShiftDash_DeptStaffingByDay_Title" xml:space="preserve"><value>People on site by day</value></data>
+  <data name="ShiftDash_DeptStaffingByDay_Subtitle" xml:space="preserve"><value>stacked by department — confirmed signups only</value></data>
+  <data name="ShiftDash_DurationMix_Title" xml:space="preserve"><value>Shift duration mix</value></data>
+  <data name="ShiftDash_DurationMix_Subtitle" xml:space="preserve"><value>how shifts are split between full-day and hourly, for this period</value></data>
+  <data name="ShiftDash_DurationMix_Col_Duration" xml:space="preserve"><value>Duration</value></data>
+  <data name="ShiftDash_DurationMix_Col_Slots" xml:space="preserve"><value>Slots</value></data>
+  <data name="ShiftDash_DurationMix_Col_Filled" xml:space="preserve"><value>Filled</value></data>
+  <data name="ShiftDash_DurationMix_Col_Pct" xml:space="preserve"><value>%</value></data>
+  <data name="ShiftDash_DurationMix_FullDay" xml:space="preserve"><value>Full day</value></data>
+  <data name="ShiftDash_DurationMix_HourLabel" xml:space="preserve"><value>{0} h</value><comment>{0} = whole hours</comment></data>
+  <data name="ShiftDash_DurationMix_Total" xml:space="preserve"><value>Total</value></data>
+  <data name="ShiftDash_Heatmap_Title" xml:space="preserve"><value>Coverage heatmap</value></data>
+  <data name="ShiftDash_Heatmap_Subtitle" xml:space="preserve"><value>slot fill per rota per day — green = 80%+, yellow = 60–79%, red = below, grey = no shift that day</value></data>
+  <data name="ShiftDash_Heatmap_Col_Team" xml:space="preserve"><value>Team</value></data>
+  <data name="ShiftDash_Heatmap_Tooltip_Filled" xml:space="preserve"><value>{0} — {1} / {2} slots filled</value></data>
+  <data name="ShiftDash_Heatmap_Tooltip_None" xml:space="preserve"><value>{0} — no shifts that day</value></data>
+  <data name="ShiftDash_Heatmap_Legend" xml:space="preserve"><value>Hover a cell for details. Scroll horizontally to see all days.</value></data>
   <data name="ShiftDash_Departments_Col_Department" xml:space="preserve"><value>Department</value></data>
   <data name="ShiftDash_Departments_Col_Total" xml:space="preserve"><value>Total</value></data>
   <data name="ShiftDash_Departments_Col_Filled" xml:space="preserve"><value>Filled</value></data>

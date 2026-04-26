@@ -17,7 +17,9 @@ using Humans.Infrastructure.Services;
 using Xunit;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Metering;
 using Humans.Infrastructure.Repositories.Email;
+using Humans.Infrastructure.Services.Metering;
 
 namespace Humans.Application.Tests.Jobs;
 
@@ -29,6 +31,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
     private readonly ICampaignService _campaignService;
     private readonly FakeClock _clock;
     private readonly HumansMetricsService _metrics;
+    private readonly MetersService _meters;
     private readonly IOptions<EmailSettings> _settings;
     private readonly EmailOutboxRepository _repo;
     private readonly ProcessEmailOutboxJob _job;
@@ -46,21 +49,23 @@ public class ProcessEmailOutboxJobTests : IDisposable
         _metrics = new HumansMetricsService(
             Substitute.For<IServiceScopeFactory>(),
             Substitute.For<ILogger<HumansMetricsService>>());
+        _meters = new MetersService(Substitute.For<ILogger<MetersService>>());
         _settings = Options.Create(new EmailSettings { OutboxBatchSize = 10, OutboxMaxRetries = 10 });
         var logger = Substitute.For<ILogger<ProcessEmailOutboxJob>>();
         _repo = new EmailOutboxRepository(new TestDbContextFactory(_options));
 
-        _job = new ProcessEmailOutboxJob(_repo, _campaignService, _transport, _metrics, _clock, _settings, logger);
+        _job = new ProcessEmailOutboxJob(_repo, _campaignService, _transport, _metrics, _meters, _clock, _settings, logger);
     }
 
     public void Dispose()
     {
         _dbContext.Dispose();
         _metrics.Dispose();
+        _meters.Dispose();
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact(Timeout = 10000)]
     public async Task ExecuteAsync_ProcessesQueuedMessages()
     {
         var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
@@ -83,7 +88,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
         updated.PickedUpAt.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_HandlesFailure()
     {
         var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
@@ -109,7 +114,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
         updated.NextRetryAt.Should().Be(expectedRetryAt);
     }
 
-    [Fact]
+    [HumansFact(Timeout = 30000)]
     public async Task ExecuteAsync_RespectsBatchSize()
     {
         for (var i = 0; i < 15; i++)
@@ -117,7 +122,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
 
         var batchSettings = Options.Create(new EmailSettings { OutboxBatchSize = 10, OutboxMaxRetries = 10 });
         var job = new ProcessEmailOutboxJob(
-            _repo, _campaignService, _transport, _metrics, _clock, batchSettings,
+            _repo, _campaignService, _transport, _metrics, _meters, _clock, batchSettings,
             Substitute.For<ILogger<ProcessEmailOutboxJob>>());
 
         await job.ExecuteAsync();
@@ -129,7 +134,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_SkipsPaused()
     {
         _dbContext.SystemSettings.Add(new SystemSetting { Key = "IsEmailSendingPaused", Value = "true" });
@@ -146,7 +151,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact(Timeout = 10000)]
     public async Task ExecuteAsync_CrashRecovery()
     {
         // Message picked up 6 minutes ago but never completed (simulates crash)
@@ -168,7 +173,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
         updated.SentAt.Should().Be(_clock.GetCurrentInstant());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_SkipsRecentlyPickedUp()
     {
         // Message picked up 2 minutes ago — still within the 5 minute window
@@ -185,7 +190,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact(Timeout = 10000)]
     public async Task ExecuteAsync_RetriesFailedWithBackoff()
     {
         // Failed message with RetryCount=3, NextRetryAt in the past
@@ -209,7 +214,7 @@ public class ProcessEmailOutboxJobTests : IDisposable
         updated.SentAt.Should().Be(_clock.GetCurrentInstant());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExecuteAsync_SkipsFutureRetry()
     {
         // Failed message with NextRetryAt in the future — should not be processed

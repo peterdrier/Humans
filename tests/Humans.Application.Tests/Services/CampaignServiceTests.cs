@@ -127,7 +127,7 @@ public class CampaignServiceTests : IDisposable
     // CreateAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task CreateAsync_CreatesCampaignInDraftStatus()
     {
         var userId = Guid.NewGuid();
@@ -154,7 +154,7 @@ public class CampaignServiceTests : IDisposable
     // ImportCodesAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task ImportCodesAsync_CreatesCampaignCodeRows_SkipsDuplicates()
     {
         var campaign = await SeedCampaignAsync();
@@ -168,7 +168,7 @@ public class CampaignServiceTests : IDisposable
         codes.Select(c => c.Code).Should().BeEquivalentTo(new[] { "CODE1", "CODE2", "CODE3" });
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ImportCodesAsync_SkipsExistingCodesInCampaign()
     {
         var campaign = await SeedCampaignAsync();
@@ -188,7 +188,7 @@ public class CampaignServiceTests : IDisposable
     // ActivateAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task ActivateAsync_DraftWithCodes_TransitionsToActive()
     {
         var campaign = await SeedCampaignAsync();
@@ -200,7 +200,7 @@ public class CampaignServiceTests : IDisposable
         updated!.Status.Should().Be(CampaignStatus.Active);
     }
 
-    [Fact]
+    [HumansFact(Timeout = 10000)]
     public async Task ActivateAsync_NoCodes_Throws()
     {
         var campaign = await SeedCampaignAsync();
@@ -211,7 +211,7 @@ public class CampaignServiceTests : IDisposable
             .WithMessage("*at least one code*");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ActivateAsync_NotDraft_Throws()
     {
         var campaign = await SeedCampaignAsync(CampaignStatus.Active);
@@ -222,7 +222,7 @@ public class CampaignServiceTests : IDisposable
             .WithMessage("*Draft*");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UpdateAsync_ExistingCampaign_UpdatesFields()
     {
         var campaign = await SeedCampaignAsync();
@@ -246,7 +246,7 @@ public class CampaignServiceTests : IDisposable
         refreshed.ReplyToAddress.Should().Be("reply@example.com");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetDetailPageAsync_ReturnsComputedStats()
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "A", "B", "C" });
@@ -278,7 +278,7 @@ public class CampaignServiceTests : IDisposable
         page.Stats.TotalGrants.Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetSendWavePageAsync_ReturnsTeamsAndSelectedPreview()
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "A1", "A2" });
@@ -298,7 +298,7 @@ public class CampaignServiceTests : IDisposable
         page.Teams.Select(t => t.Name).Should().ContainInOrder("Alpha Team", "Beta Team");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCampaignIdForGrantAsync_ReturnsCampaignId()
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "RESEND-CODE" });
@@ -318,7 +318,7 @@ public class CampaignServiceTests : IDisposable
     // CompleteAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task CompleteAsync_ActiveCampaign_TransitionsToCompleted()
     {
         var campaign = await SeedCampaignAsync(CampaignStatus.Active);
@@ -329,7 +329,7 @@ public class CampaignServiceTests : IDisposable
         updated!.Status.Should().Be(CampaignStatus.Completed);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CompleteAsync_NotActive_Throws()
     {
         var campaign = await SeedCampaignAsync(CampaignStatus.Draft);
@@ -344,7 +344,7 @@ public class CampaignServiceTests : IDisposable
     // SendWaveAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task SendWaveAsync_AssignsCodeToTeamMember_CreatesGrantAndEnqueuesEmail()
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(
@@ -378,7 +378,7 @@ public class CampaignServiceTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendWaveAsync_PassesTemplateBodyAndSubjectToEmailService()
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(
@@ -404,7 +404,7 @@ public class CampaignServiceTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendWaveAsync_DuplicatePrevention_ExcludesAlreadyGranted()
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "CODE-1", "CODE-2", "CODE-3" });
@@ -425,7 +425,7 @@ public class CampaignServiceTests : IDisposable
         count2.Should().Be(0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendWaveAsync_InsufficientCodes_Throws()
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "ONLY-ONE" });
@@ -443,7 +443,7 @@ public class CampaignServiceTests : IDisposable
             .WithMessage("*Not enough codes*");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendWaveAsync_PassesRawCodeAndRecipientToEmailService()
     {
         // HTML-encoding of values happens inside OutboxEmailService (owner of the
@@ -471,7 +471,7 @@ public class CampaignServiceTests : IDisposable
     // ResendToGrantAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task ResendToGrantAsync_EnqueuesNewEmailAndResetsGrantStatus()
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "RESEND-CODE" });
@@ -503,7 +503,7 @@ public class CampaignServiceTests : IDisposable
     // RetryAllFailedAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task RetryAllFailedAsync_EnqueuesEmailsForFailedGrantsOnly()
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "FAIL-1", "FAIL-2" });
@@ -539,7 +539,7 @@ public class CampaignServiceTests : IDisposable
     // PreviewWaveSendAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task PreviewWaveSendAsync_ReturnsCorrectCounts()
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "P1", "P2", "P3", "P4", "P5" });

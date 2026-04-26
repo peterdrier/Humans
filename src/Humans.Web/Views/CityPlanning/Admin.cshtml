@@ -186,5 +186,83 @@
                 </div>
             </div>
         </div>
+
+        <!-- Import -->
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header fw-semibold">
+                    <i class="fa-solid fa-file-import me-1"></i> @Localizer["CityPlanning_Admin_ImportCard"] (@settings.Year)
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">@string.Format(Localizer["CityPlanning_Admin_ImportDescription"].Value, settings.Year)</p>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">@Localizer["CityPlanning_Admin_ImportFileLabel"]</label>
+                        <input type="file" id="import-file-input" accept=".geojson,.json,application/geo+json" class="form-control form-control-sm" />
+                    </div>
+                    <button id="import-preview-btn" type="button" class="btn btn-primary btn-sm">
+                        <i class="fa-solid fa-eye me-1"></i> @Localizer["CityPlanning_Admin_ImportPreviewBtn"]
+                    </button>
+                    <div id="import-error" class="text-danger small mt-2 d-none"></div>
+                    <div id="import-result" class="d-none mt-2"></div>
+                    <div id="import-strings" class="d-none"
+                         data-select-file-error="@Localizer["CityPlanning_Admin_ImportSelectFileError"]"
+                         data-invalid-json-error="@Localizer["CityPlanning_Admin_ImportInvalidJsonError"]"
+                         data-not-feature-collection-error="@Localizer["CityPlanning_Admin_ImportNotFeatureCollectionError"]"
+                         data-fetch-state-error="@Localizer["CityPlanning_Admin_ImportFetchStateError"]"
+                         data-no-camps-matched="@Localizer["CityPlanning_Admin_ImportNoCampsMatched"]"
+                         data-token-missing-error="@Localizer["CityPlanning_Admin_ImportTokenMissingError"]"
+                         data-file-too-large-error="@Localizer["CityPlanning_Admin_ImportFileTooLargeError"]"
+                         data-not-polygon-suffix="@Localizer["CityPlanning_Admin_ImportNotPolygonSuffix"]"
+                         data-updating="@Localizer["CityPlanning_Admin_ImportUpdating"]"
+                         data-import-success="@Localizer["CityPlanning_Admin_ImportSuccess"]"
+                         data-import-partial-failure="@Localizer["CityPlanning_Admin_ImportPartialFailure"]"></div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<!-- Import preview modal -->
+<div class="modal fade" id="import-preview-modal" tabindex="-1" aria-labelledby="import-preview-modal-label" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="import-preview-modal-label">
+                    <i class="fa-solid fa-file-import me-1"></i> @Localizer["CityPlanning_Admin_ImportModalTitle"]
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <h6 class="mb-2">@Localizer["CityPlanning_Admin_ImportWillBeUpdated"]</h6>
+                <table class="table table-sm table-bordered mb-3">
+                    <thead class="table-light">
+                        <tr>
+                            <th>@Localizer["CityPlanning_Admin_ImportCampHeader"]</th>
+                            <th class="text-end">@Localizer["CityPlanning_Admin_ImportPreviousArea"]</th>
+                            <th class="text-end">@Localizer["CityPlanning_Admin_ImportNewArea"]</th>
+                        </tr>
+                    </thead>
+                    <tbody id="import-matched-body"></tbody>
+                </table>
+
+                <div id="import-unrecognized-section" class="d-none">
+                    <h6 class="text-warning mb-1"><i class="fa-solid fa-triangle-exclamation me-1"></i> @Localizer["CityPlanning_Admin_ImportUnrecognized"]</h6>
+                    <ul id="import-unrecognized-list" class="small text-muted mb-0"></ul>
+                </div>
+
+                <div id="import-status" class="text-muted small mt-3 d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">@Localizer["Common_Cancel"]</button>
+                <button type="button" id="import-confirm-btn" class="btn btn-primary btn-sm">
+                    <i class="fa-solid fa-check me-1"></i> @Localizer["CityPlanning_Admin_ImportConfirmBtn"]
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/@@turf/turf@7.1.0/turf.min.js"></script>
+    <script src="~/js/city-planning/admin-import.js"></script>
+}

@@ -21,7 +21,7 @@ public class GoogleWorkspaceUserArchitectureTests
 {
     // ── GoogleWorkspaceUserService ───────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void GoogleWorkspaceUserService_LivesInHumansApplicationServicesGoogleIntegrationNamespace()
     {
         typeof(GoogleWorkspaceUserService).Namespace
@@ -29,7 +29,7 @@ public class GoogleWorkspaceUserArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void GoogleWorkspaceUserService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(GoogleWorkspaceUserService).GetConstructors().Single();
@@ -39,7 +39,7 @@ public class GoogleWorkspaceUserArchitectureTests
                 because: "services in Humans.Application must never take DbContext (design-rules §3) — this service has no DB, only a connector");
     }
 
-    [Fact]
+    [HumansFact]
     public void GoogleWorkspaceUserService_HasNoDbContextFactoryConstructorParameter()
     {
         var ctor = typeof(GoogleWorkspaceUserService).GetConstructors().Single();
@@ -52,7 +52,7 @@ public class GoogleWorkspaceUserArchitectureTests
             because: "IDbContextFactory belongs behind the repository boundary, not in an Application-layer service");
     }
 
-    [Fact]
+    [HumansFact]
     public void GoogleWorkspaceUserService_TakesConnectorClient()
     {
         var ctor = typeof(GoogleWorkspaceUserService).GetConstructors().Single();
@@ -62,7 +62,7 @@ public class GoogleWorkspaceUserArchitectureTests
             because: "Google SDK calls go through the shape-neutral connector, not directly from the Application service");
     }
 
-    [Fact]
+    [HumansFact]
     public void GoogleWorkspaceUserService_IsSealed()
     {
         typeof(GoogleWorkspaceUserService).IsSealed.Should().BeTrue(
@@ -71,7 +71,7 @@ public class GoogleWorkspaceUserArchitectureTests
 
     // ── Application assembly cleanliness ─────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void HumansApplicationAssembly_HasNoGoogleApisReferences()
     {
         // The Application project must never transitively pull Google.Apis.*.
@@ -85,7 +85,7 @@ public class GoogleWorkspaceUserArchitectureTests
                 because: "Humans.Application must stay free of Google SDK references; Google API calls live behind IWorkspaceUserDirectoryClient in Humans.Infrastructure");
     }
 
-    [Fact]
+    [HumansFact]
     public void GoogleWorkspaceUserService_DoesNotReferenceGoogleSdkTypes()
     {
         // Paranoid double-check: the service's module should have no Google.Apis.*
@@ -110,7 +110,7 @@ public class GoogleWorkspaceUserArchitectureTests
 
     // ── IWorkspaceUserDirectoryClient ────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void IWorkspaceUserDirectoryClient_LivesInApplicationInterfacesNamespace()
     {
         typeof(IWorkspaceUserDirectoryClient).Namespace
@@ -118,7 +118,7 @@ public class GoogleWorkspaceUserArchitectureTests
                 because: "connector interfaces live alongside other application interfaces per design-rules §2b");
     }
 
-    [Fact]
+    [HumansFact]
     public void IWorkspaceUserDirectoryClient_HasNoGoogleSdkTypesInSignatures()
     {
         // Every method parameter and return type must come from Humans.Application

@@ -29,7 +29,7 @@ public class TicketSyncArchitectureTests
 {
     // ── TicketSyncService ────────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void TicketSyncService_LivesInHumansApplicationServicesTicketsNamespace()
     {
         typeof(TicketSyncService).Namespace
@@ -37,7 +37,7 @@ public class TicketSyncArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void TicketSyncService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(TicketSyncService).GetConstructors().Single();
@@ -47,7 +47,7 @@ public class TicketSyncArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use ITicketRepository instead (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void TicketSyncService_TakesRepository()
     {
         var ctor = typeof(TicketSyncService).GetConstructors().Single();
@@ -57,7 +57,7 @@ public class TicketSyncArchitectureTests
             because: "TicketSyncService's DB access must go through ITicketRepository (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void TicketSyncService_TakesVendorConnectorInterface()
     {
         var ctor = typeof(TicketSyncService).GetConstructors().Single();
@@ -67,7 +67,7 @@ public class TicketSyncArchitectureTests
             because: "Ticket Tailor API calls are the connector's job — the sync service delegates all vendor I/O to ITicketVendorService (Infrastructure-backed)");
     }
 
-    [Fact]
+    [HumansFact]
     public void TicketSyncService_TakesUserServiceForEventParticipationWrites()
     {
         var ctor = typeof(TicketSyncService).GetConstructors().Single();
@@ -77,7 +77,7 @@ public class TicketSyncArchitectureTests
             because: "event_participations is User-section-owned per PR #243; TicketSync must route participation writes through IUserService (design-rules §8, §9)");
     }
 
-    [Fact]
+    [HumansFact]
     public void TicketSyncService_TakesCampaignServiceForGrantRedemption()
     {
         var ctor = typeof(TicketSyncService).GetConstructors().Single();
@@ -87,7 +87,7 @@ public class TicketSyncArchitectureTests
             because: "campaign_grants is Campaigns-section-owned; redemption writes route through ICampaignService (design-rules §8, §9)");
     }
 
-    [Fact]
+    [HumansFact]
     public void TicketSyncService_TakesShiftManagementServiceForActiveEventLookup()
     {
         var ctor = typeof(TicketSyncService).GetConstructors().Single();
@@ -97,7 +97,7 @@ public class TicketSyncArchitectureTests
             because: "event_settings is Shifts-section-owned; active-event reads route through IShiftManagementService rather than a direct DbContext read (design-rules §8, §9)");
     }
 
-    [Fact]
+    [HumansFact]
     public void TicketSyncService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(TicketSyncService).GetConstructors().Single();
@@ -111,7 +111,7 @@ public class TicketSyncArchitectureTests
 
     // ── ITicketRepository ────────────────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public void ITicketRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(ITicketRepository).Namespace
@@ -119,7 +119,7 @@ public class TicketSyncArchitectureTests
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
 
-    [Fact]
+    [HumansFact]
     public void TicketRepository_IsSealed()
     {
         // Mirrors ProfileRepository/UserRepository — repository implementations
@@ -131,7 +131,7 @@ public class TicketSyncArchitectureTests
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
     }
 
-    [Fact]
+    [HumansFact]
     public void TicketRepository_ImplementsITicketRepository()
     {
         typeof(ITicketRepository).IsAssignableFrom(typeof(TicketRepository))

@@ -94,7 +94,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
         return team;
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SyncBarrioLeadsMembershipForUserAsync_UserAlreadyActiveMember_IsNoOp()
     {
         // User is already an active member of Barrio Leads and is still a
@@ -129,7 +129,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SyncBarrioLeadsMembershipForUserAsync_UserBecomesLead_AddsMembership()
     {
         // User is a new lead but not yet a team member — the job should

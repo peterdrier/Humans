@@ -1457,6 +1457,28 @@
   <data name="CityPlanning_Admin_ExportCard" xml:space="preserve"><value>Exportar</value></data>
   <data name="CityPlanning_Admin_ExportDescription" xml:space="preserve"><value>Descarregar tots els polígons de barrios de {0} com a GeoJSON FeatureCollection.</value></data>
   <data name="CityPlanning_Admin_DownloadGeoJson" xml:space="preserve"><value>Descarregar GeoJSON ({0})</value></data>
+  <data name="CityPlanning_Admin_ImportCard" xml:space="preserve"><value>Importar polígons</value></data>
+  <data name="CityPlanning_Admin_ImportDescription" xml:space="preserve"><value>Puja una FeatureCollection GeoJSON per actualitzar en bloc els polígons de barrios de {0}. Les entitats s'associen per la propietat campName o campSlug.</value></data>
+  <data name="CityPlanning_Admin_ImportFileLabel" xml:space="preserve"><value>Fitxer GeoJSON</value></data>
+  <data name="CityPlanning_Admin_ImportPreviewBtn" xml:space="preserve"><value>Vista prèvia</value></data>
+  <data name="CityPlanning_Admin_ImportModalTitle" xml:space="preserve"><value>Vista prèvia de la importació</value></data>
+  <data name="CityPlanning_Admin_ImportWillBeUpdated" xml:space="preserve"><value>S'actualitzaran</value></data>
+  <data name="CityPlanning_Admin_ImportCampHeader" xml:space="preserve"><value>Barrio</value></data>
+  <data name="CityPlanning_Admin_ImportPreviousArea" xml:space="preserve"><value>Àrea anterior</value></data>
+  <data name="CityPlanning_Admin_ImportNewArea" xml:space="preserve"><value>Àrea nova</value></data>
+  <data name="CityPlanning_Admin_ImportUnrecognized" xml:space="preserve"><value>Entitats no reconegudes (s'ometran)</value></data>
+  <data name="CityPlanning_Admin_ImportConfirmBtn" xml:space="preserve"><value>Confirmar importació</value></data>
+  <data name="CityPlanning_Admin_ImportSelectFileError" xml:space="preserve"><value>Selecciona un fitxer GeoJSON.</value></data>
+  <data name="CityPlanning_Admin_ImportInvalidJsonError" xml:space="preserve"><value>Fitxer no vàlid — JSON no vàlid.</value></data>
+  <data name="CityPlanning_Admin_ImportNotFeatureCollectionError" xml:space="preserve"><value>El fitxer ha de ser una FeatureCollection GeoJSON.</value></data>
+  <data name="CityPlanning_Admin_ImportFetchStateError" xml:space="preserve"><value>No s'ha pogut carregar la llista de barrios. Torna-ho a provar.</value></data>
+  <data name="CityPlanning_Admin_ImportNoCampsMatched" xml:space="preserve"><value>Cap barrio coincideix.</value></data>
+  <data name="CityPlanning_Admin_ImportTokenMissingError" xml:space="preserve"><value>Manca el testimoni de seguretat. Torna a carregar la pàgina.</value></data>
+  <data name="CityPlanning_Admin_ImportFileTooLargeError" xml:space="preserve"><value>Fitxer massa gran (màx. 10 MB).</value></data>
+  <data name="CityPlanning_Admin_ImportNotPolygonSuffix" xml:space="preserve"><value>(no és un polígon)</value></data>
+  <data name="CityPlanning_Admin_ImportUpdating" xml:space="preserve"><value>Actualitzant {0} polígon(s)…</value></data>
+  <data name="CityPlanning_Admin_ImportSuccess" xml:space="preserve"><value>{0} polígon(s) actualitzat(s).</value></data>
+  <data name="CityPlanning_Admin_ImportPartialFailure" xml:space="preserve"><value>{0} actualitzat(s), {1} fallit(s): {2}.</value></data>
   <data name="CityPlanning_HistoryTitle" xml:space="preserve"><value>Historial de polígons</value></data>
   <data name="CityPlanning_Loading" xml:space="preserve"><value>Carregant…</value></data>
   <data name="CityPlanning_Help_WhenIsIt" xml:space="preserve"><value>Quan és?</value></data>
@@ -1735,7 +1757,7 @@
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>Si no estàs satisfet amb la nostra resposta, tens dret a presentar una reclamació davant l'Agència Espanyola de Protecció de Dades (AEPD) a {0}.</value><comment>{0} = AEPD URL</comment></data>
 
 
-  <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Torns coberts</value></data>
+  <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Places cobertes</value></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Amb entrada</value></data>
   <data name="ShiftDash_Overview_TicketHoldersSubline" xml:space="preserve"><value>humans que han pagat</value></data>
   <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve"><value>Ticket holding humans</value></data>
@@ -1749,12 +1771,12 @@
 
   <data name="ShiftDash_PeriodFilter_Label" xml:space="preserve"><value>Mostrant:</value></data>
   <data name="ShiftDash_PeriodFilter_All" xml:space="preserve"><value>Tot</value></data>
-  <data name="ShiftDash_PeriodFilter_BuildDays" xml:space="preserve"><value>Dies de muntatge</value></data>
-  <data name="ShiftDash_PeriodFilter_EventShifts" xml:space="preserve"><value>Torns d'esdeveniment</value></data>
+  <data name="ShiftDash_PeriodFilter_BuildDays" xml:space="preserve"><value>Muntatge</value></data>
+  <data name="ShiftDash_PeriodFilter_EventShifts" xml:space="preserve"><value>Esdeveniment</value></data>
   <data name="ShiftDash_PeriodFilter_Strike" xml:space="preserve"><value>Desmuntatge</value></data>
 
   <data name="ShiftDash_Departments_Title" xml:space="preserve"><value>Departaments</value></data>
-  <data name="ShiftDash_Departments_SortNote" xml:space="preserve"><value>ordenats pel % més baix cobert primer</value></data>
+  <data name="ShiftDash_Departments_SortNote" xml:space="preserve"><value>ordenats pel % més baix de places cobertes primer</value></data>
   <data name="ShiftDash_Departments_Col_Department" xml:space="preserve"><value>Departament</value></data>
   <data name="ShiftDash_Departments_Col_Total" xml:space="preserve"><value>Total</value></data>
   <data name="ShiftDash_Departments_Col_Filled" xml:space="preserve"><value>Coberts</value></data>

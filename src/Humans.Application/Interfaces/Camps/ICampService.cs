@@ -99,7 +99,159 @@ public interface ICampService
 
     // Name change (handles historical name logging)
     Task ChangeSeasonNameAsync(Guid seasonId, string newName, CancellationToken cancellationToken = default);
+
+    // ==========================================================================
+    // Camp membership per season (issue nobodies-collective#488)
+    // ==========================================================================
+
+    /// <summary>
+    /// Human requests to join a camp for the currently-open season. No-op if
+    /// an active or pending row already exists — the existing row's id is
+    /// returned with an <c>Already*</c> outcome. Handles concurrent duplicate
+    /// submissions idempotently.
+    /// </summary>
+    Task<CampMemberRequestResult> RequestCampMembershipAsync(
+        Guid campId, Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lead / CampAdmin approves a pending request. Scoped to the authorizing
+    /// camp: throws if the membership's season belongs to a different camp.
+    /// Sends <c>CampMembershipApproved</c> notification to the requester.
+    /// </summary>
+    Task ApproveCampMemberAsync(
+        Guid scopedCampId, Guid campMemberId, Guid approvedByUserId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lead / CampAdmin rejects a pending request. Scoped to the authorizing
+    /// camp: throws if the membership's season belongs to a different camp.
+    /// Sends <c>CampMembershipRejected</c> notification to the requester.
+    /// </summary>
+    Task RejectCampMemberAsync(
+        Guid scopedCampId, Guid campMemberId, Guid rejectedByUserId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lead / CampAdmin removes an active member. Scoped to the authorizing camp.
+    /// </summary>
+    Task RemoveCampMemberAsync(
+        Guid scopedCampId, Guid campMemberId, Guid removedByUserId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Human withdraws their own pending request. Scoped to the caller's user id.
+    /// </summary>
+    Task WithdrawCampMembershipRequestAsync(
+        Guid campMemberId, Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Human leaves their own active membership. Scoped to the caller's user id.
+    /// </summary>
+    Task LeaveCampAsync(
+        Guid campMemberId, Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the current user's membership state for a camp's open-season
+    /// (or <c>NoOpenSeason</c> if the camp has no Active/Full season this year).
+    /// </summary>
+    Task<CampMembershipState> GetMembershipStateForCampAsync(
+        Guid campId, Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists Pending + Active members for a given camp season, stitched with
+    /// display names via <c>IUserService</c>. Privileged view (no authorization
+    /// inside — caller must gate).
+    /// </summary>
+    Task<CampMemberListData> GetCampMembersAsync(
+        Guid campSeasonId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists Active/Pending memberships for a human, grouped by year. Used for
+    /// the human's own profile dashboard (MyCamps).
+    /// </summary>
+    Task<IReadOnlyList<CampMembershipSummary>> GetCampMembershipsForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Total number of Pending membership requests across all camps where the
+    /// user is an active lead. Used by the notification meter to show a single
+    /// "N people want to join your camp" counter instead of emitting a stored
+    /// notification per request.
+    /// </summary>
+    Task<int> GetPendingMembershipCountForLeadAsync(
+        Guid userId, CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// Result of a camp membership request action.
+/// </summary>
+public record CampMemberRequestResult(
+    Guid CampMemberId,
+    CampMemberRequestOutcome Outcome,
+    string? Message = null);
+
+public enum CampMemberRequestOutcome
+{
+    /// <summary>A new pending request was created.</summary>
+    Created,
+    /// <summary>An existing pending request already existed for the human.</summary>
+    AlreadyPending,
+    /// <summary>The human is already an active member of the camp for this season.</summary>
+    AlreadyActive,
+    /// <summary>No open season for the camp — the request was not created.</summary>
+    NoOpenSeason
+}
+
+/// <summary>
+/// Current human's camp membership state relative to a camp's open-season.
+/// </summary>
+public record CampMembershipState(
+    int? OpenSeasonYear,
+    Guid? OpenSeasonId,
+    Guid? CampMemberId,
+    CampMemberStatusSummary Status);
+
+public enum CampMemberStatusSummary
+{
+    /// <summary>No open season for the camp.</summary>
+    NoOpenSeason,
+    /// <summary>Open season exists but human has no record.</summary>
+    None,
+    /// <summary>Human has a pending request.</summary>
+    Pending,
+    /// <summary>Human is an active member.</summary>
+    Active
+}
+
+public record CampMemberListData(
+    Guid CampSeasonId,
+    int Year,
+    IReadOnlyList<CampMemberRow> Pending,
+    IReadOnlyList<CampMemberRow> Active);
+
+// TEMP: `IsLead` is a display-only flag populated by unioning active `CampLead`
+// rows into the active-members list. It'll be superseded by the upcoming camp
+// roles PR (Team-style role assignments on CampMember), which will subsume the
+// CampLead concept entirely. Remove this flag + the union logic in
+// CampService.GetCampMembersAsync when that lands.
+public record CampMemberRow(
+    Guid CampMemberId,
+    Guid UserId,
+    string DisplayName,
+    Instant RequestedAt,
+    Instant? ConfirmedAt,
+    bool IsLead);
+
+public record CampMembershipSummary(
+    Guid CampMemberId,
+    Guid CampId,
+    string CampSlug,
+    string CampName,
+    Guid CampSeasonId,
+    int Year,
+    CampMemberStatus Status,
+    Instant RequestedAt,
+    Instant? ConfirmedAt);
 
 public record CampSeasonData(
     string BlurbLong,

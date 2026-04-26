@@ -1,0 +1,8 @@
+@model Humans.Web.Models.GuideViewModel
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<h1 class="mb-4">Guide</h1>
+
+@await Html.PartialAsync("_GuideLayout", Model)

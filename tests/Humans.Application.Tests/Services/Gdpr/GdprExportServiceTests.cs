@@ -18,7 +18,7 @@ public class GdprExportServiceTests
             new FakeClock(FixedNow),
             NullLogger<GdprExportService>.Instance);
 
-    [Fact]
+    [HumansFact]
     public async Task ExportForUserAsync_StampsExportedAtFromClock()
     {
         var service = CreateService(new FakeContributor("Profile", new { Name = "Jane" }));
@@ -28,7 +28,7 @@ public class GdprExportServiceTests
         export.ExportedAt.Should().Be("2026-04-15T10:30:00Z");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExportForUserAsync_MergesSlicesKeyedBySectionName()
     {
         var profile = new { Name = "Jane", City = "Barcelona" };
@@ -44,7 +44,7 @@ public class GdprExportServiceTests
         export.Sections["Consents"].Should().BeSameAs(consents);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExportForUserAsync_DropsNullSlices()
     {
         var service = CreateService(
@@ -57,7 +57,7 @@ public class GdprExportServiceTests
         export.Sections.Should().NotContainKey("Applications");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExportForUserAsync_PassesUserIdAndCancellationTokenToEveryContributor()
     {
         var userId = Guid.NewGuid();
@@ -74,7 +74,7 @@ public class GdprExportServiceTests
         second.CalledWithToken.Should().Be(cts.Token);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExportForUserAsync_FailsLoudlyOnDuplicateSectionName()
     {
         var service = CreateService(
@@ -87,7 +87,7 @@ public class GdprExportServiceTests
             .WithMessage("*Profile*");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExportForUserAsync_PropagatesContributorFailure()
     {
         var boom = new InvalidOperationException("boom");
@@ -100,7 +100,7 @@ public class GdprExportServiceTests
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExportForUserAsync_WithNoContributors_ReturnsEmptySectionBag()
     {
         var service = CreateService();
@@ -111,7 +111,7 @@ public class GdprExportServiceTests
         export.ExportedAt.Should().NotBeNullOrEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExportForUserAsync_FlattensMultipleSlicesFromOneContributor()
     {
         var service = CreateService(new FakeContributor(
@@ -127,7 +127,7 @@ public class GdprExportServiceTests
         export.Sections.Should().ContainKey("Languages");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExportForUserAsync_EmptyCollectionSliceSurvivesAsEmptyList()
     {
         // Empty collections MUST round-trip to "[]" in the JSON — the legacy
@@ -145,7 +145,7 @@ public class GdprExportServiceTests
         export.Sections["Consents"].Should().BeSameAs(emptyConsents);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ExportForUserAsync_EmptyCollectionSerializesToEmptyArray()
     {
         var emptyConsents = new List<object>();

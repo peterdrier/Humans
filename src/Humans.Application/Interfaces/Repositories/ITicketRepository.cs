@@ -241,6 +241,7 @@ public interface ITicketRepository
         TicketAttendeeStatus? filterStatus,
         bool? filterMatched,
         string? filterOrderId,
+        bool filterMultipleTickets,
         CancellationToken ct = default);
 
     Task<IReadOnlyList<AttendeeExportRow>> GetAttendeeExportDataAsync(CancellationToken ct = default);

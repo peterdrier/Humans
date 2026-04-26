@@ -1,0 +1,55 @@
+@model Humans.Web.Models.PagerViewModel
+@{
+    if (Model.TotalPages <= 1) { return; }
+
+    var current = Math.Clamp(Model.CurrentPage, 1, Model.TotalPages);
+    var window = Math.Max(0, Model.Window);
+    var windowStart = Math.Max(2, current - window);
+    var windowEnd = Math.Min(Model.TotalPages - 1, current + window);
+
+    var pages = new List<int> { 1 };
+    if (windowStart > 2) { pages.Add(-1); }
+    for (var i = windowStart; i <= windowEnd; i++) { pages.Add(i); }
+    if (windowEnd < Model.TotalPages - 1) { pages.Add(-1); }
+    if (Model.TotalPages > 1) { pages.Add(Model.TotalPages); }
+
+    var baseRoute = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+    foreach (var pair in Context.Request.Query)
+    {
+        if (string.Equals(pair.Key, "page", StringComparison.OrdinalIgnoreCase)) { continue; }
+        baseRoute[pair.Key] = pair.Value.ToString();
+    }
+
+    Dictionary<string, string?> RouteFor(int page)
+    {
+        var dict = new Dictionary<string, string?>(baseRoute, StringComparer.OrdinalIgnoreCase)
+        {
+            ["page"] = page.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        };
+        return dict;
+    }
+}
+
+<nav aria-label="Pagination">
+    <ul class="pagination">
+        <li class="page-item @(current <= 1 ? "disabled" : "")">
+            <a class="page-link" asp-action="@Model.Action" asp-all-route-data="@RouteFor(current - 1)">Previous</a>
+        </li>
+        @foreach (var p in pages)
+        {
+            if (p == -1)
+            {
+                <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+            }
+            else
+            {
+                <li class="page-item @(p == current ? "active" : "")">
+                    <a class="page-link" asp-action="@Model.Action" asp-all-route-data="@RouteFor(p)">@p</a>
+                </li>
+            }
+        }
+        <li class="page-item @(current >= Model.TotalPages ? "disabled" : "")">
+            <a class="page-link" asp-action="@Model.Action" asp-all-route-data="@RouteFor(current + 1)">Next</a>
+        </li>
+    </ul>
+</nav>

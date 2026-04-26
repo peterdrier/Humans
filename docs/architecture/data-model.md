@@ -6,6 +6,8 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 
 ## Entity index
 
+<!-- freshness:auto id="entity-index" prompt="Walk every class under src/Humans.Domain/Entities/ that has a corresponding configuration under src/Humans.Infrastructure/Data/Configurations/. For each, identify the owning section (find the section doc in docs/sections/ whose Data Model section names the entity). Build the entity index table with columns: Entity | Owning section | Notes. Preserve any per-row Notes column content the existing table already has — only update entity names and section links if they changed." -->
+
 | Entity | Owning section | Notes |
 |--------|---------------|-------|
 | User | [Users/Identity](../sections/Users.md) | Profile-adjacent extension fields documented in [`Profiles.md`](../sections/Profiles.md#user-identity-extension). |
@@ -31,6 +33,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | TeamPage | [Teams](../sections/Teams.md) | |
 | GoogleResource | [Teams](../sections/Teams.md) | Team Resources sub-aggregate. |
 | Camp / CampSeason / CampLead / CampImage / CampHistoricalName / CampSettings | [Camps](../sections/Camps.md) | |
+| CampMember | [Camps](../sections/Camps.md) | Per-season, post-hoc human/camp affiliation (Pending/Active/Removed). Partial unique on `(CampSeasonId, UserId) WHERE Status <> 'Removed'`. |
 | CityPlanningSettings | [City Planning](../sections/CityPlanning.md) | |
 | CampPolygon | [City Planning](../sections/CityPlanning.md) | |
 | CampPolygonHistory | [City Planning](../sections/CityPlanning.md) | Append-only (§12). |
@@ -45,6 +48,8 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | SystemSetting | per-key ownership | Each key belongs to its consuming section's repository. See [SystemSetting below](#systemsetting-per-key-ownership). |
 | AuditLogEntry | [Audit Log](../sections/AuditLog.md) | Append-only (§12). |
 | Notification / NotificationRecipient | [Notifications](../sections/Notifications.md) | |
+
+<!-- /freshness:auto -->
 
 Every major section in the app now has a dedicated section doc. `/Admin/*` is a controller/nav holder, not a section — its services belong to the sections they act on (Email, Profiles, Google Integration, Auth, Legal & Consent).
 
@@ -83,6 +88,9 @@ CampSeason (Camps)
 
 DocumentVersion (Legal & Consent)
   ← ConsentRecord (Legal & Consent, sibling aggregate — join by DocumentVersionId)
+
+CampSeason (Camps)
+  ← CampMember (Camps, aggregate-local — partial unique on (CampSeasonId, UserId) WHERE Status <> 'Removed')
 
 Campaign (Campaigns)
   ← CampaignCode, CampaignGrant (Campaigns, aggregate-local)

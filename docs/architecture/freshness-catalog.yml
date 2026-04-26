@@ -1,0 +1,236 @@
+# Freshness catalog — see docs/superpowers/specs/2026-04-25-freshness-sweep-design.md
+# Consumed by /freshness-sweep (.claude/skills/freshness-sweep/SKILL.md)
+
+version: 1
+
+# Mechanical entries — fully auto-derived. Each entry declares trigger globs
+# (matched against `git diff --name-only <anchor>..upstream/main`) and an
+# update method (script or prompt).
+mechanical:
+  - id: dev-stats
+    target: docs/development-stats.md
+    triggers:
+      - "src/**/*.cs"
+      - "src/**/*.cshtml"
+      - "src/**/*.razor"
+    update: script
+    script: docs/scripts/generate-stats.sh
+
+  - id: about-page-packages
+    target: src/Humans.Web/Views/About/Index.cshtml
+    triggers:
+      - "Directory.Packages.props"
+      - "**/*.csproj"
+    update: prompt
+    prompt: |
+      Read Directory.Packages.props and every .csproj file in the repo.
+      Build a list of production NuGet packages (exclude test-only packages
+      that are referenced only from anything under tests/).
+
+      Open src/Humans.Web/Views/About/Index.cshtml. Find the package list
+      section ("The Ingredients" and any package cards below it). Update
+      version numbers in place. Add new packages following the existing
+      card structure with a one-line description (carry over any existing
+      description for packages already in the file). Remove cards for
+      packages no longer referenced.
+
+      Preserve all prose, contributor names, the license section, and any
+      hand-written copy outside the package cards. Do not invent licenses
+      or descriptions; if you don't know a new package's license, leave a
+      `<!-- TODO: license -->` HTML comment next to its card and add a
+      question to your return JSON asking Peter to confirm.
+
+  - id: docs-readme-index
+    target: docs/README.md
+    triggers:
+      - "docs/features/**/*.md"
+      - "docs/sections/**/*.md"
+      - "docs/guide/**/*.md"
+    update: prompt
+    prompt: |
+      Walk docs/features/, docs/sections/, and docs/guide/. For each .md file
+      (excluding SECTION-TEMPLATE.md, README.md, GettingStarted.md, Glossary.md),
+      derive a one-line description from the first paragraph of the file (or
+      the H1 + first sentence if the first paragraph is too long).
+
+      Update docs/README.md to list every doc found, grouped by directory,
+      using the existing table layout (file name → relative link → description).
+      Preserve any hand-written prose at the top of docs/README.md (intro,
+      pointers to architecture/, etc.). Only regenerate the indexed tables.
+
+  - id: authorization-inventory
+    target: docs/authorization-inventory.md
+    triggers:
+      - "src/Humans.Web/Controllers/**/*.cs"
+      - "src/Humans.Application/**/*.cs"
+      - "src/Humans.Web/Authorization/**/*.cs"
+      - "src/Humans.Domain/Authorization/**/*.cs"
+    update: prompt
+    prompt: |
+      Regenerate docs/authorization-inventory.md from scratch.
+
+      Find every:
+      - [Authorize(Roles = ...)] / [Authorize(Policy = ...)] attribute on
+        controllers and actions
+      - RoleChecks.* / ShiftRoleChecks.* invocation
+      - IAuthorizationService.AuthorizeAsync call site
+      - Resource-based authorization handler (subclass of AuthorizationHandler<T, R>)
+
+      Group by section (Admin, Tickets, Teams, Profiles, Camps, etc. — match
+      the existing section headings).
+
+      Match the existing column layout: Controller | Scope | Roles | Source.
+      "Scope" is "Class" for class-level [Authorize], "Action" for
+      action-level. "Roles" is the comma-separated role list. "Source" names
+      the static field (e.g. RoleNames.Admin, RoleGroups.BoardOrAdmin) when
+      identifiable.
+
+      Preserve the file's existing intro paragraph and any non-table prose
+      at the top.
+
+  - id: controller-architecture-audit
+    target: docs/controller-architecture-audit.md
+    triggers:
+      - "src/Humans.Web/Controllers/**/*.cs"
+    update: prompt
+    prompt: |
+      Regenerate the action-name audit in docs/controller-architecture-audit.md.
+
+      For every controller in src/Humans.Web/Controllers/:
+      1. List every public action method with its [HttpGet]/[HttpPost]/etc.
+         verb and route.
+      2. For each action, derive a Purpose line from the action name and
+         body comments.
+      3. Suggest a rename only if the action name violates the project's
+         action-name conventions documented in
+         docs/architecture/conventions.md (or note "OK" if it doesn't).
+
+      Match the existing column layout: Method | Route | Verb | Purpose | Suggestion.
+      Preserve the document header (the "Living document. Last updated: ..." line)
+      and update the date.
+
+  - id: dependency-graph
+    target: docs/architecture/dependency-graph.md
+    triggers:
+      - "src/Humans.Application/**/*.cs"
+      - "src/Humans.Web/Program.cs"
+      - "src/Humans.Web/ServiceCollectionExtensions/**/*.cs"
+    update: prompt
+    prompt: |
+      Regenerate the Mermaid dependency graph in docs/architecture/dependency-graph.md.
+
+      Walk every service class under src/Humans.Application/Services/. For
+      each:
+      1. Read the constructor; identify every injected interface.
+      2. For each injected interface, follow it to its implementing service
+         to identify the section it belongs to (use the folder name under
+         src/Humans.Application/Services/ as the section).
+      3. Distinguish ctor-injected (solid arrow) from
+         IServiceProvider.GetRequiredService<T>() (dashed arrow with "lazy"
+         label).
+      4. Identify cross-cutting services (AuditLogService, EmailService,
+         NotificationService, RoleAssignmentService, HumansMetrics) — place
+         these on the right side of the graph as a separate cluster.
+
+      Preserve the document header ("How to read", classDef colors, and any
+      explanatory prose). Only regenerate the Mermaid diagram body.
+
+  - id: service-data-access-map
+    target: docs/architecture/service-data-access-map.md
+    triggers:
+      - "src/Humans.Application/Services/**/*.cs"
+      - "src/Humans.Infrastructure/Repositories/**/*.cs"
+      - "src/Humans.Infrastructure/Data/HumansDbContext.cs"
+    update: prompt
+    prompt: |
+      Regenerate docs/architecture/service-data-access-map.md.
+
+      For every service under src/Humans.Application/Services/, identify:
+      1. Which repository interfaces it depends on.
+      2. Which database tables those repositories ultimately access (resolve
+         via the HumansDbContext.cs DbSet<> declarations).
+      3. Which IMemoryCache keys the service reads/writes.
+
+      Group by section (use folder name under Services/). Match the existing
+      section headings and table layout. Preserve the intro paragraph and
+      Table of Contents.
+
+      Note: at scale ~500 users with single-server deployment, this map is
+      diagnostic — call out cross-section table reads (a service reading a
+      table owned by another section's repository) as a design rule
+      violation per docs/architecture/design-rules.md §"Services own their data".
+
+  - id: data-model-index
+    target: docs/architecture/data-model.md
+    triggers:
+      - "src/Humans.Domain/Entities/**/*.cs"
+      - "src/Humans.Infrastructure/Data/Configurations/**/*.cs"
+    update: prompt
+    prompt-file: ".claude/skills/freshness-sweep/prompts/data-model-index.md"
+
+  - id: guid-reservations
+    target: docs/guid-reservations.md
+    triggers:
+      - "src/Humans.Infrastructure/Data/Configurations/**/*.cs"
+      - "src/Humans.Domain/Constants/**/*.cs"
+    update: prompt
+    prompt: |
+      Regenerate the "Current Reservations" table in docs/guid-reservations.md.
+
+      Walk src/Humans.Domain/Constants/ and src/Humans.Infrastructure/Data/Configurations/.
+      Find every deterministic GUID literal (`new Guid("0000...")` or string
+      literals in HasData/HasData<T>). Group GUIDs by their leading 4-hex
+      block (e.g., `0001`, `0002`).
+
+      For each block, derive Purpose from the file path / class name and
+      Source as a relative link to that file.
+
+      Preserve the document's prose sections ("Rules", and the explanatory
+      intro). Only regenerate the table.
+
+  - id: code-analysis-suppressions
+    target: docs/architecture/code-analysis.md
+    triggers:
+      - "Directory.Build.props"
+      - "tests/Directory.Build.props"
+      - "tests/BannedSymbols.txt"
+    update: prompt
+    prompt: |
+      Process the freshness:auto block with id="suppressions" in
+      docs/architecture/code-analysis.md per its inline prompt.
+
+  - id: reforge-history
+    target: docs/reforge-history.csv
+    triggers:
+      - "src/**/*.cs"
+      - "src/**/*.cshtml"
+    update: script
+    script: docs/scripts/generate-reforge-history.sh
+
+# Editorial doc trees — walked recursively for .md files. Each .md may include
+# inline freshness markers (freshness:triggers, freshness:auto, freshness:flag-on-change).
+editorial_trees:
+  - docs/sections/
+  - docs/features/
+  - docs/guide/
+  - docs/architecture/coding-rules.md
+  - docs/architecture/design-rules.md
+  - docs/architecture/code-review-rules.md
+  - docs/architecture/conventions.md
+  - docs/seed-data.md
+
+# Files to exclude from both mechanical and editorial walks.
+ignore:
+  - docs/sections/SECTION-TEMPLATE.md
+  - docs/architecture/maintenance-log.md
+  - docs/architecture/tech-debt-*.md
+  - docs/architecture/screenshot-maintenance.md
+  - docs/admin-role-setup.md
+  - docs/google-service-account-setup.md
+  - docs/plans/**
+  - docs/specs/**
+  - docs/superpowers/**
+  # Guide meta files — narrative cover material, not tied to a specific feature
+  - docs/guide/README.md
+  - docs/guide/GettingStarted.md
+  - docs/guide/Glossary.md

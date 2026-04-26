@@ -8,7 +8,7 @@ public class SecurityHeaderTests : IntegrationTestBase
 {
     public SecurityHeaderTests(HumansWebApplicationFactory factory) : base(factory) { }
 
-    [Fact]
+    [HumansFact]
     public async Task Response_ContainsXFrameOptionsDeny()
     {
         var response = await Client.GetAsync("/");
@@ -17,7 +17,7 @@ public class SecurityHeaderTests : IntegrationTestBase
         values.Should().ContainSingle().Which.Should().Be("DENY");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task Response_ContainsXContentTypeOptionsNosniff()
     {
         var response = await Client.GetAsync("/");
@@ -26,7 +26,7 @@ public class SecurityHeaderTests : IntegrationTestBase
         values.Should().ContainSingle().Which.Should().Be("nosniff");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task Response_ContainsContentSecurityPolicy()
     {
         var response = await Client.GetAsync("/");
@@ -36,7 +36,7 @@ public class SecurityHeaderTests : IntegrationTestBase
         csp.Should().Contain("default-src 'self'");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task Response_CspContainsNonce()
     {
         var response = await Client.GetAsync("/");
@@ -46,7 +46,7 @@ public class SecurityHeaderTests : IntegrationTestBase
         csp.Should().Contain("'nonce-");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task Response_ContainsReferrerPolicy()
     {
         var response = await Client.GetAsync("/");
@@ -55,7 +55,7 @@ public class SecurityHeaderTests : IntegrationTestBase
         values.Should().ContainSingle().Which.Should().Be("strict-origin-when-cross-origin");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task Response_ContainsPermissionsPolicy()
     {
         var response = await Client.GetAsync("/");

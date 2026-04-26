@@ -1,7 +1,9 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Camps;
 using Humans.Application.Tests.Infrastructure;
@@ -28,6 +30,7 @@ public class CampServiceTests : IDisposable
     private readonly IAuditLogService _auditLog;
     private readonly IUserService _userService;
     private readonly InMemoryCampImageStorage _imageStorage;
+    private readonly INotificationEmitter _notificationEmitter;
 
     public CampServiceTests()
     {
@@ -55,12 +58,16 @@ public class CampServiceTests : IDisposable
                     users.ToDictionary(u => u.Id));
             });
 
+        _notificationEmitter = Substitute.For<INotificationEmitter>();
+
         _service = new CampService(
             repo,
             _userService,
             _auditLog,
             Substitute.For<ISystemTeamSync>(),
             _imageStorage,
+            _notificationEmitter,
+            Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             _clock,
             new MemoryCache(new MemoryCacheOptions()),
             NullLogger<CampService>.Instance);
@@ -76,7 +83,7 @@ public class CampServiceTests : IDisposable
     // CreateCampAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task CreateCampAsync_NewCamp_CreatesCampWithPendingSeason()
     {
         await SeedSettingsAsync();
@@ -105,7 +112,7 @@ public class CampServiceTests : IDisposable
         lead.Role.Should().Be(CampLeadRole.CoLead);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task CreateCampAsync_ReservedSlug_ThrowsInvalidOperation()
     {
         await SeedSettingsAsync();
@@ -123,7 +130,7 @@ public class CampServiceTests : IDisposable
     // ApproveSeasonAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task ApproveSeasonAsync_PendingSeason_SetsActive()
     {
         await SeedSettingsAsync();
@@ -144,7 +151,7 @@ public class CampServiceTests : IDisposable
     // RejectSeasonAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task RejectSeasonAsync_PendingSeason_SetsRejected()
     {
         await SeedSettingsAsync();
@@ -162,7 +169,7 @@ public class CampServiceTests : IDisposable
     // OptInToSeasonAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task OptInToSeasonAsync_ReturningCamp_AutoApproves()
     {
         await SeedSettingsAsync();
@@ -182,7 +189,7 @@ public class CampServiceTests : IDisposable
         newSeason.BlurbLong.Should().Be("A fun camp for everyone"); // copied
     }
 
-    [Fact]
+    [HumansFact]
     public async Task OptInToSeasonAsync_PreviouslyRejected_GoesPending()
     {
         await SeedSettingsAsync();
@@ -199,7 +206,7 @@ public class CampServiceTests : IDisposable
         newSeason.Status.Should().Be(CampSeasonStatus.Pending);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task OptInToSeasonAsync_PendingOnly_GoesPending()
     {
         await SeedSettingsAsync();
@@ -219,7 +226,7 @@ public class CampServiceTests : IDisposable
     // AddLeadAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task AddLeadAsync_UnderMax_AddsLead()
     {
         await SeedSettingsAsync();
@@ -231,7 +238,7 @@ public class CampServiceTests : IDisposable
         lead.UserId.Should().Be(newLeadId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task AddLeadAsync_AtMaxLeads_Throws()
     {
         await SeedSettingsAsync();
@@ -244,7 +251,7 @@ public class CampServiceTests : IDisposable
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*maximum*");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RemoveLeadAsync_LastLead_Throws()
     {
         await SeedSettingsAsync();
@@ -259,7 +266,7 @@ public class CampServiceTests : IDisposable
     // IsUserCampLeadAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserCampLeadAsync_ActiveLead_ReturnsTrue()
     {
         await SeedSettingsAsync();
@@ -270,7 +277,7 @@ public class CampServiceTests : IDisposable
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task IsUserCampLeadAsync_NonLead_ReturnsFalse()
     {
         await SeedSettingsAsync();
@@ -283,7 +290,7 @@ public class CampServiceTests : IDisposable
     // Public projections
     // ==========================================================================
 
-    [Fact]
+    [HumansFact]
     public async Task GetCampPublicSummariesForYearAsync_ReturnsSortedProjectedSummaries()
     {
         await SeedSettingsAsync();
@@ -358,7 +365,7 @@ public class CampServiceTests : IDisposable
         summaries[1].IsSwissCamp.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCampPlacementSummariesForYearAsync_ReturnsSortedPlacementData()
     {
         await SeedSettingsAsync();
@@ -420,7 +427,7 @@ public class CampServiceTests : IDisposable
         placements[1].Status.Should().Be(nameof(CampSeasonStatus.Active));
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCampDetailAsync_UsesPublicYearAndFallsBackToLatestSeason()
     {
         await SeedSettingsAsync();
@@ -471,7 +478,7 @@ public class CampServiceTests : IDisposable
         detail.CurrentSeason.IsNameLocked.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCampDetailAsync_ExplicitYearWithoutFallback_ReturnsNullWhenSeasonMissing()
     {
         await SeedSettingsAsync();
@@ -501,7 +508,7 @@ public class CampServiceTests : IDisposable
         detail.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetSettingsAsync_AfterSetPublicYearAsync_ReturnsInvalidatedSettings()
     {
         await SeedSettingsAsync();
@@ -517,7 +524,7 @@ public class CampServiceTests : IDisposable
         updated.PublicYear.Should().Be(2027);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetCampPublicSummariesForYearAsync_AfterUploadImageAsync_RefreshesCachedImage()
     {
         await SeedSettingsAsync();
@@ -553,7 +560,7 @@ public class CampServiceTests : IDisposable
     // ChangeSeasonNameAsync
     // ==========================================================================
 
-    [Fact]
+    [HumansFact(Timeout = 10000)]
     public async Task ChangeSeasonNameAsync_LogsOldNameToHistory()
     {
         await SeedSettingsAsync();
@@ -573,7 +580,7 @@ public class CampServiceTests : IDisposable
         historical!.Name.Should().Be("Test Camp");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ChangeSeasonNameAsync_AfterLockDate_Throws()
     {
         await SeedSettingsAsync();
@@ -587,6 +594,372 @@ public class CampServiceTests : IDisposable
 
         var act = () => _service.ChangeSeasonNameAsync(season.Id, "Too Late");
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*locked*");
+    }
+
+    // ==========================================================================
+    // Camp membership per season (issue nobodies-collective#488)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task RequestCampMembershipAsync_OpenSeason_CreatesPending()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+
+        var result = await _service.RequestCampMembershipAsync(camp.Id, userId);
+
+        result.Outcome.Should().Be(CampMemberRequestOutcome.Created);
+        var member = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == result.CampMemberId);
+        member.Status.Should().Be(CampMemberStatus.Pending);
+        member.UserId.Should().Be(userId);
+    }
+
+    [HumansFact]
+    public async Task RequestCampMembershipAsync_NoOpenSeason_ReturnsNoOpenSeason()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+
+        var result = await _service.RequestCampMembershipAsync(camp.Id, userId);
+
+        result.Outcome.Should().Be(CampMemberRequestOutcome.NoOpenSeason);
+        (await _dbContext.CampMembers.AsNoTracking().AnyAsync()).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task RequestCampMembershipAsync_AlreadyPending_IsIdempotent()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+
+        var first = await _service.RequestCampMembershipAsync(camp.Id, userId);
+        var second = await _service.RequestCampMembershipAsync(camp.Id, userId);
+
+        second.Outcome.Should().Be(CampMemberRequestOutcome.AlreadyPending);
+        second.CampMemberId.Should().Be(first.CampMemberId);
+        (await _dbContext.CampMembers.AsNoTracking().CountAsync()).Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task ApproveCampMemberAsync_PendingRequest_SetsActiveAndNotifies()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var request = await _service.RequestCampMembershipAsync(camp.Id, userId);
+        var approverId = Guid.NewGuid();
+
+        await _service.ApproveCampMemberAsync(camp.Id, request.CampMemberId, approverId);
+
+        var member = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == request.CampMemberId);
+        member.Status.Should().Be(CampMemberStatus.Active);
+        member.ConfirmedByUserId.Should().Be(approverId);
+        member.ConfirmedAt.Should().NotBeNull();
+
+        await _notificationEmitter.Received(1).SendAsync(
+            NotificationSource.CampMembershipApproved,
+            Arg.Any<NotificationClass>(),
+            Arg.Any<NotificationPriority>(),
+            Arg.Any<string>(),
+            Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == userId),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ApproveCampMemberAsync_CrossCampMemberId_Throws()
+    {
+        // P1 fix: controller authorizes camp A, but attacker submits camp B's member id.
+        await SeedSettingsAsync();
+        var campA = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(campA.Id);
+        var campB = await _service.CreateCampAsync(
+            Guid.NewGuid(), "Other Camp", "other@camp.com", "+34600000001",
+            null, null, false, 1, MakeSeasonData(), null, 2026);
+        await ApproveLatestSeasonAsync(campB.Id);
+
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var requestInCampB = await _service.RequestCampMembershipAsync(campB.Id, userId);
+
+        // A lead of camp A tries to approve a member belonging to camp B.
+        var act = () => _service.ApproveCampMemberAsync(campA.Id, requestInCampB.CampMemberId, Guid.NewGuid());
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
+
+        // Camp B's pending row is untouched.
+        var memberB = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == requestInCampB.CampMemberId);
+        memberB.Status.Should().Be(CampMemberStatus.Pending);
+    }
+
+    [HumansFact]
+    public async Task RejectCampMemberAsync_PendingRequest_SetsRemovedAndNotifies()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var request = await _service.RequestCampMembershipAsync(camp.Id, userId);
+
+        await _service.RejectCampMemberAsync(camp.Id, request.CampMemberId, Guid.NewGuid());
+
+        var member = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == request.CampMemberId);
+        member.Status.Should().Be(CampMemberStatus.Removed);
+        member.RemovedAt.Should().NotBeNull();
+
+        await _notificationEmitter.Received(1).SendAsync(
+            NotificationSource.CampMembershipRejected,
+            Arg.Any<NotificationClass>(),
+            Arg.Any<NotificationPriority>(),
+            Arg.Any<string>(),
+            Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == userId),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RejectCampMemberAsync_AllowsReRequest()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var first = await _service.RequestCampMembershipAsync(camp.Id, userId);
+        await _service.RejectCampMemberAsync(camp.Id, first.CampMemberId, Guid.NewGuid());
+
+        var second = await _service.RequestCampMembershipAsync(camp.Id, userId);
+
+        second.Outcome.Should().Be(CampMemberRequestOutcome.Created);
+        second.CampMemberId.Should().NotBe(first.CampMemberId);
+    }
+
+    [HumansFact]
+    public async Task WithdrawCampMembershipRequestAsync_Self_SetsRemoved()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var request = await _service.RequestCampMembershipAsync(camp.Id, userId);
+
+        await _service.WithdrawCampMembershipRequestAsync(request.CampMemberId, userId);
+
+        var member = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == request.CampMemberId);
+        member.Status.Should().Be(CampMemberStatus.Removed);
+    }
+
+    [HumansFact]
+    public async Task WithdrawCampMembershipRequestAsync_OtherUser_Throws()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var request = await _service.RequestCampMembershipAsync(camp.Id, userId);
+
+        var act = () => _service.WithdrawCampMembershipRequestAsync(request.CampMemberId, Guid.NewGuid());
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
+    }
+
+    [HumansFact]
+    public async Task LeaveCampAsync_ActiveMember_SetsRemoved()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var request = await _service.RequestCampMembershipAsync(camp.Id, userId);
+        await _service.ApproveCampMemberAsync(camp.Id, request.CampMemberId, Guid.NewGuid());
+
+        await _service.LeaveCampAsync(request.CampMemberId, userId);
+
+        var member = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == request.CampMemberId);
+        member.Status.Should().Be(CampMemberStatus.Removed);
+    }
+
+    [HumansFact]
+    public async Task RemoveCampMemberAsync_ActiveMember_SetsRemoved()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var request = await _service.RequestCampMembershipAsync(camp.Id, userId);
+        await _service.ApproveCampMemberAsync(camp.Id, request.CampMemberId, Guid.NewGuid());
+
+        await _service.RemoveCampMemberAsync(camp.Id, request.CampMemberId, Guid.NewGuid());
+
+        var member = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == request.CampMemberId);
+        member.Status.Should().Be(CampMemberStatus.Removed);
+    }
+
+    [HumansFact]
+    public async Task WithdrawSeasonAsync_NotifiesPendingRequesters_DoesNotChangeMemberStatus()
+    {
+        // No more auto-withdraw cascade — just a notification out. Pending rows stay pending.
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var request = await _service.RequestCampMembershipAsync(camp.Id, userId);
+        var season = await _dbContext.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id);
+        _notificationEmitter.ClearReceivedCalls();
+
+        await _service.WithdrawSeasonAsync(season.Id);
+
+        var member = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == request.CampMemberId);
+        member.Status.Should().Be(CampMemberStatus.Pending);
+
+        await _notificationEmitter.Received(1).SendAsync(
+            NotificationSource.CampMembershipSeasonClosed,
+            Arg.Any<NotificationClass>(),
+            Arg.Any<NotificationPriority>(),
+            Arg.Any<string>(),
+            Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == userId),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetMembershipStateForCampAsync_ActiveMember_ReturnsActive()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var request = await _service.RequestCampMembershipAsync(camp.Id, userId);
+        await _service.ApproveCampMemberAsync(camp.Id, request.CampMemberId, Guid.NewGuid());
+
+        var state = await _service.GetMembershipStateForCampAsync(camp.Id, userId);
+
+        state.Status.Should().Be(CampMemberStatusSummary.Active);
+        state.OpenSeasonYear.Should().Be(2026);
+    }
+
+    [HumansFact]
+    public async Task GetMembershipStateForCampAsync_NoSeason_ReturnsNoOpenSeason()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+
+        var state = await _service.GetMembershipStateForCampAsync(camp.Id, Guid.NewGuid());
+
+        state.Status.Should().Be(CampMemberStatusSummary.NoOpenSeason);
+    }
+
+    [HumansFact]
+    public async Task GetPendingMembershipCountForLeadAsync_CountsPendingOnActiveSeasonsForLeadsCamps()
+    {
+        await SeedSettingsAsync();
+        var leadUserId = Guid.NewGuid();
+        await SeedUserAsync(leadUserId, "Lead Larry");
+        var camp = await _service.CreateCampAsync(
+            leadUserId, "Lead Camp", "lc@camp.com", "+34600000020",
+            null, null, false, 1, MakeSeasonData(), null, 2026);
+        await ApproveLatestSeasonAsync(camp.Id);
+
+        // Two humans request; count should be 2.
+        var alice = Guid.NewGuid();
+        var bob = Guid.NewGuid();
+        await SeedUserAsync(alice, "Alice");
+        await SeedUserAsync(bob, "Bob");
+        await _service.RequestCampMembershipAsync(camp.Id, alice);
+        await _service.RequestCampMembershipAsync(camp.Id, bob);
+
+        (await _service.GetPendingMembershipCountForLeadAsync(leadUserId)).Should().Be(2);
+
+        // A non-lead sees 0.
+        (await _service.GetPendingMembershipCountForLeadAsync(Guid.NewGuid())).Should().Be(0);
+
+        // Approve one; count drops to 1.
+        var aliceReq = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.UserId == alice);
+        await _service.ApproveCampMemberAsync(camp.Id, aliceReq.Id, leadUserId);
+        (await _service.GetPendingMembershipCountForLeadAsync(leadUserId)).Should().Be(1);
+
+        // Withdraw the season; count drops to 0 (pending rows remain, but meter
+        // filters to Active/Full seasons only).
+        var season = await _dbContext.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id);
+        await _service.WithdrawSeasonAsync(season.Id);
+        (await _service.GetPendingMembershipCountForLeadAsync(leadUserId)).Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task GetCampMembersAsync_IncludesLeadsAsActiveWithLeadBadge()
+    {
+        await SeedSettingsAsync();
+        var leadUserId = Guid.NewGuid();
+        await SeedUserAsync(leadUserId, "Lead Larry");
+        // Use the lead as the creator so they're registered as a CampLead.
+        var camp = await _service.CreateCampAsync(
+            leadUserId, "Lead Camp", "lc@camp.com", "+34600000010",
+            null, null, false, 1, MakeSeasonData(), null, 2026);
+        await ApproveLatestSeasonAsync(camp.Id);
+        var season = await _dbContext.CampSeasons.AsNoTracking().FirstAsync(s => s.CampId == camp.Id);
+
+        // A separate human requests and is approved.
+        var memberUserId = Guid.NewGuid();
+        await SeedUserAsync(memberUserId, "Member Mary");
+        var req = await _service.RequestCampMembershipAsync(camp.Id, memberUserId);
+        await _service.ApproveCampMemberAsync(camp.Id, req.CampMemberId, Guid.NewGuid());
+
+        var members = await _service.GetCampMembersAsync(season.Id);
+
+        // Lead appears without a CampMember row but with IsLead=true.
+        var leadRow = members.Active.Single(r => r.UserId == leadUserId);
+        leadRow.IsLead.Should().BeTrue();
+        leadRow.CampMemberId.Should().Be(Guid.Empty);
+
+        // Approved member appears normally.
+        var memberRow = members.Active.Single(r => r.UserId == memberUserId);
+        memberRow.IsLead.Should().BeFalse();
+        memberRow.CampMemberId.Should().Be(req.CampMemberId);
+
+        // Leads sort to the top.
+        members.Active[0].IsLead.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task GetCampMembershipsForUserAsync_ActiveMembership_IsReturned()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var req = await _service.RequestCampMembershipAsync(camp.Id, userId);
+        await _service.ApproveCampMemberAsync(camp.Id, req.CampMemberId, Guid.NewGuid());
+
+        var memberships = await _service.GetCampMembershipsForUserAsync(userId);
+
+        memberships.Should().HaveCount(1);
+        memberships[0].Status.Should().Be(CampMemberStatus.Active);
+        memberships[0].Year.Should().Be(2026);
     }
 
     // ==========================================================================

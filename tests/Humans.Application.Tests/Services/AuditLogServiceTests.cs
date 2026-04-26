@@ -38,7 +38,7 @@ public class AuditLogServiceTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task LogAsync_JobOverload_PersistsEntry()
     {
         var entityId = Guid.NewGuid();
@@ -57,7 +57,7 @@ public class AuditLogServiceTests : IDisposable
         entry.OccurredAt.Should().Be(_clock.GetCurrentInstant());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task LogAsync_HumanOverload_PersistsEntryWithActorFields()
     {
         var entityId = Guid.NewGuid();
@@ -76,7 +76,7 @@ public class AuditLogServiceTests : IDisposable
         entry.OccurredAt.Should().Be(_clock.GetCurrentInstant());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task LogAsync_PersistsImmediatelyWithoutCallerSaveChanges()
     {
         var entityId = Guid.NewGuid();
@@ -91,7 +91,7 @@ public class AuditLogServiceTests : IDisposable
         _dbContext.AuditLogEntries.AsNoTracking().Count().Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task LogGoogleSyncAsync_PersistsEntryWithSyncFields()
     {
         var resourceId = Guid.NewGuid();
@@ -122,7 +122,7 @@ public class AuditLogServiceTests : IDisposable
 
     // ===== GetByResourceAsync =====
 
-    [Fact]
+    [HumansFact]
     public async Task GetByResourceAsync_ReturnsEntriesForResource_OrderedByOccurredAtDesc()
     {
         var resourceId = Guid.NewGuid();
@@ -140,7 +140,7 @@ public class AuditLogServiceTests : IDisposable
         result[1].Id.Should().Be(older.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetByResourceAsync_LimitsTo200()
     {
         var resourceId = Guid.NewGuid();
@@ -157,7 +157,7 @@ public class AuditLogServiceTests : IDisposable
         result.Should().HaveCount(200);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetByResourceAsync_ReturnsEmptyForNonExistentResource()
     {
         var result = await _service.GetByResourceAsync(Guid.NewGuid());
@@ -167,7 +167,7 @@ public class AuditLogServiceTests : IDisposable
 
     // ===== GetGoogleSyncByUserAsync =====
 
-    [Fact]
+    [HumansFact]
     public async Task GetGoogleSyncByUserAsync_ReturnsEntriesWithResourceAndRelatedEntity()
     {
         var userId = Guid.NewGuid();
@@ -194,7 +194,7 @@ public class AuditLogServiceTests : IDisposable
         result[0].Resource!.Name.Should().Be("Test Resource");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetGoogleSyncByUserAsync_ExcludesEntriesWithoutResourceId()
     {
         var userId = Guid.NewGuid();
@@ -207,7 +207,7 @@ public class AuditLogServiceTests : IDisposable
         result.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetGoogleSyncByUserAsync_ReturnsEmptyWhenNoSyncEntries()
     {
         var result = await _service.GetGoogleSyncByUserAsync(Guid.NewGuid());
@@ -217,7 +217,7 @@ public class AuditLogServiceTests : IDisposable
 
     // ===== GetRecentAsync =====
 
-    [Fact]
+    [HumansFact]
     public async Task GetRecentAsync_ReturnsTopN_OrderedByOccurredAtDesc()
     {
         var now = _clock.GetCurrentInstant();
@@ -236,7 +236,7 @@ public class AuditLogServiceTests : IDisposable
         result[2].Id.Should().Be(third.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetRecentAsync_RespectsCountParameter()
     {
         var now = _clock.GetCurrentInstant();
@@ -251,7 +251,7 @@ public class AuditLogServiceTests : IDisposable
         result[0].Id.Should().Be(mostRecent.Id);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetRecentAsync_ReturnsEmptyWhenNoEntries()
     {
         var result = await _service.GetRecentAsync(10);
@@ -261,7 +261,7 @@ public class AuditLogServiceTests : IDisposable
 
     // ===== GetFilteredAsync =====
 
-    [Fact]
+    [HumansFact]
     public async Task GetFilteredAsync_NoFilter_ReturnsAllWithCorrectTotalCount()
     {
         var now = _clock.GetCurrentInstant();
@@ -276,7 +276,7 @@ public class AuditLogServiceTests : IDisposable
         totalCount.Should().Be(3);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFilteredAsync_FiltersByAction()
     {
         var now = _clock.GetCurrentInstant();
@@ -292,7 +292,7 @@ public class AuditLogServiceTests : IDisposable
         items.Should().OnlyContain(e => e.Action == AuditAction.VolunteerApproved);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFilteredAsync_ReturnsAnomalyCount()
     {
         var now = _clock.GetCurrentInstant();
@@ -307,7 +307,7 @@ public class AuditLogServiceTests : IDisposable
         anomalyCount.Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetFilteredAsync_Pagination()
     {
         var now = _clock.GetCurrentInstant();
@@ -326,7 +326,7 @@ public class AuditLogServiceTests : IDisposable
 
     // ===== GetByUserAsync =====
 
-    [Fact]
+    [HumansFact]
     public async Task GetByUserAsync_MatchesEntityIdOrRelatedEntityId()
     {
         var userId = Guid.NewGuid();
@@ -345,7 +345,7 @@ public class AuditLogServiceTests : IDisposable
         result.Should().HaveCount(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetByUserAsync_RespectsCountLimit()
     {
         var userId = Guid.NewGuid();
@@ -362,7 +362,7 @@ public class AuditLogServiceTests : IDisposable
         result.Should().HaveCount(3);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetByUserAsync_OrdersByOccurredAtDesc()
     {
         var userId = Guid.NewGuid();

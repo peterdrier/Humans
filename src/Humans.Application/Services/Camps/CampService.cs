@@ -2,9 +2,11 @@ using Humans.Application;
 using Humans.Application.Extensions;
 using Humans.Application.Helpers;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
@@ -45,6 +47,8 @@ public sealed class CampService : ICampService, IUserDataContributor
     private readonly IAuditLogService _auditLog;
     private readonly ISystemTeamSync _systemTeamSync;
     private readonly ICampImageStorage _imageStorage;
+    private readonly INotificationEmitter _notificationEmitter;
+    private readonly ICampLeadJoinRequestsBadgeCacheInvalidator _leadBadgeInvalidator;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
     private readonly ILogger<CampService> _logger;
@@ -58,6 +62,8 @@ public sealed class CampService : ICampService, IUserDataContributor
         IAuditLogService auditLog,
         ISystemTeamSync systemTeamSync,
         ICampImageStorage imageStorage,
+        INotificationEmitter notificationEmitter,
+        ICampLeadJoinRequestsBadgeCacheInvalidator leadBadgeInvalidator,
         IClock clock,
         IMemoryCache cache,
         ILogger<CampService> logger)
@@ -67,6 +73,8 @@ public sealed class CampService : ICampService, IUserDataContributor
         _auditLog = auditLog;
         _systemTeamSync = systemTeamSync;
         _imageStorage = imageStorage;
+        _notificationEmitter = notificationEmitter;
+        _leadBadgeInvalidator = leadBadgeInvalidator;
         _clock = clock;
         _cache = cache;
         _logger = logger;
@@ -752,6 +760,8 @@ public sealed class CampService : ICampService, IUserDataContributor
             reviewedByUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
+        await NotifyPendingRequestersOfSeasonClosureAsync(seasonId, campId, year, cancellationToken);
+
         InvalidateCache(year);
     }
 
@@ -786,7 +796,46 @@ public sealed class CampService : ICampService, IUserDataContributor
             "CampService",
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
+        await NotifyPendingRequestersOfSeasonClosureAsync(seasonId, campId, year, cancellationToken);
+
         InvalidateCache(year);
+    }
+
+    private async Task NotifyPendingRequestersOfSeasonClosureAsync(
+        Guid seasonId, Guid campId, int year, CancellationToken cancellationToken)
+    {
+        var pendingUserIds = await _repo.GetPendingRequesterUserIdsForSeasonAsync(seasonId, cancellationToken);
+        if (pendingUserIds.Count == 0)
+        {
+            return;
+        }
+
+        // The lead meter filters by season status (Active/Full), so closing a
+        // season drops that camp's pending requests from the count — refresh
+        // the cached badges.
+        await InvalidateLeadBadgesAsync(campId, cancellationToken);
+
+        var camp = await _repo.GetByIdAsync(campId, cancellationToken);
+        var campName = camp?.Seasons.FirstOrDefault(s => s.Id == seasonId)?.Name ?? camp?.Slug ?? "a camp";
+        var slug = camp?.Slug;
+
+        try
+        {
+            await _notificationEmitter.SendAsync(
+                NotificationSource.CampMembershipSeasonClosed,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                $"The {year} season for {campName} is no longer open",
+                pendingUserIds,
+                body: "Your pending request to join this camp won't be reviewed because the season was withdrawn or rejected.",
+                actionUrl: slug is null ? null : $"/Barrios/{slug}",
+                actionLabel: slug is null ? null : "View camp",
+                cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send CampMembershipSeasonClosed notification for season {SeasonId}", seasonId);
+        }
     }
 
     public async Task SetSeasonFullAsync(Guid seasonId, CancellationToken cancellationToken = default)
@@ -1307,6 +1356,352 @@ public sealed class CampService : ICampService, IUserDataContributor
             CreatedAt = now,
             UpdatedAt = now
         };
+    }
+
+    // ==========================================================================
+    // Camp membership per season (issue nobodies-collective#488)
+    // ==========================================================================
+
+    private async Task<CampSeason?> ResolveOpenMembershipSeasonAsync(
+        Guid campId, CancellationToken cancellationToken)
+    {
+        var settings = await GetSettingsAsync(cancellationToken);
+        var camp = await _repo.GetByIdAsync(campId, cancellationToken);
+        return camp?.Seasons.FirstOrDefault(s =>
+            s.Year == settings.PublicYear
+            && (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full));
+    }
+
+    private async Task InvalidateLeadBadgesAsync(Guid campId, CancellationToken cancellationToken)
+    {
+        var camp = await _repo.GetByIdAsync(campId, cancellationToken);
+        if (camp is null)
+        {
+            return;
+        }
+        foreach (var leadUserId in camp.Leads.Where(l => l.LeftAt is null).Select(l => l.UserId).Distinct())
+        {
+            _leadBadgeInvalidator.Invalidate(leadUserId);
+        }
+    }
+
+    public async Task<CampMemberRequestResult> RequestCampMembershipAsync(
+        Guid campId, Guid userId, CancellationToken cancellationToken = default)
+    {
+        var season = await ResolveOpenMembershipSeasonAsync(campId, cancellationToken);
+        if (season is null)
+        {
+            return new CampMemberRequestResult(
+                Guid.Empty,
+                CampMemberRequestOutcome.NoOpenSeason,
+                "Camp is not open for membership this year.");
+        }
+
+        var now = _clock.GetCurrentInstant();
+        var insert = await _repo.RequestMembershipAsync(season.Id, userId, now, cancellationToken);
+
+        if (insert.Outcome == CampMemberInsertOutcome.Created)
+        {
+            await _auditLog.LogAsync(
+                AuditAction.CampMemberRequested, nameof(CampMember), insert.MemberId,
+                $"Requested membership in camp season {season.Year}",
+                userId,
+                relatedEntityId: campId, relatedEntityType: nameof(Camp));
+            await InvalidateLeadBadgesAsync(campId, cancellationToken);
+        }
+
+        return insert.Outcome switch
+        {
+            CampMemberInsertOutcome.Created =>
+                new CampMemberRequestResult(insert.MemberId, CampMemberRequestOutcome.Created),
+            CampMemberInsertOutcome.AlreadyActive =>
+                new CampMemberRequestResult(insert.MemberId, CampMemberRequestOutcome.AlreadyActive),
+            _ =>
+                new CampMemberRequestResult(insert.MemberId, CampMemberRequestOutcome.AlreadyPending)
+        };
+    }
+
+    public async Task ApproveCampMemberAsync(
+        Guid scopedCampId, Guid campMemberId, Guid approvedByUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var member = await _repo.GetMemberForCampMutationAsync(campMemberId, scopedCampId, cancellationToken)
+            ?? throw new InvalidOperationException("Camp member record not found.");
+
+        if (member.Status != CampMemberStatus.Pending)
+        {
+            throw new InvalidOperationException($"Cannot approve a camp member with status {member.Status}.");
+        }
+
+        var now = _clock.GetCurrentInstant();
+        member.Status = CampMemberStatus.Active;
+        member.ConfirmedAt = now;
+        member.ConfirmedByUserId = approvedByUserId;
+        await _repo.SaveMemberAsync(member, cancellationToken);
+
+        await _auditLog.LogAsync(
+            AuditAction.CampMemberApproved, nameof(CampMember), member.Id,
+            $"Approved camp membership for season {member.CampSeason.Year}",
+            approvedByUserId,
+            relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
+
+        await InvalidateLeadBadgesAsync(scopedCampId, cancellationToken);
+
+        var camp = await _repo.GetByIdAsync(scopedCampId, cancellationToken);
+        var campName = camp?.Seasons.FirstOrDefault(s => s.Id == member.CampSeasonId)?.Name ?? camp?.Slug ?? "a camp";
+        var slug = camp?.Slug;
+        try
+        {
+            await _notificationEmitter.SendAsync(
+                NotificationSource.CampMembershipApproved,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                $"Your request to join {campName} was approved",
+                [member.UserId],
+                actionUrl: slug is null ? null : $"/Barrios/{slug}",
+                actionLabel: slug is null ? null : "View camp",
+                cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to notify requester {UserId} about approved camp membership {MemberId}", member.UserId, member.Id);
+        }
+    }
+
+    public async Task RejectCampMemberAsync(
+        Guid scopedCampId, Guid campMemberId, Guid rejectedByUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var member = await _repo.GetMemberForCampMutationAsync(campMemberId, scopedCampId, cancellationToken)
+            ?? throw new InvalidOperationException("Camp member record not found.");
+
+        if (member.Status != CampMemberStatus.Pending)
+        {
+            throw new InvalidOperationException($"Cannot reject a camp member with status {member.Status}.");
+        }
+
+        var requesterUserId = member.UserId;
+        var seasonId = member.CampSeasonId;
+
+        var now = _clock.GetCurrentInstant();
+        member.Status = CampMemberStatus.Removed;
+        member.RemovedAt = now;
+        member.RemovedByUserId = rejectedByUserId;
+        await _repo.SaveMemberAsync(member, cancellationToken);
+
+        await _auditLog.LogAsync(
+            AuditAction.CampMemberRejected, nameof(CampMember), member.Id,
+            $"Rejected camp membership request for season {member.CampSeason.Year}",
+            rejectedByUserId,
+            relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
+
+        await InvalidateLeadBadgesAsync(scopedCampId, cancellationToken);
+
+        var camp = await _repo.GetByIdAsync(scopedCampId, cancellationToken);
+        var campName = camp?.Seasons.FirstOrDefault(s => s.Id == seasonId)?.Name ?? camp?.Slug ?? "a camp";
+        try
+        {
+            await _notificationEmitter.SendAsync(
+                NotificationSource.CampMembershipRejected,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                $"Your request to join {campName} was not approved",
+                [requesterUserId],
+                cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to notify requester {UserId} about rejected camp membership {MemberId}", requesterUserId, member.Id);
+        }
+    }
+
+    public async Task RemoveCampMemberAsync(
+        Guid scopedCampId, Guid campMemberId, Guid removedByUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var member = await _repo.GetMemberForCampMutationAsync(campMemberId, scopedCampId, cancellationToken)
+            ?? throw new InvalidOperationException("Camp member record not found.");
+
+        if (member.Status != CampMemberStatus.Active)
+        {
+            throw new InvalidOperationException($"Cannot remove a camp member with status {member.Status}.");
+        }
+
+        var now = _clock.GetCurrentInstant();
+        member.Status = CampMemberStatus.Removed;
+        member.RemovedAt = now;
+        member.RemovedByUserId = removedByUserId;
+        await _repo.SaveMemberAsync(member, cancellationToken);
+
+        await _auditLog.LogAsync(
+            AuditAction.CampMemberRemoved, nameof(CampMember), member.Id,
+            $"Removed camp member from season {member.CampSeason.Year}",
+            removedByUserId,
+            relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
+    }
+
+    public async Task WithdrawCampMembershipRequestAsync(
+        Guid campMemberId, Guid userId, CancellationToken cancellationToken = default)
+    {
+        var member = await _repo.GetMemberForOwnMutationAsync(campMemberId, userId, cancellationToken)
+            ?? throw new InvalidOperationException("Camp member record not found.");
+
+        if (member.Status != CampMemberStatus.Pending)
+        {
+            throw new InvalidOperationException($"Cannot withdraw a camp member request with status {member.Status}.");
+        }
+
+        var now = _clock.GetCurrentInstant();
+        member.Status = CampMemberStatus.Removed;
+        member.RemovedAt = now;
+        member.RemovedByUserId = userId;
+        await _repo.SaveMemberAsync(member, cancellationToken);
+
+        await _auditLog.LogAsync(
+            AuditAction.CampMemberWithdrawn, nameof(CampMember), member.Id,
+            $"Withdrew camp membership request for season {member.CampSeason.Year}",
+            userId,
+            relatedEntityId: member.CampSeason.CampId, relatedEntityType: nameof(Camp));
+
+        await InvalidateLeadBadgesAsync(member.CampSeason.CampId, cancellationToken);
+    }
+
+    public async Task LeaveCampAsync(
+        Guid campMemberId, Guid userId, CancellationToken cancellationToken = default)
+    {
+        var member = await _repo.GetMemberForOwnMutationAsync(campMemberId, userId, cancellationToken)
+            ?? throw new InvalidOperationException("Camp member record not found.");
+
+        if (member.Status != CampMemberStatus.Active)
+        {
+            throw new InvalidOperationException($"Cannot leave a camp membership with status {member.Status}.");
+        }
+
+        var now = _clock.GetCurrentInstant();
+        member.Status = CampMemberStatus.Removed;
+        member.RemovedAt = now;
+        member.RemovedByUserId = userId;
+        await _repo.SaveMemberAsync(member, cancellationToken);
+
+        await _auditLog.LogAsync(
+            AuditAction.CampMemberLeft, nameof(CampMember), member.Id,
+            $"Left camp season {member.CampSeason.Year}",
+            userId,
+            relatedEntityId: member.CampSeason.CampId, relatedEntityType: nameof(Camp));
+    }
+
+    public async Task<CampMembershipState> GetMembershipStateForCampAsync(
+        Guid campId, Guid userId, CancellationToken cancellationToken = default)
+    {
+        var season = await ResolveOpenMembershipSeasonAsync(campId, cancellationToken);
+        if (season is null)
+        {
+            return new CampMembershipState(null, null, null, CampMemberStatusSummary.NoOpenSeason);
+        }
+
+        var member = await _repo.GetUserMembershipInSeasonAsync(season.Id, userId, cancellationToken);
+        if (member is null)
+        {
+            return new CampMembershipState(season.Year, season.Id, null, CampMemberStatusSummary.None);
+        }
+
+        var summary = member.Status == CampMemberStatus.Active
+            ? CampMemberStatusSummary.Active
+            : CampMemberStatusSummary.Pending;
+        return new CampMembershipState(season.Year, season.Id, member.Id, summary);
+    }
+
+    public async Task<CampMemberListData> GetCampMembersAsync(
+        Guid campSeasonId, CancellationToken cancellationToken = default)
+    {
+        var infoOpt = await _repo.GetSeasonInfoAsync(campSeasonId, cancellationToken);
+        if (infoOpt is null)
+        {
+            throw new InvalidOperationException("Season not found.");
+        }
+        var info = infoOpt.Value;
+
+        var members = await _repo.GetSeasonMembersAsync(campSeasonId, cancellationToken);
+
+        // TEMP: fold active CampLead rows into the active members list so the
+        // roster shows the people running the camp even if they never requested
+        // membership. Leads that are also on a CampMember row get IsLead=true
+        // stamped; leads without a row appear as synthetic entries with
+        // CampMemberId = Guid.Empty. The upcoming camp-roles PR will subsume
+        // the CampLead concept into role assignments on CampMember — when that
+        // lands, delete this whole union block and drop `IsLead` from the
+        // CampMemberRow record.
+        var camp = await _repo.GetByIdAsync(info.CampId, cancellationToken);
+        var activeLeads = camp?.Leads.Where(l => l.LeftAt is null).ToList() ?? new List<CampLead>();
+        var leadUserIds = activeLeads.Select(l => l.UserId).ToHashSet();
+
+        var userIds = members.Select(m => m.UserId)
+            .Concat(activeLeads.Select(l => l.UserId))
+            .Distinct()
+            .ToList();
+        var users = await _userService.GetByIdsAsync(userIds, cancellationToken);
+        var userMap = users.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.DisplayName);
+
+        static string DisplayName(Guid userId, IReadOnlyDictionary<Guid, string> names) =>
+            names.GetValueOrDefault(userId) ?? "Unknown";
+
+        var pending = members
+            .Where(m => m.Status == CampMemberStatus.Pending)
+            .Select(m => new CampMemberRow(
+                m.Id, m.UserId, DisplayName(m.UserId, userMap), m.RequestedAt, m.ConfirmedAt,
+                IsLead: leadUserIds.Contains(m.UserId)))
+            .ToList();
+
+        var activeMemberUserIds = members
+            .Where(m => m.Status == CampMemberStatus.Active)
+            .Select(m => m.UserId)
+            .ToHashSet();
+
+        var activeFromMembers = members
+            .Where(m => m.Status == CampMemberStatus.Active)
+            .Select(m => new CampMemberRow(
+                m.Id, m.UserId, DisplayName(m.UserId, userMap), m.RequestedAt, m.ConfirmedAt,
+                IsLead: leadUserIds.Contains(m.UserId)));
+
+        var activeFromLeads = activeLeads
+            .Where(l => !activeMemberUserIds.Contains(l.UserId))
+            .Select(l => new CampMemberRow(
+                CampMemberId: Guid.Empty,
+                UserId: l.UserId,
+                DisplayName: DisplayName(l.UserId, userMap),
+                RequestedAt: l.JoinedAt,
+                ConfirmedAt: l.JoinedAt,
+                IsLead: true));
+
+        var active = activeFromMembers
+            .Concat(activeFromLeads)
+            .OrderByDescending(r => r.IsLead)
+            .ThenBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return new CampMemberListData(campSeasonId, info.Year, pending, active);
+    }
+
+    public Task<int> GetPendingMembershipCountForLeadAsync(
+        Guid userId, CancellationToken cancellationToken = default) =>
+        _repo.CountPendingMembershipsForLeadAsync(userId, cancellationToken);
+
+    public async Task<IReadOnlyList<CampMembershipSummary>> GetCampMembershipsForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        var members = await _repo.GetUserMembershipsAsync(userId, cancellationToken);
+        return members
+            .Select(m => new CampMembershipSummary(
+                m.Id,
+                m.CampSeason.CampId,
+                m.CampSeason.Camp.Slug,
+                m.CampSeason.Name,
+                m.CampSeasonId,
+                m.CampSeason.Year,
+                m.Status,
+                m.RequestedAt,
+                m.ConfirmedAt))
+            .ToList();
     }
 
     // ==========================================================================

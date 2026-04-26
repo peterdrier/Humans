@@ -34,7 +34,8 @@ public class RotaConfiguration : IEntityTypeConfiguration<Rota>
             .HasForeignKey(r => r.EventSettingsId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(r => r.Team)
+        // Cross-section FK to Team — typed-FK form, no navigation property.
+        builder.HasOne<Team>()
             .WithMany()
             .HasForeignKey(r => r.TeamId)
             .OnDelete(DeleteBehavior.Restrict);

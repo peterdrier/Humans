@@ -86,7 +86,7 @@ public class MembershipPartitionTests
             });
     }
 
-    [Fact]
+    [HumansFact]
     public async Task PartitionUsersAsync_ActiveUser_GoesToActiveBucket()
     {
         var userId = SeedUser();
@@ -104,7 +104,7 @@ public class MembershipPartitionTests
         result.MissingConsents.Should().NotContain(userId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task PartitionUsersAsync_PendingApproval_GoesToPendingApprovalBucket()
     {
         var userId = SeedUser();
@@ -116,7 +116,7 @@ public class MembershipPartitionTests
         result.Active.Should().NotContain(userId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task PartitionUsersAsync_Suspended_GoesToSuspendedBucket()
     {
         var userId = SeedUser();
@@ -128,7 +128,7 @@ public class MembershipPartitionTests
         result.Active.Should().NotContain(userId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task PartitionUsersAsync_IncompleteSignup_GoesToIncompleteSignupBucket()
     {
         var userId = SeedUser();
@@ -140,7 +140,7 @@ public class MembershipPartitionTests
         result.Active.Should().NotContain(userId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task PartitionUsersAsync_PendingDeletion_GoesToPendingDeletionBucket()
     {
         var userId = SeedUser(deletionRequestedAt: _clock.GetCurrentInstant());
@@ -152,7 +152,7 @@ public class MembershipPartitionTests
         result.Active.Should().NotContain(userId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task PartitionUsersAsync_MissingConsents_GoesToMissingConsentsBucket()
     {
         var userId = SeedUser();
@@ -165,7 +165,7 @@ public class MembershipPartitionTests
         result.Active.Should().NotContain(userId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task PartitionUsersAsync_AllBucketsSumToTotal()
     {
         // Seed one user per category
@@ -202,7 +202,7 @@ public class MembershipPartitionTests
         totalCount.Should().Be(6);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task PartitionUsersAsync_NoBucketOverlap()
     {
         // Seed one user per category
@@ -244,7 +244,7 @@ public class MembershipPartitionTests
         }
     }
 
-    [Fact]
+    [HumansFact]
     public async Task PartitionUsersAsync_DeletionOverridesSuspended()
     {
         // User is both suspended AND has DeletionRequestedAt → should go to PendingDeletion

@@ -1,6 +1,8 @@
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Repositories.Camps;
 using Humans.Infrastructure.Services;
 using CampsCampContactService = Humans.Application.Services.Camps.CampContactService;
@@ -20,6 +22,8 @@ internal static class CampsSectionExtensions
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CampsCampService>());
 
         services.AddScoped<ICampContactService, CampsCampContactService>();
+
+        services.AddScoped<ICampLeadJoinRequestsBadgeCacheInvalidator, CampLeadJoinRequestsBadgeCacheInvalidator>();
 
         return services;
     }

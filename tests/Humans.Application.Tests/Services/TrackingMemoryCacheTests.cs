@@ -22,7 +22,7 @@ public class TrackingMemoryCacheTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public void TryGetValue_RecordsHitWhenKeyExists()
     {
         _inner.Set("Profile:abc", "cached-value");
@@ -36,7 +36,7 @@ public class TrackingMemoryCacheTests : IDisposable
         stats[0].Misses.Should().Be(0);
     }
 
-    [Fact]
+    [HumansFact]
     public void TryGetValue_RecordsMissWhenKeyAbsent()
     {
         _tracker.TryGetValue("Profile:xyz", out _);
@@ -48,7 +48,7 @@ public class TrackingMemoryCacheTests : IDisposable
         stats[0].Misses.Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public void DeriveKeyType_ExtractsPrefixBeforeColon()
     {
         _tracker.TryGetValue("UserTicketCount:12345", out _);
@@ -60,7 +60,7 @@ public class TrackingMemoryCacheTests : IDisposable
         stats.Should().Contain(e => e.KeyType == "UserProfile");
     }
 
-    [Fact]
+    [HumansFact]
     public void DeriveKeyType_UseFullKeyWhenNoColon()
     {
         _tracker.TryGetValue("NavBadgeCounts", out _);
@@ -70,7 +70,7 @@ public class TrackingMemoryCacheTests : IDisposable
         stats[0].KeyType.Should().Be("NavBadgeCounts");
     }
 
-    [Fact]
+    [HumansFact]
     public void Reset_ClearsAllStats()
     {
         _inner.Set("Profile:a", "value");
@@ -84,7 +84,7 @@ public class TrackingMemoryCacheTests : IDisposable
         _tracker.TotalMisses.Should().Be(0);
     }
 
-    [Fact]
+    [HumansFact]
     public void TotalHitsAndMisses_AggregateAcrossKeyTypes()
     {
         _inner.Set("Profile:a", "value");
@@ -96,7 +96,7 @@ public class TrackingMemoryCacheTests : IDisposable
         _tracker.TotalMisses.Should().Be(2);
     }
 
-    [Fact]
+    [HumansFact]
     public void HitRatePercent_CalculatesCorrectly()
     {
         _inner.Set("Profile:a", "value");
@@ -107,7 +107,7 @@ public class TrackingMemoryCacheTests : IDisposable
         stats[0].HitRatePercent.Should().Be(50.0);
     }
 
-    [Fact]
+    [HumansFact]
     public void GetSnapshot_OrderedByTotalAccessCountDescending()
     {
         // Profile: 3 accesses

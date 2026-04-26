@@ -8,7 +8,7 @@ namespace Humans.Domain.Tests.Entities;
 
 public class ContactFieldTests
 {
-    [Theory]
+    [HumansTheory]
     [InlineData(ContactFieldType.Phone, "Phone")]
     [InlineData(ContactFieldType.Signal, "Signal")]
     [InlineData(ContactFieldType.Telegram, "Telegram")]
@@ -21,7 +21,7 @@ public class ContactFieldTests
         field.DisplayLabel.Should().Be(expected);
     }
 
-    [Fact]
+    [HumansFact]
     public void DisplayLabel_ForOtherType_WithCustomLabel_ShouldReturnCustomLabel()
     {
         var field = CreateContactField(ContactFieldType.Other);
@@ -30,7 +30,7 @@ public class ContactFieldTests
         field.DisplayLabel.Should().Be("Discord");
     }
 
-    [Fact]
+    [HumansFact]
     public void DisplayLabel_ForOtherType_WithNullCustomLabel_ShouldReturnOther()
     {
         var field = CreateContactField(ContactFieldType.Other);
@@ -39,7 +39,7 @@ public class ContactFieldTests
         field.DisplayLabel.Should().Be("Other");
     }
 
-    [Fact]
+    [HumansFact]
     public void DisplayLabel_ForOtherType_WithEmptyCustomLabel_ShouldReturnEmptyString()
     {
         var field = CreateContactField(ContactFieldType.Other);

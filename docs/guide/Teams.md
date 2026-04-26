@@ -110,7 +110,7 @@ Three roles handle volunteer coordination across every department. Reach all thr
 
 In many departments it's the sub-team leads — not the top-level coordinator — who manage day-to-day shifts. Example: in Creativity, shifts are managed by Kunsthaus and MoN leads, not the Creativity coordinator. The system is being updated to reflect this properly. In the meantime, if a sub-team lead needs shift management permissions, ask Frank to escalate their access to TeamAdmin.
 
-## As a Board member / Admin
+## As a Board member / Admin (Teams Admin)
 
 (assumes Coordinator knowledge)
 

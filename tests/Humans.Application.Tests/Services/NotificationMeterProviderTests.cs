@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Profiles;
@@ -23,6 +24,7 @@ public class NotificationMeterProviderTests : IDisposable
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly ITicketSyncService _ticketSyncService = Substitute.For<ITicketSyncService>();
     private readonly IApplicationDecisionService _applicationDecisionService = Substitute.For<IApplicationDecisionService>();
+    private readonly ICampService _campService = Substitute.For<ICampService>();
     private readonly IMemoryCache _cache;
     private readonly NotificationMeterProvider _provider;
 
@@ -36,6 +38,7 @@ public class NotificationMeterProviderTests : IDisposable
             _teamService,
             _ticketSyncService,
             _applicationDecisionService,
+            _campService,
             _cache,
             NullLogger<NotificationMeterProvider>.Instance);
     }
@@ -46,7 +49,7 @@ public class NotificationMeterProviderTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetMetersForUserAsync_Board_OnboardingMeterExcludesConsentReviewItems()
     {
         // consentReviewsPending = 1, totalNotApproved = 2 → onboardingPending = 1
@@ -66,7 +69,7 @@ public class NotificationMeterProviderTests : IDisposable
         onboardingMeter.Count.Should().Be(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetMetersForUserAsync_VolunteerCoordinator_SeesOnboardingMeter()
     {
         _profileService.GetConsentReviewPendingCountAsync(Arg.Any<CancellationToken>()).Returns(0);
@@ -83,7 +86,7 @@ public class NotificationMeterProviderTests : IDisposable
             string.Equals(m.ActionUrl, "/OnboardingReview", StringComparison.Ordinal));
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetMetersForUserAsync_ConsentCoordinator_SeesConsentReviewsPending()
     {
         _profileService.GetConsentReviewPendingCountAsync(Arg.Any<CancellationToken>()).Returns(3);
@@ -100,7 +103,7 @@ public class NotificationMeterProviderTests : IDisposable
             m.Count == 3);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetMetersForUserAsync_Admin_SeesFailedSyncAndDeletionsAndTeamsAndTicketError()
     {
         _profileService.GetConsentReviewPendingCountAsync(Arg.Any<CancellationToken>()).Returns(0);
@@ -118,7 +121,7 @@ public class NotificationMeterProviderTests : IDisposable
         meters.Should().Contain(m => m.Title == "Ticket sync error" && m.Count == 1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetMetersForUserAsync_Board_PendingVoteMeter_UsesPerUserCount()
     {
         var boardUserId = Guid.NewGuid();

@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
@@ -21,6 +22,7 @@ public class ShiftAdminController : HumansTeamControllerBase
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IShiftSignupService _signupService;
     private readonly IGeneralAvailabilityService _availabilityService;
+    private readonly IUserService _userService;
     private readonly IClock _clock;
     private readonly ILogger<ShiftAdminController> _logger;
 
@@ -29,6 +31,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         IShiftManagementService shiftMgmt,
         IShiftSignupService signupService,
         IGeneralAvailabilityService availabilityService,
+        IUserService userService,
         UserManager<User> userManager,
         IAuthorizationService authorizationService,
         IClock clock,
@@ -39,6 +42,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         _shiftMgmt = shiftMgmt;
         _signupService = signupService;
         _availabilityService = availabilityService;
+        _userService = userService;
         _clock = clock;
         _logger = logger;
     }
@@ -82,6 +86,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         var allUserIds = rotas.SelectMany(r => r.Shifts)
             .SelectMany(s => s.ShiftSignups)
             .Select(su => su.UserId)
+            .Concat(pendingSignups.Select(p => p.UserId))
             .Distinct()
             .ToList();
 
@@ -95,6 +100,10 @@ public class ShiftAdminController : HumansTeamControllerBase
                 profileDict[uid] = profile;
             }
         }
+
+        var userLookup = allUserIds.Count == 0
+            ? (IReadOnlyDictionary<Guid, User>)new Dictionary<Guid, User>()
+            : await _userService.GetByIdsAsync(allUserIds);
 
         var staffingData = await _shiftMgmt.GetStaffingDataAsync(es.Id, team.Id);
         var staffingHours = await _shiftMgmt.GetStaffingHoursAsync(es.Id, team.Id);
@@ -125,6 +134,7 @@ public class ShiftAdminController : HumansTeamControllerBase
             CanManageShifts = canManage,
             CanApproveSignups = canApprove,
             VolunteerProfiles = profileDict,
+            Users = userLookup,
             CanViewMedical = canViewMedical,
             StaffingData = staffingData.ToList(),
             StaffingHours = staffingHours.ToList(),

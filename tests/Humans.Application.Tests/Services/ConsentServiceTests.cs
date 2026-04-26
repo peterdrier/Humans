@@ -91,7 +91,7 @@ public class ConsentServiceTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SubmitConsentAsync_ValidConsent_CreatesRecord()
     {
         var userId = Guid.NewGuid();
@@ -110,7 +110,7 @@ public class ConsentServiceTests : IDisposable
         record.ConsentedAt.Should().Be(_clock.GetCurrentInstant());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SubmitConsentAsync_ComputesCorrectSha256Hash()
     {
         var userId = Guid.NewGuid();
@@ -125,7 +125,7 @@ public class ConsentServiceTests : IDisposable
         record.ContentHash.Should().Be(expectedHash);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SubmitConsentAsync_AlreadyConsented_ReturnsError()
     {
         var userId = Guid.NewGuid();
@@ -150,7 +150,7 @@ public class ConsentServiceTests : IDisposable
         result.ErrorKey.Should().Be("AlreadyConsented");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SubmitConsentAsync_DocumentNotFound_ReturnsError()
     {
         var result = await _service.SubmitConsentAsync(Guid.NewGuid(), Guid.NewGuid(), true, "127.0.0.1", "Agent");
@@ -159,7 +159,7 @@ public class ConsentServiceTests : IDisposable
         result.ErrorKey.Should().Be("NotFound");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SubmitConsentAsync_TruncatesLongUserAgent()
     {
         var userId = Guid.NewGuid();
@@ -173,7 +173,7 @@ public class ConsentServiceTests : IDisposable
         record.UserAgent.Should().HaveLength(500);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SubmitConsentAsync_CallsSetConsentCheckPending()
     {
         var userId = Guid.NewGuid();
@@ -185,7 +185,7 @@ public class ConsentServiceTests : IDisposable
         await _onboardingService.Received().SetConsentCheckPendingIfEligibleAsync(userId, Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SubmitConsentAsync_CallsSyncJobs()
     {
         var userId = Guid.NewGuid();
@@ -198,7 +198,7 @@ public class ConsentServiceTests : IDisposable
         await _syncJob.Received().SyncCoordinatorsMembershipForUserAsync(userId, Arg.Any<CancellationToken>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SubmitConsentAsync_RecordsMetric()
     {
         var userId = Guid.NewGuid();
@@ -210,7 +210,7 @@ public class ConsentServiceTests : IDisposable
         _metrics.Received().RecordConsentGiven();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SubmitConsentAsync_ReturnsDocumentName()
     {
         var userId = Guid.NewGuid();
@@ -224,7 +224,7 @@ public class ConsentServiceTests : IDisposable
 
     // --- GetConsentDashboardAsync ---
 
-    [Fact]
+    [HumansFact]
     public async Task GetConsentDashboardAsync_ReturnsDocumentsGroupedByTeam()
     {
         var userId = Guid.NewGuid();
@@ -244,7 +244,7 @@ public class ConsentServiceTests : IDisposable
         groups.Should().HaveCount(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetConsentDashboardAsync_OnlyIncludesActiveRequiredDocuments()
     {
         var userId = Guid.NewGuid();
@@ -263,7 +263,7 @@ public class ConsentServiceTests : IDisposable
         groups[0].Documents.Should().HaveCount(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetConsentDashboardAsync_SelectsCurrentVersion()
     {
         var userId = Guid.NewGuid();
@@ -316,7 +316,7 @@ public class ConsentServiceTests : IDisposable
         groups[0].Documents[0].Version.Id.Should().Be(newerVersionId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetConsentDashboardAsync_PairsVersionWithConsent()
     {
         var userId = Guid.NewGuid();
@@ -335,7 +335,7 @@ public class ConsentServiceTests : IDisposable
         groups[0].Documents[0].Consent.Should().NotBeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetConsentDashboardAsync_NullConsentWhenNotSigned()
     {
         var userId = Guid.NewGuid();
@@ -353,7 +353,7 @@ public class ConsentServiceTests : IDisposable
         groups[0].Documents[0].Consent.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetConsentDashboardAsync_ReturnsHistory()
     {
         var userId = Guid.NewGuid();
@@ -375,7 +375,7 @@ public class ConsentServiceTests : IDisposable
         history[0].ConsentedAt.Should().BeGreaterThan(history[1].ConsentedAt);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetConsentDashboardAsync_ExcludesFutureVersions()
     {
         var userId = Guid.NewGuid();
@@ -394,7 +394,7 @@ public class ConsentServiceTests : IDisposable
         groups[0].Documents.Should().BeEmpty();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetConsentDashboardAsync_EmptyWhenNoDocuments()
     {
         var userId = Guid.NewGuid();
@@ -410,7 +410,7 @@ public class ConsentServiceTests : IDisposable
 
     // --- GetConsentReviewDetailAsync ---
 
-    [Fact]
+    [HumansFact]
     public async Task GetConsentReviewDetailAsync_ReturnsVersionWithDocumentAndConsent()
     {
         var userId = Guid.NewGuid();
@@ -438,7 +438,7 @@ public class ConsentServiceTests : IDisposable
         fullName.Should().Be("Jane Doe");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetConsentReviewDetailAsync_NullConsentWhenNotSigned()
     {
         var userId = Guid.NewGuid();
@@ -464,7 +464,7 @@ public class ConsentServiceTests : IDisposable
         fullName.Should().Be("Jane Doe");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetConsentReviewDetailAsync_VersionNotFound_ReturnsAllNulls()
     {
         var (version, consent, fullName) = await _service.GetConsentReviewDetailAsync(Guid.NewGuid(), Guid.NewGuid());
@@ -474,7 +474,7 @@ public class ConsentServiceTests : IDisposable
         fullName.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetConsentReviewDetailAsync_NullFullNameWhenNoProfile()
     {
         var userId = Guid.NewGuid();

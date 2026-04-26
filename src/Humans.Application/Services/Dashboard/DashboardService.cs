@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
@@ -29,6 +30,7 @@ public class DashboardService : IDashboardService
     private readonly IShiftSignupService _shiftSignup;
     private readonly ITicketQueryService _ticketQueryService;
     private readonly IUserService _userService;
+    private readonly ITeamService _teamService;
     private readonly TicketVendorSettings _ticketSettings;
     private readonly IClock _clock;
     private readonly ILogger<DashboardService> _logger;
@@ -41,6 +43,7 @@ public class DashboardService : IDashboardService
         IShiftSignupService shiftSignup,
         ITicketQueryService ticketQueryService,
         IUserService userService,
+        ITeamService teamService,
         IOptions<TicketVendorSettings> ticketSettings,
         IClock clock,
         ILogger<DashboardService> logger)
@@ -52,6 +55,7 @@ public class DashboardService : IDashboardService
         _shiftSignup = shiftSignup;
         _ticketQueryService = ticketQueryService;
         _userService = userService;
+        _teamService = teamService;
         _ticketSettings = ticketSettings.Value;
         _clock = clock;
         _logger = logger;
@@ -136,7 +140,17 @@ public class DashboardService : IDashboardService
                     .Distinct()
                     .Count();
 
-                foreach (var s in userSignups.Where(s => s.Status == SignupStatus.Confirmed))
+                var confirmedSignups = userSignups.Where(s => s.Status == SignupStatus.Confirmed).ToList();
+                var dashboardTeamIds = confirmedSignups
+                    .Where(s => s.Shift?.Rota is not null)
+                    .Select(s => s.Shift.Rota.TeamId)
+                    .Distinct()
+                    .ToList();
+                var teamNames = dashboardTeamIds.Count == 0
+                    ? (IReadOnlyDictionary<Guid, string>)new Dictionary<Guid, string>()
+                    : await _teamService.GetTeamNamesByIdsAsync(dashboardTeamIds);
+
+                foreach (var s in confirmedSignups)
                 {
                     try
                     {
@@ -148,7 +162,7 @@ public class DashboardService : IDashboardService
 
                         var item = new DashboardSignup(
                             Signup: s,
-                            DepartmentName: s.Shift.Rota?.Team?.Name ?? "Unknown",
+                            DepartmentName: teamNames.GetValueOrDefault(s.Shift.Rota.TeamId, "Unknown"),
                             AbsoluteStart: s.Shift.GetAbsoluteStart(activeEvent),
                             AbsoluteEnd: s.Shift.GetAbsoluteEnd(activeEvent));
                         if (item.AbsoluteEnd > now)
@@ -195,6 +209,10 @@ public class DashboardService : IDashboardService
                 var participation = await _userService.GetParticipationAsync(userId, activeEvent.Year, cancellationToken);
                 participationStatus = participation?.Status;
             }
+        }
+        catch (OperationCanceledException ex)
+        {
+            _logger.LogWarning("Dashboard participation load cancelled for user {UserId}: {Reason}", userId, ex.Message);
         }
         catch (Exception ex)
         {

@@ -1,4 +1,5 @@
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Enums;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -10,17 +11,20 @@ public class ShiftSignupsViewComponent : ViewComponent
 {
     private readonly IShiftSignupService _signupService;
     private readonly IShiftManagementService _shiftMgmt;
+    private readonly ITeamService _teamService;
     private readonly IClock _clock;
     private readonly ILogger<ShiftSignupsViewComponent> _logger;
 
     public ShiftSignupsViewComponent(
         IShiftSignupService signupService,
         IShiftManagementService shiftMgmt,
+        ITeamService teamService,
         IClock clock,
         ILogger<ShiftSignupsViewComponent> logger)
     {
         _signupService = signupService;
         _shiftMgmt = shiftMgmt;
+        _teamService = teamService;
         _clock = clock;
         _logger = logger;
     }
@@ -45,15 +49,24 @@ public class ShiftSignupsViewComponent : ViewComponent
             var now = _clock.GetCurrentInstant();
             model.EventSettings = es;
 
+            var componentTeamIds = signups
+                .Where(s => s.Shift?.Rota is not null)
+                .Select(s => s.Shift.Rota.TeamId)
+                .Distinct()
+                .ToList();
+            var componentTeamNames = componentTeamIds.Count == 0
+                ? (IReadOnlyDictionary<Guid, string>)new Dictionary<Guid, string>()
+                : await _teamService.GetTeamNamesByIdsAsync(componentTeamIds);
+
             foreach (var signup in signups)
             {
-                if (signup.Shift?.Rota?.Team is null || es is null)
+                if (signup.Shift?.Rota is null || es is null)
                     continue;
 
                 var item = new MySignupItem
                 {
                     Signup = signup,
-                    DepartmentName = signup.Shift.Rota.Team.Name,
+                    DepartmentName = componentTeamNames.GetValueOrDefault(signup.Shift.Rota.TeamId, "Unknown"),
                     AbsoluteStart = signup.Shift.GetAbsoluteStart(es),
                     AbsoluteEnd = signup.Shift.GetAbsoluteEnd(es)
                 };

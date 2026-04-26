@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Domain.Entities;
 using Humans.Infrastructure.Repositories.Shifts;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -16,7 +17,7 @@ namespace Humans.Application.Tests.Architecture;
 /// </summary>
 public class ShiftManagementArchitectureTests
 {
-    [Fact]
+    [HumansFact]
     public void ShiftManagementService_LivesInHumansApplicationServicesShiftsNamespace()
     {
         typeof(ShiftManagementService).Namespace
@@ -24,7 +25,7 @@ public class ShiftManagementArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [Fact]
+    [HumansFact]
     public void ShiftManagementService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(ShiftManagementService).GetConstructors().Single();
@@ -34,7 +35,7 @@ public class ShiftManagementArchitectureTests
                 because: "services in Humans.Application must never take DbContext — use IShiftManagementRepository (design-rules §3)");
     }
 
-    [Fact]
+    [HumansFact]
     public void ShiftManagementService_TakesRepository()
     {
         var ctor = typeof(ShiftManagementService).GetConstructors().Single();
@@ -43,7 +44,7 @@ public class ShiftManagementArchitectureTests
         paramTypes.Should().Contain(typeof(IShiftManagementRepository));
     }
 
-    [Fact]
+    [HumansFact]
     public void ShiftManagementService_ImplementsShiftAuthorizationInvalidator()
     {
         typeof(IShiftAuthorizationInvalidator).IsAssignableFrom(typeof(ShiftManagementService))
@@ -51,7 +52,7 @@ public class ShiftManagementArchitectureTests
                 because: "the service owns the shift-auth cache and external sections (Profile deletion) drop it through this invalidator rather than poking IMemoryCache directly");
     }
 
-    [Fact]
+    [HumansFact]
     public void IShiftManagementRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(IShiftManagementRepository).Namespace
@@ -59,11 +60,40 @@ public class ShiftManagementArchitectureTests
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
 
-    [Fact]
+    [HumansFact]
     public void ShiftManagementRepository_IsSealed()
     {
         var repoType = typeof(ShiftManagementRepository);
         repoType.IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
+    }
+
+    [HumansFact]
+    public void ShiftsOwnedEntities_HaveNoCrossDomainNavigationProperties()
+    {
+        // Cross-domain navs (Rota.Team, ShiftSignup.User/EnrolledByUser/ReviewedByUser,
+        // VolunteerEventProfile.User, VolunteerTagPreference.User) were removed in
+        // §15 Part 1 (issue #541). Display fields are resolved via ITeamService /
+        // IUserService at the Application + Web layers. Cross-domain FKs stay
+        // wired in EF via the typed-FK form (HasOne<T>().WithMany().HasForeignKey(...)).
+        var crossDomainNavTypes = new[] { typeof(User), typeof(Team) };
+        var shiftsOwnedEntities = new[]
+        {
+            typeof(Rota),
+            typeof(ShiftSignup),
+            typeof(VolunteerEventProfile),
+            typeof(VolunteerTagPreference)
+        };
+
+        foreach (var entity in shiftsOwnedEntities)
+        {
+            var crossDomainNavs = entity.GetProperties()
+                .Where(p => crossDomainNavTypes.Contains(p.PropertyType))
+                .Select(p => p.Name)
+                .ToList();
+
+            crossDomainNavs.Should().BeEmpty(
+                because: $"{entity.Name} must not expose User/Team navigation properties — resolve through ITeamService / IUserService instead (design-rules §6c)");
+        }
     }
 }

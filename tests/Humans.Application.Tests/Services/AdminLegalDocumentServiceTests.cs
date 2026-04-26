@@ -87,7 +87,7 @@ public class AdminLegalDocumentServiceTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public void NormalizeGitHubFolderPath_PlainPath_ReturnsNormalizedFolder()
     {
         var result = _service.NormalizeGitHubFolderPath("Volunteer");
@@ -97,7 +97,7 @@ public class AdminLegalDocumentServiceTests : IDisposable
         result.ErrorMessage.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public void NormalizeGitHubFolderPath_WrongRepository_ReturnsValidationError()
     {
         var result = _service.NormalizeGitHubFolderPath("https://github.com/another/repo/tree/main/Volunteer");
@@ -107,7 +107,7 @@ public class AdminLegalDocumentServiceTests : IDisposable
         result.ErrorMessage.Should().Contain("configured repository is owner/repo");
     }
 
-    [Fact]
+    [HumansFact(Timeout = 10000)]
     public async Task CreateLegalDocumentAsync_PersistsAndReturnsDocument()
     {
         var request = new AdminLegalDocumentUpsertRequest(
@@ -127,7 +127,7 @@ public class AdminLegalDocumentServiceTests : IDisposable
         documents[0].GitHubFolderPath.Should().Be("privacy/");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UpdateVersionSummaryAsync_TrimsAndPersistsSummary()
     {
         var document = await SeedDocumentAsync("Code of Conduct");
@@ -159,7 +159,7 @@ public class AdminLegalDocumentServiceTests : IDisposable
         version!.ChangesSummary.Should().Be("Clarified scope");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SyncLegalDocumentAsync_DelegatesToSyncService()
     {
         var document = await SeedDocumentAsync("Privacy");

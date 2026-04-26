@@ -35,7 +35,7 @@ public class TeamServiceSlugRaceTests
     /// contest and the repo returns <c>false</c>. The service must retry
     /// with the next suffix rather than bubble an unrecognised exception.
     /// </summary>
-    [Fact]
+    [HumansFact]
     public async Task CreateTeamAsync_WhenFirstPersistReturnsFalse_RetriesWithSuffixedSlug()
     {
         var repo = BuildRepoForRace(firstAttemptSucceeds: false);
@@ -60,7 +60,7 @@ public class TeamServiceSlugRaceTests
     /// suffix. Pins the non-race behaviour so the retry logic isn't mistaken
     /// for always-on.
     /// </summary>
-    [Fact]
+    [HumansFact]
     public async Task CreateTeamAsync_WhenFirstPersistSucceeds_UsesBaseSlug()
     {
         var repo = BuildRepoForRace(firstAttemptSucceeds: true);

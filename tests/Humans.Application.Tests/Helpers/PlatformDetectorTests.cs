@@ -6,7 +6,7 @@ namespace Humans.Application.Tests.Helpers;
 
 public class PlatformDetectorTests
 {
-    [Theory]
+    [HumansTheory]
     [InlineData("https://www.instagram.com/campvibes", "Instagram", "fa-brands fa-instagram")]
     [InlineData("https://facebook.com/campvibes", "Facebook", "fa-brands fa-facebook")]
     [InlineData("https://x.com/campvibes", "X", "fa-brands fa-x-twitter")]
@@ -25,7 +25,7 @@ public class PlatformDetectorTests
         result.IconClass.Should().Be(expectedIcon);
     }
 
-    [Theory]
+    [HumansTheory]
     [InlineData("https://campvibes.com", false)]
     [InlineData("https://instagram.com/campvibes", true)]
     [InlineData("https://facebook.com/campvibes", true)]
@@ -35,7 +35,7 @@ public class PlatformDetectorTests
         PlatformDetector.IsSocialMedia(url).Should().Be(expected);
     }
 
-    [Theory]
+    [HumansTheory]
     [InlineData("")]
     [InlineData("not-a-url")]
     public void Detect_InvalidUrl_ReturnsFallback(string url)

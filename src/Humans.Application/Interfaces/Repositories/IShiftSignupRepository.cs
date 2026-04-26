@@ -45,39 +45,37 @@ public interface IShiftSignupRepository
 
     /// <summary>
     /// Returns every <see cref="ShiftSignup"/> the user owns, optionally
-    /// filtered to a single event. Includes <c>Shift.Rota.Team</c> and
-    /// <c>Shift.Rota.EventSettings</c> for display. Ordered by
-    /// <c>Shift.DayOffset</c>, then <c>Shift.StartTime</c>. Read-only.
+    /// filtered to a single event. Includes <c>Shift.Rota.EventSettings</c> for
+    /// display. Ordered by <c>Shift.DayOffset</c>, then <c>Shift.StartTime</c>.
+    /// Team display name is resolved via <c>ITeamService.GetTeamNamesByIdsAsync</c>.
+    /// Read-only.
     /// </summary>
     Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(
         Guid userId, Guid? eventSettingsId = null, CancellationToken ct = default);
 
     /// <summary>
     /// Returns active (Pending or Confirmed) signups for the user, including
-    /// <c>Shift.Rota.EventSettings</c> and <c>Shift.Rota.Team</c> for overlap
-    /// checks. Read-only.
+    /// <c>Shift.Rota.EventSettings</c> for overlap checks. Read-only.
     /// </summary>
     Task<IReadOnlyList<ShiftSignup>> GetActiveSignupsForUserAsync(
         Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Loads a single signup by id with <c>Shift.Rota.Team</c>. Read-only.
+    /// Loads a single signup by id with <c>Shift.Rota</c>. Read-only.
     /// </summary>
     Task<ShiftSignup?> GetByIdAsync(Guid signupId, CancellationToken ct = default);
 
     /// <summary>
-    /// Loads a signup by id with full shift / rota / event-settings / team
-    /// context and the shift's sibling signups (for capacity checks).
-    /// Tracking-enabled.
+    /// Loads a signup by id with full shift / rota / event-settings context
+    /// and the shift's sibling signups (for capacity checks). Tracking-enabled.
     /// </summary>
     Task<ShiftSignup?> GetByIdForMutationAsync(Guid signupId, CancellationToken ct = default);
 
     /// <summary>
     /// Loads every Pending signup in a block (or both Pending and Confirmed
     /// when <paramref name="includeConfirmed"/> is true). Includes
-    /// <c>Shift.Rota.EventSettings</c>, <c>Shift.Rota.Team</c>, and the
-    /// shift's sibling signups (for capacity checks in range-approve).
-    /// Tracking-enabled.
+    /// <c>Shift.Rota.EventSettings</c> and the shift's sibling signups (for
+    /// capacity checks in range-approve). Tracking-enabled.
     /// </summary>
     Task<List<ShiftSignup>> GetBlockForMutationAsync(
         Guid signupBlockId, bool includeConfirmed, CancellationToken ct = default);
@@ -90,27 +88,17 @@ public interface IShiftSignupRepository
 
     /// <summary>
     /// Returns all signups for a shift ordered by <c>CreatedAt</c>, including
-    /// the signup's <c>User</c> (display name) and <c>Shift.Rota</c>.
-    /// Read-only.
+    /// <c>Shift.Rota</c>. Read-only. Caller resolves user display fields via
+    /// <c>IUserService.GetByIdsAsync</c>.
     /// </summary>
-    /// <remarks>
-    /// Cross-domain <c>.Include(d =&gt; d.User)</c> is deliberately preserved
-    /// here pending the Shifts-wide User-nav strip (tracked in §15i). The
-    /// Shift-admin view reads <c>signup.User.DisplayName</c>; moving that to
-    /// an in-memory stitch is out of scope for this migration PR.
-    /// </remarks>
     Task<IReadOnlyList<ShiftSignup>> GetByShiftAsync(Guid shiftId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all no-show signups for a user with full shift / rota / event /
-    /// team context plus <c>ReviewedByUser</c>. Ordered by <c>ReviewedAt</c>
-    /// descending. Read-only.
+    /// Returns all no-show signups for a user with <c>Shift.Rota.EventSettings</c>.
+    /// Ordered by <c>ReviewedAt</c> descending. Read-only. Caller resolves
+    /// reviewer display fields via <c>IUserService.GetByIdsAsync</c> and the
+    /// team name via <c>ITeamService.GetTeamNamesByIdsAsync</c>.
     /// </summary>
-    /// <remarks>
-    /// Cross-domain <c>.Include(s =&gt; s.ReviewedByUser)</c> is deliberately
-    /// preserved here pending the Shifts-wide User-nav strip. Profile view
-    /// reads <c>s.ReviewedByUser.DisplayName</c>.
-    /// </remarks>
     Task<IReadOnlyList<ShiftSignup>> GetNoShowHistoryAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>

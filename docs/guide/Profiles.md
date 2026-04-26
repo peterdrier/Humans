@@ -75,7 +75,7 @@ Go to `/Profile/Me/Privacy` and choose Download My Data. You get a JSON file con
 
 Also on `/Profile/Me/Privacy`. Requesting deletion revokes your team memberships and role assignments immediately and starts a 30-day grace period during which you can still log in and cancel. After 30 days your personal data is anonymised automatically in the background. Google permissions are removed through the normal sync cycle once your team memberships end.
 
-## As a Board member / Admin
+## As a Board member / Admin (Human Admin)
 
 ### View any profile in full
 

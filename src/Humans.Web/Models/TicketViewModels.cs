@@ -132,6 +132,7 @@ public class TicketAttendeesViewModel : PagedListViewModel
     public string? FilterStatus { get; set; }
     public bool? FilterMatched { get; set; }
     public string? FilterOrderId { get; set; }
+    public bool FilterMultipleTickets { get; set; }
     public List<string> AvailableTicketTypes { get; set; } = [];
 }
 

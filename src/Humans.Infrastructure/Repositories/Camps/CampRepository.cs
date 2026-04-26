@@ -670,4 +670,173 @@ public sealed class CampRepository : ICampRepository
         await ctx.SaveChangesAsync(ct);
         return true;
     }
+
+    // ==========================================================================
+    // Membership (camp_members)
+    // ==========================================================================
+
+    public async Task<CampMemberInsertResult> RequestMembershipAsync(
+        Guid campSeasonId, Guid userId, Instant requestedAt, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        var existing = await ctx.CampMembers
+            .AsNoTracking()
+            .Where(m => m.CampSeasonId == campSeasonId && m.UserId == userId && m.Status != CampMemberStatus.Removed)
+            .Select(m => new { m.Id, m.Status })
+            .FirstOrDefaultAsync(ct);
+        if (existing is not null)
+        {
+            return new CampMemberInsertResult(
+                existing.Id,
+                existing.Status == CampMemberStatus.Active
+                    ? CampMemberInsertOutcome.AlreadyActive
+                    : CampMemberInsertOutcome.AlreadyPending);
+        }
+
+        var member = new CampMember
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = campSeasonId,
+            UserId = userId,
+            Status = CampMemberStatus.Pending,
+            RequestedAt = requestedAt
+        };
+        ctx.CampMembers.Add(member);
+        try
+        {
+            await ctx.SaveChangesAsync(ct);
+            return new CampMemberInsertResult(member.Id, CampMemberInsertOutcome.Created);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+        {
+            // Race: a concurrent request won the insert. Resolve to the winner.
+            var winner = await ctx.CampMembers
+                .AsNoTracking()
+                .Where(m => m.CampSeasonId == campSeasonId && m.UserId == userId && m.Status != CampMemberStatus.Removed)
+                .Select(m => new { m.Id, m.Status })
+                .FirstOrDefaultAsync(ct);
+            if (winner is null)
+            {
+                throw;
+            }
+            return new CampMemberInsertResult(
+                winner.Id,
+                winner.Status == CampMemberStatus.Active
+                    ? CampMemberInsertOutcome.AlreadyActive
+                    : CampMemberInsertOutcome.AlreadyPending);
+        }
+    }
+
+    public async Task<CampMember?> GetMemberForCampMutationAsync(
+        Guid campMemberId, Guid scopedCampId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var member = await ctx.CampMembers
+            .Include(m => m.CampSeason)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(m => m.Id == campMemberId, ct);
+        if (member is null || member.CampSeason.CampId != scopedCampId)
+        {
+            return null;
+        }
+        return member;
+    }
+
+    public async Task<CampMember?> GetMemberForOwnMutationAsync(
+        Guid campMemberId, Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var member = await ctx.CampMembers
+            .Include(m => m.CampSeason)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(m => m.Id == campMemberId, ct);
+        if (member is null || member.UserId != userId)
+        {
+            return null;
+        }
+        return member;
+    }
+
+    public async Task SaveMemberAsync(CampMember member, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        ctx.CampMembers.Attach(member);
+        ctx.Entry(member).State = EntityState.Modified;
+        // Do not overwrite immutable init-only fields via EF.
+        ctx.Entry(member).Property(m => m.CampSeasonId).IsModified = false;
+        ctx.Entry(member).Property(m => m.UserId).IsModified = false;
+        ctx.Entry(member).Property(m => m.RequestedAt).IsModified = false;
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<CampMember?> GetUserMembershipInSeasonAsync(
+        Guid campSeasonId, Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.CampMembers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                m => m.CampSeasonId == campSeasonId
+                    && m.UserId == userId
+                    && m.Status != CampMemberStatus.Removed,
+                ct);
+    }
+
+    public async Task<IReadOnlyList<CampMember>> GetSeasonMembersAsync(
+        Guid campSeasonId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.CampMembers
+            .AsNoTracking()
+            .Where(m => m.CampSeasonId == campSeasonId && m.Status != CampMemberStatus.Removed)
+            .OrderBy(m => m.RequestedAt)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<CampMember>> GetUserMembershipsAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.CampMembers
+            .AsNoTracking()
+            .Include(m => m.CampSeason)
+                .ThenInclude(s => s.Camp)
+            .Where(m => m.UserId == userId && m.Status != CampMemberStatus.Removed)
+            .OrderByDescending(m => m.CampSeason.Year)
+            .ThenBy(m => m.CampSeason.Name)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetPendingRequesterUserIdsForSeasonAsync(
+        Guid campSeasonId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.CampMembers
+            .AsNoTracking()
+            .Where(m => m.CampSeasonId == campSeasonId && m.Status == CampMemberStatus.Pending)
+            .Select(m => m.UserId)
+            .ToListAsync(ct);
+    }
+
+    public async Task<int> CountPendingMembershipsForLeadAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var leadCampIds = ctx.CampLeads
+            .AsNoTracking()
+            .Where(l => l.UserId == userId && l.LeftAt == null)
+            .Select(l => l.CampId);
+
+        // Only count requests for seasons that are actually open (Active or Full).
+        // If a season is rejected/withdrawn, the requesters have already been
+        // notified; the row stays for audit but shouldn't nag the lead.
+        return await ctx.CampMembers
+            .AsNoTracking()
+            .Where(m => m.Status == CampMemberStatus.Pending
+                && leadCampIds.Contains(m.CampSeason.CampId)
+                && (m.CampSeason.Status == CampSeasonStatus.Active
+                    || m.CampSeason.Status == CampSeasonStatus.Full))
+            .CountAsync(ct);
+    }
 }

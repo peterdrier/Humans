@@ -38,7 +38,7 @@ public class CampContactServiceTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendFacilitatedMessageAsync_SuccessfulSend_ReturnsSuccess()
     {
         var result = await _service.SendFacilitatedMessageAsync(
@@ -71,7 +71,7 @@ public class CampContactServiceTests : IDisposable
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendFacilitatedMessageAsync_RateLimited_ReturnsFalse()
     {
         // First call succeeds
@@ -95,7 +95,7 @@ public class CampContactServiceTests : IDisposable
             Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<string>());
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendFacilitatedMessageAsync_DifferentCamp_NotRateLimited()
     {
         var otherCampId = Guid.NewGuid();
@@ -112,7 +112,7 @@ public class CampContactServiceTests : IDisposable
         result2.Success.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendFacilitatedMessageAsync_EmailFails_RollsBackRateLimit()
     {
         _emailService.SendFacilitatedMessageAsync(
@@ -139,7 +139,7 @@ public class CampContactServiceTests : IDisposable
         retryResult.Success.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SendFacilitatedMessageAsync_SanitizesHtmlFromMessage()
     {
         await _service.SendFacilitatedMessageAsync(

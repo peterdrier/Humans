@@ -34,7 +34,7 @@ public class TicketVendorArchitectureTests
         "Humans.Infrastructure",
     ];
 
-    [Fact]
+    [HumansFact]
     public void ITicketVendorService_LivesInApplicationInterfacesNamespace()
     {
         typeof(ITicketVendorService).Namespace
@@ -42,7 +42,7 @@ public class TicketVendorArchitectureTests
                 because: "the vendor-agnostic port lives in the Application layer; HTTP/SDK adapters are Infrastructure (design-rules §1, §15)");
     }
 
-    [Fact]
+    [HumansFact]
     public void ITicketVendorService_IsDeclaredInApplicationAssembly()
     {
         typeof(ITicketVendorService).Assembly.GetName().Name
@@ -50,7 +50,7 @@ public class TicketVendorArchitectureTests
                 because: "the port must be compiled into Humans.Application so Application-layer consumers can reference it without an Infrastructure dependency");
     }
 
-    [Fact]
+    [HumansFact]
     public void HumansApplicationAssembly_HasNoReferenceToInfrastructureOrVendorSdk()
     {
         var applicationAssembly = typeof(ITicketVendorService).Assembly;
@@ -68,7 +68,7 @@ public class TicketVendorArchitectureTests
             because: "Humans.Application must not reference the TicketTailor SDK; HTTP I/O is Infrastructure's concern");
     }
 
-    [Fact]
+    [HumansFact]
     public void ITicketVendorService_ExposesNoForbiddenTypesInSignatures()
     {
         var offenders = new List<string>();
@@ -115,7 +115,7 @@ public class TicketVendorArchitectureTests
         }
     }
 
-    [Fact]
+    [HumansFact]
     public void ITicketVendorService_AllDtoTypesLiveInApplicationDtos()
     {
         // Strict allowlist: every type surfaced by the interface must be a
@@ -164,7 +164,7 @@ public class TicketVendorArchitectureTests
         }
     }
 
-    [Fact]
+    [HumansFact]
     public void TicketTailorService_LivesInHumansInfrastructureServicesNamespace()
     {
         var infra = Assembly.Load("Humans.Infrastructure");
@@ -176,7 +176,7 @@ public class TicketVendorArchitectureTests
             because: "the HTTP-backed adapter must stay in Infrastructure — it owns HttpClient, JSON parsing, and TicketTailor-specific response shapes (design-rules §1, §15 connector)");
     }
 
-    [Fact]
+    [HumansFact]
     public void StubTicketVendorService_LivesInHumansInfrastructureServicesNamespace()
     {
         var infra = Assembly.Load("Humans.Infrastructure");

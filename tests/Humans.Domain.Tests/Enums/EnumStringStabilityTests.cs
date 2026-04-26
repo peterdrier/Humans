@@ -16,7 +16,7 @@ public class EnumStringStabilityTests
     /// Verifies that enum member names exactly match what the database stores.
     /// Renames without a corresponding DB migration will silently break queries.
     /// </summary>
-    [Theory]
+    [HumansTheory]
     [MemberData(nameof(StringStoredEnumData))]
     public void StringStoredEnum_MemberNames_MustMatchExpected(
         Type enumType, string[] expectedNames)

@@ -40,7 +40,7 @@ public class UnsubscribeServiceTests
             .Returns(new User { Id = userId, UserName = $"{userId}@example.com", DisplayName = displayName });
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ValidateTokenAsync_ReturnsValid_ForNewFormatToken()
     {
         var userId = Guid.NewGuid();
@@ -59,7 +59,7 @@ public class UnsubscribeServiceTests
         result.Category.Should().Be(MessageCategory.Marketing);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ValidateTokenAsync_ReturnsExpired_WhenNewTokenExpired()
     {
         _preferenceService.ValidateUnsubscribeToken("expired-token")
@@ -71,7 +71,7 @@ public class UnsubscribeServiceTests
         result.IsExpired.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ValidateTokenAsync_FallsBackToLegacy_WhenNewFormatInvalid()
     {
         var userId = Guid.NewGuid();
@@ -95,7 +95,7 @@ public class UnsubscribeServiceTests
         result.Category.Should().Be(MessageCategory.Marketing);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ValidateTokenAsync_ReturnsInvalid_ForGarbageToken()
     {
         _preferenceService.ValidateUnsubscribeToken(Arg.Any<string>())
@@ -107,7 +107,7 @@ public class UnsubscribeServiceTests
         result.IsExpired.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ValidateTokenAsync_ReturnsInvalid_WhenUserMissingForValidNewToken()
     {
         var userId = Guid.NewGuid();
@@ -121,7 +121,7 @@ public class UnsubscribeServiceTests
         result.IsValid.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ConfirmUnsubscribeAsync_CallsUpdatePreferenceAsync_WhenTokenValid()
     {
         var userId = Guid.NewGuid();
@@ -137,7 +137,7 @@ public class UnsubscribeServiceTests
             userId, MessageCategory.Marketing, true, "MagicLink");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ConfirmUnsubscribeAsync_DoesNotCallUpdate_WhenTokenInvalid()
     {
         _preferenceService.ValidateUnsubscribeToken(Arg.Any<string>())

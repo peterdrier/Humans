@@ -15,7 +15,7 @@ public class EndpointAuthorizationTests
 {
     // --- Admin endpoints must require Admin role ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData(typeof(AdminController), "Index")]
     [InlineData(typeof(AdminController), "PurgeHuman")]
     [InlineData(typeof(AdminController), "Logs")]
@@ -31,7 +31,7 @@ public class EndpointAuthorizationTests
 
     // --- Board endpoints must require Board or Admin ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData(typeof(BoardController), null)] // class-level
     public void BoardEndpoint_RequiresBoardOrAdminPolicy(Type controllerType, string? actionName)
     {
@@ -40,7 +40,7 @@ public class EndpointAuthorizationTests
 
     // --- Google admin endpoints must require Admin ---
 
-    [Theory]
+    [HumansTheory]
     [InlineData("SyncSettings")]
     [InlineData("UpdateSyncSetting")]
     [InlineData("SyncSystemTeams")]
@@ -54,13 +54,13 @@ public class EndpointAuthorizationTests
 
     // --- Onboarding review endpoints ---
 
-    [Fact]
+    [HumansFact]
     public void OnboardingReviewController_RequiresReviewQueueAccess()
     {
         AssertHasPolicy(typeof(OnboardingReviewController), null, "ReviewQueueAccess");
     }
 
-    [Theory]
+    [HumansTheory]
     [InlineData("Clear")]
     [InlineData("Flag")]
     [InlineData("Reject")]
@@ -71,7 +71,7 @@ public class EndpointAuthorizationTests
 
     // --- Finance endpoints ---
 
-    [Fact]
+    [HumansFact]
     public void FinanceController_RequiresFinanceAdminOrAdmin()
     {
         AssertHasPolicy(typeof(FinanceController), null, "FinanceAdminOrAdmin");
@@ -79,7 +79,7 @@ public class EndpointAuthorizationTests
 
     // --- POST actions must have ValidateAntiForgeryToken ---
 
-    [Fact]
+    [HumansFact]
     public void AllPostActions_HaveAntiForgeryValidation()
     {
         var controllerTypes = typeof(HumansControllerBase).Assembly.GetTypes()
@@ -120,7 +120,7 @@ public class EndpointAuthorizationTests
 
     // --- Authorize attribute coverage ---
 
-    [Fact]
+    [HumansFact]
     public void AllControllerActions_HaveAuthorizeOrAllowAnonymous()
     {
         // Controllers that are intentionally anonymous (public-facing pages)
@@ -182,7 +182,7 @@ public class EndpointAuthorizationTests
     /// have [Authorize] at class level. Any new anonymous endpoint on an authorized
     /// controller must be explicitly added to this allowlist with a justification.
     /// </summary>
-    [Fact]
+    [HumansFact]
     public void AllowAnonymousOnAuthorizedControllers_IsExplicitlyAllowlisted()
     {
         // Allowlist: controller.action → why it's anonymous

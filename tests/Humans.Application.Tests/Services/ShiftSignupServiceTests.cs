@@ -82,7 +82,7 @@ public class ShiftSignupServiceTests : IDisposable
     // SignUp
     // ============================================================
 
-    [Fact]
+    [HumansFact]
     public async Task SignUp_PublicPolicy_CreatesConfirmed()
     {
         var (es, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
@@ -96,7 +96,7 @@ public class ShiftSignupServiceTests : IDisposable
         result.Signup.ReviewedByUserId.Should().Be(userId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SignUp_RequireApprovalPolicy_CreatesPending()
     {
         var (es, rota, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
@@ -110,7 +110,7 @@ public class ShiftSignupServiceTests : IDisposable
         result.Signup.ReviewedByUserId.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SignUp_DuplicateSignup_ReturnsError()
     {
         var (es, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
@@ -124,7 +124,7 @@ public class ShiftSignupServiceTests : IDisposable
         result.Error.Should().Contain("Already signed up");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SignUp_OverlappingShift_ReturnsError()
     {
         var (es, rota, shift1) = SeedShiftScenario(SignupPolicy.Public);
@@ -141,7 +141,7 @@ public class ShiftSignupServiceTests : IDisposable
         result.Error.Should().Contain("Time conflict");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SignUp_SystemClosed_RegularVolunteer_ReturnsError()
     {
         var (es, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
@@ -155,7 +155,7 @@ public class ShiftSignupServiceTests : IDisposable
         result.Error.Should().Contain("not currently open");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SignUp_AdminOnlyShift_RegularVolunteer_ReturnsError()
     {
         var (es, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
@@ -173,7 +173,7 @@ public class ShiftSignupServiceTests : IDisposable
     // Approve
     // ============================================================
 
-    [Fact]
+    [HumansFact]
     public async Task Approve_FromPending_SetsConfirmed()
     {
         var (es, rota, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
@@ -189,7 +189,7 @@ public class ShiftSignupServiceTests : IDisposable
         result.Signup.ReviewedByUserId.Should().Be(reviewerId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task Approve_RevalidatesOverlap_ReturnsWarning()
     {
         var (es, rota, shift1) = SeedShiftScenario(SignupPolicy.RequireApproval);
@@ -213,7 +213,7 @@ public class ShiftSignupServiceTests : IDisposable
     // Bail
     // ============================================================
 
-    [Fact]
+    [HumansFact]
     public async Task Bail_FromConfirmed_SetsBailed()
     {
         var (es, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
@@ -228,7 +228,7 @@ public class ShiftSignupServiceTests : IDisposable
         result.Signup.StatusReason.Should().Be("Can't make it");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task Bail_BuildShift_AfterEeClose_NonPrivileged_ReturnsError()
     {
         var (es, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
@@ -250,7 +250,7 @@ public class ShiftSignupServiceTests : IDisposable
     // Voluntell
     // ============================================================
 
-    [Fact]
+    [HumansFact]
     public async Task Voluntell_CreatesConfirmedWithEnrolledFlag()
     {
         var (es, rota, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
@@ -271,7 +271,7 @@ public class ShiftSignupServiceTests : IDisposable
     // MarkNoShow
     // ============================================================
 
-    [Fact]
+    [HumansFact]
     public async Task MarkNoShow_BeforeShiftEnd_ReturnsError()
     {
         var (es, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
@@ -298,7 +298,7 @@ public class ShiftSignupServiceTests : IDisposable
         result.Error.Should().Contain("before the shift ends");
     }
 
-    [Fact]
+    [HumansFact(Timeout = 10000)]
     public async Task MarkNoShow_AfterShiftEnd_SetsNoShow()
     {
         var (es, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
@@ -325,7 +325,7 @@ public class ShiftSignupServiceTests : IDisposable
     // SignUpRange
     // ============================================================
 
-    [Fact]
+    [HumansFact]
     public async Task SignUpRange_CreatesOneSignupPerDay()
     {
         // Arrange: rota with 5 all-day shifts (days -5 to -1), user picks days -3 to -1
@@ -350,7 +350,7 @@ public class ShiftSignupServiceTests : IDisposable
         signups.Select(s => s.SignupBlockId).Distinct().Should().HaveCount(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SignUpRange_BlocksIfAnyDayOverlaps()
     {
         // Arrange: user already has a confirmed signup on day -2
@@ -378,7 +378,7 @@ public class ShiftSignupServiceTests : IDisposable
     // BailRange
     // ============================================================
 
-    [Fact]
+    [HumansFact]
     public async Task BailRange_BailsAllSignupsInBlock()
     {
         // Arrange: user signed up for days -3 to -1 (shared SignupBlockId)
@@ -411,7 +411,7 @@ public class ShiftSignupServiceTests : IDisposable
     // VoluntellRange
     // ============================================================
 
-    [Fact]
+    [HumansFact]
     public async Task VoluntellRange_CreatesConfirmedSignupsAcrossDateRange()
     {
         // Arrange: rota with 3 all-day shifts (days -3 to -1)
@@ -442,7 +442,7 @@ public class ShiftSignupServiceTests : IDisposable
         signups.Select(s => s.SignupBlockId).Distinct().Should().HaveCount(1);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task VoluntellRange_SkipsShiftsWhereUserAlreadySignedUp()
     {
         // Arrange: rota with 3 all-day shifts, user already signed up on day -2
@@ -471,7 +471,7 @@ public class ShiftSignupServiceTests : IDisposable
         newSignups.Should().HaveCount(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task VoluntellRange_ReturnsError_WhenRotaNotFound()
     {
         // Act
@@ -534,7 +534,6 @@ public class ShiftSignupServiceTests : IDisposable
 
         // Set navigation properties for in-memory provider
         rota.EventSettings = es;
-        rota.Team = team;
 
         var shift = SeedShift(rota, dayOffset: 1, startHour: 10, durationHours: 4);
         return (es, rota, shift);

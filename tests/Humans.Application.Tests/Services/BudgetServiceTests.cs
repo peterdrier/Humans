@@ -44,16 +44,17 @@ public class BudgetServiceTests : IAsyncLifetime
             NullLogger<BudgetServiceImpl>.Instance);
     }
 
-    public Task InitializeAsync() => Task.CompletedTask;
+    // xUnit v3 IAsyncLifetime: both methods return ValueTask.
+    public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await _provider.DisposeAsync();
     }
 
     // ─── VAT rate validation ─────────────────────────────────────────────────
 
-    [Theory]
+    [HumansTheory]
     [InlineData(-1)]
     [InlineData(22)]
     public async Task CreateLineItemAsync_rejects_vat_rates_outside_0_to_21(int vatRate)
@@ -74,7 +75,7 @@ public class BudgetServiceTests : IAsyncLifetime
             .WithMessage("*between 0 and 21*");
     }
 
-    [Theory]
+    [HumansTheory]
     [InlineData(-1)]
     [InlineData(22)]
     public async Task UpdateLineItemAsync_rejects_vat_rates_outside_0_to_21(int vatRate)
@@ -111,7 +112,7 @@ public class BudgetServiceTests : IAsyncLifetime
 
     // ─── CreateYearAsync with scaffold ──────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public async Task CreateYearAsync_seeds_department_and_ticketing_groups_atomically()
     {
         IReadOnlyList<TeamOptionDto> teams =
@@ -156,7 +157,7 @@ public class BudgetServiceTests : IAsyncLifetime
 
     // ─── UpdateYearStatusAsync auto-closes previously active years ──────────
 
-    [Fact]
+    [HumansFact]
     public async Task UpdateYearStatusAsync_activating_closes_other_active_years()
     {
         await using (var ctx = await _factory.CreateDbContextAsync())
@@ -195,7 +196,7 @@ public class BudgetServiceTests : IAsyncLifetime
         auditEntries.Should().HaveCount(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task UpdateYearStatusAsync_missing_year_throws()
     {
         var act = () => _service.UpdateYearStatusAsync(Guid.NewGuid(), BudgetYearStatus.Active, Guid.NewGuid());
@@ -206,7 +207,7 @@ public class BudgetServiceTests : IAsyncLifetime
 
     // ─── UpdateYearAsync writes field audits only for changes ────────────────
 
-    [Fact]
+    [HumansFact]
     public async Task UpdateYearAsync_writes_field_audit_only_for_changed_fields()
     {
         await using (var ctx = await _factory.CreateDbContextAsync())
@@ -234,7 +235,7 @@ public class BudgetServiceTests : IAsyncLifetime
 
     // ─── DeleteYearAsync refuses active ─────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public async Task DeleteYearAsync_refuses_when_year_is_active()
     {
         await using (var ctx = await _factory.CreateDbContextAsync())
@@ -255,7 +256,7 @@ public class BudgetServiceTests : IAsyncLifetime
             .WithMessage("*active*");
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DeleteYearAsync_soft_deletes_when_draft()
     {
         await using (var ctx = await _factory.CreateDbContextAsync())
@@ -281,7 +282,7 @@ public class BudgetServiceTests : IAsyncLifetime
 
     // ─── Closed year blocks edits ──────────────────────────────────────────
 
-    [Fact]
+    [HumansFact]
     public async Task CreateGroupAsync_refuses_when_year_is_closed()
     {
         await using (var ctx = await _factory.CreateDbContextAsync())
@@ -304,7 +305,7 @@ public class BudgetServiceTests : IAsyncLifetime
 
     // ─── SyncTicketingActuals materializes projections inside one save ─────
 
-    [Fact]
+    [HumansFact]
     public async Task SyncTicketingActualsAsync_upserts_weekly_actuals_and_updates_projection_params()
     {
         var (groupId, projectionId, revenueCatId, feesCatId) = await SeedTicketingYearAsync();
@@ -340,7 +341,7 @@ public class BudgetServiceTests : IAsyncLifetime
         projection.AverageTicketPrice.Should().Be(50m); // 500 / 10
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SyncTicketingActualsAsync_is_noop_when_no_ticketing_group()
     {
         await using (var ctx = await _factory.CreateDbContextAsync())
@@ -362,7 +363,7 @@ public class BudgetServiceTests : IAsyncLifetime
         result.Should().Be(0);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task RefreshTicketingProjectionsAsync_materializes_projected_weeks_when_projection_is_valid()
     {
         var (groupId, _, revenueCatId, feesCatId) = await SeedTicketingYearAsync();
@@ -390,7 +391,7 @@ public class BudgetServiceTests : IAsyncLifetime
     // repo. The fix moves materialization into the repo atomic op AFTER the
     // projection is updated from actuals, so projected items reflect the
     // newly-learned average price / fee percentages in the same sync.
-    [Fact]
+    [HumansFact]
     public async Task SyncTicketingActualsAsync_projected_items_use_post_update_avg_price_not_pre_sync_value()
     {
         var (groupId, _, revenueCatId, _) = await SeedTicketingYearAsync();

@@ -58,7 +58,7 @@
                                 var first = signups[0];
                                 var isRange = signups.Count > 1;
                                 <tr>
-                                    <td><human-link user-id="@first.UserId" display-name="@first.User?.DisplayName" show-popover="true" /></td>
+                                    <td><human-link user-id="@first.UserId" display-name="@Model.Users.GetValueOrDefault(first.UserId)?.DisplayName" show-popover="true" /></td>
                                     <td>
                                         @{
                                             var pendingProfile = Model.VolunteerProfiles.GetValueOrDefault(first.UserId);
@@ -348,7 +348,7 @@
                                     var shiftSignups = shift.ShiftSignups
                                         .Where(su => su.Status == SignupStatus.Confirmed || su.Status == SignupStatus.NoShow || su.Status == SignupStatus.Bailed)
                                         .OrderBy(su => su.Status)
-                                        .ThenBy(su => su.User?.DisplayName, StringComparer.OrdinalIgnoreCase)
+                                        .ThenBy(su => Model.Users.GetValueOrDefault(su.UserId)?.DisplayName, StringComparer.OrdinalIgnoreCase)
                                         .ToList();
                                     <tr>
                                         <td>
@@ -394,7 +394,7 @@
                                         {
                                             var activeSignups = shift.ShiftSignups
                                                 .Where(ss => ss.Status is SignupStatus.Confirmed or SignupStatus.Pending)
-                                                .OrderBy(ss => ss.Status == SignupStatus.Confirmed ? 0 : 1).ThenBy(ss => ss.User?.DisplayName, StringComparer.OrdinalIgnoreCase)
+                                                .OrderBy(ss => ss.Status == SignupStatus.Confirmed ? 0 : 1).ThenBy(ss => Model.Users.GetValueOrDefault(ss.UserId)?.DisplayName, StringComparer.OrdinalIgnoreCase)
                                                 .ToList();
                                             <td class="small">
                                                 @if (rota.Period == RotaPeriod.Event)
@@ -402,8 +402,9 @@
                                                     @for (var i = 0; i < activeSignups.Count; i++)
                                                     {
                                                         var ss = activeSignups[i];
+                                                        var ssUser = Model.Users.GetValueOrDefault(ss.UserId);
                                                         if (i > 0) { <text>, </text> }
-                                                        <human-link user-id="@ss.UserId" display-name="@ss.User?.DisplayName" show-popover="true"
+                                                        <human-link user-id="@ss.UserId" display-name="@ssUser?.DisplayName" show-popover="true"
                                                                    class="@(ss.Status == SignupStatus.Pending ? "text-muted fst-italic" : "")" />@if (ss.Status == SignupStatus.Pending)
                                                         {<small class="text-muted"> @Localizer["Shifts_Pending"]</small>}
                                                     }
@@ -413,9 +414,10 @@
                                                     <div class="d-flex flex-wrap gap-1">
                                                         @foreach (var ss in activeSignups)
                                                         {
-                                                            <human-link user-id="@ss.UserId" display-name="@(ss.User?.DisplayName)" mode="Avatar" size="26"
-                                                                       profile-picture-url="@(ss.User?.ProfilePictureUrl != null ? $"/Profile/Picture?id={ss.UserId}" : null)" show-popover="true"
-                                                                       title="@(ss.User?.DisplayName)@(ss.Status == SignupStatus.Pending ? $" ({Localizer["Shifts_Pending"]})" : "")"
+                                                            var ssUser = Model.Users.GetValueOrDefault(ss.UserId);
+                                                            <human-link user-id="@ss.UserId" display-name="@(ssUser?.DisplayName)" mode="Avatar" size="26"
+                                                                       profile-picture-url="@(ssUser?.ProfilePictureUrl != null ? $"/Profile/Picture?id={ss.UserId}" : null)" show-popover="true"
+                                                                       title="@(ssUser?.DisplayName)@(ss.Status == SignupStatus.Pending ? $" ({Localizer["Shifts_Pending"]})" : "")"
                                                                        class="@(ss.Status == SignupStatus.Pending ? "opacity-50" : "")"
                                                                        style="@(ss.Status == SignupStatus.Pending ? "border: 1px dashed var(--h-muted-text); border-radius: 50%;" : "")" />
                                                         }
@@ -537,7 +539,7 @@
                                     {
                                         var manageSignups = shift.ShiftSignups
                                             .Where(ss => ss.Status == SignupStatus.Confirmed)
-                                            .OrderBy(ss => ss.User?.DisplayName, StringComparer.OrdinalIgnoreCase)
+                                            .OrderBy(ss => Model.Users.GetValueOrDefault(ss.UserId)?.DisplayName, StringComparer.OrdinalIgnoreCase)
                                             .ToList();
                                         if (manageSignups.Count > 0)
                                         {
@@ -549,7 +551,7 @@
                                                         {
                                                             <div class="d-flex justify-content-between align-items-center border-bottom py-1">
                                                                 <div>
-                                                                    <human-link user-id="@signup.UserId" display-name="@signup.User?.DisplayName" show-popover="true" />
+                                                                    <human-link user-id="@signup.UserId" display-name="@Model.Users.GetValueOrDefault(signup.UserId)?.DisplayName" show-popover="true" />
                                                                     @{
                                                                         var manageProfile = Model.VolunteerProfiles.GetValueOrDefault(signup.UserId);
                                                                     }
@@ -585,7 +587,7 @@
                                                     {
                                                         <div class="d-flex justify-content-between align-items-center border-bottom py-1">
                                                             <div>
-                                                                <human-link user-id="@signup.UserId" display-name="@signup.User?.DisplayName" show-popover="true" />
+                                                                <human-link user-id="@signup.UserId" display-name="@Model.Users.GetValueOrDefault(signup.UserId)?.DisplayName" show-popover="true" />
                                                                 @{
                                                                     var signupProfile = Model.VolunteerProfiles.GetValueOrDefault(signup.UserId);
                                                                 }

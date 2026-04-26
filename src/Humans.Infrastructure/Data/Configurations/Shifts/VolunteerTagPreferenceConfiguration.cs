@@ -17,7 +17,8 @@ public class VolunteerTagPreferenceConfiguration : IEntityTypeConfiguration<Volu
 
         builder.HasIndex(v => v.UserId);
 
-        builder.HasOne(v => v.User)
+        // Cross-section FK to User — typed-FK form, no navigation property.
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(v => v.UserId)
             .OnDelete(DeleteBehavior.Cascade);

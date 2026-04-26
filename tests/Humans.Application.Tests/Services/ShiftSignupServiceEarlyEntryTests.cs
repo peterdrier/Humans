@@ -76,7 +76,7 @@ public class ShiftSignupServiceEarlyEntryTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task SignUpAsync_IgnoresCapacityUsageFromDifferentEarlyEntryDay()
     {
         var (eventSettings, rota, _) = SeedBuildScenario();
@@ -97,7 +97,7 @@ public class ShiftSignupServiceEarlyEntryTests : IDisposable
         result.Warning.Should().BeNull();
     }
 
-    [Fact]
+    [HumansFact(Timeout = 10000)]
     public async Task SignUpRangeAsync_WarnsWhenLaterEarlyEntryDayIsFull()
     {
         var (eventSettings, rota, _) = SeedBuildScenario();
@@ -160,8 +160,7 @@ public class ShiftSignupServiceEarlyEntryTests : IDisposable
             Period = RotaPeriod.Build,
             CreatedAt = TestNow,
             UpdatedAt = TestNow,
-            EventSettings = eventSettings,
-            Team = team
+            EventSettings = eventSettings
         };
         _dbContext.Rotas.Add(rota);
 

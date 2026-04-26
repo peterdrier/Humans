@@ -33,7 +33,7 @@ public class NotificationRepositoryTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task AddAsync_PersistsNotificationWithRecipients()
     {
         var userId = Guid.NewGuid();
@@ -49,7 +49,7 @@ public class NotificationRepositoryTests : IDisposable
         stored.Recipients.Should().ContainSingle(r => r.UserId == userId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task AddRangeAsync_PersistsAllNotifications()
     {
         var u1 = Guid.NewGuid();
@@ -63,7 +63,7 @@ public class NotificationRepositoryTests : IDisposable
         (await _dbContext.Notifications.AsNoTracking().CountAsync()).Should().Be(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ResolveAsync_ReturnsNotFound_ForMissingNotification()
     {
         var outcome = await _repo.ResolveAsync(Guid.NewGuid(), Guid.NewGuid(), _now);
@@ -72,7 +72,7 @@ public class NotificationRepositoryTests : IDisposable
         outcome.NotFound.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ResolveAsync_ReturnsForbidden_WhenActorNotRecipient()
     {
         var recipient = Guid.NewGuid();
@@ -86,7 +86,7 @@ public class NotificationRepositoryTests : IDisposable
         outcome.Forbidden.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task ResolveAsync_SetsResolvedFields()
     {
         var userId = Guid.NewGuid();
@@ -103,7 +103,7 @@ public class NotificationRepositoryTests : IDisposable
         stored.ResolvedByUserId.Should().Be(userId);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DismissAsync_ForbidsActionable()
     {
         var userId = Guid.NewGuid();
@@ -116,7 +116,7 @@ public class NotificationRepositoryTests : IDisposable
         outcome.Forbidden.Should().BeTrue();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DismissAsync_PermitsInformational()
     {
         var userId = Guid.NewGuid();
@@ -130,7 +130,7 @@ public class NotificationRepositoryTests : IDisposable
         stored.ResolvedAt.Should().Be(_now);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task MarkAllReadAsync_UpdatesAllUnreadRecipientRows()
     {
         var userId = Guid.NewGuid();
@@ -146,7 +146,7 @@ public class NotificationRepositoryTests : IDisposable
         anyUnread.Should().BeFalse();
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DeleteResolvedOlderThanAsync_DeletesOnlyOlderResolved()
     {
         var userId = Guid.NewGuid();
@@ -169,7 +169,7 @@ public class NotificationRepositoryTests : IDisposable
         (await _dbContext.Notifications.AsNoTracking().CountAsync()).Should().Be(2);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task DeleteUnresolvedInformationalOlderThanAsync_IgnoresActionable()
     {
         var userId = Guid.NewGuid();
@@ -187,7 +187,7 @@ public class NotificationRepositoryTests : IDisposable
         remaining.Class.Should().Be(NotificationClass.Actionable);
     }
 
-    [Fact]
+    [HumansFact]
     public async Task GetUnreadBadgeCountsAsync_SplitsByClass()
     {
         var userId = Guid.NewGuid();

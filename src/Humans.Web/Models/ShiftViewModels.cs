@@ -227,6 +227,15 @@ public class ShiftAdminViewModel
     public bool CanManageShifts { get; set; }
     public bool CanApproveSignups { get; set; }
     public Dictionary<Guid, VolunteerEventProfile> VolunteerProfiles { get; set; } = new();
+
+    /// <summary>
+    /// User display data (DisplayName, ProfilePictureUrl) keyed by UserId for every signup
+    /// in <see cref="Rotas"/> and <see cref="PendingSignups"/>. Resolved by the controller via
+    /// <c>IUserService.GetByIdsAsync</c>; the view reads from this dictionary instead of
+    /// navigating <c>ShiftSignup.User</c> (cross-domain nav, removed per design-rules §6c).
+    /// </summary>
+    public IReadOnlyDictionary<Guid, User> Users { get; set; } = new Dictionary<Guid, User>();
+
     public bool CanViewMedical { get; set; }
     public List<DailyStaffingData> StaffingData { get; set; } = [];
     public List<DailyStaffingHours> StaffingHours { get; set; } = [];
@@ -415,9 +424,15 @@ public class ShiftDashboardViewModel
     public DashboardOverview? Overview { get; set; }
     public IReadOnlyList<CoordinatorActivityRow> CoordinatorActivity { get; set; } = Array.Empty<CoordinatorActivityRow>();
     public IReadOnlyList<DashboardTrendPoint> Trends { get; set; } = Array.Empty<DashboardTrendPoint>();
+    public IReadOnlyList<DailyDepartmentStaffing> DailyDepartmentStaffing { get; set; } = Array.Empty<DailyDepartmentStaffing>();
+    public IReadOnlyList<ShiftDurationBreakdownRow> ShiftDurationBreakdown { get; set; } = Array.Empty<ShiftDurationBreakdownRow>();
+    public CoverageHeatmap CoverageHeatmap { get; set; } = new(Array.Empty<CoverageHeatmapDay>(), Array.Empty<CoverageHeatmapRotaRow>());
     public TrendWindow TrendWindow { get; set; } = TrendWindow.Last30Days;
     public bool IsDevelopment { get; set; }
+    public BuildDayCountdown Countdown { get; set; } = new(0, LocalDate.MinIsoValue, 0, 0);
 }
+
+public record BuildDayCountdown(int DaysToBuild, LocalDate FirstBuildDay, int Weeks, int RemainderDays);
 
 public class VolunteerSearchResult
 {
