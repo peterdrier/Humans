@@ -1019,12 +1019,17 @@ public class ProfileController : HumansControllerBase
     [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client)]
     public async Task<IActionResult> Picture(Guid id, CancellationToken ct)
     {
-        var (data, contentType) = await _profileService.GetProfilePictureAsync(id, ct);
-
-        if (data is null || string.IsNullOrEmpty(contentType))
+        // Per design-rules §2 the controller does not talk to the picture
+        // store directly — IProfileService owns the FS-first / DB-fallback /
+        // migrate-on-read orchestration AND the anonymization gate (issue
+        // nobodies-collective/Humans#527).
+        var result = await _profileService.GetProfilePictureAsync(id, ct);
+        if (result is null)
+        {
             return NotFound();
+        }
 
-        return File(data, contentType);
+        return File(result.Value.Data, result.Value.ContentType);
     }
 
     [HttpPost("Me/ImportGooglePhoto")]

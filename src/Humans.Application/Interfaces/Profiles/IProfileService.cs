@@ -45,7 +45,17 @@ public interface IProfileService
         GetProfileIndexDataAsync(Guid userId, CancellationToken ct = default);
     Task<(Profile? Profile, bool IsTierLocked, MemberApplication? PendingApplication)>
         GetProfileEditDataAsync(Guid userId, CancellationToken ct = default);
-    Task<(byte[]? Data, string? ContentType)> GetProfilePictureAsync(Guid profileId, CancellationToken ct = default);
+    /// <summary>
+    /// Returns the profile picture for the given profile, reading from the
+    /// filesystem store first and falling back to the DB column. On a
+    /// DB-fallback hit the bytes are migrated to the filesystem store so
+    /// subsequent requests use the fast path. Returns <c>null</c> when the
+    /// profile has no picture or has been anonymized (the DB content-type
+    /// column is null), so a stale on-disk file left behind by a failed
+    /// anonymization cleanup is not served. Centralizing the read path here
+    /// keeps controllers free of <see cref="Profiles.IProfilePictureStore"/>.
+    /// </summary>
+    Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(Guid profileId, CancellationToken ct = default);
 
     /// <summary>
     /// Persists a new custom profile picture for the user's profile. No-op (logs a
@@ -54,7 +64,6 @@ public interface IProfileService
     /// resizing the image before calling.
     /// </summary>
     Task SetProfilePictureAsync(Guid userId, byte[] pictureData, string contentType, CancellationToken ct = default);
-
     Task<Guid> SaveProfileAsync(Guid userId, string displayName, ProfileSaveRequest request, string language, CancellationToken ct = default);
     Task<OnboardingResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default);
     Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default);

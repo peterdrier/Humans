@@ -41,6 +41,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
     private readonly ICampaignService _campaignService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IAccountDeletionService _accountDeletionService;
+    private readonly IProfilePictureStore _profilePictureStore;
     private readonly IClock _clock;
     private readonly ILogger<ProfileService> _logger;
 
@@ -59,6 +60,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         ICampaignService campaignService,
         IRoleAssignmentService roleAssignmentService,
         IAccountDeletionService accountDeletionService,
+        IProfilePictureStore profilePictureStore,
         IClock clock,
         ILogger<ProfileService> logger)
     {
@@ -76,6 +78,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         _campaignService = campaignService;
         _roleAssignmentService = roleAssignmentService;
         _accountDeletionService = accountDeletionService;
+        _profilePictureStore = profilePictureStore;
         _clock = clock;
         _logger = logger;
     }
@@ -192,9 +195,53 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         return (profile, isTierLocked, pendingApplication);
     }
 
-    public Task<(byte[]? Data, string? ContentType)> GetProfilePictureAsync(
-        Guid profileId, CancellationToken ct = default) =>
-        _profileRepository.GetProfilePictureDataAsync(profileId, ct);
+    public async Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(
+        Guid profileId, CancellationToken ct = default)
+    {
+        // Anonymization gate (issue nobodies-collective/Humans#527, GDPR):
+        // a cheap scalar projection of the DB content-type column is the
+        // source of truth for whether a picture should be served. If
+        // AnonymizeExpiredProfileAsync (or any future cleanup) has cleared
+        // the DB column, do not serve from disk even if a stale file
+        // remains — that closes the loop for the case where the
+        // best-effort filesystem delete failed during anonymization.
+        var dbContentType = await _profileRepository.GetProfilePictureContentTypeAsync(profileId, ct);
+        if (string.IsNullOrEmpty(dbContentType))
+        {
+            return null;
+        }
+
+        // Filesystem fast path. Avoids loading the bytea column when the
+        // file is already on disk (the common case after migrate-on-read).
+        var fsHit = await _profilePictureStore.TryReadAsync(profileId, ct);
+        if (fsHit is not null)
+        {
+            return (fsHit.Value.Data, fsHit.Value.ContentType);
+        }
+
+        // DB fallback + migrate-on-read.
+        var (data, contentType) = await _profileRepository.GetProfilePictureDataAsync(profileId, ct);
+        if (data is null || string.IsNullOrEmpty(contentType))
+        {
+            return null;
+        }
+
+        try
+        {
+            await _profilePictureStore.WriteAsync(profileId, data, contentType, ct);
+            _logger.LogInformation(
+                "Profile picture {ProfileId} served from DB fallback; migrated to filesystem",
+                profileId);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex,
+                "Profile picture {ProfileId} served from DB fallback; migration to filesystem failed",
+                profileId);
+        }
+
+        return (data, contentType);
+    }
 
     public async Task<Guid> SaveProfileAsync(
         Guid userId, string displayName, ProfileSaveRequest request, string language,
@@ -251,16 +298,39 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
             profile.DateOfBirth = null;
         }
 
-        // Handle profile picture
+        // Handle profile picture. Phase 1 of issue nobodies-collective/Humans#527:
+        // dual-write to filesystem + DB so rollback stays safe. Phase 2 drops the
+        // DB columns once phase 1 has bedded in.
         if (request.RemoveProfilePicture)
         {
             profile.ProfilePictureData = null;
             profile.ProfilePictureContentType = null;
+            try
+            {
+                await _profilePictureStore.DeleteAsync(profile.Id, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(ex,
+                    "Failed to delete profile picture from filesystem for {ProfileId}; DB delete still applied",
+                    profile.Id);
+            }
         }
         else if (request.ProfilePictureData is not null && request.ProfilePictureContentType is not null)
         {
             profile.ProfilePictureData = request.ProfilePictureData;
             profile.ProfilePictureContentType = request.ProfilePictureContentType;
+            try
+            {
+                await _profilePictureStore.WriteAsync(
+                    profile.Id, request.ProfilePictureData, request.ProfilePictureContentType, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(ex,
+                    "Failed to write profile picture to filesystem for {ProfileId}; DB write still applied",
+                    profile.Id);
+            }
         }
 
         // Handle tier application during initial setup
@@ -982,8 +1052,36 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         return true;
     }
 
-    public Task<bool> AnonymizeExpiredProfileAsync(Guid userId, CancellationToken ct = default) =>
-        _profileRepository.AnonymizeForDeletionByUserIdAsync(userId, ct);
+    public async Task<bool> AnonymizeExpiredProfileAsync(Guid userId, CancellationToken ct = default)
+    {
+        // Anonymize clears ProfilePictureData / ProfilePictureContentType in
+        // the DB and best-effort wipes the filesystem copy (phase 1 of issue
+        // nobodies-collective/Humans#527). The DB clear alone is NOT
+        // sufficient under the FS-first read path: if this delete throws,
+        // the file remains on disk and TryReadAsync would otherwise serve it
+        // indefinitely. The read-path gate in GetProfilePictureAsync (which
+        // checks the DB content-type before consulting the filesystem)
+        // closes that loop — but we still log this failure as an Error so
+        // an operator can clean up the stale file out-of-band.
+        var profile = await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
+        var anonymized = await _profileRepository.AnonymizeForDeletionByUserIdAsync(userId, ct);
+        if (anonymized && profile is not null)
+        {
+            try
+            {
+                await _profilePictureStore.DeleteAsync(profile.Id, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(ex,
+                    "Failed to delete filesystem profile picture during anonymization for {ProfileId}; " +
+                    "DB has been cleared so the read-path gate prevents the stale file from being served, " +
+                    "but the file should be removed manually to complete GDPR data deletion",
+                    profile.Id);
+            }
+        }
+        return anonymized;
+    }
 
     public Task<IReadOnlySet<Guid>> SuspendForMissingConsentAsync(
         IReadOnlyCollection<Guid> userIds,
