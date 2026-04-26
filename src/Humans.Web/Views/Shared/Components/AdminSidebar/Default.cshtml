@@ -1,10 +1,6 @@
 @model Humans.Web.ViewComponents.AdminSidebarViewModel
 
 <div class="sidebar-scroll">
-    <a class="brand" asp-controller="Home" asp-action="Index">
-        Humans<small>@Localizer["AdminNav_BrandSubtitle"]</small>
-    </a>
-
     @foreach (var group in Model.Groups)
     {
         <h4>@Localizer[group.LabelKey]</h4>
@@ -35,7 +31,4 @@
             }
         }
     }
-
-    <div style="flex:1;"></div>
-    <partial name="_AdminSidebarFooter" />
 </div>
