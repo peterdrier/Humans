@@ -4,8 +4,6 @@ using NodaTime;
 
 #nullable disable
 
-#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
-
 namespace Humans.Infrastructure.Migrations
 {
     /// <inheritdoc />
@@ -66,18 +64,6 @@ namespace Humans.Infrastructure.Migrations
                         principalTable: "camp_seasons",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.InsertData(
-                table: "camp_role_definitions",
-                columns: new[] { "Id", "CreatedAt", "DeactivatedAt", "Description", "IsRequired", "MinimumRequired", "Name", "SlotCount", "SortOrder", "UpdatedAt" },
-                values: new object[,]
-                {
-                    { new Guid("11111111-aaaa-4000-8000-000000000001"), NodaTime.Instant.FromUnixTimeTicks(17463600000000000L), null, null, true, 1, "Consent Lead", 2, 10, NodaTime.Instant.FromUnixTimeTicks(17463600000000000L) },
-                    { new Guid("11111111-aaaa-4000-8000-000000000002"), NodaTime.Instant.FromUnixTimeTicks(17463600000000000L), null, null, true, 1, "LNT", 1, 20, NodaTime.Instant.FromUnixTimeTicks(17463600000000000L) },
-                    { new Guid("11111111-aaaa-4000-8000-000000000003"), NodaTime.Instant.FromUnixTimeTicks(17463600000000000L), null, null, true, 1, "Shit Ninja", 1, 30, NodaTime.Instant.FromUnixTimeTicks(17463600000000000L) },
-                    { new Guid("11111111-aaaa-4000-8000-000000000004"), NodaTime.Instant.FromUnixTimeTicks(17463600000000000L), null, null, false, 0, "Power", 1, 40, NodaTime.Instant.FromUnixTimeTicks(17463600000000000L) },
-                    { new Guid("11111111-aaaa-4000-8000-000000000005"), NodaTime.Instant.FromUnixTimeTicks(17463600000000000L), null, null, true, 1, "Build Lead", 2, 50, NodaTime.Instant.FromUnixTimeTicks(17463600000000000L) }
                 });
 
             migrationBuilder.CreateIndex(

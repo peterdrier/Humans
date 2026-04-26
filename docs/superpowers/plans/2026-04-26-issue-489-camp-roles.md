@@ -425,7 +425,10 @@ git commit -m "feat: register CampRoleDefinitions and CampRoleAssignments DbSets
 
 ---
 
-### Task B4: Generate migration with seed data
+### Task B4: Generate migration
+
+> **AMENDMENT (2026-04-26):** Seed direction reversed by Peter. The catalogue ships **empty**; CampAdmin creates every definition via the GUI. No `HasData`, no `InsertData`, no SQL fixups. The Step 2/Step 4 seed instructions below are **obsolete** — preserved as historical record only. The actual migration on the branch is pure schema (no data block); see `docs/superpowers/specs/2026-04-26-issue-489-camp-roles-reimpl-design.md` "No seed".
+
 
 **Files:**
 - Create: `src/Humans.Infrastructure/Migrations/<timestamp>_AddCampRoles.cs`
@@ -500,7 +503,7 @@ Provide the new migration file path as input. Expected: PASS with no CRITICAL fi
 
 ```bash
 git add src/Humans.Infrastructure/Migrations/
-git commit -m "feat: add migration for camp_role_definitions and camp_role_assignments with 5-row seed"
+git commit -m "feat: add migration for camp_role_definitions and camp_role_assignments"
 ```
 
 ---

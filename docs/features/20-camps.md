@@ -156,7 +156,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 
 ### US-20.12: Per-camp roles
 **As a** camp lead, CampAdmin, or Admin
-**I want to** assign humans in my camp to per-camp roles (Consent Lead, LNT, Shit Ninja, Power, Build Lead, etc.)
+**I want to** assign humans in my camp to per-camp roles defined by CampAdmin
 **So that** the org knows who is responsible for the role each season and can flag camps that are missing required leads
 
 **As a** CampAdmin
@@ -337,18 +337,7 @@ CampRoleAssignment
 - Unique index on `(CampSeasonId, CampRoleDefinitionId, CampMemberId)` — same human cannot hold the same role twice in the same season.
 - Service precondition: the linked `CampMember` must have `Status = Active` for the same `CampSeasonId`.
 - Cascades: removing a `CampMember` (Leave / Withdraw / Remove paths) calls `ICampRoleService.RemoveAllForMemberAsync` to clear assignments before the soft-delete.
-
-#### Seed (5 spec roles)
-
-| Name | IsRequired | MinimumRequired | SlotCount | SortOrder |
-|---|---|---|---|---|
-| Consent Lead | true | 1 | 2 | 10 |
-| LNT | true | 1 | 1 | 20 |
-| Shit Ninja | true | 1 | 1 | 30 |
-| Power | false | 0 | 1 | 40 |
-| Build Lead | true | 1 | 2 | 50 |
-
-CampAdmin can edit the seed rows or add new definitions post-deploy.
+- The catalogue ships empty. There are no default role definitions — CampAdmin creates every row via the management UI.
 
 ### Enums
 ```

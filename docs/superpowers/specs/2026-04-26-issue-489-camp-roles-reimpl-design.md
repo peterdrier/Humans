@@ -22,7 +22,7 @@
 |---|---|---|
 | **D1** | Restore the spec's `IsPublic` flag (issue AC7: anonymous users see public roles on Camp Details). | **Drop entirely.** All role visibility is auth-gated. Issue #489 will be updated with a ratification comment as part of this PR. |
 | **D2** | Frank's auto-promote-on-assignment feature (creates CampMember(Active) in the same transaction). | **Drop auto-promote.** Replace with a separate, explicit "lead adds active member to camp" action that uses the existing `_HumanSearchInput` partial and produces an audit entry ("Bob added Phil to camp Foo"). After membership exists, role assignment proceeds by the spec's normal path. **Camp Lead → role retirement is split to a follow-up issue** — Camp Lead is NOT seeded as a role definition in this PR; existing `CampLead` entity and authz are unchanged here. |
-| **D3** | Frank's 6th seed row "Wellbeing Lead" (beyond spec). | **Drop.** Seed exactly the 5 spec roles; CampAdmin can add via the GUI post-deploy. |
+| **D3** | Frank's 6th seed row "Wellbeing Lead" (beyond spec). | **Moot.** No seed at all — see "No seed" section below. CampAdmin creates every definition via the GUI. |
 | **D4** | Frank's `MinimumRequired` field (separates compliance threshold from slot cap). | **Keep.** Compliance = `IsRequired && filledCount >= MinimumRequired`. Add cross-field validation at the viewmodel layer (`0 ≤ MinimumRequired ≤ SlotCount`). |
 | **D5** | Frank's per-slot index storage (`SlotIndex` column + DB unique on `(season, role, slotIndex)`). | **Drop SlotIndex.** Storage is `(season, role, campMember)` unique. Service layer enforces `count < SlotCount` before insert. Slots are a display concern: the view orders existing assignments and pads with empty rows up to `SlotCount`. |
 
@@ -98,21 +98,13 @@ public class CampRoleAssignment
 
 ### Migration
 
-Single new migration `AddCampRoles` immediately after main's `20260424160739_AddCampMembers`. Generated fresh; no port from Frank. **Mandatory pre-commit step:** the EF migration reviewer agent (`.claude/agents/ef-migration-reviewer.md`) must pass with no CRITICAL issues.
+Single new migration `AddCampRoles` immediately after main's `20260424160739_AddCampMembers`. Generated fresh; no port from Frank. Pure schema — **no `HasData`, no `InsertData`, no SQL fixups**. **Mandatory pre-commit step:** the EF migration reviewer agent (`.claude/agents/ef-migration-reviewer.md`) must pass with no CRITICAL issues.
 
-#### Seed (`HasData`)
+#### No seed
 
-5 rows, deterministic GUIDs, `Instant.FromUnixTimeTicks(...)` for stable timestamps:
+The catalogue ships empty. There are **no default role definitions**. Per [feedback_db_enforcement_minimal](../../../C:/Users/PeterDrier/.claude/projects/H--source-Humans/memory/feedback_db_enforcement_minimal.md) and Peter's instruction on this PR: "no manual SQL ever, no HasData. The point of this is that CampAdmin can create roles. There are no default ones."
 
-| Name | IsRequired | MinimumRequired | SlotCount | SortOrder |
-|---|---|---|---|---|
-| Consent Lead | true | 1 | 2 | 10 |
-| LNT | true | 1 | 1 | 20 |
-| Shit Ninja | true | 1 | 1 | 30 |
-| Power | false | 0 | 1 | 40 |
-| Build Lead | true | 1 | 2 | 50 |
-
-`Description` left null on seed. CampAdmin can edit names, descriptions, slot counts, sort order, required flag, and minimum-required after deploy via the new GUI.
+CampAdmin uses the new GUI to create every definition (name, description, slot count, sort order, `IsRequired`, `MinimumRequired`) at runtime. If a dev/QA seeder is ever wanted for ergonomics, it is a separate dev-only tool that calls `ICampRoleService.CreateDefinitionAsync` through the service API — never the database directly.
 
 ---
 
@@ -310,7 +302,7 @@ Files in `.worktrees/pr-review-335/` that we port (read-only blueprint):
 | `src/Humans.Domain/Entities/CampRoleAssignment.cs` | Port shape; replace any `SlotIndex` field; FK is `CampMemberId`. |
 | EF configurations | Re-author at new path `src/Humans.Infrastructure/Data/Configurations/Camps/`. Indexes per data-model section above. |
 | `Migrations/20260425132022_AddCampRoles.cs` | **Discard.** Generate fresh from current main. |
-| Frank's seed `HasData` | Port 5 rows (drop Wellbeing Lead). No `IsPublic` column. |
+| Frank's seed `HasData` | Drop entirely. No seed, no `HasData`, no `InsertData`. Catalogue ships empty; CampAdmin creates rows via GUI. |
 | `CampRoleSlotViewModel`, `CampRoleRowViewModel`, `CampRolesPanelViewModel` | Port; drop `IsPublic` field on row VM. |
 | `Views/CampAdmin/Roles.cshtml`, `RoleForm.cshtml`, `Compliance.cshtml` | Port; drop IsPublic toggle/column. |
 | Camp Edit per-role panel rows | Port verbatim modulo slot-index → soft-cap rendering (order existing assignments + pad to SlotCount). |
@@ -337,7 +329,7 @@ Files in `.worktrees/pr-review-335/` that we port (read-only blueprint):
 ## Risks and open questions
 
 1. **`_HumanSearchInput` partial behavior at scale.** The partial is reused for adding leads today — should be fine for adding members and assigning roles. Verify it's queryable for "active members of this camp-season only" filtering for the role-assign picker (server-side filter in the controller, not the partial itself).
-2. **Notification fan-out on bulk assignment.** Five definition seed rows × N camps × 1–2 leads each could push notification volume on initial deploy. Best-effort try/catch is already designed in. Worth a check on QA before production rollout.
+2. **Notification fan-out on bulk assignment.** Once CampAdmin has created definitions and assignments start landing, N camps × 1–2 leads each could push notification volume. Best-effort try/catch is already designed in. Worth a check on QA before production rollout.
 3. **Compliance report performance.** At ~500-user scale this is a non-issue; report iterates camps × required-role-definitions per year. If perception lag on the page surfaces post-deploy, add `IMemoryCache` on the report inside `CampRoleService`.
 4. **Camp Lead retirement timing.** This PR ships role infrastructure WITHOUT folding Camp Lead into it. Until the follow-up issue ships, "Camp Lead" appears nowhere in the role admin UI. UX-wise, leads see role assignment for the 5 spec roles but their lead status is still managed via the existing `Add Lead` form. Acceptable for the interim.
 5. **Issue #489 ratification comment.** D1 is a deliberate spec deviation. Before this PR merges, post a comment on `nobodies-collective#489` ratifying "no public/private flag — all role visibility auth-gated" so the issue's acceptance criteria match what was built.
