@@ -29,7 +29,7 @@ function escHtml(s) {
 // --- Popup ---
 
 export function onCampPolygonClick(e) {
-    if (appState.activeCampSeasonId) return;
+    if (appState.activeCampSeasonId || appState.measuringActive) return;
     const props = e.features[0].properties;
     const campSeasonId = props.campSeasonId;
     const isOwn = props.campSeasonId === CONFIG.USER_CAMP_SEASON_ID;
