@@ -22,7 +22,7 @@ internal static class CampsSectionExtensions
         services.AddScoped<ICampService>(sp => sp.GetRequiredService<CampsCampService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CampsCampService>());
 
-        services.AddScoped<ICampRoleRepository, CampRoleRepository>();
+        services.AddSingleton<ICampRoleRepository, CampRoleRepository>();
         services.AddScoped<ICampRoleService, CampsCampRoleService>();
         // Lazy<ICampRoleService> resolves a circular dep: CampService → ICampRoleService → ICampService.
         services.AddTransient(sp => new Lazy<ICampRoleService>(() => sp.GetRequiredService<ICampRoleService>()));

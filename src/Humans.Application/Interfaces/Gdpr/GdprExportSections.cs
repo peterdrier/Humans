@@ -38,6 +38,7 @@ public static class GdprExportSections
     public const string TicketAttendeeMatches = "TicketAttendeeMatches";
     public const string CampaignGrants = "CampaignGrants";
     public const string CampLeadAssignments = "CampLeadAssignments";
+    public const string CampRoleAssignments = "CampRoleAssignments";
     public const string AccountMergeRequests = "AccountMergeRequests";
     public const string AuditLog = "AuditLog";
     public const string BudgetAuditLog = "BudgetAuditLog";

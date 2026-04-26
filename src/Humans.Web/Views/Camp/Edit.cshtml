@@ -309,7 +309,7 @@
                                 </h6>
                                 @if (!string.IsNullOrWhiteSpace(role.Description))
                                 {
-                                    <div class="text-muted small mb-2">@role.Description</div>
+                                    <div class="text-muted small mb-2">@Html.SanitizedMarkdown(role.Description)</div>
                                 }
 
                                 @* Filled slots — render in service-supplied order (AssignedAt) *@

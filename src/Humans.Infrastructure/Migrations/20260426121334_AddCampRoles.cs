@@ -4,6 +4,8 @@ using NodaTime;
 
 #nullable disable
 
+#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
+
 namespace Humans.Infrastructure.Migrations
 {
     /// <inheritdoc />
@@ -66,6 +68,18 @@ namespace Humans.Infrastructure.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.InsertData(
+                table: "camp_role_definitions",
+                columns: new[] { "Id", "CreatedAt", "DeactivatedAt", "Description", "IsRequired", "MinimumRequired", "Name", "SlotCount", "SortOrder", "UpdatedAt" },
+                values: new object[,]
+                {
+                    { new Guid("11111111-aaaa-4000-8000-000000000001"), NodaTime.Instant.FromUnixTimeTicks(17463600000000000L), null, null, true, 1, "Consent Lead", 2, 10, NodaTime.Instant.FromUnixTimeTicks(17463600000000000L) },
+                    { new Guid("11111111-aaaa-4000-8000-000000000002"), NodaTime.Instant.FromUnixTimeTicks(17463600000000000L), null, null, true, 1, "LNT", 1, 20, NodaTime.Instant.FromUnixTimeTicks(17463600000000000L) },
+                    { new Guid("11111111-aaaa-4000-8000-000000000003"), NodaTime.Instant.FromUnixTimeTicks(17463600000000000L), null, null, true, 1, "Shit Ninja", 1, 30, NodaTime.Instant.FromUnixTimeTicks(17463600000000000L) },
+                    { new Guid("11111111-aaaa-4000-8000-000000000004"), NodaTime.Instant.FromUnixTimeTicks(17463600000000000L), null, null, false, 0, "Power", 1, 40, NodaTime.Instant.FromUnixTimeTicks(17463600000000000L) },
+                    { new Guid("11111111-aaaa-4000-8000-000000000005"), NodaTime.Instant.FromUnixTimeTicks(17463600000000000L), null, null, true, 1, "Build Lead", 2, 50, NodaTime.Instant.FromUnixTimeTicks(17463600000000000L) }
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_camp_role_assignments_CampMemberId",
                 table: "camp_role_assignments",
@@ -92,43 +106,11 @@ namespace Humans.Infrastructure.Migrations
                 name: "IX_camp_role_definitions_SortOrder",
                 table: "camp_role_definitions",
                 column: "SortOrder");
-
-            var consentLeadId = Guid.Parse("11111111-aaaa-4000-8000-000000000001");
-            var lntId         = Guid.Parse("11111111-aaaa-4000-8000-000000000002");
-            var shitNinjaId   = Guid.Parse("11111111-aaaa-4000-8000-000000000003");
-            var powerId       = Guid.Parse("11111111-aaaa-4000-8000-000000000004");
-            var buildLeadId   = Guid.Parse("11111111-aaaa-4000-8000-000000000005");
-
-            var seedAt = NodaTime.Instant.FromUnixTimeTicks(17463600000000000L); // 2026-04-26 00:00:00 UTC, deterministic
-
-            migrationBuilder.InsertData(
-                table: "camp_role_definitions",
-                columns: new[] { "Id", "Name", "Description", "SlotCount", "MinimumRequired", "SortOrder", "IsRequired", "CreatedAt", "UpdatedAt", "DeactivatedAt" },
-                values: new object[,]
-                {
-                    { consentLeadId, "Consent Lead", null, 2, 1, 10, true,  seedAt, seedAt, null },
-                    { lntId,         "LNT",          null, 1, 1, 20, true,  seedAt, seedAt, null },
-                    { shitNinjaId,   "Shit Ninja",   null, 1, 1, 30, true,  seedAt, seedAt, null },
-                    { powerId,       "Power",        null, 1, 0, 40, false, seedAt, seedAt, null },
-                    { buildLeadId,   "Build Lead",   null, 2, 1, 50, true,  seedAt, seedAt, null },
-                });
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DeleteData(
-                table: "camp_role_definitions",
-                keyColumn: "Id",
-                keyValues: new object[]
-                {
-                    Guid.Parse("11111111-aaaa-4000-8000-000000000001"),
-                    Guid.Parse("11111111-aaaa-4000-8000-000000000002"),
-                    Guid.Parse("11111111-aaaa-4000-8000-000000000003"),
-                    Guid.Parse("11111111-aaaa-4000-8000-000000000004"),
-                    Guid.Parse("11111111-aaaa-4000-8000-000000000005"),
-                });
-
             migrationBuilder.DropTable(
                 name: "camp_role_assignments");
 

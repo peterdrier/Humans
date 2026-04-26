@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260425234037_AddCampRoles")]
+    [Migration("20260426121334_AddCampRoles")]
     partial class AddCampRoles
     {
         /// <inheritdoc />
@@ -1018,6 +1018,63 @@ namespace Humans.Infrastructure.Migrations
                     b.HasIndex("SortOrder");
 
                     b.ToTable("camp_role_definitions", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("11111111-aaaa-4000-8000-000000000001"),
+                            CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17463600000000000L),
+                            IsRequired = true,
+                            MinimumRequired = 1,
+                            Name = "Consent Lead",
+                            SlotCount = 2,
+                            SortOrder = 10,
+                            UpdatedAt = NodaTime.Instant.FromUnixTimeTicks(17463600000000000L)
+                        },
+                        new
+                        {
+                            Id = new Guid("11111111-aaaa-4000-8000-000000000002"),
+                            CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17463600000000000L),
+                            IsRequired = true,
+                            MinimumRequired = 1,
+                            Name = "LNT",
+                            SlotCount = 1,
+                            SortOrder = 20,
+                            UpdatedAt = NodaTime.Instant.FromUnixTimeTicks(17463600000000000L)
+                        },
+                        new
+                        {
+                            Id = new Guid("11111111-aaaa-4000-8000-000000000003"),
+                            CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17463600000000000L),
+                            IsRequired = true,
+                            MinimumRequired = 1,
+                            Name = "Shit Ninja",
+                            SlotCount = 1,
+                            SortOrder = 30,
+                            UpdatedAt = NodaTime.Instant.FromUnixTimeTicks(17463600000000000L)
+                        },
+                        new
+                        {
+                            Id = new Guid("11111111-aaaa-4000-8000-000000000004"),
+                            CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17463600000000000L),
+                            IsRequired = false,
+                            MinimumRequired = 0,
+                            Name = "Power",
+                            SlotCount = 1,
+                            SortOrder = 40,
+                            UpdatedAt = NodaTime.Instant.FromUnixTimeTicks(17463600000000000L)
+                        },
+                        new
+                        {
+                            Id = new Guid("11111111-aaaa-4000-8000-000000000005"),
+                            CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17463600000000000L),
+                            IsRequired = true,
+                            MinimumRequired = 1,
+                            Name = "Build Lead",
+                            SlotCount = 2,
+                            SortOrder = 50,
+                            UpdatedAt = NodaTime.Instant.FromUnixTimeTicks(17463600000000000L)
+                        });
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.CampSeason", b =>

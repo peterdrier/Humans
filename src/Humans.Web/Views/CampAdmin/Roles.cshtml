@@ -58,7 +58,7 @@
                                 @if (!string.IsNullOrWhiteSpace(row.Description))
                                 {
                                     <br />
-                                    <small class="text-muted">@row.Description</small>
+                                    <small class="text-muted">@Html.SanitizedMarkdown(row.Description)</small>
                                 }
                             </td>
                             <td class="text-end">@row.SlotCount</td>
@@ -120,7 +120,7 @@
                                 @if (!string.IsNullOrWhiteSpace(row.Description))
                                 {
                                     <br />
-                                    <small class="text-muted">@row.Description</small>
+                                    <small class="text-muted">@Html.SanitizedMarkdown(row.Description)</small>
                                 }
                             </td>
                             <td class="text-end">@row.SlotCount</td>

@@ -75,7 +75,6 @@ public sealed class CampRoleRepository : ICampRoleRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampRoleAssignments.AsNoTracking()
             .Include(a => a.CampMember)
-            .Include(a => a.CampSeason)
             .FirstOrDefaultAsync(a => a.Id == assignmentId, ct);
     }
 
@@ -134,6 +133,19 @@ public sealed class CampRoleRepository : ICampRoleRepository
         ctx.CampRoleAssignments.RemoveRange(toDelete);
         await ctx.SaveChangesAsync(ct);
         return toDelete.Count;
+    }
+
+    public async Task<IReadOnlyList<CampRoleAssignment>> GetAllAssignmentsForUserAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.CampRoleAssignments.AsNoTracking()
+            .Include(a => a.Definition)
+            .Include(a => a.CampMember)
+            .Include(a => a.CampSeason).ThenInclude(s => s.Camp)
+            .Where(a => a.CampMember.UserId == userId)
+            .OrderByDescending(a => a.AssignedAt)
+            .ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<(Guid CampSeasonId, Guid DefinitionId, int Count)>> GetAssignmentCountsForYearAsync(

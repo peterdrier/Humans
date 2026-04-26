@@ -43,6 +43,7 @@ namespace Humans.Application.Services.Camps;
 public sealed class CampService : ICampService, IUserDataContributor
 {
     private readonly ICampRepository _repo;
+    private readonly ICampRoleRepository _roleRepo;
     private readonly IUserService _userService;
     private readonly IAuditLogService _auditLog;
     private readonly ISystemTeamSync _systemTeamSync;
@@ -59,6 +60,7 @@ public sealed class CampService : ICampService, IUserDataContributor
 
     public CampService(
         ICampRepository repo,
+        ICampRoleRepository roleRepo,
         IUserService userService,
         IAuditLogService auditLog,
         ISystemTeamSync systemTeamSync,
@@ -71,6 +73,7 @@ public sealed class CampService : ICampService, IUserDataContributor
         ILogger<CampService> logger)
     {
         _repo = repo;
+        _roleRepo = roleRepo;
         _userService = userService;
         _auditLog = auditLog;
         _systemTeamSync = systemTeamSync;
@@ -1759,7 +1762,7 @@ public sealed class CampService : ICampService, IUserDataContributor
     {
         var leadAssignments = await _repo.GetAllLeadAssignmentsForUserAsync(userId, ct);
 
-        var shaped = leadAssignments.Select(cl => new
+        var shapedLeads = leadAssignments.Select(cl => new
         {
             CampSlug = cl.Camp.Slug,
             cl.Role,
@@ -1767,6 +1770,21 @@ public sealed class CampService : ICampService, IUserDataContributor
             LeftAt = cl.LeftAt.ToInvariantInstantString()
         }).ToList();
 
-        return [new UserDataSlice(GdprExportSections.CampLeadAssignments, shaped)];
+        var roleAssignments = await _roleRepo.GetAllAssignmentsForUserAsync(userId, ct);
+
+        var shapedRoles = roleAssignments.Select(a => new
+        {
+            CampSlug = a.CampSeason.Camp.Slug,
+            SeasonYear = a.CampSeason.Year,
+            RoleName = a.Definition.Name,
+            AssignedAt = a.AssignedAt.ToInvariantInstantString(),
+            a.AssignedByUserId
+        }).ToList();
+
+        return
+        [
+            new UserDataSlice(GdprExportSections.CampLeadAssignments, shapedLeads),
+            new UserDataSlice(GdprExportSections.CampRoleAssignments, shapedRoles)
+        ];
     }
 }

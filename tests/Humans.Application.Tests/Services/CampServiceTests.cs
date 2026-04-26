@@ -45,6 +45,7 @@ public class CampServiceTests : IDisposable
 
         var factory = new TestDbContextFactory(options);
         var repo = new CampRepository(factory);
+        var roleRepo = new CampRoleRepository(factory);
 
         // IUserService substitute — returns seeded users from the shared in-memory db.
         _userService = Substitute.For<IUserService>();
@@ -67,6 +68,7 @@ public class CampServiceTests : IDisposable
 
         _service = new CampService(
             repo,
+            roleRepo,
             _userService,
             _auditLog,
             Substitute.For<ISystemTeamSync>(),

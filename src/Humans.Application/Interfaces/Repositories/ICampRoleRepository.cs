@@ -57,6 +57,16 @@ public interface ICampRoleRepository
     /// </summary>
     Task<int> DeleteAllForMemberAsync(Guid campMemberId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns every role assignment ever made for the given user (joined to
+    /// <see cref="CampRoleAssignment.CampMember"/> on <c>UserId</c>), with
+    /// parent <see cref="CampSeason"/>, <c>Camp</c>, and
+    /// <see cref="CampRoleDefinition"/> loaded for shaping. Used by the GDPR
+    /// export contributor — read-only, AsNoTracking.
+    /// </summary>
+    Task<IReadOnlyList<CampRoleAssignment>> GetAllAssignmentsForUserAsync(
+        Guid userId, CancellationToken ct = default);
+
     // Compliance
 
     /// <summary>
