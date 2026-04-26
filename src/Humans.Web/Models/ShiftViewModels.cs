@@ -181,6 +181,7 @@ public class DepartmentShiftGroup
 {
     public Guid TeamId { get; set; }
     public string TeamName { get; set; } = string.Empty;
+    public string? TeamDescription { get; set; }
     public string TeamSlug { get; set; } = string.Empty;
     public List<RotaShiftGroup> Rotas { get; set; } = [];
 }

@@ -258,13 +258,13 @@
                             <small class="text-muted text-nowrap">@rotaGroup.TotalConfirmed/@rotaGroup.TotalSlots</small>
                         </div>
                     </div>
+                    @if (!string.IsNullOrEmpty(rotaGroup.Rota.Description))
+                    {
+                        <div class="text-muted small mt-1">@Html.SanitizedMarkdown(rotaGroup.Rota.Description)</div>
+                    }
                 </div>
                 <div class="collapse" id="@urgRotaId">
                     <div class="card-body pt-2">
-                        @if (!string.IsNullOrEmpty(rotaGroup.Rota.Description))
-                        {
-                            <div class="text-muted small mb-2">@Html.SanitizedMarkdown(rotaGroup.Rota.Description)</div>
-                        }
                         @if (!string.IsNullOrEmpty(rotaGroup.Rota.PracticalInfo))
                         {
                             <div class="text-muted small mb-2"><i class="fa-solid fa-circle-info me-1"></i>@Html.SanitizedMarkdown(rotaGroup.Rota.PracticalInfo)</div>
@@ -342,6 +342,10 @@
                             <small class="text-muted text-nowrap">@deptTotalConfirmed/@deptTotalSlots</small>
                         </div>
                     </div>
+                    @if (!string.IsNullOrEmpty(dept.TeamDescription))
+                    {
+                        <div class="text-muted small mt-1">@Html.SanitizedMarkdown(dept.TeamDescription)</div>
+                    }
                 </div>
                 <div class="collapse @(deptExpanded ? "show" : "")" id="@deptId">
                     <div class="card-body pt-2">
@@ -395,13 +399,13 @@
                                                 <small class="text-muted text-nowrap">@rotaGroup.TotalConfirmed/@rotaGroup.TotalSlots</small>
                                             </div>
                                         </div>
+                                        @if (!string.IsNullOrEmpty(rotaGroup.Rota.Description))
+                                        {
+                                            <div class="text-muted small mt-1">@Html.SanitizedMarkdown(rotaGroup.Rota.Description)</div>
+                                        }
                                     </div>
                                     <div class="collapse" id="@rotaId">
                                         <div class="card-body pt-2">
-                                            @if (!string.IsNullOrEmpty(rotaGroup.Rota.Description))
-                                            {
-                                                <div class="text-muted small mb-2">@Html.SanitizedMarkdown(rotaGroup.Rota.Description)</div>
-                                            }
                                             @if (!string.IsNullOrEmpty(rotaGroup.Rota.PracticalInfo))
                                             {
                                                 <div class="text-muted small mb-2"><i class="fa-solid fa-circle-info me-1"></i>@Html.SanitizedMarkdown(rotaGroup.Rota.PracticalInfo)</div>

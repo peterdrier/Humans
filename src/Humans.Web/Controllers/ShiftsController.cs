@@ -158,6 +158,7 @@ public class ShiftsController : HumansControllerBase
                 {
                     TeamId = firstShift.Rota.TeamId,
                     TeamName = deptName,
+                    TeamDescription = team?.Description,
                     TeamSlug = deptSlug,
                     Rotas = deptGroup
                         .GroupBy(u => u.Shift.RotaId)
