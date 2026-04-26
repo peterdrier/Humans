@@ -49,11 +49,11 @@ Only one Budget Year can be **Active** at a time. Years progress **Draft -> Acti
 
 ### See where the money goes
 
-Open `/Budget/Summary`. You see the Active Budget Year with **Income** and **Expenses** charts by category (absolute values; when the year projects a surplus, the expenses chart also shows Cash Reserves and Spanish Taxes slices), Total Income / Total Expenses / Net Balance cards, and a utilisation bar.
+Open `/Budget/Summary`. You see the Active Budget Year with Total Income / Total Expenses / Net Balance cards and **Income** and **Expenses** doughnut charts by category (absolute values; when the year projects a surplus, the expenses chart also shows Cash Reserves and Spanish Taxes slices), each backed by a breakdown table.
 
-Line-item detail, salaries, and restricted group contents are never exposed here. Ticketing appears only as aggregated category totals.
+Line-item detail and individual ticketing line items are never exposed here. Restricted groups (e.g. salaries) and ticketing both fold into the category-level aggregates.
 
-If you coordinate any team, a link to `/Budget` appears at the top.
+If you coordinate a team or are a Finance Admin / Admin, a **Department Detail** link to `/Budget` appears at the top.
 
 ## As a Coordinator
 
@@ -63,9 +63,9 @@ If you coordinate a team linked to a budget category, you have edit rights on th
 
 ### See your department's budget
 
-Open `/Budget`. You see every non-restricted group and its categories — coordinators see peer departments for context. Each category shows allocated amount, line-item total, unallocated remainder, and a progress bar.
+Open `/Budget`. You see every non-ticketing group and its categories — coordinators see peer departments for context. Each category shows allocated amount, line-item total, unallocated remainder, and an expenditure-type badge.
 
-You do **not** see groups flagged **Restricted** (typically the Admin group holding staff and meeting costs), nor individual Ticketing line items — ticketing shows up only as summary aggregates for you.
+Restricted groups (typically the Admin group holding staff and meeting costs) appear with a **Restricted** badge — you can see the group name and category names but cannot drill in. Ticketing groups are hidden from this view entirely; ticketing only shows up as summary aggregates in `/Budget/Summary`.
 
 ### Add, edit, and remove line items
 
@@ -87,9 +87,9 @@ Financial structure, year lifecycle, restricted groups, and the audit log live w
 
 ### Create and structure a Budget Year
 
-From `/Finance` use **Create Budget Year**. On creation, a **Departments** group is auto-populated with one category per team flagged `HasBudget`; a **Ticketing** group is auto-created with four categories (Ticket Revenue, Processing Fees, VAT Liability, Donations) and a zero-defaulted projection; and an **Admin** group is auto-created as **Restricted** so salary and meeting lines stay out of coordinator and public views.
+From the `/Finance/Admin` page use **Create Budget Year**. On creation, a **Departments** group is auto-populated with one category per team flagged `HasBudget`, and a **Ticketing** group is auto-created with two starter categories (**Ticket Revenue** and **Processing Fees**) plus a zero-defaulted projection row. Neither auto-created group is marked Restricted — create a Restricted group manually (typically named "Admin") if you need to keep salary and meeting lines out of coordinator and public drill-in views.
 
-Add further groups and categories from the Finance index. Categories carry an optional CapEx / OpEx flag and an optional linked department — that link drives coordinator edit rights. If you add a department team later, use **Sync Departments** to generate a category for any team with `HasBudget` that does not already have one.
+Add further groups and categories from the Finance year detail. Categories carry a CapEx / OpEx flag (default OpEx) and an optional linked team — that link drives coordinator edit rights. If you add a budget-flagged team later, use **Sync Departments** to generate a category for any team with `HasBudget` that does not already have one in the Departments group. If you create a year without ticketing or remove the ticketing group, **Add Ticketing Group** on the year detail re-creates it.
 
 ### Lock or unlock a year
 
@@ -97,7 +97,7 @@ A year moves **Draft -> Active -> Closed**. Only one is Active at a time. Closin
 
 ### Configure the ticketing projection
 
-On the Ticketing group's panel, open **Projection Parameters** to set event start, event date, initial sales count, daily sales rate, average ticket price, VAT rate, and Stripe / TicketTailor fees. Save to project weekly revenue, fees, VAT, and donations through to the event date. The ticketing sync job (daily at 04:30) materialises completed ISO weeks into auto-generated line items; **Sync Actuals** triggers it manually.
+On the Ticketing group's panel, open **Projection Parameters** to set event start, event date, initial sales count, daily sales rate, average ticket price, VAT rate, and Stripe / TicketTailor fees. Saving rebuilds projected weekly revenue and per-week Stripe / TicketTailor fee lines through to the event date (VAT settles automatically in the cash-flow view from each line's VAT rate — it is not stored as its own line item). The ticketing sync job (`TicketingBudgetSyncJob`, daily at 04:30 cron `30 4 * * *`) materialises completed ISO weeks of actual sales into auto-generated line items and refreshes the remaining-week projections in the same pass; **Sync Actuals** on the year detail triggers it manually.
 
 ### Watch cash flow
 

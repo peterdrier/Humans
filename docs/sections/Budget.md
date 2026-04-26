@@ -116,15 +116,15 @@ Stored as string via `HasConversion<string>()`.
 | Actor | Capabilities |
 |-------|--------------|
 | Any active human | View a read-only summary of the active budget year |
-| Department coordinator | View the full budget for the active year. Create, edit, and delete line items within categories linked to a department they coordinate |
+| Department coordinator | View the active year via `/Budget` (non-ticketing groups, restricted groups visible as headers + category names but no drill-in). Create, edit, and delete line items within categories linked to a department they coordinate |
 | FinanceAdmin, Admin | Full management of all budget years, groups, categories, and line items. View audit log. View cash flow projections. Sync departments (auto-create categories for departments that lack one). Manage restricted groups |
 
 ## Invariants
 
-- A budget year follows the lifecycle: Draft then Active then Closed. Only one year can be Active at a time.
+- A budget year follows the lifecycle: Draft then Active then Closed. Only one year can be Active at a time — activating a Draft auto-closes any currently Active year (`BudgetRepository.UpdateYearStatusAsync`).
 - A coordinator can only create, edit, or delete line items in categories linked to a department they coordinate.
-- Restricted groups are only visible and editable by FinanceAdmin and Admin. Coordinators cannot see them.
-- Ticketing groups and their category details are only accessible to FinanceAdmin and Admin. Ticketing income/expenses still appear in the public budget summary aggregates, but coordinators cannot view individual ticketing categories or line items.
+- Restricted groups are editable only by FinanceAdmin and Admin. Coordinators see the group header and category names in `/Budget` (with a "Restricted" badge in place of the drill-in link) and the group's totals roll up into `/Budget/Summary` aggregates, but `/Budget/Category/{id}` returns `Forbid` for non-finance users.
+- Ticketing groups are hidden from the `/Budget` index for non-finance users (`Index.cshtml` filters `IsTicketingGroup` unless `IsFinanceAdmin`); their aggregates still appear in `/Budget/Summary`, and `/Budget/Category/{id}` returns `Forbid` for non-finance users on any ticketing category.
 - Every create, update, or delete on a group, category, or line item generates a `BudgetAuditLog` entry recording old value, new value, actor, and timestamp.
 - "Sync Departments" creates a category for each department that does not already have one in the selected year.
 - `/Finance` index shows a consolidated accordion view: groups, categories with budget vs actual comparison, and inline line items. FinanceAdmin sees all summary data inline.
@@ -135,10 +135,10 @@ Stored as string via `HasConversion<string>()`.
 ## Negative Access Rules
 
 - Regular humans **cannot** edit any budget data. They can only view the summary.
-- Coordinators **cannot** edit budget groups, categories, or restricted groups. They can only manage line items in categories linked to their own department.
-- Coordinators **cannot** see restricted budget groups.
-- Coordinators **cannot** see ticketing group details (categories or line items). Ticketing data only appears in summary aggregates.
-- Coordinators **cannot** create, activate, or close budget years.
+- Coordinators **cannot** edit budget groups or categories, and **cannot** edit any line items inside restricted or ticketing groups. They can only manage line items in non-restricted, non-ticketing categories linked to a department they coordinate.
+- Coordinators **cannot** drill into a restricted-group category (`/Budget/Category/{id}` returns `Forbid`); they only see the group header and category names in `/Budget` plus the rollup in `/Budget/Summary`.
+- Coordinators **cannot** see ticketing groups in `/Budget` and **cannot** open any ticketing category — only the rollup appears in `/Budget/Summary`.
+- Coordinators **cannot** create, activate, close, archive, or restore budget years (all `/Finance/Years/*` actions require `FinanceAdminOrAdmin`).
 
 ## Triggers
 
