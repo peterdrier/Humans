@@ -1,0 +1,26 @@
+@model IReadOnlyList<AuditLogEntry>
+
+@if (Model.Count == 0)
+{
+    <p class="text-muted px-3 py-3">@Localizer["AdminDashboard_RecentActivity_Empty"]</p>
+}
+else
+{
+    foreach (var entry in Model)
+    {
+        var bubble = entry.Action switch
+        {
+            AuditAction.TierApplicationApproved or AuditAction.TierApplicationRejected => "✓",
+            AuditAction.RoleAssigned or AuditAction.RoleEnded => "🔑",
+            _ => "·"
+        };
+        <div class="activity-item">
+            <div class="bubble">@bubble</div>
+            <div>
+                <strong>@entry.Action</strong>
+                <p>@entry.Description</p>
+            </div>
+            <span class="time">@entry.OccurredAt.ToAuditTimestamp()</span>
+        </div>
+    }
+}
