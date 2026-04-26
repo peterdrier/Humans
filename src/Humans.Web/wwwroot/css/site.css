@@ -483,6 +483,42 @@ h5, .h5 { font-size: 1.1rem; }
     color: var(--h-text-on-dark);
 }
 
+.btn-info {
+    background-color: var(--h-blue-muted);
+    border-color: var(--h-blue-muted);
+    color: var(--h-text-on-dark);
+    border-radius: var(--h-radius);
+    font-weight: 700;
+}
+
+.btn-info:hover {
+    background-color: #4a6977;
+    border-color: #4a6977;
+    color: var(--h-text-on-dark);
+}
+
+.btn-outline-info {
+    border-color: var(--h-blue-muted);
+    color: var(--h-blue-muted);
+    border-radius: var(--h-radius);
+    font-weight: 700;
+    transition: all 0.2s ease;
+}
+
+.btn-outline-info:hover {
+    background-color: var(--h-blue-muted);
+    border-color: var(--h-blue-muted);
+    color: var(--h-text-on-dark);
+}
+
+.btn-outline-info:focus,
+.btn-outline-info.active,
+.btn-outline-info:active {
+    background-color: var(--h-blue-muted);
+    border-color: var(--h-blue-muted);
+    color: var(--h-text-on-dark);
+}
+
 .btn-outline-dark {
     border-color: var(--h-aged-ink);
     color: var(--h-aged-ink);
