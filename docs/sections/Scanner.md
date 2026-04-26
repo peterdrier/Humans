@@ -22,6 +22,11 @@
 - Decoded barcode values do not leave the browser.
 - The stream is released (`MediaStreamTrack.stop()` on every track) when the user taps Stop or leaves the page (`pagehide`, `beforeunload`).
 
+## Negative Access Rules
+
+- The barcode tool is **not** a check-in gateway. Do not wire it up to attendance records, `EventParticipation`, ticket check-in state, or anything that would mark a human as having entered the event.
+- No data from a decoded barcode is sent to the server in phase 1. If a future scanner tool needs a server round-trip, it must be a new tool with its own route and feature spec, not an extension of `/Scanner/Barcode`.
+
 ## Triggers
 
 - When the user clicks **Scan** on `/Scanner/Barcode`, the browser prompts for camera permission and starts the rear-facing preview.
@@ -42,8 +47,3 @@
 Controller lives at `src/Humans.Web/Controllers/ScannerController.cs`. Views under `src/Humans.Web/Views/Scanner/`. Client logic at `src/Humans.Web/wwwroot/js/scanner/barcode.js`.
 
 If future scanner tools grow to need server-side verification (for example, calling a ticket vendor API to validate a decoded reference), that logic goes into a new `IScannerVerificationService` in `Humans.Application` and is consumed by the controller — the `ScannerController` remains a thin web-layer wrapper, and the client logic stays in `wwwroot/js/scanner/`.
-
-## Negative Access Rules
-
-- The barcode tool is **not** a check-in gateway. Do not wire it up to attendance records, `EventParticipation`, ticket check-in state, or anything that would mark a human as having entered the event.
-- No data from a decoded barcode is sent to the server in phase 1. If a future scanner tool needs a server round-trip, it must be a new tool with its own route and feature spec, not an extension of `/Scanner/Barcode`.

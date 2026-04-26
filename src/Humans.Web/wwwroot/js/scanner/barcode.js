@@ -119,6 +119,9 @@ export function initBarcodeScanner(refs) {
             await video.play();
         } catch (err) {
             console.warn('Scanner: video.play() rejected', err);
+            showError(labels.errorCamera);
+            await stop();
+            return;
         }
 
         stopButton.disabled = false;
@@ -182,7 +185,7 @@ export function initBarcodeScanner(refs) {
     }
 
     async function startZxing() {
-        const mod = await import(/* @vite-ignore */ ZXING_CDN_URL);
+        const mod = await import(ZXING_CDN_URL);
         const BrowserMultiFormatReader = mod.BrowserMultiFormatReader ?? mod.default?.BrowserMultiFormatReader;
         if (!BrowserMultiFormatReader) {
             throw new Error('BrowserMultiFormatReader not found in ZXing module export');
@@ -198,7 +201,7 @@ export function initBarcodeScanner(refs) {
         });
     }
 
-    async function stop() {
+    function stop() {
         if (nativeLoopHandle) {
             cancelAnimationFrame(nativeLoopHandle);
             nativeLoopHandle = null;
