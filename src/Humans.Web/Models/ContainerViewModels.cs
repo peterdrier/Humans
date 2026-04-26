@@ -10,6 +10,7 @@ public class ContainerIndexViewModel
     public Guid SeasonId { get; set; }
     public List<ContainerViewModel> Containers { get; set; } = new();
     public bool CanManage { get; set; }
+    public bool IsPlacementOpen { get; set; }
 }
 
 public class ContainerViewModel

@@ -42,6 +42,22 @@ public class ContainerController : HumansControllerBase
         return false;
     }
 
+    private async Task<bool> IsPrivilegedAsync(Guid userId, CancellationToken ct)
+    {
+        if (RoleChecks.IsCampAdmin(User)) return true;
+        return await _cityPlanningService.IsCityPlanningTeamMemberAsync(userId, ct);
+    }
+
+    private async Task<(bool blocked, IActionResult? result)> CheckPlacementPhaseAsync(
+        Guid userId, string slug, int year, CancellationToken ct)
+    {
+        if (await IsPrivilegedAsync(userId, ct)) return (false, null);
+        var settings = await _cityPlanningService.GetSettingsAsync(ct);
+        if (settings.IsContainerPlacementOpen) return (false, null);
+        SetError("Container placement is currently closed.");
+        return (true, RedirectToAction(nameof(Index), new { slug, year }));
+    }
+
     [HttpGet("")]
     public async Task<IActionResult> Index(string slug, int year, CancellationToken ct)
     {
@@ -55,6 +71,8 @@ public class ContainerController : HumansControllerBase
         if (season is null) return NotFound();
 
         var canManage = await CanManageAsync(user.Id, camp, ct);
+        var settings = await _cityPlanningService.GetSettingsAsync(ct);
+        var isPrivileged = await IsPrivilegedAsync(user.Id, ct);
 
         var containers = await _containerService.GetBySeasonAsync(season.Id, ct);
 
@@ -64,7 +82,8 @@ public class ContainerController : HumansControllerBase
             CampName = season.Name,
             Year = year,
             SeasonId = season.Id,
-            CanManage = canManage,
+            CanManage = canManage && (isPrivileged || settings.IsContainerPlacementOpen),
+            IsPlacementOpen = settings.IsContainerPlacementOpen,
             Containers = containers.Select(c => new ContainerViewModel
             {
                 Id = c.Id,
@@ -89,6 +108,9 @@ public class ContainerController : HumansControllerBase
         if (error is not null) return error;
 
         if (!await CanManageAsync(user.Id, camp, ct)) return Forbid();
+
+        var (blocked, blockResult) = await CheckPlacementPhaseAsync(user.Id, slug, year, ct);
+        if (blocked) return blockResult!;
 
         var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
         if (season is null) return NotFound();
@@ -119,6 +141,12 @@ public class ContainerController : HumansControllerBase
         var authResult = await _authorizationService.AuthorizeAsync(User, entity, ContainerOperationRequirement.Manage);
         if (!authResult.Succeeded) return Forbid();
 
+        var (userError, user) = await RequireCurrentUserAsync();
+        if (userError is not null) return userError;
+
+        var (blocked, blockResult) = await CheckPlacementPhaseAsync(user.Id, slug, year, ct);
+        if (blocked) return blockResult!;
+
         if (!ModelState.IsValid)
         {
             SetError("Please correct the validation errors.");
@@ -145,6 +173,12 @@ public class ContainerController : HumansControllerBase
         var authResult = await _authorizationService.AuthorizeAsync(User, entity, ContainerOperationRequirement.Manage);
         if (!authResult.Succeeded) return Forbid();
 
+        var (userError, user) = await RequireCurrentUserAsync();
+        if (userError is not null) return userError;
+
+        var (blocked, blockResult) = await CheckPlacementPhaseAsync(user.Id, slug, year, ct);
+        if (blocked) return blockResult!;
+
         await _containerService.DeleteAsync(id, ct);
         SetSuccess("Container deleted.");
         return RedirectToAction(nameof(Index), new { slug, year });
@@ -159,6 +193,12 @@ public class ContainerController : HumansControllerBase
 
         var authResult = await _authorizationService.AuthorizeAsync(User, entity, ContainerOperationRequirement.Manage);
         if (!authResult.Succeeded) return Forbid();
+
+        var (userError, user) = await RequireCurrentUserAsync();
+        if (userError is not null) return userError;
+
+        var (blocked, blockResult) = await CheckPlacementPhaseAsync(user.Id, slug, year, ct);
+        if (blocked) return blockResult!;
 
         if (file is null || file.Length == 0)
         {
@@ -188,6 +228,12 @@ public class ContainerController : HumansControllerBase
 
         var authResult = await _authorizationService.AuthorizeAsync(User, entity, ContainerOperationRequirement.Manage);
         if (!authResult.Succeeded) return Forbid();
+
+        var (userError, user) = await RequireCurrentUserAsync();
+        if (userError is not null) return userError;
+
+        var (blocked, blockResult) = await CheckPlacementPhaseAsync(user.Id, slug, year, ct);
+        if (blocked) return blockResult!;
 
         await _containerService.DeleteImageAsync(id, ct);
         SetSuccess("Image removed.");
