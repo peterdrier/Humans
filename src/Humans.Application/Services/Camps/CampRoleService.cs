@@ -115,11 +115,40 @@ public sealed class CampRoleService : ICampRoleService
         return true;
     }
 
-    public Task<bool> DeactivateDefinitionAsync(Guid id, Guid actorUserId, CancellationToken ct = default)
-        => throw new NotSupportedException();
+    public async Task<bool> DeactivateDefinitionAsync(Guid id, Guid actorUserId, CancellationToken ct = default)
+    {
+        var now = _clock.GetCurrentInstant();
+        var updated = await _repo.UpdateDefinitionAsync(id, def =>
+        {
+            if (def.DeactivatedAt is null)
+                def.DeactivatedAt = now;
+            def.UpdatedAt = now;
+        }, ct);
+        if (!updated) return false;
 
-    public Task<bool> ReactivateDefinitionAsync(Guid id, Guid actorUserId, CancellationToken ct = default)
-        => throw new NotSupportedException();
+        await _auditLog.LogAsync(
+            AuditAction.CampRoleDefinitionDeactivated,
+            nameof(CampRoleDefinition), id,
+            "Deactivated camp role definition.", actorUserId);
+        return true;
+    }
+
+    public async Task<bool> ReactivateDefinitionAsync(Guid id, Guid actorUserId, CancellationToken ct = default)
+    {
+        var now = _clock.GetCurrentInstant();
+        var updated = await _repo.UpdateDefinitionAsync(id, def =>
+        {
+            def.DeactivatedAt = null;
+            def.UpdatedAt = now;
+        }, ct);
+        if (!updated) return false;
+
+        await _auditLog.LogAsync(
+            AuditAction.CampRoleDefinitionReactivated,
+            nameof(CampRoleDefinition), id,
+            "Reactivated camp role definition.", actorUserId);
+        return true;
+    }
 
     public Task<CampRolesPanelData> BuildPanelAsync(Guid campSeasonId, CancellationToken ct = default)
         => throw new NotSupportedException();

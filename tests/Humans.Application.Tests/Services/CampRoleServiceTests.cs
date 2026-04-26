@@ -207,6 +207,45 @@ public class CampRoleServiceTests : IDisposable
         ok.Should().BeFalse();
     }
 
+    [HumansFact]
+    public async Task DeactivateDefinition_sets_DeactivatedAt_and_audits()
+    {
+        var def = await SeedDefinitionAsync("Will Be Deactivated");
+
+        var ok = await _service.DeactivateDefinitionAsync(def.Id, _actorUserId);
+
+        ok.Should().BeTrue();
+        var reloaded = await _service.GetDefinitionByIdAsync(def.Id);
+        reloaded!.DeactivatedAt.Should().NotBeNull();
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CampRoleDefinitionDeactivated,
+            nameof(CampRoleDefinition), def.Id, Arg.Any<string>(), _actorUserId, null, null);
+    }
+
+    [HumansFact]
+    public async Task DeactivateDefinition_returns_false_when_not_found()
+    {
+        var ok = await _service.DeactivateDefinitionAsync(Guid.NewGuid(), _actorUserId);
+        ok.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task ReactivateDefinition_clears_DeactivatedAt_and_audits()
+    {
+        var def = await SeedDefinitionAsync("Was Deactivated", deactivated: true);
+
+        var ok = await _service.ReactivateDefinitionAsync(def.Id, _actorUserId);
+
+        ok.Should().BeTrue();
+        var reloaded = await _service.GetDefinitionByIdAsync(def.Id);
+        reloaded!.DeactivatedAt.Should().BeNull();
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CampRoleDefinitionReactivated,
+            nameof(CampRoleDefinition), def.Id, Arg.Any<string>(), _actorUserId, null, null);
+    }
+
     private async Task<CampRoleDefinition> SeedDefinitionAsync(
         string name = "Consent Lead", int slotCount = 2, int minimumRequired = 1,
         bool isRequired = true, bool deactivated = false)
