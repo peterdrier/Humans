@@ -10,6 +10,8 @@
     var totalOpenSlots = Model.Departments.Sum(d => d.Rotas.Sum(r => r.Shifts.Sum(s => Math.Max(0, s.RemainingSlots))));
 }
 
+<partial name="_VolSubNav" />
+
 <vc:temp-data-alerts />
 
 <form method="get" class="row g-2 mb-4 align-items-end">

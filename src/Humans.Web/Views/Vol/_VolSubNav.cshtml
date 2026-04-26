@@ -1,0 +1,36 @@
+@{
+    var activeTab = ViewData["VolActiveTab"]?.ToString();
+}
+
+<ul class="nav nav-pills mb-4">
+    <li class="nav-item">
+        <a class="nav-link @(activeTab == "MyShifts" ? "active" : "")" asp-controller="Vol" asp-action="MyShifts">
+            <i class="fa-solid fa-clipboard-list me-1"></i>My Shifts
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(activeTab == "Shifts" ? "active" : "")" asp-controller="Vol" asp-action="Shifts">
+            <i class="fa-solid fa-calendar-days me-1"></i>All Shifts
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(activeTab == "Teams" ? "active" : "")" asp-controller="Vol" asp-action="Teams">
+            <i class="fa-solid fa-users me-1"></i>Teams
+        </a>
+    </li>
+    <li class="nav-item" authorize-policy="ShiftDashboardAccess">
+        <a class="nav-link @(activeTab == "Urgent" ? "active" : "")" asp-controller="Vol" asp-action="Urgent">
+            <i class="fa-solid fa-bolt me-1"></i>Urgent <i class="fa-solid fa-lock auth-lock-icon"></i>
+        </a>
+    </li>
+    <li class="nav-item" authorize-policy="ShiftDashboardAccess">
+        <a class="nav-link @(activeTab == "Management" ? "active" : "")" asp-controller="Vol" asp-action="Management">
+            <i class="fa-solid fa-chart-bar me-1"></i>Management <i class="fa-solid fa-lock auth-lock-icon"></i>
+        </a>
+    </li>
+    <li class="nav-item" authorize-policy="AdminOnly">
+        <a class="nav-link @(activeTab == "Settings" ? "active" : "")" asp-controller="Vol" asp-action="Settings">
+            <i class="fa-solid fa-gear me-1"></i>Settings <i class="fa-solid fa-lock auth-lock-icon"></i>
+        </a>
+    </li>
+</ul>
