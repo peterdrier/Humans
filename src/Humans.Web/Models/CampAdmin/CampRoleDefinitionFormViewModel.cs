@@ -4,7 +4,7 @@ namespace Humans.Web.Models.CampAdmin;
 
 public sealed class CampRoleDefinitionFormViewModel : IValidatableObject
 {
-    public Guid? Id { get; init; }
+    public Guid? Id { get; set; }
 
     [Required, StringLength(100)]
     public string Name { get; set; } = string.Empty;
