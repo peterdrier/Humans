@@ -64,7 +64,7 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
 <div class="table-responsive">
     <table class="table table-sm">
         <thead>
-            <tr><th>@Localizer["Shifts_Date"]</th><th>@Localizer["Shifts_Filled"]</th><th>@Localizer["Common_Status"]</th>@if (Model.ShowSignups) {<th>@Localizer["Shifts_SignedUp"]</th>}</tr>
+            <tr><th>@Localizer["Shifts_Date"]</th><th>@Localizer["Shifts_Filled"]</th><th>@Localizer["Common_Status"]</th><th>@Localizer["Shifts_SignedUp"]</th></tr>
         </thead>
         <tbody>
             @foreach (var range in dateRanges)
@@ -116,10 +116,7 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
                                 <span class="badge bg-warning text-dark">@string.Format((daysNeedingHelp == 1 ? Localizer["Shifts_DayNeedsHelp"] : Localizer["Shifts_DaysNeedHelp"]).Value, daysNeedingHelp)</span>
                             }
                         </td>
-                        @if (Model.ShowSignups)
-                        {
-                            <td><small class="text-muted fst-italic">@Localizer["Shifts_ClickToExpand"]</small></td>
-                        }
+                        <td><small class="text-muted fst-italic">@Localizer["Shifts_ClickToExpand"]</small></td>
                     </tr>
                     @foreach (var item in range)
                     {
@@ -168,11 +165,28 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
                                     </div>
                                 </td>
                             }
+                            else if (item.Signups.Count > 0)
+                            {
+                                <td>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        @foreach (var signup in item.Signups.Where(s => s.Status == SignupStatus.Confirmed))
+                                        {
+                                            <human-link user-id="@signup.UserId" display-name="@signup.DisplayName" mode="Avatar" size="26"
+                                                       profile-picture-url="@signup.ProfilePictureUrl" show-popover="true"
+                                                       title="@signup.DisplayName" />
+                                        }
+                                    </div>
+                                </td>
+                            }
+                            else
+                            {
+                                <td></td>
+                            }
                         </tr>
                         @if (!string.IsNullOrEmpty(item.Shift.Description))
                         {
                             <tr class="d-none range-detail-@rangeKey @(isFull ? "table-secondary" : "")">
-                                <td colspan="@(Model.ShowSignups ? 4 : 3)" class="text-muted small pt-0 pb-1 border-0">
+                                <td colspan="4" class="text-muted small pt-0 pb-1 border-0">
                                     @Html.SanitizedMarkdown(item.Shift.Description)
                                 </td>
                             </tr>
@@ -227,11 +241,28 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
                                 </div>
                             </td>
                         }
+                        else if (item.Signups.Count > 0)
+                        {
+                            <td>
+                                <div class="d-flex flex-wrap gap-1">
+                                    @foreach (var signup in item.Signups.Where(s => s.Status == SignupStatus.Confirmed))
+                                    {
+                                        <human-link user-id="@signup.UserId" display-name="@signup.DisplayName" mode="Avatar" size="26"
+                                                   profile-picture-url="@signup.ProfilePictureUrl" show-popover="true"
+                                                   title="@signup.DisplayName" />
+                                    }
+                                </div>
+                            </td>
+                        }
+                        else
+                        {
+                            <td></td>
+                        }
                     </tr>
                     @if (!string.IsNullOrEmpty(item.Shift.Description))
                     {
                         <tr class="@(isFull ? "table-secondary" : "")">
-                            <td colspan="@(Model.ShowSignups ? 4 : 3)" class="text-muted small pt-0 pb-1 border-0">
+                            <td colspan="4" class="text-muted small pt-0 pb-1 border-0">
                                 @Html.SanitizedMarkdown(item.Shift.Description)
                             </td>
                         </tr>

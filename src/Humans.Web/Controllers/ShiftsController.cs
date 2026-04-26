@@ -88,8 +88,7 @@ public class ShiftsController : HumansControllerBase
         }
 
         // Build the browse view — show all active shifts, hide AdminOnly from regular volunteers.
-        // includeSignups is unconditionally true while signup lists are public (matches ShowSignups
-        // below). Flip back to `includeSignups: isPrivileged` if/when ShowSignups is reverted.
+        // Signups are loaded unconditionally so the public avatar-chip column has data.
         var urgentShifts = await _shiftMgmt.GetBrowseShiftsAsync(
             es.Id, departmentId: departmentId,
             fromDate: filterFromDate, toDate: filterToDate,

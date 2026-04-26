@@ -39,10 +39,7 @@
                 <th>@Localizer["Shifts_Time"]</th>
                 <th>@Localizer["Shifts_Duration"]</th>
                 <th>@Localizer["Shifts_Filled"]</th>
-                @if (Model.ShowSignups)
-                {
-                    <th>@Localizer["Shifts_SignedUp"]</th>
-                }
+                <th>@Localizer["Shifts_SignedUp"]</th>
                 <th></th>
             </tr>
         </thead>
@@ -83,6 +80,23 @@
                             }
                         </td>
                     }
+                    else if (item.Signups.Count > 0)
+                    {
+                        <td>
+                            <div class="d-flex flex-wrap gap-1">
+                                @foreach (var signup in item.Signups.Where(s => s.Status == SignupStatus.Confirmed))
+                                {
+                                    <human-link user-id="@signup.UserId" display-name="@signup.DisplayName" mode="Avatar" size="26"
+                                               profile-picture-url="@signup.ProfilePictureUrl" show-popover="true"
+                                               title="@signup.DisplayName" />
+                                }
+                            </div>
+                        </td>
+                    }
+                    else
+                    {
+                        <td></td>
+                    }
                     <td>
                         @if (Model.UserSignupShiftIds.Contains(shift.Id))
                         {
@@ -111,7 +125,7 @@
                 @if (!string.IsNullOrEmpty(shift.Description))
                 {
                     <tr class="@(isFull ? "table-secondary" : "")">
-                        <td colspan="@(Model.ShowSignups ? 8 : 7)" class="text-muted small pt-0 pb-1 border-0">
+                        <td colspan="8" class="text-muted small pt-0 pb-1 border-0">
                             @Html.SanitizedMarkdown(shift.Description)
                         </td>
                     </tr>
