@@ -28,9 +28,10 @@ Per-human personal data: profile, contact fields, emails, communication preferen
 - **Contact Fields** are per-field contact details (phone, Signal, Telegram, WhatsApp, Discord, custom) with per-field visibility controls.
 - **Visibility Levels** determine who can see each contact field: BoardOnly (most restrictive), CoordinatorsAndBoard, MyTeams (shared team members), or AllActiveProfiles (least restrictive).
 - **Membership Tier** is tracked on the profile: Volunteer (default), Colaborador, or Asociado.
-- **Communication Preferences** control per-category email opt-in/opt-out (System, EventOperations, CommunityUpdates, Marketing).
+- **Communication Preferences** control per-category email opt-in/opt-out and per-category in-app inbox visibility. The active categories are System, CampaignCodes, FacilitatedMessages, Ticketing, VolunteerUpdates, TeamUpdates, Governance, and Marketing (see the `MessageCategory` table for defaults). System and CampaignCodes are always on.
 - **UserEmail** is a per-user email address record. A user has one "login" email plus zero-or-more verified additional addresses; one of them may be flagged as the notification target.
-- **CV Entries** (sub-aggregate of Profile) record volunteer involvement history.
+- **CV Entries** (sub-aggregate of Profile, table `volunteer_history_entries`) record volunteer involvement history.
+- **Profile Languages** (sub-aggregate of Profile, table `profile_languages`) record self-assessed proficiency in ISO 639-1 language codes.
 - **Duplicate Account Detection** scans for email addresses appearing on multiple accounts (across `User.Email` and `UserEmail.Email`, with gmail/googlemail equivalence). Admin can resolve by archiving the duplicate and re-linking its logins to the real account.
 - **Account Merge** consolidates two accounts into one, transferring all associated data (emails, contact fields, CV entries, role assignments, memberships) to the surviving account.
 
@@ -72,23 +73,62 @@ A contact is identified by `ContactSource != null && LastLoginAt == null`. When 
 | Property | Type | Default | Purpose |
 |----------|------|---------|---------|
 | Id | Guid | new | PK |
-| UserId | Guid | — | FK → User (Users/Identity) — **FK only**, no nav |
-| MembershipTier | MembershipTier | Volunteer | Current tier — tracked on Profile, not as RoleAssignment |
-| ConsentCheckStatus | ConsentCheckStatus? | null | Consent check gate status (null until all consents signed) |
-| ConsentCheckAt | Instant? | null | When consent check was performed |
-| ConsentCheckedByUserId | Guid? | null | Consent Coordinator who performed the check |
-| ConsentCheckNotes | string? | null | Notes from the Consent Coordinator |
-| RejectionReason | string? | null | Reason for rejection (when Admin rejects a flagged check) |
-| RejectedAt | Instant? | null | When the profile was rejected |
-| RejectedByUserId | Guid? | null | Admin who rejected the profile |
+| UserId | Guid | — | FK → User (Users/Identity) — **FK only**, no nav. Unique. |
+| BurnerName | string (256) | "" | Required. Primary display name visible to everyone (burner name / nickname). |
+| FirstName | string (256) | "" | Required. Legal first name (private — self + Board). |
+| LastName | string (256) | "" | Required. Legal last name (private — self + Board). |
+| City | string? (256) | null | Member's city. |
+| CountryCode | string? (2) | null | ISO 3166-1 alpha-2. |
+| Latitude | double? | null | Place coordinate. |
+| Longitude | double? | null | Place coordinate. |
+| PlaceId | string? (512) | null | Google Places ID. |
+| Bio | string? (4000) | null | Optional biography. |
+| Pronouns | string? (100) | null | e.g., "they/them". |
+| DateOfBirth | LocalDate? | null | Stored as `LocalDate` but only month + day are meaningful — the year component is hard-coded to `4` by `ProfileService` so the entire field can use Postgres `date` storage without leaking a year. UI labels it "birthday". |
+| EmergencyContactName | string? (256) | null | Private — self + Board. |
+| EmergencyContactPhone | string? (50) | null | Private — self + Board. |
+| EmergencyContactRelationship | string? (100) | null | Private — self + Board. |
+| ProfilePictureData | byte[]? | null | Custom uploaded picture, resized to long-side 1000px JPEG by `ProfilePictureProcessor`. |
+| ProfilePictureContentType | string? (100) | null | MIME type of the stored picture. |
+| ContributionInterests | string? | null | Skills / availability statement (publicly visible on profile). |
+| BoardNotes | string? | null | Notes from the human intended for the Board (self + Board only). |
+| AdminNotes | string? (4000) | null | Admin-only notes (not visible to the human). |
+| IsSuspended | bool | false | Manually suspended; hides profile from regular humans. |
+| IsApproved | bool | false | Set automatically when consent check is cleared. |
+| MembershipTier | MembershipTier | Volunteer | Current tier — tracked on Profile, not as RoleAssignment. |
+| ConsentCheckStatus | ConsentCheckStatus? | null | Consent check gate status (null until all consents signed). |
+| ConsentCheckAt | Instant? | null | When consent check was performed. |
+| ConsentCheckedByUserId | Guid? | null | Consent Coordinator who performed the check. |
+| ConsentCheckNotes | string? (4000) | null | Notes from the Consent Coordinator. |
+| RejectionReason | string? (4000) | null | Reason for rejection (when Admin rejects a flagged check). |
+| RejectedAt | Instant? | null | When the profile was rejected. |
+| RejectedByUserId | Guid? | null | Admin who rejected the profile. |
+| NoPriorBurnExperience | bool | false | When true, CV entries are not required during onboarding. |
+| CreatedAt | Instant | — | Set on insert. |
+| UpdatedAt | Instant | — | Maintained by services. |
 
-Cross-domain nav `Profile.User` is **stripped** per design-rules §15i. Consumers resolve User data via `IUserService.GetByIdsAsync`.
+**Indexes:** unique on `UserId`; non-unique on `ConsentCheckStatus`.
+
+Cross-domain nav `Profile.User` is **stripped** per design-rules §15i. Consumers resolve User data via `IUserService.GetByIdsAsync`. Aggregate-local navs `ContactFields`, `VolunteerHistory`, and `Languages` are kept.
 
 ### ContactField
 
 **Table:** `contact_fields`
 
 Contact fields allow humans to share different types of contact information with per-field visibility controls.
+
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK |
+| ProfileId | Guid | FK → Profile (Cascade) |
+| FieldType | ContactFieldType | Stored as string (max 50) |
+| CustomLabel | string? (100) | Required when `FieldType == Other` |
+| Value | string (500) | Required |
+| Visibility | ContactFieldVisibility | Stored as string (max 50) |
+| DisplayOrder | int | Sort order |
+| CreatedAt / UpdatedAt | Instant | Maintained by `ContactFieldService` |
+
+**Indexes:** `ProfileId`; composite `(ProfileId, Visibility)`.
 
 #### Field types (`ContactFieldType`)
 
@@ -127,6 +167,21 @@ Lower values are more restrictive. A viewer with access level X can see fields w
 
 Per-user email addresses (login, verified, notifications). Cross-domain nav `UserEmail.User` is **stripped** per §15i.
 
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK |
+| UserId | Guid | FK → User (Cascade) — **FK only**, no nav |
+| Email | string (256) | Required |
+| IsVerified | bool | Required |
+| IsOAuth | bool | True for the OAuth login email; cannot be deleted |
+| IsNotificationTarget | bool | Exactly one verified email per user is the system-notification target |
+| Visibility | ContactFieldVisibility? | Stored as string (max 50); null hides the email from profile view |
+| VerificationSentAt | Instant? | Last time a verification email was sent (rate limiting) |
+| DisplayOrder | int | Sort order in the UI |
+| CreatedAt / UpdatedAt | Instant | Maintained by `UserEmailService` |
+
+**Indexes:** `UserId`; **unique partial index** on `Email` filtered to `IsVerified = true` (Postgres `"IsVerified" = true`) — prevents email squatting across accounts.
+
 ### CommunicationPreference
 
 **Table:** `communication_preferences`
@@ -137,14 +192,15 @@ Per-user, per-category email opt-in/opt-out preferences. One row per user per ca
 |-------|------|-------|
 | Id | Guid | PK |
 | UserId | Guid | FK → User (Cascade) — **FK only**, no nav |
-| Category | MessageCategory | Enum stored as string |
-| OptedOut | bool | true = user opted out |
+| Category | MessageCategory | Enum stored as string (max 50) |
+| OptedOut | bool | true = user opted out of email for this category |
+| InboxEnabled | bool | Default true; when false, informational in-app notifications for this category are suppressed (actionable notifications always show) |
 | UpdatedAt | Instant | Last change |
 | UpdateSource | string (100) | "Profile", "MagicLink", "OneClick", "Default", "DataMigration" |
 
 **Unique constraint:** `(UserId, Category)`. **Indexes:** `UserId`.
 
-Defaults are created lazily: System=on, EventOperations=on, CommunityUpdates=off, Marketing=off.
+Defaults are created lazily by `CommunicationPreferenceService` on first read. All active categories default to opted-in (`OptedOut = false`) except Marketing, which defaults to opted-out. System and CampaignCodes are always on (cannot be opted out).
 
 ### VolunteerHistoryEntry (CV Entry)
 
@@ -152,13 +208,54 @@ Defaults are created lazily: System=on, EventOperations=on, CommunityUpdates=off
 
 Sub-aggregate of Profile — no separate service. Written through `IProfileService.SaveCVEntriesAsync`; read via `FullProfile.CVEntries`.
 
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK |
+| ProfileId | Guid | FK → Profile (Cascade) |
+| Date | LocalDate | Required; users may enter a full date or first-of-month. Displayed as e.g. `Mar'25`. |
+| EventName | string (256) | Required |
+| Description | string? (2000) | Optional |
+| CreatedAt / UpdatedAt | Instant | Maintained by `ProfileService` |
+
+**Indexes:** `ProfileId`.
+
+### ProfileLanguage
+
+**Table:** `profile_languages`
+
+Sub-aggregate of Profile — no separate service. Records languages spoken with self-assessed proficiency.
+
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK |
+| ProfileId | Guid | FK → Profile (Cascade) |
+| LanguageCode | string (10) | ISO 639-1 two-letter code (e.g., `en`, `es`, `de`) |
+| Proficiency | LanguageProficiency | Stored as string (max 50) |
+
+**Indexes:** `ProfileId`.
+
 ### AccountMergeRequest
 
 Tracks pending and resolved merges between duplicate accounts. `AccountMergeService` orchestrates the merge; `DuplicateAccountService` is the stateless detector that flags candidates.
 
 **Table:** `account_merge_requests`
 
-Cross-domain navs `TargetUser`, `SourceUser`, `ResolvedByUser` → FK-only (`TargetUserId`, `SourceUserId`, `ResolvedByUserId`). User data resolves via `IUserService.GetByIdsAsync`.
+| Field | Type | Notes |
+|-------|------|-------|
+| Id | Guid | PK |
+| TargetUserId | Guid | FK → User (Cascade) — receives the merged data |
+| SourceUserId | Guid | FK → User (Cascade) — gets archived |
+| Email | string (256) | The address that triggered the request |
+| PendingEmailId | Guid | The unverified `UserEmail` row on the target account |
+| Status | AccountMergeRequestStatus | Stored as string (max 50) |
+| CreatedAt | Instant | When created |
+| ResolvedAt | Instant? | When accepted or rejected |
+| ResolvedByUserId | Guid? | FK → User (SetNull) — admin who resolved |
+| AdminNotes | string? (4000) | Admin notes |
+
+**Indexes:** `Status`, `TargetUserId`, `SourceUserId`.
+
+The entity still carries `TargetUser`, `SourceUser`, and `ResolvedByUser` navigation properties (configured with `HasOne(...).WithMany().HasForeignKey(...)`). They predate the §15i nav-strip work; the merge admin views read them directly today. Strip and route through `IUserService.GetByIdsAsync` when this pattern is generalised across the section.
 
 ### MembershipTier
 
@@ -185,11 +282,17 @@ Stored as string via `HasConversion<string>()`. Nullable on Profile (null until 
 | Value | Int | Description |
 |-------|-----|-------------|
 | System | 0 | Critical account/consent/security notifications. Always on. |
-| EventOperations | 1 | Shift changes, schedule updates, team additions. Default: on. |
-| CommunityUpdates | 2 | Community news, facilitated messages. Default: off. |
-| Marketing | 3 | Campaign emails, promotions. Default: off. |
+| ~~EventOperations~~ | 1 | **Deprecated** — split into VolunteerUpdates + TeamUpdates. Kept for DB string compatibility. |
+| ~~CommunityUpdates~~ | 2 | **Deprecated** — replaced by FacilitatedMessages. Kept for DB string compatibility. |
+| Marketing | 3 | Mailing list, promotions. Default: off. |
+| Governance | 4 | Board voting, tier applications, role assignments, onboarding reviews. Default: on. |
+| CampaignCodes | 5 | Discount codes, grants, campaign redemption codes. Always on. |
+| FacilitatedMessages | 6 | User-to-user emails relayed via Humans. Default: on. |
+| Ticketing | 7 | Purchase confirmations, event info. Default: on. Locked on when user has a matched ticket order. |
+| VolunteerUpdates | 8 | Shift changes, schedule updates, volunteer notifications. Default: on. |
+| TeamUpdates | 9 | Drive permissions, team member adds/removes. Default: on. |
 
-Stored as string via `HasConversion<string>()`.
+Stored as string via `HasConversion<string>()`. `IsAlwaysOn()` covers System and CampaignCodes; `MessageCategoryExtensions.ActiveCategories` is the display-order list shown in the UI (deprecated values omitted).
 
 ## Routing
 
@@ -201,8 +304,10 @@ All profile-related functionality lives under `/Profile`:
 | `/Profile/Me/Edit` | Edit own profile |
 | `/Profile/Me/Emails` | Email management |
 | `/Profile/Me/ShiftInfo` | Shift preferences |
-| `/Profile/Me/Notifications` | Communication preferences |
+| `/Profile/Me/CommunicationPreferences` | Per-category email/in-app communication preferences |
+| `/Profile/Me/Notifications` | Permanent redirect to `/Profile/Me/CommunicationPreferences` |
 | `/Profile/Me/Privacy` | Privacy / deletion |
+| `/Profile/Me/DownloadData` | GDPR Article 15 JSON export download |
 | `/Profile/Me/Outbox` | Own email outbox |
 | `/Profile/{id}` | View another human's profile |
 | `/Profile/{id}/Popover` | Quick profile popup |
@@ -218,7 +323,19 @@ All profile-related functionality lives under `/Profile`:
 | `/Profile/Picture` | Profile picture endpoint |
 | `/api/profiles/search` | API search endpoint |
 
-External contacts are managed separately at `/Contacts` (ContactsController).
+External contacts (pre-provisioned Identity users imported from MailerLite/TicketTailor/etc.) are managed separately at `/Contacts` (`ContactsController`, `PolicyNames.HumanAdminBoardOrAdmin`).
+
+Admin-only flows for the section's cross-account hygiene:
+
+| Route | Purpose |
+|-------|---------|
+| `/Admin/MergeRequests` | List pending `AccountMergeRequest`s (`AdminMergeController`) |
+| `/Admin/MergeRequests/{id}` | Detail view of a single merge request |
+| `/Admin/MergeRequests/{id}/Accept` | Accept and execute the merge |
+| `/Admin/MergeRequests/{id}/Reject` | Reject the merge |
+| `/Admin/DuplicateAccounts` | List detected duplicate-account groups (`AdminDuplicateAccountsController`) |
+| `/Admin/DuplicateAccounts/Detail` | Side-by-side comparison of two candidate accounts |
+| `/Admin/DuplicateAccounts/Resolve` | Archive the duplicate and re-link logins to the survivor |
 
 ## Actors & Roles
 
@@ -226,7 +343,8 @@ External contacts are managed separately at `/Contacts` (ContactsController).
 |-------|--------------|
 | Any authenticated human | View and edit own profile, manage own emails, manage own contact fields, upload profile picture, set notification and communication preferences, request data export (GDPR Article 15), request account deletion |
 | Any active human | View other active humans' profiles (contact fields restricted by per-field visibility). Send facilitated messages to other humans. Search for humans |
-| HumanAdmin, Board, Admin | View any profile with full detail. Manage humans via admin pages (suspend, unsuspend, update tier, view audit log, manage roles). Review duplicate-account candidates. Approve/resolve `AccountMergeRequest`s |
+| HumanAdmin, Board, Admin | View any profile with full detail. Manage humans via admin pages (suspend, unsuspend, approve volunteer, reject signup, view audit log, add or end role assignments). (Membership tier changes go through tier applications in Governance, not the profile admin page.) |
+| Admin | Review duplicate-account candidates at `/Admin/DuplicateAccounts` and approve/reject `AccountMergeRequest`s at `/Admin/MergeRequests` (both `PolicyNames.AdminOnly`). |
 | Admin (non-production only) | Purge a human and all associated data |
 
 ## Invariants
@@ -236,9 +354,9 @@ External contacts are managed separately at `/Contacts` (ContactsController).
 - Birthday stores month and day only — never year. UI text uses "birthday", not "date of birth".
 - Membership tier (Volunteer, Colaborador, Asociado) is tracked on the profile, not as a role assignment.
 - Consent check status on the profile gates Volunteer activation: unset until all consents are signed, then Pending, Cleared, or Flagged.
-- Profile deletion request sets a flag. Memberships and team memberships are revoked immediately. Actual data purge is deferred to a background job.
-- Data export returns all personal data as a JSON download (GDPR compliance). The service implements `IUserDataContributor` per design-rules §8a.
-- Profile pictures are stored on disk. Uploaded images are validated for allowed types and size.
+- Profile deletion request sets `User.DeletionRequestedAt` and `User.DeletionScheduledFor = now + 30 days` on the User record. Team memberships and governance role assignments are revoked immediately. Actual data purge is deferred to a background job.
+- Data export returns all personal data as a JSON download (GDPR Article 15). `ProfileService` and `AccountMergeService` are this section's `IUserDataContributor` implementations per design-rules §8a; the orchestration lives in `GdprExportService`.
+- Profile pictures are stored in the database on `Profile.ProfilePictureData` (~500-user scale). Uploaded images are validated against an allowed-content-type set (JPEG, PNG, WebP, HEIC/HEIF, AVIF) and a 20 MB upload cap, then resized by `ProfilePictureProcessor` to a long-side of 1000 px and re-encoded as JPEG before persistence.
 - `CachingProfileService` (Singleton) and `IFullProfileInvalidator` must resolve to the **same** instance — both registrations point to the single decorator. Two instances would split the `ConcurrentDictionary<Guid, FullProfile>` cache and silently lose invalidations.
 - Purging a human permanently deletes the account and all associated data, including severing the OAuth link so the next Google login creates a fresh account. Purge is disabled in production environments. No one can purge their own account.
 - Duplicate account detection applies gmail/googlemail equivalence when scanning for address collisions.
@@ -257,9 +375,11 @@ External contacts are managed separately at `/Contacts` (ContactsController).
 
 - When all required legal documents are consented to, consent check status transitions to Pending.
 - When consent check status is Cleared, the human is auto-approved as a Volunteer and added to the Volunteers system team.
-- When a human requests account deletion, team memberships are revoked immediately. The actual data purge runs in a background job.
+- When a human requests account deletion, team memberships and governance roles are revoked immediately and `User.DeletionScheduledFor` is set to `now + 30 days`. `ProcessAccountDeletionsJob` runs the actual anonymisation via `IUserService.AnonymizeExpiredAccountAsync` after the scheduled date passes.
+- When a human verifies a pending email that already exists as a verified address on another account, `UserEmailService` creates an `AccountMergeRequest` (status `Pending`) for admin review.
 - When an `AccountMergeRequest` is accepted, all rows from the source user (emails, contact fields, CV entries, role assignments, memberships) are reassigned to the target user via the Profile section's owning services; the source user is archived.
 - When `DuplicateAccountService` flags a candidate, an audit entry is written via `IAuditLogService`.
+- When a profile field changes through any owning service, `CachingProfileService` reloads the affected `FullProfile` dict entry from the section's repositories.
 
 ## Cross-Section Dependencies
 
@@ -272,7 +392,7 @@ External contacts are managed separately at `/Contacts` (ContactsController).
 ## Architecture
 
 **Owning services:** `ProfileService`, `ContactFieldService`, `ContactService`, `UserEmailService`, `CommunicationPreferenceService`, `AccountMergeService`, `DuplicateAccountService`
-**Owned tables:** `profiles`, `contact_fields`, `user_emails`, `communication_preferences`, `volunteer_history_entries`, `account_merge_requests`
+**Owned tables:** `profiles`, `contact_fields`, `user_emails`, `communication_preferences`, `volunteer_history_entries`, `profile_languages`, `account_merge_requests`
 **Status:** (A) Migrated — canonical §15 reference implementation (peterdrier/Humans PR #235, 2026-04-20). `AccountMergeService` / `DuplicateAccountService` moved into `Humans.Application/Services/Profile/` after the original migration (they now live alongside the other Profile-section services in the code tree; design-rules §8 ownership updated accordingly).
 
 - Services live in `Humans.Application.Services.Profile/` and never import `Microsoft.EntityFrameworkCore`.
@@ -281,7 +401,7 @@ External contacts are managed separately at `/Contacts` (ContactsController).
 - **Inner service** is `Humans.Application.Services.Profile.ProfileService`, registered as `AddKeyedScoped` under `CachingProfileService.InnerServiceKey` (`"profile-inner"`). The decorator resolves it per-call via `IServiceScopeFactory`.
 - **`IFullProfileInvalidator`** is aliased to the same Singleton `CachingProfileService` instance so external sections' writes (Auth, Onboarding, Teams, Google) can invalidate the cache without touching the dict.
 - **Cross-domain navs stripped:** `Profile.User`, `UserEmail.User`, `CommunicationPreference.User`. Display stitching routes through `IUserService.GetByIdsAsync`.
-- **GDPR:** `ProfileService` implements `IUserDataContributor` (design-rules §8a). The `ExpectedContributorTypes` in `GdprExportDependencyInjectionTests` enforces registration.
+- **GDPR:** `ProfileService` and `AccountMergeService` both implement `IUserDataContributor` (design-rules §8a). `ProfileService` emits the `Profile`, `ContactFields`, `UserEmails`, `VolunteerHistory`, `Languages`, and `CommunicationPreferences` slices; `AccountMergeService` emits the `AccountMergeRequests` slice. Section keys are constants on `GdprExportSections`. The `ExpectedContributorTypes` in `GdprExportDependencyInjectionTests` enforces registration.
 - **Account merge & duplicates** — `AccountMergeService` and `DuplicateAccountService` live in `Humans.Application.Services.Profile/`. `AccountMergeService` is backed by `IAccountMergeRepository` (Singleton) for `account_merge_requests` and orchestrates the actual merge via `IUserEmailService`, `IContactFieldService`, `IProfileService`, and `IUserService`. `DuplicateAccountService` is stateless — no repository, just cross-section reads via those same interfaces. Neither service reads `DbContext` directly.
 - **Architecture tests** — `tests/Humans.Application.Tests/Architecture/ProfileArchitectureTests.cs` + `GdprExportDependencyInjectionTests.cs`.
 
