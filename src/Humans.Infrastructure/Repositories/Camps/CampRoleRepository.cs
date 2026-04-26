@@ -124,9 +124,16 @@ public sealed class CampRoleRepository : ICampRoleRepository
     public async Task<int> DeleteAllForMemberAsync(Guid campMemberId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.CampRoleAssignments
+        // Load-then-RemoveRange so unit tests using the EF InMemory provider
+        // still cover the path. ExecuteDeleteAsync would be cheaper at scale
+        // but is not supported by the InMemory provider.
+        var toDelete = await ctx.CampRoleAssignments
             .Where(a => a.CampMemberId == campMemberId)
-            .ExecuteDeleteAsync(ct);
+            .ToListAsync(ct);
+        if (toDelete.Count == 0) return 0;
+        ctx.CampRoleAssignments.RemoveRange(toDelete);
+        await ctx.SaveChangesAsync(ct);
+        return toDelete.Count;
     }
 
     public async Task<IReadOnlyList<(Guid CampSeasonId, Guid DefinitionId, int Count)>> GetAssignmentCountsForYearAsync(

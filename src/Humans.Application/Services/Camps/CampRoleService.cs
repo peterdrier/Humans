@@ -236,8 +236,19 @@ public sealed class CampRoleService : ICampRoleService
         return true;
     }
 
-    public Task<int> RemoveAllForMemberAsync(Guid campMemberId, Guid actorUserId, CancellationToken ct = default)
-        => throw new NotSupportedException();
+    public async Task<int> RemoveAllForMemberAsync(Guid campMemberId, Guid actorUserId, CancellationToken ct = default)
+    {
+        var deleted = await _repo.DeleteAllForMemberAsync(campMemberId, ct);
+        if (deleted > 0)
+        {
+            await _auditLog.LogAsync(
+                AuditAction.CampRoleUnassigned,
+                nameof(CampMember), campMemberId,
+                $"Cascade-removed {deleted} role assignment(s) for camp member.",
+                actorUserId);
+        }
+        return deleted;
+    }
 
     public Task<CampRoleComplianceReport> GetComplianceReportAsync(int year, CancellationToken ct = default)
         => throw new NotSupportedException();

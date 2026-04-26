@@ -395,6 +395,25 @@ public class CampRoleServiceTests : IDisposable
         ok.Should().BeFalse();
     }
 
+    [HumansFact]
+    public async Task RemoveAllForMember_deletes_all_assignments_for_one_member()
+    {
+        var (camp, season) = await SeedCampWithSeasonAsync();
+        var def1 = await SeedDefinitionAsync("Consent Lead");
+        var def2 = await SeedDefinitionAsync("LNT");
+        var member = await SeedActiveMemberAsync(season.Id);
+
+        await _dbContext.CampRoleAssignments.AddRangeAsync(
+            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def1.Id, CampMemberId = member.Id, AssignedAt = _clock.GetCurrentInstant(), AssignedByUserId = _actorUserId },
+            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = def2.Id, CampMemberId = member.Id, AssignedAt = _clock.GetCurrentInstant(), AssignedByUserId = _actorUserId });
+        await _dbContext.SaveChangesAsync();
+
+        var deletedCount = await _service.RemoveAllForMemberAsync(member.Id, _actorUserId);
+
+        deletedCount.Should().Be(2);
+        (await _dbContext.CampRoleAssignments.CountAsync()).Should().Be(0);
+    }
+
     private async Task<CampRoleDefinition> SeedDefinitionAsync(
         string name = "Consent Lead", int slotCount = 2, int minimumRequired = 1,
         bool isRequired = true, bool deactivated = false)
