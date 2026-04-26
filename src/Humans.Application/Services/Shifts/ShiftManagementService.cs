@@ -1447,6 +1447,25 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         return new CoverageHeatmap(days, rows);
     }
 
+    public async Task<(int Filled, int Total, double Ratio)> GetOverallCoverageAsync(CancellationToken ct = default)
+    {
+        var es = await _repo.GetActiveEventSettingsAsync(ct);
+        if (es is null) return (0, 0, 0d);
+
+        var allShifts = await _repo.GetVisibleShiftsForEventAsync(es.Id, ct);
+        if (allShifts.Count == 0) return (0, 0, 0d);
+
+        var shiftIds = allShifts.Select(s => s.Id).ToList();
+        var confirmedCounts = await _repo.GetConfirmedSignupCountsByShiftAsync(shiftIds, ct);
+
+        var total = allShifts.Sum(s => s.MaxVolunteers);
+        var filled = allShifts.Sum(s =>
+            Math.Min(confirmedCounts.TryGetValue(s.Id, out var c) ? c : 0, s.MaxVolunteers));
+
+        var ratio = total == 0 ? 0d : (double)filled / total;
+        return (filled, total, ratio);
+    }
+
     public async Task<IReadOnlyList<ShiftDurationBreakdownRow>> GetShiftDurationBreakdownAsync(
         Guid eventSettingsId, ShiftPeriod? period)
     {

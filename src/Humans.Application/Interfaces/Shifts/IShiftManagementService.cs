@@ -263,6 +263,14 @@ public interface IShiftManagementService
     Task<CoverageHeatmap> GetCoverageHeatmapAsync(
         Guid eventSettingsId, ShiftPeriod? period);
 
+    /// <summary>
+    /// Returns overall shift coverage for the active event:
+    /// (filled signups / total slots, plus the ratio).
+    /// Returns (0, 0, 0d) if no event is active.
+    /// Used by the admin dashboard's shift-coverage stat tile.
+    /// </summary>
+    Task<(int Filled, int Total, double Ratio)> GetOverallCoverageAsync(CancellationToken ct = default);
+
     // === Shift Tags ===
 
     /// <summary>
