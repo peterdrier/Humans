@@ -100,10 +100,102 @@ public sealed class HoldedSyncService : IHoldedSyncService
         return Instant.FromUnixTimeSeconds(epoch).InZone(Madrid).Date;
     }
 
-#pragma warning disable MA0025 // Filled in by subsequent tasks in this batch.
-    public Task<HoldedSyncResult> SyncAsync(CancellationToken ct = default)
-        => throw new NotImplementedException("Implemented in Task 12");
+    /// <summary>
+    /// Pull every purchase doc from Holded, resolve match status, upsert each
+    /// into <c>holded_transactions</c>, and update the singleton sync state
+    /// (Idle → Running → Idle on success, Running → Error on exception).
+    /// If the state is already <see cref="HoldedSyncStatus.Running"/> when this
+    /// is called, the call is a no-op and returns an empty result so two
+    /// concurrent triggers (job + manual) do not race on Holded.
+    /// </summary>
+    public async Task<HoldedSyncResult> SyncAsync(CancellationToken ct = default)
+    {
+        var current = await _repository.GetSyncStateAsync(ct);
+        if (current.SyncStatus == HoldedSyncStatus.Running)
+        {
+            _logger.LogInformation("Holded sync skipped: already running.");
+            return new HoldedSyncResult(0, 0, 0, new Dictionary<string, int>(StringComparer.Ordinal));
+        }
 
+        var startedAt = _clock.GetCurrentInstant();
+        await _repository.SetSyncStateAsync(HoldedSyncStatus.Running, startedAt, lastError: null, ct);
+
+        try
+        {
+            var docs = await _client.GetAllPurchaseDocsAsync(ct);
+            var transactions = new List<Domain.Entities.HoldedTransaction>(docs.Count);
+
+            foreach (var (dto, rawJson) in docs)
+            {
+                var match = await ResolveMatchAsync(dto, ct);
+                transactions.Add(BuildTransaction(dto, rawJson, match, startedAt));
+            }
+
+            await _repository.UpsertManyAsync(transactions, ct);
+
+            var completedAt = _clock.GetCurrentInstant();
+            await _repository.RecordSyncCompletedAsync(completedAt, docs.Count, ct);
+
+            var byStatus = transactions
+                .GroupBy(t => t.MatchStatus.ToString(), StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
+            var matched = transactions.Count(t => t.MatchStatus == HoldedMatchStatus.Matched);
+
+            _logger.LogInformation(
+                "Holded sync completed: {DocCount} docs, {Matched} matched, {Unmatched} unmatched.",
+                docs.Count, matched, docs.Count - matched);
+
+            return new HoldedSyncResult(docs.Count, matched, docs.Count - matched, byStatus);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Holded sync failed.");
+            var errorAt = _clock.GetCurrentInstant();
+            await _repository.SetSyncStateAsync(HoldedSyncStatus.Error, errorAt, ex.Message, ct);
+            throw;
+        }
+    }
+
+    private static Domain.Entities.HoldedTransaction BuildTransaction(
+        HoldedDocDto dto, string rawJson, MatchOutcome match, Instant syncedAt)
+    {
+        return new Domain.Entities.HoldedTransaction
+        {
+            Id = Guid.NewGuid(),
+            HoldedDocId = dto.Id,
+            HoldedDocNumber = dto.DocNumber,
+            ContactName = dto.ContactName ?? string.Empty,
+            Date = Instant.FromUnixTimeSeconds(dto.Date).InZone(Madrid).Date,
+            AccountingDate = dto.AccountingDate is null
+                ? null
+                : Instant.FromUnixTimeSeconds(dto.AccountingDate.Value).InZone(Madrid).Date,
+            DueDate = dto.DueDate is null
+                ? null
+                : Instant.FromUnixTimeSeconds(dto.DueDate.Value).InZone(Madrid).Date,
+            Subtotal = dto.Subtotal,
+            Tax = dto.Tax,
+            Total = dto.Total,
+            PaymentsTotal = dto.PaymentsTotal,
+            PaymentsPending = dto.PaymentsPending,
+            PaymentsRefunds = dto.PaymentsRefunds,
+            Currency = dto.Currency ?? "eur",
+            ApprovedAt = dto.ApprovedAt is null
+                ? null
+                : Instant.FromUnixTimeSeconds(dto.ApprovedAt.Value),
+            Tags = dto.Tags ?? new List<string>(),
+            RawPayload = rawJson,
+            SourceIncomingDocId = string.Equals(dto.From?.DocType, "incomingdocument", StringComparison.OrdinalIgnoreCase)
+                ? dto.From?.Id
+                : null,
+            BudgetCategoryId = match.BudgetCategoryId,
+            MatchStatus = match.Status,
+            LastSyncedAt = syncedAt,
+            CreatedAt = syncedAt,
+            UpdatedAt = syncedAt,
+        };
+    }
+
+#pragma warning disable MA0025 // Filled in by Task 13 in this batch.
     public Task<ReassignOutcome> ReassignAsync(string holdedDocId, Guid budgetCategoryId, Guid actorUserId, CancellationToken ct = default)
         => throw new NotImplementedException("Implemented in Task 13");
 #pragma warning restore MA0025
