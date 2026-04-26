@@ -65,26 +65,22 @@
     </div>
     }
 
-    <!-- Admin panel link + section help -->
-    <div class="position-absolute top-0 end-0 m-3 d-flex gap-2">
+    <!-- Top-right controls -->
+    <div class="position-absolute top-0 end-0 m-3 d-flex flex-row gap-2">
+        <button id="measure-btn" class="btn btn-outline-secondary btn-sm shadow-sm" title="Measure distance">
+            <i class="fa-solid fa-ruler me-1"></i> @Localizer["CityPlanning_MeasureButton"]
+        </button>
         @if (isMapAdmin)
         {
-            <a href="/CityPlanning/Admin" class="btn btn-outline-primary btn-sm shadow-sm">
-                <i class="fa fa-cog me-1"></i> @Localizer["CityPlanning_AdminLink"]
-            </a>
+        <a href="/CityPlanning/Admin" class="btn btn-outline-primary btn-sm shadow-sm">
+            <i class="fa fa-cog me-1"></i> @Localizer["CityPlanning_AdminLink"]
+        </a>
         }
         <vc:access-matrix section="CityPlanning" />
     </div>
 
     <!-- Toolbars -->
     <div class="position-absolute bottom-0 start-50 translate-middle-x mb-3 d-flex flex-row gap-2">
-        <div class="card">
-            <div class="card-body py-2 px-3">
-                <button id="measure-btn" class="btn btn-outline-secondary btn-sm shadow" title="Measure distance">
-                    <i class="fa-solid fa-ruler me-1"></i> @Localizer["CityPlanning_MeasureButton"]
-                </button>
-            </div>
-        </div>
         @if (isPlacementOpen || isMapAdmin)
         {
         <div id="main-toolbar" class="card" style="@(showMainToolbar ? "" : "display:none")">
