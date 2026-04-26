@@ -1,0 +1,137 @@
+/* ==========================================================================
+   Humans Design System — Core Tokens
+   Renaissance / Da Vinci workshop aesthetic
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Source+Sans+3:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+
+:root {
+  /* ——— Parchment & ink ——— */
+  --h-parchment:       #f5e6c8;
+  --h-parchment-light: #faf3e6;
+  --h-parchment-dark:  #e8d4ab;
+  --h-aged-ink:        #3d2b1f;
+  --h-aged-ink-light:  #5a4535;
+  --h-gold:            #c9a96e;
+  --h-gold-light:      #d9c08e;
+  --h-gold-dark:       #a88a4e;
+  --h-warm-white:      #fefaf3;
+  --h-sepia:           #8b7355;
+  --h-sepia-light:     #a69178;
+  --h-umber:           #6b5340;
+  --h-vellum:          #f0e2c8;
+  --h-border:          #d4c4a8;
+  --h-border-light:    #e2d6bf;
+
+  /* ——— Status (warm-shifted) ——— */
+  --h-sage:       #6b8f71;
+  --h-sage-dark:  #4f7054;
+  --h-amber:      #c48a2a;
+  --h-amber-dark: #a87520;
+  --h-rust:       #a04030;
+  --h-blue-muted: #5b7d8f;
+
+  /* ——— Alerts ——— */
+  --h-alert-warning-bg:   #fdf1dc;
+  --h-alert-warning-text: #6b5520;
+  --h-alert-info-bg:      #e5eff5;
+  --h-alert-info-text:    #2c5a72;
+  --h-alert-success-bg:   #e6f0e7;
+  --h-alert-success-text: #3b5e3e;
+  --h-alert-danger-bg:    #f5e5e3;
+  --h-alert-danger-text:  #6e2e25;
+
+  /* ——— Type ——— */
+  --h-font-display: 'Cormorant Garamond', 'Garamond', 'Georgia', serif;
+  --h-font-body:    'Source Sans 3', 'Segoe UI', system-ui, sans-serif;
+
+  /* ——— Radius ——— */
+  --h-radius-sm: 3px;
+  --h-radius:    6px;
+  --h-radius-lg: 10px;
+
+  /* ——— Shadows (warm sepia tint) ——— */
+  --h-shadow-sm: 0 1px 3px rgba(61, 43, 31, 0.08);
+  --h-shadow:    0 2px 8px rgba(61, 43, 31, 0.10);
+  --h-shadow-lg: 0 8px 24px rgba(61, 43, 31, 0.12);
+
+  /* ——— Parchment grain ——— */
+  --h-grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+}
+
+/* ——— Base ——— */
+html { scrollbar-gutter: stable; }
+body {
+  margin: 0;
+  font-family: var(--h-font-body);
+  color: var(--h-aged-ink);
+  background-color: var(--h-parchment-light);
+  background-image: var(--h-grain);
+  background-repeat: repeat;
+  background-size: 256px 256px;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5 {
+  font-family: var(--h-font-display);
+  font-weight: 600;
+  color: var(--h-aged-ink);
+  margin: 0 0 0.4em;
+  letter-spacing: 0.01em;
+}
+
+.display { font-family: var(--h-font-display); font-size: 3.2rem; font-weight: 700; line-height: 1.05; letter-spacing: 0.015em; }
+.lead    { font-family: var(--h-font-display); font-size: 1.25rem; font-style: italic; color: var(--h-sepia); font-weight: 400; }
+.eyebrow { font-family: var(--h-font-body); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--h-sepia-light); }
+
+a { color: var(--h-gold-dark); text-decoration-color: var(--h-gold); text-underline-offset: 3px; }
+a:hover { color: var(--h-aged-ink); }
+
+hr { border: 0; border-top: 1px solid var(--h-border); opacity: 0.5; margin: 2rem 0; }
+::selection { background: rgba(201,169,110,0.28); color: var(--h-aged-ink); }
+
+/* ——— Utilities used across cards ——— */
+.card-shell {
+  background: var(--h-warm-white);
+  border: 1px solid var(--h-border);
+  border-radius: var(--h-radius-lg);
+  box-shadow: var(--h-shadow-sm);
+  overflow: hidden;
+}
+.card-header-shell {
+  background: var(--h-vellum);
+  border-bottom: 1px solid var(--h-border);
+  padding: 10px 16px;
+  font-family: var(--h-font-display);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.stage {
+  background: var(--h-parchment-light);
+  background-image: var(--h-grain);
+  padding: 40px;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+.frame {
+  background: var(--h-warm-white);
+  border: 1px solid var(--h-border);
+  border-radius: var(--h-radius-lg);
+  box-shadow: var(--h-shadow);
+  padding: 32px;
+  margin-bottom: 32px;
+}
+.frame > header {
+  margin: -32px -32px 24px;
+  padding: 18px 32px;
+  background: var(--h-vellum);
+  border-bottom: 1px solid var(--h-border);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 24px;
+}
+.frame > header h2 { margin: 0; }
+.frame > header .eyebrow { margin-bottom: 4px; }
