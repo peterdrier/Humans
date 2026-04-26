@@ -15,6 +15,7 @@ function updateMarqueeEl(el, start, cur) {
 }
 
 function selectVerticesInRect(mode, state, rect) {
+    if (!Array.isArray(state.feature?.coordinates?.[0])) return;
     const coords    = state.feature.coordinates[0];
     const featureId = state.featureId;
     const newSelected = [];
@@ -28,7 +29,7 @@ function selectVerticesInRect(mode, state, rect) {
     }
 
     let combined = state.marqueeShift
-        ? [...state.selectedCoordPaths.map(p => ({ feature_id: featureId, coord_path: p })), ...newSelected]
+        ? [...(state.selectedCoordPaths ?? []).map(p => ({ feature_id: featureId, coord_path: p })), ...newSelected]
         : newSelected;
 
     // Deduplicate (Shift can produce overlaps)
@@ -47,6 +48,7 @@ export const MarqueeDirectSelectMode = {
     ...DirectSelectMode,
 
     onMouseDown(state, e) {
+        if (e.originalEvent.button !== 0) return;
         const meta = e.featureTarget?.properties?.meta;
         if (meta === 'vertex' || meta === 'midpoint') {
             return DirectSelectMode.onMouseDown.call(this, state, e);
@@ -86,7 +88,7 @@ export const MarqueeDirectSelectMode = {
                 minY: Math.min(state.marqueeStart.y, end.y),
                 maxY: Math.max(state.marqueeStart.y, end.y),
             });
-            if (state.marqueeEl) state.marqueeEl.remove();
+            state.marqueeEl?.remove();
         } else {
             // Near-zero drag = click: preserve existing click-on-empty behaviour
             DirectSelectMode.onMouseUp.call(this, state, e);
