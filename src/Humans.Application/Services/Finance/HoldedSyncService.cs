@@ -195,8 +195,48 @@ public sealed class HoldedSyncService : IHoldedSyncService
         };
     }
 
-#pragma warning disable MA0025 // Filled in by Task 13 in this batch.
-    public Task<ReassignOutcome> ReassignAsync(string holdedDocId, Guid budgetCategoryId, Guid actorUserId, CancellationToken ct = default)
-        => throw new NotImplementedException("Implemented in Task 13");
-#pragma warning restore MA0025
+    /// <summary>
+    /// Manually reassign a Holded doc to a chosen <see cref="Domain.Entities.BudgetCategory"/>.
+    /// The local DB write happens first so a Holded API failure never loses
+    /// the assignment; the tag write-back to Holded is best-effort. Always
+    /// records an audit log entry under <see cref="AuditAction.HoldedReassign"/>.
+    /// </summary>
+    public async Task<ReassignOutcome> ReassignAsync(
+        string holdedDocId, Guid budgetCategoryId, Guid actorUserId, CancellationToken ct = default)
+    {
+        var category = await _budget.GetCategoryByIdAsync(budgetCategoryId);
+        if (category is null)
+            throw new InvalidOperationException($"BudgetCategory {budgetCategoryId} not found.");
+        if (category.BudgetGroup is null)
+            throw new InvalidOperationException(
+                $"BudgetCategory {budgetCategoryId} loaded without BudgetGroup nav; cannot construct tag.");
+
+        var tag = $"{category.BudgetGroup.Slug}-{category.Slug}";
+        var now = _clock.GetCurrentInstant();
+
+        // Local write first — source of truth. A Holded failure must not lose this.
+        await _repository.AssignCategoryAsync(holdedDocId, budgetCategoryId, now, ct);
+
+        var description = $"Reassigned Holded doc {holdedDocId} to category {budgetCategoryId} (tag={tag}).";
+        await _audit.LogAsync(
+            AuditAction.HoldedReassign,
+            nameof(Domain.Entities.HoldedTransaction),
+            budgetCategoryId,
+            description,
+            actorUserId);
+
+        var pushed = await _client.TryAddTagAsync(holdedDocId, tag, ct);
+        if (!pushed)
+        {
+            _logger.LogWarning(
+                "Holded tag push failed for doc {HoldedDocId} (tag={Tag}); local match saved.",
+                holdedDocId, tag);
+            return new ReassignOutcome(
+                LocalMatchSaved: true,
+                TagPushedToHolded: false,
+                Warning: "Tag could not be pushed to Holded — please add it manually.");
+        }
+
+        return new ReassignOutcome(LocalMatchSaved: true, TagPushedToHolded: true, Warning: null);
+    }
 }
