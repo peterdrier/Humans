@@ -174,6 +174,16 @@ public interface ICampService
         Guid campSeasonId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns the raw <see cref="CampMember"/> rows (Active + Pending) for a
+    /// given camp season — no display-name stitching, no lead union. Used by
+    /// the Camp Edit page to build the per-camp roles picker (which needs
+    /// CampMember.Id and UserId for active members only). Privileged view
+    /// (no authorization inside — caller must gate).
+    /// </summary>
+    Task<IReadOnlyList<CampMember>> GetSeasonMembersAsync(
+        Guid campSeasonId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Lists Active/Pending memberships for a human, grouped by year. Used for
     /// the human's own profile dashboard (MyCamps).
     /// </summary>

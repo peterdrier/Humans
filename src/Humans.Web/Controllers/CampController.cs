@@ -12,7 +12,9 @@ using NodaTime;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CitiPlanning;
 using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Camps;
+using Humans.Web.Models.Camp;
 
 namespace Humans.Web.Controllers;
 
@@ -25,6 +27,7 @@ public class CampController : HumansCampControllerBase
     private readonly ICampRoleService _campRoleService;
     private readonly ICityPlanningService _cityPlanningService;
     private readonly INotificationService _notificationService;
+    private readonly IUserService _userService;
     private readonly IClock _clock;
     private readonly ILogger<CampController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
@@ -35,6 +38,7 @@ public class CampController : HumansCampControllerBase
         ICampRoleService campRoleService,
         ICityPlanningService cityPlanningService,
         INotificationService notificationService,
+        IUserService userService,
         UserManager<User> userManager,
         IAuthorizationService authorizationService,
         IClock clock,
@@ -47,6 +51,7 @@ public class CampController : HumansCampControllerBase
         _campRoleService = campRoleService;
         _cityPlanningService = cityPlanningService;
         _notificationService = notificationService;
+        _userService = userService;
         _clock = clock;
         _logger = logger;
         _localizer = localizer;
@@ -383,7 +388,7 @@ public class CampController : HumansCampControllerBase
 
     [Authorize]
     [HttpGet("{slug}/Edit")]
-    public async Task<IActionResult> Edit(string slug, int? year)
+    public async Task<IActionResult> Edit(string slug, int? year, CancellationToken ct)
     {
         var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null)
@@ -400,7 +405,64 @@ public class CampController : HumansCampControllerBase
 
         var viewModel = MapToEditViewModel(editData);
         await PopulateEditMembersAsync(viewModel);
+
+        // Build per-camp roles panel against the camp's open season (if any).
+        // canManage is implicitly true here: ResolveCampManagementAsync already
+        // returned Forbid for callers without CampOperationRequirement.Manage.
+        var openSeason = camp.Seasons.FirstOrDefault(s => s.Status == CampSeasonStatus.Active);
+        viewModel.RolesPanel = openSeason is null
+            ? null
+            : await BuildRolesPanelAsync(camp.Slug, openSeason.Id, canManage: true, ct);
+
         return View(viewModel);
+    }
+
+    private async Task<CampRolesPanelViewModel> BuildRolesPanelAsync(
+        string campSlug, Guid campSeasonId, bool canManage, CancellationToken ct)
+    {
+        var panelData = await _campRoleService.BuildPanelAsync(campSeasonId, ct);
+        var members = await _campService.GetSeasonMembersAsync(campSeasonId, ct);
+        var activeMemberUserIds = members
+            .Where(m => m.Status == CampMemberStatus.Active)
+            .Select(m => m.UserId)
+            .ToList();
+        IReadOnlyDictionary<Guid, User> users = activeMemberUserIds.Count == 0
+            ? new Dictionary<Guid, User>()
+            : await _userService.GetByIdsAsync(activeMemberUserIds, ct);
+
+        var activeMembers = members
+            .Where(m => m.Status == CampMemberStatus.Active)
+            .Select(m => new CampMemberPickerOption(
+                m.Id,
+                m.UserId,
+                users.TryGetValue(m.UserId, out var u) ? u.DisplayName ?? "(unknown)" : "(unknown)"))
+            .OrderBy(o => o.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var rows = panelData.Rows.Select(r => new CampRoleRowViewModel
+        {
+            DefinitionId = r.Definition.Id,
+            Name = r.Definition.Name,
+            Description = r.Definition.Description,
+            SlotCount = r.Definition.SlotCount,
+            MinimumRequired = r.Definition.MinimumRequired,
+            IsRequired = r.Definition.IsRequired,
+            FilledSlots = r.FilledSlots
+                .Select(s => new CampRoleSlotViewModel(s.AssignmentId, s.CampMemberId, s.UserId, s.DisplayName))
+                .ToList(),
+            EmptySlotCount = r.EmptySlotCount,
+            OverCapacity = r.OverCapacity,
+            CurrentCount = r.CurrentCount,
+        }).ToList();
+
+        return new CampRolesPanelViewModel
+        {
+            CampSeasonId = campSeasonId,
+            CampSlug = campSlug,
+            CanManage = canManage,
+            ActiveMembers = activeMembers,
+            Rows = rows,
+        };
     }
 
     private async Task PopulateEditMembersAsync(CampEditViewModel viewModel)

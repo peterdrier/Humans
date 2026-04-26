@@ -151,6 +151,12 @@ public class CampEditViewModel : CampRegisterViewModel
     public List<CampHistoricalNameViewModel> ExistingHistoricalNames { get; set; } = new();
     public List<CampMemberRowViewModel> PendingMembers { get; set; } = new();
     public List<CampMemberRowViewModel> ActiveMembers { get; set; } = new();
+
+    /// <summary>
+    /// Per-camp roles panel data (issue nobodies-collective#489). Null when the
+    /// camp has no open season — the view hides the panel in that case.
+    /// </summary>
+    public Humans.Web.Models.Camp.CampRolesPanelViewModel? RolesPanel { get; set; }
 }
 
 public class CampMemberRowViewModel

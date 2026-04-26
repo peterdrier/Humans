@@ -1725,6 +1725,10 @@ public sealed class CampService : ICampService, IUserDataContributor
         return new CampMemberListData(campSeasonId, info.Year, pending, active);
     }
 
+    public Task<IReadOnlyList<CampMember>> GetSeasonMembersAsync(
+        Guid campSeasonId, CancellationToken cancellationToken = default) =>
+        _repo.GetSeasonMembersAsync(campSeasonId, cancellationToken);
+
     public Task<int> GetPendingMembershipCountForLeadAsync(
         Guid userId, CancellationToken cancellationToken = default) =>
         _repo.CountPendingMembershipsForLeadAsync(userId, cancellationToken);
