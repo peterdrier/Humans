@@ -8,6 +8,7 @@ import {
     setEditingControlsVisible, updateAddMyBarrioVisibility,
 } from './edit.js';
 import { initSignalR } from './signalr.js';
+import { MarqueeDirectSelectMode } from './marquee-direct-select.js';
 
 async function init() {
     appState.map = new maplibregl.Map({
@@ -20,7 +21,11 @@ async function init() {
         bounds: CONFIG.MAP_BOUNDS,
     });
 
-    appState.draw = new MapboxDraw({ displayControlsDefault: false, styles: DRAW_STYLES });
+    appState.draw = new MapboxDraw({
+        displayControlsDefault: false,
+        styles: DRAW_STYLES,
+        modes: { ...MapboxDraw.modes, direct_select: MarqueeDirectSelectMode },
+    });
     appState.map.addControl(appState.draw);
 
     appState.map.on('draw.create', onDrawChange);
