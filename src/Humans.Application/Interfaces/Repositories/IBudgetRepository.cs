@@ -200,6 +200,39 @@ public interface IBudgetRepository
     /// </summary>
     Task<BudgetCategory?> GetCategoryByIdAsync(Guid id, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns a single category resolved by (year, group slug, category slug).
+    /// Slugs are stable identifiers used by the Finance section to map Holded
+    /// tags back to budget categories. Returns null if no match.
+    /// </summary>
+    Task<BudgetCategory?> GetCategoryBySlugAsync(
+        Guid budgetYearId, string groupSlug, string categorySlug, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the (non-deleted) budget year whose <c>Year</c> string matches
+    /// the calendar year of <paramref name="date"/>, or null if none. Used by
+    /// Finance to resolve which budget year a Holded document belongs to from
+    /// its document date.
+    /// </summary>
+    Task<BudgetYear?> GetYearForDateAsync(LocalDate date, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every category in a budget year with its owning group included
+    /// (line items not loaded). Ordered by group sort order then category sort
+    /// order. Detached. Used by Finance for tag-inventory and reconciliation.
+    /// </summary>
+    Task<IReadOnlyList<BudgetCategory>> GetCategoriesByYearAsync(
+        Guid budgetYearId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns flattened (Year, Group, Category) tuples for every category in a
+    /// budget year, suitable for materializing the
+    /// <see cref="Humans.Application.DTOs.Finance.HoldedTagInventoryRow"/>
+    /// projection in the Application layer.
+    /// </summary>
+    Task<IReadOnlyList<(BudgetYear Year, BudgetGroup Group, BudgetCategory Category)>> GetTagInventoryRowsAsync(
+        Guid budgetYearId, CancellationToken ct = default);
+
     // ==========================================================================
     // Budget Categories — atomic mutations
     // ==========================================================================

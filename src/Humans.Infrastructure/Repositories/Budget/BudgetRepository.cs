@@ -630,6 +630,59 @@ public sealed class BudgetRepository : IBudgetRepository
             .FirstOrDefaultAsync(c => c.Id == id, ct);
     }
 
+    public async Task<BudgetCategory?> GetCategoryBySlugAsync(
+        Guid budgetYearId, string groupSlug, string categorySlug, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.BudgetCategories
+            .AsNoTracking()
+            .Where(c => c.Slug == categorySlug
+                        && c.BudgetGroup!.Slug == groupSlug
+                        && c.BudgetGroup.BudgetYearId == budgetYearId)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<BudgetYear?> GetYearForDateAsync(LocalDate date, CancellationToken ct = default)
+    {
+        // BudgetYear.Year is a string per the existing model (e.g., "2026").
+        // Match by calendar year-of-date; if no year row carries that string, return null.
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var yearStr = date.Year.ToString(CultureInfo.InvariantCulture);
+        return await ctx.BudgetYears
+            .AsNoTracking()
+            .Where(y => !y.IsDeleted && y.Year == yearStr)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<BudgetCategory>> GetCategoriesByYearAsync(
+        Guid budgetYearId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.BudgetCategories
+            .AsNoTracking()
+            .Where(c => c.BudgetGroup!.BudgetYearId == budgetYearId)
+            .Include(c => c.BudgetGroup)
+            .OrderBy(c => c.BudgetGroup!.SortOrder).ThenBy(c => c.SortOrder)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<(BudgetYear Year, BudgetGroup Group, BudgetCategory Category)>> GetTagInventoryRowsAsync(
+        Guid budgetYearId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var rows = await ctx.BudgetCategories
+            .AsNoTracking()
+            .Where(c => c.BudgetGroup!.BudgetYearId == budgetYearId)
+            .Select(c => new
+            {
+                Year = c.BudgetGroup!.BudgetYear,
+                Group = c.BudgetGroup,
+                Category = c
+            })
+            .ToListAsync(ct);
+        return rows.Select(r => (r.Year!, r.Group, r.Category)).ToList();
+    }
+
     // ==========================================================================
     // Budget Categories — atomic mutations
     // ==========================================================================
