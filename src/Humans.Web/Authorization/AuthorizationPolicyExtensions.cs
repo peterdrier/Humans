@@ -1,5 +1,6 @@
 using Humans.Application.Authorization;
 using Humans.Domain.Constants;
+using Humans.Web.Authorization.Handlers;
 using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
 
@@ -20,6 +21,7 @@ public static class AuthorizationPolicyExtensions
         services.AddSingleton<IAuthorizationHandler, HumanAdminOnlyHandler>();
 
         // Resource-based authorization handlers (scoped — they depend on scoped services)
+        services.AddScoped<IAuthorizationHandler, AgentRateLimitHandler>();
         services.AddScoped<IAuthorizationHandler, BudgetAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, CampAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, TeamAuthorizationHandler>();
@@ -91,6 +93,10 @@ public static class AuthorizationPolicyExtensions
 
             options.AddPolicy(PolicyNames.MedicalDataViewer, policy =>
                 policy.RequireRole(RoleNames.Admin, RoleNames.NoInfoAdmin));
+
+            // Agent rate-limit policy
+            options.AddPolicy(PolicyNames.AgentRateLimit, policy =>
+                policy.AddRequirements(new AgentRateLimitRequirement()));
 
             // Composite policies using custom requirements
             options.AddPolicy(PolicyNames.ActiveMemberOrShiftAccess, policy =>

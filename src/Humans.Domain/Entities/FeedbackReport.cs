@@ -38,6 +38,13 @@ public class FeedbackReport
 
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }
+
+    /// <summary>Defaults to UserReport; set to AgentUnresolved when created by the agent's route_to_feedback tool.</summary>
+    public FeedbackSource Source { get; set; } = FeedbackSource.UserReport;
+
+    public Guid? AgentConversationId { get; set; }
+    public AgentConversation? AgentConversation { get; set; }
+
     public Instant? ResolvedAt { get; set; }
 
     public Guid? ResolvedByUserId { get; set; }

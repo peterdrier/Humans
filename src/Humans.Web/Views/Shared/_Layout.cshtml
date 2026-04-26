@@ -107,6 +107,9 @@
                                 <a class="nav-link" asp-controller="Legal" asp-action="Index">Legal</a>
                             </li>
                         }
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Agent" asp-action="History">@Localizer["Nav_Agent"]</a>
+                        </li>
                         <li class="nav-item" authorize-policy="ActiveMemberOrShiftAccess">
                             <a class="nav-link" asp-area="" asp-controller="Shifts" asp-action="Index">@Localizer["Nav_Shifts"]</a>
                         </li>
@@ -127,6 +130,9 @@
                         </li>
                         <li class="nav-item" authorize-policy="AdminOnly">
                             <a class="nav-link nav-restricted" asp-area="" asp-controller="Admin" asp-action="Index">@Localizer["Nav_Admin"]</a>
+                        </li>
+                        <li class="nav-item" authorize-policy="AdminOnly">
+                            <a class="nav-link nav-restricted" asp-controller="AdminAgent" asp-action="Settings">Agent</a>
                         </li>
                         <li class="nav-item" authorize-policy="AdminOnly">
                             <a class="nav-link nav-restricted" asp-area="" asp-controller="Google" asp-action="Index">Google</a>
@@ -191,5 +197,6 @@
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
     @await Component.InvokeAsync("FeedbackWidget")
+    @await Component.InvokeAsync("AgentWidget")
 </body>
 </html>

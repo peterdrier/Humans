@@ -42,4 +42,11 @@ public interface IConsentService
     /// </summary>
     Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetConsentMapForUsersAsync(
         IReadOnlyList<Guid> userIds, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the human-friendly names of legal documents the user has not yet
+    /// consented to (i.e., documents with a current version the user is missing).
+    /// Used by the agent snapshot provider.
+    /// </summary>
+    Task<IReadOnlyList<string>> GetPendingDocumentNamesAsync(Guid userId, CancellationToken ct = default);
 }

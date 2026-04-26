@@ -74,6 +74,173 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("account_merge_requests", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.AgentConversation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("LastMessageAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Locale")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int>("MessageCount")
+                        .HasColumnType("integer");
+
+                    b.Property<Instant>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LastMessageAt");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("agent_conversations", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.AgentMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("CachedTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DurationMs")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FetchedDocs")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid?>("HandedOffToFeedbackId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("OutputTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PromptTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RefusalReason")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConversationId");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("HandedOffToFeedbackId");
+
+                    b.HasIndex("RefusalReason");
+
+                    b.ToTable("agent_messages", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.AgentRateLimit", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<LocalDate>("Day")
+                        .HasColumnType("date");
+
+                    b.Property<int>("MessagesToday")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TokensToday")
+                        .HasColumnType("integer");
+
+                    b.HasKey("UserId", "Day");
+
+                    b.HasIndex("Day");
+
+                    b.ToTable("agent_rate_limits", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.AgentSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DailyMessageCap")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DailyTokenCap")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("HourlyMessageCap")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("PreloadConfig")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int>("RetentionDays")
+                        .HasColumnType("integer");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("agent_settings", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            DailyMessageCap = 30,
+                            DailyTokenCap = 50000,
+                            Enabled = false,
+                            HourlyMessageCap = 10,
+                            Model = "claude-sonnet-4-6",
+                            PreloadConfig = "Tier1",
+                            RetentionDays = 90,
+                            UpdatedAt = NodaTime.Instant.FromUnixTimeTicks(17767296000000000L)
+                        });
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.Application", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1662,6 +1829,9 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
+                    b.Property<Guid?>("AgentConversationId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("AssignedToTeamId")
                         .HasColumnType("uuid");
 
@@ -1713,6 +1883,13 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)");
 
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("UserReport");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -1730,6 +1907,8 @@ namespace Humans.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AgentConversationId");
+
                     b.HasIndex("AssignedToTeamId");
 
                     b.HasIndex("AssignedToUserId");
@@ -1737,6 +1916,8 @@ namespace Humans.Infrastructure.Migrations
                     b.HasIndex("CreatedAt");
 
                     b.HasIndex("ResolvedByUserId");
+
+                    b.HasIndex("Source");
 
                     b.HasIndex("Status");
 
@@ -3728,6 +3909,46 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("TargetUser");
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.AgentConversation", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.AgentMessage", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.AgentConversation", "Conversation")
+                        .WithMany("Messages")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Humans.Domain.Entities.FeedbackReport", "HandedOffToFeedback")
+                        .WithMany()
+                        .HasForeignKey("HandedOffToFeedbackId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Conversation");
+
+                    b.Navigation("HandedOffToFeedback");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.AgentRateLimit", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.Application", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.User", null)
@@ -4150,6 +4371,11 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.FeedbackReport", b =>
                 {
+                    b.HasOne("Humans.Domain.Entities.AgentConversation", "AgentConversation")
+                        .WithMany()
+                        .HasForeignKey("AgentConversationId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Humans.Domain.Entities.Team", "AssignedToTeam")
                         .WithMany()
                         .HasForeignKey("AssignedToTeamId")
@@ -4170,6 +4396,8 @@ namespace Humans.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("AgentConversation");
 
                     b.Navigation("AssignedToTeam");
 
@@ -4640,6 +4868,11 @@ namespace Humans.Infrastructure.Migrations
                         .HasForeignKey("ShiftTagId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.AgentConversation", b =>
+                {
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Application", b =>

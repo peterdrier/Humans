@@ -1,0 +1,42 @@
+@model Humans.Web.ViewComponents.AgentWidgetModel
+
+<button type="button" class="btn btn-success rounded-circle shadow position-fixed"
+        id="agentWidgetLauncher"
+        style="bottom: 24px; right: 96px; width: 56px; height: 56px; z-index: 1050;"
+        title="@Localizer["Agent_WidgetButton"]">
+    <i class="fa-solid fa-sparkles fa-lg"></i>
+</button>
+
+<div class="agent-panel position-fixed shadow-lg" id="agentPanel"
+     style="display: none; bottom: 92px; right: 24px; width: 420px; max-height: 70vh;
+            z-index: 1050; background: white; border-radius: 12px; overflow: hidden;">
+    <div class="agent-header d-flex justify-content-between align-items-center p-3 border-bottom">
+        <strong>@Localizer["Agent_PanelTitle"]</strong>
+        <button type="button" class="btn-close" id="agentPanelClose" aria-label="Close"></button>
+    </div>
+    <div class="agent-consent p-3" id="agentConsentGate"
+         style="display: @(Model.HasConsented ? "none" : "block");">
+        <p>@Localizer["Agent_ConsentPrompt"]</p>
+        <a asp-controller="Legal" asp-action="Index" asp-route-slug="agent-chat" class="btn btn-primary">
+            @Localizer["Agent_ConsentReviewButton"]
+        </a>
+    </div>
+    <div class="agent-body" id="agentBody"
+         style="display: @(Model.HasConsented ? "flex" : "none"); flex-direction: column;">
+        <div class="agent-messages flex-grow-1 p-3 overflow-auto" id="agentMessages"
+             style="max-height: 50vh;"></div>
+        <form class="agent-composer p-3 border-top" id="agentComposer">
+            @Html.AntiForgeryToken()
+            <div class="input-group">
+                <textarea id="agentInput" class="form-control" rows="2"
+                          placeholder="@Localizer["Agent_InputPlaceholder"]" maxlength="2000"></textarea>
+                <button type="submit" class="btn btn-primary" id="agentSend">
+                    @Localizer["Agent_Send"]
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<link rel="stylesheet" href="~/css/agent.css" asp-append-version="true" />
+<script src="~/js/agent/widget.js" asp-append-version="true"></script>

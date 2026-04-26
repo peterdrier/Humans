@@ -84,4 +84,11 @@ public interface IRoleAssignmentService
     /// </summary>
     Task<IReadOnlyList<Guid>> GetActiveUserIdsInRoleAsync(
         string roleName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns all currently active role assignments for the user
+    /// (ValidFrom &lt;= now and ValidTo is null or in the future).
+    /// Used by the agent snapshot provider.
+    /// </summary>
+    Task<IReadOnlyList<RoleAssignment>> GetActiveForUserAsync(Guid userId, CancellationToken ct = default);
 }

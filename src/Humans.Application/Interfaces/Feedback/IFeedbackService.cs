@@ -1,3 +1,4 @@
+using Humans.Application.Models;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Http;
@@ -44,4 +45,17 @@ public interface IFeedbackService
 
     Task<IReadOnlyList<(Guid UserId, string DisplayName, int Count)>> GetDistinctReportersAsync(
         CancellationToken cancellationToken = default);
+
+    Task<FeedbackHandoffResult> SubmitFromAgentAsync(
+        Guid userId,
+        Guid conversationId,
+        string summary,
+        string topic,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the IDs of feedback reports submitted by the user that are still Open.
+    /// Used by the agent snapshot provider.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetOpenFeedbackIdsForUserAsync(Guid userId, CancellationToken cancellationToken = default);
 }

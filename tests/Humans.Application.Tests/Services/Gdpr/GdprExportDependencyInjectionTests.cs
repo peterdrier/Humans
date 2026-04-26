@@ -85,7 +85,8 @@ public class GdprExportDependencyInjectionTests
         typeof(CampaignService),
         typeof(CampService),
         typeof(AuditLogService),
-        typeof(BudgetService)
+        typeof(BudgetService),
+        typeof(Humans.Infrastructure.Services.Agent.AgentService)
     ];
 
     [HumansFact]
@@ -106,7 +107,7 @@ public class GdprExportDependencyInjectionTests
         // still holds most of them, and Humans.Application is the new target
         // location per the repository/store/decorator migration — the first
         // such move is ApplicationDecisionService (Governance, PR #503).
-        var infrastructureAssembly = typeof(TeamService).Assembly;
+        var infrastructureAssembly = typeof(Humans.Infrastructure.Services.Agent.AgentService).Assembly;
         var applicationAssembly = typeof(ApplicationDecisionService).Assembly;
 
         var foundContributors = new[] { infrastructureAssembly, applicationAssembly }
@@ -129,10 +130,11 @@ public class GdprExportDependencyInjectionTests
         // forwarding factory. We read the collection's ServiceDescriptors directly
         // so the test doesn't need a live DbContext, Postgres, or config.
         var services = new ServiceCollection();
+        var config = BuildMinimalConfiguration();
         Humans.Web.Extensions.InfrastructureServiceCollectionExtensions
             .AddHumansInfrastructure(
                 services,
-                BuildMinimalConfiguration(),
+                config,
                 new StubHostEnvironment());
 
         var contributorDescriptors = services
@@ -180,10 +182,11 @@ public class GdprExportDependencyInjectionTests
         // concrete type, and the set of resolved types must exactly match
         // `ExpectedContributorTypes`.
         var services = new ServiceCollection();
+        var config = BuildMinimalConfiguration();
         Humans.Web.Extensions.InfrastructureServiceCollectionExtensions
             .AddHumansInfrastructure(
                 services,
-                BuildMinimalConfiguration(),
+                config,
                 new StubHostEnvironment());
 
         // Replace every contributor's concrete-type registration with a fake

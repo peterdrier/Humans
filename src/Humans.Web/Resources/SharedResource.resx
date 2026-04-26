@@ -1317,6 +1317,22 @@
   <data name="Feedback_Submitted" xml:space="preserve"><value>Thank you! Your feedback has been submitted.</value></data>
   <data name="Feedback_Error" xml:space="preserve"><value>Something went wrong submitting your feedback. Please try again.</value></data>
 
+  <!-- Agent Widget -->
+  <data name="Agent_ConsentPrompt" xml:space="preserve"><value>Before using the in-app helper, please review and accept the Agent Chat Terms.</value></data>
+  <data name="Agent_ConsentReviewButton" xml:space="preserve"><value>Review Agent Chat Terms</value></data>
+  <data name="Agent_HistoryActions" xml:space="preserve"><value>Actions</value></data>
+  <data name="Agent_HistoryDelete" xml:space="preserve"><value>Delete</value></data>
+  <data name="Agent_HistoryEmpty" xml:space="preserve"><value>No conversations yet.</value></data>
+  <data name="Agent_HistoryLastMessage" xml:space="preserve"><value>Last message</value></data>
+  <data name="Agent_HistoryMessages" xml:space="preserve"><value>Messages</value></data>
+  <data name="Agent_HistoryStarted" xml:space="preserve"><value>Started</value></data>
+  <data name="Agent_HistoryTitle" xml:space="preserve"><value>Agent — My Conversations</value></data>
+  <data name="Agent_InputPlaceholder" xml:space="preserve"><value>Ask a question about how the system works…</value></data>
+  <data name="Agent_PanelTitle" xml:space="preserve"><value>Helper</value></data>
+  <data name="Agent_Send" xml:space="preserve"><value>Send</value></data>
+  <data name="Agent_WidgetButton" xml:space="preserve"><value>Open the helper</value></data>
+  <data name="Nav_Agent" xml:space="preserve"><value>Helper</value></data>
+
   <!-- Magic Link Auth -->
   <data name="Email_MagicLinkLogin_Subject" xml:space="preserve"><value>Your login link for Nobodies</value></data>
   <data name="Email_MagicLinkLogin_Body" xml:space="preserve"><value>&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;Click the link below to sign in:&lt;/p&gt;&lt;p&gt;&lt;a href="{1}"&gt;Sign in to Nobodies&lt;/a&gt;&lt;/p&gt;&lt;p&gt;This link expires in 15 minutes and can only be used once.&lt;/p&gt;&lt;p&gt;If you didn't request this, you can ignore this email.&lt;/p&gt;</value><comment>{0}=display name, {1}=magic link URL</comment></data>

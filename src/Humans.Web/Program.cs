@@ -308,7 +308,8 @@ builder.Services.AddHealthChecks()
     .AddCheck<ConfigurationHealthCheck>("configuration")
     .AddCheck<SmtpHealthCheck>("smtp")
     .AddCheck<GitHubHealthCheck>("github")
-    .AddCheck<GoogleWorkspaceHealthCheck>("google-workspace");
+    .AddCheck<GoogleWorkspaceHealthCheck>("google-workspace")
+    .AddCheck<AnthropicHealthCheck>("anthropic-api-reachable");
 
 builder.Services.AddHumansInfrastructure(builder.Configuration, builder.Environment, configRegistry);
 
