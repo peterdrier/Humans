@@ -1696,6 +1696,7 @@
   <data name="Shifts_GeneralAvailability" xml:space="preserve"><value>Allgemeine Verfügbarkeit</value></data>
   <data name="Shifts_AvailabilityHelp" xml:space="preserve"><value>Markiere, an welchen Tagen du helfen kannst. Koordinatoren können sehen, wer verfügbar ist.</value></data>
   <data name="Shifts_SaveAvailability" xml:space="preserve"><value>Verfügbarkeit speichern</value></data>
+  <data name="Shifts_DaysSelected" xml:space="preserve"><value>Tage ausgewählt</value></data>
   <data name="Shifts_SlotsFull" xml:space="preserve"><value>Einige Tage brauchen noch Hilfe, aber alle verfügbaren Plätze sind derzeit belegt. Schau später noch einmal vorbei, falls Plätze frei werden.</value></data>
 
   <data name="ShiftDash_Title" xml:space="preserve"><value>Schicht-Dashboard</value></data>
