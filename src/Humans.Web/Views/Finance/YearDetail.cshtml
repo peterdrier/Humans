@@ -495,15 +495,22 @@
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="budgetGroupId" value="@group.Id" />
                             <input type="hidden" name="budgetYearId" value="@year.Id" />
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="form-label form-label-sm">Category Name</label>
                                 <input type="text" name="name" class="form-control form-control-sm" required />
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label form-label-sm">Allocated Amount (&euro;)</label>
+                                <label class="form-label form-label-sm">Holded tag slug</label>
+                                <input type="text" name="slug" class="form-control form-control-sm" placeholder="auto from name" />
+                                <small class="form-text text-muted">
+                                    Lowercase, no spaces / accents / symbols. Used as part of the Holded tag.
+                                </small>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label form-label-sm">Allocated (&euro;)</label>
                                 <input type="number" name="allocatedAmount" class="form-control form-control-sm" step="0.01" value="0" required />
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="form-label form-label-sm">Type</label>
                                 <select name="expenditureType" class="form-select form-select-sm">
                                     <option value="@ExpenditureType.OpEx">OpEx</option>

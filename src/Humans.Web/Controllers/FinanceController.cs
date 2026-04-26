@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Finance;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Services.Finance;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
@@ -307,14 +308,16 @@ public class FinanceController : HumansControllerBase
 
     [HttpPost("Groups/Create")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateGroup(Guid budgetYearId, string name, bool isRestricted)
+    public async Task<IActionResult> CreateGroup(Guid budgetYearId, string name, string? slug, bool isRestricted)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
+        var resolvedSlug = string.IsNullOrWhiteSpace(slug) ? SlugNormalizer.Normalize(name) : SlugNormalizer.Normalize(slug);
+
         try
         {
-            await _budgetService.CreateGroupAsync(budgetYearId, name, isRestricted, user.Id);
+            await _budgetService.CreateGroupAsync(budgetYearId, name, resolvedSlug, isRestricted, user.Id);
             SetSuccess($"Group '{name}' created.");
             return RedirectToAction(nameof(Admin));
         }
@@ -328,14 +331,16 @@ public class FinanceController : HumansControllerBase
 
     [HttpPost("Groups/{id:guid}/Update")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateGroup(Guid id, string name, int sortOrder, bool isRestricted)
+    public async Task<IActionResult> UpdateGroup(Guid id, string name, string? slug, int sortOrder, bool isRestricted)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
+        var resolvedSlug = string.IsNullOrWhiteSpace(slug) ? SlugNormalizer.Normalize(name) : SlugNormalizer.Normalize(slug);
+
         try
         {
-            await _budgetService.UpdateGroupAsync(id, name, sortOrder, isRestricted, user.Id);
+            await _budgetService.UpdateGroupAsync(id, name, resolvedSlug, sortOrder, isRestricted, user.Id);
             SetSuccess($"Group '{name}' updated.");
             return RedirectToAction(nameof(Admin));
         }
@@ -370,15 +375,17 @@ public class FinanceController : HumansControllerBase
 
     [HttpPost("Categories/Create")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateCategory(Guid budgetGroupId, string name, decimal allocatedAmount,
+    public async Task<IActionResult> CreateCategory(Guid budgetGroupId, string name, string? slug, decimal allocatedAmount,
         ExpenditureType expenditureType, Guid? teamId, Guid budgetYearId)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
+        var resolvedSlug = string.IsNullOrWhiteSpace(slug) ? SlugNormalizer.Normalize(name) : SlugNormalizer.Normalize(slug);
+
         try
         {
-            await _budgetService.CreateCategoryAsync(budgetGroupId, name, allocatedAmount, expenditureType, teamId, user.Id);
+            await _budgetService.CreateCategoryAsync(budgetGroupId, name, resolvedSlug, allocatedAmount, expenditureType, teamId, user.Id);
             SetSuccess($"Category '{name}' created.");
             return RedirectToAction(nameof(YearDetail), new { id = budgetYearId });
         }
@@ -392,15 +399,17 @@ public class FinanceController : HumansControllerBase
 
     [HttpPost("Categories/{id:guid}/Update")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateCategory(Guid id, string name, decimal allocatedAmount,
+    public async Task<IActionResult> UpdateCategory(Guid id, string name, string? slug, decimal allocatedAmount,
         ExpenditureType expenditureType)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
+        var resolvedSlug = string.IsNullOrWhiteSpace(slug) ? SlugNormalizer.Normalize(name) : SlugNormalizer.Normalize(slug);
+
         try
         {
-            await _budgetService.UpdateCategoryAsync(id, name, allocatedAmount, expenditureType, user.Id);
+            await _budgetService.UpdateCategoryAsync(id, name, resolvedSlug, allocatedAmount, expenditureType, user.Id);
             SetSuccess($"Category '{name}' updated.");
             return RedirectToAction(nameof(CategoryDetail), new { id });
         }

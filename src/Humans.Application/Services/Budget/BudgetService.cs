@@ -174,12 +174,12 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
     // ───────────────────────── Budget Groups ─────────────────────────
 
     public async Task<BudgetGroup> CreateGroupAsync(
-        Guid budgetYearId, string name, bool isRestricted, Guid actorUserId)
+        Guid budgetYearId, string name, string slug, bool isRestricted, Guid actorUserId)
     {
         var now = _clock.GetCurrentInstant();
 
         var group = await _repository.CreateGroupAsync(
-            budgetYearId, name, isRestricted, actorUserId, now);
+            budgetYearId, name, slug, isRestricted, actorUserId, now);
 
         _logger.LogInformation(
             "Created budget group '{Name}' in year {YearId}", name, budgetYearId);
@@ -188,12 +188,12 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
     }
 
     public async Task UpdateGroupAsync(
-        Guid groupId, string name, int sortOrder, bool isRestricted, Guid actorUserId)
+        Guid groupId, string name, string slug, int sortOrder, bool isRestricted, Guid actorUserId)
     {
         var now = _clock.GetCurrentInstant();
 
         var ok = await _repository.UpdateGroupAsync(
-            groupId, name, sortOrder, isRestricted, actorUserId, now);
+            groupId, name, slug, sortOrder, isRestricted, actorUserId, now);
         if (!ok)
             throw new InvalidOperationException($"Budget group {groupId} not found");
     }
@@ -214,13 +214,13 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
     public Task<BudgetCategory?> GetCategoryByIdAsync(Guid id) => _repository.GetCategoryByIdAsync(id);
 
     public async Task<BudgetCategory> CreateCategoryAsync(
-        Guid budgetGroupId, string name, decimal allocatedAmount,
+        Guid budgetGroupId, string name, string slug, decimal allocatedAmount,
         ExpenditureType expenditureType, Guid? teamId, Guid actorUserId)
     {
         var now = _clock.GetCurrentInstant();
 
         var category = await _repository.CreateCategoryAsync(
-            budgetGroupId, name, allocatedAmount, expenditureType, teamId, actorUserId, now);
+            budgetGroupId, name, slug, allocatedAmount, expenditureType, teamId, actorUserId, now);
 
         _logger.LogInformation(
             "Created budget category '{Name}' in group {GroupId}", name, budgetGroupId);
@@ -229,13 +229,13 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
     }
 
     public async Task UpdateCategoryAsync(
-        Guid categoryId, string name, decimal allocatedAmount,
+        Guid categoryId, string name, string slug, decimal allocatedAmount,
         ExpenditureType expenditureType, Guid actorUserId)
     {
         var now = _clock.GetCurrentInstant();
 
         var ok = await _repository.UpdateCategoryAsync(
-            categoryId, name, allocatedAmount, expenditureType, actorUserId, now);
+            categoryId, name, slug, allocatedAmount, expenditureType, actorUserId, now);
         if (!ok)
             throw new InvalidOperationException($"Budget category {categoryId} not found");
     }
