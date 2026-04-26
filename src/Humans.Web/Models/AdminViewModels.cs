@@ -3,7 +3,7 @@ using Humans.Domain.Enums;
 
 namespace Humans.Web.Models;
 
-public class AdminDashboardViewModel
+public class BoardDashboardViewModel
 {
     public int TotalMembers { get; set; }
     public int IncompleteSignup { get; set; }
