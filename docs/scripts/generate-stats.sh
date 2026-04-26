@@ -17,6 +17,8 @@
 #   - docs/reforge-history.csv populated by docs/scripts/generate-reforge-history.sh
 #     (used as a join source for semantic class/interface counts; missing dates
 #     fall back to the legacy regex)
+#   - cloc on PATH (or $CLOC env override) — used for the C# code/comment split.
+#     Install on Windows via `winget install AlDanial.Cloc`.
 #
 # === Why we hybridise bash file-counts with reforge-derived class/interface counts ===
 #
@@ -84,6 +86,19 @@ REFORGE_CSV=docs/reforge-history.csv
 
 if [ ! -f "$DOC" ]; then
   echo "Error: $DOC not found. Run from the repo root." >&2
+  exit 1
+fi
+
+# Locate cloc. Used for the semantic code/comment split on .cs files.
+# Order: $CLOC env override → cloc on PATH → known winget install path.
+if [ -n "${CLOC:-}" ] && [ -x "$CLOC" ]; then
+  :
+elif command -v cloc >/dev/null 2>&1; then
+  CLOC=cloc
+elif [ -x "/c/Users/$USERNAME/AppData/Local/Microsoft/WinGet/Packages/AlDanial.Cloc_Microsoft.Winget.Source_8wekyb3d8bbwe/cloc.exe" ]; then
+  CLOC="/c/Users/$USERNAME/AppData/Local/Microsoft/WinGet/Packages/AlDanial.Cloc_Microsoft.Winget.Source_8wekyb3d8bbwe/cloc.exe"
+else
+  echo "Error: cloc not found. Install with 'winget install AlDanial.Cloc' or set CLOC=/path/to/cloc." >&2
   exit 1
 fi
 
@@ -275,14 +290,46 @@ while IFS=' ' read -r day commit; do
   entities=$(find src -path '*/Entities/*.cs' 2>/dev/null | wc -l)
   resx_keys=$(grep -c '<data ' src/Humans.Web/Resources/SharedResource.resx 2>/dev/null || echo 0)
 
+  # Semantic C# code/comment split via cloc. Same scope as cs_lines above
+  # (src/ minus Migrations; tests live in tests/ at the root, not in src/).
+  # cloc CSV: files,language,blank,comment,code  — we read the C# row.
+  if [ -d src ]; then
+    cloc_csv=$("$CLOC" --quiet --csv --include-lang=C# --exclude-dir=Migrations src 2>/dev/null || true)
+    cs_code=$(echo "$cloc_csv" | awk -F, '$2=="C#" { print $5+0; exit }')
+    cs_comment=$(echo "$cloc_csv" | awk -F, '$2=="C#" { print $4+0; exit }')
+    cs_code=${cs_code:-0}
+    cs_comment=${cs_comment:-0}
+  else
+    cs_code=0
+    cs_comment=0
+  fi
+
+  # Markdown lines across the whole repo (docs/, .claude/, root *.md, etc.).
+  # Excludes vendored/tooling dirs and any sibling worktree the developer may
+  # have created. Defensive — `.worktrees/` is gitignored so it shouldn't show
+  # up in a clean checkout, but we exclude it anyway.
+  md_data=$(find . -type f -name '*.md' \
+    -not -path '*/.git/*' -not -path '*/node_modules/*' \
+    -not -path '*/.worktrees/*' -not -path '*/bin/*' -not -path '*/obj/*' \
+    -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l)
+  md_lines=$(echo "$md_data" | awk '{print $1+0}')
+
+  # Migration lines — currently excluded from every other metric. Tracked
+  # separately so the cost of accumulated EF migrations is visible (and we
+  # know when they need consolidating).
+  migration_data=$(find src -type f -name '*.cs' -path '*/Migrations/*' -print0 2>/dev/null | xargs -0 cat 2>/dev/null | wc -l)
+  migration_lines=$(echo "$migration_data" | awk '{print $1+0}')
+
   commits="${cum_commits[$day]:-0}"
   add="${day_adds[$day]:-0}"
   del="${day_dels[$day]:-0}"
 
-  printf '| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n' \
+  printf '| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n' \
     "$day" \
     "$(fmt "$app_lines")" "$(fmt "$test_lines")" "$(fmt "$total_lines")" \
-    "$(fmt "$cs_lines")" "$(fmt "$cshtml_lines")" "$(fmt "$resx_lines")" "$(fmt "$js_lines")" \
+    "$(fmt "$cs_lines")" "$(fmt "$cs_code")" "$(fmt "$cs_comment")" \
+    "$(fmt "$cshtml_lines")" "$(fmt "$resx_lines")" "$(fmt "$js_lines")" \
+    "$(fmt "$md_lines")" "$(fmt "$migration_lines")" \
     "$(fmt "$app_kb")" "$(fmt "$test_kb")" \
     "$(fmt "$files")" "$(fmt "$classes")" "$(fmt "$interfaces")" \
     "$(fmt "$controllers")" "$(fmt "$views")" "$(fmt "$entities")" "$(fmt "$resx_keys")" \
