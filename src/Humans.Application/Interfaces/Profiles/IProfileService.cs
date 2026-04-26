@@ -78,6 +78,13 @@ public interface IProfileService
     Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Returns the count of profiles whose status is approved and not suspended.
+    /// Used by the admin dashboard "Active humans" stat tile. At ~500-user scale
+    /// this can be a simple Count query — no caching required.
+    /// </summary>
+    Task<int> GetActiveApprovedCountAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the count of profiles whose <c>ConsentCheckStatus</c> is Pending
     /// or Flagged and whose <c>RejectedAt</c> is null. Used by the notification
     /// meter to surface pending consent reviews to Consent Coordinators

@@ -155,6 +155,13 @@ public sealed class ProfileRepository : IProfileRepository
             .ToListAsync(ct);
     }
 
+    public async Task<int> CountActiveApprovedAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Profiles
+            .CountAsync(p => p.IsApproved && !p.IsSuspended, ct);
+    }
+
     public async Task<int> GetConsentReviewPendingCountAsync(CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
