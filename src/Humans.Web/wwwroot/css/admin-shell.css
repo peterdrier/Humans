@@ -1,5 +1,442 @@
 /* admin-shell.css — Renaissance admin console styles.
-   ALL rules in this file MUST be scoped under body.admin-shell so they
-   never bleed into member pages that use _Layout.cshtml. */
+   Scope rule: EVERY selector in this file is prefixed with "body.admin-shell "
+   so these rules never bleed into member pages that use _Layout.cshtml.
+   ":root" token declarations live in tokens.css — do not repeat them here.
+   Global resets live in site.css — do not repeat them here. */
 
-/* Phase 4 fills this file with sidebar/breadcrumb/page-head/dashboard/offcanvas styles. */
+/* ── App grid ─────────────────────────────────────────────────────────── */
+
+body.admin-shell .app {
+    background: var(--h-parchment);
+    border: 1px solid var(--h-border);
+    border-radius: var(--h-radius-lg);
+    box-shadow: var(--h-shadow-md);
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: 820px;
+}
+
+/* ── Sidebar ──────────────────────────────────────────────────────────── */
+
+body.admin-shell .sidebar {
+    background: var(--h-aged-ink);
+    color: var(--h-parchment);
+    padding: 24px 0;
+    font-family: var(--h-font-body);
+}
+
+body.admin-shell .sidebar-scroll {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+}
+
+body.admin-shell .sidebar .brand {
+    font-family: var(--h-font-display);
+    font-style: italic;
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: var(--h-gold);
+    padding: 0 22px 22px;
+    border-bottom: 1px solid rgba(255,245,221,0.1);
+}
+
+body.admin-shell .sidebar .brand small {
+    display: block;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    opacity: 0.5;
+    font-style: normal;
+    font-family: var(--h-font-body);
+    font-weight: 500;
+    margin-top: 4px;
+}
+
+body.admin-shell .sidebar h4 {
+    font-family: var(--h-font-display);
+    font-style: italic;
+    font-size: 0.72rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--h-gold);
+    margin: 22px 22px 8px;
+    font-weight: 400;
+    opacity: 0.7;
+}
+
+body.admin-shell .sidebar a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 22px;
+    color: var(--h-parchment);
+    text-decoration: none;
+    font-size: 0.88rem;
+    border-left: 3px solid transparent;
+    opacity: 0.8;
+}
+
+body.admin-shell .sidebar a:hover {
+    background: rgba(255,245,221,0.05);
+    opacity: 1;
+}
+
+body.admin-shell .sidebar a.active {
+    color: var(--h-gold);
+    background: rgba(201,169,110,0.1);
+    border-left-color: var(--h-gold);
+    font-weight: 600;
+    opacity: 1;
+}
+
+body.admin-shell .sidebar .pill {
+    margin-left: auto;
+    background: rgba(255,245,221,0.15);
+    color: var(--h-gold);
+    font-size: 0.65rem;
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-family: var(--h-font-body);
+    letter-spacing: 0.04em;
+    font-weight: 700;
+}
+
+body.admin-shell .sidebar a.active .pill {
+    background: var(--h-gold);
+    color: var(--h-aged-ink);
+}
+
+body.admin-shell .sidebar .me {
+    margin-top: auto;
+    padding: 16px 22px;
+    border-top: 1px solid rgba(255,245,221,0.1);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+body.admin-shell .sidebar .me .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--h-sepia);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--h-parchment);
+    font-family: var(--h-font-display);
+    font-weight: 700;
+    font-size: 0.78rem;
+}
+
+body.admin-shell .sidebar .me strong {
+    font-family: var(--h-font-display);
+    font-size: 0.92rem;
+    display: block;
+}
+
+body.admin-shell .sidebar .me small {
+    font-size: 0.7rem;
+    opacity: 0.6;
+    letter-spacing: 0.05em;
+}
+
+/* ── Main content area ────────────────────────────────────────────────── */
+
+body.admin-shell .main {
+    background: var(--h-parchment);
+    padding: 28px 36px 40px;
+}
+
+/* ── Breadcrumb ───────────────────────────────────────────────────────── */
+
+body.admin-shell .crumb {
+    font-family: var(--h-font-body);
+    font-size: 0.78rem;
+    color: var(--h-sepia);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+body.admin-shell .crumb a {
+    color: var(--h-sepia);
+    text-decoration: none;
+}
+
+body.admin-shell .crumb a:hover {
+    color: var(--h-aged-ink);
+}
+
+body.admin-shell .crumb .sep {
+    color: var(--h-sepia-light);
+}
+
+body.admin-shell .crumb .here {
+    color: var(--h-aged-ink);
+    font-weight: 600;
+}
+
+/* ── Page header ──────────────────────────────────────────────────────── */
+
+body.admin-shell .page-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 8px;
+}
+
+body.admin-shell h1.title {
+    font-family: var(--h-font-display);
+    font-size: 2.4rem;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+}
+
+body.admin-shell h1.title em {
+    font-style: italic;
+    color: var(--h-gold-dark);
+}
+
+body.admin-shell .sub {
+    font-family: var(--h-font-body);
+    color: var(--h-aged-ink-light);
+    font-size: 0.95rem;
+    margin: 4px 0 22px;
+    max-width: 640px;
+    line-height: 1.55;
+}
+
+/* ── Stats row ────────────────────────────────────────────────────────── */
+
+body.admin-shell .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+}
+
+body.admin-shell .stat {
+    background: var(--h-warm-white);
+    border: 1px solid var(--h-border);
+    border-radius: var(--h-radius-lg);
+    padding: 18px 20px;
+    box-shadow: var(--h-shadow-sm);
+}
+
+body.admin-shell .stat .label {
+    font-family: var(--h-font-body);
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--h-sepia);
+    margin-bottom: 6px;
+}
+
+body.admin-shell .stat .value {
+    font-family: var(--h-font-display);
+    font-size: 2.2rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--h-aged-ink);
+}
+
+body.admin-shell .stat .value em {
+    font-style: italic;
+    color: var(--h-gold-dark);
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+body.admin-shell .stat .delta {
+    font-family: var(--h-font-display);
+    font-style: italic;
+    font-size: 0.78rem;
+    color: var(--h-moss-dark);
+    margin-top: 4px;
+}
+
+body.admin-shell .stat .delta.bad {
+    color: var(--h-rust);
+}
+
+/* ── Cards ────────────────────────────────────────────────────────────── */
+
+body.admin-shell .card {
+    background: var(--h-warm-white);
+    border: 1px solid var(--h-border);
+    border-radius: var(--h-radius-lg);
+    box-shadow: var(--h-shadow-sm);
+    margin-bottom: 22px;
+    overflow: hidden;
+}
+
+body.admin-shell .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 18px 22px 10px;
+}
+
+body.admin-shell .card-head h3 {
+    font-family: var(--h-font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+body.admin-shell .card-head small {
+    font-family: var(--h-font-display);
+    font-style: italic;
+    color: var(--h-sepia);
+    font-size: 0.85rem;
+}
+
+/* ── Staffing chart ───────────────────────────────────────────────────── */
+
+body.admin-shell .staffing {
+    padding: 18px 22px;
+}
+
+body.admin-shell .dept-row {
+    display: grid;
+    grid-template-columns: 120px 1fr 60px;
+    gap: 14px;
+    align-items: center;
+    padding: 8px 0;
+    font-family: var(--h-font-body);
+    font-size: 0.85rem;
+}
+
+body.admin-shell .dept-row .name {
+    color: var(--h-aged-ink);
+    font-family: var(--h-font-display);
+    font-weight: 500;
+}
+
+body.admin-shell .dept-row .track {
+    height: 10px;
+    background: var(--h-parchment-dark);
+    border-radius: 5px;
+    overflow: hidden;
+    position: relative;
+}
+
+body.admin-shell .dept-row .track > div {
+    height: 100%;
+    background: var(--h-gold);
+    border-radius: 5px;
+}
+
+body.admin-shell .dept-row .track.low > div {
+    background: var(--h-amber);
+}
+
+body.admin-shell .dept-row .track.crit > div {
+    background: var(--h-rust);
+}
+
+body.admin-shell .dept-row .num {
+    text-align: right;
+    color: var(--h-sepia);
+    font-family: var(--h-font-display);
+    font-style: italic;
+    font-size: 0.82rem;
+}
+
+/* ── Activity feed ────────────────────────────────────────────────────── */
+
+body.admin-shell .activity-item {
+    display: grid;
+    grid-template-columns: 32px 1fr auto;
+    gap: 12px;
+    padding: 12px 22px;
+    border-bottom: 1px solid var(--h-border-light);
+    align-items: start;
+}
+
+body.admin-shell .activity-item:last-child {
+    border-bottom: 0;
+}
+
+body.admin-shell .activity-item .bubble {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--h-vellum);
+    border: 1px solid var(--h-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--h-sepia);
+    font-size: 0.75rem;
+}
+
+body.admin-shell .activity-item strong {
+    font-family: var(--h-font-display);
+    font-size: 0.92rem;
+    color: var(--h-aged-ink);
+    display: block;
+    margin-bottom: 2px;
+}
+
+body.admin-shell .activity-item p {
+    font-family: var(--h-font-body);
+    font-size: 0.82rem;
+    color: var(--h-aged-ink-light);
+    margin: 0;
+    line-height: 1.5;
+}
+
+body.admin-shell .activity-item .time {
+    font-family: var(--h-font-display);
+    font-style: italic;
+    font-size: 0.72rem;
+    color: var(--h-sepia);
+    white-space: nowrap;
+    padding-top: 4px;
+}
+
+/* ── Split panels ─────────────────────────────────────────────────────── */
+
+body.admin-shell .split-panels {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 22px;
+}
+
+/* ── Mobile header (offcanvas trigger) ────────────────────────────────── */
+
+body.admin-shell .admin-mobile-header {
+    display: none;
+    background: var(--h-aged-ink);
+    color: var(--h-parchment);
+    height: 56px;
+    padding: 0 16px;
+    align-items: center;
+    gap: 12px;
+}
+body.admin-shell .admin-mobile-header .hamburger {
+    background: transparent; border: 0; color: var(--h-parchment); font-size: 1.2rem;
+}
+body.admin-shell .admin-mobile-header .crumb { color: var(--h-parchment); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Responsive breakpoints ───────────────────────────────────────────── */
+
+@media (max-width: 767.98px) {
+    body.admin-shell .app { grid-template-columns: 1fr; }
+    body.admin-shell > .app > aside.sidebar { display: none; }
+    body.admin-shell .admin-mobile-header { display: flex; }
+    body.admin-shell .stats { grid-template-columns: 1fr; }
+    body.admin-shell .split-panels { grid-template-columns: 1fr; }
+    body.admin-shell .offcanvas.admin-sidebar-offcanvas { background: var(--h-aged-ink); width: 280px; }
+}
+@media (min-width: 768px) and (max-width: 1023.98px) {
+    body.admin-shell .stats { grid-template-columns: repeat(2, 1fr); }
+    body.admin-shell .split-panels { grid-template-columns: 1fr; }
+}
