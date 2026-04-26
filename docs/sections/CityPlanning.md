@@ -40,6 +40,7 @@ Per-year singleton controlling the placement phase and map overlays. Auto-create
 | ClosedAt | Instant? | When placement was last closed |
 | PlacementOpensAt | LocalDateTime? | Informational scheduled open (not enforced) |
 | PlacementClosesAt | LocalDateTime? | Informational scheduled close (not enforced) |
+| RegistrationInfo | text? | Admin-editable markdown shown at the top of `/Barrios/Register`. Null/empty = hidden. Keyed to the highest open season year (falling back to `PublicYear`), not to `CampSettings.PublicYear` like the other fields. |
 | LimitZoneGeoJson | text? | GeoJSON FeatureCollection — site boundary |
 | OfficialZonesGeoJson | text? | GeoJSON FeatureCollection — named overlay zones |
 | UpdatedAt | Instant | Last modification |
@@ -134,6 +135,6 @@ Cross-domain navs (`CampPolygon.CampSeason`, `CampPolygon.LastModifiedByUser`, `
 - Polygon reads by camp season ids (`GetPolygonsByCampSeasonIdsAsync`, `GetCampSeasonIdsWithPolygonAsync`).
 - Polygon-history reads for a camp season (`GetHistoryForCampSeasonAsync`, `GetHistoryEntryAsync`).
 - Atomic "save polygon + append history" write (`SavePolygonAndAppendHistoryAsync`). Polygon upsert and history insert happen in one unit of work.
-- Settings read/upsert (`GetSettingsByYearAsync`, `GetOrCreateSettingsAsync`, `MutateSettingsAsync`).
+- Settings read/upsert (`GetSettingsByYearAsync`, `GetOrCreateSettingsAsync`, `MutateSettingsAsync`). All field-level mutations (placement open/close, limit zone, official zones, placement dates, registration info) flow through `MutateSettingsAsync` at the service layer.
 
 Per §12, `camp_polygon_histories` is append-only — the repository intentionally exposes no `UpdateHistoryAsync` / `RemoveHistoryAsync`.
