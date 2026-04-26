@@ -16,6 +16,11 @@ public static class RecurringJobExtensions
         var ticketSyncInterval = app.Configuration.GetSettingValue(
             registry, "TicketVendor:SyncIntervalMinutes", "Ticket Vendor", defaultValue: 15);
 
+        // Holded sync cron — defaults to daily 04:30 UTC; matches HoldedSettings default.
+        var holdedSyncCron = app.Configuration["Holded:SyncIntervalCron"];
+        if (string.IsNullOrWhiteSpace(holdedSyncCron))
+            holdedSyncCron = "0 30 4 * * *";
+
         var jobs = new (string Id, Action Register)[]
         {
             // Google sync jobs — controlled by SyncServiceSettings (Admin/SyncSettings).
@@ -83,6 +88,10 @@ public static class RecurringJobExtensions
             // Purge old agent conversations — daily at 03:15 UTC.
             ("agent-conversation-retention", () => RecurringJob.AddOrUpdate<AgentConversationRetentionJob>(
                 "agent-conversation-retention", job => job.ExecuteAsync(CancellationToken.None), "15 3 * * *")),
+
+            // Pull Holded purchase docs into local read-side store (default daily 04:30 UTC).
+            ("holded-sync", () => RecurringJob.AddOrUpdate<HoldedSyncJob>(
+                "holded-sync", job => job.ExecuteAsync(CancellationToken.None), holdedSyncCron)),
         };
 
         foreach (var (id, register) in jobs)
