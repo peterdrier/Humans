@@ -10,7 +10,7 @@ body.admin-shell .app {
     background: var(--h-parchment);
     border: 1px solid var(--h-border);
     border-radius: var(--h-radius-lg);
-    box-shadow: var(--h-shadow-md);
+    box-shadow: var(--h-shadow);
     overflow: hidden;
     display: grid;
     grid-template-columns: 240px 1fr;
@@ -257,7 +257,7 @@ body.admin-shell .stat .delta {
     font-family: var(--h-font-display);
     font-style: italic;
     font-size: 0.78rem;
-    color: var(--h-moss-dark);
+    color: var(--h-sage-dark);
     margin-top: 4px;
 }
 
