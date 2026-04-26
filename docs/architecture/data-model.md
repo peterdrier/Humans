@@ -44,7 +44,8 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | TicketOrder / TicketAttendee / TicketSyncState | [Tickets](../sections/Tickets.md) | |
 | EventSettings / Rota / Shift / ShiftSignup / GeneralAvailability / VolunteerEventProfile / ShiftTag / VolunteerTagPreference | [Shifts](../sections/Shifts.md) | |
 | FeedbackReport / FeedbackMessage | [Feedback](../sections/Feedback.md) | |
-| BudgetYear / BudgetGroup / BudgetCategory / BudgetLineItem / BudgetAuditLog / TicketingProjection | [Budget](../sections/Budget.md) | `BudgetAuditLog` append-only (§12). |
+| BudgetYear / BudgetGroup / BudgetCategory / BudgetLineItem / BudgetAuditLog / TicketingProjection | [Budget](../sections/Budget.md) | `BudgetAuditLog` append-only (§12). `BudgetGroup.Slug` and `BudgetCategory.Slug` are the Holded-tag-safe identifiers consumed by Finance. |
+| HoldedTransaction / HoldedSyncState | [Finance](../sections/Finance.md) | Holded purchase invoices and sync singleton. `HoldedTransaction.BudgetCategoryId` → `BudgetCategory` (Budget) — FK only, no nav. |
 | SyncServiceSettings / GoogleSyncOutboxEvent | [Google Integration](../sections/GoogleIntegration.md) | |
 | SystemSetting | per-key ownership | Each key belongs to its consuming section's repository. See [SystemSetting below](#systemsetting-per-key-ownership). |
 | AuditLogEntry | [Audit Log](../sections/AuditLog.md) | Append-only (§12). |
@@ -83,6 +84,9 @@ Team (Teams)
   ← CalendarEvent.OwningTeam (Calendar)
   ← LegalDocument.Team (Legal & Consent)
   ← FeedbackReport.AssignedToTeam (Feedback)
+
+BudgetCategory (Budget)
+  ← HoldedTransaction.BudgetCategory (Finance — FK only, no nav)
 
 CampSeason (Camps)
   ← CampPolygon, CampPolygonHistory (City Planning)
