@@ -405,9 +405,15 @@ public class CampRoleServiceTests : IDisposable
         var member2 = await SeedActiveMemberAsync(season.Id);
 
         _dbContext.CampRoleAssignments.Add(
-            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id,
-                                      CampRoleDefinitionId = def1.Id, CampMemberId = member1.Id,
-                                      AssignedAt = _clock.GetCurrentInstant(), AssignedByUserId = _actorUserId });
+            new CampRoleAssignment
+            {
+                Id = Guid.NewGuid(),
+                CampSeasonId = season.Id,
+                CampRoleDefinitionId = def1.Id,
+                CampMemberId = member1.Id,
+                AssignedAt = _clock.GetCurrentInstant(),
+                AssignedByUserId = _actorUserId
+            });
         await _dbContext.SaveChangesAsync();
 
         var users = new Dictionary<Guid, User>

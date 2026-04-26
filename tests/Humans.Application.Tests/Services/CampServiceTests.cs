@@ -854,9 +854,13 @@ public class CampServiceTests : IDisposable
         var userId = Guid.NewGuid();
         var existing = new CampMember
         {
-            Id = Guid.NewGuid(), CampSeasonId = season.Id, UserId = userId,
-            Status = CampMemberStatus.Active, RequestedAt = _clock.GetCurrentInstant(),
-            ConfirmedAt = _clock.GetCurrentInstant(), ConfirmedByUserId = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
+            CampSeasonId = season.Id,
+            UserId = userId,
+            Status = CampMemberStatus.Active,
+            RequestedAt = _clock.GetCurrentInstant(),
+            ConfirmedAt = _clock.GetCurrentInstant(),
+            ConfirmedByUserId = Guid.NewGuid(),
         };
         _dbContext.Camps.Add(camp);
         _dbContext.CampSeasons.Add(season);
@@ -881,9 +885,13 @@ public class CampServiceTests : IDisposable
         var userId = Guid.NewGuid();
         var member = new CampMember
         {
-            Id = Guid.NewGuid(), CampSeasonId = season.Id, UserId = userId,
-            Status = CampMemberStatus.Active, RequestedAt = _clock.GetCurrentInstant(),
-            ConfirmedAt = _clock.GetCurrentInstant(), ConfirmedByUserId = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
+            CampSeasonId = season.Id,
+            UserId = userId,
+            Status = CampMemberStatus.Active,
+            RequestedAt = _clock.GetCurrentInstant(),
+            ConfirmedAt = _clock.GetCurrentInstant(),
+            ConfirmedByUserId = Guid.NewGuid(),
         };
         _dbContext.Camps.Add(camp); _dbContext.CampSeasons.Add(season); _dbContext.CampMembers.Add(member);
         await _dbContext.SaveChangesAsync();
@@ -902,8 +910,11 @@ public class CampServiceTests : IDisposable
         var userId = Guid.NewGuid();
         var member = new CampMember
         {
-            Id = Guid.NewGuid(), CampSeasonId = season.Id, UserId = userId,
-            Status = CampMemberStatus.Pending, RequestedAt = _clock.GetCurrentInstant(),
+            Id = Guid.NewGuid(),
+            CampSeasonId = season.Id,
+            UserId = userId,
+            Status = CampMemberStatus.Pending,
+            RequestedAt = _clock.GetCurrentInstant(),
         };
         _dbContext.Camps.Add(camp); _dbContext.CampSeasons.Add(season); _dbContext.CampMembers.Add(member);
         await _dbContext.SaveChangesAsync();

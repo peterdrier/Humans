@@ -1059,16 +1059,16 @@ public class CampController : HumansCampControllerBase
         var outcome = await _campRoleService.AssignAsync(openSeason.Id, roleDefinitionId, campMemberId, user.Id, ct);
         var message = outcome switch
         {
-            AssignCampRoleOutcome.Assigned             => "Role assigned.",
-            AssignCampRoleOutcome.RoleNotFound         => "Role definition not found.",
-            AssignCampRoleOutcome.RoleDeactivated      => "That role is deactivated.",
-            AssignCampRoleOutcome.MemberNotFound       => "Camp member not found.",
-            AssignCampRoleOutcome.MemberNotActive      => "Only active camp members can hold roles.",
+            AssignCampRoleOutcome.Assigned => "Role assigned.",
+            AssignCampRoleOutcome.RoleNotFound => "Role definition not found.",
+            AssignCampRoleOutcome.RoleDeactivated => "That role is deactivated.",
+            AssignCampRoleOutcome.MemberNotFound => "Camp member not found.",
+            AssignCampRoleOutcome.MemberNotActive => "Only active camp members can hold roles.",
             AssignCampRoleOutcome.MemberSeasonMismatch => "Member is not in this season.",
-            AssignCampRoleOutcome.SlotCapReached       => "All slots for this role are filled.",
-            AssignCampRoleOutcome.AlreadyHoldsRole     => "That human already holds this role.",
-            AssignCampRoleOutcome.SeasonNotFound       => "Season not found.",
-            _                                          => "Unknown error.",
+            AssignCampRoleOutcome.SlotCapReached => "All slots for this role are filled.",
+            AssignCampRoleOutcome.AlreadyHoldsRole => "That human already holds this role.",
+            AssignCampRoleOutcome.SeasonNotFound => "Season not found.",
+            _ => "Unknown error.",
         };
 
         if (outcome == AssignCampRoleOutcome.Assigned)
