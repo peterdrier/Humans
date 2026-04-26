@@ -236,7 +236,7 @@ Clicking a placed editable container on the map selects it: it moves to the `con
 
 ### Clear placement
 
-"Clear placement" button on a placed container's sidebar card calls `DELETE /api/city-planning/containers/{id}/placement`, removes the polygon from the map, and moves the card back to the "Unplaced" section.
+A "Clear placement" button on each placed container's sidebar card. Clicking it shows a browser `confirm()` dialog — "Remove placement for «Container Name»? This cannot be undone." — before proceeding. On confirmation, calls `DELETE /api/city-planning/containers/{id}/placement`, removes the polygon from the map, and moves the card back to the "Unplaced" section.
 
 ---
 
