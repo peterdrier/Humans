@@ -1,0 +1,11 @@
+@model Humans.Web.ViewComponents.AdminBreadcrumbViewModel
+<a asp-controller="Admin" asp-action="Index">@Localizer["AdminNav_Brand"]</a>
+@if (Model.GroupLabelKey is not null)
+{
+    <span class="sep">/</span><span>@Localizer[Model.GroupLabelKey]</span>
+    <span class="sep">/</span><span class="here">@Localizer[Model.ItemLabelKey!]</span>
+}
+else if (!string.IsNullOrEmpty(Model.FallbackTitle))
+{
+    <span class="sep">/</span><span class="here">@Model.FallbackTitle</span>
+}

@@ -48,11 +48,13 @@ public class InterfaceMethodBudgetTests
         // GetCampSeasonsForComplianceAsync — all needed by ICampRoleService and the
         // Camp Edit page roles panel.
         [typeof(ICampService)] = 57,
-        [typeof(IShiftManagementService)] = 49,
+        // +1: GetOverallCoverageAsync for admin dashboard shift-coverage tile (peterdrier#349).
+        [typeof(IShiftManagementService)] = 50,
         // +1 for SetProfilePictureAsync (nobodies-collective/Humans#532 — Google avatar import button needs a
         // narrow service write that owns its own cache invalidation; controllers can't reach
         // the FullProfile cache directly).
-        [typeof(IProfileService)] = 40,
+        // +1 for GetActiveApprovedCountAsync (admin dashboard active-humans tile, peterdrier#349).
+        [typeof(IProfileService)] = 41,
         [typeof(IUserService)] = 32,
     };
 

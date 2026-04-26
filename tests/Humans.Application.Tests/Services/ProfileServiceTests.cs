@@ -429,6 +429,33 @@ public class ProfileServiceTests : IDisposable
         asociadoCount.Should().Be(1);
     }
 
+    [HumansFact]
+    public async Task GetActiveApprovedCountAsync_ReturnsOnlyApprovedAndNotSuspended()
+    {
+        // 3 approved-active, 1 approved-but-suspended, 1 unapproved
+        var u1 = Guid.NewGuid();
+        var u2 = Guid.NewGuid();
+        var u3 = Guid.NewGuid();
+        var u4 = Guid.NewGuid();
+        var u5 = Guid.NewGuid();
+        await SeedUserAsync(u1);
+        await SeedUserAsync(u2);
+        await SeedUserAsync(u3);
+        await SeedUserAsync(u4);
+        await SeedUserAsync(u5);
+        await _dbContext.Profiles.AddRangeAsync(
+            MakeProfile(u1, isApproved: true, isSuspended: false), // counted
+            MakeProfile(u2, isApproved: true, isSuspended: false), // counted
+            MakeProfile(u3, isApproved: true, isSuspended: false), // counted
+            MakeProfile(u4, isApproved: true, isSuspended: true),  // excluded: suspended
+            MakeProfile(u5, isApproved: false, isSuspended: false)); // excluded: unapproved
+        await _dbContext.SaveChangesAsync();
+
+        var count = await _service.GetActiveApprovedCountAsync();
+
+        count.Should().Be(3);
+    }
+
     // --- Index/edit data ---
 
     [HumansFact]

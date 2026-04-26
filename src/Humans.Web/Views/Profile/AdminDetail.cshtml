@@ -1,6 +1,7 @@
 @model Humans.Web.Models.AdminHumanDetailViewModel
 @{
     ViewData["Title"] = string.Format(Localizer["AdminHumanDetail_Title"].Value, Model.DisplayName);
+    Layout = "_AdminLayout";
     var campaignGrants = (IList<CampaignGrant>?)ViewBag.CampaignGrants;
     var outboxCount = (int?)ViewBag.OutboxCount ?? 0;
 }

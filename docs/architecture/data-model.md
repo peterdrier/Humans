@@ -52,7 +52,9 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 
 <!-- /freshness:auto -->
 
-Every major section in the app now has a dedicated section doc. `/Admin/*` is a controller/nav holder, not a section — its services belong to the sections they act on (Email, Profiles, Google Integration, Auth, Legal & Consent).
+Every major section in the app now has a dedicated section doc.
+
+- **Admin Shell** — frame only, no entities. See [`docs/sections/admin-shell.md`](../sections/admin-shell.md).
 
 ## Cross-section FK graph
 

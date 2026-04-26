@@ -1,0 +1,74 @@
+@using Microsoft.AspNetCore.Identity
+@using Humans.Domain.Entities
+@using Humans.Web.Authorization
+@inject UserManager<User> UserManager
+
+@{
+    var user = User.Identity?.IsAuthenticated == true ? await UserManager.GetUserAsync(User) : null;
+    var initials = user is null ? "?" : string.Concat(user.UserName?.Split(' ').Select(s => s.Length > 0 ? s[0] : '?').Take(2) ?? new[] { '?' });
+    var roleLabel = AdminUserRoleSummary.PrimaryRole(User);
+}
+
+<div class="dropdown topbar-user">
+    <a class="avatar-trigger d-flex align-items-center text-decoration-none" href="#" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" aria-label="@Localizer["Nav_MyProfile"]">
+        <div class="avatar">@initials</div>
+    </a>
+    <ul class="dropdown-menu dropdown-menu-end">
+        <li class="px-3 py-2">
+            <div class="fw-semibold small">@(user?.UserName ?? "—")</div>
+            @if (!string.IsNullOrEmpty(roleLabel))
+            {
+                <div class="text-muted" style="font-size: 0.7rem; letter-spacing: 0.05em;">@roleLabel</div>
+            }
+        </li>
+        <li><hr class="dropdown-divider" /></li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Profile" asp-action="Index">
+                <i class="fa-solid fa-user fa-fw"></i> @Localizer["Nav_MyProfile"]
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Consent" asp-action="Index">
+                <i class="fa-solid fa-file-contract fa-fw"></i> @Localizer["Nav_Consents"]
+            </a>
+        </li>
+        <li authorize-policy="IsActiveMember">
+            <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Governance" asp-action="Index">
+                <i class="fa-solid fa-landmark fa-fw"></i> @Localizer["Nav_Governance"]
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Legal" asp-action="Index">
+                <i class="fa-solid fa-scale-balanced fa-fw"></i> @Localizer["Nav_Legal"]
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Feedback" asp-action="Index">
+                <i class="fa-solid fa-comment-dots fa-fw"></i> @Localizer["Nav_MyFeedback"]
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="About" asp-action="Index">
+                <i class="fa-solid fa-info-circle fa-fw"></i> @Localizer["Nav_About"]
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="About" asp-action="Staff">
+                <i class="fa-solid fa-users fa-fw"></i> @Localizer["Nav_Staff"]
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Home" asp-action="Privacy">
+                <i class="fa-solid fa-shield-halved fa-fw"></i> @Localizer["Nav_Privacy"]
+            </a>
+        </li>
+        <li><hr class="dropdown-divider" /></li>
+        <li>
+            <form asp-controller="Account" asp-action="Logout" method="post">
+                <button type="submit" class="dropdown-item d-flex align-items-center gap-2 text-danger">
+                    <i class="fa-solid fa-right-from-bracket fa-fw"></i> @Localizer["Login_Logout"]
+                </button>
+            </form>
+        </li>
+    </ul>
+</div>

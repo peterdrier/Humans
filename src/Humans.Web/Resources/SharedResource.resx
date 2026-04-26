@@ -1896,4 +1896,65 @@
   <data name="ShiftDash_Status_BelowTarget" xml:space="preserve"><value>Below target</value></data>
   <data name="ShiftDash_Coordinators_StaleLabel" xml:space="preserve"><value>Inactive over 7 days</value></data>
 
+  <!-- ======================== -->
+  <!-- Admin Shell — Sidebar    -->
+  <!-- ======================== -->
+  <data name="AdminGroup_Operations" xml:space="preserve"><value>Operations</value></data>
+  <data name="AdminGroup_Members" xml:space="preserve"><value>Members</value></data>
+  <data name="AdminGroup_Money" xml:space="preserve"><value>Money</value></data>
+  <data name="AdminGroup_Governance" xml:space="preserve"><value>Governance</value></data>
+  <data name="AdminGroup_Integrations" xml:space="preserve"><value>Integrations</value></data>
+  <data name="AdminGroup_PeopleData" xml:space="preserve"><value>People data</value></data>
+  <data name="AdminGroup_Diagnostics" xml:space="preserve"><value>Diagnostics</value></data>
+  <data name="AdminGroup_Dev" xml:space="preserve"><value>Dev</value></data>
+  <data name="AdminNav_Brand" xml:space="preserve"><value>Admin</value></data>
+  <data name="AdminNav_BrandSubtitle" xml:space="preserve"><value>Admin</value></data>
+  <data name="AdminNav_Dashboard" xml:space="preserve"><value>Dashboard</value></data>
+  <data name="AdminNav_Volunteers" xml:space="preserve"><value>Volunteers</value></data>
+  <data name="AdminNav_Tickets" xml:space="preserve"><value>Tickets</value></data>
+  <data name="AdminNav_Scanner" xml:space="preserve"><value>Scanner</value></data>
+  <data name="AdminNav_Humans" xml:space="preserve"><value>Humans</value></data>
+  <data name="AdminNav_Review" xml:space="preserve"><value>Review</value></data>
+  <data name="AdminNav_Finance" xml:space="preserve"><value>Finance</value></data>
+  <data name="AdminNav_Voting" xml:space="preserve"><value>Voting</value></data>
+  <data name="AdminNav_Board" xml:space="preserve"><value>Board</value></data>
+  <data name="AdminNav_Google" xml:space="preserve"><value>Google</value></data>
+  <data name="AdminNav_EmailPreview" xml:space="preserve"><value>Email preview</value></data>
+  <data name="AdminNav_EmailOutbox" xml:space="preserve"><value>Email outbox</value></data>
+  <data name="AdminNav_Campaigns" xml:space="preserve"><value>Campaigns</value></data>
+  <data name="AdminNav_WorkspaceAccounts" xml:space="preserve"><value>Workspace accounts</value></data>
+  <data name="AdminNav_Merge" xml:space="preserve"><value>Merge requests</value></data>
+  <data name="AdminNav_Duplicates" xml:space="preserve"><value>Duplicate detection</value></data>
+  <data name="AdminNav_Audience" xml:space="preserve"><value>Audience segmentation</value></data>
+  <data name="AdminNav_LegalDocuments" xml:space="preserve"><value>Legal documents</value></data>
+  <data name="AdminNav_Logs" xml:space="preserve"><value>Logs</value></data>
+  <data name="AdminNav_DbStats" xml:space="preserve"><value>DB stats</value></data>
+  <data name="AdminNav_CacheStats" xml:space="preserve"><value>Cache stats</value></data>
+  <data name="AdminNav_Configuration" xml:space="preserve"><value>Configuration</value></data>
+  <data name="AdminNav_Hangfire" xml:space="preserve"><value>Hangfire</value></data>
+  <data name="AdminNav_Health" xml:space="preserve"><value>Health</value></data>
+  <data name="AdminNav_SeedBudget" xml:space="preserve"><value>Seed budget</value></data>
+  <data name="AdminNav_SeedCampRoles" xml:space="preserve"><value>Seed camp roles</value></data>
+  <data name="AdminNav_OpenSidebar" xml:space="preserve"><value>Open admin menu</value></data>
+  <data name="AdminNav_ExitToMemberHome" xml:space="preserve"><value>Exit admin</value></data>
+
+  <!-- ======================== -->
+  <!-- Admin Shell — Dashboard  -->
+  <!-- ======================== -->
+  <data name="AdminDashboard_Greeting" xml:space="preserve"><value>Welcome back, {0}.</value><comment>{0} = display name</comment></data>
+  <data name="AdminDashboard_Subtitle" xml:space="preserve"><value>{0} active humans · {1}% shift coverage · {2} open feedback · {3}</value><comment>{0} = active humans, {1} = shift coverage %, {2} = open feedback count, {3} = health label</comment></data>
+  <data name="AdminDashboard_AllSystemsNormal" xml:space="preserve"><value>all systems normal</value></data>
+  <data name="AdminDashboard_NeedsAttention" xml:space="preserve"><value>needs attention</value></data>
+  <data name="AdminDashboard_RecentActivity" xml:space="preserve"><value>Recent activity</value></data>
+  <data name="AdminDashboard_RecentActivity_Caption" xml:space="preserve"><value>last 24h</value></data>
+  <data name="AdminDashboard_RecentActivity_Empty" xml:space="preserve"><value>No recent activity.</value></data>
+  <data name="AdminDashboard_Stat_ActiveHumans" xml:space="preserve"><value>Active humans</value></data>
+  <data name="AdminDashboard_Stat_Shifts" xml:space="preserve"><value>Shifts staffed</value></data>
+  <data name="AdminDashboard_Stat_Shifts_Caption" xml:space="preserve"><value>of slots filled</value></data>
+  <data name="AdminDashboard_Stat_OpenFeedback" xml:space="preserve"><value>Open feedback</value></data>
+  <data name="AdminDashboard_Stat_SystemHealth" xml:space="preserve"><value>System health</value></data>
+  <data name="AdminDashboard_Staffing_Title" xml:space="preserve"><value>Staffing by department</value></data>
+  <data name="AdminDashboard_Staffing_Caption" xml:space="preserve"><value>event-wide · {0} / {1} shifts</value><comment>{0} = filled shifts, {1} = total shifts</comment></data>
+  <data name="AdminDashboard_Staffing_Placeholder" xml:space="preserve"><value>Live staffing tile coming — see</value></data>
+
 </root>

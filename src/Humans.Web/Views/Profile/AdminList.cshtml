@@ -1,6 +1,7 @@
 @model Humans.Web.Models.AdminHumanListViewModel
 @{
     ViewData["Title"] = Localizer["AdminHumans_Title"].Value;
+    Layout = "_AdminLayout";
     string ToggleDir(string col) => Model.SortBy == col && Model.SortDir == "asc" ? "desc" : "asc";
     string SortIndicator(string col) => Model.SortBy != col ? "" : Model.SortDir == "asc" ? " \u25B2" : " \u25BC";
 }

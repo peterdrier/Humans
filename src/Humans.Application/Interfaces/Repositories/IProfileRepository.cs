@@ -81,6 +81,12 @@ public interface IProfileRepository
     Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Returns the count of profiles that are approved and not suspended.
+    /// Used by the admin dashboard "Active humans" stat tile.
+    /// </summary>
+    Task<int> CountActiveApprovedAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Returns profiles that are in the onboarding review queue: not approved
     /// and not rejected. Ordered by <c>CreatedAt</c> ascending. Read-only.
     /// Used by the onboarding review queue.

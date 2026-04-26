@@ -33,7 +33,7 @@ public class BoardController : HumansControllerBase
         var dashboardData = await _onboardingService.GetAdminDashboardAsync();
         var recentEntries = await _auditLogService.GetRecentAsync(15);
 
-        var viewModel = new AdminDashboardViewModel
+        var viewModel = new BoardDashboardViewModel
         {
             TotalMembers = dashboardData.TotalMembers,
             IncompleteSignup = dashboardData.IncompleteSignup,

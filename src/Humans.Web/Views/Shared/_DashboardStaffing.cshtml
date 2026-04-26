@@ -1,0 +1,34 @@
+@model Humans.Web.Models.AdminDashboardViewModel
+
+<div class="card">
+    <div class="card-head">
+        <h3>@Localizer["AdminDashboard_Staffing_Title"]</h3>
+        <small>
+            @if (Model.ShiftTotalOf.HasValue)
+            {
+                @Localizer["AdminDashboard_Staffing_Caption", Model.ShiftFilledOf!, Model.ShiftTotalOf!]
+            }
+        </small>
+    </div>
+    <div class="staffing">
+        @if (Model.StaffingByDepartment.Count == 0)
+        {
+            <p class="text-muted px-3">
+                @Localizer["AdminDashboard_Staffing_Placeholder"]
+                <a asp-controller="Vol" asp-action="Index">@Localizer["AdminNav_Volunteers"]</a>.
+            </p>
+        }
+        else
+        {
+            foreach (var dept in Model.StaffingByDepartment)
+            {
+                var pct = (int)(dept.Ratio * 100);
+                <div class="dept-row">
+                    <span class="name">@dept.Name</span>
+                    <div class="track @dept.TrackClass"><div style="width:@(pct)%"></div></div>
+                    <span class="num">@pct%</span>
+                </div>
+            }
+        }
+    </div>
+</div>
