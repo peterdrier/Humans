@@ -282,6 +282,28 @@ public sealed class CampRoleService : ICampRoleService
         return deleted;
     }
 
-    public Task<CampRoleComplianceReport> GetComplianceReportAsync(int year, CancellationToken ct = default)
-        => throw new NotSupportedException();
+    public async Task<CampRoleComplianceReport> GetComplianceReportAsync(int year, CancellationToken ct = default)
+    {
+        var requiredDefs = (await _repo.ListDefinitionsAsync(includeDeactivated: false, ct))
+            .Where(d => d.IsRequired)
+            .ToList();
+
+        var camps = await _campService.GetCampSeasonsForComplianceAsync(year, ct);
+        var counts = await _repo.GetAssignmentCountsForYearAsync(year, ct);
+        var countLookup = counts.ToLookup(c => c.CampSeasonId);
+
+        var rows = camps.Select(c =>
+        {
+            var roles = requiredDefs.Select(def =>
+            {
+                var filled = countLookup[c.CampSeasonId].FirstOrDefault(r => r.DefinitionId == def.Id).Count;
+                return new CampRoleComplianceRoleRow(def.Id, def.Name, def.MinimumRequired, filled, filled >= def.MinimumRequired);
+            }).ToList();
+
+            var allMet = roles.All(r => r.IsMet);
+            return new CampRoleComplianceCampRow(c.CampId, c.CampName, c.CampSlug, c.CampSeasonId, roles, allMet);
+        }).ToList();
+
+        return new CampRoleComplianceReport(year, rows);
+    }
 }

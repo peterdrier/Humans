@@ -463,6 +463,59 @@ public class CampRoleServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task ComplianceReport_marks_camp_compliant_when_all_required_roles_meet_minimum()
+    {
+        var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
+        var consent = await SeedDefinitionAsync("Consent Lead", slotCount: 2, minimumRequired: 1, isRequired: true);
+        var member = await SeedActiveMemberAsync(season.Id);
+
+        _dbContext.CampRoleAssignments.Add(
+            new CampRoleAssignment { Id = Guid.NewGuid(), CampSeasonId = season.Id, CampRoleDefinitionId = consent.Id, CampMemberId = member.Id, AssignedAt = _clock.GetCurrentInstant(), AssignedByUserId = _actorUserId });
+        await _dbContext.SaveChangesAsync();
+
+        _campService.GetCampSeasonsForComplianceAsync(2026, default)
+            .Returns(new[] { (camp.Id, season.Name, camp.Slug, season.Id) });
+
+        var report = await _service.GetComplianceReportAsync(2026);
+
+        report.Year.Should().Be(2026);
+        report.Camps.Should().HaveCount(1);
+        report.Camps[0].IsCompliant.Should().BeTrue();
+        report.Camps[0].Roles.Single().IsMet.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task ComplianceReport_marks_camp_noncompliant_when_required_role_unfilled()
+    {
+        var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
+        await SeedDefinitionAsync("LNT", slotCount: 1, minimumRequired: 1, isRequired: true);
+
+        _campService.GetCampSeasonsForComplianceAsync(2026, default)
+            .Returns(new[] { (camp.Id, season.Name, camp.Slug, season.Id) });
+
+        var report = await _service.GetComplianceReportAsync(2026);
+
+        report.Camps[0].IsCompliant.Should().BeFalse();
+        report.Camps[0].Roles.Single().Filled.Should().Be(0);
+        report.Camps[0].Roles.Single().IsMet.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task ComplianceReport_ignores_non_required_roles()
+    {
+        var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
+        await SeedDefinitionAsync("Power", slotCount: 1, minimumRequired: 0, isRequired: false);
+
+        _campService.GetCampSeasonsForComplianceAsync(2026, default)
+            .Returns(new[] { (camp.Id, season.Name, camp.Slug, season.Id) });
+
+        var report = await _service.GetComplianceReportAsync(2026);
+
+        report.Camps[0].Roles.Should().BeEmpty();
+        report.Camps[0].IsCompliant.Should().BeTrue();
+    }
+
+    [HumansFact]
     public async Task RemoveAllForMember_deletes_all_assignments_for_one_member()
     {
         var (camp, season) = await SeedCampWithSeasonAsync();

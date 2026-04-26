@@ -186,6 +186,13 @@ public interface ICampService
     /// Used by ICampRoleService to enforce the active-member-in-correct-season precondition.
     /// </summary>
     Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns (CampId, CampName, CampSlug, CampSeasonId) tuples for every camp that has
+    /// any season in the given year. Used by the camp role compliance report.
+    /// </summary>
+    Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId)>>
+        GetCampSeasonsForComplianceAsync(int year, CancellationToken ct = default);
 }
 
 public sealed record CampMemberLookup(Guid CampSeasonId, Guid UserId, CampMemberStatus Status);

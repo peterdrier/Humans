@@ -310,6 +310,16 @@ public sealed class CampService : ICampService, IUserDataContributor
         return camps.ToList();
     }
 
+    public async Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId)>>
+        GetCampSeasonsForComplianceAsync(int year, CancellationToken cancellationToken = default)
+    {
+        var camps = await _repo.GetAllCampsForYearAsync(year, cancellationToken);
+        // Camp.Name lives on CampSeason, not Camp — pull s.Name not c.Name (deviation
+        // from plan; reflects actual schema where the canonical name is per-season).
+        return camps.SelectMany(c => c.Seasons.Where(s => s.Year == year).Select(s =>
+            (c.Id, s.Name, c.Slug, s.Id))).ToList();
+    }
+
     public async Task<IReadOnlyList<CampPublicSummary>> GetCampPublicSummariesForYearAsync(
         int year,
         CancellationToken cancellationToken = default)
