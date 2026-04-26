@@ -61,6 +61,42 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().BeFalse();
     }
 
+    // --- AnyAdminRole (admin-shell entry point) ---
+
+    [HumansTheory]
+    [InlineData(RoleNames.Admin, true)]
+    [InlineData(RoleNames.Board, true)]
+    [InlineData(RoleNames.HumanAdmin, true)]
+    [InlineData(RoleNames.TeamsAdmin, true)]
+    [InlineData(RoleNames.CampAdmin, true)]
+    [InlineData(RoleNames.TicketAdmin, true)]
+    [InlineData(RoleNames.FeedbackAdmin, true)]
+    [InlineData(RoleNames.FinanceAdmin, true)]
+    [InlineData(RoleNames.NoInfoAdmin, true)]
+    [InlineData(RoleNames.VolunteerCoordinator, true)]
+    [InlineData(RoleNames.ConsentCoordinator, true)]
+    public async Task AnyAdminRole_AllowsAllAdminShapedRoles(string role, bool expected)
+    {
+        var result = await AuthorizeAsync(PolicyNames.AnyAdminRole, role);
+        result.Succeeded.Should().Be(expected);
+    }
+
+    [HumansFact]
+    public async Task AnyAdminRole_DeniesUnauthenticated()
+    {
+        var result = await AuthorizeAnonymousAsync(PolicyNames.AnyAdminRole);
+        result.Succeeded.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task AnyAdminRole_DeniesAuthenticatedNonAdmin()
+    {
+        // Authenticated user with no admin-shaped role (e.g. a regular member)
+        // must not reach the admin shell.
+        var result = await AuthorizeAsync(PolicyNames.AnyAdminRole, "SomeNonAdminRole");
+        result.Succeeded.Should().BeFalse();
+    }
+
     // --- BoardOnly ---
 
     [HumansTheory]

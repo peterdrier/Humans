@@ -16,7 +16,6 @@ public class EndpointAuthorizationTests
     // --- Admin endpoints must require Admin role ---
 
     [HumansTheory]
-    [InlineData(typeof(AdminController), "Index")]
     [InlineData(typeof(AdminController), "PurgeHuman")]
     [InlineData(typeof(AdminController), "Logs")]
     [InlineData(typeof(AdminController), "Configuration")]
@@ -27,6 +26,15 @@ public class EndpointAuthorizationTests
     public void AdminEndpoint_RequiresAdminPolicy(Type controllerType, string? actionName)
     {
         AssertHasPolicy(controllerType, actionName, "AdminOnly");
+    }
+
+    // The /Admin dashboard itself is reachable by any admin-shaped role so
+    // domain admins (FinanceAdmin etc.) can land on the shell. Sidebar items
+    // inside still filter per-item.
+    [HumansFact]
+    public void AdminController_Index_RequiresAnyAdminRolePolicy()
+    {
+        AssertHasPolicy(typeof(AdminController), "Index", "AnyAdminRole");
     }
 
     // --- Board endpoints must require Board or Admin ---
