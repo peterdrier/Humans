@@ -1,11 +1,12 @@
 # City Planning — Section Invariants
 
-Interactive map for camp barrio placement: polygon editing, placement phase control, append-only history.
+Interactive map for camp barrio placement and container management: polygon editing, placement phase control, container placement phase control, append-only history.
 
 ## Concepts
 
 - **City Planning** is an interactive map for camp barrio placement. Camp leads draw polygons to claim their barrio's physical footprint on the site.
-- **CityPlanningSettings** is a per-year singleton controlling the placement phase (open/closed), site boundary (limit zone), and informational overlays (official zones).
+- **CityPlanningSettings** is a per-year singleton controlling the barrio placement phase (open/closed), the container placement phase (open/closed), site boundary (limit zone), and informational overlays (official zones).
+- **Container placement phase** gates whether barrio leads can add/edit/delete containers for their camp. Toggled by map admins from the containers admin sub-page. Camp admins and city planning team members are always exempt.
 - **CampPolygon** is a single polygon per CampSeason representing the camp's placed area.
 - **CampPolygonHistory** is an append-only audit trail of polygon edits and restores.
 
@@ -22,8 +23,11 @@ Per-year singleton controlling the placement phase and map overlays. Auto-create
 | Id | Guid | PK |
 | Year | int | Season year (unique) |
 | IsPlacementOpen | bool | Whether camp leads can edit polygons |
-| OpenedAt | Instant? | When placement was last opened |
-| ClosedAt | Instant? | When placement was last closed |
+| OpenedAt | Instant? | When barrio placement was last opened |
+| ClosedAt | Instant? | When barrio placement was last closed |
+| IsContainerPlacementOpen | bool | Whether barrio leads can manage their containers |
+| ContainerPlacementOpenedAt | Instant? | When container placement was last opened |
+| ContainerPlacementClosedAt | Instant? | When container placement was last closed |
 | PlacementOpensAt | LocalDateTime? | Informational scheduled open (not enforced) |
 | PlacementClosesAt | LocalDateTime? | Informational scheduled close (not enforced) |
 | LimitZoneGeoJson | text? | GeoJSON FeatureCollection — site boundary |
@@ -69,14 +73,16 @@ Cross-domain navs (`CampPolygon.CampSeason`, `CampPolygon.LastModifiedByUser`, `
 |-------|--------------|
 | Any authenticated human | View the map and all placed barrios |
 | Camp lead (own camp, placement open) | Draw or edit their own camp's polygon |
-| City-planning team member (team slug: `city-planning`) | Full admin access always (any polygon, settings, exports) |
+| Camp lead (own camp, container placement open) | Add/edit/delete their own camp's containers |
+| City-planning team member (team slug: `city-planning`) | Full admin access always (any polygon, containers, settings, exports) |
 | CampAdmin role | Full admin access always |
 
 ## Invariants
 
 - Only one CampPolygon per CampSeason (unique constraint on `CampSeasonId`).
 - CampPolygonHistory is append-only — edits and restores always create a new history entry (design-rules §12).
-- Camp leads can only edit their own camp's polygon when placement is open. City-planning team members and CampAdmin are exempt from the placement-open requirement.
+- Camp leads can only edit their own camp's polygon when barrio placement is open. City-planning team members and CampAdmin are exempt.
+- Camp leads can only add/edit/delete their camp's containers when container placement is open. City-planning team members and CampAdmin are exempt.
 - CityPlanningSettings row is auto-created per year from `CampSettings.PublicYear`.
 - SignalR broadcasts polygon updates to all connected clients in real time.
 - Limit zone and official zones are stored as GeoJSON on CityPlanningSettings; out-of-bounds and overlap detection is client-side.
@@ -85,8 +91,9 @@ Cross-domain navs (`CampPolygon.CampSeason`, `CampPolygon.LastModifiedByUser`, `
 ## Negative Access Rules
 
 - Regular humans **cannot** edit polygons for camps they do not lead.
-- Camp leads **cannot** edit their polygon when placement is closed.
-- Non-admin humans **cannot** access the admin panel (placement toggle, zone uploads, export).
+- Camp leads **cannot** edit their polygon when barrio placement is closed.
+- Camp leads **cannot** add/edit/delete their containers when container placement is closed.
+- Non-admin humans **cannot** access the admin panel (placement toggles, zone uploads, export).
 
 ## Triggers
 

@@ -125,8 +125,11 @@ Map admin is determined at the controller level via claims-first pattern: `RoleC
 |-------|-------------|
 | `GET /CityPlanning` | Full-screen map page |
 | `GET /CityPlanning/Admin` | Admin settings panel |
-| `POST /CityPlanning/Admin/OpenPlacement` | Open placement phase |
-| `POST /CityPlanning/Admin/ClosePlacement` | Close placement phase |
+| `POST /CityPlanning/Admin/OpenPlacement` | Open barrio placement phase |
+| `POST /CityPlanning/Admin/ClosePlacement` | Close barrio placement phase |
+| `GET /CityPlanning/Admin/Containers/{year}` | Containers admin sub-page |
+| `POST /CityPlanning/Admin/OpenContainerPlacement` | Open container placement phase |
+| `POST /CityPlanning/Admin/CloseContainerPlacement` | Close container placement phase |
 | `POST /CityPlanning/Admin/UpdatePlacementDates` | Set informational open/close datetimes |
 | `POST /CityPlanning/Admin/UploadLimitZone` | Upload limit zone GeoJSON |
 | `GET /CityPlanning/Admin/DownloadLimitZone` | Download limit zone GeoJSON |
@@ -157,5 +160,5 @@ Map admin is determined at the controller level via claims-first pattern: `RoleC
 
 ## Future
 
-- Certain: in a second phase, barrios will be able to place their container.
+- Certain: in a third phase, containers will be assigned to map zones (zone-assignment feature, follows container placement phase).
 - Hypothetical: other teams could use this map to collaborate on placement for art, power lines, ...
