@@ -158,6 +158,7 @@ export function initBarcodeScanner(refs) {
             decodePath = 'zxing';
             setStatus(`${labels.running} (${labels.pathZxing})`);
             startZxing().catch((e) => {
+                if (!mediaStream) return; // user pressed Stop while CDN was loading
                 console.error('Scanner: zxing fallback also failed', e);
                 showError(labels.errorNoDecoder);
                 stop();
