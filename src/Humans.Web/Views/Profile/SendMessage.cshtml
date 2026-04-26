@@ -1,6 +1,7 @@
 @model Humans.Web.Models.SendMessageViewModel
 @{
     ViewData["Title"] = string.Format(Localizer["SendMessage_Title"].Value, Model.RecipientDisplayName);
+    Layout = "_AdminLayout";
 }
 
 <nav aria-label="breadcrumb">

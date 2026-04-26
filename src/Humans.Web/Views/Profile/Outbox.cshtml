@@ -3,6 +3,7 @@
     var humanId = (Guid?)ViewBag.HumanId;
     var isAdminView = humanId.HasValue;
     ViewData["Title"] = isAdminView ? "Emails" : "My Emails";
+    Layout = "_AdminLayout";
 }
 
 <div class="row">
