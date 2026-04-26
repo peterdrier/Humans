@@ -120,7 +120,7 @@ jobs:
             -e POSTGRES_USER=humans \
             -e POSTGRES_PASSWORD=humans \
             -e POSTGRES_DB=humans \
-            postgres:17-alpine
+            postgres:16-alpine
 
           for i in $(seq 1 30); do
             if docker exec "$PG_CONTAINER" pg_isready -U humans -d humans >/dev/null 2>&1; then
