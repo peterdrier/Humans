@@ -16,6 +16,11 @@ public static class RecurringJobExtensions
         var ticketSyncInterval = app.Configuration.GetSettingValue(
             registry, "TicketVendor:SyncIntervalMinutes", "Ticket Vendor", defaultValue: 15);
 
+        // Holded sync cron — defaults to daily 04:30 UTC; matches HoldedSettings default.
+        var holdedSyncCron = app.Configuration["Holded:SyncIntervalCron"];
+        if (string.IsNullOrWhiteSpace(holdedSyncCron))
+            holdedSyncCron = "0 30 4 * * *";
+
         var jobs = new (string Id, Action Register)[]
         {
             // Google sync jobs — controlled by SyncServiceSettings (Admin/SyncSettings).
@@ -75,6 +80,10 @@ public static class RecurringJobExtensions
             // Materialize ticket sales actuals into budget line items daily at 04:30.
             ("ticketing-budget-sync", () => RecurringJob.AddOrUpdate<TicketingBudgetSyncJob>(
                 "ticketing-budget-sync", job => job.ExecuteAsync(CancellationToken.None), "30 4 * * *")),
+
+            // Pull Holded purchase docs into local read-side store (default daily 04:30 UTC).
+            ("holded-sync", () => RecurringJob.AddOrUpdate<HoldedSyncJob>(
+                "holded-sync", job => job.ExecuteAsync(CancellationToken.None), holdedSyncCron)),
         };
 
         foreach (var (id, register) in jobs)
