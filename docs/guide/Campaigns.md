@@ -27,10 +27,11 @@ A campaign bundles three things: the **codes** (imported in bulk or generated th
 - **My codes** — a section on your profile (`/Profile/Me`) listing every campaign grant assigned to you
 - **Unsubscribe** (`/Unsubscribe/{token}`) — public, no-login page to opt out of all future campaign emails
 - **Campaigns list** (`/Admin/Campaigns`) — every campaign with its status and code and grant counts
-- **Campaign detail** (`/Admin/Campaigns/{id}`) — stats (total codes, assigned, sent, failed, redeemed) and the grant table
-- **Create campaign** — form for title, description, email subject, and email body template
-- **Import codes** — CSV upload for code values on a Draft campaign
-- **Send wave** — targets one or more teams, assigns free codes to eligible humans, and queues the emails
+- **Campaign detail** (`/Admin/Campaigns/{id}`) — stats (total codes, available, sent, failed, redeemed) and the grant table; entry point for Import Codes, Generate Codes (vendor), Activate, Send Wave, Complete, Resend, and Retry All Failed
+- **Create campaign** (`/Admin/Campaigns/Create`) — form for title, description, email subject, email body template (markdown, supports `{{Code}}` and `{{Name}}`), and optional Reply-To address
+- **Import codes** — CSV upload for code values, available on Draft and Active campaigns
+- **Generate codes** — vendor-issued discount codes (count, type, value), Draft campaigns only; available to TicketAdmin and Admin
+- **Send wave** (`/Admin/Campaigns/{id}/SendWave`) — targets a single team, assigns free codes to eligible humans, and queues the emails
 
 ## As a Volunteer
 
@@ -46,7 +47,7 @@ When an Admin sends a wave that includes you, the code arrives by email to your 
 
 ### Unsubscribe from campaign emails
 
-Click the unsubscribe link in any campaign email. It takes you to `/Unsubscribe/{token}` — public, no login needed. The first visit flags your account and excludes you from all future campaign sends; later visits show a confirmation. Unsubscribing does not remove codes already granted to you, and it only affects campaign emails.
+Click the unsubscribe link in any campaign email. It takes you to `/Unsubscribe/{token}` — public, no login needed. New category-aware tokens redirect you to the public communication-preferences page where you can toggle which categories you receive; legacy campaign-only tokens show a confirmation page where you POST to confirm. Either path flips your `Campaign Codes` (or, for legacy tokens, `Marketing`) preference to opted-out and excludes you from future wave sends. RFC 8058 one-click unsubscribe is also supported via the `List-Unsubscribe` header. Unsubscribing does not remove codes already granted to you, and it only affects future campaign emails.
 
 ## As a Board member / Admin
 
@@ -54,23 +55,23 @@ Full campaign management requires the **Admin** role. **TicketAdmin** can view c
 
 ### Create a campaign
 
-From `/Admin/Campaigns`, start a new campaign. Fill in the title, description, email subject, and email body template. It begins in **Draft** — no emails can be sent yet, and this is the only status in which you can add codes.
+From `/Admin/Campaigns`, start a new campaign. Fill in the title, description, email subject, email body template (markdown, with `{{Code}}` for the code and `{{Name}}` for the human's name), and an optional Reply-To address. It begins in **Draft** — no emails can be sent yet.
 
-### Load codes into a Draft campaign
+### Load codes into a campaign
 
-Two options while Draft: **CSV import** of code values, or **ticket vendor generation** through the API. Each code must be unique within the campaign.
+Two options: **CSV import** of code values (allowed in both Draft and Active), or **ticket vendor generation** through the API (Draft only — pick count, discount type, and value). Each code must be unique within the campaign. CSV imports skip duplicates of codes already in the campaign.
 
 ### Activate
 
-Once at least one code is loaded, activate the campaign. It moves from **Draft** to **Active** and becomes eligible for wave sends. Codes can no longer be imported or generated after activation.
+Once at least one code is loaded, activate the campaign. It moves from **Draft** to **Active** and becomes eligible for wave sends. Vendor-generated codes can no longer be added after activation, but additional CSV codes can still be imported.
 
 ### Send a wave
 
-On an Active campaign, choose Send Wave and pick one or more target [teams](Glossary.md#team). The system collects active members of those teams, excludes anyone already granted a code or unsubscribed, and matches the rest one-to-one with free codes. Each match creates a grant and queues a delivery through the email outbox. Run multiple waves as more humans become eligible.
+On an Active campaign, choose Send Wave and pick a target [team](Glossary.md#team). The system collects active members of that team, excludes anyone already granted a code on this campaign or opted out of the `Campaign Codes` category, and matches the rest one-to-one with free codes ordered by `ImportOrder` so the batch is reproducible. Each match creates a grant and queues a delivery through the email outbox; recipients also receive an in-app `Campaign received` notification. Run multiple waves as more humans become eligible.
 
 ### Watch delivery and redemption
 
-The campaign detail page shows how many codes are assigned, sent, failed, and — for campaigns tied to ticket purchases — redeemed. Redemption is updated by the ticket sync job when it sees a granted code used in a purchase.
+The campaign detail page shows how many codes are imported, available, sent, failed, and — for campaigns tied to ticket purchases — redeemed. Redemption is updated by the ticket sync job when it sees a granted code used in a purchase. From the grants table you can **Resend** a single grant's email, and a **Retry All Failed** button appears whenever any grant's most recent send is in `Failed` state.
 
 ### Complete
 
@@ -78,5 +79,5 @@ When a campaign is done, mark it Completed. No further waves can be sent.
 
 ## Related sections
 
-- [Profiles](Profiles.md) — the My Codes list and the campaign unsubscribe flag both live on your profile
+- [Profiles](Profiles.md) — the My Codes list lives on your profile; opt-out is managed from Communication Preferences (the legacy `UnsubscribedFromCampaigns` flag is retained for GDPR export but no longer the active gate)
 - [Onboarding](Onboarding.md) — only active, non-suspended humans on targeted teams are eligible for waves
