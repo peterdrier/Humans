@@ -74,6 +74,27 @@ body.admin-shell .m-nav .right {
     margin-left: auto;
 }
 
+body.admin-shell .m-nav .exit-admin {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 5px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--h-parchment);
+    text-decoration: none;
+    opacity: 0.75;
+    border: 1px solid rgba(255,245,221,0.18);
+}
+
+body.admin-shell .m-nav .exit-admin:hover {
+    opacity: 1;
+    color: var(--h-gold);
+    border-color: rgba(201,169,110,0.4);
+}
+
 body.admin-shell .m-nav .topbar-user .avatar-trigger {
     color: var(--h-parchment);
 }
@@ -447,6 +468,8 @@ body.admin-shell .split-panels {
     body.admin-shell .m-nav .brand { font-size: 1.15rem; }
     body.admin-shell .m-nav .brand small { display: none; }
     body.admin-shell .m-nav .right { gap: 10px; }
+    body.admin-shell .m-nav .exit-admin span { display: none; }
+    body.admin-shell .m-nav .exit-admin { padding: 6px 8px; }
     body.admin-shell .m-nav .avatar { width: 28px; height: 28px; font-size: 0.74rem; }
 
     body.admin-shell .sidebar { padding: 0; border-right: 0; border-bottom: 1px solid rgba(255,245,221,0.1); }

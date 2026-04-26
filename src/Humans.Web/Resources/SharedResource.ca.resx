@@ -1894,6 +1894,7 @@
   <data name="AdminNav_SeedBudget" xml:space="preserve"><value>Seed budget</value></data>
   <data name="AdminNav_SeedCampRoles" xml:space="preserve"><value>Seed camp roles</value></data>
   <data name="AdminNav_OpenSidebar" xml:space="preserve"><value>Open admin menu</value></data>
+  <data name="AdminNav_ExitToMemberHome" xml:space="preserve"><value>Exit admin</value></data>
 
   <!-- ======================== -->
   <!-- Admin Shell — Dashboard  -->

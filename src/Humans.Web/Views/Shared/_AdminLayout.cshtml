@@ -40,10 +40,16 @@
 
     <div class="app">
         <nav class="m-nav">
-            <a class="brand" asp-controller="Admin" asp-action="Index">
+            @* Brand mark always exits the admin shell — clicking it returns you
+               to the member home, matching the member shell's brand behavior. *@
+            <a class="brand" asp-controller="Home" asp-action="Index" title="@Localizer["AdminNav_ExitToMemberHome"]">
                 Humans<small>@Localizer["AdminNav_BrandSubtitle"]</small>
             </a>
             <div class="right">
+                <a class="exit-admin" asp-controller="Home" asp-action="Index">
+                    <i class="fa-solid fa-arrow-left-long" aria-hidden="true"></i>
+                    <span>@Localizer["AdminNav_ExitToMemberHome"]</span>
+                </a>
                 @if (User.Identity?.IsAuthenticated == true)
                 {
                     @await Component.InvokeAsync("NotificationBell")

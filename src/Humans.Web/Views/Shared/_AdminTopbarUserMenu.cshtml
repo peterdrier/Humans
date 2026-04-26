@@ -13,8 +13,8 @@
     <a class="avatar-trigger d-flex align-items-center text-decoration-none" href="#" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" aria-label="@Localizer["Nav_MyProfile"]">
         <div class="avatar">@initials</div>
     </a>
-    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark">
-        <li class="px-3 py-2 text-light">
+    <ul class="dropdown-menu dropdown-menu-end">
+        <li class="px-3 py-2">
             <div class="fw-semibold small">@(user?.UserName ?? "—")</div>
             @if (!string.IsNullOrEmpty(roleLabel))
             {
