@@ -200,6 +200,7 @@ public class VolController : HumansControllerBase
                     {
                         TeamId = firstShift.Rota.TeamId,
                         TeamName = deptTeam?.Name ?? "Unknown",
+                        TeamDescription = deptTeam?.Description,
                         TeamSlug = deptTeam?.Slug ?? string.Empty,
                         Rotas = deptGroup.GroupBy(u => u.Shift.RotaId)
                             .Select(rotaGroup =>

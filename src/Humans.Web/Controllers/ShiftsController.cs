@@ -88,10 +88,11 @@ public class ShiftsController : HumansControllerBase
         }
 
         // Build the browse view — show all active shifts, hide AdminOnly from regular volunteers
+        // Always load signups so volunteers can see who else is on shifts they've joined
         var urgentShifts = await _shiftMgmt.GetBrowseShiftsAsync(
             es.Id, departmentId: departmentId,
             fromDate: filterFromDate, toDate: filterToDate,
-            includeAdminOnly: isPrivileged, includeSignups: isPrivileged,
+            includeAdminOnly: isPrivileged, includeSignups: true,
             includeHidden: isPrivileged);
 
         // Apply tag filter — keep only shifts whose rota has at least one of the selected tags
@@ -157,6 +158,7 @@ public class ShiftsController : HumansControllerBase
                 {
                     TeamId = firstShift.Rota.TeamId,
                     TeamName = deptName,
+                    TeamDescription = team?.Description,
                     TeamSlug = deptSlug,
                     Rotas = deptGroup
                         .GroupBy(u => u.Shift.RotaId)
