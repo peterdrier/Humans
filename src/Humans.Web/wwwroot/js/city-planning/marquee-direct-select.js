@@ -50,8 +50,11 @@ export const MarqueeDirectSelectMode = {
 
     onMouseDown(state, e) {
         if (e.originalEvent.button !== 0) return;
+        // Defensive: clear any orphaned marquee element from a drag released outside the map
+        if (state.marqueeEl) { state.marqueeEl.remove(); state.marqueeEl = null; }
         const meta = e.featureTarget?.properties?.meta;
-        if (meta === 'vertex' || meta === 'midpoint') {
+        // Delegate to parent for vertex/midpoint (existing select) and feature (whole-polygon drag)
+        if (meta === 'vertex' || meta === 'midpoint' || meta === 'feature') {
             return DirectSelectMode.onMouseDown.call(this, state, e);
         }
         state.marqueeStart = e.point;   // container-relative pixels
@@ -59,6 +62,19 @@ export const MarqueeDirectSelectMode = {
         state.isMarquee    = false;
         state.marqueeEl    = null;
         this.map.dragPan.disable();
+
+        // MapboxDraw only dispatches mouseup on the canvas. Catch releases outside
+        // the map so dragPan is re-enabled and the marquee element doesn't leak.
+        const map = this.map;
+        const onWindowMouseUp = () => {
+            document.removeEventListener('mouseup', onWindowMouseUp);
+            if (!state.marqueeStart) return; // onMouseUp already ran
+            map.dragPan.enable();
+            if (state.marqueeEl) { state.marqueeEl.remove(); state.marqueeEl = null; }
+            state.marqueeStart = null;
+            state.isMarquee    = false;
+        };
+        document.addEventListener('mouseup', onWindowMouseUp);
     },
 
     onDrag(state, e) {
