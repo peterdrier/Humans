@@ -1083,12 +1083,12 @@ public class CampController : HumansCampControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UnassignRole(string slug, Guid assignmentId, CancellationToken cancellationToken)
     {
-        var (errorResult, user, _) = await ResolveCampManagementAsync(slug);
+        var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null) return errorResult;
 
         try
         {
-            await _campService.UnassignCampRoleAsync(assignmentId, user.Id, cancellationToken);
+            await _campService.UnassignCampRoleAsync(assignmentId, camp.Id, user.Id, cancellationToken);
             SetSuccess("Role unassigned.");
         }
         catch (InvalidOperationException ex)
@@ -1108,10 +1108,15 @@ public class CampController : HumansCampControllerBase
             return new CampRolesPanelViewModel { HasOpenSeason = false };
         }
 
-        var defs = await _campService.GetCampRoleDefinitionsAsync(includeDeactivated: false, cancellationToken);
+        // Include deactivated defs so leads can still unassign humans from a role that was deactivated globally.
+        var defs = await _campService.GetCampRoleDefinitionsAsync(includeDeactivated: true, cancellationToken);
         var assignments = await _campService.GetCampRoleAssignmentsAsync(seasonId, cancellationToken);
 
-        var rows = defs
+        // For deactivated defs, only render if there are still live assignments — empty deactivated rows would just be noise.
+        var assignedDefIds = assignments.Select(a => a.CampRoleDefinitionId).ToHashSet();
+        var visibleDefs = defs.Where(d => d.DeactivatedAt is null || assignedDefIds.Contains(d.Id));
+
+        var rows = visibleDefs
             .OrderBy(d => d.SortOrder)
             .Select(d =>
             {
@@ -1120,30 +1125,49 @@ public class CampController : HumansCampControllerBase
                     .Where(a => a.CampRoleDefinitionId == d.Id)
                     .ToList();
 
-                for (var i = 0; i < d.SlotCount; i++)
+                if (d.DeactivatedAt is null)
                 {
-                    var hit = perDefAssignments.FirstOrDefault(a => a.SlotIndex == i);
-                    slots.Add(new CampRoleSlotViewModel
+                    // Active def — render the full SlotCount of slot rows so empty pickers show up.
+                    for (var i = 0; i < d.SlotCount; i++)
                     {
-                        SlotIndex = i,
-                        AssignmentId = hit?.AssignmentId,
-                        AssigneeUserId = hit?.AssigneeUserId,
-                        AssigneeDisplayName = hit?.AssigneeDisplayName,
-                        IsBeingPhasedOut = false
-                    });
-                }
+                        var hit = perDefAssignments.FirstOrDefault(a => a.SlotIndex == i);
+                        slots.Add(new CampRoleSlotViewModel
+                        {
+                            SlotIndex = i,
+                            AssignmentId = hit?.AssignmentId,
+                            AssigneeUserId = hit?.AssigneeUserId,
+                            AssigneeDisplayName = hit?.AssigneeDisplayName,
+                            IsBeingPhasedOut = false
+                        });
+                    }
 
-                // Orphan high-slot rows (when SlotCount was lowered after assignment)
-                foreach (var orphan in perDefAssignments.Where(a => a.SlotIndex >= d.SlotCount))
-                {
-                    slots.Add(new CampRoleSlotViewModel
+                    // Orphan high-slot rows (when SlotCount was lowered after assignment)
+                    foreach (var orphan in perDefAssignments.Where(a => a.SlotIndex >= d.SlotCount))
                     {
-                        SlotIndex = orphan.SlotIndex,
-                        AssignmentId = orphan.AssignmentId,
-                        AssigneeUserId = orphan.AssigneeUserId,
-                        AssigneeDisplayName = orphan.AssigneeDisplayName,
-                        IsBeingPhasedOut = true
-                    });
+                        slots.Add(new CampRoleSlotViewModel
+                        {
+                            SlotIndex = orphan.SlotIndex,
+                            AssignmentId = orphan.AssignmentId,
+                            AssigneeUserId = orphan.AssigneeUserId,
+                            AssigneeDisplayName = orphan.AssigneeDisplayName,
+                            IsBeingPhasedOut = true
+                        });
+                    }
+                }
+                else
+                {
+                    // Deactivated def — render only existing assignments (read-only with Remove). No empty pickers.
+                    foreach (var existing in perDefAssignments.OrderBy(a => a.SlotIndex))
+                    {
+                        slots.Add(new CampRoleSlotViewModel
+                        {
+                            SlotIndex = existing.SlotIndex,
+                            AssignmentId = existing.AssignmentId,
+                            AssigneeUserId = existing.AssigneeUserId,
+                            AssigneeDisplayName = existing.AssigneeDisplayName,
+                            IsBeingPhasedOut = true
+                        });
+                    }
                 }
 
                 return new CampRoleRowViewModel
@@ -1151,6 +1175,7 @@ public class CampController : HumansCampControllerBase
                     CampRoleDefinitionId = d.Id,
                     Name = d.Name,
                     IsRequired = d.IsRequired,
+                    IsDeactivated = d.DeactivatedAt is not null,
                     SlotCount = d.SlotCount,
                     MinimumRequired = d.MinimumRequired,
                     Slots = slots

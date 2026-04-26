@@ -381,6 +381,7 @@
                         @foreach (var role in Model.RolesPanel.Roles)
                         {
                             var filledCount = role.Slots.Count(s => s.AssignmentId.HasValue && !s.IsBeingPhasedOut);
+                            var belowMin = role.IsRequired && !role.IsDeactivated && filledCount < role.MinimumRequired;
                             var alreadyAssignedToThisRole = role.Slots
                                 .Where(s => s.AssigneeUserId.HasValue)
                                 .Select(s => s.AssigneeUserId!.Value)
@@ -388,11 +389,26 @@
                             <div class="mb-3">
                                 <h6 class="mb-2">
                                     @role.Name
-                                    @if (role.IsRequired)
+                                    @if (role.IsDeactivated)
+                                    {
+                                        <span class="badge bg-warning text-dark">deactivated</span>
+                                    }
+                                    else if (role.IsRequired)
                                     {
                                         <span class="badge bg-secondary">required</span>
                                     }
-                                    <small class="text-muted">@filledCount / @role.SlotCount filled</small>
+                                    @if (role.IsDeactivated)
+                                    {
+                                        <small class="text-muted">historical assignments only</small>
+                                    }
+                                    else if (belowMin)
+                                    {
+                                        <small class="text-warning">@filledCount / @role.SlotCount filled (min @role.MinimumRequired)</small>
+                                    }
+                                    else
+                                    {
+                                        <small class="text-muted">@filledCount / @role.SlotCount filled</small>
+                                    }
                                 </h6>
                                 @foreach (var slot in role.Slots)
                                 {
@@ -411,21 +427,31 @@
                                             }
                                             else
                                             {
-                                                <form asp-action="AssignRole" asp-route-slug="@Model.Slug" method="post" class="d-flex gap-2">
+                                                var eligibleMembers = Model.ActiveMembers
+                                                    .Where(m => !alreadyAssignedToThisRole.Contains(m.UserId))
+                                                    .ToList();
+                                                <form asp-action="AssignRole" asp-route-slug="@Model.Slug" method="post" class="d-flex gap-2 align-items-center">
                                                     @Html.AntiForgeryToken()
                                                     <input type="hidden" name="campRoleDefinitionId" value="@role.CampRoleDefinitionId" />
                                                     <input type="hidden" name="slotIndex" value="@slot.SlotIndex" />
                                                     <input type="hidden" name="autoPromote" value="false" />
-                                                    <select name="assigneeUserId" class="form-select form-select-sm" required>
-                                                        <option value="">Pick a member…</option>
-                                                        @foreach (var m in Model.ActiveMembers.Where(m => !alreadyAssignedToThisRole.Contains(m.UserId)))
-                                                        {
-                                                            <option value="@m.UserId">@m.DisplayName</option>
-                                                        }
-                                                    </select>
-                                                    <button class="btn btn-sm btn-outline-primary" type="submit" title="Assign selected member">
-                                                        <i class="fa-solid fa-check"></i>
-                                                    </button>
+                                                    @if (eligibleMembers.Count > 0)
+                                                    {
+                                                        <select name="assigneeUserId" class="form-select form-select-sm" required>
+                                                            <option value="">Pick a member…</option>
+                                                            @foreach (var m in eligibleMembers)
+                                                            {
+                                                                <option value="@m.UserId">@m.DisplayName</option>
+                                                            }
+                                                        </select>
+                                                        <button class="btn btn-sm btn-outline-primary" type="submit" title="Assign selected member">
+                                                            <i class="fa-solid fa-check"></i>
+                                                        </button>
+                                                    }
+                                                    else
+                                                    {
+                                                        <small class="text-muted flex-grow-1">No eligible members — use + to add someone new.</small>
+                                                    }
                                                     <button class="btn btn-sm btn-outline-secondary" type="button"
                                                             data-bs-toggle="modal" data-bs-target="#autoPromoteModal-@role.CampRoleDefinitionId-@slot.SlotIndex"
                                                             title="Add someone new and assign">

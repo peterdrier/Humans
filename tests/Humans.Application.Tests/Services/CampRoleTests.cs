@@ -558,7 +558,7 @@ public class CampRoleTests : IDisposable
     [Fact]
     public async Task UnassignCampRoleAsync_DeletesRow_AndWritesAudit()
     {
-        var (_, seasonId) = await SeedCampSeasonAsync();
+        var (campId, seasonId) = await SeedCampSeasonAsync();
         var (userId, _) = await SeedCampMemberAsync(seasonId, CampMemberStatus.Active);
         var role = await SeedRoleDefinitionAsync("Unassign Role", slotCount: 1);
         var assignedBy = Guid.NewGuid();
@@ -569,7 +569,7 @@ public class CampRoleTests : IDisposable
         assignResult.Outcome.Should().Be(AssignCampRoleOutcome.Assigned);
 
         var actorUserId = Guid.NewGuid();
-        await _service.UnassignCampRoleAsync(assignResult.AssignmentId, actorUserId);
+        await _service.UnassignCampRoleAsync(assignResult.AssignmentId, campId, actorUserId);
 
         var row = await _dbContext.CampRoleAssignments.FirstOrDefaultAsync(a => a.Id == assignResult.AssignmentId);
         row.Should().BeNull();
@@ -582,6 +582,31 @@ public class CampRoleTests : IDisposable
             actorUserId,
             Arg.Any<Guid?>(),
             Arg.Any<string?>());
+    }
+
+    [Fact]
+    public async Task UnassignCampRoleAsync_RejectsCrossCampAssignment()
+    {
+        // Camp A: seed an assignment.
+        var (campAId, seasonAId) = await SeedCampSeasonAsync(slug: "camp-a");
+        var (userAId, _) = await SeedCampMemberAsync(seasonAId, CampMemberStatus.Active);
+        var role = await SeedRoleDefinitionAsync("Cross Camp Role", slotCount: 1);
+        var assignedBy = Guid.NewGuid();
+        var assignResult = await _service.AssignCampRoleAsync(
+            seasonAId, role.Id, slotIndex: 0,
+            assigneeUserId: userAId, assignedByUserId: assignedBy, autoPromoteToMember: false);
+        assignResult.Outcome.Should().Be(AssignCampRoleOutcome.Assigned);
+
+        // Camp B: try to delete A's assignment by passing camp B's id.
+        var (campBId, _) = await SeedCampSeasonAsync(slug: "camp-b");
+
+        var act = async () => await _service.UnassignCampRoleAsync(assignResult.AssignmentId, campBId, Guid.NewGuid());
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*does not belong to this barrio*");
+
+        // Assignment should still exist on Camp A.
+        var row = await _dbContext.CampRoleAssignments.FirstOrDefaultAsync(a => a.Id == assignResult.AssignmentId);
+        row.Should().NotBeNull();
     }
 
     // ==========================================================================

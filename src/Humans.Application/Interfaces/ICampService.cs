@@ -178,7 +178,7 @@ public interface ICampService
         Guid assigneeUserId, Guid assignedByUserId, bool autoPromoteToMember,
         CancellationToken cancellationToken = default);
 
-    Task UnassignCampRoleAsync(Guid assignmentId, Guid actorUserId, CancellationToken cancellationToken = default);
+    Task UnassignCampRoleAsync(Guid assignmentId, Guid expectedCampId, Guid actorUserId, CancellationToken cancellationToken = default);
 
     // Compliance report
     Task<IReadOnlyList<CampComplianceRow>> GetCampRoleComplianceAsync(int year, CancellationToken cancellationToken = default);

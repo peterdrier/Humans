@@ -1916,12 +1916,17 @@ public class CampService : ICampService
             a.SlotIndex, a.CampMemberId, a.CampMember.UserId, a.CampMember.User.DisplayName)).ToList();
     }
 
-    public async Task UnassignCampRoleAsync(Guid assignmentId, Guid actorUserId, CancellationToken cancellationToken = default)
+    public async Task UnassignCampRoleAsync(Guid assignmentId, Guid expectedCampId, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         var assignment = await _dbContext.CampRoleAssignments
             .Include(a => a.CampRoleDefinition)
+            .Include(a => a.CampSeason)
             .FirstOrDefaultAsync(a => a.Id == assignmentId, cancellationToken);
         if (assignment is null) return;
+
+        // IDOR guard: a lead authorized for camp X cannot delete an assignment that belongs to camp Y.
+        if (assignment.CampSeason.CampId != expectedCampId)
+            throw new InvalidOperationException("Assignment does not belong to this barrio.");
 
         _dbContext.CampRoleAssignments.Remove(assignment);
         await _auditLogService.LogAsync(

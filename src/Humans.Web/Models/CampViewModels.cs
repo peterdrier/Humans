@@ -261,6 +261,7 @@ public class CampRoleRowViewModel
     public Guid CampRoleDefinitionId { get; set; }
     public string Name { get; set; } = string.Empty;
     public bool IsRequired { get; set; }
+    public bool IsDeactivated { get; set; }
     public int SlotCount { get; set; }
     public int MinimumRequired { get; set; }
     public List<CampRoleSlotViewModel> Slots { get; set; } = new();
