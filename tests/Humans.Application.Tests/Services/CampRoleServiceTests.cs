@@ -153,6 +153,60 @@ public class CampRoleServiceTests : IDisposable
         await act.Should().ThrowAsync<ArgumentException>().WithMessage("*MinimumRequired*");
     }
 
+    [HumansFact]
+    public async Task UpdateDefinition_modifies_fields_and_audits()
+    {
+        var def = await SeedDefinitionAsync("Old Name", slotCount: 1);
+
+        var input = new UpdateCampRoleDefinitionInput(
+            Name: "New Name", Description: "Updated description",
+            SlotCount: 2, MinimumRequired: 1, SortOrder: 99, IsRequired: false);
+
+        var ok = await _service.UpdateDefinitionAsync(def.Id, input, _actorUserId);
+
+        ok.Should().BeTrue();
+        var updated = await _service.GetDefinitionByIdAsync(def.Id);
+        updated!.Name.Should().Be("New Name");
+        updated.SlotCount.Should().Be(2);
+        updated.IsRequired.Should().BeFalse();
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CampRoleDefinitionUpdated,
+            nameof(CampRoleDefinition),
+            def.Id,
+            Arg.Any<string>(),
+            _actorUserId,
+            null, null);
+    }
+
+    [HumansFact]
+    public async Task UpdateDefinition_rejects_duplicate_name()
+    {
+        var def1 = await SeedDefinitionAsync("Consent Lead");
+        var def2 = await SeedDefinitionAsync("LNT");
+
+        var input = new UpdateCampRoleDefinitionInput(
+            Name: "Consent Lead", Description: null,
+            SlotCount: def2.SlotCount, MinimumRequired: def2.MinimumRequired,
+            SortOrder: def2.SortOrder, IsRequired: def2.IsRequired);
+
+        var act = async () => await _service.UpdateDefinitionAsync(def2.Id, input, _actorUserId);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [HumansFact]
+    public async Task UpdateDefinition_returns_false_when_not_found()
+    {
+        var input = new UpdateCampRoleDefinitionInput(
+            Name: "Anything", Description: null,
+            SlotCount: 1, MinimumRequired: 0, SortOrder: 0, IsRequired: false);
+
+        var ok = await _service.UpdateDefinitionAsync(Guid.NewGuid(), input, _actorUserId);
+
+        ok.Should().BeFalse();
+    }
+
     private async Task<CampRoleDefinition> SeedDefinitionAsync(
         string name = "Consent Lead", int slotCount = 2, int minimumRequired = 1,
         bool isRequired = true, bool deactivated = false)

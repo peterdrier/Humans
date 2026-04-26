@@ -84,8 +84,36 @@ public sealed class CampRoleService : ICampRoleService
                 nameof(minimumRequired));
     }
 
-    public Task<bool> UpdateDefinitionAsync(Guid id, UpdateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default)
-        => throw new NotSupportedException();
+    public async Task<bool> UpdateDefinitionAsync(Guid id, UpdateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default)
+    {
+        ValidateMinimumRequired(input.SlotCount, input.MinimumRequired);
+
+        if (await _repo.DefinitionNameExistsAsync(input.Name, excludingId: id, ct))
+            throw new InvalidOperationException($"A camp role definition named '{input.Name}' already exists.");
+
+        var now = _clock.GetCurrentInstant();
+        var updated = await _repo.UpdateDefinitionAsync(id, def =>
+        {
+            def.Name = input.Name;
+            def.Description = input.Description;
+            def.SlotCount = input.SlotCount;
+            def.MinimumRequired = input.MinimumRequired;
+            def.SortOrder = input.SortOrder;
+            def.IsRequired = input.IsRequired;
+            def.UpdatedAt = now;
+        }, ct);
+
+        if (!updated) return false;
+
+        await _auditLog.LogAsync(
+            AuditAction.CampRoleDefinitionUpdated,
+            nameof(CampRoleDefinition),
+            id,
+            $"Updated camp role definition '{input.Name}'.",
+            actorUserId);
+
+        return true;
+    }
 
     public Task<bool> DeactivateDefinitionAsync(Guid id, Guid actorUserId, CancellationToken ct = default)
         => throw new NotSupportedException();
