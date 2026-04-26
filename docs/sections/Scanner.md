@@ -37,6 +37,7 @@
 
 **Owning service:** none (no business logic at this scale — phase 1 is presentational).
 **Owned tables:** none.
+**Status:** (A) Migrated — pure presentational section, no repository needed (issue nobodies-collective/Humans#525, 2026-04-26)
 
 Controller lives at `src/Humans.Web/Controllers/ScannerController.cs`. Views under `src/Humans.Web/Views/Scanner/`. Client logic at `src/Humans.Web/wwwroot/js/scanner/barcode.js`.
 

@@ -137,6 +137,7 @@ export function initBarcodeScanner(refs) {
         try {
             await startZxing();
         } catch (err) {
+            if (!mediaStream) return; // user pressed Stop while CDN was loading
             console.error('Scanner: zxing bootstrap failed', err);
             showError(labels.errorNoDecoder);
             await stop();
