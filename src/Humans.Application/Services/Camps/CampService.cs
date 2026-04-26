@@ -49,6 +49,7 @@ public sealed class CampService : ICampService, IUserDataContributor
     private readonly ICampImageStorage _imageStorage;
     private readonly INotificationEmitter _notificationEmitter;
     private readonly ICampLeadJoinRequestsBadgeCacheInvalidator _leadBadgeInvalidator;
+    private readonly Lazy<ICampRoleService> _campRoleService;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
     private readonly ILogger<CampService> _logger;
@@ -64,6 +65,7 @@ public sealed class CampService : ICampService, IUserDataContributor
         ICampImageStorage imageStorage,
         INotificationEmitter notificationEmitter,
         ICampLeadJoinRequestsBadgeCacheInvalidator leadBadgeInvalidator,
+        Lazy<ICampRoleService> campRoleService,
         IClock clock,
         IMemoryCache cache,
         ILogger<CampService> logger)
@@ -75,6 +77,7 @@ public sealed class CampService : ICampService, IUserDataContributor
         _imageStorage = imageStorage;
         _notificationEmitter = notificationEmitter;
         _leadBadgeInvalidator = leadBadgeInvalidator;
+        _campRoleService = campRoleService;
         _clock = clock;
         _cache = cache;
         _logger = logger;
@@ -1585,6 +1588,9 @@ public sealed class CampService : ICampService, IUserDataContributor
             throw new InvalidOperationException($"Cannot withdraw a camp member request with status {member.Status}.");
         }
 
+        // Cascade role-assignment cleanup before soft-delete (C1 fix).
+        await _campRoleService.Value.RemoveAllForMemberAsync(campMemberId, userId, cancellationToken);
+
         var now = _clock.GetCurrentInstant();
         member.Status = CampMemberStatus.Removed;
         member.RemovedAt = now;
@@ -1610,6 +1616,9 @@ public sealed class CampService : ICampService, IUserDataContributor
         {
             throw new InvalidOperationException($"Cannot leave a camp membership with status {member.Status}.");
         }
+
+        // Cascade role-assignment cleanup before soft-delete (C1 fix).
+        await _campRoleService.Value.RemoveAllForMemberAsync(campMemberId, userId, cancellationToken);
 
         var now = _clock.GetCurrentInstant();
         member.Status = CampMemberStatus.Removed;

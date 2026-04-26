@@ -31,6 +31,7 @@ public class CampServiceTests : IDisposable
     private readonly IUserService _userService;
     private readonly InMemoryCampImageStorage _imageStorage;
     private readonly INotificationEmitter _notificationEmitter;
+    private readonly ICampRoleService _campRoleService;
 
     public CampServiceTests()
     {
@@ -60,6 +61,10 @@ public class CampServiceTests : IDisposable
 
         _notificationEmitter = Substitute.For<INotificationEmitter>();
 
+        _campRoleService = Substitute.For<ICampRoleService>();
+        _campRoleService.RemoveAllForMemberAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(0));
+
         _service = new CampService(
             repo,
             _userService,
@@ -68,6 +73,7 @@ public class CampServiceTests : IDisposable
             _imageStorage,
             _notificationEmitter,
             Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
+            new Lazy<ICampRoleService>(() => _campRoleService),
             _clock,
             new MemoryCache(new MemoryCacheOptions()),
             NullLogger<CampService>.Instance);
@@ -865,6 +871,47 @@ public class CampServiceTests : IDisposable
         await _auditLog.DidNotReceive().LogAsync(
             AuditAction.CampMemberAddedByLead, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task LeaveCamp_cascades_role_assignment_cleanup()
+    {
+        var camp = new Camp { Id = Guid.NewGuid(), Slug = "leave-cascade" };
+        var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Active };
+        var userId = Guid.NewGuid();
+        var member = new CampMember
+        {
+            Id = Guid.NewGuid(), CampSeasonId = season.Id, UserId = userId,
+            Status = CampMemberStatus.Active, RequestedAt = _clock.GetCurrentInstant(),
+            ConfirmedAt = _clock.GetCurrentInstant(), ConfirmedByUserId = Guid.NewGuid(),
+        };
+        _dbContext.Camps.Add(camp); _dbContext.CampSeasons.Add(season); _dbContext.CampMembers.Add(member);
+        await _dbContext.SaveChangesAsync();
+
+        await _service.LeaveCampAsync(member.Id, userId);
+
+        await _campRoleService.Received(1).RemoveAllForMemberAsync(
+            member.Id, userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task WithdrawCampMembershipRequest_cascades_role_assignment_cleanup()
+    {
+        var camp = new Camp { Id = Guid.NewGuid(), Slug = "withdraw-cascade" };
+        var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Active };
+        var userId = Guid.NewGuid();
+        var member = new CampMember
+        {
+            Id = Guid.NewGuid(), CampSeasonId = season.Id, UserId = userId,
+            Status = CampMemberStatus.Pending, RequestedAt = _clock.GetCurrentInstant(),
+        };
+        _dbContext.Camps.Add(camp); _dbContext.CampSeasons.Add(season); _dbContext.CampMembers.Add(member);
+        await _dbContext.SaveChangesAsync();
+
+        await _service.WithdrawCampMembershipRequestAsync(member.Id, userId);
+
+        await _campRoleService.Received(1).RemoveAllForMemberAsync(
+            member.Id, userId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
