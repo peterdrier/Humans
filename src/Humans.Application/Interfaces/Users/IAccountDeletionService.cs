@@ -12,7 +12,7 @@ namespace Humans.Application.Interfaces.Users;
 /// direction (higher-level → foundational).
 /// </summary>
 /// <remarks>
-/// Extracted in issue #582 (child of umbrella #563) to remove the outbound
+/// Extracted in issue nobodies-collective/Humans#582 (child of umbrella nobodies-collective/Humans#563) to remove the outbound
 /// edges from <c>UserService</c> / <c>ProfileService</c> to higher-level
 /// sections (Teams, RoleAssignments, Shifts) and to give
 /// <c>ProcessAccountDeletionsJob</c> a single entry point instead of reaching

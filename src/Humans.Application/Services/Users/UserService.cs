@@ -30,7 +30,7 @@ namespace Humans.Application.Services.Users;
 /// No outbound edges to higher-level sections (Teams, RoleAssignments,
 /// Shifts) — account-deletion cascade orchestration lives in
 /// <see cref="IAccountDeletionService"/>, which calls back into UserService
-/// for own-data operations. See issue #582 and the
+/// for own-data operations. See issue nobodies-collective/Humans#582 and the
 /// <c>feedback_user_profile_foundational</c> memory.
 /// </para>
 /// </remarks>

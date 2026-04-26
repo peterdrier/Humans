@@ -96,7 +96,7 @@ public class UserArchitectureTests
     [HumansFact]
     public void UserService_HasNoOutboundEdgeToHigherLevelSections()
     {
-        // Issue #582: UserService is foundational. It must not inject
+        // Issue nobodies-collective/Humans#582: UserService is foundational. It must not inject
         // ITeamService / IRoleAssignmentService / IShift*Service (those sections
         // sit above it in the ownership graph). The account-deletion cascade
         // that previously forced these edges lives in IAccountDeletionService.
@@ -104,21 +104,21 @@ public class UserArchitectureTests
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().NotContain(typeof(ITeamService),
-            because: "UserService is foundational — no outbound edge to Teams (issue #582, feedback_user_profile_foundational)");
+            because: "UserService is foundational — no outbound edge to Teams (issue nobodies-collective/Humans#582, feedback_user_profile_foundational)");
         paramTypes.Should().NotContain(typeof(IRoleAssignmentService),
-            because: "UserService is foundational — no outbound edge to RoleAssignments (issue #582)");
+            because: "UserService is foundational — no outbound edge to RoleAssignments (issue nobodies-collective/Humans#582)");
         paramTypes.Should().NotContain(typeof(IShiftSignupService),
-            because: "UserService is foundational — no outbound edge to Shifts (issue #582)");
+            because: "UserService is foundational — no outbound edge to Shifts (issue nobodies-collective/Humans#582)");
         paramTypes.Should().NotContain(typeof(IShiftManagementService),
-            because: "UserService is foundational — no outbound edge to Shifts (issue #582)");
+            because: "UserService is foundational — no outbound edge to Shifts (issue nobodies-collective/Humans#582)");
         paramTypes.Should().NotContain(typeof(IProfileService),
-            because: "UserService is foundational — no outbound edge to Profile (issue #582; Profile depends on User, never the reverse)");
+            because: "UserService is foundational — no outbound edge to Profile (issue nobodies-collective/Humans#582; Profile depends on User, never the reverse)");
     }
 
     [HumansFact]
     public void UserService_HasNoServiceProviderConstructorParameter()
     {
-        // Issue #582: the IServiceProvider was a workaround for DI cycles that
+        // Issue nobodies-collective/Humans#582: the IServiceProvider was a workaround for DI cycles that
         // existed solely because of the deletion cascade (ProfileService,
         // RoleAssignmentService, ShiftSignupService, ShiftManagementService
         // were resolved lazily). With those moved to IAccountDeletionService,
@@ -128,7 +128,7 @@ public class UserArchitectureTests
             .FirstOrDefault(p => p.ParameterType == typeof(IServiceProvider));
 
         providerParam.Should().BeNull(
-            because: "UserService's lazy IServiceProvider escape hatch only existed for deletion cascade; the cascade moved to IAccountDeletionService in issue #582");
+            because: "UserService's lazy IServiceProvider escape hatch only existed for deletion cascade; the cascade moved to IAccountDeletionService in issue nobodies-collective/Humans#582");
     }
 
     // ── IUserRepository ──────────────────────────────────────────────────────

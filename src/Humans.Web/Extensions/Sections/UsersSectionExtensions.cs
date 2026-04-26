@@ -26,7 +26,7 @@ internal static class UsersSectionExtensions
         services.AddScoped<IUserService>(sp => sp.GetRequiredService<UsersUserService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<UsersUserService>());
 
-        // Account deletion orchestrator (issue #582). Single entry point for
+        // Account deletion orchestrator (issue nobodies-collective/Humans#582). Single entry point for
         // user-requested / admin-initiated / expiry-triggered deletion paths.
         // Lives alongside UserService because the User aggregate is the
         // deletion anchor; reaches up to Teams / RoleAssignments / Shifts

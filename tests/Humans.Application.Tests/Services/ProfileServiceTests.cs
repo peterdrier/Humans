@@ -286,7 +286,7 @@ public class ProfileServiceTests : IDisposable
 
     // --- Deletion request flow ---
     // NB: the actual RequestDeletionAsync cascade lives in IAccountDeletionService
-    // (issue #582). ProfileService simply delegates; see AccountDeletionServiceTests
+    // (issue nobodies-collective/Humans#582). ProfileService simply delegates; see AccountDeletionServiceTests
     // for the full team/role/audit/email coverage.
 
     [HumansFact]

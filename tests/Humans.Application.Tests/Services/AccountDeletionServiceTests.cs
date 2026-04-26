@@ -23,7 +23,7 @@ namespace Humans.Application.Tests.Services;
 /// Orchestration coverage for <see cref="IAccountDeletionService"/> — the
 /// single entry point that replaced the cascade code formerly scattered
 /// across <c>UserService</c>, <c>ProfileService</c>, and
-/// <c>OnboardingService</c> (issue #582). Verifies the order + side effects
+/// <c>OnboardingService</c> (issue nobodies-collective/Humans#582). Verifies the order + side effects
 /// of the three deletion paths: user-requested, admin-initiated, expiry.
 /// </summary>
 public class AccountDeletionServiceTests

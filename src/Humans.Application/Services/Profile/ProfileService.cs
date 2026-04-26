@@ -298,7 +298,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
     public Task<OnboardingResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default)
     {
         // Delegates to IAccountDeletionService — the single orchestrator for
-        // user-initiated / admin / expiry deletion paths. See issue #582:
+        // user-initiated / admin / expiry deletion paths. See issue nobodies-collective/Humans#582:
         // ProfileService keeps only own-data mutations; cross-section cascade
         // (team memberships, role assignments, deletion-pending fields, audit,
         // email) belongs to the orchestrator. CachingProfileService's

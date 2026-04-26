@@ -82,14 +82,14 @@ public class ProfileArchitectureTests
     [HumansFact]
     public void ProfileService_HasNoOutboundEdgeToTeams()
     {
-        // Issue #582: Profile is foundational. The only prior reason
+        // Issue nobodies-collective/Humans#582: Profile is foundational. The only prior reason
         // ProfileService injected ITeamService was the deletion-request
         // cascade, which moved to IAccountDeletionService.
         var ctor = typeof(ProfileService).GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().NotContain(typeof(ITeamService),
-            because: "Profile is foundational — the deletion cascade moved to IAccountDeletionService in issue #582");
+            because: "Profile is foundational — the deletion cascade moved to IAccountDeletionService in issue nobodies-collective/Humans#582");
     }
 
     // ── IProfileRepository ────────────────────────────────────────────────────

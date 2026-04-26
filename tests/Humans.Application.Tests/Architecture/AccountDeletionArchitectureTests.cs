@@ -9,7 +9,7 @@ namespace Humans.Application.Tests.Architecture;
 /// <summary>
 /// Architecture tests for <see cref="AccountDeletionService"/> — the single
 /// orchestrator for user-requested, admin-initiated, and expiry-triggered
-/// account deletion (issue #582). Enforces the orchestrator shape so future
+/// account deletion (issue nobodies-collective/Humans#582). Enforces the orchestrator shape so future
 /// drift back into per-section cascade code fails loudly.
 /// </summary>
 public class AccountDeletionArchitectureTests
@@ -19,7 +19,7 @@ public class AccountDeletionArchitectureTests
     {
         typeof(AccountDeletionService).Namespace
             .Should().Be("Humans.Application.Services.Users.AccountLifecycle",
-                because: "AccountDeletionService is part of the User section's deletion-orchestration subfolder (issue #582)");
+                because: "AccountDeletionService is part of the User section's deletion-orchestration subfolder (issue nobodies-collective/Humans#582)");
     }
 
     [HumansFact]
