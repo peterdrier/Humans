@@ -1204,7 +1204,7 @@
   <data name="Nav_Board" xml:space="preserve"><value>Board</value></data>
   <data name="Nav_Scanner" xml:space="preserve"><value>Scanner</value></data>
 
-  <!-- Scanner section (issue #525) -->
+  <!-- Scanner section (issue nobodies-collective/Humans#525) -->
   <data name="Scanner_Section" xml:space="preserve"><value>Scanner</value></data>
   <data name="Scanner_Index_Title" xml:space="preserve"><value>Outils de scanner</value></data>
   <data name="Scanner_Index_Intro" xml:space="preserve"><value>Outils de scanner dans le navigateur. Aucune donnée n'est envoyée au serveur — tout s'exécute sur ton appareil.</value></data>

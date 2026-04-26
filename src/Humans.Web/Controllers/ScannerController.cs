@@ -6,7 +6,7 @@ namespace Humans.Web.Controllers;
 
 /// <summary>
 /// Scanner section — in-browser tools for decoding barcodes / QR codes / similar from the
-/// device camera. Phase 1 (issue #525) only ships the barcode decoder; later tools live at
+/// device camera. Phase 1 (issue nobodies-collective/Humans#525) only ships the barcode decoder; later tools live at
 /// <c>/Scanner/{ToolName}</c>. Nothing on this section writes server-side state.
 /// </summary>
 [Authorize(Policy = PolicyNames.TicketAdminBoardOrAdmin)]

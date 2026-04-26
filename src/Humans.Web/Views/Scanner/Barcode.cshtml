@@ -75,13 +75,13 @@
             status: document.getElementById('scanner-status'),
             error: document.getElementById('scanner-error'),
             labels: {
-                starting: '@Localizer["Scanner_Barcode_Status_Starting"]',
-                running: '@Localizer["Scanner_Barcode_Status_Running"]',
-                stopped: '@Localizer["Scanner_Barcode_Status_Stopped"]',
-                pathNative: '@Localizer["Scanner_Barcode_Path_Native"]',
-                pathZxing: '@Localizer["Scanner_Barcode_Path_ZXing"]',
-                errorCamera: '@Localizer["Scanner_Barcode_Error_Camera"]',
-                errorNoDecoder: '@Localizer["Scanner_Barcode_Error_NoDecoder"]'
+                starting: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Scanner_Barcode_Status_Starting"].Value)),
+                running: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Scanner_Barcode_Status_Running"].Value)),
+                stopped: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Scanner_Barcode_Status_Stopped"].Value)),
+                pathNative: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Scanner_Barcode_Path_Native"].Value)),
+                pathZxing: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Scanner_Barcode_Path_ZXing"].Value)),
+                errorCamera: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Scanner_Barcode_Error_Camera"].Value)),
+                errorNoDecoder: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Scanner_Barcode_Error_NoDecoder"].Value))
             }
         });
     </script>

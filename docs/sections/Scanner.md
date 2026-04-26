@@ -3,7 +3,7 @@
 ## Concepts
 
 - **Scanner** is a section for in-browser tools that read data from the device camera (or similar inputs in the future).
-- **Phase 1** (issue #525) ships a single tool: `/Scanner/Barcode`, which decodes QR codes and CODE128 barcodes using the browser's `BarcodeDetector` API, falling back to `@zxing/browser` via CDN.
+- **Phase 1** (issue nobodies-collective/Humans#525) ships a single tool: `/Scanner/Barcode`, which decodes QR codes and CODE128 barcodes using the browser's `BarcodeDetector` API, falling back to `@zxing/browser` via CDN.
 - **Not a check-in tool.** Scanning a ticket here does not mark anyone as arrived. Decoded values are displayed only and not sent to the server.
 - **No server-side state.** The section has no owned tables, no DTOs, no services. Decoding happens entirely in the browser; results live in the page and are discarded on navigation.
 

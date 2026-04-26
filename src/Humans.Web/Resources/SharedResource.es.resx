@@ -1209,7 +1209,7 @@
   <data name="Nav_Board" xml:space="preserve"><value>Board</value></data>
   <data name="Nav_Scanner" xml:space="preserve"><value>Escáner</value></data>
 
-  <!-- Scanner section (issue #525) -->
+  <!-- Scanner section (issue nobodies-collective/Humans#525) -->
   <data name="Scanner_Section" xml:space="preserve"><value>Escáner</value></data>
   <data name="Scanner_Index_Title" xml:space="preserve"><value>Herramientas de escáner</value></data>
   <data name="Scanner_Index_Intro" xml:space="preserve"><value>Herramientas de escáner en el navegador. No se envían datos al servidor — todo se ejecuta en tu dispositivo.</value></data>

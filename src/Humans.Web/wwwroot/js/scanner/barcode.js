@@ -152,6 +152,7 @@ export function initBarcodeScanner(refs) {
             // Some browsers report BarcodeDetector but constructors fail for unsupported formats.
             console.warn('Scanner: BarcodeDetector constructor failed, falling back to ZXing', err);
             decodePath = 'zxing';
+            setStatus(`${labels.running} (${labels.pathZxing})`);
             startZxing().catch((e) => {
                 console.error('Scanner: zxing fallback also failed', e);
                 showError(labels.errorNoDecoder);
