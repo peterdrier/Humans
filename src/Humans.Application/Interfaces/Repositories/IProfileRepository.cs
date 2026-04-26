@@ -94,6 +94,14 @@ public interface IProfileRepository
     Task<int> GetReviewableCountAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Returns user ids of profiles whose <c>ConsentCheckStatus</c> is
+    /// <c>Pending</c> and whose profile is not approved and not rejected.
+    /// Ordered by <c>CreatedAt</c> ascending. Used by the auto-consent-check
+    /// job to enumerate the manual review queue.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetPendingConsentCheckUserIdsAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the user ids of every approved, non-suspended profile. Used
     /// by the admin dashboard to compute active-user aggregates without
     /// loading the full Profile graph.

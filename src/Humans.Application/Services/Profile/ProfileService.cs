@@ -882,6 +882,46 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         return new OnboardingResult(true);
     }
 
+    public async Task<OnboardingResult> AutoClearConsentCheckAsync(
+        Guid userId, string reason, string modelId, string actorName, CancellationToken ct = default)
+    {
+        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        if (profile is null)
+            return new OnboardingResult(false, "NotFound");
+
+        if (profile.RejectedAt is not null)
+            return new OnboardingResult(false, "AlreadyRejected");
+
+        if (profile.ConsentCheckStatus is not ConsentCheckStatus.Pending)
+            return new OnboardingResult(false, "NotPending");
+
+        var now = _clock.GetCurrentInstant();
+
+        profile.ConsentCheckStatus = ConsentCheckStatus.Cleared;
+        profile.ConsentCheckAt = now;
+        // No ConsentCheckedByUserId — the system (LLM) cleared this, not a human reviewer.
+        profile.ConsentCheckedByUserId = null;
+        profile.ConsentCheckNotes = $"Auto-approved by {modelId}: {reason}";
+        profile.IsApproved = true;
+        profile.UpdatedAt = now;
+
+        await _profileRepository.UpdateAsync(profile, ct);
+
+        await _auditLogService.LogAsync(
+            AuditAction.ConsentCheckAutoCleared, nameof(Domain.Entities.Profile), userId,
+            $"Consent check auto-cleared by {modelId}: {reason}",
+            actorName);
+
+        _logger.LogInformation(
+            "Consent check auto-cleared for user {UserId} by model {ModelId}: {Reason}",
+            userId, modelId, reason);
+
+        return new OnboardingResult(true);
+    }
+
+    public Task<IReadOnlyList<Guid>> GetPendingConsentCheckUserIdsAsync(CancellationToken ct = default) =>
+        _profileRepository.GetPendingConsentCheckUserIdsAsync(ct);
+
     public async Task<OnboardingResult> RejectSignupAsync(
         Guid userId, Guid reviewerId, string? reason, CancellationToken ct = default)
     {

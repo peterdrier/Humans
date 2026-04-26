@@ -1,0 +1,111 @@
+@model Humans.Web.Models.ConsentHoldListViewModel
+@{
+    ViewData["Title"] = "Consent Hold List";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Consent Hold List</li>
+    </ol>
+</nav>
+
+<h1>Consent Hold List</h1>
+
+<vc:temp-data-alerts />
+
+<div class="card mb-4">
+    <div class="card-body">
+        <p class="text-muted mb-2">
+            The auto Consent Check job uses this list to suppress automatic approval.
+            If an incoming legal name matches any entry here (fuzzy, case-insensitive,
+            evaluated by the LLM), the human stays in the manual review queue for a
+            Consent Coordinator to look at. The job never auto-rejects — at worst a
+            match delays the approval until a human reviewer clears it.
+        </p>
+        <p class="text-muted mb-0">
+            Entries are free-form: real names, aliases, or whatever fragments are
+            worth matching. Entries are never shown to non-admin users.
+        </p>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">Add entry</div>
+    <div class="card-body">
+        <form asp-action="Add" method="post" class="row g-2">
+            @Html.AntiForgeryToken()
+            <div class="col-md-5">
+                <label for="entry" class="form-label">Name / alias</label>
+                <input type="text" id="entry" name="entry" class="form-control" maxlength="500" required />
+            </div>
+            <div class="col-md-5">
+                <label for="note" class="form-label">Note (optional)</label>
+                <input type="text" id="note" name="note" class="form-control" maxlength="2000" />
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Add</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Current entries</strong>
+        <span class="badge bg-secondary">@Model.Entries.Count</span>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Entry</th>
+                    <th>Note</th>
+                    <th>Added</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Entries.Count == 0)
+                {
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-4">
+                            No entries. The list starts empty; add names as they come up.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var row in Model.Entries)
+                    {
+                        <tr>
+                            <td><code>@row.Entry</code></td>
+                            <td>@(string.IsNullOrWhiteSpace(row.Note) ? "—" : row.Note)</td>
+                            <td>@row.AddedAt.ToDisplayCompactDateTime()</td>
+                            <td class="text-end">
+                                <form asp-action="Delete" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@row.Id" />
+                                    <button type="submit" class="btn btn-outline-danger btn-sm"
+                                            data-confirm="Remove this hold-list entry?">
+                                        Remove
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    document.querySelectorAll('[data-confirm]').forEach(function (button) {
+        button.addEventListener('click', function (e) {
+            if (!confirm(this.getAttribute('data-confirm'))) {
+                e.preventDefault();
+            }
+        });
+    });
+</script>

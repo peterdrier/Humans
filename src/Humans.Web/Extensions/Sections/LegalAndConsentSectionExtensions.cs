@@ -1,3 +1,5 @@
+using Humans.Application.Configuration;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Legal;
@@ -15,7 +17,10 @@ namespace Humans.Web.Extensions.Sections;
 
 internal static class LegalAndConsentSectionExtensions
 {
-    internal static IServiceCollection AddLegalAndConsentSection(this IServiceCollection services)
+    internal static IServiceCollection AddLegalAndConsentSection(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        ConfigurationRegistry? configRegistry)
     {
         // Legal document section — §15 repository pattern (issue #547a).
         // ILegalDocumentRepository owns legal_documents + document_versions and
@@ -43,6 +48,25 @@ internal static class LegalAndConsentSectionExtensions
 
         services.AddScoped<SyncLegalDocumentsJob>();
         services.AddScoped<SendReConsentReminderJob>();
+
+        // Consent hold list — admin-only CRUD over the consent_hold_list table.
+        // Read by AutoConsentCheckJob to suppress LLM auto-approval for matching names.
+        services.AddScoped<IConsentHoldListService, ConsentHoldListService>();
+
+        // Anthropic-backed assistant for the AutoConsentCheckJob.
+        // API key read from IConfiguration["Anthropic:ApiKey"] (env var:
+        // Anthropic__ApiKey). See docs/features/auto-consent-check.md.
+        if (configRegistry is not null)
+        {
+            configuration.GetOptionalSetting(configRegistry, "Anthropic:ApiKey", "Anthropic",
+                isSensitive: true, importance: ConfigurationImportance.Recommended);
+            configuration.GetOptionalSetting(configRegistry, "Anthropic:Model", "Anthropic");
+        }
+        services.AddHttpClient<IConsentCheckAssistant, ConsentCheckAssistant>();
+
+        // Auto consent check job — Hangfire recurring job, registered alongside
+        // the other consent-section jobs. Scheduled by RecurringJobExtensions.
+        services.AddScoped<AutoConsentCheckJob>();
 
         return services;
     }

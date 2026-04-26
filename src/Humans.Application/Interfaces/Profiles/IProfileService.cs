@@ -158,6 +158,25 @@ public interface IProfileService
         Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default);
 
     /// <summary>
+    /// Auto-clear a pending consent check on behalf of the system (no human reviewer).
+    /// Mirrors <see cref="ClearConsentCheckAsync"/> in side effects (IsApproved=true,
+    /// status=Cleared) but leaves <c>ConsentCheckedByUserId</c> null and audits as
+    /// <see cref="Humans.Domain.Enums.AuditAction.ConsentCheckAutoCleared"/> with
+    /// <paramref name="actorName"/> as the actor. Only succeeds when the profile
+    /// is currently in <see cref="ConsentCheckStatus.Pending"/>.
+    /// Error keys: <c>NotFound</c>, <c>AlreadyRejected</c>, <c>NotPending</c>.
+    /// </summary>
+    Task<OnboardingResult> AutoClearConsentCheckAsync(
+        Guid userId, string reason, string modelId, string actorName, CancellationToken ct = default);
+
+    /// <summary>
+    /// User ids of profiles currently sitting in the Consent Check = Pending
+    /// bucket (not yet cleared, not flagged, not rejected). Used by
+    /// <c>AutoConsentCheckJob</c> to enumerate the queue.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetPendingConsentCheckUserIdsAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Rejects a signup (records rejection reason, sets RejectedAt).
     /// Error keys: <c>NotFound</c>, <c>AlreadyRejected</c>.
     /// </summary>

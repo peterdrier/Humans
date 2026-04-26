@@ -21,6 +21,17 @@ public interface IOnboardingService : IOnboardingEligibilityQuery
     Task<OnboardingResult> FlagConsentCheckAsync(
         Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default);
 
+    /// <summary>
+    /// Auto-clear a pending consent check on behalf of the system (no human reviewer).
+    /// Used by <c>AutoConsentCheckJob</c> after the LLM assistant gives a clean verdict.
+    /// Same semantics as <see cref="ClearConsentCheckAsync"/> (IsApproved=true, cache
+    /// eviction, Volunteers team sync) but audited as
+    /// <see cref="Humans.Domain.Enums.AuditAction.ConsentCheckAutoCleared"/> with the
+    /// job name as the actor, and no ConsentCheckedByUserId set.
+    /// </summary>
+    Task<OnboardingResult> AutoClearConsentCheckAsync(
+        Guid userId, string reason, string modelId, CancellationToken ct = default);
+
     // --- Board vote ---
     Task<bool> HasBoardVotesAsync(Guid applicationId, CancellationToken ct = default);
     Task<OnboardingResult> CastBoardVoteAsync(
@@ -39,6 +50,12 @@ public interface IOnboardingService : IOnboardingEligibilityQuery
         Guid userId, Guid adminId, string? notes, CancellationToken ct = default);
     Task<OnboardingResult> UnsuspendAsync(
         Guid userId, Guid adminId, CancellationToken ct = default);
+
+    /// <summary>
+    /// UserIds of profiles currently sitting in the Consent Check = Pending bucket
+    /// (not yet cleared, not flagged, not rejected). Used by AutoConsentCheckJob.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetPendingConsentCheckUserIdsAsync(CancellationToken ct = default);
 
     // --- Badge counts ---
     /// <summary>

@@ -75,6 +75,12 @@ public static class RecurringJobExtensions
             // Materialize ticket sales actuals into budget line items daily at 04:30.
             ("ticketing-budget-sync", () => RecurringJob.AddOrUpdate<TicketingBudgetSyncJob>(
                 "ticketing-budget-sync", job => job.ExecuteAsync(CancellationToken.None), "30 4 * * *")),
+
+            // Auto-approve rubber-stamp consent-check entries via LLM — every 15 min.
+            // Controlled by SyncServiceType.AutoConsentCheck at /Google/SyncSettings
+            // (set to None to disable). Only ever approves; flags/rejects never happen.
+            ("auto-consent-check", () => RecurringJob.AddOrUpdate<AutoConsentCheckJob>(
+                "auto-consent-check", job => job.ExecuteAsync(CancellationToken.None), "*/15 * * * *")),
         };
 
         foreach (var (id, register) in jobs)
