@@ -13,6 +13,7 @@ public class BudgetCategory
     public Guid BudgetGroupId { get; init; }
     public BudgetGroup? BudgetGroup { get; set; }
     public string Name { get; set; } = string.Empty;
+    public string Slug { get; set; } = string.Empty;
     public decimal AllocatedAmount { get; set; }
     public ExpenditureType ExpenditureType { get; set; } = ExpenditureType.OpEx;
     public Guid? TeamId { get; set; }

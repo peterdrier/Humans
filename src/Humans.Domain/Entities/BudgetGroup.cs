@@ -11,6 +11,7 @@ public class BudgetGroup
     public Guid BudgetYearId { get; init; }
     public BudgetYear? BudgetYear { get; set; }
     public string Name { get; set; } = string.Empty;
+    public string Slug { get; set; } = string.Empty;
     public int SortOrder { get; set; }
     public bool IsRestricted { get; set; }
     public bool IsDepartmentGroup { get; set; }

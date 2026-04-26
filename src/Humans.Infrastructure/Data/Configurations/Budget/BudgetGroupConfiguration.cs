@@ -12,6 +12,7 @@ public class BudgetGroupConfiguration : IEntityTypeConfiguration<BudgetGroup>
         builder.HasKey(g => g.Id);
 
         builder.Property(g => g.Name).HasMaxLength(256).IsRequired();
+        builder.Property(g => g.Slug).HasMaxLength(64).IsRequired();
         builder.Property(g => g.SortOrder).IsRequired();
         builder.Property(g => g.IsRestricted).IsRequired();
         builder.Property(g => g.IsDepartmentGroup).IsRequired();
@@ -23,5 +24,6 @@ public class BudgetGroupConfiguration : IEntityTypeConfiguration<BudgetGroup>
         builder.HasOne(g => g.TicketingProjection).WithOne(p => p.BudgetGroup).HasForeignKey<TicketingProjection>(p => p.BudgetGroupId).OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(g => new { g.BudgetYearId, g.SortOrder });
+        builder.HasIndex(g => new { g.BudgetYearId, g.Slug }).IsUnique();
     }
 }
