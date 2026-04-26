@@ -1,10 +1,10 @@
 # Authorization Inventory
 
-Phase 0 of the [first-class authorization transition plan](plans/2026-04-03-first-class-authorization-transition.md).
+Originally produced as Phase 0 of the [first-class authorization transition plan](plans/2026-04-03-first-class-authorization-transition.md) (kept linked for historical context). **Phase 1 is complete:** every canonical policy in §5 is registered in `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`, all controllers use `[Authorize(Policy = PolicyNames.X)]`, the `authorize-policy` TagHelper resolves through `IAuthorizationService`, and views no longer call `RoleChecks.*` / `ShiftRoleChecks.*` directly. **Phase 2 (resource-based authorization)** has shipped its first vertical slices — see §6 (`TeamAuthorizationHandler`, `CampAuthorizationHandler`, `BudgetAuthorizationHandler`, `RoleAssignmentAuthorizationHandler`). **Phase 3 (service-layer enforcement) is cancelled** — see the tombstone in the transition plan.
 
-Generated 2026-04-03. Refreshed 2026-04-25. Covers every `[Authorize(Policy)]` / `[Authorize(Roles)]` attribute on controllers and actions in `src/Humans.Web/Controllers/`, every `RoleChecks.*` / `ShiftRoleChecks.*` invocation across `src/Humans.Web/` and `src/Humans.Application/`, every `IAuthorizationService.AuthorizeAsync` call site, and every `AuthorizationHandler<T, R>` under `src/Humans.Web/Authorization/` and `src/Humans.Application/Authorization/`.
+Generated 2026-04-03. Refreshed 2026-04-25 (Section 2 fully re-scanned 2026-04-26). Covers every `[Authorize(Policy)]` / `[Authorize(Roles)]` attribute on controllers and actions in `src/Humans.Web/Controllers/`, every `RoleChecks.*` / `ShiftRoleChecks.*` invocation across `src/Humans.Web/` and `src/Humans.Application/`, every `IAuthorizationService.AuthorizeAsync` call site, every `authorize-policy` TagHelper attribute and `User.IsInRole` / `Model.X` authorization check across `src/Humans.Web/Views/` and `src/Humans.Web/ViewComponents/`, and every `AuthorizationHandler<T, R>` under `src/Humans.Web/Authorization/` and `src/Humans.Application/Authorization/`.
 
-The codebase has migrated from `[Authorize(Roles = RoleGroups.X)]` to `[Authorize(Policy = PolicyNames.X)]`. The `Source` column reflects the constant referenced in the attribute as it appears in the code today.
+The `Source` column reflects the constant referenced in the attribute as it appears in the code today.
 
 ---
 
@@ -277,145 +277,198 @@ The codebase has migrated from `[Authorize(Roles = RoleGroups.X)]` to `[Authoriz
 
 ## 2. View Authorization Map
 
+Views express authorization four ways today:
+
+1. **`authorize-policy="PolicyName"` TagHelper attribute** — the dominant pattern. Resolves through `IAuthorizationService.AuthorizeAsync(User, policyName)` via `AuthorizeViewTagHelper`. Hides the element when the policy fails.
+2. **`(await AuthService.AuthorizeAsync(User, PolicyNames.X)).Succeeded`** — used when a view needs the boolean for branching, multi-use within the page, or to drive a `var` flag rather than gate one element. Requires `@inject IAuthorizationService AuthService`.
+3. **`User.IsInRole(RoleNames.X)` direct calls** — used in two places only (build-hash tooltip in the nav, Refresh button in the Guide layout). Not part of the canonical pattern; kept where the surrounding logic needs a plain `bool` outside the TagHelper rendering pipeline.
+4. **`Model.CanX` / `Model.IsX` view-model properties** — for resource-relative checks (coordinator-of-this-team, lead-of-this-camp, can-edit-this-budget) and for status-driven UI (suspended badge, approved badge, etc.). The view does not know about roles; the controller / view-model author resolved authorization upstream.
+
+`RoleChecks.*` and `ShiftRoleChecks.*` are no longer invoked from any view file (Phase 1 retirement complete — verified 2026-04-26).
+
 ### Nav Layout (`_Layout.cshtml`)
 
 | Line | Check | Controls |
 |---|---|---|
-| 56 | `ActiveMember` claim OR `RoleChecks.IsTeamsAdminBoardOrAdmin` | Shifts nav link visibility |
-| 57 | Above OR `ShiftRoleChecks.CanAccessDashboard` | Shifts nav link visibility |
-| 63 | `RoleChecks.CanAccessVolunteers` | "V" (Vol Management) nav link |
-| 70 | `RoleChecks.CanAccessReviewQueue` | Review nav link |
-| 76 | `RoleChecks.IsAdminOrBoard` | Voting nav link |
-| 82 | `RoleChecks.IsAdminOrBoard` | Board nav link |
-| 88 | `RoleChecks.IsHumanAdmin` AND NOT `IsAdminOrBoard` | "Humans" nav link (standalone HumanAdmin) |
-| 94 | `RoleChecks.IsAdmin` | Admin nav link |
-| 94 | `RoleChecks.IsAdmin` | Google nav link |
-| 103 | `RoleChecks.CanAccessTickets` | Tickets nav link |
-| 109 | `RoleChecks.IsFeedbackAdmin` | Feedback nav link |
-| 121 | `RoleChecks.CanAccessFinance` | Finance nav link |
+| 33–40 | `User.IsInRole(RoleNames.Admin) \|\| HumanAdmin \|\| TeamsAdmin \|\| CampAdmin \|\| TicketAdmin \|\| FeedbackAdmin \|\| FinanceAdmin \|\| NoInfoAdmin` | Build-hash tooltip on brand link (any admin role sees commit SHA on hover) |
+| 101 | `authorize-policy="IsActiveMember"` | City Planning nav link |
+| 110 | `authorize-policy="ActiveMemberOrShiftAccess"` | Shifts nav link |
+| 113 | `authorize-policy="VolunteerSectionAccess"` | "V" (Vol Management) nav link |
+| 116 | `authorize-policy="ReviewQueueAccess"` | Review nav link + queue badges |
+| 119 | `authorize-policy="BoardOrAdmin"` | Voting nav link + queue badges |
+| 122 | `authorize-policy="BoardOrAdmin"` | Board nav link |
+| 125 | `authorize-policy="HumanAdminOnly"` | "Humans" nav link (standalone HumanAdmin without Board/Admin) |
+| 128 | `authorize-policy="AdminOnly"` | Admin nav link |
+| 131 | `authorize-policy="AdminOnly"` | Google nav link |
+| 134 | `authorize-policy="TicketAdminBoardOrAdmin"` | Tickets nav link |
+| 137 | `authorize-policy="IsActiveMember"` | Budget nav link |
+| 140 | `authorize-policy="FinanceAdminOrAdmin"` | Finance nav link |
 
 ### Login Partial (`_LoginPartial.cshtml`)
 
 | Line | Check | Controls |
 |---|---|---|
-| 13 | `RoleChecks.IsTeamsAdminBoardOrAdmin` | `isActiveMember` flag for Governance dropdown link |
+| 44 | `authorize-policy="IsActiveMember"` | Governance link in profile dropdown |
+
+### Guide Layout (`_GuideLayout.cshtml`)
+
+| Line | Check | Controls |
+|---|---|---|
+| 40 | `User.IsInRole(RoleNames.Admin)` | "Refresh from GitHub" button |
 
 ### Shift Views
 
-| View | Check | Controls |
-|---|---|---|
-| `Shifts/Index.cshtml:54` | `ShiftRoleChecks.CanManageDepartment` | "Manage" button |
-| `Shifts/Index.cshtml:58` | `RoleChecks.IsAdmin` | "Event Settings" link |
-| `Shifts/NoActiveEvent.cshtml:8` | `RoleChecks.IsAdmin` | "Create Event" link |
-| `ShiftAdmin/Index.cshtml` | `Model.CanManageShifts` | Create/edit shift buttons |
-| `ShiftAdmin/Index.cshtml` | `Model.CanApproveSignups` | Approve/reject signup buttons |
-| `ShiftAdmin/Index.cshtml` | `Model.CanViewMedical` | Medical badge visibility |
+| View | Line | Check | Controls |
+|---|---|---|---|
+| `Shifts/Index.cshtml` | 27 | `authorize-policy="ShiftDepartmentManager"` | Dashboard button |
+| `Shifts/Index.cshtml` | 28 | `authorize-policy="AdminOnly"` | Settings button |
+| `Shifts/NoActiveEvent.cshtml` | 8 | `authorize-policy="AdminOnly"` | "Configure Event Settings" link |
+| `ShiftAdmin/Index.cshtml` | 39 | `Model.CanApproveSignups` | Pending approvals card visibility |
+| `ShiftAdmin/Index.cshtml` | 66, 558, 594 | `Model.CanViewMedical` | Medical badge in volunteer profile partial |
+| `ShiftAdmin/Index.cshtml` | 169, 204, 429, 461, 660, 791, 868, 930 | `Model.CanManageShifts` | Rota/shift edit/delete buttons, add-rota/add-shift forms |
+| `ShiftAdmin/Index.cshtml` | 335, 393, 440, 538, 572, 633, 734 | `Model.CanApproveSignups` | Signups column header, approve/reject buttons, signup table cells |
 
 ### Volunteer Management Views
 
-| View | Check | Controls |
-|---|---|---|
-| `Vol/_VolLayout.cshtml:26` | `ShiftRoleChecks.CanAccessDashboard` | Dashboard nav tab |
-| `Vol/_VolLayout.cshtml:39` | `RoleChecks.IsAdmin` | Settings nav tab |
-| `Vol/Management.cshtml:37` | `RoleChecks.IsAdmin` | "Create Department" button |
-| `Vol/Management.cshtml:106` | `RoleChecks.IsAdmin` | "Event Settings" button |
-| `Vol/NoActiveEvent.cshtml:9` | `RoleChecks.IsAdmin` | "Create Event" link |
-| `Vol/DepartmentDetail.cshtml:52` | `Model.IsCoordinator` | Pending request count badge |
-| `Vol/ChildTeamDetail.cshtml:96` | `Model.IsCoordinator` | Pending requests section |
-| `Vol/Settings.cshtml:79` | `Model.IsShiftBrowsingOpen` | Shift browsing toggle |
-| `Vol/Shifts.cshtml:100` | `Model.ShowSignups` | Signup column visibility |
+| View | Line | Check | Controls |
+|---|---|---|---|
+| `Vol/_VolLayout.cshtml` | 26 | `authorize-policy="ShiftDashboardAccess"` | Urgent nav tab |
+| `Vol/_VolLayout.cshtml` | 31 | `authorize-policy="ShiftDashboardAccess"` | Management nav tab |
+| `Vol/_VolLayout.cshtml` | 36 | `authorize-policy="AdminOnly"` | Settings nav tab |
+| `Vol/Management.cshtml` | 37 | `authorize-policy="AdminOnly"` | "Change in Settings" button (System Status card) |
+| `Vol/Management.cshtml` | 103 | `authorize-policy="AdminOnly"` | Settings action card |
+| `Vol/NoActiveEvent.cshtml` | 9 | `authorize-policy="AdminOnly"` | "Configure Event Settings" link |
+| `Vol/DepartmentDetail.cshtml` | 52 | `Model.IsCoordinator` | Pending request count badge on child team |
+| `Vol/ChildTeamDetail.cshtml` | 92 | `Model.IsCoordinator` (passed to `_RotaCard` partial) | Coordinator-only rota interactions |
+| `Vol/ChildTeamDetail.cshtml` | 99 | `Model.IsCoordinator` | Pending join requests card |
+| `Vol/Settings.cshtml` | 79 | `Model.IsShiftBrowsingOpen` | Shift-browsing toggle initial state |
+| `Vol/Shifts.cshtml` | 98 | `Model.ShowSignups` (passed to `_RotaCard` partial) | Signup column visibility |
+| `Vol/_ShiftRow.cshtml` | 58 | `Model.ShowSignups` | Signup status cell |
+| `Vol/_RotaCard.cshtml` | 71, 81 | `Model.ShowSignups` | Signup column header + propagation to `_ShiftRow` |
 
 ### Profile Views
 
-| View | Check | Controls |
-|---|---|---|
-| `Profile/Index.cshtml:12` | `RoleChecks.IsHumanAdminBoardOrAdmin` | "Admin Detail" link |
-| `Profile/Index.cshtml:63` | `RoleChecks.IsTeamsAdminBoardOrAdmin` | Team view mode for non-own profiles |
-| `Profile/AdminDetail.cshtml` | `Model.IsSuspended/IsApproved/IsRejected` | Status badges and action buttons |
-| `Profile/AdminDetail.cshtml:309` | `Model.HasProfile && !IsApproved && !IsSuspended` | "Approve" button |
-| `Profile/AdminDetail.cshtml:317` | `Model.IsSuspended` | "Unsuspend" button |
-| `Profile/AdminDetail.cshtml:336` | `Model.HasProfile && !IsRejected` | "Suspend" button |
+| View | Line | Check | Controls |
+|---|---|---|---|
+| `Profile/Index.cshtml` | 15 | `authorize-policy="HumanAdminBoardOrAdmin"` | "Admin" link to AdminDetail |
+| `Profile/Index.cshtml` | 63 | `(await AuthService.AuthorizeAsync(User, PolicyNames.TeamsAdminBoardOrAdmin)).Succeeded` | `ProfileCardViewMode.Admin` vs `Public` for non-own profiles |
+| `Profile/AdminDetail.cshtml` | 32 | `Model.IsSuspended` | "Suspended" badge |
+| `Profile/AdminDetail.cshtml` | 36 | `Model.HasProfile && !Model.IsApproved` | "Pending Approval" badge |
+| `Profile/AdminDetail.cshtml` | 40 | `Model.HasProfile && Model.IsApproved` | "Approved" badge |
+| `Profile/AdminDetail.cshtml` | 47 | `Model.IsRejected` | Rejection reason banner |
+| `Profile/AdminDetail.cshtml` | 371 | `Model.HasProfile && !Model.IsApproved && !Model.IsSuspended` | "Approve Volunteer" button |
+| `Profile/AdminDetail.cshtml` | 379 | `Model.IsSuspended` | "Unsuspend" form (vs "Suspend" form in else branch) |
+| `Profile/AdminDetail.cshtml` | 398 | `Model.HasProfile && !Model.IsRejected` | "Reject Signup" form |
 
-### Board Views
+### Board / Onboarding Review Views
 
-| View | Check | Controls |
-|---|---|---|
-| `OnboardingReview/BoardVotingDetail.cshtml:115` | `RoleChecks.IsBoard` | Vote casting form |
-| `OnboardingReview/BoardVotingDetail.cshtml:156` | `Model.CanFinalize` | Finalize button |
-| `OnboardingReview/Detail.cshtml:30` | `Model.HasPendingApplication` | Application tab |
+| View | Line | Check | Controls |
+|---|---|---|---|
+| `OnboardingReview/BoardVotingDetail.cshtml` | 115 | `authorize-policy="BoardOnly"` | Vote casting card |
+| `OnboardingReview/BoardVotingDetail.cshtml` | 153 | `Model.CanFinalize` | Finalize decision card |
+| `OnboardingReview/Detail.cshtml` | 30 | `Model.HasPendingApplication` | Application tier badge |
 
 ### Team Views
 
-| View | Check | Controls |
-|---|---|---|
-| `Team/Index.cshtml:23` | `Model.CanCreateTeam` | "Create Team" button |
-| `Team/Summary.cshtml:8,31,78,130` | `RoleChecks.IsAdminOrBoard` | Edit/delete/archive buttons |
-| `Team/EditTeam.cshtml:72` | `RoleChecks.IsAdmin` | "Hidden" checkbox |
-| `Team/_TeamCard.cshtml:39` | `Model.IsCurrentUserCoordinator` | "Manage" link |
+| View | Line | Check | Controls |
+|---|---|---|---|
+| `Team/Index.cshtml` | 23 | `Model.CanCreateTeam` | "Create Team" button |
+| `Team/Summary.cshtml` | 18 | `authorize-policy="BoardOrAdmin"` | "Create Team" button |
+| `Team/Summary.cshtml` | 38 | `authorize-policy="BoardOrAdmin"` | Actions column header |
+| `Team/Summary.cshtml` | 82 | `(await AuthService.AuthorizeAsync(User, PolicyNames.BoardOrAdmin)).Succeeded` | Pending-shift-signup badge link to ShiftAdmin |
+| `Team/Summary.cshtml` | 134 | `authorize-policy="BoardOrAdmin"` | Actions column cell (Edit/Deactivate buttons) |
+| `Team/EditTeam.cshtml` | 81 | `authorize-policy="AdminOnly"` | "Sensitive team" checkbox |
+| `Team/_TeamCard.cshtml` | 39 | `Model.IsCurrentUserCoordinator` | "Manage" link |
+| `Team/Details.cshtml` | 36 | `Model.IsCurrentUserCoordinator` | Coordinator role badge |
+| `Team/Details.cshtml` | 70, 95 | `Model.CanEditPageContent` | "Edit Page" / "Add Page Content" buttons |
 
 ### Camp Views
 
-| View | Check | Controls |
-|---|---|---|
-| `Camp/Index.cshtml:11` | `RoleChecks.IsCampAdmin` | "Camp Admin" link |
-| `Camp/Details.cshtml:184` | `Model.IsCurrentUserLead \| IsCurrentUserCampAdmin` | Edit button |
-| `Camp/Details.cshtml:296` | `Model.IsCurrentUserLead \| IsCurrentUserCampAdmin` | Season management |
-| `CampAdmin/Index.cshtml:267` | `RoleChecks.IsAdmin` | "Delete Camp" button |
+| View | Line | Check | Controls |
+|---|---|---|---|
+| `Camp/Index.cshtml` | 11 | `authorize-policy="CampAdminOrAdmin"` | "Camp Admin" link |
+| `Camp/Details.cshtml` | 184 | `Model.IsCurrentUserLead \|\| Model.IsCurrentUserCampAdmin` | Placement card visibility |
+| `Camp/Details.cshtml` | 348 | `Model.IsCurrentUserLead \|\| Model.IsCurrentUserCampAdmin` | Actions card (Edit) |
+| `Camp/Details.cshtml` | 361 | `Model.IsCurrentUserLead && status in (Pending\|Active)` | "Withdraw Season" form |
+| `Camp/Details.cshtml` | 370 | `(Model.IsCurrentUserLead \|\| Model.IsCurrentUserCampAdmin) && status == Withdrawn` | "Rejoin Season" form |
+| `Camp/Details.cshtml` | 379 | `Model.IsCurrentUserCampAdmin && status == Full` | "Reactivate Season" form |
+| `CampAdmin/Index.cshtml` | 345 | `authorize-policy="AdminOnly"` | Danger Zone card (Delete Camp) |
 
 ### Ticket Views
 
-| View | Check | Controls |
-|---|---|---|
-| `Ticket/Index.cshtml:299` | `RoleChecks.CanManageTickets` | "Sync" button |
-| `Ticket/Index.cshtml:307` | `RoleChecks.IsAdmin` | "Event Settings" link |
+| View | Line | Check | Controls |
+|---|---|---|---|
+| `Ticket/Index.cshtml` | 337 | `authorize-policy="TicketAdminOrAdmin"` | "Sync Now" form |
+| `Ticket/Index.cshtml` | 343 | `authorize-policy="AdminOnly"` | "Full Re-sync" form |
+| `Ticket/_TicketNav.cshtml` | 26 | `authorize-policy="AdminOnly"` | "Backfill" tab |
 
 ### Campaign Views
 
-| View | Check | Controls |
-|---|---|---|
-| `Campaign/Detail.cshtml:19` | `RoleChecks.IsAdmin` | Campaign management buttons |
-| `Campaign/Detail.cshtml:20` | `RoleChecks.CanManageTickets` | Code generation button |
+| View | Line | Check | Controls |
+|---|---|---|---|
+| `Campaign/Detail.cshtml` | 21 | `var isAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded` | Drives all admin-gated buttons below |
+| `Campaign/Detail.cshtml` | 22 | `var canGenerateCodes = (await AuthService.AuthorizeAsync(User, PolicyNames.TicketAdminOrAdmin)).Succeeded` | Drives "Generate Codes" form |
+| `Campaign/Detail.cshtml` | 34, 52, 59, 85, 96, 106 | `if (isAdmin)` | Edit, Send Wave, Import Codes, Activate, Complete, Retry-All buttons |
+| `Campaign/Detail.cshtml` | 70 | `if (canGenerateCodes && status == Draft)` | "Generate Codes" form |
 
 ### Budget Views
 
-| View | Check | Controls |
-|---|---|---|
-| `Budget/Index.cshtml:6,19` | `Model.IsFinanceAdmin` | Restricted groups, year management |
-| `Budget/Summary.cshtml:13` | `Model.IsCoordinator` | Department edit access |
-| `Budget/CategoryDetail.cshtml:54+` | `Model.CanEdit` | Line item CRUD |
+| View | Line | Check | Controls |
+|---|---|---|---|
+| `Budget/Index.cshtml` | 5 | `Model.IsFinanceAdmin` | Filters out ticketing groups for non-finance |
+| `Budget/Index.cshtml` | 25 | `Model.IsFinanceAdmin` | "Finance Admin" link |
+| `Budget/Index.cshtml` | 115, 116 | `Model.IsFinanceAdmin` | Per-row editability + restricted-group flag |
+| `Budget/Summary.cshtml` | 13 | `Model.IsCoordinator` | "Department Detail" link |
+| `Budget/CategoryDetail.cshtml` | 51, 125, 162, 178, 249, 259 | `Model.CanEdit` | Editable badge, line-item edit/delete buttons, add-line-item form |
 
 ### Feedback Views
 
-| View | Check | Controls |
-|---|---|---|
-| `Feedback/Index.cshtml:73,83` | `Model.IsAdmin` | Status dropdown, reply button |
-| `Feedback/_Detail.cshtml:9,22` | `Model.IsAdmin` | Admin notes, response form |
+| View | Line | Check | Controls |
+|---|---|---|---|
+| `Feedback/Index.cshtml` | 39 | `Model.IsAdmin && Model.Reporters.Count > 0` | Reporter filter dropdown |
+| `Feedback/Index.cshtml` | 56 | `Model.IsAdmin` | Assignee/team/unassigned filter row |
+| `Feedback/Index.cshtml` | 145, 155 | `Model.IsAdmin` | Reporter name + assignment badges in list items |
+| `Feedback/Index.cshtml` | 183 | `report.NeedsReply && Model.IsAdmin` | "Needs reply" indicator |
+| `Feedback/_Detail.cshtml` | 9 | `Model.IsAdmin` | Reporter shown as `<human-link>` (admin) vs name (user) |
+| `Feedback/_Detail.cshtml` | 22 | `Model.IsAdmin` | Status / GH-issue-number / lock-icon controls |
+| `Feedback/_Detail.cshtml` | 54 | `Model.IsAdmin` | Assignment selectors (assignee, team, unassigned-only checkbox) |
 
 ### Google Views
 
-| View | Check | Controls |
-|---|---|---|
-| `Google/Sync.cshtml:41` | `Model.CanExecuteActions` | Action buttons (set from `RoleChecks.IsAdmin`) |
-| `Google/Sync.cshtml:204` | `RoleChecks.IsAdminOrBoard` | Audit log visibility |
+| View | Line | Check | Controls |
+|---|---|---|---|
+| `Google/_SyncTabContent.cshtml` | 53 | `Model.CanExecuteActions && result.DriftCount > 0` | "Add All Missing" / "Sync All" bulk buttons |
+| `Google/_SyncTabContent.cshtml` | 125 | `Model.CanViewAudit` | Per-resource Audit link |
+| `Google/_SyncTabContent.cshtml` | 130 | `Model.CanExecuteActions && !diff.IsInSync && !hasError` | Per-resource "Add Missing" / "Sync All" buttons |
+
+### Calendar Views
+
+| View | Line | Check | Controls |
+|---|---|---|---|
+| `Calendar/Event.cshtml` | 18 | `Model.CanEdit` | Edit / Delete buttons in event header |
+| `Calendar/Event.cshtml` | 96 | `Model.CanEdit && o.IsRecurring && o.OriginalOccurrenceStartUtc is not null` | Per-occurrence Edit / Cancel-this buttons |
 
 ### Application / Governance Views
 
-| View | Check | Controls |
-|---|---|---|
-| `Application/Index.cshtml:29` | `Model.IsApprovedColaborador && CanSubmitNew` | Asociado upgrade button |
-| `Application/Details.cshtml:54` | `Model.CanWithdraw` | Withdraw button |
-| `Application/ApplicationDetail.cshtml:76` | `Model.CanApproveReject` | Approve/Reject buttons |
-| `Governance/Index.cshtml:98` | `Model.CanApply` | Apply button |
-| `Governance/Index.cshtml:158` | `Model.IsApprovedColaborador && CanApply` | Upgrade apply button |
+| View | Line | Check | Controls |
+|---|---|---|---|
+| `Application/Index.cshtml` | 36 | `Model.IsApprovedColaborador && Model.CanSubmitNew` | Asociado upgrade hint + link |
+| `Application/Details.cshtml` | 54 | `Model.CanWithdraw` | Withdraw form |
+| `Application/ApplicationDetail.cshtml` | 75 | `Model.CanApproveReject` | Board voting link card |
+| `Governance/Index.cshtml` | 98 | `Model.CanApply` | Apply button (in rejected branch) |
+| `Governance/Index.cshtml` | 158 | `Model.IsApprovedColaborador && Model.CanApply` | Asociado upgrade card |
 
 ### Shared Components
 
-| View | Check | Controls |
-|---|---|---|
-| `ProfileCard/Default.cshtml:139` | `Model.CanSendMessage` | Message button |
-| `ProfileCard/Default.cshtml:193` | `Model.CanViewLegalName` | Legal name display |
-| `_ShiftsSummaryCard.cshtml:33` | `Model.CanManageShifts` | Manage shifts link |
-| `AuthorizeViewTagHelper` | `_authorizationService.AuthorizeAsync(user, Policy)` | Policy-driven `<authorize-policy>` view sections |
+| View | Line | Check | Controls |
+|---|---|---|---|
+| `Shared/Components/ProfileCard/Default.cshtml` | 132 | `Model.CanSendMessage` | "Send Message" button |
+| `Shared/Components/ProfileCard/Default.cshtml` | 202 | `Model.CanViewLegalName` | Board / private information card |
+| `Shared/_ShiftsSummaryCard.cshtml` | 39 | `Model.CanManageShifts` | "Manage Shifts" link |
+| `Shared/_HumanPopover.cshtml` | 7 | `Model.IsSuspended` | Suspended badge in popover |
+| `Shared/_BuildStrikeRotaTable.cshtml` | 67, 111, 140, 159, 191, 210 | `Model.ShowSignups` | Signup column header + cells + colspan adjustments |
+| `Shared/_EventRotaTable.cshtml` | 42, 69, 110 | `Model.ShowSignups` | Signup column header + cells + colspan adjustments |
+| `AuthorizeViewTagHelper` | — | `IAuthorizationService.AuthorizeAsync(user, Policy)` | Backs every `authorize-policy="..."` attribute above |
 
 ---
 

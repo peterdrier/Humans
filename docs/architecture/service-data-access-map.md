@@ -472,10 +472,11 @@ Repository: `IDriveActivityMonitorRepository`.
 
 **Cross-section table reads (design-rule violation):** `Users` (User
 section), `IdentityUserLogins` (Auth/Identity), `AuditLogEntries`
-(AuditLog section), `SystemSettings` (no clear owner — see Cross-Section
-Analysis). The repo bundles them because the Drive Activity reconciler
-needs to correlate Drive events to user PeopleIds and SystemSettings
-holds the watermark cursor; should split into owning-service calls.
+(AuditLog section). The repo bundles them because the Drive Activity
+reconciler needs to correlate Drive events to user PeopleIds; should
+split into owning-service calls. `SystemSettings` access here is the
+Google Integration-owned `DriveActivityMonitor:LastRunAt` key (not a
+violation under per-key ownership — see Cross-Section Analysis §5).
 
 Cross-section calls via `ITeamResourceService`,
 `IGoogleDriveActivityClient`. No cache.
@@ -800,6 +801,17 @@ Cross-section calls via `IUserService`, `IUserEmailService`,
 | `UserTicketCount:{userId}` | 5 min | yes | yes |
 | `UserIdsWithTickets` | 5 min | yes | yes |
 | `ValidAttendeeEmails` | 5 min | yes | yes |
+| `TicketDashboardStats` | 5 min | (computed by `GetDashboardStatsAsync()` — no read-through cache) | (computed fresh per call) |
+
+`GetDashboardStatsAsync()` is the canonical producer of the
+`TicketDashboardStats` DTO and is currently invoked directly by
+`TicketController.Index` without read-through caching at this service
+boundary. The `TicketDashboardStats` cache key
+(`CacheKeys.TicketDashboardStats`) and its `InvalidateTicketDashboardStats`
+hook (called from `TicketSyncService.InvalidateTicketCaches`) exist so a
+future caching wrapper can be added without changing the invalidation
+contract — at ~500-user scale the recompute is cheap so the wrapper has
+not been added yet.
 
 ### TicketSyncService (Scoped)
 
@@ -815,7 +827,7 @@ Repository: `ITicketRepository`.
 | Cache Key | Invalidate |
 |-----------|------------|
 | `TicketEventSummary:{eventId}` | yes |
-| `TicketDashboardStats` | yes (via `InvalidateTicketCaches`) |
+| `TicketDashboardStats` | yes (via `InvalidateTicketCaches` — invalidation hook only; producer is `TicketQueryService.GetDashboardStatsAsync`, which does not currently cache) |
 | `UserIdsWithTickets` | yes (via `InvalidateTicketCaches`) |
 | `ValidAttendeeEmails` | yes (via `InvalidateTicketCaches`) |
 
@@ -901,7 +913,7 @@ Repository: `IEmailOutboxRepository`.
 | Table | R/W |
 |-------|-----|
 | EmailOutboxMessages | R/W |
-| SystemSettings | R (via outbox repo's diagnostic/cursor reads) |
+| SystemSettings | R (Email-owned `IsEmailSendingPaused` key only — pause flag check) |
 
 Cross-section calls via `IUserEmailService`,
 `ICommunicationPreferenceService`, `IEmailBodyComposer`,
@@ -914,12 +926,11 @@ Repository: `IEmailOutboxRepository`.
 | Table | R/W |
 |-------|-----|
 | EmailOutboxMessages | R/W |
-| SystemSettings | R/W (cursor / `ProcessEmailOutboxJob` watermark) |
+| SystemSettings | R/W (Email-owned `IsEmailSendingPaused` key only — admin pause toggle and processor pause check) |
 
-**Cross-section table read/write (design-rule violation):**
-`SystemSettings` has no clear owner; the outbox repo touches it for the
-processor's last-run watermark. Tracked under the SystemSettings
-ownership question.
+`SystemSettings` access here is the Email-owned `IsEmailSendingPaused`
+key (not a violation under per-key ownership — see Cross-Section
+Analysis §5).
 
 No cache.
 
@@ -1019,7 +1030,7 @@ boundaries directly. These are the remaining design-rule violations.
 | **AuditLogEntries** | AuditLog | GoogleIntegration (`DriveActivityMonitorRepository`) |
 | **GoogleSyncOutboxEvents** | GoogleIntegration | Teams (`TeamRepository` writes outbox events on team mutations) |
 | **GeneralAvailability** | Shifts (GeneralAvailabilityService) | Shifts (`ShiftSignupRepository` reads it for conflict checks) |
-| **SystemSettings** | (no clear owner — see below) | GoogleIntegration (`DriveActivityMonitorRepository`), Email (`EmailOutboxRepository`) |
+| **SystemSettings** | per-key (see SystemSettings ownership table below) | not a violation when the owning section's repo touches its own key |
 
 ### Notable Cross-Section Patterns
 
@@ -1047,10 +1058,25 @@ boundaries directly. These are the remaining design-rule violations.
    the owning services and reduce the repo to `GoogleResources`-only
    reads.
 
-5. **SystemSettings has no owner.** Two repositories
-   (`DriveActivityMonitorRepository`, `EmailOutboxRepository`) write
-   their cursors/watermarks to `SystemSettings`. There is no
-   `ISystemSettingsService` — this is a known gap.
+5. **SystemSettings has per-key ownership (no single owner service).**
+   Each key is owned by the section whose repository accesses it; this
+   is the established convention per [`data-model.md`](data-model.md)
+   ("Each key belongs to its consuming section's repository"). Two
+   repositories touch the table today and they touch disjoint keys:
+
+   | Key | Owning section | Read by | Written by |
+   |-----|----------------|---------|------------|
+   | `IsEmailSendingPaused` | Email | `EmailOutboxRepository.GetSendingPausedAsync` | `EmailOutboxRepository.SetSendingPausedAsync` |
+   | `DriveActivityMonitor:LastRunAt` | Google Integration | `DriveActivityMonitorRepository.GetLastRunTimestampAsync` | `DriveActivityMonitorRepository.PersistAnomaliesAsync` |
+
+   Because `EmailOutboxRepository` only reads/writes its own
+   Email-owned key and `DriveActivityMonitorRepository` only
+   reads/writes its own Google-owned key, there is no cross-section
+   `SystemSettings` access — the prior "no clear owner" flag was an
+   artifact of treating the table as a single resource rather than a
+   keyed namespace. No `ISystemSettingsService` is needed; if a third
+   key is added, it should be owned by the section whose repository
+   reads/writes it.
 
 6. **CachingProfileService is the canonical Profile cache.** Per §15
    the legacy `ApprovedProfiles` `IMemoryCache` entry is gone; the
@@ -1092,7 +1118,7 @@ Sourced from `src/Humans.Application/CacheKeys.cs` and
 | `UserIdsWithTickets` | 5 min | Static | TicketQueryService | TicketSyncService (`InvalidateTicketCaches`) |
 | `ValidAttendeeEmails` | 5 min | Static | TicketQueryService | TicketSyncService (`InvalidateTicketCaches`) |
 | `TicketEventSummary:{eventId}` | 15 min | Per-Entity | TicketTailorService (Infrastructure) | TicketSyncService |
-| `TicketDashboardStats` | 5 min | Static | (unknown populator — see below) | TicketSyncService |
+| `TicketDashboardStats` | 5 min | Static | TicketQueryService.GetDashboardStatsAsync (computes — no read-through cache; key reserved for future wrapper) | TicketSyncService (`InvalidateTicketCaches`) |
 | `NobodiesTeamEmails_All` | 2 min | Static | **NobodiesEmailBadgeViewComponent** | GoogleController |
 | `CampContactRateLimit:{userId}:{campId}` | 10 min | Rate Limit | CampContactService | CampContactService |
 | `magic_link_used:{tokenPrefix}` | 15 min | Rate Limit | MagicLinkService | MagicLinkService |
@@ -1114,10 +1140,15 @@ Sourced from `src/Humans.Application/CacheKeys.cs` and
    `InvalidateTicketCaches` deliberately skips per-user keys at
    ~500-user scale per the comment in `MemoryCacheExtensions`.
 
-3. **`TicketDashboardStats` populator unidentified in service layer.**
-   `TicketSyncService` invalidates the key but no service writes it; it
-   is presumably written by a controller or view component (see
-   Appendix A).
+3. **`TicketDashboardStats` is invalidation-only, not read-through.**
+   `TicketQueryService.GetDashboardStatsAsync()` is the canonical
+   producer of the `TicketDashboardStats` DTO — invoked directly by
+   `TicketController.Index` per request, with no read-through caching.
+   The cache key (`CacheKeys.TicketDashboardStats`) and
+   `TicketSyncService`'s `InvalidateTicketCaches` invalidation are kept
+   so a future caching wrapper can be added without changing the
+   invalidation contract; at ~500-user scale the recompute is cheap
+   enough that the wrapper has not been added.
 
 4. **`NobodiesTeamEmails_All`** is still populated by
    `NobodiesEmailBadgeViewComponent` and invalidated by
@@ -1140,15 +1171,22 @@ repositories directly, bypassing the service layer. After the §15
 migration most controllers go through services, but a few legacy
 direct-DB call sites remain.
 
-### Controllers (still needing audit pass)
+### Controllers
+
+Re-audited 2026-04-26. Controllers with direct `HumansDbContext` /
+repository injection:
 
 | Controller | Notes |
 |------------|-------|
-| **AdminController** | Migration metadata reads, Hangfire lock table SQL. Legitimate infrastructure. |
-| **DevLoginController** | Camps/CampSeasons/CampLeads seeding for dev. Legitimate dev-only path. |
-| **EmailController** | `SystemSettings` read/write for outbox cursor (no `ISystemSettingsService` exists). |
-| **GoogleController** | Invalidates `NobodiesTeamEmails_All`. |
-| **ProfileController**, **BoardController**, **BudgetController**, **CampAdminController**, **GuestController**, **UnsubscribeController** | Re-audit needed against current code; existing direct-DB queries from before §15 may have moved into services. |
+| **AdminController** | Injects `HumansDbContext`. Migration metadata reads (`Database.GetAppliedMigrationsAsync` / `GetPendingMigrationsAsync`), Hangfire lock table SQL (`DELETE FROM hangfire.lock`), and direct reads of `Users`, `Profiles`, `TicketOrders`, `TicketAttendees` for the `AudienceSegmentation` admin diagnostic. The migration/Hangfire reads are legitimate infrastructure; the audience segmentation reads should route through `IUserService` / `IProfileService` / `ITicketQueryService`. |
+| **DevLoginController** | Injects `HumansDbContext`. Camps/CampSeasons/CampLeads seeding for dev personas. Legitimate dev-only path. |
+
+`EmailController`, `GoogleController`, `ProfileController`,
+`BoardController`, `BudgetController`, `CampAdminController`,
+`GuestController`, and `UnsubscribeController` were re-audited and
+have no direct `DbContext` / repository access — they go entirely
+through service interfaces post-§15. `GoogleController` still touches
+`IMemoryCache` directly; that's tracked under Appendix B, not here.
 
 ### View Components (cache populators)
 
