@@ -1,5 +1,6 @@
 using System.Globalization;
 using Humans.Application.DTOs;
+using Humans.Application.DTOs.Finance;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Gdpr;
@@ -248,6 +249,36 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
             throw new InvalidOperationException($"Budget category {categoryId} not found");
 
         _logger.LogInformation("Deleted budget category {CategoryId}", categoryId);
+    }
+
+    // ───────────────────────── Finance Read Surface ─────────────────────────
+
+    public Task<BudgetCategory?> GetCategoryBySlugAsync(
+        Guid budgetYearId, string groupSlug, string categorySlug, CancellationToken ct = default)
+        => _repository.GetCategoryBySlugAsync(budgetYearId, groupSlug, categorySlug, ct);
+
+    public Task<BudgetYear?> GetYearForDateAsync(LocalDate date, CancellationToken ct = default)
+        => _repository.GetYearForDateAsync(date, ct);
+
+    public Task<IReadOnlyList<BudgetCategory>> GetCategoriesByYearAsync(
+        Guid budgetYearId, CancellationToken ct = default)
+        => _repository.GetCategoriesByYearAsync(budgetYearId, ct);
+
+    public async Task<IReadOnlyList<HoldedTagInventoryRow>> GetTagInventoryAsync(
+        Guid budgetYearId, CancellationToken ct = default)
+    {
+        var rows = await _repository.GetTagInventoryRowsAsync(budgetYearId, ct);
+        return rows.Select(r => new HoldedTagInventoryRow(
+            BudgetYearId: r.Year.Id,
+            Year: r.Year.Year,
+            BudgetGroupId: r.Group.Id,
+            GroupName: r.Group.Name,
+            GroupSlug: r.Group.Slug,
+            BudgetCategoryId: r.Category.Id,
+            CategoryName: r.Category.Name,
+            CategorySlug: r.Category.Slug,
+            Tag: $"{r.Group.Slug}-{r.Category.Slug}"
+        )).ToList();
     }
 
     // ───────────────────────── Budget Line Items ─────────────────────────
