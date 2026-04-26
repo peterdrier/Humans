@@ -1493,6 +1493,7 @@
   <data name="CityPlanning_Help_Adjusting_Reposition" xml:space="preserve"><value>Arrossega tota la forma per reposicionar-la</value></data>
   <data name="CityPlanning_Help_Adjusting_AddVertex" xml:space="preserve"><value>Fes clic al punt mig d'un costat (on es mostra la longitud en metres) per afegir una nova cantonada</value></data>
   <data name="CityPlanning_Help_Adjusting_DeleteVertex" xml:space="preserve"><value>Fes clic en un punt per seleccionar-lo (es torna taronja), després prem Delete o Backspace per eliminar-lo</value></data>
+  <data name="CityPlanning_Help_Adjusting_MultiSelect" xml:space="preserve"><value>Mantén Majúscules i fes clic als punts per seleccionar-ne diversos alhora, o fes clic i arrossega en un espai buit per dibuixar un rectangle de selecció</value></data>
   <data name="CityPlanning_Help_Adjusting_Area" xml:space="preserve"><value>La superfície en m² es mostra al centre i s'actualitza en editar</value></data>
   <data name="CityPlanning_Help_SavingTitle" xml:space="preserve"><value>Desar &amp; editar més tard</value></data>
   <data name="CityPlanning_Help_SavingBody" xml:space="preserve"><value>Satisfet? Prem Save. Després, fes clic al teu barrio al mapa per veure la mida, i Edit per tornar al mode d'edició. Cada desat crea una entrada a l'historial — usa el botó History per navegar i restaurar versions anteriors. Sense estrès, no pots trencar res!</value></data>

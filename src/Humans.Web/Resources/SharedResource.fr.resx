@@ -1491,6 +1491,7 @@
   <data name="CityPlanning_Help_Adjusting_Reposition" xml:space="preserve"><value>Fais glisser toute la forme pour la repositionner</value></data>
   <data name="CityPlanning_Help_Adjusting_AddVertex" xml:space="preserve"><value>Clique sur le milieu d'un bord (où la longueur en mètres est affichée) pour ajouter un nouveau coin</value></data>
   <data name="CityPlanning_Help_Adjusting_DeleteVertex" xml:space="preserve"><value>Clique sur un point pour le sélectionner (il devient orange), puis appuie sur Delete ou Backspace pour le supprimer</value></data>
+  <data name="CityPlanning_Help_Adjusting_MultiSelect" xml:space="preserve"><value>Maintiens Shift et clique sur des points pour en sélectionner plusieurs à la fois, ou clique et fais glisser dans un espace vide pour dessiner un rectangle de sélection</value></data>
   <data name="CityPlanning_Help_Adjusting_Area" xml:space="preserve"><value>La surface en m² est affichée au centre et se met à jour lors de l'édition</value></data>
   <data name="CityPlanning_Help_SavingTitle" xml:space="preserve"><value>Enregistrer &amp; modifier plus tard</value></data>
   <data name="CityPlanning_Help_SavingBody" xml:space="preserve"><value>Content du résultat ? Clique sur Save. Ensuite, clique sur ton barrio sur la carte pour voir sa surface, puis Edit pour revenir en mode édition. Chaque sauvegarde crée une entrée dans l'historique — utilise le bouton History pour parcourir et restaurer une version précédente. Pas de stress, tu ne peux rien casser !</value></data>

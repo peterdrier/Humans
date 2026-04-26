@@ -1491,6 +1491,7 @@
   <data name="CityPlanning_Help_Adjusting_Reposition" xml:space="preserve"><value>Ziehe die gesamte Form, um sie neu zu positionieren</value></data>
   <data name="CityPlanning_Help_Adjusting_AddVertex" xml:space="preserve"><value>Klicke auf den Mittelpunkt einer Kante (wo die Länge in Metern angezeigt wird), um eine neue Ecke hinzuzufügen</value></data>
   <data name="CityPlanning_Help_Adjusting_DeleteVertex" xml:space="preserve"><value>Klicke auf einen Punkt, um ihn auszuwählen (er wird orange), dann drücke Delete oder Backspace, um ihn zu entfernen</value></data>
+  <data name="CityPlanning_Help_Adjusting_MultiSelect" xml:space="preserve"><value>Halte Shift gedrückt und klicke Punkte an, um mehrere auf einmal auszuwählen, oder klicke und ziehe auf einer leeren Fläche, um ein Auswahlrechteck zu zeichnen</value></data>
   <data name="CityPlanning_Help_Adjusting_Area" xml:space="preserve"><value>Die Fläche in m² wird in der Mitte angezeigt und aktualisiert sich beim Bearbeiten</value></data>
   <data name="CityPlanning_Help_SavingTitle" xml:space="preserve"><value>Speichern &amp; später bearbeiten</value></data>
   <data name="CityPlanning_Help_SavingBody" xml:space="preserve"><value>Zufrieden? Klicke auf Save. Danach klicke auf dein Barrio auf der Karte, um die Größe zu sehen, dann Edit, um in den Bearbeitungsmodus zurückzukehren. Jedes Speichern erstellt einen Verlaufseintrag — nutze die Schaltfläche History, um frühere Versionen zu durchsuchen und wiederherzustellen. Kein Stress, du kannst nichts kaputtmachen!</value></data>

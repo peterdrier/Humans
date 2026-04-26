@@ -1493,6 +1493,7 @@
   <data name="CityPlanning_Help_Adjusting_Reposition" xml:space="preserve"><value>Arrastra toda la forma para reposicionarla</value></data>
   <data name="CityPlanning_Help_Adjusting_AddVertex" xml:space="preserve"><value>Haz clic en el punto medio de un borde (donde se muestra la longitud en metros) para añadir una nueva esquina</value></data>
   <data name="CityPlanning_Help_Adjusting_DeleteVertex" xml:space="preserve"><value>Haz clic en un punto para seleccionarlo (se pone naranja), luego pulsa Delete o Backspace para eliminarlo</value></data>
+  <data name="CityPlanning_Help_Adjusting_MultiSelect" xml:space="preserve"><value>Mantén Shift y haz clic en puntos para seleccionar varios a la vez, o haz clic y arrastra en un espacio vacío para dibujar un rectángulo de selección</value></data>
   <data name="CityPlanning_Help_Adjusting_Area" xml:space="preserve"><value>El área en m² se muestra en el centro y se actualiza al editar</value></data>
   <data name="CityPlanning_Help_SavingTitle" xml:space="preserve"><value>Guardar y editar después</value></data>
   <data name="CityPlanning_Help_SavingBody" xml:space="preserve"><value>¿Satisfecho? Dale a Save. Después, haz clic en tu barrio en el mapa para ver su tamaño, luego Edit para volver al modo edición. Cada guardado crea una entrada en el historial — usa el botón History para ver y restaurar versiones anteriores: haz clic en el botón de vista previa para mostrarla y guarda la que quieras restaurar. ¡Sin estrés, no puedes romper nada!</value></data>
