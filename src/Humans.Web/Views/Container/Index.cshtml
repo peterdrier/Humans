@@ -29,62 +29,72 @@
 }
 else
 {
-    <div class="row g-3">
+    <ul class="list-group">
         @foreach (var c in Model.Containers.OrderBy(x => x.Name))
         {
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100">
+            <li class="list-group-item d-flex align-items-center gap-3 py-2">
+                <div style="width:48px;height:48px;flex-shrink:0;" class="d-flex align-items-center justify-content-center">
                     @if (c.ImageUrl is not null)
                     {
-                        <img src="@c.ImageUrl" class="card-img-top" alt="@c.Name" style="max-height:200px;object-fit:cover;" />
+                        <img src="@c.ImageUrl" alt="@c.Name"
+                             style="width:48px;height:48px;object-fit:cover;border-radius:4px;cursor:pointer;"
+                             data-bs-toggle="modal" data-bs-target="#lightboxModal-@c.Id" />
                     }
-                    <div class="card-body">
-                        <h5 class="card-title">@c.Name</h5>
-                        @if (!string.IsNullOrEmpty(c.Description))
-                        {
-                            <p class="card-text text-muted small">@c.Description</p>
-                        }
-                    </div>
-                    @if (Model.CanManage)
+                    else
                     {
-                        <div class="card-footer d-flex gap-2 flex-wrap">
-                            <button type="button" class="btn btn-outline-secondary btn-sm"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#editModal-@c.Id">
-                                <i class="fa-solid fa-pen me-1"></i> Edit
-                            </button>
-                            @if (c.ImageUrl is null)
-                            {
-                                <button type="button" class="btn btn-outline-secondary btn-sm"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#imageModal-@c.Id">
-                                    <i class="fa-solid fa-image me-1"></i> Upload Image
-                                </button>
-                            }
-                            else
-                            {
-                                <form asp-action="DeleteImage" asp-route-slug="@Model.CampSlug" asp-route-year="@Model.Year" asp-route-id="@c.Id" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-outline-warning btn-sm"
-                                            data-confirm="Remove image from @c.Name?">
-                                        <i class="fa-solid fa-image me-1"></i> Remove Image
-                                    </button>
-                                </form>
-                            }
-                            <form asp-action="Delete" asp-route-slug="@Model.CampSlug" asp-route-year="@Model.Year" asp-route-id="@c.Id" method="post" class="d-inline">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-outline-danger btn-sm"
-                                        data-confirm="Delete container @c.Name?">
-                                    <i class="fa-solid fa-trash me-1"></i> Delete
-                                </button>
-                            </form>
-                        </div>
+                        <i class="fa-solid fa-box text-muted fa-lg"></i>
                     }
                 </div>
-            </div>
+                <div class="flex-grow-1 min-width-0">
+                    <div class="fw-semibold">@c.Name</div>
+                    @if (!string.IsNullOrEmpty(c.Description))
+                    {
+                        <div class="text-muted small">@c.Description</div>
+                    }
+                </div>
+                @if (Model.CanManage)
+                {
+                    <div class="d-flex gap-1 flex-shrink-0">
+                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                data-bs-toggle="modal" data-bs-target="#editModal-@c.Id"
+                                title="Edit">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        @if (c.ImageUrl is null)
+                        {
+                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                    data-bs-toggle="modal" data-bs-target="#imageModal-@c.Id"
+                                    title="Upload image">
+                                <i class="fa-solid fa-image"></i>
+                            </button>
+                        }
+                        else
+                        {
+                            <form asp-action="DeleteImage" asp-route-slug="@Model.CampSlug" asp-route-year="@Model.Year" asp-route-id="@c.Id" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-outline-warning btn-sm"
+                                        data-confirm="Remove image from @c.Name?"
+                                        title="Remove image">
+                                    <i class="fa-solid fa-image"></i>
+                                </button>
+                            </form>
+                        }
+                        <form asp-action="Delete" asp-route-slug="@Model.CampSlug" asp-route-year="@Model.Year" asp-route-id="@c.Id" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-danger btn-sm"
+                                    data-confirm="Delete container @c.Name?"
+                                    title="Delete">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                }
+            </li>
         }
-    </div>
+    </ul>
 }
+
+@* ── Modals ──────────────────────────────────────────────────────────── *@
 
 @if (Model.CanManage)
 {
@@ -115,8 +125,28 @@ else
             </div>
         </div>
     </div>
+}
 
-    @foreach (var c in Model.Containers)
+@foreach (var c in Model.Containers)
+{
+    @if (c.ImageUrl is not null)
+    {
+        <div class="modal fade" id="lightboxModal-@c.Id" tabindex="-1">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">@c.Name</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-0 text-center">
+                        <img src="@c.ImageUrl" alt="@c.Name" class="img-fluid" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (Model.CanManage)
     {
         <div class="modal fade" id="editModal-@c.Id" tabindex="-1">
             <div class="modal-dialog">
@@ -146,7 +176,6 @@ else
             </div>
         </div>
 
-        @* Image upload modal *@
         @if (c.ImageUrl is null)
         {
             <div class="modal fade" id="imageModal-@c.Id" tabindex="-1">
