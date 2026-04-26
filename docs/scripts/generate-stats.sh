@@ -14,6 +14,41 @@
 #   - bash 4+ (associative arrays)
 #   - GNU sed (for the comma-grouping regex; ships with Git Bash on Windows)
 #   - working tree may be dirty (script stashes everything and restores after)
+#   - docs/reforge-history.csv populated by docs/scripts/generate-reforge-history.sh
+#     (used as a join source for semantic class/interface counts; missing dates
+#     fall back to the legacy regex)
+#
+# === Why we hybridise bash file-counts with reforge-derived class/interface counts ===
+#
+# Most of this script is defensible bash: `find` for files-by-extension, raw
+# `wc -l -c` for line/byte totals, and `grep -c` for the simple ones (controllers,
+# views, entities, resx keys). The Codebase Growth column key documents these as
+# "raw lines including blanks" — exactly what `wc -l` measures — so a Roslyn
+# loader is the wrong tool for line counting (it would produce SLOC numbers that
+# silently change the documented column meaning).
+#
+# However, the legacy `Classes` count used `grep -rE '^\s*(public|internal)\s+
+# (sealed |abstract |static |partial )*(class|record) '`, which has known blind
+# spots: it misses file-scoped types, multi-modifier orderings other than the
+# one written, partial declarations split oddly, and any type whose `class`/
+# `record` keyword isn't preceded by accessibility on the same line. Reforge's
+# `snapshot` command parses the solution semantically through Roslyn and counts
+# named class/interface declarations correctly. So:
+#
+#   * `classes` and `interfaces` are now sourced from `docs/reforge-history.csv`
+#     (joined by date). When a row is missing for a given day — historically
+#     this happens when reforge can't load the solution at that commit because
+#     of an SDK pinned in `global.json` that's no longer installed locally — we
+#     fall back to the legacy regex with a warning. The regex was the only
+#     source before this change, so the fallback is no worse than the prior
+#     behaviour for those days.
+#
+#   * Everything else (line counts, byte counts, file counts, controllers,
+#     views, entities, resx keys, commit/diff metrics) stays in bash. Reforge
+#     doesn't measure those (no .cshtml/.resx in the C# syntax tree, file
+#     enumeration is restricted to solution-loaded files, etc.) and bash is
+#     more accurate for them now that the `xargs | wc | tail -1` undercount
+#     bug is fixed.
 #
 # Implementation notes:
 #   - One row per DAY using the LAST commit of that day on the current ref.
@@ -26,10 +61,26 @@
 #     <commit>` abort with "Your local changes would be overwritten"). The
 #     table rows are accumulated in a temp file outside the worktree, then
 #     concatenated onto the doc after we restore the original ref.
+#   - The reforge CSV is loaded ONCE upfront, before any checkouts, so we don't
+#     have to keep it consistent across historical commits.
+#
+# Pitfalls — do not regress:
+#   - Never name a shell variable TMP/TEMP/TMPDIR. On Windows, those names
+#     overlap MSBuild's temp env vars and clobbering them crashes Roslyn-backed
+#     tools (including reforge). Use WORK_DIR or similar.
+#   - For line counts across many files, ALWAYS pipe through `xargs -0 cat |
+#     wc -l -c`, never `xargs -0 wc -l -c | tail -1`. xargs splits the file
+#     list when it exceeds the OS command-line limit (~8 KB on Windows) and
+#     each batch emits its own "total" line; tail -1 then sees only the last
+#     batch and undercounts by 30-50% on production-sized lists.
+#   - The awk regex matching the markdown table separator must accept colons
+#     used for column alignment (e.g. `|----:|`). Use `^\|.*---`, not
+#     `^[|+ -]+$`.
 
 set -euo pipefail
 
 DOC=docs/development-stats.md
+REFORGE_CSV=docs/reforge-history.csv
 
 if [ ! -f "$DOC" ]; then
   echo "Error: $DOC not found. Run from the repo root." >&2
@@ -101,6 +152,24 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Load reforge-derived (classes, interfaces) by date. The CSV header is:
+#   commit_date,commit,solution,loc_prod,loc_test,files_prod,files_test,classes,interfaces,...
+# We key by the YYYY-MM-DD prefix of commit_date and keep the LAST occurrence
+# (so if reforge happened to be re-run for a day, the latest snapshot wins).
+declare -A reforge_classes reforge_interfaces
+if [ -f "$REFORGE_CSV" ]; then
+  while IFS=, read -r commit_date _commit _solution _lp _lt _fp _ft classes interfaces _rest; do
+    day=${commit_date:0:10}
+    [ -z "$day" ] && continue
+    [ "$day" = "commit_date" ] && continue
+    reforge_classes["$day"]=$classes
+    reforge_interfaces["$day"]=$interfaces
+  done < "$REFORGE_CSV"
+  echo "Loaded reforge classes/interfaces for ${#reforge_classes[@]} days from $REFORGE_CSV."
+else
+  echo "Warning: $REFORGE_CSV not found — classes/interfaces will use the legacy regex (less accurate)." >&2
+fi
+
 # Stash anything dirty so checkouts run cleanly.
 if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then
   git stash --quiet --include-untracked
@@ -150,6 +219,8 @@ done < <(
 
 N=0
 TOTAL=$(echo "$DAY_COMMITS" | wc -l)
+REFORGE_HITS=0
+REFORGE_MISSES=0
 
 while IFS=' ' read -r day commit; do
   [ -z "$day" ] && continue
@@ -186,8 +257,19 @@ while IFS=' ' read -r day commit; do
   test_files=$(find . -type f -name '*.cs' -path '*Tests*' ! -path '*/Migrations/*' 2>/dev/null | wc -l)
   files=$((app_files + test_files))
 
-  classes=$(grep -rE '^\s*(public|internal)\s+(sealed |abstract |static |partial )*(class|record) ' --include='*.cs' src/ 2>/dev/null | grep -v '/Migrations/' | grep -v 'Tests' | wc -l || echo 0)
-  interfaces=$(grep -rE '^\s*public\s+interface\s' --include='*.cs' src/ 2>/dev/null | grep -v '/Migrations/' | grep -v 'Tests' | wc -l || echo 0)
+  # Prefer reforge-derived (semantic) counts; fall back to regex if reforge
+  # didn't snapshot this day (typically because that historical commit pins an
+  # SDK in global.json that's not installed on this machine).
+  if [ -n "${reforge_classes[$day]:-}" ]; then
+    classes=${reforge_classes[$day]}
+    interfaces=${reforge_interfaces[$day]}
+    REFORGE_HITS=$((REFORGE_HITS+1))
+  else
+    classes=$(grep -rE '^\s*(public|internal)\s+(sealed |abstract |static |partial )*(class|record) ' --include='*.cs' src/ 2>/dev/null | grep -v '/Migrations/' | grep -v 'Tests' | wc -l || echo 0)
+    interfaces=$(grep -rE '^\s*public\s+interface\s' --include='*.cs' src/ 2>/dev/null | grep -v '/Migrations/' | grep -v 'Tests' | wc -l || echo 0)
+    REFORGE_MISSES=$((REFORGE_MISSES+1))
+  fi
+
   controllers=$(find src -name '*Controller.cs' ! -path '*/Migrations/*' 2>/dev/null | wc -l)
   views=$(find src -name '*.cshtml' 2>/dev/null | wc -l)
   entities=$(find src -path '*/Entities/*.cs' 2>/dev/null | wc -l)
@@ -223,3 +305,4 @@ mv "$DOC.tmp" "$DOC"
 
 ROWS=$(grep -cE '^\| [0-9]{4}-[0-9]{2}-[0-9]{2} ' "$DOC" || echo 0)
 echo "Done. Appended $N rows. Table now has $ROWS data rows."
+echo "Class/interface source: reforge=$REFORGE_HITS days, regex-fallback=$REFORGE_MISSES days."
