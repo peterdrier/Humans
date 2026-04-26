@@ -66,6 +66,7 @@ public class FinanceController : HumansControllerBase
 
             var allYears = await _budgetService.GetAllYearsAsync();
             var model = await BuildFinanceOverviewAsync(activeYear, allYears);
+            ViewData["HoldedActuals"] = await _holdedTransactions.GetActualSumsByCategoryAsync(activeYear.Id, ct);
             return View("YearDetail", model);
         }
         catch (Exception ex)
@@ -77,7 +78,7 @@ public class FinanceController : HumansControllerBase
     }
 
     [HttpGet("Years/{id:guid}")]
-    public async Task<IActionResult> YearDetail(Guid id)
+    public async Task<IActionResult> YearDetail(Guid id, CancellationToken ct)
     {
         try
         {
@@ -86,6 +87,7 @@ public class FinanceController : HumansControllerBase
 
             var allYears = await _budgetService.GetAllYearsAsync();
             var model = await BuildFinanceOverviewAsync(year, allYears);
+            ViewData["HoldedActuals"] = await _holdedTransactions.GetActualSumsByCategoryAsync(year.Id, ct);
             return View(model);
         }
         catch (Exception ex)
@@ -94,6 +96,13 @@ public class FinanceController : HumansControllerBase
             SetError("Failed to load budget year.");
             return RedirectToAction(nameof(Index));
         }
+    }
+
+    [HttpGet("HoldedByCategory/{id:guid}")]
+    public async Task<IActionResult> HoldedByCategory(Guid id, CancellationToken ct)
+    {
+        var rows = await _holdedTransactions.GetByCategoryAsync(id, ct);
+        return PartialView("_HoldedTransactionList", rows);
     }
 
     [HttpGet("Categories/{id:guid}")]
