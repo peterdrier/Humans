@@ -248,6 +248,9 @@ public sealed class CampRoleService : ICampRoleService
         return AssignCampRoleOutcome.Assigned;
     }
 
+    public Task<CampRoleAssignment?> GetAssignmentByIdAsync(Guid assignmentId, CancellationToken ct = default)
+        => _repo.GetAssignmentByIdAsync(assignmentId, ct);
+
     public async Task<bool> UnassignAsync(Guid assignmentId, Guid actorUserId, CancellationToken ct = default)
     {
         var assignment = await _repo.GetAssignmentByIdAsync(assignmentId, ct);

@@ -12,6 +12,7 @@ using NodaTime;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CitiPlanning;
 using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Services.Camps;
 
 namespace Humans.Web.Controllers;
 
@@ -21,6 +22,7 @@ public class CampController : HumansCampControllerBase
 {
     private readonly ICampService _campService;
     private readonly ICampContactService _campContactService;
+    private readonly ICampRoleService _campRoleService;
     private readonly ICityPlanningService _cityPlanningService;
     private readonly INotificationService _notificationService;
     private readonly IClock _clock;
@@ -30,6 +32,7 @@ public class CampController : HumansCampControllerBase
     public CampController(
         ICampService campService,
         ICampContactService campContactService,
+        ICampRoleService campRoleService,
         ICityPlanningService cityPlanningService,
         INotificationService notificationService,
         UserManager<User> userManager,
@@ -41,6 +44,7 @@ public class CampController : HumansCampControllerBase
     {
         _campService = campService;
         _campContactService = campContactService;
+        _campRoleService = campRoleService;
         _cityPlanningService = cityPlanningService;
         _notificationService = notificationService;
         _clock = clock;
@@ -966,6 +970,84 @@ public class CampController : HumansCampControllerBase
         {
             _logger.LogError(ex, "AddMember failed for camp {CampSlug}, user {UserId}.", slug, userId);
             SetError("Failed to add human to camp.");
+        }
+
+        return RedirectToAction(nameof(Edit), new { slug });
+    }
+
+    // ======================================================================
+    // Per-camp role assignments (issue nobodies-collective#489)
+    // ======================================================================
+
+    [Authorize]
+    [HttpPost("{slug}/Roles/Assign")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AssignRole(string slug, Guid roleDefinitionId, Guid campMemberId, CancellationToken ct)
+    {
+        var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null) return errorResult;
+
+        var openSeason = camp.Seasons.FirstOrDefault(s => s.Status == CampSeasonStatus.Active);
+        if (openSeason is null)
+        {
+            SetError("No active season for this camp.");
+            return RedirectToAction(nameof(Edit), new { slug });
+        }
+
+        var outcome = await _campRoleService.AssignAsync(openSeason.Id, roleDefinitionId, campMemberId, user.Id, ct);
+        var message = outcome switch
+        {
+            AssignCampRoleOutcome.Assigned             => "Role assigned.",
+            AssignCampRoleOutcome.RoleNotFound         => "Role definition not found.",
+            AssignCampRoleOutcome.RoleDeactivated      => "That role is deactivated.",
+            AssignCampRoleOutcome.MemberNotFound       => "Camp member not found.",
+            AssignCampRoleOutcome.MemberNotActive      => "Only active camp members can hold roles.",
+            AssignCampRoleOutcome.MemberSeasonMismatch => "Member is not in this season.",
+            AssignCampRoleOutcome.SlotCapReached       => "All slots for this role are filled.",
+            AssignCampRoleOutcome.AlreadyHoldsRole     => "That human already holds this role.",
+            AssignCampRoleOutcome.SeasonNotFound       => "Season not found.",
+            _                                          => "Unknown error.",
+        };
+
+        if (outcome == AssignCampRoleOutcome.Assigned)
+        {
+            SetSuccess(message);
+        }
+        else
+        {
+            SetError(message);
+        }
+
+        return RedirectToAction(nameof(Edit), new { slug });
+    }
+
+    [Authorize]
+    [HttpPost("{slug}/Roles/{assignmentId:guid}/Unassign")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UnassignRole(string slug, Guid assignmentId, CancellationToken ct)
+    {
+        var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null) return errorResult;
+
+        // C2: verify the assignment belongs to a season of THIS camp before delegating to the service.
+        var assignment = await _campRoleService.GetAssignmentByIdAsync(assignmentId, ct);
+        var seasonIds = camp.Seasons.Select(s => s.Id).ToHashSet();
+        if (assignment is null || !seasonIds.Contains(assignment.CampSeasonId))
+        {
+            _logger.LogWarning(
+                "Cross-camp UnassignRole blocked: actor {ActorId} attempted assignment {AssignmentId} from camp {CampSlug}.",
+                user.Id, assignmentId, slug);
+            return Forbid();
+        }
+
+        var ok = await _campRoleService.UnassignAsync(assignmentId, user.Id, ct);
+        if (ok)
+        {
+            SetSuccess("Role unassigned.");
+        }
+        else
+        {
+            SetError("Assignment not found.");
         }
 
         return RedirectToAction(nameof(Edit), new { slug });

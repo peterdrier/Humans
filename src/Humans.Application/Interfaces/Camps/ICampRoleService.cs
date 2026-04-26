@@ -25,6 +25,13 @@ public interface ICampRoleService
 
     Task<AssignCampRoleOutcome> AssignAsync(Guid campSeasonId, Guid roleDefinitionId, Guid campMemberId, Guid actorUserId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Loads a single assignment (including its season) so callers can verify
+    /// camp ownership before mutating it. Used by the per-camp UnassignRole
+    /// controller action for the C2 cross-camp ownership check.
+    /// </summary>
+    Task<CampRoleAssignment?> GetAssignmentByIdAsync(Guid assignmentId, CancellationToken ct = default);
+
     Task<bool> UnassignAsync(Guid assignmentId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
