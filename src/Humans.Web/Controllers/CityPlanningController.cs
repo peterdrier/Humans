@@ -102,6 +102,38 @@ public class CityPlanningController : HumansControllerBase
         return RedirectToAction(nameof(Admin));
     }
 
+    [HttpPost("Admin/OpenContainerPlacement")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> OpenContainerPlacement(CancellationToken cancellationToken)
+    {
+        var (error, user) = await RequireCurrentUserAsync();
+        if (error != null) return error;
+
+        if (!await IsMapAdminAsync(user.Id, cancellationToken))
+            return Forbid();
+
+        var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
+        await _cityPlanningService.OpenContainerPlacementAsync(user.Id, cancellationToken);
+        SetSuccess("Container placement phase opened.");
+        return RedirectToAction(nameof(OrgContainers), new { year = settings.Year });
+    }
+
+    [HttpPost("Admin/CloseContainerPlacement")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CloseContainerPlacement(CancellationToken cancellationToken)
+    {
+        var (error, user) = await RequireCurrentUserAsync();
+        if (error != null) return error;
+
+        if (!await IsMapAdminAsync(user.Id, cancellationToken))
+            return Forbid();
+
+        var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
+        await _cityPlanningService.CloseContainerPlacementAsync(user.Id, cancellationToken);
+        SetSuccess("Container placement phase closed.");
+        return RedirectToAction(nameof(OrgContainers), new { year = settings.Year });
+    }
+
     [HttpPost("Admin/UploadLimitZone")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UploadLimitZone(IFormFile file, CancellationToken cancellationToken)
