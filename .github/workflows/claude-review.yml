@@ -1,12 +1,17 @@
 name: Claude PR Review
 
-# Auto-review every PR against this repo using the official Anthropic
+# Auto-review every same-repo PR using the official Anthropic
 # claude-code-action. Uses CLAUDE_CODE_OAUTH_TOKEN (generated via
 # `claude setup-token` against a Claude Pro/Max subscription) so review
 # runs bill against the subscription rather than the API.
 #
 # Mirrors the role Codex plays today: posts inline comments + a top-level
 # summary on every opened PR and on each new push.
+#
+# PRs from forks are skipped (the `if:` guard below). GitHub gives fork
+# PRs a read-only token with no secrets, so `pull_request` runs on forks
+# would fail with an OIDC error anyway. For external PRs, run a manual
+# review locally (`/pr-review <num>`) or via a comment-triggered workflow.
 #
 # Setup (one-time, per repo):
 #   1. Run `claude setup-token` locally → copy the OAuth token.
@@ -20,6 +25,7 @@ on:
 
 jobs:
   review:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
       contents: read
