@@ -89,6 +89,17 @@ public sealed class ProfileRepository : IProfileRepository
         return (data?.ProfilePictureData, data?.ProfilePictureContentType);
     }
 
+    public async Task<string?> GetProfilePictureContentTypeAsync(
+        Guid profileId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Profiles
+            .AsNoTracking()
+            .Where(p => p.Id == profileId)
+            .Select(p => p.ProfilePictureContentType)
+            .FirstOrDefaultAsync(ct);
+    }
+
     public async Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
         GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default)
     {

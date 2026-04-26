@@ -195,9 +195,53 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         return (profile, isTierLocked, pendingApplication);
     }
 
-    public Task<(byte[]? Data, string? ContentType)> GetProfilePictureAsync(
-        Guid profileId, CancellationToken ct = default) =>
-        _profileRepository.GetProfilePictureDataAsync(profileId, ct);
+    public async Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(
+        Guid profileId, CancellationToken ct = default)
+    {
+        // Anonymization gate (issue nobodies-collective/Humans#527, GDPR):
+        // a cheap scalar projection of the DB content-type column is the
+        // source of truth for whether a picture should be served. If
+        // AnonymizeExpiredProfileAsync (or any future cleanup) has cleared
+        // the DB column, do not serve from disk even if a stale file
+        // remains — that closes the loop for the case where the
+        // best-effort filesystem delete failed during anonymization.
+        var dbContentType = await _profileRepository.GetProfilePictureContentTypeAsync(profileId, ct);
+        if (string.IsNullOrEmpty(dbContentType))
+        {
+            return null;
+        }
+
+        // Filesystem fast path. Avoids loading the bytea column when the
+        // file is already on disk (the common case after migrate-on-read).
+        var fsHit = await _profilePictureStore.TryReadAsync(profileId, ct);
+        if (fsHit is not null)
+        {
+            return (fsHit.Value.Data, fsHit.Value.ContentType);
+        }
+
+        // DB fallback + migrate-on-read.
+        var (data, contentType) = await _profileRepository.GetProfilePictureDataAsync(profileId, ct);
+        if (data is null || string.IsNullOrEmpty(contentType))
+        {
+            return null;
+        }
+
+        try
+        {
+            await _profilePictureStore.WriteAsync(profileId, data, contentType, ct);
+            _logger.LogInformation(
+                "Profile picture {ProfileId} served from DB fallback; migrated to filesystem",
+                profileId);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex,
+                "Profile picture {ProfileId} served from DB fallback; migration to filesystem failed",
+                profileId);
+        }
+
+        return (data, contentType);
+    }
 
     public async Task<Guid> SaveProfileAsync(
         Guid userId, string displayName, ProfileSaveRequest request, string language,
@@ -1010,10 +1054,15 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
 
     public async Task<bool> AnonymizeExpiredProfileAsync(Guid userId, CancellationToken ct = default)
     {
-        // Anonymize clears ProfilePictureData in DB; also wipe the filesystem copy
-        // (phase 1 of issue nobodies-collective/Humans#527). Best-effort — if FS
-        // delete fails, the DB write still proceeded so the picture is no longer
-        // served via the read path.
+        // Anonymize clears ProfilePictureData / ProfilePictureContentType in
+        // the DB and best-effort wipes the filesystem copy (phase 1 of issue
+        // nobodies-collective/Humans#527). The DB clear alone is NOT
+        // sufficient under the FS-first read path: if this delete throws,
+        // the file remains on disk and TryReadAsync would otherwise serve it
+        // indefinitely. The read-path gate in GetProfilePictureAsync (which
+        // checks the DB content-type before consulting the filesystem)
+        // closes that loop — but we still log this failure as an Error so
+        // an operator can clean up the stale file out-of-band.
         var profile = await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
         var anonymized = await _profileRepository.AnonymizeForDeletionByUserIdAsync(userId, ct);
         if (anonymized && profile is not null)
@@ -1024,8 +1073,10 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogWarning(ex,
-                    "Failed to delete filesystem profile picture during anonymization for {ProfileId}",
+                _logger.LogError(ex,
+                    "Failed to delete filesystem profile picture during anonymization for {ProfileId}; " +
+                    "DB has been cleared so the read-path gate prevents the stale file from being served, " +
+                    "but the file should be removed manually to complete GDPR data deletion",
                     profile.Id);
             }
         }

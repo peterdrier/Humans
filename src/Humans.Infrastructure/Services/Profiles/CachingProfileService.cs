@@ -233,7 +233,7 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         return await inner.GetProfileEditDataAsync(userId, ct);
     }
 
-    public async Task<(byte[]? Data, string? ContentType)> GetProfilePictureAsync(
+    public async Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(
         Guid profileId, CancellationToken ct = default)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();

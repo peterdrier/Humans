@@ -83,8 +83,21 @@ public sealed class FileSystemProfilePictureStore : IProfilePictureStore
         }
         catch
         {
-            // Clean up temp file if rename failed.
-            try { File.Delete(tempPath); } catch { /* best-effort */ }
+            // Clean up temp file if rename failed. Best-effort: we still
+            // rethrow the original move failure to the caller below, but a
+            // failure here only leaks a temp file we don't otherwise need
+            // — log so an operator can spot disk-pressure / permission
+            // issues that would otherwise be silent.
+            try
+            {
+                File.Delete(tempPath);
+            }
+            catch (IOException cleanupEx)
+            {
+                _logger.LogWarning(cleanupEx,
+                    "Failed to clean up temp profile picture file {TempPath} after a failed rename",
+                    tempPath);
+            }
             throw;
         }
     }

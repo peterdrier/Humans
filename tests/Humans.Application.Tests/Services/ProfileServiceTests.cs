@@ -421,33 +421,107 @@ public class ProfileServiceTests : IDisposable
         await SeedUserWithProfileAsync(userId, withPicture: true);
         var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
 
-        var (data, contentType) = await _service.GetProfilePictureAsync(profile.Id);
+        var result = await _service.GetProfilePictureAsync(profile.Id);
 
-        data.Should().NotBeNull();
-        data.Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
-        contentType.Should().Be("image/png");
+        result.Should().NotBeNull();
+        result!.Value.Data.Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
+        result.Value.ContentType.Should().Be("image/png");
     }
 
     [HumansFact]
-    public async Task GetProfilePictureAsync_NoPicture_ReturnsNulls()
+    public async Task GetProfilePictureAsync_NoPicture_ReturnsNull()
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: false);
         var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
 
-        var (data, contentType) = await _service.GetProfilePictureAsync(profile.Id);
+        var result = await _service.GetProfilePictureAsync(profile.Id);
 
-        data.Should().BeNull();
-        contentType.Should().BeNull();
+        result.Should().BeNull();
     }
 
     [HumansFact]
-    public async Task GetProfilePictureAsync_NoProfile_ReturnsNulls()
+    public async Task GetProfilePictureAsync_NoProfile_ReturnsNull()
     {
-        var (data, contentType) = await _service.GetProfilePictureAsync(Guid.NewGuid());
+        var result = await _service.GetProfilePictureAsync(Guid.NewGuid());
 
-        data.Should().BeNull();
-        contentType.Should().BeNull();
+        result.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetProfilePictureAsync_FilesystemHit_ServesFromStoreWithoutDbBytes()
+    {
+        // FS-first fast path: when the picture is already on disk we should
+        // serve those bytes directly even if they differ from the DB copy.
+        // This pins the read path to the store as the authoritative source
+        // when the DB content-type column says a picture exists.
+        var userId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(userId, withPicture: true);
+        var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
+
+        var fsPayload = new byte[] { 9, 9, 9, 9 };
+        await _profilePictureStore.WriteAsync(profile.Id, fsPayload, "image/png");
+
+        var result = await _service.GetProfilePictureAsync(profile.Id);
+
+        result.Should().NotBeNull();
+        result!.Value.Data.Should().BeEquivalentTo(fsPayload);
+        result.Value.ContentType.Should().Be("image/png");
+    }
+
+    [HumansFact]
+    public async Task GetProfilePictureAsync_DbOnly_ReturnsAndMigratesToFilesystem()
+    {
+        // Migrate-on-read: the DB still has the bytes (legacy data, or a
+        // disk-restore scenario) but the filesystem store does not. The
+        // service must return the DB copy AND seed the store so the next
+        // read takes the fast path.
+        var userId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(userId, withPicture: true);
+        var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
+
+        _profilePictureStore.Files.ContainsKey(profile.Id).Should().BeFalse();
+
+        var result = await _service.GetProfilePictureAsync(profile.Id);
+
+        result.Should().NotBeNull();
+        result!.Value.Data.Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
+        result.Value.ContentType.Should().Be("image/png");
+
+        // Migrate-on-read should have populated the store.
+        _profilePictureStore.Files.TryGetValue(profile.Id, out var stored).Should().BeTrue();
+        stored.Data.Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
+        stored.ContentType.Should().Be("image/png");
+    }
+
+    [HumansFact]
+    public async Task GetProfilePictureAsync_AnonymizedProfile_ReturnsNullEvenWithStaleFile()
+    {
+        // GDPR / issue nobodies-collective/Humans#527 fix-pass: after
+        // anonymization the DB content-type is null. If the on-disk file
+        // wasn't successfully removed (best-effort delete failed) the read
+        // path MUST NOT serve it. The DB content-type column is the gate.
+        var userId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(userId, withPicture: true);
+        var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
+
+        // Seed a stale on-disk file as if a prior anonymization left it behind.
+        await _profilePictureStore.WriteAsync(profile.Id, new byte[] { 7, 7, 7 }, "image/png");
+
+        // Now anonymize via the service and force the FS delete to fail by
+        // pre-removing the entry, then re-add it AFTER the anonymize call.
+        // Easiest path: clear DB columns directly on the tracked profile.
+        var tracked = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
+        tracked.ProfilePictureData = null;
+        tracked.ProfilePictureContentType = null;
+        await _dbContext.SaveChangesAsync();
+
+        // Confirm the stale file is still on disk to make the gate meaningful.
+        _profilePictureStore.Files.ContainsKey(profile.Id).Should().BeTrue();
+
+        var result = await _service.GetProfilePictureAsync(profile.Id);
+
+        result.Should().BeNull("DB content-type is null after anonymization, so the stale on-disk file must not be served");
     }
 
     [HumansFact]
