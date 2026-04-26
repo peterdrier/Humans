@@ -40,10 +40,13 @@ public interface ICampRoleRepository
     Task<bool> AssignmentExistsAsync(Guid campSeasonId, Guid definitionId, Guid campMemberId, CancellationToken ct = default);
 
     /// <summary>
-    /// Persists a new assignment. May throw <see cref="Microsoft.EntityFrameworkCore.DbUpdateException"/>
-    /// if the unique index fires (caller must catch and translate to AlreadyHoldsRole outcome).
+    /// Persists a new assignment. Returns <c>true</c> if inserted, <c>false</c> if the
+    /// unique index on <c>(CampSeasonId, CampRoleDefinitionId, CampMemberId)</c> fired
+    /// (race lost — duplicate already exists). The repo translates the underlying
+    /// PostgreSQL 23505 / EF DbUpdateException so callers in <c>Humans.Application</c>
+    /// don't need to import EF Core (design-rules §1, §3).
     /// </summary>
-    Task AddAssignmentAsync(CampRoleAssignment assignment, CancellationToken ct = default);
+    Task<bool> AddAssignmentAsync(CampRoleAssignment assignment, CancellationToken ct = default);
 
     Task<bool> DeleteAssignmentAsync(Guid assignmentId, CancellationToken ct = default);
 

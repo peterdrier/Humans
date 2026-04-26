@@ -1117,6 +1117,12 @@ public sealed class CampService : ICampService, IUserDataContributor
         Guid userId, Guid campId, CancellationToken cancellationToken = default) =>
         _repo.IsUserActiveLeadAsync(userId, campId, cancellationToken);
 
+    public async Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken cancellationToken = default)
+    {
+        var row = await _repo.GetMemberLookupAsync(campMemberId, cancellationToken);
+        return row is null ? null : new CampMemberLookup(row.Value.CampSeasonId, row.Value.UserId, row.Value.Status);
+    }
+
     // ==========================================================================
     // Images
     // ==========================================================================

@@ -839,4 +839,15 @@ public sealed class CampRepository : ICampRepository
                     || m.CampSeason.Status == CampSeasonStatus.Full))
             .CountAsync(ct);
     }
+
+    public async Task<(Guid CampSeasonId, Guid UserId, CampMemberStatus Status)?> GetMemberLookupAsync(
+        Guid campMemberId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var row = await ctx.CampMembers.AsNoTracking()
+            .Where(m => m.Id == campMemberId)
+            .Select(m => new { m.CampSeasonId, m.UserId, m.Status })
+            .FirstOrDefaultAsync(ct);
+        return row is null ? null : (row.CampSeasonId, row.UserId, row.Status);
+    }
 }

@@ -246,6 +246,71 @@ public class CampRoleServiceTests : IDisposable
             nameof(CampRoleDefinition), def.Id, Arg.Any<string>(), _actorUserId, null, null);
     }
 
+    [HumansFact]
+    public async Task Assign_happy_path_creates_assignment_and_audits_and_notifies()
+    {
+        var (camp, season) = await SeedCampWithSeasonAsync();
+        var member = await SeedActiveMemberAsync(season.Id);
+        var def = await SeedDefinitionAsync();
+
+        _campService.GetCampMemberStatusAsync(member.Id, default)
+            .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Active));
+
+        var outcome = await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId);
+
+        outcome.Should().Be(AssignCampRoleOutcome.Assigned);
+
+        var assignments = await _dbContext.CampRoleAssignments.AsNoTracking().ToListAsync();
+        assignments.Should().HaveCount(1);
+        assignments[0].CampMemberId.Should().Be(member.Id);
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CampRoleAssigned, nameof(CampRoleAssignment),
+            Arg.Any<Guid>(), Arg.Any<string>(), _actorUserId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+
+        await _notificationEmitter.Received(1).SendAsync(
+            NotificationSource.CampRoleAssigned,
+            Arg.Any<NotificationClass>(),
+            Arg.Any<NotificationPriority>(),
+            Arg.Any<string>(),
+            Arg.Is<IReadOnlyList<Guid>>(r => r.Contains(member.UserId)),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Assign_returns_MemberNotActive_when_member_is_pending()
+    {
+        var (camp, season) = await SeedCampWithSeasonAsync();
+        var member = await SeedActiveMemberAsync(season.Id);
+        var def = await SeedDefinitionAsync();
+
+        _campService.GetCampMemberStatusAsync(member.Id, default)
+            .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Pending));
+
+        var outcome = await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId);
+
+        outcome.Should().Be(AssignCampRoleOutcome.MemberNotActive);
+        (await _dbContext.CampRoleAssignments.CountAsync()).Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task Assign_returns_MemberSeasonMismatch_when_member_is_in_different_season()
+    {
+        var (camp, season) = await SeedCampWithSeasonAsync();
+        var (_, otherSeason) = await SeedCampWithSeasonAsync();
+        var member = await SeedActiveMemberAsync(otherSeason.Id);
+        var def = await SeedDefinitionAsync();
+
+        _campService.GetCampMemberStatusAsync(member.Id, default)
+            .Returns(new CampMemberLookup(otherSeason.Id, member.UserId, CampMemberStatus.Active));
+
+        var outcome = await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId);
+
+        outcome.Should().Be(AssignCampRoleOutcome.MemberSeasonMismatch);
+    }
+
     private async Task<CampRoleDefinition> SeedDefinitionAsync(
         string name = "Consent Lead", int slotCount = 2, int minimumRequired = 1,
         bool isRequired = true, bool deactivated = false)

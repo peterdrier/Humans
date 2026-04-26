@@ -434,6 +434,10 @@ public interface ICampRepository
     /// </summary>
     Task<int> CountPendingMembershipsForLeadAsync(
         Guid userId, CancellationToken ct = default);
+
+    /// <summary>Returns (CampSeasonId, UserId, Status) for the member, or null if not found. Read-only.</summary>
+    Task<(Guid CampSeasonId, Guid UserId, CampMemberStatus Status)?> GetMemberLookupAsync(
+        Guid campMemberId, CancellationToken ct = default);
 }
 
 /// <summary>

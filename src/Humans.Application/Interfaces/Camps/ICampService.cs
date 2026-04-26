@@ -180,7 +180,15 @@ public interface ICampService
     /// </summary>
     Task<int> GetPendingMembershipCountForLeadAsync(
         Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the season + status + user of a camp member, or null if not found.
+    /// Used by ICampRoleService to enforce the active-member-in-correct-season precondition.
+    /// </summary>
+    Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken ct = default);
 }
+
+public sealed record CampMemberLookup(Guid CampSeasonId, Guid UserId, CampMemberStatus Status);
 
 /// <summary>
 /// Result of a camp membership request action.

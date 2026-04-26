@@ -95,11 +95,20 @@ public sealed class CampRoleRepository : ICampRoleRepository
                         && a.CampMemberId == campMemberId, ct);
     }
 
-    public async Task AddAssignmentAsync(CampRoleAssignment assignment, CancellationToken ct = default)
+    public async Task<bool> AddAssignmentAsync(CampRoleAssignment assignment, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         ctx.CampRoleAssignments.Add(assignment);
-        await ctx.SaveChangesAsync(ct); // may throw DbUpdateException — caller catches
+        try
+        {
+            await ctx.SaveChangesAsync(ct);
+            return true;
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+        {
+            // I5 fix — unique-index race on (CampSeasonId, CampRoleDefinitionId, CampMemberId)
+            return false;
+        }
     }
 
     public async Task<bool> DeleteAssignmentAsync(Guid assignmentId, CancellationToken ct = default)

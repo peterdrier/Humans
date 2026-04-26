@@ -153,8 +153,68 @@ public sealed class CampRoleService : ICampRoleService
     public Task<CampRolesPanelData> BuildPanelAsync(Guid campSeasonId, CancellationToken ct = default)
         => throw new NotSupportedException();
 
-    public Task<AssignCampRoleOutcome> AssignAsync(Guid campSeasonId, Guid roleDefinitionId, Guid campMemberId, Guid actorUserId, CancellationToken ct = default)
-        => throw new NotSupportedException();
+    public async Task<AssignCampRoleOutcome> AssignAsync(
+        Guid campSeasonId, Guid roleDefinitionId, Guid campMemberId, Guid actorUserId, CancellationToken ct = default)
+    {
+        var def = await _repo.GetDefinitionByIdAsync(roleDefinitionId, ct);
+        if (def is null) return AssignCampRoleOutcome.RoleNotFound;
+        if (def.DeactivatedAt is not null) return AssignCampRoleOutcome.RoleDeactivated;
+
+        var memberLookup = await _campService.GetCampMemberStatusAsync(campMemberId, ct);
+        if (memberLookup is null) return AssignCampRoleOutcome.MemberNotFound;
+        if (memberLookup.CampSeasonId != campSeasonId) return AssignCampRoleOutcome.MemberSeasonMismatch;
+        if (memberLookup.Status != CampMemberStatus.Active) return AssignCampRoleOutcome.MemberNotActive;
+
+        if (await _repo.AssignmentExistsAsync(campSeasonId, roleDefinitionId, campMemberId, ct))
+            return AssignCampRoleOutcome.AlreadyHoldsRole;
+
+        var existingCount = await _repo.CountAssignmentsForSeasonAndDefinitionAsync(campSeasonId, roleDefinitionId, ct);
+        if (existingCount >= def.SlotCount)
+            return AssignCampRoleOutcome.SlotCapReached;
+
+        var now = _clock.GetCurrentInstant();
+        var assignment = new CampRoleAssignment
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = campSeasonId,
+            CampRoleDefinitionId = roleDefinitionId,
+            CampMemberId = campMemberId,
+            AssignedAt = now,
+            AssignedByUserId = actorUserId,
+        };
+
+        var inserted = await _repo.AddAssignmentAsync(assignment, ct);
+        if (!inserted)
+        {
+            // I5 fix — repo translated the unique-index race
+            return AssignCampRoleOutcome.AlreadyHoldsRole;
+        }
+
+        await _auditLog.LogAsync(
+            AuditAction.CampRoleAssigned,
+            nameof(CampRoleAssignment),
+            assignment.Id,
+            $"Assigned role '{def.Name}' to member.",
+            actorUserId,
+            relatedEntityId: campMemberId, relatedEntityType: nameof(CampMember));
+
+        try
+        {
+            await _notificationEmitter.SendAsync(
+                source: NotificationSource.CampRoleAssigned,
+                notificationClass: NotificationClass.Informational,
+                priority: NotificationPriority.Normal,
+                title: $"You were assigned the {def.Name} role.",
+                recipientUserIds: new[] { memberLookup.UserId },
+                cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Notification failed for CampRoleAssigned (assignment {AssignmentId}).", assignment.Id);
+        }
+
+        return AssignCampRoleOutcome.Assigned;
+    }
 
     public Task<bool> UnassignAsync(Guid assignmentId, Guid actorUserId, CancellationToken ct = default)
         => throw new NotSupportedException();
