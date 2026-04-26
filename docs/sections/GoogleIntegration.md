@@ -1,6 +1,5 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/GoogleIntegration/**
-  src/Humans.Infrastructure/Services/GoogleWorkspaceSyncService.cs
   src/Humans.Domain/Entities/SyncServiceSettings.cs
   src/Humans.Domain/Entities/GoogleSyncOutboxEvent.cs
   src/Humans.Domain/Entities/GoogleResource.cs

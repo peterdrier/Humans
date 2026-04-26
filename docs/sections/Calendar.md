@@ -1,6 +1,5 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/Calendar/**
-  src/Humans.Infrastructure/Services/CalendarService.cs
   src/Humans.Domain/Entities/CalendarEvent.cs
   src/Humans.Domain/Entities/CalendarEventException.cs
   src/Humans.Infrastructure/Data/Configurations/Calendar/**

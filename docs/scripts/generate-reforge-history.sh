@@ -52,7 +52,11 @@ GAP_ROWS="$WORK_DIR/gap-rows.csv"
 > "$GAP_ROWS"
 
 cleanup() {
-  git checkout --quiet HEAD -- "$CSV" 2>/dev/null || true
+  # Restore branch FIRST so any subsequent file ops act on the right ref.
+  # Do NOT `git checkout HEAD -- $CSV` here — that step is for the
+  # mid-loop reset between historical checkouts (line below). On EXIT,
+  # the script has already rewritten $CSV with the merged final state,
+  # and a HEAD-restore would silently undo that write.
   git checkout --quiet "$ORIG_REF" 2>/dev/null || true
   if [ "$NEEDS_STASH" = "true" ]; then
     git stash pop --quiet 2>/dev/null || true

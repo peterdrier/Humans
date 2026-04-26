@@ -4,7 +4,6 @@
   src/Humans.Application/Services/Users/UserService.cs
   src/Humans.Application/Services/Users/AccountProvisioningService.cs
   src/Humans.Application/Services/Consent/**
-  src/Humans.Infrastructure/Services/ConsentService.cs
   src/Humans.Application/Services/Governance/ApplicationDecisionService.cs
   src/Humans.Application/Services/Teams/TeamService.cs
   src/Humans.Web/Controllers/OnboardingReviewController.cs

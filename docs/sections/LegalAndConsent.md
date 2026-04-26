@@ -1,7 +1,6 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/Legal/**
   src/Humans.Application/Services/Consent/**
-  src/Humans.Infrastructure/Services/ConsentService.cs
   src/Humans.Domain/Entities/LegalDocument.cs
   src/Humans.Domain/Entities/DocumentVersion.cs
   src/Humans.Domain/Entities/ConsentRecord.cs
