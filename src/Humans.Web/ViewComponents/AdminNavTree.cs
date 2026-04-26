@@ -50,7 +50,7 @@ public static class AdminNavTree
             new("AdminNav_Merge",          "AdminMerge", "Index",            null, null, "fa-solid fa-code-merge", PolicyNames.AdminOnly),
             new("AdminNav_Duplicates",     "AdminDuplicateAccounts", "Index", null, null, "fa-solid fa-clone",      PolicyNames.AdminOnly),
             new("AdminNav_Audience",       "Admin", "AudienceSegmentation",   null, null, "fa-solid fa-chart-pie",  PolicyNames.AdminOnly),
-            new("AdminNav_LegalDocuments", "AdminLegalDocuments", "Index",    null, null, "fa-solid fa-scale-balanced", PolicyNames.AdminOnly),
+            new("AdminNav_LegalDocuments", "AdminLegalDocuments", "LegalDocuments", null, null, "fa-solid fa-scale-balanced", PolicyNames.AdminOnly),
         }),
         new("AdminGroup_Diagnostics", new AdminNavItem[]
         {

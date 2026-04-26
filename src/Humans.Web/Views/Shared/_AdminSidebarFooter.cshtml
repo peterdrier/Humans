@@ -18,13 +18,52 @@
         </div>
     </a>
     <ul class="dropdown-menu dropdown-menu-dark">
-        <li><a class="dropdown-item" asp-controller="Profile" asp-action="Index">@Localizer["Nav_Profile"]</a></li>
-        <li><a class="dropdown-item" asp-controller="Home" asp-action="About">@Localizer["About"]</a></li>
-        <li><a class="dropdown-item" asp-controller="Home" asp-action="Privacy">@Localizer["Privacy"]</a></li>
-        <li><hr class="dropdown-divider"></li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Profile" asp-action="Index">
+                <i class="fa-solid fa-user fa-fw"></i> @Localizer["Nav_MyProfile"]
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Consent" asp-action="Index">
+                <i class="fa-solid fa-file-contract fa-fw"></i> @Localizer["Nav_Consents"]
+            </a>
+        </li>
+        <li authorize-policy="IsActiveMember">
+            <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Governance" asp-action="Index">
+                <i class="fa-solid fa-landmark fa-fw"></i> @Localizer["Nav_Governance"]
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Legal" asp-action="Index">
+                <i class="fa-solid fa-scale-balanced fa-fw"></i> @Localizer["Nav_Legal"]
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Feedback" asp-action="Index">
+                <i class="fa-solid fa-comment-dots fa-fw"></i> @Localizer["Nav_MyFeedback"]
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="About" asp-action="Index">
+                <i class="fa-solid fa-info-circle fa-fw"></i> @Localizer["Nav_About"]
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="About" asp-action="Staff">
+                <i class="fa-solid fa-users fa-fw"></i> @Localizer["Nav_Staff"]
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Home" asp-action="Privacy">
+                <i class="fa-solid fa-shield-halved fa-fw"></i> @Localizer["Nav_Privacy"]
+            </a>
+        </li>
+        <li><hr class="dropdown-divider" /></li>
         <li>
             <form asp-controller="Account" asp-action="Logout" method="post">
-                <button type="submit" class="dropdown-item">@Localizer["Logout"]</button>
+                <button type="submit" class="dropdown-item d-flex align-items-center gap-2 text-danger">
+                    <i class="fa-solid fa-right-from-bracket fa-fw"></i> @Localizer["Login_Logout"]
+                </button>
             </form>
         </li>
     </ul>

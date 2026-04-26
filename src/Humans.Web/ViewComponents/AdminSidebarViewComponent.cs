@@ -33,6 +33,7 @@ public sealed class AdminSidebarViewComponent : ViewComponent
                      ?? NullLogger<AdminSidebarViewComponent>.Instance;
 
         var activeController = (string?)RouteData.Values["controller"];
+        var activeAction = (string?)RouteData.Values["action"];
         var visibleGroups = new List<AdminSidebarGroupViewModel>(AdminNavTree.Groups.Count);
 
         foreach (var group in AdminNavTree.Groups)
@@ -75,7 +76,8 @@ public sealed class AdminSidebarViewComponent : ViewComponent
                     RawHref: item.RawHref,
                     IconCssClass: item.IconCssClass,
                     IsActive: !string.IsNullOrEmpty(item.Controller)
-                              && string.Equals(item.Controller, activeController, StringComparison.OrdinalIgnoreCase),
+                              && string.Equals(item.Controller, activeController, StringComparison.OrdinalIgnoreCase)
+                              && string.Equals(item.Action, activeAction, StringComparison.OrdinalIgnoreCase),
                     PillCount: pill));
             }
 
