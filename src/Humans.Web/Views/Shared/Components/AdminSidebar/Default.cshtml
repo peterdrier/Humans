@@ -1,0 +1,6 @@
+@model Humans.Web.ViewComponents.AdminSidebarViewModel
+@* Render filled in Task 9 — for now Default.cshtml exists so MVC's view-discovery succeeds. *@
+@foreach (var group in Model.Groups)
+{
+    <div data-group="@group.LabelKey"></div>
+}
