@@ -1557,6 +1557,21 @@ public class CampService : ICampService
             userId,
             relatedEntityId: member.CampSeason.CampId, relatedEntityType: nameof(Camp));
 
+        // Cascade role assignments — defensive; Pending members shouldn't hold roles, but auto-promote pathways could in principle leave one behind.
+        var roleAssignments = await _dbContext.CampRoleAssignments
+            .Where(a => a.CampMemberId == member.Id)
+            .ToListAsync(cancellationToken);
+        foreach (var ra in roleAssignments)
+        {
+            _dbContext.CampRoleAssignments.Remove(ra);
+            await _auditLogService.LogAsync(
+                AuditAction.CampRoleUnassigned,
+                entityType: nameof(CampRoleAssignment),
+                entityId: ra.Id,
+                description: "Cascade: membership request withdrawn.",
+                actorUserId: userId);
+        }
+
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -1584,6 +1599,21 @@ public class CampService : ICampService
             $"Left camp season {member.CampSeason.Year}",
             userId,
             relatedEntityId: member.CampSeason.CampId, relatedEntityType: nameof(Camp));
+
+        // Cascade role assignments — Active members can hold roles, so this is the real path.
+        var roleAssignments = await _dbContext.CampRoleAssignments
+            .Where(a => a.CampMemberId == member.Id)
+            .ToListAsync(cancellationToken);
+        foreach (var ra in roleAssignments)
+        {
+            _dbContext.CampRoleAssignments.Remove(ra);
+            await _auditLogService.LogAsync(
+                AuditAction.CampRoleUnassigned,
+                entityType: nameof(CampRoleAssignment),
+                entityId: ra.Id,
+                description: "Cascade: member left camp.",
+                actorUserId: userId);
+        }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -1889,7 +1919,22 @@ public class CampService : ICampService
             description: $"Assigned slot {slotIndex + 1} of '{def.Name}' to member {member.Id} for camp '{season.Camp.Slug}' season {season.Year}.",
             actorUserId: assignedByUserId);
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex)
+        {
+            // Convert DB-level uniqueness races into the same friendly Outcome the pre-checks return.
+            // Pre-check + insert is not atomic; under concurrent leads pressing the same slot, only the
+            // first save wins. Detect by which unique index Postgres complains about.
+            var detail = ex.InnerException?.Message ?? ex.Message;
+            if (detail.Contains("season_role_slot_unique", StringComparison.OrdinalIgnoreCase))
+                return new AssignCampRoleResult(Guid.Empty, AssignCampRoleOutcome.SlotOccupied, ErrorMessage: "Slot is already filled.");
+            if (detail.Contains("season_role_member_unique", StringComparison.OrdinalIgnoreCase))
+                return new AssignCampRoleResult(Guid.Empty, AssignCampRoleOutcome.AlreadyHoldsRole, ErrorMessage: "This human already holds this role for this season.");
+            throw;
+        }
 
         return new AssignCampRoleResult(
             AssignmentId: assignment.Id,
@@ -1940,10 +1985,13 @@ public class CampService : ICampService
 
     public async Task<IReadOnlyList<CampComplianceRow>> GetCampRoleComplianceAsync(int year, CancellationToken cancellationToken = default)
     {
+        // Carry SlotCount through so we can filter out orphan high-index assignments
+        // (rows whose SlotIndex >= current SlotCount because the role's SlotCount was lowered).
+        // Those rows shouldn't count toward MinimumRequired — see I6 in PR #335 review.
         var requiredRoles = await _dbContext.CampRoleDefinitions
             .Where(d => d.IsRequired && d.DeactivatedAt == null)
             .OrderBy(d => d.SortOrder)
-            .Select(d => new { d.Id, d.Name, d.MinimumRequired })
+            .Select(d => new { d.Id, d.Name, d.MinimumRequired, d.SlotCount })
             .ToListAsync(cancellationToken);
         if (requiredRoles.Count == 0) return Array.Empty<CampComplianceRow>();
 
@@ -1953,10 +2001,9 @@ public class CampService : ICampService
             .ToListAsync(cancellationToken);
 
         var seasonIds = seasons.Select(s => s.Id).ToList();
-        var assignmentCounts = await _dbContext.CampRoleAssignments
+        var assignments = await _dbContext.CampRoleAssignments
             .Where(a => seasonIds.Contains(a.CampSeasonId))
-            .GroupBy(a => new { a.CampSeasonId, a.CampRoleDefinitionId })
-            .Select(g => new { g.Key.CampSeasonId, g.Key.CampRoleDefinitionId, Count = g.Count() })
+            .Select(a => new { a.CampSeasonId, a.CampRoleDefinitionId, a.SlotIndex })
             .ToListAsync(cancellationToken);
 
         var rows = new List<CampComplianceRow>();
@@ -1965,7 +2012,11 @@ public class CampService : ICampService
             var missing = new List<string>();
             foreach (var role in requiredRoles)
             {
-                var count = assignmentCounts.FirstOrDefault(c => c.CampSeasonId == s.Id && c.CampRoleDefinitionId == role.Id)?.Count ?? 0;
+                // Count only assignments inside the current slot window — orphan high-index rows are being phased out.
+                var count = assignments.Count(a =>
+                    a.CampSeasonId == s.Id
+                    && a.CampRoleDefinitionId == role.Id
+                    && a.SlotIndex < role.SlotCount);
                 if (count < role.MinimumRequired) missing.Add(role.Name);
             }
             if (missing.Count > 0)

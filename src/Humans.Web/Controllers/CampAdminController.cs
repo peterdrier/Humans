@@ -427,7 +427,16 @@ public class CampAdminController : HumansControllerBase
     public async Task<IActionResult> DeactivateRole(Guid id, CancellationToken cancellationToken)
     {
         var actor = (await GetCurrentUserAsync())!.Id;
-        await _campService.DeactivateCampRoleDefinitionAsync(id, actor, cancellationToken);
+        try
+        {
+            await _campService.DeactivateCampRoleDefinitionAsync(id, actor, cancellationToken);
+            SetSuccess("Camp role deactivated.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Failed to deactivate camp role {RoleId} for admin {UserId}", id, actor);
+            SetError(ex.Message);
+        }
         return RedirectToAction(nameof(Roles));
     }
 
@@ -436,7 +445,16 @@ public class CampAdminController : HumansControllerBase
     public async Task<IActionResult> ReactivateRole(Guid id, CancellationToken cancellationToken)
     {
         var actor = (await GetCurrentUserAsync())!.Id;
-        await _campService.ReactivateCampRoleDefinitionAsync(id, actor, cancellationToken);
+        try
+        {
+            await _campService.ReactivateCampRoleDefinitionAsync(id, actor, cancellationToken);
+            SetSuccess("Camp role reactivated.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Failed to reactivate camp role {RoleId} for admin {UserId}", id, actor);
+            SetError(ex.Message);
+        }
         return RedirectToAction(nameof(Roles));
     }
 
