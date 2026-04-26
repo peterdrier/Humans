@@ -5,7 +5,6 @@
   src/Humans.Domain/Entities/ShiftSignup.cs
   src/Humans.Domain/Entities/ShiftTag.cs
   src/Humans.Domain/Entities/EventSettings.cs
-  src/Humans.Domain/Entities/EventParticipation.cs
   src/Humans.Domain/Entities/GeneralAvailability.cs
   src/Humans.Domain/Entities/VolunteerEventProfile.cs
   src/Humans.Domain/Entities/VolunteerTagPreference.cs
@@ -34,7 +33,7 @@ Event shifts, rotas, signups, range blocks, event settings, general availability
 - **Volunteer Event Profile** stores per-user volunteer profile data: skills, quirks (working-style toggles like Sober Shift, Work In Shade, plus a single time preference), languages, dietary preference, allergies, intolerances, and medical conditions. One-to-one with `User`.
 - **Rota Tags** (`shift_tags`) are labels applied to rotas (e.g., "Heavy lifting"). Volunteers save preferred tags via `VolunteerTagPreference`; matching rotas are starred on the browse page.
 - **Voluntelling** is when an Admin, NoInfoAdmin, VolunteerCoordinator, or department coordinator signs up a human for a shift on their behalf. Voluntold signups are auto-confirmed and recorded with `Enrolled = true` and `EnrolledByUserId`.
-- **Event Participation** (`event_participations`) is a per-user, per-year record tracking declared event participation status. Used cross-section (e.g., to gate "who hasn't bought a ticket" lists). Owned by Shifts but consumed by Tickets and other sections.
+- **Event Participation** is a per-user, per-year record tracking declared event participation status, used cross-section (e.g., to gate "who hasn't bought a ticket" lists). Owned by Users (see [`Users.md`](Users.md)); Shifts may surface it as a derived view but does not write to it.
 
 ## Data Model
 
@@ -93,13 +92,9 @@ Per-user volunteer profile (1:1 with User) capturing `Skills`, `Quirks`, `Langua
 
 Cross-domain nav to `User` is stripped from the entity; FK preserved via typed-FK form with `OnDelete(Cascade)`.
 
-### EventParticipation
+### EventParticipation (owned by Users)
 
-Per-user, per-year record tracking declared event participation status (`ParticipationStatus`, `ParticipationSource`, `DeclaredAt`). Absence of a row = unknown/no response (default state, not stored). Used by other sections (e.g., Tickets) to gate "who hasn't bought a ticket" exclusions for self-declared non-attendees.
-
-**Table:** `event_participations`
-
-Cross-domain nav `EventParticipation.User` is currently kept on the entity.
+The `event_participations` entity is owned by Users — the natural key is User + Year. See [`Users.md`](Users.md) for field-level detail. Shifts consumes it as a read-only cross-section reference and does not write to the table directly.
 
 ### Shift tag tables (§8 gap)
 
@@ -184,7 +179,7 @@ Stored as string via `HasConversion<string>()`.
 ## Architecture
 
 **Owning services:** `ShiftManagementService`, `ShiftSignupService`, `GeneralAvailabilityService`
-**Owned tables:** `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availability`, `volunteer_event_profiles`, `event_participations` (plus `shift_tags`, `volunteer_tag_preferences`, and the `rota_shift_tags` join table — pending §8 confirmation)
+**Owned tables:** `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availability`, `volunteer_event_profiles` (plus `shift_tags`, `volunteer_tag_preferences`, and the `rota_shift_tags` join table — pending §8 confirmation). `event_participations` is owned by Users (see [`Users.md`](Users.md)); Shifts only reads it via `IUserService`.
 **Status:** (A) Fully migrated. `ShiftManagementService`, `ShiftSignupService`, and `GeneralAvailabilityService` all live in `Humans.Application.Services.Shifts` and route through `IShiftManagementRepository` / `IShiftSignupRepository` / `IGeneralAvailabilityRepository`. Cross-domain navs on Shifts-owned entities (`Rota.Team`, `ShiftSignup.User` / `EnrolledByUser` / `ReviewedByUser`, `VolunteerEventProfile.User`, `VolunteerTagPreference.User`) deleted 2026-04-25 in nobodies-collective/Humans#541 final pass; FKs stay wired in EF via the typed-FK form.
 
 ### Target repositories
