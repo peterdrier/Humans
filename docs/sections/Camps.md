@@ -106,7 +106,7 @@ Per-season, post-hoc human/camp affiliation. Status: Pending → Active → Remo
 | KidsVisitingPolicy | Yes, DaytimeOnly, No |
 | PerformanceSpaceStatus | Yes, No, WorkingOnIt |
 | AdultPlayspacePolicy | Yes, No, NightOnly |
-| SpaceSize | Sqm150, Sqm300, Sqm450, Sqm600, Sqm750, Sqm900, Sqm1200, Sqm1500, Sqm2000, Sqm2400, Sqm2800 |
+| SpaceSize | Sqm150, Sqm300, Sqm450, Sqm600, Sqm800, Sqm1000, Sqm1200, Sqm1500, Sqm1800, Sqm2200, Sqm2800 |
 | SoundZone | Blue, Green, Yellow, Orange, Red, Surprise |
 | ElectricalGrid | Yellow, Red, Norg, OwnSupply, Unknown |
 
@@ -119,7 +119,7 @@ All stored as strings via `HasConversion<string>()`. `Vibes` stored as jsonb arr
 | Anyone (including anonymous) | Browse the camps directory, view camp details and season details |
 | Any authenticated human | Register a new camp (which creates a new season in Pending status). Request to join a camp for its open season; withdraw their own pending request; leave their own active membership. |
 | Camp lead | Edit their camp's details, manage season registrations, manage co-leads, upload/manage images, manage historical names. Approve / reject pending membership requests for their camp. Remove active members. |
-| CampAdmin, Admin | All camp lead capabilities on all camps. Approve/reject season registrations. Manage camp settings (public year, open seasons, name lock dates). View withdrawn and rejected seasons. Export camp data |
+| CampAdmin, Admin | All camp lead capabilities on all camps. Approve/reject season registrations. Reactivate a Full or Withdrawn season. Manage camp settings (public year, open seasons, name lock dates). Update registration info copy. View withdrawn seasons on the admin dashboard. Export camp data as CSV |
 | Admin | Delete camps |
 
 ## Invariants
