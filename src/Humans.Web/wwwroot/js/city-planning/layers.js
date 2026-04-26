@@ -207,10 +207,10 @@ export function renderMap(onCampPolygonClick) {
 
   map.on('click', 'camp-polygons-fill', onCampPolygonClick);
   map.on('click', 'camp-polygons-fill-surprise', onCampPolygonClick);
-  map.on('mouseenter', 'camp-polygons-fill', () => { map.getCanvas().style.cursor = 'pointer'; });
-  map.on('mouseenter', 'camp-polygons-fill-surprise', () => { map.getCanvas().style.cursor = 'pointer'; });
-  map.on('mouseleave', 'camp-polygons-fill', () => { map.getCanvas().style.cursor = ''; });
-  map.on('mouseleave', 'camp-polygons-fill-surprise', () => { map.getCanvas().style.cursor = ''; });
+  map.on('mouseenter', 'camp-polygons-fill', () => { if (!appState.measuringActive) map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseenter', 'camp-polygons-fill-surprise', () => { if (!appState.measuringActive) map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', 'camp-polygons-fill', () => { map.getCanvas().style.cursor = appState.measuringActive ? 'crosshair' : ''; });
+  map.on('mouseleave', 'camp-polygons-fill-surprise', () => { map.getCanvas().style.cursor = appState.measuringActive ? 'crosshair' : ''; });
 
   // Bring draw layers and warning overlays above our polygon layers
   map.getStyle().layers

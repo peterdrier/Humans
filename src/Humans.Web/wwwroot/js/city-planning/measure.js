@@ -120,10 +120,14 @@ export function enterMeasureMode() {
     appState.measuringActive = true;
     firstPoint = null;
     secondPoint = null;
+    clearAll();
     appState.map.getCanvas().style.cursor = 'crosshair';
     appState.map.on('click', onMapClick);
 
-    document.getElementById('measure-btn').classList.replace('btn-outline-secondary', 'btn-warning');
+    const btn = document.getElementById('measure-btn');
+    btn.classList.remove('btn-outline-secondary');
+    btn.classList.add('btn-warning');
+    btn.setAttribute('aria-pressed', 'true');
 }
 
 export function exitMeasureMode() {
@@ -138,7 +142,10 @@ export function exitMeasureMode() {
     appState.measuringActive = false;
     appState.map.getCanvas().style.cursor = '';
 
-    document.getElementById('measure-btn').classList.replace('btn-warning', 'btn-outline-secondary');
+    const btn = document.getElementById('measure-btn');
+    btn.classList.remove('btn-warning');
+    btn.classList.add('btn-outline-secondary');
+    btn.setAttribute('aria-pressed', 'false');
 }
 
 export function initMeasure(map) {

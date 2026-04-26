@@ -1425,7 +1425,7 @@
   <data name="CityPlanning_AddABarrioOption" xml:space="preserve"><value>Afegir un barrio…</value></data>
   <data name="CityPlanning_SaveButton" xml:space="preserve"><value>Desar</value></data>
   <data name="CityPlanning_HistoryButton" xml:space="preserve"><value>Historial</value></data>
-  <data name="CityPlanning_MeasureButton" xml:space="preserve"><value>Measure</value></data>
+  <data name="CityPlanning_MeasureButton" xml:space="preserve"><value>Mesurar</value></data>
   <data name="CityPlanning_AdminLink" xml:space="preserve"><value>Admin</value></data>
   <data name="CityPlanning_GoToPlacementMap" xml:space="preserve"><value>Anar al mapa de col·locació</value></data>
   <data name="CityPlanning_Admin_Title" xml:space="preserve"><value>Admin del Mapa de Barrios</value></data>

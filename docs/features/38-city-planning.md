@@ -41,6 +41,7 @@ City Planning gives camps a collaborative, real-time tool to stake out and refin
 - **US-38.11: Admin — Upload/Delete Official Zones** — Read-only named overlay (dark gray, labeled); each Feature requires a `name` property; download/delete supported
 - **US-38.12: Admin — Export All Placements** — Download all polygons as a GeoJSON FeatureCollection
 - **US-38.13: Admin — Add Polygon on Behalf of a Camp** — Place a polygon for any unmapped camp season via admin dropdown
+- **US-38.14: Distance Measuring Tool** — Any authenticated user can toggle a two-point ruler from the top-right card. First click drops a point and starts a live rubber-band line with a distance label that follows the cursor; second click locks the measurement; a third click starts a new one. Distance shows as `NNN m` under 1 km and `N.NN km` at or above. Escape or re-clicking the button exits and clears all measure layers. Entering measure mode while editing exits edit mode first; while measuring, camp polygon clicks are suppressed. Measure layers render above all camp/draw layers.
 
 ## Data Model
 
@@ -95,6 +96,7 @@ The map page is a full-screen MapLibre GL JS map with a vanilla ES module fronte
 | `edit.js` | Edit mode lifecycle, draw event handlers, popup, history offcanvas |
 | `signalr.js` | SignalR connection, cursor broadcast, polygon update handler |
 | `config.js` | Server-rendered config values read from DOM data attributes |
+| `measure.js` | Distance measuring tool — sources/layers, click state machine, rubber-band preview |
 
 **State flow:**
 1. Page loads → `GET /api/city-planning/state` fetches settings + all polygons
