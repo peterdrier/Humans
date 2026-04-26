@@ -444,10 +444,10 @@ public class ProfileServiceTests : IDisposable
         await SeedUserAsync(u4);
         await SeedUserAsync(u5);
         await _dbContext.Profiles.AddRangeAsync(
-            MakeProfile(u1, isApproved: true,  isSuspended: false), // counted
-            MakeProfile(u2, isApproved: true,  isSuspended: false), // counted
-            MakeProfile(u3, isApproved: true,  isSuspended: false), // counted
-            MakeProfile(u4, isApproved: true,  isSuspended: true),  // excluded: suspended
+            MakeProfile(u1, isApproved: true, isSuspended: false), // counted
+            MakeProfile(u2, isApproved: true, isSuspended: false), // counted
+            MakeProfile(u3, isApproved: true, isSuspended: false), // counted
+            MakeProfile(u4, isApproved: true, isSuspended: true),  // excluded: suspended
             MakeProfile(u5, isApproved: false, isSuspended: false)); // excluded: unapproved
         await _dbContext.SaveChangesAsync();
 
