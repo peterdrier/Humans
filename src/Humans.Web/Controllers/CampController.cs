@@ -936,6 +936,41 @@ public class CampController : HumansCampControllerBase
         return RedirectToAction(nameof(Edit), new { slug });
     }
 
+    [Authorize]
+    [HttpPost("{slug}/Members/Add")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddMember(string slug, Guid userId, CancellationToken ct)
+    {
+        var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null) return errorResult;
+
+        if (userId == Guid.Empty)
+        {
+            SetError("Please search and select a human first.");
+            return RedirectToAction(nameof(Edit), new { slug });
+        }
+
+        var openSeason = camp.Seasons.FirstOrDefault(s => s.Status == CampSeasonStatus.Active);
+        if (openSeason is null)
+        {
+            SetError("No active season for this camp.");
+            return RedirectToAction(nameof(Edit), new { slug });
+        }
+
+        try
+        {
+            await _campService.AddCampMemberAsLeadAsync(openSeason.Id, userId, user.Id, ct);
+            SetSuccess("Human added to camp.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "AddMember failed for camp {CampSlug}, user {UserId}.", slug, userId);
+            SetError("Failed to add human to camp.");
+        }
+
+        return RedirectToAction(nameof(Edit), new { slug });
+    }
+
     // ======================================================================
     // Helper methods
     // ======================================================================
