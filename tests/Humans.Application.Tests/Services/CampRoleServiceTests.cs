@@ -311,6 +311,61 @@ public class CampRoleServiceTests : IDisposable
         outcome.Should().Be(AssignCampRoleOutcome.MemberSeasonMismatch);
     }
 
+    [HumansFact]
+    public async Task Assign_returns_SlotCapReached_when_full()
+    {
+        var (camp, season) = await SeedCampWithSeasonAsync();
+        var def = await SeedDefinitionAsync(slotCount: 1);
+        var member1 = await SeedActiveMemberAsync(season.Id);
+        var member2 = await SeedActiveMemberAsync(season.Id);
+
+        _campService.GetCampMemberStatusAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var id = call.Arg<Guid>();
+                if (id == member1.Id) return new CampMemberLookup(season.Id, member1.UserId, CampMemberStatus.Active);
+                if (id == member2.Id) return new CampMemberLookup(season.Id, member2.UserId, CampMemberStatus.Active);
+                return null;
+            });
+
+        (await _service.AssignAsync(season.Id, def.Id, member1.Id, _actorUserId))
+            .Should().Be(AssignCampRoleOutcome.Assigned);
+
+        (await _service.AssignAsync(season.Id, def.Id, member2.Id, _actorUserId))
+            .Should().Be(AssignCampRoleOutcome.SlotCapReached);
+    }
+
+    [HumansFact]
+    public async Task Assign_returns_AlreadyHoldsRole_on_duplicate_member()
+    {
+        var (camp, season) = await SeedCampWithSeasonAsync();
+        var def = await SeedDefinitionAsync(slotCount: 2);
+        var member = await SeedActiveMemberAsync(season.Id);
+
+        _campService.GetCampMemberStatusAsync(member.Id, default)
+            .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Active));
+
+        (await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId))
+            .Should().Be(AssignCampRoleOutcome.Assigned);
+        (await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId))
+            .Should().Be(AssignCampRoleOutcome.AlreadyHoldsRole);
+    }
+
+    [HumansFact]
+    public async Task Assign_returns_RoleDeactivated_when_definition_is_soft_deleted()
+    {
+        var (camp, season) = await SeedCampWithSeasonAsync();
+        var def = await SeedDefinitionAsync(deactivated: true);
+        var member = await SeedActiveMemberAsync(season.Id);
+
+        _campService.GetCampMemberStatusAsync(member.Id, default)
+            .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Active));
+
+        var outcome = await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId);
+
+        outcome.Should().Be(AssignCampRoleOutcome.RoleDeactivated);
+    }
+
     private async Task<CampRoleDefinition> SeedDefinitionAsync(
         string name = "Consent Lead", int slotCount = 2, int minimumRequired = 1,
         bool isRequired = true, bool deactivated = false)
