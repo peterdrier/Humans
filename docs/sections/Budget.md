@@ -50,6 +50,8 @@ Second-level grouping within a year.
 
 Flag `IsTicketingGroup` determines the 1:0..1 `TicketingProjection` linkage and restricts visibility to FinanceAdmin/Admin.
 
+`Slug` is the Holded-tag-safe identifier (lowercase, no accents/spaces/symbols), unique within `(BudgetYearId, Slug)`. Used by Finance to compose `{group-slug}-{category-slug}` tag matching against incoming Holded purchase docs. Auto-populated from `Name` on create; editable with a warning that existing Holded tags using the old slug will go to the unmatched queue.
+
 **Aggregate-local navs:** `BudgetGroup.BudgetYear`, `BudgetGroup.Categories`, `BudgetGroup.TicketingProjection`.
 
 ### BudgetCategory
@@ -59,6 +61,8 @@ Third-level category holding the allocated amount.
 **Table:** `budget_categories`
 
 Cross-domain nav `BudgetCategory.Team` → `BudgetCategory.TeamId` only (Teams domain) — nav is `[Obsolete]`-marked.
+
+`Slug` is the Holded-tag-safe identifier (lowercase, no accents/spaces/symbols), unique within `(BudgetGroupId, Slug)`. Used by Finance to compose `{group-slug}-{category-slug}` tag matching. Auto-populated from `Name` on create; editable with a warning. Referenced by `HoldedTransaction.BudgetCategoryId` (FK from Finance section).
 
 **Aggregate-local navs:** `BudgetCategory.BudgetGroup`, `BudgetCategory.LineItems`.
 
