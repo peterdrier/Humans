@@ -36,8 +36,8 @@ Admin is layered. **Board** and **HumanAdmin** can do human management — the l
 
 ## Key pages at a glance
 
-- `/Admin` — Admin dashboard with counts, recent activity, and quick actions.
-- `/Board` — Board dashboard with scoped counts and a link to the audit log.
+- `/Admin` — Admin Tools menu with System Operations and Quick Links columns.
+- `/Board` — dashboard with cards for Total Humans, Active, Pending Approval, Missing Consents, Suspended, and Pending Deletion, plus a recent-activity feed and links to pending volunteers, pending applications, and the audit log. Visible to Board and Admin.
 - `/Profile/Admin` — humans list; `?filter=pending` scopes to pending approvals.
 - `/Profile/{id}/Admin` — per-human detail, with suspend, unsuspend, approve, reject, add role, end role.
 - `/Profile/{id}/Admin/Outbox` — per-human email outbox.
@@ -62,7 +62,7 @@ The Coordinator role does not include global admin access; the domain-specific a
 
 ### Work the dashboard
 
-Open `/Admin` (or `/Board` if you are Board but not Admin). The counts at the top — Total Humans, Active, Pending Volunteers, Pending Applications, Pending Consents — double as entry points. The recent-activity feed shows the latest audit entries so you can see what the system and other admins have been doing.
+Open `/Board` for the dashboard. The cards at the top — Total Humans, Active, Pending Approval, Missing Consents, Suspended, Pending Deletion — double as entry points, and a Pending Volunteers / Pending Applications action panel sits below. The recent-activity feed shows the latest audit entries so you can see what the system and other admins have been doing. `/Admin` is a separate Admin Tools menu of system operations and quick links rather than a dashboard.
 
 ### Manage humans
 
@@ -82,10 +82,6 @@ Every human-admin action writes an audit entry with your user as the actor.
 ### Triage the notification inbox
 
 `/Notifications` is your shared "what needs my attention" view. Actionable notifications targeted at the Admin role (sync errors, consent reviews, tier application submissions) appear under **Needs attention**. When a group notification targets all Admins or all Coordinators of a team, **any recipient can resolve it for all** — the resolver's name is shown so no one duplicates work. Informational notifications (team changes, workspace credentials ready, drift fixes) fall under **Recent**. The bell icon shows a red count for actionable items and a green dot for informational-only.
-
-### Review sent notifications
-
-`/Admin/Notifications/Sent` is the audit view of recent system and admin-generated notifications that have been delivered to humans. Use it to confirm delivery of a specific message, check what humans are actually seeing in their inbox, and investigate reports about unexpected emails or missing notifications. Each entry shows the recipient, channel, category, and delivery status.
 
 ### Configure Google sync
 

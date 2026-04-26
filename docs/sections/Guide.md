@@ -41,8 +41,9 @@
   `## Related sections`) is always visible.
 - Anonymous users only see Volunteer-scoped blocks. They never see
   Coordinator or Board/Admin blocks.
-- Guide content is the 17 files in `docs/guide/` on the current branch;
-  nothing is authored in-app.
+- Guide content is the 18 files in `docs/guide/` on the current branch
+  (`README`, `GettingStarted`, `Glossary`, plus the 15 sections enumerated
+  in `GuideFiles.Sections`); nothing is authored in-app.
 - Cache key is `guide:<FileStem>`. TTL is sliding, configured via
   `Guide:CacheTtlHours` (default 6).
 - Only the `GuideContentService` reads or writes the `guide:*` cache
@@ -50,7 +51,7 @@
 
 ## Triggers
 
-- First `GET /Guide/*` after cold start → full refresh of all 17 cache
+- First `GET /Guide/*` after cold start → full refresh of all 18 cache
   entries.
 - `POST /Guide/Refresh` (Admin) → clears and repopulates all entries.
 - GitHub fetch failure on warm cache → stale content served; warning
