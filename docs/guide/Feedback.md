@@ -48,7 +48,7 @@ The capabilities below require the **FeedbackAdmin** or **Admin** role. Feedback
 
 ### Triage the inbox
 
-Go to `/Feedback`. You see every report from every human. The main nav shows a badge with the count of reports that need your reply — reports where the reporter has posted a message more recently than any admin response, or where no admin has ever replied. Filter by status and category, and click a report to open its detail panel.
+Go to `/Feedback`. You see every report from every human. The main nav shows a badge with the count of reports that need your reply — reports where the reporter has posted a message more recently than any admin response, or where the report is still Open and no admin has ever replied. Resolved and Won't Fix reports never count toward the badge. Filter by status, category, reporter, assignee, team, or unassigned-only, and click a report to open its detail panel on the right.
 
 ### Reply to a reporter
 
