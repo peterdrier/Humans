@@ -1,0 +1,39 @@
+@model Humans.Web.Models.AdminDashboardViewModel
+
+<div class="stats">
+    <div class="stat">
+        <div class="label">@Localizer["AdminDashboard_Stat_ActiveHumans"]</div>
+        <div class="value">@Model.ActiveHumans</div>
+    </div>
+    <div class="stat">
+        <div class="label">@Localizer["AdminDashboard_Stat_Shifts"]</div>
+        <div class="value">
+            @if (Model.ShiftTotalOf.HasValue)
+            {
+                @Model.ShiftFilledOf <em>/ @Model.ShiftTotalOf</em>
+            }
+            else
+            {
+                <em>—</em>
+            }
+        </div>
+        <div class="delta">@Model.ShiftCoveragePercent% @Localizer["AdminDashboard_Stat_Shifts_Caption"]</div>
+    </div>
+    <div class="stat">
+        <div class="label">@Localizer["AdminDashboard_Stat_OpenFeedback"]</div>
+        <div class="value">@Model.OpenFeedback</div>
+    </div>
+    <div class="stat">
+        <div class="label">@Localizer["AdminDashboard_Stat_SystemHealth"]</div>
+        <div class="value @(Model.SystemAllNormal ? "" : "text-danger")">
+            @if (Model.SystemAllNormal)
+            {
+                @Localizer["AdminDashboard_AllSystemsNormal"]
+            }
+            else
+            {
+                @Model.ErrorsLast24h <em>err / @Model.FailedJobs jobs</em>
+            }
+        </div>
+    </div>
+</div>
