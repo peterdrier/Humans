@@ -1,3 +1,16 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/GoogleIntegration/DriveActivityMonitorService.cs
+  src/Humans.Infrastructure/Jobs/DriveActivityMonitorJob.cs
+  src/Humans.Web/Controllers/GoogleController.cs
+  src/Humans.Web/Controllers/BoardController.cs
+  src/Humans.Web/Views/Board/AuditLog.cshtml
+  src/Humans.Web/Views/Shared/AuditLog.cshtml
+  src/Humans.Domain/Entities/AuditLogEntry.cs
+-->
+<!-- freshness:flag-on-change
+  Drive Activity API integration, anomalous-permission detection, and audit-log filter UI — review when DriveActivityMonitorService, its job, or the audit-log views change.
+-->
+
 # F-13: Drive Activity Monitoring
 
 ## Business Context

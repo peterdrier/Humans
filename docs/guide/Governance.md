@@ -1,3 +1,25 @@
+<!-- freshness:triggers
+  src/Humans.Web/Views/Application/**
+  src/Humans.Web/Views/OnboardingReview/BoardVoting.cshtml
+  src/Humans.Web/Views/OnboardingReview/BoardVotingDetail.cshtml
+  src/Humans.Web/Views/Governance/**
+  src/Humans.Web/Controllers/ApplicationController.cs
+  src/Humans.Web/Controllers/OnboardingReviewController.cs
+  src/Humans.Web/Controllers/GovernanceController.cs
+  src/Humans.Application/Services/Governance/**
+  src/Humans.Application/Services/Auth/RoleAssignmentService.cs
+  src/Humans.Domain/Entities/Application.cs
+  src/Humans.Domain/Entities/ApplicationStateHistory.cs
+  src/Humans.Domain/Entities/BoardVote.cs
+  src/Humans.Domain/Entities/RoleAssignment.cs
+  src/Humans.Domain/Constants/RoleNames.cs
+  src/Humans.Domain/Constants/RoleGroups.cs
+  src/Humans.Domain/Constants/SystemTeamIds.cs
+-->
+<!-- freshness:flag-on-change
+  Tier application workflow (Submitted/Approved/Rejected/Withdrawn), Board voting dashboard, finalization, term expiry, and role-assignment management. Review when governance views, services, entities, or role constants change.
+-->
+
 # Governance
 
 ## What this section is for
@@ -12,9 +34,12 @@ Both tiers run on synchronized 2-year terms that expire on December 31 of the ne
 
 - `/Application/Create` — submit a Colaborador or Asociado application.
 - `/Application` — your application status and history.
+- `/Application/Admin` — admin list of all applications, filterable by status and tier (Board and Admin).
+- `/Application/Admin/{id}` — admin detail view of a single application (Board and Admin).
 - `/OnboardingReview/BoardVoting` — Board voting dashboard (Board and Admin).
-- `/OnboardingReview/BoardVoting/{id}` — application detail, vote form, and Finalize action.
-- `/Admin` — role management for coordinator and admin roles (Board and Admin).
+- `/OnboardingReview/BoardVoting/{id}` — application detail and vote form (Board and Admin); the Finalize form is rendered only for Admin.
+- `/Governance/Roles` — paginated list of all role assignments, filterable by role (Board and Admin).
+- `/Profile/{id}/Admin/Roles/Add` and `/Profile/{id}/Admin/Roles/{roleId}/End` — assign and end role assignments on a specific human (Board, HumanAdmin, and Admin).
 
 ## As a Volunteer
 
@@ -43,7 +68,7 @@ While your application is still **Submitted**, you can withdraw it from the appl
 
 ### Renew your tier
 
-About 90 days before your term expires, a renewal reminder appears on your dashboard. A renewal creates a new application for the same tier and goes through the normal Board vote. Board and Admin see the same upcoming expirations on the Board voting dashboard, so renewals can be prompted or processed proactively. If you do not renew before the term ends, your tier reverts to Volunteer and you are removed from the tier system team. Volunteer access is unaffected.
+About 90 days before your term expires, a renewal reminder email and in-app notification go out, and a reminder appears on your dashboard. A renewal creates a new application for the same tier and goes through the normal Board vote. Board and Admin see the same upcoming expirations on the Board voting dashboard, so renewals can be prompted or processed proactively. If you do not renew before the term ends, the next nightly system-team sync removes you from the Colaboradors or Asociados system team, so you lose the access tied to that membership. Your profile's stored tier label does not automatically reset — you stay listed at the previous tier on your profile until a new approval changes it. Volunteer access is unaffected.
 
 ## As a Board member / Admin
 
@@ -51,22 +76,26 @@ About 90 days before your term expires, a renewal reminder appears on your dashb
 
 Open `/OnboardingReview/BoardVoting`. The dashboard is a spreadsheet: applications on the rows, Board members on the columns, each cell showing that member's current vote (or a dash if they have not voted). Filter by tier and click **Review** on a row to open the application.
 
-On the detail page you see the applicant's profile, their motivation, and the votes cast so far. Vote options are **Yay**, **Maybe**, **No**, and **Abstain**. You can add a note and change your vote at any time until the application is finalized. Each Board member gets exactly one vote per application. Admins can view and finalize, but do not cast individual Board votes.
+On the detail page you see the applicant's profile, their motivation, and the votes cast so far. Vote options are **Yay**, **Maybe**, **No**, and **Abstain**. You can add a note and change your vote at any time until the application is finalized. Each Board member gets exactly one vote per application. Admins can view but do not cast individual Board votes (the vote form is gated by the `BoardOnly` policy).
 
 ### Finalize the decision
 
-Any Board member (or Admin) can finalize once at least one vote has been cast. This is a consensus model — the system does not count votes for you. On the detail page, choose **Approve** or **Reject** and fill in the **meeting date** (required) and a **decision note** (required for rejections, optional for approvals).
+The system does not count votes for you — this is a consensus model. The Finalize form on the detail page is shown only to **Admin** users; Board members coordinate the decision in their meeting and ask an Admin to record it. (The underlying Finalize endpoint will accept submissions from any Board member or Admin, but only Admin sees the form in the UI today.) Finalization requires at least one Board vote to have been cast on the application.
 
-On **Approve**, the applicant's tier is updated on their profile, their term expiry is set to December 31 of the next appropriate odd year (at least two years out), and they are added to the Colaboradores or Asociados system team. An approval email is sent. On **Reject**, the applicant stays at their current tier and receives a rejection email with the decision note.
+On the detail page, fill in the **meeting date** (required) and a **decision note**, then choose **Approve** or **Reject**. The decision note is required for rejections and optional for approvals.
+
+On **Approve**, the applicant's tier is updated on their profile, their term expiry is set to December 31 of the next appropriate odd year (at least two years out), and they are added to the Colaboradors or Asociados system team. An approval email and an in-app notification are sent. On **Reject**, the applicant stays at their current tier and receives a rejection email plus an in-app notification with the decision note.
 
 Either way, finalization immediately **deletes all individual Board vote records** for that application. Only the collective decision — final status, meeting date, and decision note — is retained, per GDPR data minimization. Finalization is not reversible.
 
 ### Assign and revoke coordinator and admin roles
 
-Role assignments live on each human's detail page under the Admin area. Every assignment is temporal — it has a **valid from** date and an optional **valid to** date, and every change is audited.
+Role assignments live on each human's detail page under the Admin area (`/Profile/{id}/Admin`). Every assignment is temporal — it has a **valid from** date and an optional **valid to** date, and every change is audited. You can also browse all current and historical role assignments at `/Governance/Roles`.
 
 - **Admin** can assign and revoke any role, including Admin itself.
 - **Board** can assign and revoke any role **except** Admin.
+- **HumanAdmin** can assign and revoke any role **except** Admin (same surface as Board for role management).
+- The full set of roles Board and HumanAdmin can manage is `RoleNames.BoardManageableRoles`: Board, HumanAdmin, TeamsAdmin, CampAdmin, TicketAdmin, NoInfoAdmin, FeedbackAdmin, FinanceAdmin, ConsentCoordinator, VolunteerCoordinator.
 - Coordinator roles (Consent Coordinator, Volunteer Coordinator) are assigned here too; what those coordinators actually do is described in [LegalAndConsent.md](LegalAndConsent.md) and [Onboarding.md](Onboarding.md).
 
 To end a role, set the **valid to** date. Historical assignments remain on the profile for the audit trail.
@@ -77,7 +106,7 @@ Application state history, past and present role assignments, and the collective
 
 ## Related sections
 
-- [Profiles](Profiles.md) — [membership tier](Glossary.md#membership-tier) lives on the profile and updates automatically on approval or term expiry.
+- [Profiles](Profiles.md) — [membership tier](Glossary.md#membership-tier) lives on the profile and is updated automatically on approval. (It is not auto-reset on term expiry — only the system-team membership changes then.)
 - [Legal and Consent](LegalAndConsent.md) — the Consent Coordinator safety check for Volunteer access, independent of Board voting.
 - [Onboarding](Onboarding.md) — how a new human becomes a Volunteer. Tier applications do not replace or block this.
-- [Teams](Teams.md) — the Colaboradores and Asociados system teams that approved applicants join.
+- [Teams](Teams.md) — the Colaboradors and Asociados system teams that approved applicants join.

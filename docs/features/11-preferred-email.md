@@ -1,3 +1,20 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Profile/UserEmailService.cs
+  src/Humans.Application/Services/Users/AccountProvisioningService.cs
+  src/Humans.Application/Services/GoogleIntegration/EmailProvisioningService.cs
+  src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceUserService.cs
+  src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceSyncService.cs
+  src/Humans.Web/Controllers/ProfileController.cs
+  src/Humans.Web/Controllers/GoogleController.cs
+  src/Humans.Web/Controllers/EmailController.cs
+  src/Humans.Web/Views/Profile/Emails.cshtml
+  src/Humans.Domain/Entities/UserEmail.cs
+  src/Humans.Domain/Entities/User.cs
+-->
+<!-- freshness:flag-on-change
+  UserEmail verification flow, GoogleEmail/notification-target rules, manage-emails routes, and workspace provisioning hooks — review when UserEmailService or workspace user/email services change.
+-->
+
 # Email Management
 
 ## Business Context

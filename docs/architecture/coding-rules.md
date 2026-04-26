@@ -1,3 +1,7 @@
+<!-- freshness:flag-on-change
+  Cross-cutting C# coding rules (reflection-safe properties, JSON serialization, NodaTime, navigation/timezone handling). Flag if any architectural pattern shift in src/** invalidates a stated rule.
+-->
+
 # Coding Rules
 
 ## Critical: Do Not Remove "Unused" Properties

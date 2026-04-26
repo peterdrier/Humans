@@ -1,3 +1,16 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Governance/MembershipCalculator.cs
+  src/Humans.Application/Services/Governance/MembershipQuery.cs
+  src/Humans.Application/Services/Consent/ConsentService.cs
+  src/Humans.Domain/Constants/MembershipStatusLabels.cs
+  src/Humans.Domain/Constants/SystemTeamIds.cs
+  src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs
+  src/Humans.Infrastructure/Jobs/SuspendNonCompliantMembersJob.cs
+-->
+<!-- freshness:flag-on-change
+  The 6-bucket partition logic, priority order, or consent check rule may have changed; re-verify the table and state diagram.
+-->
+
 # Membership Status Partition
 
 ## Overview

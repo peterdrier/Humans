@@ -1,3 +1,17 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceUserService.cs
+  src/Humans.Application/Services/GoogleIntegration/EmailProvisioningService.cs
+  src/Humans.Application/Services/Users/AccountProvisioningService.cs
+  src/Humans.Application/Services/Profile/UserEmailService.cs
+  src/Humans.Web/Controllers/AdminController.cs
+  src/Humans.Web/Controllers/EmailController.cs
+  src/Humans.Web/Controllers/ProfileController.cs
+  src/Humans.Infrastructure/Services/GoogleWorkspace/**
+-->
+<!-- freshness:flag-on-change
+  Provisioning step ordering, recovery email handling, credentials email template, or admin/HumanAdmin authorization may have changed.
+-->
+
 # Workspace Account Provisioning
 
 ## Business Context

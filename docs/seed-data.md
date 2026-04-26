@@ -1,3 +1,13 @@
+<!-- freshness:triggers
+  src/Humans.Infrastructure/Data/Configurations/**
+  src/Humans.Domain/Constants/**
+  src/Humans.Web/Controllers/DevSeedController.cs
+  src/Humans.Infrastructure/Migrations/**
+-->
+<!-- freshness:flag-on-change
+  Seed-data strategy (HasData, migration SQL, dev-only seeders). Review when EF configurations change HasData calls, when domain constants shift, or when dev seeder endpoints change.
+-->
+
 # Seed Data Strategy
 
 ## Decision Guide

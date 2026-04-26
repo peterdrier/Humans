@@ -1,3 +1,20 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Auth/RoleAssignmentService.cs
+  src/Humans.Application/Services/Onboarding/**
+  src/Humans.Application/Services/Consent/**
+  src/Humans.Web/Controllers/OnboardingReviewController.cs
+  src/Humans.Web/Controllers/AdminController.cs
+  src/Humans.Web/Controllers/ProfileController.cs
+  src/Humans.Web/Authorization/MembershipRequiredFilter.cs
+  src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
+  src/Humans.Web/Views/OnboardingReview/**
+  src/Humans.Domain/Constants/RoleNames.cs
+  src/Humans.Domain/Constants/RoleGroups.cs
+-->
+<!-- freshness:flag-on-change
+  ConsentCoordinator/VolunteerCoordinator capabilities, OnboardingReview authorization, and role-management permissions — review when role names, OnboardingReviewController, or membership filter change.
+-->
+
 # Coordinator Roles
 
 ## Business Context

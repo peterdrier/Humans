@@ -1,3 +1,20 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Governance/**
+  src/Humans.Application/Services/Profile/ProfileService.cs
+  src/Humans.Application/Services/Teams/TeamService.cs
+  src/Humans.Web/Controllers/ApplicationController.cs
+  src/Humans.Web/Controllers/GovernanceController.cs
+  src/Humans.Web/Controllers/ProfileController.cs
+  src/Humans.Domain/Entities/Application.cs
+  src/Humans.Domain/Entities/Profile.cs
+  src/Humans.Domain/Constants/SystemTeamIds.cs
+  src/Humans.Domain/Constants/MembershipStatusLabels.cs
+  src/Humans.Domain/TermExpiryCalculator.cs
+-->
+<!-- freshness:flag-on-change
+  Tier definitions, term expiry rules, system-team mapping per tier, and tier-application flow — review when MembershipTier enum, term calculator, or governance services change.
+-->
+
 # Membership Tiers
 
 ## Business Context

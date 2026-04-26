@@ -1,3 +1,21 @@
+<!-- freshness:triggers
+  src/Humans.Web/Views/Google/**
+  src/Humans.Web/Views/TeamAdmin/Resources.cshtml
+  src/Humans.Web/Controllers/GoogleController.cs
+  src/Humans.Application/Services/GoogleIntegration/**
+  src/Humans.Application/Services/Teams/TeamResourceService.cs
+  src/Humans.Domain/Entities/GoogleResource.cs
+  src/Humans.Domain/Entities/GoogleSyncOutboxEvent.cs
+  src/Humans.Domain/Entities/SyncServiceSettings.cs
+  src/Humans.Domain/Constants/GoogleSyncOutboxEventTypes.cs
+  src/Humans.Infrastructure/Data/Configurations/GoogleResourceConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/GoogleSyncOutboxEventConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/SyncServiceSettingsConfiguration.cs
+-->
+<!-- freshness:flag-on-change
+  Sync mode plumbing, drift detection, workspace account provisioning, Drive activity monitor, and team-resource linking. Review when Google services, sync settings, or related entities change.
+-->
+
 # Google Integration
 
 ## What this section is for
@@ -16,7 +34,7 @@ All Drive resources are on **Shared Drives only** (no personal My Drive), and th
 - **All Groups** (`/Google/AllGroups`) — every Google Group in the domain, linked or not.
 - **Workspace accounts** (`/Google/Accounts`) — every `@nobodies.team` account, with link-to-human search.
 - **Sync audit** — per-human (`/Google/Human/{id}/SyncAudit`) and per-resource (`/Google/Sync/Resource/{id}/Audit`).
-- **Team resources** (`/Teams/{slug}/Admin/Resources`) — where coordinators link, unlink, and sync a team's Drive folders, files, and Groups.
+- **Team resources** (`/Teams/{slug}/Resources`) — where coordinators link, unlink, and sync a team's Drive folders, files, and Groups.
 - **Drive activity** — anomalous changes land in `/Board/AuditLog` under the "Anomalous Permissions" filter.
 
 ## As a [Volunteer](Glossary.md#volunteer)
@@ -43,7 +61,7 @@ Joining a team grants you its Group membership and writer access to its linked S
 
 ### Link a Google resource to your department
 
-Open `/Teams/{slug}/Admin/Resources`. Three link forms:
+Open `/Teams/{slug}/Resources`. Three link forms:
 
 - **Link Drive folder** — paste a Shared Drive folder URL; the folder must already be shared with the app's service account as Editor (the page shows that email if validation fails).
 - **Link Drive file** — paste a Sheet, Doc, Slides, or Forms URL. Same sharing requirement.
@@ -53,7 +71,7 @@ Duplicate links on the same team are rejected. Unlinking is soft — the record 
 
 ### What coordinators cannot do
 
-Sync settings, group-settings drift remediation, and workspace account provisioning are Admin-only. You also cannot manage resources for teams you do not coordinate. The `TeamResourceManagement:AllowLeadsToManageResources` config flag gates coordinator access entirely — if it is off, only Board can link and unlink.
+Sync settings, group-settings drift remediation, and workspace account provisioning are Admin-only. You also cannot manage resources for teams you do not coordinate. The `TeamResourceManagement:AllowCoordinatorsToManageResources` config flag gates coordinator access entirely — if it is off, only Board can link and unlink.
 
 ## As a Board member / Admin
 
@@ -69,7 +87,7 @@ At `/Google/Sync` (TeamsAdmin, Board, Admin can view; Admin-only to execute) the
 
 ### Manage `@nobodies.team` accounts
 
-At `/Google/Accounts`, list every workspace account, search humans by name, and link orphaned accounts. To provision a new account, open `/Human/{id}/Admin` and use **Provision Email** — the app creates the Google account, sets a temporary password, sends credentials to the human's personal email, and auto-links the new address as the Google service email.
+At `/Google/Accounts`, list every workspace account, search humans by name, and link orphaned accounts. To provision a new account, open the human detail page at `/Profile/{id}/Admin` and use the **Provision Email** action on the Nobodies email badge — the app creates the Google account, sets a temporary password, sends credentials to the human's personal email, and auto-links the new address as the Google service email.
 
 ### Check group settings and email mismatches
 

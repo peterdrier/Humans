@@ -1,3 +1,16 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Auth/MagicLinkService.cs
+  src/Humans.Infrastructure/Services/Auth/**
+  src/Humans.Web/Controllers/AccountController.cs
+  src/Humans.Web/Views/Account/**
+  src/Humans.Application/Services/Profile/UserEmailService.cs
+  src/Humans.Domain/Entities/User.cs
+  src/Humans.Domain/Entities/UserEmail.cs
+-->
+<!-- freshness:flag-on-change
+  Magic link token strategy (Identity vs DataProtection), email-lookup order, single-use enforcement, account-linking on OAuth, or rate limiting may have changed.
+-->
+
 # Feature 30: Magic Link Authentication
 
 ## Business Context

@@ -1,3 +1,24 @@
+<!-- freshness:triggers
+  src/Humans.Web/Controllers/GuideController.cs
+  src/Humans.Web/Views/Guide/**
+  src/Humans.Web/Models/GuideViewModel.cs
+  src/Humans.Web/Models/GuideSidebarModel.cs
+  src/Humans.Web/Extensions/Sections/GuideSectionExtensions.cs
+  src/Humans.Application/Services/GuideFilter.cs
+  src/Humans.Application/Services/GuideRolePrivilegeMap.cs
+  src/Humans.Application/Constants/GuideFiles.cs
+  src/Humans.Application/Models/GuideRoleContext.cs
+  src/Humans.Infrastructure/Services/GuideContentService.cs
+  src/Humans.Infrastructure/Services/GuideRenderer.cs
+  src/Humans.Infrastructure/Services/GuideRoleResolver.cs
+  src/Humans.Infrastructure/Services/GuideHtmlPostprocessor.cs
+  src/Humans.Infrastructure/Services/GuideMarkdownPreprocessor.cs
+  src/Humans.Infrastructure/Services/GitHubGuideContentSource.cs
+-->
+<!-- freshness:flag-on-change
+  Guide rendering pipeline, role-filtering rules, refresh route, or anonymous-access policy may have shifted.
+-->
+
 # 39 — In-App Guide
 
 ## Business context

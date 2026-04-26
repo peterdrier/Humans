@@ -1,3 +1,17 @@
+<!-- freshness:triggers
+  src/Humans.Web/Views/CityPlanning/**
+  src/Humans.Web/Controllers/CityPlanningController.cs
+  src/Humans.Web/Controllers/CityPlanningApiController.cs
+  src/Humans.Application/Services/CityPlanning/**
+  src/Humans.Domain/Entities/CityPlanningSettings.cs
+  src/Humans.Domain/Entities/CampPolygon.cs
+  src/Humans.Domain/Entities/CampPolygonHistory.cs
+  src/Humans.Infrastructure/Data/Configurations/CityPlanning/**
+-->
+<!-- freshness:flag-on-change
+  Map view, polygon edit/save/restore flow, placement-phase toggle, overlay uploads, GeoJSON export, and City Planning team admin access. Review when map views, controllers, or entities change.
+-->
+
 # City Planning
 
 ## What this section is for
@@ -11,7 +25,7 @@ Three entities back this section: `CityPlanningSettings` (per-year singleton, co
 ## Key pages at a glance
 
 - **Barrio map** (`/CityPlanning`) — authenticated humans view the live full-screen map of placed camps.
-- **Admin panel** (`/CityPlanning/Admin`) — map admins (Camp Admin or City Planning team members) toggle placement, upload overlays, and export GeoJSON.
+- **Admin panel** (`/CityPlanning/Admin`) — map admins (Camp Admin or City Planning team members) toggle placement, set informational placement dates, upload overlays, export and import GeoJSON.
 
 The map page is a single full-screen view. Editing, polygon history, the placement-phase card, and admin actions are all surfaced through panels inside it. The separate Admin panel is where overlay zones are uploaded and placement is toggled.
 
@@ -43,9 +57,10 @@ Map admin access is held by **Camp Admin**, **[Admin](Glossary.md#admin)**, and 
 - **Restore a prior version.** From a polygon's history, choose a past version and restore. The current state writes to history first with the note "Restored from {timestamp}", then the polygon is overwritten. History is append-only — nothing is ever lost.
 - **Toggle placement.** From [/CityPlanning/Admin](/CityPlanning/Admin), open or close placement. Timestamps are recorded. Closing blocks camp leads from editing but not you.
 - **Set informational placement dates.** Scheduled open and close datetimes show in the help modal. They do not auto-open or auto-close the phase.
-- **Upload a limit zone.** A GeoJSON FeatureCollection defining the site boundary. Renders as a dashed white outline; polygons drawn outside it are flagged. Download and delete are supported.
+- **Upload a limit zone.** A GeoJSON FeatureCollection defining the site boundary. Renders as a dashed outline coloured by each feature's `SoundZone` property (white dashes when the property is absent); polygons drawn outside it are flagged. Download and delete are supported.
 - **Upload official zones.** A GeoJSON FeatureCollection of named read-only overlay zones (dark gray, labeled). Each Feature needs a `name` property. Download and delete supported.
 - **Export all placements.** Download every polygon for a year as a single GeoJSON FeatureCollection for logistics, signage, and public materials.
+- **Import placements.** Upload a GeoJSON FeatureCollection to bulk-update polygons. The admin panel previews matched and unrecognized features before you confirm; matched camps are updated through the same save path as a manual edit (so each import row writes a history entry).
 
 ## Related sections
 

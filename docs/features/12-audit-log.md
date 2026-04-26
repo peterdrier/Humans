@@ -1,3 +1,16 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/AuditLog/**
+  src/Humans.Web/Controllers/BoardController.cs
+  src/Humans.Web/Controllers/GoogleController.cs
+  src/Humans.Web/Views/Board/AuditLog.cshtml
+  src/Humans.Web/Views/Shared/AuditLog.cshtml
+  src/Humans.Domain/Entities/AuditLogEntry.cs
+  src/Humans.Infrastructure/Data/Configurations/AuditLog/**
+-->
+<!-- freshness:flag-on-change
+  AuditLogEntry schema, AuditAction/GoogleSyncSource enum values, immutability triggers, and audit-log views/routes — review when AuditAction enum, AuditLogService, or audit-log UI change.
+-->
+
 # F-12: Audit Log
 
 ## Business Context

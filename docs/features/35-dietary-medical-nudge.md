@@ -1,3 +1,13 @@
+<!-- freshness:triggers
+  src/Humans.Domain/Entities/VolunteerEventProfile.cs
+  src/Humans.Application/Services/Shifts/ShiftSignupService.cs
+  src/Humans.Web/ViewComponents/ThingsToDoViewComponent.cs
+  src/Humans.Web/Controllers/ProfileController.cs
+-->
+<!-- freshness:flag-on-change
+  Placeholder spec — flag if dietary/medical fields, qualifying-shift triggers, or NoInfoAdmin visibility rules change before this is implemented.
+-->
+
 # 35 — Dietary & Medical Nudge Modal (Placeholder)
 
 ## Status: Not Yet Specced

@@ -1,3 +1,7 @@
+<!-- freshness:flag-on-change
+  Layer responsibilities, service/repository/store ownership, caching decorator pattern, and authorization handler doctrine. Flag if any architectural pattern shift in src/** alters the layering or ownership rules.
+-->
+
 # Design Rules
 
 Architectural rules governing how Web, Application, Infrastructure, and Domain interact. **These are target-state rules.** New code must follow them; existing code is migrated incrementally per [Migration Strategy](#15-migration-strategy).

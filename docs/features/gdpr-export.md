@@ -1,3 +1,28 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Gdpr/**
+  src/Humans.Application/Interfaces/Gdpr/**
+  src/Humans.Web/Controllers/ProfileController.cs
+  src/Humans.Web/Controllers/GuestController.cs
+  src/Humans.Application/Services/Profile/ProfileService.cs
+  src/Humans.Application/Services/Users/UserService.cs
+  src/Humans.Application/Services/Consent/ConsentService.cs
+  src/Humans.Application/Services/Teams/TeamService.cs
+  src/Humans.Application/Services/Auth/RoleAssignmentService.cs
+  src/Humans.Application/Services/Shifts/ShiftSignupService.cs
+  src/Humans.Application/Services/Feedback/FeedbackService.cs
+  src/Humans.Application/Services/Notifications/NotificationInboxService.cs
+  src/Humans.Application/Services/Tickets/TicketQueryService.cs
+  src/Humans.Application/Services/Campaigns/CampaignService.cs
+  src/Humans.Application/Services/Camps/**
+  src/Humans.Application/Services/AuditLog/**
+  src/Humans.Application/Services/Budget/BudgetService.cs
+  src/Humans.Application/Services/Profile/AccountMergeService.cs
+  src/Humans.Application/Services/Governance/ApplicationDecisionService.cs
+-->
+<!-- freshness:flag-on-change
+  Contributor list, JSON section names/shapes, or fan-out orchestration may have shifted; per-section table must stay in sync with each contributor's slice.
+-->
+
 # GDPR Data Export
 
 GDPR Article 15 gives every human the right to obtain a copy of all personal

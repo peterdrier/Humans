@@ -12,7 +12,6 @@ mechanical:
     triggers:
       - "src/**/*.cs"
       - "src/**/*.cshtml"
-      - "src/**/*.razor"
     update: script
     script: docs/scripts/generate-stats.sh
 
@@ -64,7 +63,7 @@ mechanical:
       - "src/Humans.Web/Controllers/**/*.cs"
       - "src/Humans.Application/**/*.cs"
       - "src/Humans.Web/Authorization/**/*.cs"
-      - "src/Humans.Domain/Authorization/**/*.cs"
+      - "src/Humans.Application/Authorization/**/*.cs"
     update: prompt
     prompt: |
       Regenerate docs/authorization-inventory.md from scratch.
@@ -103,7 +102,8 @@ mechanical:
          body comments.
       3. Suggest a rename only if the action name violates the project's
          action-name conventions documented in
-         docs/architecture/conventions.md (or note "OK" if it doesn't).
+         docs/architecture/conventions.md §"Action Naming" (or note "OK"
+         if it doesn't).
 
       Match the existing column layout: Method | Route | Verb | Purpose | Suggestion.
       Preserve the document header (the "Living document. Last updated: ..." line)
@@ -114,7 +114,7 @@ mechanical:
     triggers:
       - "src/Humans.Application/**/*.cs"
       - "src/Humans.Web/Program.cs"
-      - "src/Humans.Web/ServiceCollectionExtensions/**/*.cs"
+      - "src/Humans.Web/Extensions/Sections/**/*.cs"
     update: prompt
     prompt: |
       Regenerate the Mermaid dependency graph in docs/architecture/dependency-graph.md.

@@ -1,3 +1,20 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Tickets/**
+  src/Humans.Web/Controllers/TicketController.cs
+  src/Humans.Domain/Entities/TicketOrder.cs
+  src/Humans.Domain/Entities/TicketAttendee.cs
+  src/Humans.Domain/Entities/TicketSyncState.cs
+  src/Humans.Domain/Entities/CampaignGrant.cs
+  src/Humans.Domain/Constants/TicketConstants.cs
+  src/Humans.Infrastructure/Data/Configurations/Tickets/**
+  src/Humans.Infrastructure/Jobs/TicketSyncJob.cs
+  src/Humans.Infrastructure/Services/TicketTailorService.cs
+  src/Humans.Infrastructure/Services/StripeService.cs
+-->
+<!-- freshness:flag-on-change
+  Ticket entities, sync logic, VAT/donation accounting, dashboard widgets, or routes/auth may have changed; reconcile docs with TicketController and the sync services.
+-->
+
 # 24. Ticket Vendor Integration
 
 ## Business Context

@@ -1,3 +1,14 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Calendar/**
+  src/Humans.Web/Controllers/CalendarController.cs
+  src/Humans.Domain/Entities/CalendarEvent.cs
+  src/Humans.Domain/Entities/CalendarEventException.cs
+  src/Humans.Infrastructure/Data/Configurations/Calendar/**
+-->
+<!-- freshness:flag-on-change
+  Calendar entities, recurrence/timezone handling, audit-log-based accountability, or v1 scope boundary may have shifted.
+-->
+
 # Community Calendar
 
 ## Business Context

@@ -1,3 +1,18 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Profile/ContactFieldService.cs
+  src/Humans.Application/Services/Profile/UserEmailService.cs
+  src/Humans.Application/Services/Profile/ContactService.cs
+  src/Humans.Web/Controllers/ProfileController.cs
+  src/Humans.Web/Controllers/ContactsController.cs
+  src/Humans.Web/Views/Profile/Emails.cshtml
+  src/Humans.Domain/Entities/ContactField.cs
+  src/Humans.Domain/Entities/UserEmail.cs
+  src/Humans.Infrastructure/Data/Configurations/Profiles/**
+-->
+<!-- freshness:flag-on-change
+  ContactField visibility model, UserEmail entity, per-field access logic, and Profile/Emails routes — review when ContactFieldService, UserEmailService, or related entities change.
+-->
+
 # Contact Fields with Granular Visibility
 
 ## Business Context

@@ -1,3 +1,25 @@
+<!-- freshness:triggers
+  src/Humans.Web/Views/Consent/**
+  src/Humans.Web/Views/Legal/**
+  src/Humans.Web/Views/Profile/Privacy.cshtml
+  src/Humans.Web/Views/Admin/LegalDocuments.cshtml
+  src/Humans.Web/Views/Admin/CreateLegalDocument.cshtml
+  src/Humans.Web/Views/Admin/EditLegalDocument.cshtml
+  src/Humans.Web/Controllers/ConsentController.cs
+  src/Humans.Web/Controllers/LegalController.cs
+  src/Humans.Web/Controllers/AdminLegalDocumentsController.cs
+  src/Humans.Application/Services/Consent/**
+  src/Humans.Application/Services/Legal/**
+  src/Humans.Application/Services/Gdpr/**
+  src/Humans.Domain/Entities/LegalDocument.cs
+  src/Humans.Domain/Entities/DocumentVersion.cs
+  src/Humans.Domain/Entities/ConsentRecord.cs
+  src/Humans.Infrastructure/Data/Configurations/Legal/**
+-->
+<!-- freshness:flag-on-change
+  Consent signing flow, document versioning, Consent Coordinator queue, immutability of consent records, and GDPR data export/deletion. Review when consent/legal views, services, or entities change.
+-->
+
 # Legal & Consent
 
 ## What this section is for
@@ -11,9 +33,9 @@ This section also surfaces your two core GDPR rights: a copy of everything the o
 ## Key pages at a glance
 
 - **Your consents** (`/Consent`) — any signed-in human reviews documents they've signed and re-signs when versions change.
-- **My Data** (`/Profile/Me/Privacy`) - Download my Data (Article 15) and Account Deletion (Article 17)
-- **Published documents** (`/Legal`) — anyone, including signed-out visitors, reads current legal documents.
-- **Consent check queue** (`/Onboarding/ConsentQueue`) — [Consent Coordinator](Glossary.md#consent-coordinator), [Board](Glossary.md#board), and [Admin](Glossary.md#admin) clear or flag humans awaiting activation.
+- **My Data** (`/Profile/Me/Privacy`) — Download my Data (Article 15) and Account Deletion (Article 17).
+- **Statutes** (`/Legal`) — anyone, including signed-out visitors, reads the association's current statutes (pulled directly from GitHub).
+- **Onboarding review queue** (`/OnboardingReview`) — [Consent Coordinator](Glossary.md#consent-coordinator), [Volunteer Coordinator](Glossary.md#volunteer-coordinator), [Board](Glossary.md#board), and [Admin](Glossary.md#admin) view humans awaiting activation; only Consent Coordinator, Board, and Admin can clear, flag, or reject.
 - **Manage documents** (`/Admin/LegalDocuments`) — Board and Admin create, edit, archive, and publish legal documents.
 
 ## As a [Volunteer](Glossary.md#volunteer)
@@ -32,7 +54,7 @@ This section also surfaces your two core GDPR rights: a copy of everything the o
 
 Consent Coordinators are the safety gate between "this human signed the paperwork" and "this human is an active volunteer."
 
-**Reviewing the queue.** Open the consent check queue. Every human who has signed all required global documents lands here in Pending state. Open a record to see their signed documents, versions, and timestamps.
+**Reviewing the queue.** Open `/OnboardingReview`. Every human who has signed all required global documents lands here in Pending state. Open a record to see their signed documents, versions, and timestamps.
 
 **Clearing or flagging.** Two actions:
 
@@ -43,13 +65,11 @@ Coordinators cannot edit legal documents or publish new versions — that's an A
 
 ## As a Board member / Admin
 
-**Managing documents.** `/Admin/LegalDocuments` lists every legal document. Each belongs to a team (Volunteers = applies to everyone), has a configurable grace period, and can be linked to a GitHub folder for version-controlled editing. You can create, edit, archive, and trigger manual syncs.
+**Managing documents.** `/Admin/LegalDocuments` lists every legal document. Each belongs to a team (Volunteers = applies to everyone), has a configurable grace period (default 7 days), and can be linked to a GitHub folder for version-controlled editing. You can create, edit, archive, and trigger manual syncs. The only field you can change on a past version is its changes summary.
 
-**Publishing a new version.** When a document changes, the sync job (or manual sync) creates a new version. If you mark it as requiring re-consent, humans on the affected team are notified and their consent status returns to "action required" until they sign. Old consent entries stay in the audit trail forever.
+**Publishing a new version.** When the canonical Spanish file's commit SHA changes in GitHub, the next sync job (or a manual sync from the document's edit page) creates a new version automatically. Every non-initial version is flagged as requiring re-consent — humans on the affected team are notified and their consent status returns to "action required" until they sign. Old consent entries stay in the audit trail forever.
 
-**Reviewing consent site-wide.** Admin views expose consent records across all humans for GDPR reporting and dispute resolution. Nothing here is editable.
-
-**Flagged queue.** Flagged checks from Consent Coordinators land in your queue. Resolve by clearing the human or suspending them through the normal Admin tools.
+**Flagged queue.** Flagged checks from Consent Coordinators land back in the same `/OnboardingReview` queue. Resolve by clearing the human or rejecting their signup.
 
 ## Related sections
 

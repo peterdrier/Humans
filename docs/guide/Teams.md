@@ -1,10 +1,30 @@
+<!-- freshness:triggers
+  src/Humans.Web/Views/Team/**
+  src/Humans.Web/Views/TeamAdmin/**
+  src/Humans.Web/Controllers/TeamController.cs
+  src/Humans.Web/Controllers/TeamAdminController.cs
+  src/Humans.Web/Controllers/HumansTeamControllerBase.cs
+  src/Humans.Application/Services/Teams/**
+  src/Humans.Domain/Entities/Team.cs
+  src/Humans.Domain/Entities/TeamMember.cs
+  src/Humans.Domain/Entities/TeamJoinRequest.cs
+  src/Humans.Domain/Entities/TeamJoinRequestStateHistory.cs
+  src/Humans.Domain/Entities/TeamRoleAssignment.cs
+  src/Humans.Domain/Entities/TeamRoleDefinition.cs
+  src/Humans.Domain/Constants/SystemTeamIds.cs
+  src/Humans.Infrastructure/Data/Configurations/Teams/**
+-->
+<!-- freshness:flag-on-change
+  Team directory, join/leave/approval flow, sub-team scoping, role slots, public team page editing, system-team sync, and Teams Admin actions. Review when team views, services, entities, or system-team constants change.
+-->
+
 # Teams
 
 ## What this section is for
 
 Teams are how humans organize around a shared purpose. A team is either a **department** (top-level, like Build or Kitchen) or a **sub-team** that lives under exactly one department. Each team can have coordinators, named role slots, and optionally a `@nobodies.team` Google Group plus a linked Shared Drive folder.
 
-A few teams are **system teams** (Volunteers, Coordinators, Board, Asociados, Colaboradores) — the app manages those automatically, so you cannot join or leave them by hand. Some teams are also **hidden**: privacy-sensitive groupings visible only to admins.
+A few teams are **system teams** (Volunteers, Coordinators, Board, Asociados, Colaboradors, Barrio Leads) — the app manages those automatically, so you cannot join or leave them by hand. Some teams are also **hidden**: privacy-sensitive groupings visible only to admins.
 
 ## Key pages at a glance
 
@@ -16,7 +36,8 @@ A few teams are **system teams** (Volunteers, Coordinators, Board, Asociados, Co
 - **Members admin** (`/Teams/{slug}/Members`) — members, join requests, role assignments.
 - **Edit team page** (`/Teams/{slug}/EditPage`) — markdown and calls-to-action for a department's public page.
 - **Roles** (`/Teams/{slug}/Roles`) — define named role slots.
-- **Summary**, **Create**, **Edit**, **Sync** — admin pages at `/Teams/Summary`, `/Teams/Create`, `/Teams/{id}/Edit`, `/Teams/Sync`.
+- **Summary**, **Create**, **Edit** — admin pages at `/Teams/Summary`, `/Teams/Create`, `/Teams/{id}/Edit`.
+- **Sync** — system-team and Google sync admin pages live under the Google controller: `/Google/SyncSettings`, `/Google/SyncResults`, `/Google/SyncSystemTeams` (POST, Admin only).
 
 ## As a Volunteer
 
@@ -132,7 +153,7 @@ Toggle `IsHidden` on create or edit. Hidden teams do not appear in the directory
 
 ### System team sync
 
-Admins view sync status at `/Teams/Sync` and (Admin only) run immediate syncs. The hourly `SystemTeamSyncJob` keeps Volunteers, Coordinators, and Board membership aligned with role assignments and consent status.
+Admins (TeamsAdmin / Board / Admin) view per-service sync mode at `/Google/SyncSettings` and (Admin only) trigger an immediate run via POST to `/Google/SyncSystemTeams`, with results landing on `/Google/SyncResults`. The hourly Hangfire job (`system-team-sync`, `Cron.Hourly`) keeps Volunteers (consent-compliant approved profiles), Coordinators (department-level management role assignments), Board, Asociados, Colaboradors, and Barrio Leads (active camp leads) aligned, also reconciling `TeamMember.Role` against `IsManagement` role assignments and backfilling `User.GoogleEmail` for verified `@nobodies.team` accounts.
 
 ## Related sections
 
