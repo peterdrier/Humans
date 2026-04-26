@@ -1439,6 +1439,7 @@
   <data name="CityPlanning_AddABarrioOption" xml:space="preserve"><value>Add a barrio…</value></data>
   <data name="CityPlanning_SaveButton" xml:space="preserve"><value>Save</value></data>
   <data name="CityPlanning_HistoryButton" xml:space="preserve"><value>History</value></data>
+  <data name="CityPlanning_MeasureButton" xml:space="preserve"><value>Measure</value></data>
   <data name="CityPlanning_AdminLink" xml:space="preserve"><value>Admin</value></data>
   <data name="CityPlanning_GoToPlacementMap" xml:space="preserve"><value>Go to placement map</value></data>
   <data name="CityPlanning_PlacementPhaseInfo" xml:space="preserve"><value>Placement phase info</value></data>
