@@ -220,6 +220,10 @@ export function renderMap(onCampPolygonClick) {
   map.moveLayer('draw-warning-error');
   map.moveLayer('draw-edge-labels');
   map.moveLayer('draw-label');
+
+  // Bring measure layers above everything else
+  ['measure-line', 'measure-preview-line', 'measure-label', 'measure-points-stroke', 'measure-points']
+    .forEach(id => { if (map.getLayer(id)) map.moveLayer(id); });
 }
 
 export function setActivePolygonDim(campSeasonId) {
