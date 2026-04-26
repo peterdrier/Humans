@@ -67,6 +67,37 @@ public class DevSeedController : HumansControllerBase
         return RedirectToAction(nameof(AdminController.Index), "Admin");
     }
 
+    [Authorize(Policy = PolicyNames.CampAdminOrAdmin)]
+    [HttpPost("camp-roles")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SeedCampRoles(CancellationToken cancellationToken)
+    {
+        if (!IsDevSeedEnabled())
+        {
+            return NotFound();
+        }
+
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
+        try
+        {
+            var seeder = _serviceProvider.GetRequiredService<DevelopmentCampRoleSeeder>();
+            var result = await seeder.SeedAsync(user.Id, cancellationToken);
+            SetSuccess($"Camp roles seeded: {result.RolesCreated} created, {result.RolesAlreadyExisted} already existed.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to seed camp roles for user {UserId}", user.Id);
+            SetError("Camp role seeding failed. Check logs for details.");
+        }
+
+        return RedirectToAction(nameof(AdminController.Index), "Admin");
+    }
+
     private bool IsDevSeedEnabled()
     {
         if (_environment.IsProduction())
