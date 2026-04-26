@@ -110,39 +110,29 @@
                         <li class="nav-item" authorize-policy="ActiveMemberOrShiftAccess">
                             <a class="nav-link" asp-area="" asp-controller="Shifts" asp-action="Index">@Localizer["Nav_Shifts"]</a>
                         </li>
-                        <li class="nav-item" authorize-policy="VolunteerSectionAccess">
-                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Vol" asp-action="Index">V</a>
-                        </li>
-                        <li class="nav-item" authorize-policy="ReviewQueueAccess">
-                            <a class="nav-link nav-restricted" asp-area="" asp-controller="OnboardingReview" asp-action="Index">@Localizer["Nav_Review"] @await Component.InvokeAsync("NavBadges", new { queue = "review" })</a>
-                        </li>
-                        <li class="nav-item" authorize-policy="BoardOrAdmin">
-                            <a class="nav-link nav-restricted" asp-area="" asp-controller="OnboardingReview" asp-action="BoardVoting">@Localizer["Nav_Voting"] @await Component.InvokeAsync("NavBadges", new { queue = "voting" })</a>
-                        </li>
-                        <li class="nav-item" authorize-policy="BoardOrAdmin">
-                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Board" asp-action="Index">@Localizer["Nav_Board"]</a>
-                        </li>
-                        <li class="nav-item" authorize-policy="HumanAdminOnly">
-                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Profile" asp-action="AdminList">Humans</a>
-                        </li>
-                        <li class="nav-item" authorize-policy="AdminOnly">
-                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Admin" asp-action="Index">@Localizer["Nav_Admin"]</a>
-                        </li>
-                        <li class="nav-item" authorize-policy="AdminOnly">
-                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Google" asp-action="Index">Google</a>
-                        </li>
-                        <li class="nav-item" authorize-policy="TicketAdminBoardOrAdmin">
-                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Ticket" asp-action="Index">Tickets</a>
-                        </li>
-                        <li class="nav-item" authorize-policy="TicketAdminBoardOrAdmin">
-                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Scanner" asp-action="Index">@Localizer["Nav_Scanner"]</a>
-                        </li>
                         <li class="nav-item" authorize-policy="IsActiveMember">
                             <a class="nav-link" asp-area="" asp-controller="Budget" asp-action="Summary">Budget</a>
                         </li>
-                        <li class="nav-item" authorize-policy="FinanceAdminOrAdmin">
-                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Finance" asp-action="Index">Finance</a>
-                        </li>
+                        @{
+                            var hasAnyAdminRole =
+                                User.IsInRole(Humans.Domain.Constants.RoleNames.Admin)
+                             || User.IsInRole(Humans.Domain.Constants.RoleNames.HumanAdmin)
+                             || User.IsInRole(Humans.Domain.Constants.RoleNames.TeamsAdmin)
+                             || User.IsInRole(Humans.Domain.Constants.RoleNames.CampAdmin)
+                             || User.IsInRole(Humans.Domain.Constants.RoleNames.TicketAdmin)
+                             || User.IsInRole(Humans.Domain.Constants.RoleNames.FeedbackAdmin)
+                             || User.IsInRole(Humans.Domain.Constants.RoleNames.FinanceAdmin)
+                             || User.IsInRole(Humans.Domain.Constants.RoleNames.NoInfoAdmin)
+                             || User.IsInRole(Humans.Domain.Constants.RoleNames.Board)
+                             || User.IsInRole(Humans.Domain.Constants.RoleNames.VolunteerCoordinator)
+                             || User.IsInRole(Humans.Domain.Constants.RoleNames.ConsentCoordinator);
+                        }
+                        @if (hasAnyAdminRole)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link nav-restricted" asp-area="" asp-controller="Admin" asp-action="Index">@Localizer["Nav_Admin"]</a>
+                            </li>
+                        }
                     </ul>
                     <div class="d-flex align-items-center gap-2">
                         @if (User.Identity?.IsAuthenticated == true)
