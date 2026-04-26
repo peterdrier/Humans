@@ -14,6 +14,11 @@ set -euo pipefail
 DOC="src/Humans.Web/Views/About/Index.cshtml"
 PROPS="Directory.Packages.props"
 
+# Packages intentionally excluded from About — design-time-only tools declared
+# with <PrivateAssets>all</PrivateAssets> that don't ship in the published
+# output. Lowercased package names, one per line.
+IGNORE_PACKAGES="microsoft.entityframeworkcore.design"
+
 if [ ! -f "$DOC" ]; then
   echo "FAIL [about-page-packages]: $DOC does not exist"
   exit 1
@@ -57,7 +62,6 @@ alias_for() {
     microsoft.aspnetcore.dataprotection.extensions)    echo "dataprotection"; echo "data protection" ;;
     microsoft.aspnetcore.mvc.testing)                  echo "mvc.testing" ;;
     microsoft.entityframeworkcore)                     echo "entityframeworkcore"; echo "entity framework core" ;;
-    microsoft.entityframeworkcore.design)              echo "entityframeworkcore.design"; echo "ef core design" ;;
     microsoft.entityframeworkcore.inmemory)            echo "entityframeworkcore.inmemory" ;;
     microsoft.extensions.localization)                 echo "extensions.localization"; echo "localization" ;;
     microsoft.visualstudio.threading.analyzers)        echo "threading.analyzers" ;;
@@ -95,6 +99,10 @@ alias_for() {
 }
 
 for PKG in $PROD_PACKAGES; do
+  PKG_LOWER=$(echo "$PKG" | tr '[:upper:]' '[:lower:]')
+  if echo "$IGNORE_PACKAGES" | grep -qx "$PKG_LOWER"; then
+    continue
+  fi
   FOUND=false
   for ALIAS in $(alias_for "$PKG"); do
     if echo "$DOC_LOWER" | grep -qF "$ALIAS"; then

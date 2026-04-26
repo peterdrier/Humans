@@ -17,10 +17,13 @@ if [ ! -f "$DOC" ]; then
   exit 1
 fi
 
-# Latest commit date on main.
-LATEST_DATE=$(git log -1 --format="%ad" --date=format:"%Y-%m-%d" main 2>/dev/null || echo "")
+# Latest commit date on main. Fall back to origin/main for shallow CI clones
+# where the local `main` ref isn't fetched (PR-only fetch).
+LATEST_DATE=$(git log -1 --format="%ad" --date=format:"%Y-%m-%d" main 2>/dev/null \
+  || git log -1 --format="%ad" --date=format:"%Y-%m-%d" origin/main 2>/dev/null \
+  || echo "")
 if [ -z "$LATEST_DATE" ]; then
-  echo "FAIL [dev-stats]: could not determine latest commit date on main"
+  echo "FAIL [dev-stats]: could not determine latest commit date on main (neither 'main' nor 'origin/main' resolves)"
   exit 1
 fi
 
