@@ -1,0 +1,32 @@
+@using Microsoft.AspNetCore.Identity
+@using Humans.Domain.Entities
+@using Humans.Web.Authorization
+@inject SignInManager<User> SignInManager
+@inject UserManager<User> UserManager
+
+@{
+    var user = User.Identity?.IsAuthenticated == true ? await UserManager.GetUserAsync(User) : null;
+    var initials = user is null ? "?" : string.Concat(user.UserName?.Split(' ').Select(s => s.Length > 0 ? s[0] : '?').Take(2) ?? new[] { '?' });
+    var roleLabel = AdminUserRoleSummary.PrimaryRole(User);
+}
+
+<div class="me dropdown dropup">
+    <a class="d-flex align-items-center text-decoration-none w-100" href="#" data-bs-toggle="dropdown" aria-expanded="false">
+        <div class="avatar">@initials</div>
+        <div class="ms-2 text-truncate">
+            <strong>@(user?.UserName ?? "—")</strong>
+            <small>@roleLabel</small>
+        </div>
+    </a>
+    <ul class="dropdown-menu dropdown-menu-dark">
+        <li><a class="dropdown-item" asp-controller="Profile" asp-action="Index">@Localizer["Nav_Profile"]</a></li>
+        <li><a class="dropdown-item" asp-controller="Home" asp-action="About">@Localizer["About"]</a></li>
+        <li><a class="dropdown-item" asp-controller="Home" asp-action="Privacy">@Localizer["Privacy"]</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li>
+            <form asp-controller="Account" asp-action="Logout" method="post">
+                <button type="submit" class="dropdown-item">@Localizer["Logout"]</button>
+            </form>
+        </li>
+    </ul>
+</div>

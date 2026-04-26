@@ -1,6 +1,41 @@
 @model Humans.Web.ViewComponents.AdminSidebarViewModel
-@* Render filled in Task 9 — for now Default.cshtml exists so MVC's view-discovery succeeds. *@
-@foreach (var group in Model.Groups)
-{
-    <div data-group="@group.LabelKey"></div>
-}
+
+<div class="sidebar-scroll">
+    <a class="brand" asp-controller="Home" asp-action="Index">
+        Humans<small>@Localizer["AdminNav_BrandSubtitle"]</small>
+    </a>
+
+    @foreach (var group in Model.Groups)
+    {
+        <h4>@Localizer[group.LabelKey]</h4>
+        @foreach (var item in group.Items)
+        {
+            if (item.RawHref is not null)
+            {
+                <a class="@(item.IsActive ? "active" : null)" href="@item.RawHref">
+                    <i class="@item.IconCssClass" aria-hidden="true"></i>
+                    <span>@Localizer[item.LabelKey]</span>
+                    @if (item.PillCount.HasValue)
+                    {
+                        <span class="pill">@item.PillCount.Value</span>
+                    }
+                </a>
+            }
+            else
+            {
+                <a class="@(item.IsActive ? "active" : null)"
+                   asp-controller="@item.Controller" asp-action="@item.Action">
+                    <i class="@item.IconCssClass" aria-hidden="true"></i>
+                    <span>@Localizer[item.LabelKey]</span>
+                    @if (item.PillCount.HasValue)
+                    {
+                        <span class="pill">@item.PillCount.Value</span>
+                    }
+                </a>
+            }
+        }
+    }
+
+    <div style="flex:1;"></div>
+    <partial name="_AdminSidebarFooter" />
+</div>
