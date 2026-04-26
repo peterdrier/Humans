@@ -57,6 +57,16 @@ public class AccountDeletionArchitectureTests
     }
 
     [HumansFact]
+    public void AccountDeletionService_HasNoRepositoryConstructorParameter()
+    {
+        var ctor = typeof(AccountDeletionService).GetConstructors().Single();
+        ctor.GetParameters()
+            .Should().NotContain(
+                p => p.ParameterType.Name.EndsWith("Repository", StringComparison.Ordinal),
+                because: "the orchestrator owns no tables — cross-section reads/writes route through service interfaces, not repositories (design-rules §2c, §9)");
+    }
+
+    [HumansFact]
     public void IAccountDeletionService_LivesInApplicationInterfacesUsersNamespace()
     {
         typeof(IAccountDeletionService).Namespace

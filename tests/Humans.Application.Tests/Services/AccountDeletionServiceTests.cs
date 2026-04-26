@@ -29,7 +29,7 @@ namespace Humans.Application.Tests.Services;
 public class AccountDeletionServiceTests
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IUserEmailRepository _userEmailRepository = Substitute.For<IUserEmailRepository>();
+    private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
     private readonly IShiftSignupService _shiftSignupService = Substitute.For<IShiftSignupService>();
@@ -51,7 +51,7 @@ public class AccountDeletionServiceTests
 
         _service = new AccountDeletionService(
             _userService,
-            _userEmailRepository,
+            _userEmailService,
             _teamService,
             _roleAssignmentService,
             _shiftSignupService,
@@ -106,8 +106,10 @@ public class AccountDeletionServiceTests
         _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
         _teamService.RevokeAllMembershipsAsync(userId, Arg.Any<CancellationToken>()).Returns(3);
         _roleAssignmentService.RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>()).Returns(1);
-        _userEmailRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<UserEmail>());
+        _userEmailService.GetNotificationTargetEmailsAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+                Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string>());
 
         var result = await _service.RequestDeletionAsync(userId);
 
@@ -137,17 +139,10 @@ public class AccountDeletionServiceTests
         var userId = Guid.NewGuid();
         var user = MakeUser(userId, email: "primary@example.com");
         _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
-        _userEmailRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new[]
-            {
-                new UserEmail
-                {
-                    UserId = userId,
-                    Email = "notif@example.com",
-                    IsVerified = true,
-                    IsNotificationTarget = true
-                }
-            });
+        _userEmailService.GetNotificationTargetEmailsAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+                Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [userId] = "notif@example.com" });
 
         await _service.RequestDeletionAsync(userId);
 
@@ -260,9 +255,9 @@ public class AccountDeletionServiceTests
         result.Should().NotBeNull();
         result!.OriginalEmail.Should().Be("gone@example.com");
         result.OriginalDisplayName.Should().Be("Gone");
-        // The cross-section cache invalidations are only fired on the
-        // successful-identity-write path, so skipping them here is correct —
-        // there's nothing to invalidate.
+        // Steps 1–5 already invalidated their own section caches; the
+        // step-7 cross-section invalidations key off the identity write
+        // completing, so they're correctly skipped on this branch.
         _teamService.DidNotReceive().RemoveMemberFromAllTeamsCache(userId);
         _roleAssignmentClaimsInvalidator.DidNotReceive().Invalidate(userId);
         _shiftAuthorizationInvalidator.DidNotReceive().Invalidate(userId);

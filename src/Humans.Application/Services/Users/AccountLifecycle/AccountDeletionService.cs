@@ -5,7 +5,6 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -39,7 +38,7 @@ namespace Humans.Application.Services.Users.AccountLifecycle;
 public sealed class AccountDeletionService : IAccountDeletionService
 {
     private readonly IUserService _userService;
-    private readonly IUserEmailRepository _userEmailRepository;
+    private readonly IUserEmailService _userEmailService;
     private readonly ITeamService _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IShiftSignupService _shiftSignupService;
@@ -59,7 +58,7 @@ public sealed class AccountDeletionService : IAccountDeletionService
 
     public AccountDeletionService(
         IUserService userService,
-        IUserEmailRepository userEmailRepository,
+        IUserEmailService userEmailService,
         ITeamService teamService,
         IRoleAssignmentService roleAssignmentService,
         IShiftSignupService shiftSignupService,
@@ -73,7 +72,7 @@ public sealed class AccountDeletionService : IAccountDeletionService
         ILogger<AccountDeletionService> logger)
     {
         _userService = userService;
-        _userEmailRepository = userEmailRepository;
+        _userEmailService = userEmailService;
         _teamService = teamService;
         _roleAssignmentService = roleAssignmentService;
         _shiftSignupService = shiftSignupService;
@@ -124,10 +123,11 @@ public sealed class AccountDeletionService : IAccountDeletionService
             "Revoked {MembershipCount} memberships and {RoleCount} roles immediately",
             userId, deletionDate, endedMemberships, endedRoles);
 
-        // 5. Send deletion confirmation email.
-        var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
-        var notificationEmail = userEmails.FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified)?.Email
-                                ?? user.Email;
+        // 5. Send deletion confirmation email. Route through IUserEmailService —
+        //    user_emails is a Profiles-section table, so we cross via the
+        //    section's service interface rather than the repository directly.
+        var notificationEmails = await _userEmailService.GetNotificationTargetEmailsAsync([userId], ct);
+        var notificationEmail = notificationEmails.GetValueOrDefault(userId) ?? user.Email;
         if (notificationEmail is not null)
         {
             await _emailService.SendAccountDeletionRequestedAsync(
@@ -222,9 +222,12 @@ public sealed class AccountDeletionService : IAccountDeletionService
         if (identity is null)
         {
             // Can only happen if the user was deleted by another code path
-            // between the GetById above and now. Still return the captured
-            // pre-write slice so the caller can audit the cancelled signups
-            // / pre-existing identity.
+            // between the GetById above and now. Steps 1–5 already committed
+            // and each owning section invalidated its own caches as part of
+            // those writes; the step-7 cross-section invalidations below key
+            // off the identity write completing, so we skip them here. Still
+            // return the captured pre-write slice so the caller can audit the
+            // cancelled signups / pre-existing identity.
             return new AnonymizedAccountSummary(
                 originalEmail, originalDisplayName, preferredLanguage, cancelledSignupIds);
         }

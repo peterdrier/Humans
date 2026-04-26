@@ -98,7 +98,10 @@ These are managed by `UserManager<User>` / `SignInManager<User>` / `RoleManager<
 - **On unsubscribe click:** `User.UnsubscribedFromCampaigns` flips to `true`; future campaign waves skip this user.
 - **On ticket sync:** `TicketSyncService` calls `IUserService` to upsert / downgrade `EventParticipation` rows; never writes the table directly.
 - **On account suspension:** audit entry is written (`AuditAction.UserSuspended`); the user's Volunteers team membership is revoked via `ISystemTeamSync`.
-- **On account purge:** cascade-delete all Profile-owned rows (via `IProfileService`, `IUserEmailService`, `IContactFieldService`), revoke role assignments (`IRoleAssignmentService.RevokeAllActiveAsync`), sever OAuth logins, archive the User row. Runs atomically through `IUserService.PurgeAsync`.
+- **On account deletion:** orchestrated by `IAccountDeletionService` (Users section). Three lifecycle paths, each a separate entry point:
+  - `RequestDeletionAsync` — user-initiated, sets a 30-day deletion schedule on the User row, revokes team memberships and governance roles immediately, sends a confirmation email.
+  - `PurgeAsync` — admin-initiated, identity-only (renames + drops `UserEmail` rows, locks out the account, drops per-user team / role-assignment / shift-auth caches). Calls into `IUserService.PurgeOwnDataAsync` for the actual identity collapse; does not cascade to Profile rows.
+  - `AnonymizeExpiredAccountAsync` — invoked nightly by `ProcessAccountDeletionsJob` when `DeletionEligibleAfter` has passed. Runs the full cross-section cascade: revokes team memberships and role assignments, anonymizes the Profile (`IProfileService.AnonymizeExpiredProfileAsync`), cancels active shift signups, removes shift profiles, then collapses the User identity (`IUserService.ApplyExpiredDeletionAnonymizationAsync`).
 
 ## Cross-Section Dependencies
 
@@ -110,7 +113,7 @@ These are managed by `UserManager<User>` / `SignInManager<User>` / `RoleManager<
 
 ## Architecture
 
-**Owning services:** `UserService`, `AccountProvisioningService`, `UnsubscribeService`
+**Owning services:** `UserService`, `AccountProvisioningService`, `UnsubscribeService`, `AccountDeletionService`
 **Owned tables:** `AspNetUsers`, `AspNetUserClaims`, `AspNetUserLogins`, `AspNetUserTokens`, `AspNetRoles` (legacy), `AspNetUserRoles` (legacy), `event_participations`
 **Status:** (A) Migrated (peterdrier/Humans PR #243 for issue nobodies-collective/Humans#511, 2026-04-21).
 
