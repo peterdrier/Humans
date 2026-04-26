@@ -5,6 +5,7 @@ using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
 using Humans.Infrastructure.Services.GoogleWorkspace;
+using Humans.Infrastructure.Services.Metering;
 using GoogleWorkspaceUserService = Humans.Application.Services.GoogleIntegration.GoogleWorkspaceUserService;
 using GoogleDriveActivityMonitorService = Humans.Application.Services.GoogleIntegration.DriveActivityMonitorService;
 using GoogleAdminService = Humans.Application.Services.GoogleIntegration.GoogleAdminService;
@@ -116,6 +117,9 @@ internal static class GoogleWorkspaceInfrastructureExtensions
         services.AddScoped<GoogleResourceReconciliationJob>();
         services.AddScoped<DriveActivityMonitorJob>();
         services.AddScoped<ProcessGoogleSyncOutboxJob>();
+
+        // Metrics: Google Integration owns humans.google_sync_outbox_pending.
+        services.AddHostedService<GoogleIntegrationMetricsRegistrar>();
 
         return services;
     }

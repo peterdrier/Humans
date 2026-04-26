@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
@@ -13,6 +12,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Jobs;
+using Humans.Infrastructure.Services.Metering;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -45,7 +45,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
-    private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
+    private readonly MetersService _meters = new(NullLogger<MetersService>.Instance);
 
     private SystemTeamSyncJob CreateJob()
     {
@@ -62,7 +62,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
             _auditLogService,
             _emailService,
             _roleAssignmentClaimsInvalidator,
-            _metrics,
+            _meters,
             NullLogger<SystemTeamSyncJob>.Instance,
             _clock);
     }

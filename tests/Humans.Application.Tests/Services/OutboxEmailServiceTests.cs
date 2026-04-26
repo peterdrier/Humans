@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Email;
 using Humans.Domain.Entities;
@@ -11,6 +10,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Infrastructure.Data;
+using Humans.Infrastructure.Services.Metering;
 using Xunit;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Profiles;
@@ -34,7 +34,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     private readonly FakeClock _clock;
     private readonly OutboxEmailService _service;
     private readonly IEmailRenderer _renderer = Substitute.For<IEmailRenderer>();
-    private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
+    private readonly MetersService _meters = new(NullLogger<MetersService>.Instance);
     private readonly IImmediateOutboxProcessor _immediate = Substitute.For<IImmediateOutboxProcessor>();
     private readonly ICommunicationPreferenceService _commPrefService = Substitute.For<ICommunicationPreferenceService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
@@ -62,7 +62,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
             _renderer,
             _bodyComposer,
             _immediate,
-            _metrics,
+            _meters,
             _clock,
             _commPrefService,
             NullLogger<OutboxEmailService>.Instance);
@@ -71,6 +71,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
+        _meters.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -94,17 +95,6 @@ public sealed class OutboxEmailServiceTests : IDisposable
         msg.TemplateName.Should().Be("welcome");
         msg.Status.Should().Be(EmailOutboxStatus.Queued);
         msg.CreatedAt.Should().Be(_clock.GetCurrentInstant());
-    }
-
-    [HumansFact]
-    public async Task SendWelcomeEmailAsync_RecordsEmailQueuedMetric()
-    {
-        _renderer.RenderWelcome("Alice", "en")
-            .Returns(new EmailContent("Welcome!", "<p>Hello</p>"));
-
-        await _service.SendWelcomeEmailAsync("alice@example.com", "Alice", "en");
-
-        _metrics.Received(1).RecordEmailQueued("welcome");
     }
 
     [HumansFact]
@@ -168,7 +158,6 @@ public sealed class OutboxEmailServiceTests : IDisposable
         var msg = await _dbContext.EmailOutboxMessages.SingleAsync();
         msg.TemplateName.Should().Be("application_approved");
         msg.RecipientEmail.Should().Be("eve@example.com");
-        _metrics.Received(1).RecordEmailQueued("application_approved");
     }
 
     [HumansFact]
@@ -271,6 +260,5 @@ public sealed class OutboxEmailServiceTests : IDisposable
         msg.CampaignGrantId.Should().Be(grantId);
         msg.ReplyTo.Should().Be("reply@example.com");
         msg.ExtraHeaders.Should().NotBeNull();
-        _metrics.Received(1).RecordEmailQueued("campaign_code");
     }
 }

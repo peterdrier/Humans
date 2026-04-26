@@ -87,6 +87,7 @@ Additional role names referenced across the codebase: `HumanAdmin`, `TeamsAdmin`
 - **Cross-domain navs `[Obsolete]`-marked:** `RoleAssignment.User`, `RoleAssignment.CreatedByUser`. The repository does not `.Include()` them; the service stitches display data in memory from `IUserService.GetByIdsAsync` (§6b). Controllers (`AboutController`, `GovernanceController`, `ProfileController`) and two daily-digest jobs (`SendAdminDailyDigestJob`, `SendBoardDailyDigestJob`) continue to read `ra.User.DisplayName` / `ra.CreatedByUser.DisplayName` under `#pragma warning disable CS0618` until the broader User-entity nav strip lands.
 - `MagicLinkService` owns no tables. Its persistent state is `User.MagicLinkSentAt`, mutated via `UserManager<User>`. Verified-email lookup goes through `IUserEmailService.FindVerifiedEmailWithUserAsync`. Data-Protection token generation/validation and URL construction sit behind `IMagicLinkUrlBuilder`; replay-protection and signup rate-limit state sit behind `IMagicLinkRateLimiter`. That arrangement keeps `MagicLinkService` free of `HumansDbContext`, `EmailSettings`, `IDataProtectionProvider`, and `IMemoryCache`.
 - **Cross-cutting invalidation** routes through `INavBadgeCacheInvalidator` (top-nav counters) and `IRoleAssignmentClaimsCacheInvalidator` (per-user claims transform cache) — never raw `IMemoryCache` calls.
+- **Metrics**: `humans.role_assignments_active`. Registered by `AuthMetricsRegistrar` (gauges).
 
 ### Touch-and-clean guidance
 

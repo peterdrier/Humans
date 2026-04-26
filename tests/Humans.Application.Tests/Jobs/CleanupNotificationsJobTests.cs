@@ -5,10 +5,8 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Notifications;
-using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Services.Metering;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -32,11 +30,9 @@ public class CleanupNotificationsJobTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 10, 12, 0));
 
-        var metrics = new HumansMetricsService(
-            Substitute.For<IServiceScopeFactory>(),
-            Substitute.For<ILogger<HumansMetricsService>>());
+        var meters = new MetersService(NullLogger<MetersService>.Instance);
         var repo = new NotificationRepository(new TestDbContextFactory(options));
-        _job = new CleanupNotificationsJob(repo, _clock, metrics, NullLogger<CleanupNotificationsJob>.Instance);
+        _job = new CleanupNotificationsJob(repo, _clock, meters, NullLogger<CleanupNotificationsJob>.Instance);
     }
 
     public void Dispose()

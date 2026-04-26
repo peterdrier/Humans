@@ -62,4 +62,11 @@ public interface IAdminLegalDocumentService
         Guid versionId,
         string? changesSummary,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Counts active, required legal documents. Used by
+    /// <c>LegalMetricsRegistrar</c> to publish
+    /// <c>humans.legal_documents_active</c>.
+    /// </summary>
+    Task<int> GetActiveRequiredDocumentCountAsync(CancellationToken cancellationToken = default);
 }

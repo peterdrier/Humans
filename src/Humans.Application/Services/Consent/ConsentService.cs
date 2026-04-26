@@ -1,16 +1,18 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Diagnostics.Metrics;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Legal;
+using Humans.Application.Interfaces.Metering;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Metering;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
@@ -53,7 +55,7 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
     private readonly ISystemTeamSync _syncJob;
     private readonly IProfileService _profileService;
     private readonly IServiceProvider _serviceProvider;
-    private readonly IHumansMetrics _metrics;
+    private readonly Counter<long> _consentsGivenCounter;
     private readonly IClock _clock;
     private readonly ILogger<ConsentService> _logger;
 
@@ -65,7 +67,7 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         ISystemTeamSync syncJob,
         IProfileService profileService,
         IServiceProvider serviceProvider,
-        IHumansMetrics metrics,
+        IMeters meters,
         IClock clock,
         ILogger<ConsentService> logger)
     {
@@ -76,7 +78,9 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         _syncJob = syncJob;
         _profileService = profileService;
         _serviceProvider = serviceProvider;
-        _metrics = metrics;
+        _consentsGivenCounter = meters.RegisterCounter(
+            "humans.consents_given_total",
+            new MeterMetadata("Total consent records created", "{consents}"));
         _clock = clock;
         _logger = logger;
     }
@@ -172,7 +176,7 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         };
 
         await _repo.AddAsync(consentRecord, ct);
-        _metrics.RecordConsentGiven();
+        _consentsGivenCounter.Add(1);
 
         _logger.LogInformation(
             "User {UserId} consented to document {DocumentName} version {Version}",

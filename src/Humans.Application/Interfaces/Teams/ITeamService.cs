@@ -668,6 +668,20 @@ public interface ITeamService
     Task<int> GetTotalPendingJoinRequestCountAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns the total number of teams with <c>IsActive=true</c>. Used by the
+    /// <c>humans.teams</c> metric so the Metering section does not read
+    /// <c>teams</c> directly (design-rules §2c).
+    /// </summary>
+    Task<int> GetActiveTeamCountAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the total number of teams with <c>IsActive=false</c>. Used by
+    /// the <c>humans.teams</c> metric so the Metering section does not read
+    /// <c>teams</c> directly (design-rules §2c).
+    /// </summary>
+    Task<int> GetInactiveTeamCountAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Returns the distinct user ids of every active
     /// (<see cref="TeamMember.LeftAt"/> is null)
     /// <see cref="TeamMemberRole.Coordinator"/> on a non-system team.

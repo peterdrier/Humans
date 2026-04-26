@@ -1,3 +1,6 @@
+using System.Diagnostics.Metrics;
+using Humans.Application.Interfaces.Metering;
+using Humans.Application.Metering;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Microsoft.Extensions.Logging;
@@ -18,18 +21,20 @@ public class CleanupNotificationsJob : IRecurringJob
 
     private readonly INotificationRepository _notificationRepository;
     private readonly IClock _clock;
-    private readonly IHumansMetrics _metrics;
+    private readonly Counter<long> _jobRunsCounter;
     private readonly ILogger<CleanupNotificationsJob> _logger;
 
     public CleanupNotificationsJob(
         INotificationRepository notificationRepository,
         IClock clock,
-        IHumansMetrics metrics,
+        IMeters meters,
         ILogger<CleanupNotificationsJob> logger)
     {
         _notificationRepository = notificationRepository;
         _clock = clock;
-        _metrics = metrics;
+        _jobRunsCounter = meters.RegisterCounter(
+            "humans.job_runs_total",
+            new MeterMetadata("Total background job runs", "{runs}"));
         _logger = logger;
     }
 
@@ -52,11 +57,15 @@ public class CleanupNotificationsJob : IRecurringJob
                 resolvedDeleted, ResolvedRetentionPeriod.Days,
                 staleDeleted, InformationalRetentionPeriod.Days);
 
-            _metrics.RecordJobRun("cleanup_notifications", "success");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "cleanup_notifications"),
+                new KeyValuePair<string, object?>("result", "success"));
         }
         catch (Exception ex)
         {
-            _metrics.RecordJobRun("cleanup_notifications", "failure");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "cleanup_notifications"),
+                new KeyValuePair<string, object?>("result", "failure"));
             _logger.LogError(ex, "Error cleaning up notifications");
             throw;
         }

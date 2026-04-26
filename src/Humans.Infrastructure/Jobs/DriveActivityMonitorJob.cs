@@ -1,3 +1,6 @@
+using System.Diagnostics.Metrics;
+using Humans.Application.Interfaces.Metering;
+using Humans.Application.Metering;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
@@ -12,18 +15,20 @@ namespace Humans.Infrastructure.Jobs;
 public class DriveActivityMonitorJob : IRecurringJob
 {
     private readonly IDriveActivityMonitorService _monitorService;
-    private readonly IHumansMetrics _metrics;
+    private readonly Counter<long> _jobRunsCounter;
     private readonly ILogger<DriveActivityMonitorJob> _logger;
     private readonly IClock _clock;
 
     public DriveActivityMonitorJob(
         IDriveActivityMonitorService monitorService,
-        IHumansMetrics metrics,
+        IMeters meters,
         ILogger<DriveActivityMonitorJob> logger,
         IClock clock)
     {
         _monitorService = monitorService;
-        _metrics = metrics;
+        _jobRunsCounter = meters.RegisterCounter(
+            "humans.job_runs_total",
+            new MeterMetadata("Total background job runs", "{runs}"));
         _logger = logger;
         _clock = clock;
     }
@@ -46,11 +51,15 @@ public class DriveActivityMonitorJob : IRecurringJob
                 _logger.LogInformation("Drive activity monitor completed: no anomalies detected");
             }
 
-            _metrics.RecordJobRun("drive_activity_monitor", "success");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "drive_activity_monitor"),
+                new KeyValuePair<string, object?>("result", "success"));
         }
         catch (Exception ex)
         {
-            _metrics.RecordJobRun("drive_activity_monitor", "failure");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "drive_activity_monitor"),
+                new KeyValuePair<string, object?>("result", "failure"));
             _logger.LogError(ex, "Error during Drive activity monitor check");
             throw;
         }

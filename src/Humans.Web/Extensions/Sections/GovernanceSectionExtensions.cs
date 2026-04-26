@@ -7,6 +7,7 @@ using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Governance;
 using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Services.Metering;
 using GovernanceApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
 using OnboardingOrchestratorService = Humans.Application.Services.Onboarding.OnboardingService;
 
@@ -40,6 +41,9 @@ internal static class GovernanceSectionExtensions
         services.AddScoped<IOnboardingEligibilityQuery>(sp => sp.GetRequiredService<OnboardingOrchestratorService>());
 
         services.AddScoped<TermRenewalReminderJob>();
+
+        // Metrics: Governance owns humans.applications_pending and humans.asociados.
+        services.AddHostedService<GovernanceMetricsRegistrar>();
 
         return services;
     }

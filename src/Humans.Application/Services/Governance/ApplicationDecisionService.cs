@@ -1,13 +1,15 @@
+using System.Diagnostics.Metrics;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.DTOs.Governance;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.Metering;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Metering;
 using Humans.Domain;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -44,7 +46,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
     private readonly IEmailService _emailService;
     private readonly INotificationService _notificationService;
     private readonly ISystemTeamSync _syncJob;
-    private readonly IHumansMetrics _metrics;
+    private readonly Counter<long> _applicationsProcessedCounter;
     private readonly INavBadgeCacheInvalidator _navBadge;
     private readonly INotificationMeterCacheInvalidator _notificationMeter;
     private readonly IVotingBadgeCacheInvalidator _votingBadge;
@@ -60,7 +62,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         IEmailService emailService,
         INotificationService notificationService,
         ISystemTeamSync syncJob,
-        IHumansMetrics metrics,
+        IMeters meters,
         INavBadgeCacheInvalidator navBadge,
         INotificationMeterCacheInvalidator notificationMeter,
         IVotingBadgeCacheInvalidator votingBadge,
@@ -75,7 +77,9 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         _emailService = emailService;
         _notificationService = notificationService;
         _syncJob = syncJob;
-        _metrics = metrics;
+        _applicationsProcessedCounter = meters.RegisterCounter(
+            "humans.applications_processed_total",
+            new MeterMetadata("Total asociado applications processed", "{applications}"));
         _navBadge = navBadge;
         _notificationMeter = notificationMeter;
         _votingBadge = votingBadge;
@@ -137,7 +141,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
             $"{application.MembershipTier} application approved",
             reviewerUserId);
 
-        _metrics.RecordApplicationProcessed("approved");
+        _applicationsProcessedCounter.Add(1, new KeyValuePair<string, object?>("action", "approved"));
         _logger.LogInformation(
             "Application {ApplicationId} approved by {UserId}",
             application.Id, reviewerUserId);
@@ -233,7 +237,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
             $"{application.MembershipTier} application rejected",
             reviewerUserId);
 
-        _metrics.RecordApplicationProcessed("rejected");
+        _applicationsProcessedCounter.Add(1, new KeyValuePair<string, object?>("action", "rejected"));
         _logger.LogInformation(
             "Application {ApplicationId} rejected by {UserId}",
             application.Id, reviewerUserId);
@@ -385,7 +389,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         _navBadge.Invalidate();
         _notificationMeter.Invalidate();
 
-        _metrics.RecordApplicationProcessed("withdrawn");
+        _applicationsProcessedCounter.Add(1, new KeyValuePair<string, object?>("action", "withdrawn"));
         _logger.LogInformation(
             "User {UserId} withdrew application {ApplicationId}",
             userId, applicationId);
@@ -632,6 +636,9 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
 
     public Task<int> GetPendingApplicationCountAsync(CancellationToken ct = default) =>
         _repository.CountByStatusAsync(ApplicationStatus.Submitted, ct);
+
+    public Task<int> GetApprovedApplicationCountAsync(CancellationToken ct = default) =>
+        _repository.CountByStatusAsync(ApplicationStatus.Approved, ct);
 
     public Task<IReadOnlyList<MemberApplication>> GetExpiringApplicationsNeedingReminderAsync(
         LocalDate today, LocalDate reminderThreshold, CancellationToken ct = default) =>

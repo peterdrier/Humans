@@ -1013,6 +1013,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<IReadOnlyList<(string Language, int Count)>> GetLanguageDistributionForUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<(bool Purged, string? DisplayName)> PurgeAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<int> GetPendingDeletionCountAsync(CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<int> GetScheduledDeletionCountAsync(CancellationToken ct = default) => throw new NotSupportedException();
         public Task SetLastConsentReminderSentAsync(Guid userId, Instant sentAt, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<int> GetRejectedGoogleEmailCountAsync(CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(Instant now, CancellationToken ct = default) => throw new NotSupportedException();
@@ -1114,6 +1115,8 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<IReadOnlyList<Guid>> GetActiveMemberUserIdsAsync(Guid teamId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> GetActiveNonSystemTeamNamesByUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<int> GetTotalPendingJoinRequestCountAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<int> GetActiveTeamCountAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<int> GetInactiveTeamCountAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetActiveNonSystemTeamCoordinatorUserIdsAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<TeamMember>> GetActiveMembersForTeamsAsync(IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<TeamMember>> GetActiveChildMembersByParentIdsAsync(IReadOnlyCollection<Guid> parentTeamIds, CancellationToken cancellationToken = default) => throw new NotSupportedException();

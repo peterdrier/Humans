@@ -479,10 +479,6 @@ var app = builder.Build();
 // so all Instant.ToDisplay*() calls automatically use the user's session timezone.
 DateTimeDisplayExtensions.Initialize(app.Services.GetRequiredService<IHttpContextAccessor>());
 
-// Eagerly resolve IHumansMetrics so the background gauge-refresh timer starts
-// immediately — otherwise observable gauges emit nothing until first injection.
-app.Services.GetRequiredService<IHumansMetrics>();
-
 // Localization diagnostic check
 {
     using var scope = app.Services.CreateScope();

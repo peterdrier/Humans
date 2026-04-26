@@ -263,6 +263,7 @@ External contacts are managed separately at `/Contacts` (ContactsController).
 - **Cross-domain navs stripped:** `Profile.User`, `UserEmail.User`, `CommunicationPreference.User`. Display stitching routes through `IUserService.GetByIdsAsync`.
 - **GDPR:** `ProfileService` implements `IUserDataContributor` (design-rules §8a). The `ExpectedContributorTypes` in `GdprExportDependencyInjectionTests` enforces registration.
 - **Account merge & duplicates** — `AccountMergeService` and `DuplicateAccountService` live in `Humans.Application.Services.Profile/`. `AccountMergeService` is backed by `IAccountMergeRepository` (Singleton) for `account_merge_requests` and orchestrates the actual merge via `IUserEmailService`, `IContactFieldService`, `IProfileService`, and `IUserService`. `DuplicateAccountService` is stateless — no repository, just cross-section reads via those same interfaces. Neither service reads `DbContext` directly.
+- **Metrics**: `humans.humans_total`, `humans.pending_volunteers`, `humans.pending_consents`, `humans.consent_deadline_approaching`. Registered by `ProfileMetricsRegistrar` (gauges).
 - **Architecture tests** — `tests/Humans.Application.Tests/Architecture/ProfileArchitectureTests.cs` + `GdprExportDependencyInjectionTests.cs`.
 
 ### Touch-and-clean guidance

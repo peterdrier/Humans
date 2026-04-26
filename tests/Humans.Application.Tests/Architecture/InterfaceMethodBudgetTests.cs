@@ -41,12 +41,15 @@ public class InterfaceMethodBudgetTests
     /// </summary>
     private static readonly IReadOnlyDictionary<Type, int> Budgets = new Dictionary<Type, int>
     {
-        // Audited 2026-04-26 against reforge audit-surface 0.8.0
-        [typeof(ITeamService)] = 71,
+        // Audited 2026-04-26 against reforge audit-surface 0.8.0.
+        // ITeamService +2 (GetActive/InactiveTeamCountAsync) and IUserService +1
+        // (GetScheduledDeletionCountAsync) added by IMeters section-owned metrics
+        // migration so registrars don't read tables directly (design-rules §2c).
+        [typeof(ITeamService)] = 73,
         [typeof(ICampService)] = 53,
         [typeof(IShiftManagementService)] = 49,
         [typeof(IProfileService)] = 39,
-        [typeof(IUserService)] = 32,
+        [typeof(IUserService)] = 33,
     };
 
     [HumansTheory]

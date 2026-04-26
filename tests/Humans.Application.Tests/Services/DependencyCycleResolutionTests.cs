@@ -5,6 +5,7 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Metering;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
@@ -20,6 +21,7 @@ using Humans.Application.Services.Users;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Services.Metering;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -116,7 +118,7 @@ public class DependencyCycleResolutionTests
         services.AddScoped<IEmailRenderer>(_ => Substitute.For<IEmailRenderer>());
         services.AddScoped<IEmailBodyComposer>(_ => Substitute.For<IEmailBodyComposer>());
         services.AddScoped<IImmediateOutboxProcessor>(_ => Substitute.For<IImmediateOutboxProcessor>());
-        services.AddScoped<IHumansMetrics>(_ => Substitute.For<IHumansMetrics>());
+        services.AddSingleton<IMeters>(_ => new MetersService(NullLogger<MetersService>.Instance));
         services.AddScoped<ICommunicationPreferenceService>(_ => Substitute.For<ICommunicationPreferenceService>());
         services.AddScoped<NodaTime.IClock>(_ => Substitute.For<NodaTime.IClock>());
         services.AddScoped<UserManager<User>>(_ =>

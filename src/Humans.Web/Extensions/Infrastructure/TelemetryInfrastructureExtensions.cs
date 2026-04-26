@@ -1,7 +1,5 @@
 using Humans.Application.Configuration;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Metering;
-using Humans.Infrastructure.Services;
 using Humans.Infrastructure.Services.Metering;
 
 namespace Humans.Web.Extensions.Infrastructure;
@@ -13,8 +11,6 @@ internal static class TelemetryInfrastructureExtensions
         IConfiguration configuration)
     {
         services.Configure<GitHubSettings>(configuration.GetSection(GitHubSettings.SectionName));
-
-        services.AddSingleton<IHumansMetrics, HumansMetricsService>();
 
         // IMeters is a leaf singleton — only ILogger dep. Owns the
         // System.Diagnostics.Metrics.Meter("Humans.Metrics") instrument under which

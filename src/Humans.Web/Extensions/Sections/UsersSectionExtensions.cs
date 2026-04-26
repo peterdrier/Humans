@@ -4,6 +4,7 @@ using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Users;
+using Humans.Infrastructure.Services.Metering;
 using DashboardDashboardService = Humans.Application.Services.Dashboard.DashboardService;
 using GovernanceMembershipCalculator = Humans.Application.Services.Governance.MembershipCalculator;
 using GovernanceMembershipQuery = Humans.Application.Services.Governance.MembershipQuery;
@@ -32,6 +33,9 @@ internal static class UsersSectionExtensions
         services.AddScoped<IMembershipQuery, GovernanceMembershipQuery>();
         services.AddScoped<IMembershipCalculator, GovernanceMembershipCalculator>();
         services.AddScoped<IDashboardService, DashboardDashboardService>();
+
+        // Metrics: Users section owns humans.pending_deletions.
+        services.AddHostedService<UsersMetricsRegistrar>();
 
         return services;
     }

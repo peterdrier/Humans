@@ -1,5 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -7,7 +5,7 @@ using NSubstitute;
 using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Jobs;
-using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Services.Metering;
 using Xunit;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Notifications;
@@ -18,28 +16,26 @@ public class GoogleResourceReconciliationJobTests : IDisposable
 {
     private readonly IGoogleSyncService _googleSyncService;
     private readonly FakeClock _clock;
-    private readonly HumansMetricsService _metrics;
+    private readonly MetersService _meters;
     private readonly GoogleResourceReconciliationJob _job;
 
     public GoogleResourceReconciliationJobTests()
     {
         _googleSyncService = Substitute.For<IGoogleSyncService>();
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 9, 2, 0));
-        _metrics = new HumansMetricsService(
-            Substitute.For<IServiceScopeFactory>(),
-            Substitute.For<ILogger<HumansMetricsService>>());
+        _meters = new MetersService(NullLogger<MetersService>.Instance);
 
         _job = new GoogleResourceReconciliationJob(
             _googleSyncService,
             Substitute.For<INotificationService>(),
-            _metrics,
+            _meters,
             NullLogger<GoogleResourceReconciliationJob>.Instance,
             _clock);
     }
 
     public void Dispose()
     {
-        _metrics.Dispose();
+        _meters.Dispose();
         GC.SuppressFinalize(this);
     }
 

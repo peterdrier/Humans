@@ -10,7 +10,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <remarks>
 /// Part 1 of issue #554 (Google Workspace §15 migration) introduced this
 /// repository surface so Notifications (<c>NotificationMeterProvider</c>),
-/// Admin metrics (<c>HumansMetricsService</c>), and the Admin daily digest
+/// the Google Integration metrics registrar, and the Admin daily digest
 /// (<c>SendAdminDailyDigestJob</c>) could reach the failed / pending /
 /// transient-retry counts without reading the table directly
 /// (design-rules §2c).
@@ -45,8 +45,8 @@ public interface IGoogleSyncOutboxRepository
 
     /// <summary>
     /// Counts all currently unprocessed outbox events
-    /// (<c>ProcessedAt == null</c>). Used by <c>IHumansMetrics</c> to expose
-    /// a pending-queue-size gauge. Read-only.
+    /// (<c>ProcessedAt == null</c>). Used by the Google Integration metrics
+    /// registrar to expose a pending-queue-size gauge. Read-only.
     /// </summary>
     Task<int> CountPendingAsync(CancellationToken ct = default);
 

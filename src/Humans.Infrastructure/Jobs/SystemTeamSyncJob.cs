@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -9,10 +10,12 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.Metering;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Metering;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -54,7 +57,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
     private readonly IAuditLogService _auditLogService;
     private readonly IEmailService _emailService;
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator;
-    private readonly IHumansMetrics _metrics;
+    private readonly Counter<long> _jobRunsCounter;
     private readonly ILogger<SystemTeamSyncJob> _logger;
     private readonly IClock _clock;
 
@@ -67,7 +70,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         IAuditLogService auditLogService,
         IEmailService emailService,
         IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
-        IHumansMetrics metrics,
+        IMeters meters,
         ILogger<SystemTeamSyncJob> logger,
         IClock clock)
     {
@@ -79,7 +82,9 @@ public class SystemTeamSyncJob : ISystemTeamSync
         _auditLogService = auditLogService;
         _emailService = emailService;
         _roleAssignmentClaimsInvalidator = roleAssignmentClaimsInvalidator;
-        _metrics = metrics;
+        _jobRunsCounter = meters.RegisterCounter(
+            "humans.job_runs_total",
+            new MeterMetadata("Total background job runs", "{runs}"));
         _logger = logger;
         _clock = clock;
     }
@@ -124,12 +129,16 @@ public class SystemTeamSyncJob : ISystemTeamSync
             await SyncBarrioLeadsTeamAsync(report, cancellationToken);
             await BackfillGoogleEmailsAsync(report, cancellationToken);
 
-            _metrics.RecordJobRun("system_team_sync", "success");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "system_team_sync"),
+                new KeyValuePair<string, object?>("result", "success"));
             _logger.LogInformation("Completed system team sync");
         }
         catch (Exception ex)
         {
-            _metrics.RecordJobRun("system_team_sync", "failure");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "system_team_sync"),
+                new KeyValuePair<string, object?>("result", "failure"));
             _logger.LogError(ex, "Error during system team sync");
             throw;
         }

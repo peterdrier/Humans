@@ -405,6 +405,12 @@ public interface ITeamRepository
     /// <summary>Total pending join requests across all teams.</summary>
     Task<int> GetTotalPendingCountAsync(CancellationToken ct = default);
 
+    /// <summary>Total teams with <c>IsActive=true</c>.</summary>
+    Task<int> GetActiveTeamCountAsync(CancellationToken ct = default);
+
+    /// <summary>Total teams with <c>IsActive=false</c>.</summary>
+    Task<int> GetInactiveTeamCountAsync(CancellationToken ct = default);
+
     /// <summary>
     /// Distinct user ids of every active (<see cref="TeamMember.LeftAt"/> is null)
     /// <see cref="TeamMemberRole.Coordinator"/> on a non-system team

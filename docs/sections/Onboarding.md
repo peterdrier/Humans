@@ -71,5 +71,6 @@ The only onboarding-specific value type is the narrow `IOnboardingEligibilityQue
 - **Cross-domain navs stripped:** N/A — Onboarding owns no entities.
 - **DI-cycle break:** `IOnboardingEligibilityQuery` is the narrow interface Profile and Consent depend on. `IOnboardingService` extends it; `OnboardingService` implements it. Reviewers should reject any change that widens the interface Profile / Consent depend on.
 - **Architecture test** — `tests/Humans.Application.Tests/Architecture/OnboardingArchitectureTests.cs` enforces: lives in `Humans.Application.Services.Onboarding`; no `DbContext` / `IDbContextFactory` / `DbSet<T>` ctor parameters; no `IMemoryCache` parameter; no `IFullProfileInvalidator` parameter; no repository parameters; implements `IOnboardingEligibilityQuery`; every ctor parameter is an interface (plus `IClock`).
+- **Metrics**: `humans.volunteers_approved_total`, `humans.members_suspended_total`. Registered by `OnboardingService` (counters). Note: `humans.members_suspended_total` is also incremented by `SuspendNonCompliantMembersJob` for the auto-suspend code path.
 
 The owning-section repositories (`IProfileRepository`, `IUserRepository`, `IApplicationRepository`) each grew a handful of methods to serve Onboarding's cross-section read + write needs — see each repository's XML docs for the onboarding-support block.

@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
@@ -6,11 +7,13 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.Metering;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Metering;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 
@@ -25,7 +28,7 @@ namespace Humans.Infrastructure.Jobs;
 /// (<see cref="IUserService"/>, <see cref="IProfileService"/>,
 /// <see cref="ITeamService"/>, <see cref="IGoogleSyncService"/>) so the job
 /// never touches <see cref="Humans.Infrastructure.Data.HumansDbContext"/>
-/// directly (design-rules §2c). Cross-cutting cache invalidation routes
+/// directly (design-rules Â§2c). Cross-cutting cache invalidation routes
 /// through invalidator interfaces
 /// (<see cref="IFullProfileInvalidator"/>,
 /// <see cref="IRoleAssignmentClaimsCacheInvalidator"/>,
@@ -44,7 +47,8 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
     private readonly IFullProfileInvalidator _fullProfileInvalidator;
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator;
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator;
-    private readonly IHumansMetrics _metrics;
+    private readonly Counter<long> _jobRunsCounter;
+    private readonly Counter<long> _membersSuspendedCounter;
     private readonly ILogger<SuspendNonCompliantMembersJob> _logger;
     private readonly IClock _clock;
 
@@ -60,7 +64,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
         IFullProfileInvalidator fullProfileInvalidator,
         IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
         IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,
-        IHumansMetrics metrics,
+        IMeters meters,
         ILogger<SuspendNonCompliantMembersJob> logger,
         IClock clock)
     {
@@ -75,7 +79,12 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
         _fullProfileInvalidator = fullProfileInvalidator;
         _roleAssignmentClaimsInvalidator = roleAssignmentClaimsInvalidator;
         _shiftAuthorizationInvalidator = shiftAuthorizationInvalidator;
-        _metrics = metrics;
+        _jobRunsCounter = meters.RegisterCounter(
+            "humans.job_runs_total",
+            new MeterMetadata("Total background job runs", "{runs}"));
+        _membersSuspendedCounter = meters.RegisterCounter(
+            "humans.members_suspended_total",
+            new MeterMetadata("Total member suspensions", "{members}"));
         _logger = logger;
         _clock = clock;
     }
@@ -103,7 +112,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
 
             var now = _clock.GetCurrentInstant();
 
-            // Apply the suspension write through IProfileService — returns the
+            // Apply the suspension write through IProfileService â€” returns the
             // subset of user ids whose profile was actually mutated (skips
             // already-suspended / profileless users).
             var suspendedIds = await _profileService
@@ -111,7 +120,9 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
 
             if (suspendedIds.Count == 0)
             {
-                _metrics.RecordJobRun("suspend_noncompliant_members", "success");
+                _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "suspend_noncompliant_members"),
+                new KeyValuePair<string, object?>("result", "success"));
                 _logger.LogInformation(
                     "Completed non-compliant member check, no eligible users to suspend");
                 return;
@@ -127,7 +138,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                 if (!usersById.TryGetValue(userId, out var user))
                 {
                     _logger.LogWarning(
-                        "Suspended user {UserId} not found in user lookup — skipping downstream side effects",
+                        "Suspended user {UserId} not found in user lookup â€” skipping downstream side effects",
                         userId);
                     continue;
                 }
@@ -192,7 +203,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                     "User {UserId} ({Email}) suspended and flagged for removal from {Count} teams",
                     user.Id, effectiveEmail, memberships.Count);
 
-                _metrics.RecordMemberSuspended("job");
+                _membersSuspendedCounter.Add(1, new KeyValuePair<string, object?>("source", "job"));
 
                 // 4. Audit log + cross-cutting cache invalidation.
                 await _auditLogService.LogAsync(
@@ -206,14 +217,18 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                 _teamService.RemoveMemberFromAllTeamsCache(user.Id);
             }
 
-            _metrics.RecordJobRun("suspend_noncompliant_members", "success");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "suspend_noncompliant_members"),
+                new KeyValuePair<string, object?>("result", "success"));
             _logger.LogInformation(
                 "Completed non-compliant member check, suspended {Count} members",
                 suspendedIds.Count);
         }
         catch (Exception ex)
         {
-            _metrics.RecordJobRun("suspend_noncompliant_members", "failure");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "suspend_noncompliant_members"),
+                new KeyValuePair<string, object?>("result", "failure"));
             _logger.LogError(ex, "Error checking non-compliant members");
             throw;
         }

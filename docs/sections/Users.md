@@ -120,6 +120,7 @@ These are managed by `UserManager<User>` / `SignInManager<User>` / `RoleManager<
 - **Cross-domain navs still declared (deferred strip):** `User.Profile`, `User.UserEmails`, `User.TeamMemberships`, `User.RoleAssignments`, `User.Applications`, `User.ConsentRecords`, `User.CommunicationPreferences`. PR #243 landed the Application-layer move but deferred the strip because ~15 call sites need service-routing migration (and a new `IUserEmailService.GetNotificationEmailAsync` surface). Tracked as the single biggest cross-cutting cleanup in §15i.
 - **Identity framework surface** — controllers (`AuthController`, `ManageController`, `DevLoginController`) may inject `UserManager<User>` / `SignInManager<User>` directly per the §2a exception. Non-controller code routes through `IUserService`.
 - **GDPR:** `UserService` implements `IUserDataContributor`; `ExpectedContributorTypes` in `GdprExportDependencyInjectionTests` enforces registration.
+- **Metrics**: `humans.pending_deletions`. Registered by `UsersMetricsRegistrar` (gauges).
 - **Option A (no decorator)** is documented in `docs/superpowers/specs/2026-04-21-issue-511-user-migration.md`.
 
 ### Touch-and-clean guidance

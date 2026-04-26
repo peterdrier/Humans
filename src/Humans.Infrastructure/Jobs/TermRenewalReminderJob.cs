@@ -1,3 +1,6 @@
+using System.Diagnostics.Metrics;
+using Humans.Application.Interfaces.Metering;
+using Humans.Application.Metering;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -20,7 +23,7 @@ namespace Humans.Infrastructure.Jobs;
 /// <see cref="IApplicationDecisionService"/>, and stitches applicant display
 /// info via <see cref="IUserService"/>, so the job never touches
 /// <see cref="Humans.Infrastructure.Data.HumansDbContext"/> directly
-/// (design-rules §2c).
+/// (design-rules Â§2c).
 /// </remarks>
 public class TermRenewalReminderJob : IRecurringJob
 {
@@ -28,7 +31,7 @@ public class TermRenewalReminderJob : IRecurringJob
     private readonly IUserService _userService;
     private readonly IEmailService _emailService;
     private readonly INotificationService _notificationService;
-    private readonly IHumansMetrics _metrics;
+    private readonly Counter<long> _jobRunsCounter;
     private readonly ILogger<TermRenewalReminderJob> _logger;
     private readonly IClock _clock;
 
@@ -39,7 +42,7 @@ public class TermRenewalReminderJob : IRecurringJob
         IUserService userService,
         IEmailService emailService,
         INotificationService notificationService,
-        IHumansMetrics metrics,
+        IMeters meters,
         ILogger<TermRenewalReminderJob> logger,
         IClock clock)
     {
@@ -47,7 +50,9 @@ public class TermRenewalReminderJob : IRecurringJob
         _userService = userService;
         _emailService = emailService;
         _notificationService = notificationService;
-        _metrics = metrics;
+        _jobRunsCounter = meters.RegisterCounter(
+            "humans.job_runs_total",
+            new MeterMetadata("Total background job runs", "{runs}"));
         _logger = logger;
         _clock = clock;
     }
@@ -79,9 +84,9 @@ public class TermRenewalReminderJob : IRecurringJob
             var pendingSet = await _applicationDecisionService
                 .GetPendingApplicationUserTiersAsync(cancellationToken);
 
-            // Stitch applicant user info in memory — Application.User
+            // Stitch applicant user info in memory â€” Application.User
             // cross-domain nav was stripped in the Governance migration
-            // (design-rules §6).
+            // (design-rules Â§6).
             var applicantIds = latestPerUserTier
                 .Select(a => a.UserId)
                 .Distinct()
@@ -99,7 +104,7 @@ public class TermRenewalReminderJob : IRecurringJob
                 if (pendingSet.Contains((application.UserId, application.MembershipTier)))
                 {
                     _logger.LogDebug(
-                        "Skipping renewal reminder for user {UserId} tier {Tier} — pending application exists",
+                        "Skipping renewal reminder for user {UserId} tier {Tier} â€” pending application exists",
                         application.UserId, application.MembershipTier);
                     continue;
                 }
@@ -150,7 +155,7 @@ public class TermRenewalReminderJob : IRecurringJob
                             [application.UserId],
                             body: "Submit a renewal application to maintain your membership tier.",
                             actionUrl: "/Application",
-                            actionLabel: "Renew →",
+                            actionLabel: "Renew â†’",
                             cancellationToken: cancellationToken);
                     }
                     catch (Exception notifEx)
@@ -168,14 +173,18 @@ public class TermRenewalReminderJob : IRecurringJob
                 }
             }
 
-            _metrics.RecordJobRun("term_renewal_reminder", "success");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "term_renewal_reminder"),
+                new KeyValuePair<string, object?>("result", "success"));
             _logger.LogInformation(
                 "Completed term renewal reminder job, sent {Count} reminders",
                 sentCount);
         }
         catch (Exception ex)
         {
-            _metrics.RecordJobRun("term_renewal_reminder", "failure");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "term_renewal_reminder"),
+                new KeyValuePair<string, object?>("result", "failure"));
             _logger.LogError(ex, "Error during term renewal reminder job");
             throw;
         }

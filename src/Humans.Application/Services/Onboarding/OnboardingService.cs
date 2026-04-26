@@ -1,18 +1,20 @@
+using System.Diagnostics.Metrics;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.DTOs.Governance;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Governance;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Metering;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Metering;
 
 namespace Humans.Application.Services.Onboarding;
 
@@ -37,7 +39,8 @@ public sealed class OnboardingService : IOnboardingService
     private readonly INotificationInboxService _notificationInboxService;
     private readonly ISystemTeamSync _syncJob;
     private readonly IMembershipCalculator _membershipCalculator;
-    private readonly IHumansMetrics _metrics;
+    private readonly Counter<long> _volunteersApprovedCounter;
+    private readonly Counter<long> _membersSuspendedCounter;
     private readonly ILogger<OnboardingService> _logger;
 
     public OnboardingService(
@@ -49,7 +52,7 @@ public sealed class OnboardingService : IOnboardingService
         INotificationInboxService notificationInboxService,
         ISystemTeamSync syncJob,
         IMembershipCalculator membershipCalculator,
-        IHumansMetrics metrics,
+        IMeters meters,
         ILogger<OnboardingService> logger)
     {
         _profileService = profileService;
@@ -60,7 +63,12 @@ public sealed class OnboardingService : IOnboardingService
         _notificationInboxService = notificationInboxService;
         _syncJob = syncJob;
         _membershipCalculator = membershipCalculator;
-        _metrics = metrics;
+        _volunteersApprovedCounter = meters.RegisterCounter(
+            "humans.volunteers_approved_total",
+            new MeterMetadata("Total volunteers approved", "{volunteers}"));
+        _membersSuspendedCounter = meters.RegisterCounter(
+            "humans.members_suspended_total",
+            new MeterMetadata("Total member suspensions", "{members}"));
         _logger = logger;
     }
 
@@ -250,7 +258,7 @@ public sealed class OnboardingService : IOnboardingService
         // Sync Volunteers team membership (adds user if they also have all required consents)
         await _syncJob.SyncVolunteersMembershipForUserAsync(userId);
 
-        _metrics.RecordVolunteerApproved();
+        _volunteersApprovedCounter.Add(1);
 
         try
         {
@@ -304,7 +312,7 @@ public sealed class OnboardingService : IOnboardingService
             _logger.LogError(ex, "Failed to dispatch AccessSuspended notification for user {UserId}", userId);
         }
 
-        _metrics.RecordMemberSuspended("admin");
+        _membersSuspendedCounter.Add(1, new KeyValuePair<string, object?>("source", "admin"));
 
         return result;
     }

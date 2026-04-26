@@ -94,6 +94,9 @@ public sealed class UserService : IUserService, IUserDataContributor
     public Task<IReadOnlyList<Guid>> GetAllUserIdsAsync(CancellationToken ct = default) =>
         _repo.GetAllUserIdsAsync(ct);
 
+    public Task<int> GetScheduledDeletionCountAsync(CancellationToken ct = default) =>
+        _repo.GetScheduledDeletionCountAsync(ct);
+
     public Task<IReadOnlyList<(string Language, int Count)>>
         GetLanguageDistributionForUserIdsAsync(
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>

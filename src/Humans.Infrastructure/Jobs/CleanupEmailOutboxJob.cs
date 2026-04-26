@@ -1,3 +1,6 @@
+using System.Diagnostics.Metrics;
+using Humans.Application.Interfaces.Metering;
+using Humans.Application.Metering;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Configuration;
@@ -15,20 +18,22 @@ public class CleanupEmailOutboxJob : IRecurringJob
     private readonly IEmailOutboxRepository _outboxRepo;
     private readonly IClock _clock;
     private readonly EmailSettings _settings;
-    private readonly IHumansMetrics _metrics;
+    private readonly Counter<long> _jobRunsCounter;
     private readonly ILogger<CleanupEmailOutboxJob> _logger;
 
     public CleanupEmailOutboxJob(
         IEmailOutboxRepository outboxRepo,
         IClock clock,
         IOptions<EmailSettings> settings,
-        IHumansMetrics metrics,
+        IMeters meters,
         ILogger<CleanupEmailOutboxJob> logger)
     {
         _outboxRepo = outboxRepo;
         _clock = clock;
         _settings = settings.Value;
-        _metrics = metrics;
+        _jobRunsCounter = meters.RegisterCounter(
+            "humans.job_runs_total",
+            new MeterMetadata("Total background job runs", "{runs}"));
         _logger = logger;
     }
 
@@ -45,11 +50,15 @@ public class CleanupEmailOutboxJob : IRecurringJob
                 deletedCount,
                 cutoff);
 
-            _metrics.RecordJobRun("cleanup_email_outbox", "success");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "cleanup_email_outbox"),
+                new KeyValuePair<string, object?>("result", "success"));
         }
         catch (Exception ex)
         {
-            _metrics.RecordJobRun("cleanup_email_outbox", "failure");
+            _jobRunsCounter.Add(1,
+                new KeyValuePair<string, object?>("job", "cleanup_email_outbox"),
+                new KeyValuePair<string, object?>("result", "failure"));
             _logger.LogError(ex, "Error cleaning up email outbox");
             throw;
         }

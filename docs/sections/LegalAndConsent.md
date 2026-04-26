@@ -90,6 +90,8 @@ Cross-aggregate nav `ConsentRecord.DocumentVersion` — scheduled for strip; cal
 
 `LegalDocumentSyncService` (post-#547a) lives in `Humans.Application.Services.Legal`, consumes `ILegalDocumentRepository`, and delegates all GitHub I/O to `IGitHubLegalDocumentConnector`. Notification fan-out routes `IsApproved && !IsSuspended` lookups through `IProfileService.GetActiveApprovedUserIdsAsync` instead of reading `_dbContext.Profiles` directly.
 
+**Metrics**: `humans.legal_documents_active`, `humans.consents_given_total`. Registered by `LegalMetricsRegistrar` (gauges) and `ConsentService` (counters).
+
 ### Current violations
 
 Document-side violations cleared in PR #547a. Remaining consent-side (pending #547b, baseline 2026-04-22):
