@@ -103,7 +103,8 @@ mechanical:
          body comments.
       3. Suggest a rename only if the action name violates the project's
          action-name conventions documented in
-         docs/architecture/conventions.md (or note "OK" if it doesn't).
+         docs/architecture/conventions.md §"Action Naming" (or note "OK"
+         if it doesn't).
 
       Match the existing column layout: Method | Route | Verb | Purpose | Suggestion.
       Preserve the document header (the "Living document. Last updated: ..." line)

@@ -474,30 +474,30 @@ Views express authorization four ways today:
 
 ## 3. Same-Rule-Different-Spelling Table
 
-These entries express the same authorization rule using different syntax across controllers and views.
+Post Phase-1 retirement, controllers and views express the same authorization rule by referencing the same `PolicyNames` constant — the controller via the `[Authorize(Policy = ...)]` attribute, the view via the `authorize-policy="..."` TagHelper attribute (or `(await AuthService.AuthorizeAsync(User, PolicyNames.X)).Succeeded` when a boolean is needed). The legacy `RoleChecks.*` / `ShiftRoleChecks.*` helpers are no longer invoked from any view.
 
-| Rule | Controller Spelling | View / Helper Spelling |
+| Rule | Controller Spelling | View Spelling |
 |---|---|---|
-| Admin only | `[Authorize(Policy = PolicyNames.AdminOnly)]` | `RoleChecks.IsAdmin(User)` |
-| Board or Admin | `[Authorize(Policy = PolicyNames.BoardOrAdmin)]` | `RoleChecks.IsAdminOrBoard(User)` |
-| TeamsAdmin/Board/Admin | `[Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]` | `RoleChecks.IsTeamsAdminBoardOrAdmin(User)` |
-| TicketAdmin/Board/Admin | `[Authorize(Policy = PolicyNames.TicketAdminBoardOrAdmin)]` | `RoleChecks.CanAccessTickets(User)` |
-| TicketAdmin or Admin | `[Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]` | `RoleChecks.CanManageTickets(User)` |
-| CampAdmin or Admin | `[Authorize(Policy = PolicyNames.CampAdminOrAdmin)]` | `RoleChecks.IsCampAdmin(User)` |
-| HumanAdmin/Board/Admin | `[Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]` | `RoleChecks.IsHumanAdminBoardOrAdmin(User)` |
-| FeedbackAdmin or Admin | `[Authorize(Policy = PolicyNames.FeedbackAdminOrAdmin)]` | `RoleChecks.IsFeedbackAdmin(User)` |
-| FinanceAdmin or Admin | `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` | `RoleChecks.IsFinanceAdmin(User)` / `RoleChecks.CanAccessFinance(User)` |
-| Review queue access | `[Authorize(Policy = PolicyNames.ReviewQueueAccess)]` | `RoleChecks.CanAccessReviewQueue(User)` |
-| Consent coordinator + B/A | `[Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]` | (no helper) |
-| Board only | `[Authorize(Policy = PolicyNames.BoardOnly)]` | `RoleChecks.IsBoard(User)` |
-| Shift dashboard access | `[Authorize(Policy = PolicyNames.ShiftDashboardAccess)]` | `ShiftRoleChecks.CanAccessDashboard(User)` |
-| Privileged signup approver | `[Authorize(Policy = PolicyNames.PrivilegedSignupApprover)]` (no controller use) | `ShiftRoleChecks.IsPrivilegedSignupApprover(User)` |
-| Volunteer manager | `[Authorize(Policy = PolicyNames.VolunteerManager)]` (no controller use) | `RoleChecks.IsVolunteerManager(User)` |
-| Volunteer section access | `[Authorize(Policy = PolicyNames.VolunteerSectionAccess)]` (no controller use) | `RoleChecks.CanAccessVolunteers(User)` |
-| Resource: team coord/admin | `_authorizationService.AuthorizeAsync(User, team, TeamOperationRequirement.ManageCoordinators)` | `Model.IsCurrentUserCoordinator` (view) |
-| Resource: camp lead/admin | `_authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.Manage)` | `Model.IsCurrentUserLead \| IsCurrentUserCampAdmin` (view) |
-| Resource: budget edit | `_authorizationService.AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)` | `Model.CanEdit` (view) |
-| Resource: role assignment | `_authorizationService.AuthorizeAsync(User, roleName, RoleAssignmentOperationRequirement.Manage)` | `RoleChecks.GetAssignableRoles` (UI list) |
+| Admin only | `[Authorize(Policy = PolicyNames.AdminOnly)]` | `authorize-policy="AdminOnly"` |
+| Board or Admin | `[Authorize(Policy = PolicyNames.BoardOrAdmin)]` | `authorize-policy="BoardOrAdmin"` |
+| TeamsAdmin/Board/Admin | `[Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]` | `authorize-policy="TeamsAdminBoardOrAdmin"` |
+| TicketAdmin/Board/Admin | `[Authorize(Policy = PolicyNames.TicketAdminBoardOrAdmin)]` | `authorize-policy="TicketAdminBoardOrAdmin"` |
+| TicketAdmin or Admin | `[Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]` | `authorize-policy="TicketAdminOrAdmin"` |
+| CampAdmin or Admin | `[Authorize(Policy = PolicyNames.CampAdminOrAdmin)]` | `authorize-policy="CampAdminOrAdmin"` |
+| HumanAdmin/Board/Admin | `[Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]` | `authorize-policy="HumanAdminBoardOrAdmin"` |
+| FeedbackAdmin or Admin | `[Authorize(Policy = PolicyNames.FeedbackAdminOrAdmin)]` | `authorize-policy="FeedbackAdminOrAdmin"` |
+| FinanceAdmin or Admin | `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` | `authorize-policy="FinanceAdminOrAdmin"` |
+| Review queue access | `[Authorize(Policy = PolicyNames.ReviewQueueAccess)]` | `authorize-policy="ReviewQueueAccess"` |
+| Consent coordinator + B/A | `[Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]` | `authorize-policy="ConsentCoordinatorBoardOrAdmin"` |
+| Board only | `[Authorize(Policy = PolicyNames.BoardOnly)]` | `authorize-policy="BoardOnly"` |
+| Shift dashboard access | `[Authorize(Policy = PolicyNames.ShiftDashboardAccess)]` | `authorize-policy="ShiftDashboardAccess"` |
+| Active member or shift access | `[Authorize(Policy = PolicyNames.ActiveMemberOrShiftAccess)]` | `authorize-policy="ActiveMemberOrShiftAccess"` |
+| Volunteer section access | `[Authorize(Policy = PolicyNames.VolunteerSectionAccess)]` (no controller use) | `authorize-policy="VolunteerSectionAccess"` |
+| Active member | `[Authorize(Policy = PolicyNames.IsActiveMember)]` | `authorize-policy="IsActiveMember"` |
+| Resource: team coord/admin | `_authorizationService.AuthorizeAsync(User, team, TeamOperationRequirement.ManageCoordinators)` | `Model.IsCurrentUserCoordinator` (view-model) |
+| Resource: camp lead/admin | `_authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.Manage)` | `Model.IsCurrentUserLead \|\| Model.IsCurrentUserCampAdmin` (view-model) |
+| Resource: budget edit | `_authorizationService.AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)` | `Model.CanEdit` (view-model) |
+| Resource: role assignment | `_authorizationService.AuthorizeAsync(User, roleName, RoleAssignmentOperationRequirement.Manage)` | (UI list driven by `IRoleAssignmentService.GetAssignableRolesAsync`) |
 
 ---
 

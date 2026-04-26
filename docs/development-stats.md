@@ -13,36 +13,36 @@ To rebuild every row from scratch (e.g. after a schema change):
 
 | Metric | Value |
 |--------|------:|
-| Latest snapshot | 2026-03-31 |
-| Total lines | 110,556 |
-| App / Test lines | 81,197 / 29,359 |
-| Files | 770 |
-| Commits | 708 |
-| Test ratio | 26.6% |
-| 7-day delta | +10,548 total lines from 2026-03-24 to 2026-03-31 |
-| 7-day average | +1,507 lines/day over the same span |
+| Latest snapshot | 2026-04-26 |
+| Total lines | 180,037 |
+| App / Test lines | 141,362 / 38,675 |
+| Files | 1,177 |
+| Commits | 1,069 |
+| Test ratio | 21.5% |
+| 7-day delta | +44,731 total lines from 2026-04-19 to 2026-04-26 |
+| 7-day average | +6,390 lines/day over the same span |
 
 ## Language Breakdown
 
-Latest app-code mix at the 2026-03-31 snapshot:
+Latest app-code mix at the 2026-04-26 snapshot:
 
 | Language | Lines | Share of App Lines | Files |
 |----------|------:|-------------------:|------:|
-| C# | 50,562 | 66.9% | 469 |
-| Razor (`.cshtml`) | 18,831 | 24.9% | 174 |
-| RESX | 6,110 | 8.1% | 5 |
-| JavaScript | 98 | 0.1% | 1 |
+| C# | 99,656 | 70.5% | 762 |
+| Razor (`.cshtml`) | 29,402 | 20.8% | 234 |
+| RESX | 10,937 | 7.7% | 6 |
+| JavaScript | 1,367 | 1.0% | 9 |
 
 ## Highlights
 
-- **First commit:** 2026-02-04 (7.5k lines)
-- **Current:** 111k lines across 770 files in 56 days of development
-- **Growth rate:** ~1,974 lines/day average
-- **Biggest day:** 2026-02-05 (+14,094 lines) — initial feature buildout
-- **Busiest churn day:** 2026-03-19 (+5,618 / -3,522) — feedback upgrade + polish work
-- **Test ratio:** 27% of codebase (29k test lines / 111k total)
-- **Localization:** 903 resx keys (5 languages = ~4,515 translated strings)
-- **Architecture:** 625 classes, 41 interfaces, 35 controllers, 174 views, 51 entities
+- **First commit:** 2026-02-04 (7.1k lines)
+- **Current:** 180k lines across 1,177 files in 81 days of development
+- **Growth rate:** ~2,223 lines/day average
+- **Biggest day:** 2026-04-22 (+29,432 lines) — ticket vendor / budget integrations
+- **Busiest churn day:** 2026-04-22 (+29,432 / -10,883) — same day, heavy refactor
+- **Test ratio:** 21.5% of codebase (39k test lines / 180k total)
+- **Localization:** 1,429 resx keys (5 languages = ~7,145 translated strings)
+- **Architecture:** 1,043 classes, 119 interfaces, 46 controllers, 234 views, 64 entities
 
 ## Column Key
 
