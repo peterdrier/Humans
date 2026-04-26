@@ -60,6 +60,7 @@ function clearAll() {
 let onMouseMove = null;
 
 function attachMouseMove() {
+    detachMouseMove();
     onMouseMove = e => {
         if (!firstPoint) return;
         const cursor = [e.lngLat.lng, e.lngLat.lat];
@@ -141,6 +142,7 @@ export function exitMeasureMode() {
 }
 
 export function initMeasure(map) {
+    if (typeof turf === 'undefined') throw new Error('measure.js requires turf.js to be loaded globally');
     map.addSource('measure-points',       { type: 'geojson', data: EMPTY_FC });
     map.addSource('measure-line',         { type: 'geojson', data: EMPTY_FC });
     map.addSource('measure-preview-line', { type: 'geojson', data: EMPTY_FC });
