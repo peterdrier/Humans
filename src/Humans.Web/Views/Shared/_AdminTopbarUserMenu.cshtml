@@ -9,15 +9,19 @@
     var roleLabel = AdminUserRoleSummary.PrimaryRole(User);
 }
 
-<div class="me dropdown dropup">
-    <a class="d-flex align-items-center text-decoration-none w-100" href="#" data-bs-toggle="dropdown" aria-expanded="false">
+<div class="dropdown topbar-user">
+    <a class="avatar-trigger d-flex align-items-center text-decoration-none" href="#" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" aria-label="@Localizer["Nav_MyProfile"]">
         <div class="avatar">@initials</div>
-        <div class="ms-2 text-truncate">
-            <strong>@(user?.UserName ?? "—")</strong>
-            <small>@roleLabel</small>
-        </div>
     </a>
-    <ul class="dropdown-menu dropdown-menu-dark">
+    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark">
+        <li class="px-3 py-2 text-light">
+            <div class="fw-semibold small">@(user?.UserName ?? "—")</div>
+            @if (!string.IsNullOrEmpty(roleLabel))
+            {
+                <div class="text-muted" style="font-size: 0.7rem; letter-spacing: 0.05em;">@roleLabel</div>
+            }
+        </li>
+        <li><hr class="dropdown-divider" /></li>
         <li>
             <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Profile" asp-action="Index">
                 <i class="fa-solid fa-user fa-fw"></i> @Localizer["Nav_MyProfile"]

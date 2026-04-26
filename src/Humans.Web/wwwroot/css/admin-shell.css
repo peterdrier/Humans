@@ -5,6 +5,9 @@
    Global resets live in site.css — do not repeat them here. */
 
 /* ── App grid ─────────────────────────────────────────────────────────── */
+/* The shell stacks: topbar on top, then a sidebar+main grid below. The
+   topbar's "Humans" wordmark sits in the same screen position as the member
+   shell's top nav, so toggling between admin and member feels continuous. */
 
 body.admin-shell .app {
     background: var(--h-parchment);
@@ -13,8 +16,80 @@ body.admin-shell .app {
     box-shadow: var(--h-shadow);
     overflow: hidden;
     display: grid;
-    grid-template-columns: 240px 1fr;
+    grid-template-rows: auto 1fr;
     min-height: 820px;
+}
+
+body.admin-shell .app-shell {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+}
+
+/* ── Top bar ──────────────────────────────────────────────────────────── */
+/* Same vocabulary as the member dashboard's top nav — keeps the "Humans"
+   wordmark anchored top-left across both shells. */
+
+body.admin-shell .m-nav {
+    background: var(--h-aged-ink);
+    color: var(--h-parchment);
+    padding: 0 28px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    height: 62px;
+    font-family: var(--h-font-body);
+    border-bottom: 1px solid rgba(255,245,221,0.08);
+}
+
+body.admin-shell .m-nav .brand {
+    font-family: var(--h-font-display);
+    font-style: italic;
+    font-weight: 700;
+    font-size: 1.35rem;
+    color: var(--h-gold);
+    text-decoration: none;
+}
+
+body.admin-shell .m-nav .brand:hover {
+    color: var(--h-gold);
+}
+
+body.admin-shell .m-nav .brand small {
+    font-style: normal;
+    font-family: var(--h-font-body);
+    font-size: 0.62rem;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    opacity: 0.5;
+    margin-left: 10px;
+    padding-left: 10px;
+    border-left: 1px solid rgba(255,245,221,0.18);
+}
+
+body.admin-shell .m-nav .right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-left: auto;
+}
+
+body.admin-shell .m-nav .topbar-user .avatar-trigger {
+    color: var(--h-parchment);
+}
+
+body.admin-shell .m-nav .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--h-sepia);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--h-parchment);
+    font-family: var(--h-font-display);
+    font-weight: 700;
+    font-size: 0.78rem;
 }
 
 /* ── Sidebar ──────────────────────────────────────────────────────────── */
@@ -30,28 +105,6 @@ body.admin-shell .sidebar-scroll {
     display: flex;
     flex-direction: column;
     min-height: 100%;
-}
-
-body.admin-shell .sidebar .brand {
-    font-family: var(--h-font-display);
-    font-style: italic;
-    font-weight: 700;
-    font-size: 1.5rem;
-    color: var(--h-gold);
-    padding: 0 22px 22px;
-    border-bottom: 1px solid rgba(255,245,221,0.1);
-}
-
-body.admin-shell .sidebar .brand small {
-    display: block;
-    font-size: 0.65rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    opacity: 0.5;
-    font-style: normal;
-    font-family: var(--h-font-body);
-    font-weight: 500;
-    margin-top: 4px;
 }
 
 body.admin-shell .sidebar h4 {
@@ -106,41 +159,6 @@ body.admin-shell .sidebar .pill {
 body.admin-shell .sidebar a.active .pill {
     background: var(--h-gold);
     color: var(--h-aged-ink);
-}
-
-body.admin-shell .sidebar .me {
-    margin-top: auto;
-    padding: 16px 22px;
-    border-top: 1px solid rgba(255,245,221,0.1);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-body.admin-shell .sidebar .me .avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: var(--h-sepia);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--h-parchment);
-    font-family: var(--h-font-display);
-    font-weight: 700;
-    font-size: 0.78rem;
-}
-
-body.admin-shell .sidebar .me strong {
-    font-family: var(--h-font-display);
-    font-size: 0.92rem;
-    display: block;
-}
-
-body.admin-shell .sidebar .me small {
-    font-size: 0.7rem;
-    opacity: 0.6;
-    letter-spacing: 0.05em;
 }
 
 /* ── Main content area ────────────────────────────────────────────────── */
@@ -410,33 +428,51 @@ body.admin-shell .split-panels {
     gap: 22px;
 }
 
-/* ── Mobile header (offcanvas trigger) ────────────────────────────────── */
-
-body.admin-shell .admin-mobile-header {
-    display: none;
-    background: var(--h-aged-ink);
-    color: var(--h-parchment);
-    height: 56px;
-    padding: 0 16px;
-    align-items: center;
-    gap: 12px;
-}
-body.admin-shell .admin-mobile-header .hamburger {
-    background: transparent; border: 0; color: var(--h-parchment); font-size: 1.2rem;
-}
-body.admin-shell .admin-mobile-header .crumb { color: var(--h-parchment); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
 /* ── Responsive breakpoints ───────────────────────────────────────────── */
 
-@media (max-width: 767.98px) {
-    body.admin-shell .app { grid-template-columns: 1fr; }
-    body.admin-shell > .app > aside.sidebar { display: none; }
-    body.admin-shell .admin-mobile-header { display: flex; }
-    body.admin-shell .stats { grid-template-columns: 1fr; }
-    body.admin-shell .split-panels { grid-template-columns: 1fr; }
-    body.admin-shell .offcanvas.admin-sidebar-offcanvas { background: var(--h-aged-ink); width: 280px; }
-}
-@media (min-width: 768px) and (max-width: 1023.98px) {
+@media (min-width: 768px) and (max-width: 1099.98px) {
+    body.admin-shell .app-shell { grid-template-columns: 200px 1fr; }
     body.admin-shell .stats { grid-template-columns: repeat(2, 1fr); }
     body.admin-shell .split-panels { grid-template-columns: 1fr; }
+}
+
+/* Below 768px the sidebar collapses into a horizontal scroll strip beneath
+   the topbar — no offcanvas/hamburger. */
+@media (max-width: 767.98px) {
+    body.admin-shell .app-shell { grid-template-columns: 1fr; }
+    body.admin-shell .stats { grid-template-columns: 1fr; }
+    body.admin-shell .split-panels { grid-template-columns: 1fr; }
+
+    body.admin-shell .m-nav { padding: 0 16px; gap: 12px; height: 56px; }
+    body.admin-shell .m-nav .brand { font-size: 1.15rem; }
+    body.admin-shell .m-nav .brand small { display: none; }
+    body.admin-shell .m-nav .right { gap: 10px; }
+    body.admin-shell .m-nav .avatar { width: 28px; height: 28px; font-size: 0.74rem; }
+
+    body.admin-shell .sidebar { padding: 0; border-right: 0; border-bottom: 1px solid rgba(255,245,221,0.1); }
+    body.admin-shell .sidebar-scroll {
+        flex-direction: row;
+        align-items: center;
+        min-height: 0;
+        padding: 0 8px;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+    body.admin-shell .sidebar-scroll::-webkit-scrollbar { display: none; }
+    body.admin-shell .sidebar h4 { display: none; }
+    body.admin-shell .sidebar a {
+        padding: 14px 12px;
+        border-left: 0;
+        border-bottom: 3px solid transparent;
+        font-size: 0.74rem;
+        white-space: nowrap;
+        flex-shrink: 0;
+        gap: 6px;
+    }
+    body.admin-shell .sidebar a.active {
+        border-left: 0;
+        border-bottom-color: var(--h-gold);
+        background: transparent;
+    }
+    body.admin-shell .sidebar .pill { font-size: 0.6rem; padding: 1px 6px; }
 }

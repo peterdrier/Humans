@@ -39,41 +39,32 @@
     </environment>
 
     <div class="app">
-        <aside class="sidebar d-none d-md-block">
-            @await Component.InvokeAsync("AdminSidebar")
-        </aside>
+        <nav class="m-nav">
+            <a class="brand" asp-controller="Admin" asp-action="Index">
+                Humans<small>@Localizer["AdminNav_BrandSubtitle"]</small>
+            </a>
+            <div class="right">
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    @await Component.InvokeAsync("NotificationBell")
+                }
+                <partial name="_AdminTopbarUserMenu" />
+            </div>
+        </nav>
 
-        <main class="main">
-            <div class="admin-mobile-header d-md-none">
-                <button class="hamburger" type="button" data-bs-toggle="offcanvas"
-                        data-bs-target="#adminSidebarOffcanvas" aria-controls="adminSidebarOffcanvas"
-                        aria-label="@Localizer["AdminNav_OpenSidebar"]">
-                    <i class="fa-solid fa-bars"></i>
-                </button>
+        <div class="app-shell">
+            <aside class="sidebar">
+                @await Component.InvokeAsync("AdminSidebar")
+            </aside>
+
+            <main class="main">
                 <div class="crumb">
                     @await Component.InvokeAsync("AdminBreadcrumb")
                 </div>
-            </div>
 
-            <div class="crumb d-none d-md-flex">
-                @await Component.InvokeAsync("AdminBreadcrumb")
-            </div>
-
-            <partial name="_AuthorizationPill" />
-            @RenderBody()
-        </main>
-    </div>
-
-    <div class="offcanvas offcanvas-start admin-sidebar-offcanvas d-md-none"
-         tabindex="-1" id="adminSidebarOffcanvas" aria-labelledby="adminSidebarOffcanvasLabel">
-        <div class="offcanvas-header">
-            <h5 class="offcanvas-title text-light" id="adminSidebarOffcanvasLabel">@Localizer["AdminNav_BrandSubtitle"]</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="@Localizer["Close"]"></button>
-        </div>
-        <div class="offcanvas-body p-0">
-            <aside class="sidebar w-100">
-                @await Component.InvokeAsync("AdminSidebar")
-            </aside>
+                <partial name="_AuthorizationPill" />
+                @RenderBody()
+            </main>
         </div>
     </div>
 
