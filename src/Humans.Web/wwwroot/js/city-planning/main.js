@@ -9,6 +9,7 @@ import {
 } from './edit.js';
 import { initSignalR } from './signalr.js';
 import { MarqueeDirectSelectMode } from './marquee-direct-select.js';
+import { initMeasure, enterMeasureMode, exitMeasureMode } from './measure.js';
 
 async function init() {
     appState.map = new maplibregl.Map({
@@ -66,6 +67,8 @@ async function init() {
         paint: { 'fill-pattern': 'overlap-stripe-pattern' },
     });
 
+    initMeasure(map);
+
     appState.campMap = await (await fetch('/api/city-planning/state')).json();
     appState.limitZoneGeom = parseLimitZoneGeom(appState.campMap.limitZoneGeoJson);
     renderMap(onCampPolygonClick);
@@ -75,6 +78,10 @@ async function init() {
 
 // Global keydown: Delete/Backspace for vertex deletion when draw doesn't have focus
 document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && appState.measuringActive) {
+        exitMeasureMode();
+        return;
+    }
     if ((e.key === 'Delete' || e.key === 'Backspace') && appState.activeCampSeasonId) {
         e.preventDefault();
         const poly = appState.draw.getAll().features.find(f => f.geometry.type === 'Polygon');
@@ -128,6 +135,11 @@ document.getElementById('save-btn')?.addEventListener('click', async () => {
 document.getElementById('cancel-btn')?.addEventListener('click', () => {
     if (!confirm('Discard unsaved changes?')) return;
     exitEditMode();
+});
+
+document.getElementById('measure-btn')?.addEventListener('click', () => {
+    if (appState.measuringActive) exitMeasureMode();
+    else enterMeasureMode();
 });
 
 init();
