@@ -108,4 +108,5 @@ public enum AuditAction
     UserEmailAdded,
     ShiftSignupCreated,
     ShiftSignupReassigned,
+    HoldedReassign,
 }
