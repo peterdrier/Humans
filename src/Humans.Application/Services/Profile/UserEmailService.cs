@@ -266,6 +266,10 @@ public sealed class UserEmailService : IUserEmailService
         }
 
         await _repository.RemoveAsync(email, cancellationToken);
+
+        // FullProfile.NotificationEmail derives from user_emails; drop the stale entry so
+        // admin/search/profile surfaces stop showing the removed address.
+        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
     }
 
     public Task RemoveAllEmailsAsync(

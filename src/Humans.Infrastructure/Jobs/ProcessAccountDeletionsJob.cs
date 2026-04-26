@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
@@ -25,6 +26,7 @@ namespace Humans.Infrastructure.Jobs;
 /// <see cref="IUserService"/> because <c>DeletionScheduledFor</c> is a User
 /// column (owning-section rule).
 /// </remarks>
+[DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class ProcessAccountDeletionsJob : IRecurringJob
 {
     private readonly IUserService _userService;

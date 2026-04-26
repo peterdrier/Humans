@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Humans.Application.DTOs.Calendar;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Calendar;
@@ -244,6 +245,9 @@ public sealed class CalendarService : ICalendarService
 
     public async Task<CalendarEvent> CreateEventAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default)
     {
+        ValidateRecurrenceRule(dto.RecurrenceRule);
+        ValidateTimezone(dto.RecurrenceTimezone);
+
         var now = _clock.GetCurrentInstant();
 
         var ev = new CalendarEvent
@@ -283,6 +287,32 @@ public sealed class CalendarService : ICalendarService
 
     private void InvalidateCache() => _cache.Remove(CacheKeyActiveEvents);
 
+    // Parse-check the RRULE at write time so a malformed rule cannot persist and break
+    // calendar reads (where occurrence expansion would throw). Ical.Net's RecurrencePattern
+    // ctor throws for syntactically invalid rules. Internal so tests can call it directly.
+    internal static void ValidateRecurrenceRule(string? rrule)
+    {
+        if (string.IsNullOrWhiteSpace(rrule)) return;
+        try
+        {
+            _ = new RecurrencePattern(rrule);
+        }
+        catch (Exception ex)
+        {
+            throw new ValidationException($"Recurrence rule is malformed: {ex.Message}");
+        }
+    }
+
+    // Validate the timezone at write time so service callers (jobs, tests, future API endpoints)
+    // can't slip an unknown ID past the controller-layer guard and then crash inside
+    // ComputeRecurrenceUntilUtc / occurrence expansion. Internal so tests can call it directly.
+    internal static void ValidateTimezone(string? tz)
+    {
+        if (string.IsNullOrWhiteSpace(tz)) return;
+        if (DateTimeZoneProviders.Tzdb.GetZoneOrNull(tz) is null)
+            throw new ValidationException($"Recurrence timezone is unknown: '{tz}'.");
+    }
+
     // Denormalise RRULE UNTIL (or the last occurrence for COUNT-bounded rules) into an Instant
     // so the SQL window prefilter can skip events that cannot possibly contribute occurrences
     // inside `[from, to]`. Returns null only for truly open-ended rules.
@@ -302,7 +332,8 @@ public sealed class CalendarService : ICalendarService
             {
                 // RFC 5545 allows UNTIL as either DATE-TIME (YYYYMMDDTHHMMSS[Z]) or DATE (YYYYMMDD).
                 var invariant = System.Globalization.CultureInfo.InvariantCulture;
-                var zone = DateTimeZoneProviders.Tzdb[tz];
+                var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(tz);
+                if (zone is null) return null;
 
                 if (val.EndsWith('Z'))
                 {
@@ -360,6 +391,9 @@ public sealed class CalendarService : ICalendarService
 
     public async Task<CalendarEvent> UpdateEventAsync(Guid id, UpdateCalendarEventDto dto, Guid updatedByUserId, CancellationToken ct = default)
     {
+        ValidateRecurrenceRule(dto.RecurrenceRule);
+        ValidateTimezone(dto.RecurrenceTimezone);
+
         var now = _clock.GetCurrentInstant();
         CalendarEvent? mutated = null;
 

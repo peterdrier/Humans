@@ -373,6 +373,15 @@ public interface ICampRepository
         Guid campSeasonId, Guid userId, Instant requestedAt, CancellationToken ct = default);
 
     /// <summary>
+    /// Idempotent insert of an Active membership row. If a matching Active row already
+    /// exists, returns (existingId, AlreadyActive) without modification. If a Pending row
+    /// exists, promotes it to Active and returns its id with Created. If no row exists,
+    /// inserts a new Active row.
+    /// </summary>
+    Task<CampMemberInsertResult> AddActiveMembershipAsync(
+        Guid campSeasonId, Guid userId, Instant now, Guid confirmedByUserId, CancellationToken ct = default);
+
+    /// <summary>
     /// Loads a membership for a privileged mutation (approve/reject/remove),
     /// scoped to a specific camp. Returns null if not found, or if the
     /// membership's season belongs to a different camp than
@@ -434,6 +443,10 @@ public interface ICampRepository
     /// </summary>
     Task<int> CountPendingMembershipsForLeadAsync(
         Guid userId, CancellationToken ct = default);
+
+    /// <summary>Returns (CampSeasonId, UserId, Status) for the member, or null if not found. Read-only.</summary>
+    Task<(Guid CampSeasonId, Guid UserId, CampMemberStatus Status)?> GetMemberLookupAsync(
+        Guid campMemberId, CancellationToken ct = default);
 }
 
 /// <summary>

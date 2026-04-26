@@ -916,9 +916,17 @@
   <data name="Profile_DateOfBirth" xml:space="preserve"><value>Geburtstag</value></data>
   <data name="Profile_PictureTooLarge" xml:space="preserve"><value>Das Profilbild darf maximal 20MB gro&#xDF; sein.</value></data>
   <data name="Profile_PictureInvalidFormat" xml:space="preserve"><value>Das Profilbild muss im JPEG-, PNG-, WebP- oder HEIC-Format sein.</value></data>
-  <data name="ProfileEdit_GoogleAvatar" xml:space="preserve"><value>(Google-Avatar)</value></data>
-  <data name="ProfileEdit_PictureHelp" xml:space="preserve"><value>Laden Sie ein JPEG-, PNG-, WebP- oder HEIC-Bild hoch (max. 20MB). Gro&#xDF;e Bilder werden automatisch verkleinert. Dies ersetzt Ihren Google-Avatar.</value></data>
-  <data name="ProfileEdit_RemovePicture" xml:space="preserve"><value>Benutzerdefiniertes Bild entfernen (zum Google-Avatar zur&#xFC;ckkehren)</value></data>
+  <data name="ProfileEdit_PictureHelp" xml:space="preserve"><value>Laden Sie ein JPEG-, PNG-, WebP- oder HEIC-Bild hoch (max. 20MB). Gro&#xDF;e Bilder werden automatisch verkleinert.</value></data>
+  <data name="ProfileEdit_RemovePicture" xml:space="preserve"><value>Benutzerdefiniertes Bild entfernen</value></data>
+  <data name="ProfileEdit_ImportGooglePhoto" xml:space="preserve"><value>Mein Google-Foto importieren</value></data>
+  <data name="ProfileEdit_ImportGooglePhotoHelp" xml:space="preserve"><value>Kopiert das Foto aus deinem Google-Konto als Profilbild. Du kannst es sp&#xE4;ter durch ein neues Bild ersetzen.</value></data>
+  <data name="Profile_ImportGooglePhoto_Success" xml:space="preserve"><value>Dein Google-Foto wurde als Profilbild importiert.</value></data>
+  <data name="Profile_ImportGooglePhoto_Unavailable" xml:space="preserve"><value>Google-Foto kann nicht importiert werden: Dein Konto ist nicht mit Google verkn&#xFC;pft oder es wurde kein Avatar bei der Anmeldung erfasst.</value></data>
+  <data name="Profile_ImportGooglePhoto_NoProfile" xml:space="preserve"><value>Schlie&#xDF;e zuerst die Einrichtung deines Profils ab, dann kannst du dein Google-Foto importieren.</value></data>
+  <data name="Profile_ImportGooglePhoto_AlreadyHasCustom" xml:space="preserve"><value>Du hast bereits ein benutzerdefiniertes Profilbild. Entferne es zuerst, um dein Google-Foto zu importieren.</value></data>
+  <data name="Profile_ImportGooglePhoto_FetchFailed" xml:space="preserve"><value>Dein Google-Foto konnte nicht abgerufen werden. Versuche es sp&#xE4;ter erneut oder lade direkt eines hoch.</value></data>
+  <data name="Profile_ImportGooglePhoto_InvalidFormat" xml:space="preserve"><value>Dein Google-Foto konnte nicht verarbeitet werden: Nicht unterst&#xFC;tztes Format oder fehlerhafte Antwort von Google.</value></data>
+  <data name="Profile_ImportGooglePhoto_NotGoogleUrl" xml:space="preserve"><value>Dein Google-Foto konnte nicht importiert werden: Die gespeicherte Avatar-URL sieht nicht nach einer Google-Adresse aus. Bitte lade direkt ein Foto hoch.</value></data>
   <data name="ProfileEdit_DateOfBirthHelp" xml:space="preserve"><value>Nur f&#xFC;r Sie und den Vorstand sichtbar. Wird f&#xFC;r den Geburtstagskalender verwendet.</value></data>
   <data name="TeamDetail_TeamCoordinators" xml:space="preserve"><value>Koordinatoren</value></data>
 
@@ -1202,6 +1210,30 @@
   <data name="Nav_Review" xml:space="preserve"><value>Überprüfung</value></data>
   <data name="Nav_Voting" xml:space="preserve"><value>Abstimmung</value></data>
   <data name="Nav_Board" xml:space="preserve"><value>Board</value></data>
+  <data name="Nav_Scanner" xml:space="preserve"><value>Scanner</value></data>
+
+  <!-- Scanner section (issue nobodies-collective/Humans#525) -->
+  <data name="Scanner_Section" xml:space="preserve"><value>Scanner</value></data>
+  <data name="Scanner_Index_Title" xml:space="preserve"><value>Scanner-Tools</value></data>
+  <data name="Scanner_Index_Intro" xml:space="preserve"><value>Scanner-Tools im Browser. Es werden keine Daten an den Server gesendet — alles läuft auf deinem Gerät.</value></data>
+  <data name="Scanner_Barcode_Title" xml:space="preserve"><value>Barcode-Scanner</value></data>
+  <data name="Scanner_Barcode_Open" xml:space="preserve"><value>Scanner öffnen</value></data>
+  <data name="Scanner_Barcode_CardBlurb" xml:space="preserve"><value>Dekodiert QR-Codes und CODE128-Barcodes mit der Gerätekamera.</value></data>
+  <data name="Scanner_Barcode_NotForCheckIn" xml:space="preserve"><value>Dies ist ein Testwerkzeug — es wird nicht für den Check-in verwendet. Ein Ticket hier zu scannen markiert niemanden als angekommen.</value></data>
+  <data name="Scanner_Barcode_Intro" xml:space="preserve"><value>Tippe auf Scannen, um die Kamera zu öffnen, richte sie auf den Barcode, und der dekodierte Wert erscheint unten. Nichts wird gespeichert.</value></data>
+  <data name="Scanner_Barcode_Scan" xml:space="preserve"><value>Scannen</value></data>
+  <data name="Scanner_Barcode_Stop" xml:space="preserve"><value>Stopp</value></data>
+  <data name="Scanner_Barcode_VideoAria" xml:space="preserve"><value>Live-Kameravorschau</value></data>
+  <data name="Scanner_Barcode_DecodedTitle" xml:space="preserve"><value>Dekodierte Codes</value></data>
+  <data name="Scanner_Barcode_DecodedHelp" xml:space="preserve"><value>Neueste oben. Diese Liste bleibt nur in deinem Browser und wird beim Verlassen der Seite gelöscht.</value></data>
+  <data name="Scanner_Barcode_NoResultsYet" xml:space="preserve"><value>Noch keine Codes dekodiert.</value></data>
+  <data name="Scanner_Barcode_Status_Starting" xml:space="preserve"><value>Kamera wird gestartet…</value></data>
+  <data name="Scanner_Barcode_Status_Running" xml:space="preserve"><value>Scanne</value></data>
+  <data name="Scanner_Barcode_Status_Stopped" xml:space="preserve"><value>Gestoppt</value></data>
+  <data name="Scanner_Barcode_Path_Native" xml:space="preserve"><value>nativer Detektor</value></data>
+  <data name="Scanner_Barcode_Path_ZXing" xml:space="preserve"><value>ZXing-Fallback</value></data>
+  <data name="Scanner_Barcode_Error_Camera" xml:space="preserve"><value>Kein Zugriff auf die Kamera. Stelle sicher, dass du die Berechtigung erteilt hast und die Seite über HTTPS ausgeliefert wird.</value></data>
+  <data name="Scanner_Barcode_Error_NoDecoder" xml:space="preserve"><value>Dein Browser hat keinen eingebauten Dekodierer und die Fallback-Bibliothek konnte nicht geladen werden. Versuche es mit aktuellem Chrome oder Safari auf einem Mobilgerät.</value></data>
 
   <!-- Team admin: add member -->
   <data name="TeamAdmin_AddMember" xml:space="preserve"><value>Mitglied hinzuf&#xFC;gen</value></data>
@@ -1423,7 +1455,9 @@
   <data name="CityPlanning_AddABarrioOption" xml:space="preserve"><value>Barrio hinzufügen…</value></data>
   <data name="CityPlanning_SaveButton" xml:space="preserve"><value>Speichern</value></data>
   <data name="CityPlanning_HistoryButton" xml:space="preserve"><value>Verlauf</value></data>
+  <data name="CityPlanning_MeasureButton" xml:space="preserve"><value>Messen</value></data>
   <data name="CityPlanning_AdminLink" xml:space="preserve"><value>Admin</value></data>
+  <data name="CityPlanning_GoToPlacementMap" xml:space="preserve"><value>Zur Platzierungskarte</value></data>
   <data name="CityPlanning_Admin_Title" xml:space="preserve"><value>Barrio-Karte Admin</value></data>
   <data name="CityPlanning_Admin_ViewMap" xml:space="preserve"><value>Karte anzeigen</value></data>
   <data name="CityPlanning_Admin_PlacementPhaseCard" xml:space="preserve"><value>Platzierungsphase</value></data>
@@ -1490,6 +1524,7 @@
   <data name="CityPlanning_Help_Adjusting_Reposition" xml:space="preserve"><value>Ziehe die gesamte Form, um sie neu zu positionieren</value></data>
   <data name="CityPlanning_Help_Adjusting_AddVertex" xml:space="preserve"><value>Klicke auf den Mittelpunkt einer Kante (wo die Länge in Metern angezeigt wird), um eine neue Ecke hinzuzufügen</value></data>
   <data name="CityPlanning_Help_Adjusting_DeleteVertex" xml:space="preserve"><value>Klicke auf einen Punkt, um ihn auszuwählen (er wird orange), dann drücke Delete oder Backspace, um ihn zu entfernen</value></data>
+  <data name="CityPlanning_Help_Adjusting_MultiSelect" xml:space="preserve"><value>Halte Shift gedrückt und klicke Punkte an, um mehrere auf einmal auszuwählen, oder klicke und ziehe auf einer leeren Fläche, um ein Auswahlrechteck zu zeichnen</value></data>
   <data name="CityPlanning_Help_Adjusting_Area" xml:space="preserve"><value>Die Fläche in m² wird in der Mitte angezeigt und aktualisiert sich beim Bearbeiten</value></data>
   <data name="CityPlanning_Help_SavingTitle" xml:space="preserve"><value>Speichern &amp; später bearbeiten</value></data>
   <data name="CityPlanning_Help_SavingBody" xml:space="preserve"><value>Zufrieden? Klicke auf Save. Danach klicke auf dein Barrio auf der Karte, um die Größe zu sehen, dann Edit, um in den Bearbeitungsmodus zurückzukehren. Jedes Speichern erstellt einen Verlaufseintrag — nutze die Schaltfläche History, um frühere Versionen zu durchsuchen und wiederherzustellen. Kein Stress, du kannst nichts kaputtmachen!</value></data>
@@ -1634,6 +1669,15 @@
   <data name="Shifts_AllPhases" xml:space="preserve"><value>Alle Phasen</value></data>
   <data name="Shifts_HiddenBadge" xml:space="preserve"><value>Versteckt</value></data>
   <data name="Shifts_MatchesPrefs" xml:space="preserve"><value>Passt zu deinen Präferenzen</value></data>
+  <data name="Shifts_SortUrgency" xml:space="preserve"><value>Am dringendsten</value></data>
+  <data name="Shifts_SortDept" xml:space="preserve"><value>Nach Abteilung</value></data>
+  <data name="Shifts_SortUrgencyHint" xml:space="preserve"><value>Schichten, die am meisten Leute brauchen, zuerst</value></data>
+  <data name="Shifts_SortDeptHint" xml:space="preserve"><value>Schichten nach Abteilung gruppieren</value></data>
+  <data name="Shifts_SlotsFilled" xml:space="preserve"><value>Pl&#228;tze besetzt</value></data>
+  <data name="Shifts_RotaSingular" xml:space="preserve"><value>Dienstplan</value></data>
+  <data name="Shifts_RotaPlural" xml:space="preserve"><value>Dienstpl&#228;ne</value></data>
+  <data name="Shifts_ShiftSingular" xml:space="preserve"><value>Schicht</value></data>
+  <data name="Shifts_ShiftPlural" xml:space="preserve"><value>Schichten</value></data>
   <data name="Shifts_SignUpButton" xml:space="preserve"><value>Anmelden</value></data>
   <data name="Shifts_BrowsingClosed" xml:space="preserve"><value>Schichten-Übersicht ist noch nicht geöffnet. Schau später wieder!</value></data>
   <data name="Shifts_NoActiveEvent" xml:space="preserve"><value>Kein aktives Event konfiguriert. Ein Admin muss zuerst die Event-Einstellungen einrichten.</value></data>

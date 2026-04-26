@@ -1,3 +1,14 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Calendar/**
+  src/Humans.Domain/Entities/CalendarEvent.cs
+  src/Humans.Domain/Entities/CalendarEventException.cs
+  src/Humans.Infrastructure/Data/Configurations/Calendar/**
+  src/Humans.Web/Controllers/CalendarController.cs
+-->
+<!-- freshness:flag-on-change
+  Calendar event/recurrence rules, soft-delete, audit-log triggers, and open-edit authorization model — review when Calendar service/entities/controller change.
+-->
+
 # Calendar — Section Invariants
 
 Community calendar: one-off and recurring events per team, with per-occurrence overrides/cancellations.
@@ -22,9 +33,9 @@ A community-calendar event belonging to a team. May be a single event or a recur
 | Description | string (4000) | Optional |
 | Location | string (500) | Optional |
 | LocationUrl | string (2000) | Optional |
-| OwningTeamId | Guid | FK → Team (`OnDelete: Restrict`) — **FK only**, no nav |
+| OwningTeamId | Guid | FK → Team (`OnDelete: Restrict`). The `OwningTeam` nav property exists on the entity but is `[Obsolete]`-marked per design-rules §6c — EF references it in `CalendarEventConfiguration` under `#pragma warning disable CS0618` purely to wire the FK + cascade behavior. The Application service stitches team display names via `ITeamService.GetTeamNamesByIdsAsync` (§6b). |
 | StartUtc | Instant | First (or only) occurrence start in UTC |
-| EndUtc | Instant? | Required iff `IsAllDay = false` |
+| EndUtc | Instant? | Required iff `IsAllDay = false`. For all-day events, set to half-open exclusive midnight (`EndDate + 1 day` 00:00 in `RecurrenceTimezone`). May be null on legacy single-day all-day rows |
 | IsAllDay | bool | All-day event |
 | RecurrenceRule | string (500)? | RFC 5545 RRULE (no `RRULE:` prefix). Null = single event |
 | RecurrenceTimezone | string (100)? | IANA TZ. Required iff `RecurrenceRule` is set |
@@ -66,10 +77,10 @@ Per-occurrence override or cancellation for a recurring `CalendarEvent`. Cascade
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any authenticated human | View all calendar events (grid, list, agenda views, filter by team). Create, edit, delete events on any team. Cancel or override single occurrences of recurring events. All changes recorded in the audit log |
+| Any authenticated human | View all calendar events (month grid, list, agenda views, per-team month view, filter by team). Create, edit, delete events on any team. Cancel or override single occurrences of recurring events. All changes recorded in the audit log |
 | Admin | Same as any authenticated human. No additional calendar-specific privileges in v1 |
 
-The calendar is intentionally open: no resource-based authorization gates edit/delete/cancel. Accountability is via the audit log (`IAuditLogService`), which records who performed each mutation.
+The calendar is intentionally open: no resource-based authorization gates edit/delete/cancel. View-side edit/delete buttons render from `CalendarEventViewModel.CanEdit` (currently hard-coded to `true` in `CalendarController.Event` to express the open-edit policy in one place — flip the flag here when a tier check is added). Accountability is via the audit log (`IAuditLogService`), which records who performed each mutation.
 
 ## Invariants
 
@@ -78,7 +89,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 - Every mutating action (create / update / delete / cancel-occurrence / override-occurrence) writes an `AuditLogEntry` with the actor's user ID.
 - Title is required (non-null, non-empty).
 - `StartUtc` is required.
-- `EndUtc` is required for timed events (`IsAllDay = false`). For all-day events it is optional — null means a single-day event, set means a multi-day all-day range.
+- `EndUtc` is required for timed events (`IsAllDay = false`). For all-day events created or edited via the calendar form, `EndUtc` is set to half-open exclusive midnight (`StartDate.PlusDays(InclusiveDays).AtMidnight()` in `RecurrenceTimezone`); the display layer recovers the inclusive end date by subtracting one tick before projecting to local. Legacy all-day rows may still have null `EndUtc` (treated as single-day).
 - `StartUtc <= EndUtc` when both are non-null.
 - `RecurrenceRule` and `RecurrenceTimezone` are set together, or neither is set (all-or-nothing invariant).
 - `RecurrenceTimezone` defaults to `"Europe/Madrid"` if not specified on a recurring event.
@@ -94,36 +105,31 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 
 ## Triggers
 
-- Every mutation writes an `AuditLogEntry` via `IAuditLogService` (`CalendarEventCreated`, `CalendarEventUpdated`, `CalendarEventDeleted`, `CalendarOccurrenceCancelled`, `CalendarOccurrenceOverridden`), persisted atomically with the underlying change.
+- Every mutation writes an `AuditLogEntry` via `IAuditLogService` (`CalendarEventCreated`, `CalendarEventUpdated`, `CalendarEventDeleted`, `CalendarOccurrenceCancelled`, `CalendarOccurrenceOverridden`). Event-level mutations (create/update/delete) pass `relatedEntityId: ev.OwningTeamId` / `relatedEntityType: nameof(Team)` for team-scoped audit filtering; per-occurrence mutations (cancel/override) do not.
+- Every mutation invalidates the in-service short-TTL `IMemoryCache` entry `calendar:active-events` (§15f request-acceleration cache, not a canonical projection).
 
 ## Cross-Section Dependencies
 
-- **Teams:** `ITeamService` — every event is owned by exactly one team; the team is referenced in the audit entry as `relatedEntityId` for team-scoped audit filtering.
+- **Teams:** `ITeamService.GetTeamNamesByIdsAsync` — owning-team display names are stitched in-memory (§6b) instead of `.Include(e => e.OwningTeam)`. `ITeamService.GetAllTeamsAsync` / `GetTeamByIdAsync` populate the team picker on Create/Edit/Index/Team views. Event-level audit entries reference the owning team as `relatedEntityId` for team-scoped audit filtering.
 - **Users/Identity:** `CreatedByUserId` is persisted on the entity; every subsequent mutation logs the actor via the audit log (no `UpdatedByUserId` column).
-- **Audit Log:** `IAuditLogService` — every mutation writes an entry.
+- **Audit Log:** `IAuditLogService` — every mutation writes an entry. The `Event` view embeds the `AuditLog` view component scoped to `entityType = nameof(CalendarEvent)`, `entityId = event.Id`.
 
 ## Architecture
 
 **Owning services:** `CalendarService`
 **Owned tables:** `calendar_events`, `calendar_event_exceptions`
-**Status:** (C) Pre-migration — `CalendarService` is in `Humans.Infrastructure/Services/CalendarService.cs` and injects `HumansDbContext` directly. Not yet listed in design-rules §15i.
+**Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#569, 2026-04-23, design-rules §15i).
 
-> **Status (pre-migration):** This section currently follows the "services in Infrastructure, direct DbContext" model. It will be migrated to the §15 repository pattern per [`../architecture/design-rules.md`](../architecture/design-rules.md). **Delete this block once the migration lands and this section's services live in `Humans.Application` with `*Repository.cs` impls in `Humans.Infrastructure/Repositories/`.**
-
-### Target repositories
-
-- **`ICalendarRepository`** — owns `calendar_events`, `calendar_event_exceptions`
-  - Aggregate-local navs kept: `CalendarEvent.Exceptions`
-  - Cross-domain navs stripped: `OwningTeamId` stays FK only; any future display of owning team name routes through `ITeamService.GetTeamNamesByIdsAsync`.
-  - Soft-delete filter: repository must include a method that bypasses the `DeletedAt` filter for admin restore / audit workflows if/when they are added.
-
-### Current violations
-
-No drift tracked yet — migration has not begun. File the current-state audit when opening the migration issue.
+- Service lives in `Humans.Application/Services/Calendar/CalendarService.cs` and never imports `Microsoft.EntityFrameworkCore` (enforced by the project's reference graph, design-rules §2b).
+- `ICalendarRepository` (impl in `Humans.Infrastructure/Repositories/Calendar/CalendarRepository.cs`) is the only code path that touches `calendar_events` / `calendar_event_exceptions` via `DbContext`.
+- **Decorator decision** — no caching decorator. Rationale: low-traffic community calendar; the short-TTL `IMemoryCache` entry `calendar:active-events` stays in-service per §15f as a request-acceleration marker, not a canonical projection.
+- **Cross-domain navs** — `CalendarEvent.OwningTeam` is `[Obsolete]`-marked per §6c; EF references it under `#pragma warning disable CS0618` in `CalendarEventConfiguration` solely to declare the FK + cascade. Display stitching routes through `ITeamService.GetTeamNamesByIdsAsync` (§6b in-memory join). Aggregate-local nav `CalendarEvent.Exceptions` is kept and eagerly loaded by the repository.
+- **Cross-section calls** — public interfaces this section consumes: `ITeamService` (display names, team picker), `IAuditLogService` (mutation audit).
+- **Architecture test** — `tests/Humans.Application.Tests/Architecture/CalendarArchitectureTests.cs` pins the §15 shape.
 
 ### Touch-and-clean guidance
 
 - When adding new controller actions, route through `ICalendarService` — do not inject `HumansDbContext` into `CalendarController`.
-- Do not add `.Include(e => e.OwningTeam)` or `.Include(e => e.CreatedByUser)` — the entity carries FKs only and will stay that way post-migration.
+- Do not add `.Include(e => e.OwningTeam)` or `.Include(e => e.CreatedByUser)` — the entity carries FKs only.
 - Every new mutation must write an `AuditLogEntry` via `IAuditLogService`; do not skip audit for "admin convenience" operations.
 - Every new page must have a nav link (CLAUDE.md coding rules — no orphan pages).

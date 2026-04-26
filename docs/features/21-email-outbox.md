@@ -1,3 +1,18 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Email/**
+  src/Humans.Infrastructure/Jobs/ProcessEmailOutboxJob.cs
+  src/Humans.Infrastructure/Jobs/CleanupEmailOutboxJob.cs
+  src/Humans.Web/Controllers/EmailController.cs
+  src/Humans.Web/Views/Email/**
+  src/Humans.Domain/Entities/EmailOutboxMessage.cs
+  src/Humans.Domain/Entities/SystemSetting.cs
+  src/Humans.Domain/Constants/SystemSettingKeys.cs
+  src/Humans.Infrastructure/Data/Configurations/Email/**
+-->
+<!-- freshness:flag-on-change
+  Outbox queue/process/cleanup behavior, retry/backoff config keys, global pause toggle, and admin dashboard route — review when OutboxEmailService, outbox jobs, or EmailController change.
+-->
+
 # Feature 21: Email Outbox
 
 ## Business Context

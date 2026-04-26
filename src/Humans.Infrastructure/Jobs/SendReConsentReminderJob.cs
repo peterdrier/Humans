@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -21,6 +22,7 @@ namespace Humans.Infrastructure.Jobs;
 /// never touches <see cref="Humans.Infrastructure.Data.HumansDbContext"/>
 /// directly (design-rules §2c).
 /// </remarks>
+[DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class SendReConsentReminderJob : IRecurringJob
 {
     private readonly IMembershipCalculator _membershipCalculator;

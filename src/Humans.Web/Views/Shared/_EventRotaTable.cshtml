@@ -58,13 +58,17 @@
                     <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayShiftDate()</td>
                     <td>@item.AbsoluteStart.ToDisplayTime(tz)</td>
                     <td>@(shift.IsAllDay ? Localizer["Shifts_FullDay"].Value : $"{shift.Duration.TotalHours}h")</td>
-                    <td>
-                        <span class="@(understaffed ? "text-danger fw-bold" : "")">@item.ConfirmedCount</span>
-                        <small class="text-muted">/ @shift.MinVolunteers–@shift.MaxVolunteers</small>
-                        @if (understaffed)
-                        {
-                            <span class="badge bg-warning text-dark">@Localizer["Shifts_NeedsHelp"]</span>
+                    <td style="min-width: 130px;">
+                        @{
+                            var fillPercent = shift.MaxVolunteers > 0 ? (int)Math.Round(100.0 * item.ConfirmedCount / shift.MaxVolunteers) : 0;
+                            var fillColor = fillPercent >= 80 ? "bg-success" : fillPercent >= 40 ? "bg-warning" : "bg-danger";
                         }
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="height: 6px;">
+                                <div class="progress-bar @fillColor" role="progressbar" style="width: @fillPercent%;" aria-valuenow="@item.ConfirmedCount" aria-valuemin="0" aria-valuemax="@shift.MaxVolunteers"></div>
+                            </div>
+                            <small class="text-nowrap @(understaffed ? "text-danger fw-bold" : "text-muted")">@item.ConfirmedCount/@shift.MaxVolunteers</small>
+                        </div>
                     </td>
                     @if (Model.ShowSignups)
                     {

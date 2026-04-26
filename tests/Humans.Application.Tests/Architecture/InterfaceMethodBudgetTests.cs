@@ -43,9 +43,16 @@ public class InterfaceMethodBudgetTests
     {
         // Audited 2026-04-26 against reforge audit-surface 0.8.0
         [typeof(ITeamService)] = 71,
-        [typeof(ICampService)] = 53,
+        // ICampService raised 53→57 for per-camp roles feature (peterdrier#489):
+        // AddCampMemberAsLeadAsync, GetSeasonMembersAsync, GetCampMemberStatusAsync,
+        // GetCampSeasonsForComplianceAsync — all needed by ICampRoleService and the
+        // Camp Edit page roles panel.
+        [typeof(ICampService)] = 57,
         [typeof(IShiftManagementService)] = 49,
-        [typeof(IProfileService)] = 39,
+        // +1 for SetProfilePictureAsync (nobodies-collective/Humans#532 — Google avatar import button needs a
+        // narrow service write that owns its own cache invalidation; controllers can't reach
+        // the FullProfile cache directly).
+        [typeof(IProfileService)] = 40,
         [typeof(IUserService)] = 32,
     };
 

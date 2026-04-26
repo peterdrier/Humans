@@ -24,6 +24,13 @@ public class ProfileViewModel
     /// </summary>
     public string? CustomProfilePictureUrl { get; set; }
 
+    /// <summary>
+    /// True when the user can import a photo from Google — they signed in with Google,
+    /// we captured an avatar URL on <see cref="Humans.Domain.Entities.User.ProfilePictureUrl"/>,
+    /// and they don't yet have a custom uploaded picture. See issue #532.
+    /// </summary>
+    public bool CanImportGooglePicture { get; set; }
+
     [Required]
     [StringLength(100)]
     [Display(Name = "Burner Name")]

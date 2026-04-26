@@ -1,3 +1,23 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Onboarding/**
+  src/Humans.Application/Services/Profile/ProfileService.cs
+  src/Humans.Application/Services/Consent/**
+  src/Humans.Application/Services/Teams/TeamService.cs
+  src/Humans.Application/Services/Governance/**
+  src/Humans.Web/Controllers/HomeController.cs
+  src/Humans.Web/Controllers/ProfileController.cs
+  src/Humans.Web/Controllers/ConsentController.cs
+  src/Humans.Web/Controllers/OnboardingReviewController.cs
+  src/Humans.Web/Controllers/ApplicationController.cs
+  src/Humans.Web/Views/Home/**
+  src/Humans.Web/Views/OnboardingReview/**
+  src/Humans.Domain/Entities/Profile.cs
+  src/Humans.Domain/Entities/Application.cs
+-->
+<!-- freshness:flag-on-change
+  End-to-end onboarding pipeline, parallel consent + profile-review tracks, IsApproved semantics, and inline tier-application one-shot — review when onboarding orchestrator, consent flow, profile-review actions, or home dashboard change.
+-->
+
 # Onboarding Pipeline
 
 ## Business Context

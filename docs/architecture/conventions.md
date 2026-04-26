@@ -1,3 +1,7 @@
+<!-- freshness:flag-on-change
+  Cross-cutting conventions (domain invariants, transaction boundary, caching, authorization, time, configuration, rendering, testing, exceptions). Flag if any architectural pattern shift in src/** invalidates a stated convention.
+-->
+
 # App Conventions
 
 Cross-cutting conventions for how we build this app.
@@ -57,6 +61,18 @@ Two general rules apply at this layer:
 2. Service/domain enforcement when violating the rule would create invalid state or bypass workflow policy — but service methods are otherwise auth-free; they trust the caller.
 
 Do not rely on hidden buttons or view-only checks for anything important.
+
+## Action Naming
+
+Controller action names should describe the operation in the controller's domain. The audit at [`controller-architecture-audit.md`](../controller-architecture-audit.md) flags actions that violate these heuristics.
+
+- **`Index` is a listing of the controller's resource.** If the action does something else (a single dashboard, a settings page, a one-off form), pick a more specific name.
+- **Don't repeat the controller name in the action.** `TeamController.TeamDetail` reads as `Team/TeamDetail` — the `Team` prefix is redundant. Use `TeamController.Detail` (`Team/Detail`).
+- **Avoid bare plural-noun action names that collide with the controller.** `TeamController.Teams` is ambiguous; `Index` or `List` is clearer.
+- **Avoid generic verbs.** `View`, `Show`, `Process`, `Handle` say nothing. Pick a verb that describes the operation: `Approve`, `Reject`, `Withdraw`, `Resync`, `Backfill`.
+- **Use the conventional form-handler pattern.** `Create` (GET form + POST submit), `Edit` (GET form + POST submit), `Delete` (POST), `Confirm`, `Cancel` are the established verbs across this codebase. Match them when the operation is the same shape.
+
+These are heuristics, not laws — a clearer name that violates one of them beats a literal-conformance one. The audit doc flags suspected violations; the rename is a judgment call.
 
 ## Integration
 

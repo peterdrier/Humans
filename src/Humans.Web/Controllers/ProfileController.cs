@@ -69,8 +69,11 @@ public class ProfileController : HumansControllerBase
     private readonly IClock _clock;
     private readonly IAuthorizationService _authorizationService;
     private readonly IUserService _userService;
+    private readonly IHttpClientFactory _httpClientFactory;
 
     private const int MaxProfilePictureUploadBytes = 20 * 1024 * 1024; // 20MB upload limit
+    private const int MaxGooglePhotoDownloadBytes = 20 * 1024 * 1024; // 20MB hard ceiling for Google avatar fetch
+    private const string GoogleAvatarHttpClientName = "GoogleAvatar";
     private static readonly HashSet<string> AllowedImageContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "image/jpeg",
@@ -117,7 +120,8 @@ public class ProfileController : HumansControllerBase
         IMemoryCache cache,
         IClock clock,
         IAuthorizationService authorizationService,
-        IUserService userService)
+        IUserService userService,
+        IHttpClientFactory httpClientFactory)
         : base(userManager)
     {
         _userManager = userManager;
@@ -144,6 +148,7 @@ public class ProfileController : HumansControllerBase
         _clock = clock;
         _authorizationService = authorizationService;
         _userService = userService;
+        _httpClientFactory = httpClientFactory;
     }
 
     // ─── Own Profile (Me) ────────────────────────────────────────────
@@ -215,6 +220,16 @@ public class ProfileController : HumansControllerBase
         // ?preview=true forces initial-setup mode for testing
         var isInitialSetup = profile is null || !profile.IsApproved || preview;
 
+        // "Import my Google photo" button is only offered when the user signed in with
+        // Google, we captured an avatar URL at sign-in, and they don't yet have a custom
+        // upload. We intentionally don't surface a replace flow here (see issue #532).
+        var externalLogins = await UserManager.GetLoginsAsync(user);
+        var hasGoogleLogin = externalLogins.Any(l =>
+            string.Equals(l.LoginProvider, "Google", StringComparison.OrdinalIgnoreCase));
+        var canImportGooglePicture = hasGoogleLogin
+            && !hasCustomPicture
+            && !string.IsNullOrEmpty(user.ProfilePictureUrl);
+
         var viewModel = new ProfileViewModel
         {
             Id = profile?.Id ?? Guid.Empty,
@@ -226,6 +241,7 @@ public class ProfileController : HumansControllerBase
             CustomProfilePictureUrl = hasCustomPicture
                 ? Url.Action(nameof(Picture), new { id = profile!.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
                 : null,
+            CanImportGooglePicture = canImportGooglePicture,
             BurnerName = profile?.BurnerName ?? user.DisplayName,
             FirstName = profile?.FirstName ?? string.Empty,
             LastName = profile?.LastName ?? string.Empty,
@@ -1009,6 +1025,114 @@ public class ProfileController : HumansControllerBase
             return NotFound();
 
         return File(data, contentType);
+    }
+
+    [HttpPost("Me/ImportGooglePhoto")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ImportGooglePhoto(CancellationToken ct)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        // Eligibility: must have a Google login, must have a captured avatar URL, and
+        // must NOT already have a custom picture (no replacement flow in this PR).
+        var externalLogins = await UserManager.GetLoginsAsync(user);
+        var hasGoogleLogin = externalLogins.Any(l =>
+            string.Equals(l.LoginProvider, "Google", StringComparison.OrdinalIgnoreCase));
+        if (!hasGoogleLogin || string.IsNullOrEmpty(user.ProfilePictureUrl))
+        {
+            SetError(_localizer["Profile_ImportGooglePhoto_Unavailable"].Value);
+            return RedirectToAction(nameof(Edit));
+        }
+
+        var profile = await _profileService.GetProfileAsync(user.Id, ct);
+        if (profile is null)
+        {
+            SetError(_localizer["Profile_ImportGooglePhoto_NoProfile"].Value);
+            return RedirectToAction(nameof(Edit));
+        }
+        if (profile.HasCustomProfilePicture)
+        {
+            SetError(_localizer["Profile_ImportGooglePhoto_AlreadyHasCustom"].Value);
+            return RedirectToAction(nameof(Edit));
+        }
+
+        // SSRF guard: only fetch from Google's avatar host. The URL came from a
+        // Google OAuth claim, but we don't trust the stored value blindly — refuse
+        // anything that isn't HTTPS and on a *.googleusercontent.com host.
+        if (!Uri.TryCreate(user.ProfilePictureUrl, UriKind.Absolute, out var pictureUri)
+            || !string.Equals(pictureUri.Scheme, Uri.UriSchemeHttps
+, StringComparison.Ordinal) || !pictureUri.Host.EndsWith(".googleusercontent.com", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning(
+                "Refusing to import Google photo for user {UserId}: URL is not a trusted Google host",
+                user.Id);
+            SetError(_localizer["Profile_ImportGooglePhoto_NotGoogleUrl"].Value);
+            return RedirectToAction(nameof(Edit));
+        }
+
+        byte[] rawBytes;
+        string fetchedContentType;
+        try
+        {
+            var httpClient = _httpClientFactory.CreateClient(GoogleAvatarHttpClientName);
+            using var response = await httpClient.GetAsync(pictureUri, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning(
+                    "Google avatar fetch for user {UserId} returned {StatusCode}",
+                    user.Id, (int)response.StatusCode);
+                SetError(_localizer["Profile_ImportGooglePhoto_FetchFailed"].Value);
+                return RedirectToAction(nameof(Edit));
+            }
+
+            fetchedContentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
+            if (!AllowedImageContentTypes.Contains(fetchedContentType))
+            {
+                _logger.LogWarning(
+                    "Google avatar for user {UserId} returned unsupported content type {ContentType}",
+                    user.Id, fetchedContentType);
+                SetError(_localizer["Profile_ImportGooglePhoto_InvalidFormat"].Value);
+                return RedirectToAction(nameof(Edit));
+            }
+
+            rawBytes = await response.Content.ReadAsByteArrayAsync(ct);
+            if (rawBytes.Length == 0 || rawBytes.Length > MaxGooglePhotoDownloadBytes)
+            {
+                _logger.LogWarning(
+                    "Google avatar for user {UserId} had invalid size {Bytes}", user.Id, rawBytes.Length);
+                SetError(_localizer["Profile_ImportGooglePhoto_FetchFailed"].Value);
+                return RedirectToAction(nameof(Edit));
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Google avatar fetch failed for user {UserId}", user.Id);
+            SetError(_localizer["Profile_ImportGooglePhoto_FetchFailed"].Value);
+            return RedirectToAction(nameof(Edit));
+        }
+        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
+        {
+            _logger.LogWarning(ex, "Google avatar fetch timed out for user {UserId}", user.Id);
+            SetError(_localizer["Profile_ImportGooglePhoto_FetchFailed"].Value);
+            return RedirectToAction(nameof(Edit));
+        }
+
+        var resized = Helpers.ProfilePictureProcessor.ResizeProfilePicture(rawBytes, _logger);
+        if (resized is null)
+        {
+            SetError(_localizer["Profile_ImportGooglePhoto_InvalidFormat"].Value);
+            return RedirectToAction(nameof(Edit));
+        }
+
+        await _profileService.SetProfilePictureAsync(user.Id, resized.Value.Data, resized.Value.ContentType, ct);
+
+        _logger.LogInformation("Imported Google avatar for user {UserId}", user.Id);
+        SetSuccess(_localizer["Profile_ImportGooglePhoto_Success"].Value);
+        return RedirectToAction(nameof(Edit));
     }
 
     // ─── View Another Profile ────────────────────────────────────────

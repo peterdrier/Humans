@@ -1,4 +1,6 @@
 @using NodaTime
+@using Humans.Application.DTOs.Calendar
+@using Humans.Web.Models.Calendar
 @model Humans.Web.Models.Calendar.CalendarMonthViewModel
 @{
     ViewData["Title"] = $"Calendar — {Model.Month.Year}-{Model.Month.Month:D2}";
@@ -19,12 +21,26 @@
     var totalCells = Period.Between(gridStart, gridEnd.PlusDays(1), PeriodUnits.Days).Days;
     var weeks = totalCells / 7;
 
-    var byDate = Model.Occurrences
-        .GroupBy(o => o.OccurrenceStartUtc.InZone(zone).Date)
-        .ToDictionary(g => g.Key, g => g.OrderBy(x => x.OccurrenceStartUtc).ToList());
+    // Group occurrences by the weeks they touch. An occurrence spanning days 2..4
+    // appears in whatever week covers those days. We do an O(events * weeks) pass.
+    var weekLayouts = new WeekLayout[weeks];
+    for (var w = 0; w < weeks; w++)
+    {
+        var weekStart = gridStart.PlusDays(w * 7);
+        var weekEnd = weekStart.PlusDays(6);
+        var weekOccs = Model.Occurrences
+            .Where(o =>
+            {
+                var s = o.StartLocalDate(zone);
+                var e = o.EndLocalDate(zone);
+                return e >= weekStart && s <= weekEnd;
+            })
+            .ToList();
+        weekLayouts[w] = CalendarGridLayout.BuildWeekLayout(weekStart, weekOccs, zone);
+    }
 
-    const int MaxPerCell = 3;
     var culture = System.Globalization.CultureInfo.CurrentCulture;
+    var invariant = System.Globalization.CultureInfo.InvariantCulture;
     var dayHeaders = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
 }
 
@@ -55,28 +71,81 @@
         <tbody>
             @for (int w = 0; w < weeks; w++)
             {
-                <tr>
+                var layout = weekLayouts[w];
+                var slotCount = layout.Banners.Count == 0 ? 0 : layout.Banners.Max(b => b.SlotIndex) + 1;
+                <tr class="calendar-week-row">
                     @for (int dow = 0; dow < 7; dow++)
                     {
-                        var day = gridStart.PlusDays(w * 7 + dow);
+                        var day = layout.WeekStart.PlusDays(dow);
                         var inMonth = day.Year == Model.Month.Year && day.Month == Model.Month.Month;
-                        var dayOccs = byDate.TryGetValue(day, out var list) ? list : new();
+                        var singleDay = layout.SingleDayOccurrencesByDow[dow];
                         var cellCls = inMonth ? "" : "bg-light text-muted";
-                        <td class="@cellCls align-top" style="height: 7rem; vertical-align: top;">
+
+                        // How many "visible slots" does this cell have used by banners?
+                        // We render a placeholder for each slot index 0..slotCount-1 so single-day
+                        // events always line up below banners at the same vertical offset across cells.
+                        var bannersCoveringThisDay = layout.Banners
+                            .Where(b => dow >= b.StartDow && dow <= b.EndDow)
+                            .ToDictionary(b => b.SlotIndex);
+
+                        // MaxPerCell cap: banners covering this day count toward the visible total.
+                        var bannerCountHere = bannersCoveringThisDay.Count;
+                        var singleDayTake = Math.Max(0, CalendarGridLayout.MaxPerCell - bannerCountHere);
+                        var moreCount = Math.Max(0, singleDay.Count - singleDayTake);
+
+                        <td class="@cellCls calendar-day-cell align-top">
                             <div class="small fw-bold mb-1">@day.Day</div>
-                            @foreach (var o in dayOccs.Take(MaxPerCell))
+                            @for (int s = 0; s < slotCount; s++)
+                            {
+                                if (bannersCoveringThisDay.TryGetValue(s, out var banner))
+                                {
+                                    var isStart = dow == banner.StartDow;
+                                    var isEnd = dow == banner.EndDow;
+                                    var openLeft = banner.ContinuesFromPreviousWeek && isStart;
+                                    var openRight = banner.ContinuesIntoNextWeek && isEnd;
+
+                                    var classes = new List<string> { "calendar-banner" };
+                                    if (openLeft) classes.Add("calendar-banner-open-left");
+                                    if (openRight) classes.Add("calendar-banner-open-right");
+                                    if (isStart && !openLeft) classes.Add("calendar-banner-cap-left");
+                                    if (isEnd && !openRight) classes.Add("calendar-banner-cap-right");
+
+                                    var titleAttr = $"{banner.Occurrence.Title} — {banner.Occurrence.OwningTeamName}";
+                                    <div class="@string.Join(' ', classes)" title="@titleAttr">
+                                        @if (isStart)
+                                        {
+                                            if (openLeft)
+                                            {
+                                                <span class="calendar-banner-cue" aria-hidden="true">&larr;</span>
+                                            }
+                                            <a class="calendar-banner-link" asp-action="Event" asp-route-id="@banner.Occurrence.EventId">@banner.Occurrence.Title</a>
+                                        }
+                                        @if (openRight && isEnd)
+                                        {
+                                            <span class="calendar-banner-cue ms-auto" aria-hidden="true">&rarr;</span>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="calendar-banner calendar-banner-spacer" aria-hidden="true"></div>
+                                }
+                            }
+                            @foreach (var o in singleDay.Take(singleDayTake))
                             {
                                 var localStart = o.OccurrenceStartUtc.InZone(zone).LocalDateTime;
                                 <div class="small text-truncate" title="@o.Title — @o.OwningTeamName">
-                                    <span class="text-muted">@localStart.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture)</span>
+                                    @if (!o.ShouldHideTimeLabel(zone))
+                                    {
+                                        <span class="text-muted">@localStart.ToString("HH:mm", invariant)</span>
+                                    }
                                     <a asp-action="Event" asp-route-id="@o.EventId">@o.Title</a>
                                 </div>
                             }
-                            @if (dayOccs.Count > MaxPerCell)
+                            @if (moreCount > 0)
                             {
-                                var more = dayOccs.Count - MaxPerCell;
-                                var isoDay = day.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
-                                <a class="small text-muted" asp-action="Agenda" asp-route-from="@isoDay" asp-route-to="@isoDay" asp-route-teamId="@Model.FilterTeamId">+@more more</a>
+                                var isoDay = day.ToString("yyyy-MM-dd", invariant);
+                                <a class="small text-muted" asp-action="Agenda" asp-route-from="@isoDay" asp-route-to="@isoDay" asp-route-teamId="@Model.FilterTeamId">+@moreCount more</a>
                             }
                         </td>
                     }

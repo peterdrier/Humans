@@ -65,15 +65,23 @@
     </div>
     }
 
-    <!-- Admin panel link -->
-    @if (isMapAdmin)
-    {
+    <!-- Top-right controls -->
     <div class="position-absolute top-0 end-0 m-3">
-        <a href="/CityPlanning/Admin" class="btn btn-outline-primary btn-sm shadow-sm">
-            <i class="fa fa-cog me-1"></i> @Localizer["CityPlanning_AdminLink"]
-        </a>
+        <div class="card shadow-sm">
+            <div class="card-body py-2 px-3 d-flex flex-column gap-1">
+                <button id="measure-btn" class="btn btn-outline-secondary btn-sm" title="@Localizer["CityPlanning_MeasureButton"]" aria-pressed="false">
+                    <i class="fa-solid fa-ruler me-1"></i> @Localizer["CityPlanning_MeasureButton"]
+                </button>
+                @if (isMapAdmin)
+                {
+                <a href="/CityPlanning/Admin" class="btn btn-outline-primary btn-sm">
+                    <i class="fa fa-cog me-1"></i> @Localizer["CityPlanning_AdminLink"]
+                </a>
+                }
+                <vc:access-matrix section="CityPlanning" />
+            </div>
+        </div>
     </div>
-    }
 
     <!-- Toolbars -->
     <div class="position-absolute bottom-0 start-50 translate-middle-x mb-3 d-flex flex-row gap-2">

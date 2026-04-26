@@ -251,6 +251,112 @@
     </div>
 
     <div class="col-md-4">
+        @* Add active member (issue nobodies-collective#489) *@
+        @if (Model.RolesPanel is not null && Model.RolesPanel.CanManage)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fa-solid fa-user-plus me-1"></i> Add active member
+                </div>
+                <div class="card-body">
+                    <form asp-action="AddMember" asp-route-slug="@Model.Slug" method="post" class="input-group">
+                        @Html.AntiForgeryToken()
+                        <partial name="_HumanSearchInput" view-data='@(new ViewDataDictionary(ViewData) { { "FieldName", "userId" } })' />
+                        <button type="submit" class="btn btn-outline-success" title="Add active member">
+                            <i class="fa-solid fa-user-plus"></i>
+                        </button>
+                    </form>
+                    <div class="form-text">Search by name. The human is added to the camp's open season as Active.</div>
+                </div>
+            </div>
+        }
+
+        @* Per-camp roles panel (issue nobodies-collective#489) *@
+        @if (Model.RolesPanel is not null)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fa-solid fa-list-check me-1"></i> Roles (@Model.Year)
+                </div>
+                <div class="card-body">
+                    @if (Model.RolesPanel.Rows.Count == 0)
+                    {
+                        <p class="text-muted small mb-0">
+                            No camp roles defined yet.
+                            @if (Model.RolesPanel.CanManage)
+                            {
+                                <text>CampAdmin can add them at <a asp-controller="CampAdmin" asp-action="Roles">Camp roles</a>.</text>
+                            }
+                        </p>
+                    }
+                    else
+                    {
+                        @foreach (var role in Model.RolesPanel.Rows)
+                        {
+                            var assignedMemberIds = role.FilledSlots.Select(s => s.CampMemberId).ToHashSet();
+                            <div class="mb-3">
+                                <h6 class="mb-1">
+                                    @role.Name
+                                    @if (role.MinimumRequired > 0)
+                                    {
+                                        <span class="badge bg-secondary">required</span>
+                                    }
+                                    <small class="text-muted">@role.CurrentCount / @role.SlotCount filled</small>
+                                    @if (role.OverCapacity)
+                                    {
+                                        <span class="badge bg-warning text-dark" title="More assignments than the configured slot count.">Over capacity</span>
+                                    }
+                                </h6>
+                                @if (!string.IsNullOrWhiteSpace(role.Description))
+                                {
+                                    <div class="text-muted small mb-2">@Html.SanitizedMarkdown(role.Description)</div>
+                                }
+
+                                @* Filled slots — render in service-supplied order (AssignedAt) *@
+                                @foreach (var slot in role.FilledSlots)
+                                {
+                                    <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
+                                        <human-link user-id="@slot.UserId" display-name="@slot.DisplayName" show-popover="true" />
+                                        @if (Model.RolesPanel.CanManage)
+                                        {
+                                            <form asp-action="UnassignRole" asp-route-slug="@Model.Slug" asp-route-assignmentId="@slot.AssignmentId" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove this assignment" data-confirm="Remove this assignment?">
+                                                    <i class="fa-solid fa-xmark"></i>
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
+                                }
+
+                                @* Empty slots — assign forms (only for managers) *@
+                                @if (Model.RolesPanel.CanManage)
+                                {
+                                    @for (var i = 0; i < role.EmptySlotCount; i++)
+                                    {
+                                        <form asp-action="AssignRole" asp-route-slug="@Model.Slug" method="post" class="d-flex gap-2 mb-1">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="roleDefinitionId" value="@role.DefinitionId" />
+                                            <select name="campMemberId" class="form-select form-select-sm" required>
+                                                <option value="">Pick an active member…</option>
+                                                @foreach (var m in Model.RolesPanel.ActiveMembers.Where(am => !assignedMemberIds.Contains(am.CampMemberId)))
+                                                {
+                                                    <option value="@m.CampMemberId">@m.DisplayName</option>
+                                                }
+                                            </select>
+                                            <button class="btn btn-sm btn-outline-primary" type="submit" title="Assign selected member">
+                                                <i class="fa-solid fa-check"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        }
+
         @* Lead Management *@
         <div class="card mb-4">
             <div class="card-header">

@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = Localizer["Shifts_Title"].Value;
     var es = Model.EventSettings;
+    var isUrgencySort = string.Equals(Model.Sort, "urgency", StringComparison.OrdinalIgnoreCase);
 
     // Compute date picker bounds — tighten to active period's range
     var pickerMin = es.GateOpeningDate.PlusDays(es.BuildStartOffset);
@@ -17,8 +18,31 @@
             _ => (pickerMin, pickerMax)
         };
     }
+
+    // Build sort toggle URLs preserving all current filters
+    var sortBaseRoute = new Dictionary<string, string?>();
+    if (Model.FilterDepartmentId.HasValue)
+        sortBaseRoute["departmentId"] = Model.FilterDepartmentId.Value.ToString();
+    if (!string.IsNullOrEmpty(Model.FilterFromDate))
+        sortBaseRoute["fromDate"] = Model.FilterFromDate;
+    if (!string.IsNullOrEmpty(Model.FilterToDate))
+        sortBaseRoute["toDate"] = Model.FilterToDate;
+    if (!string.IsNullOrEmpty(Model.FilterPeriod))
+        sortBaseRoute["period"] = Model.FilterPeriod;
+    for (var i = 0; i < Model.FilterTagIds.Count; i++)
+        sortBaseRoute[$"tags[{i}]"] = Model.FilterTagIds[i].ToString();
+    var urgencySortRoute = new Dictionary<string, string?>(sortBaseRoute) { ["sort"] = "urgency" };
+    var deptSortRoute = new Dictionary<string, string?>(sortBaseRoute);
 }
 
+<style>
+    .disclosure-chevron {
+        transition: transform 0.2s ease;
+    }
+    .disclosure-chevron.rotated {
+        transform: rotate(90deg);
+    }
+</style>
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>@Localizer["Shifts_BrowseTitle"]</h2>
@@ -55,13 +79,14 @@
                    min="@pickerMin.ToString("yyyy-MM-dd", null)"
                    max="@pickerMax.ToString("yyyy-MM-dd", null)" />
         </div>
-        @if (Model.FilterDepartmentId.HasValue || !string.IsNullOrEmpty(Model.FilterFromDate) || !string.IsNullOrEmpty(Model.FilterToDate) || !string.IsNullOrEmpty(Model.FilterPeriod) || Model.FilterTagIds.Count > 0)
+        @if (Model.FilterDepartmentId.HasValue || !string.IsNullOrEmpty(Model.FilterFromDate) || !string.IsNullOrEmpty(Model.FilterToDate) || !string.IsNullOrEmpty(Model.FilterPeriod) || Model.FilterTagIds.Count > 0 || !string.IsNullOrEmpty(Model.Sort))
         {
             <div class="col-auto">
                 <a asp-action="Index" class="btn btn-sm btn-outline-secondary">@Localizer["Shifts_ClearFilters"]</a>
             </div>
         }
         <input type="hidden" name="period" value="@Model.FilterPeriod" />
+        <input type="hidden" name="sort" value="@Model.Sort" />
         @foreach (var tagId in Model.FilterTagIds)
         {
             <input type="hidden" name="tags" value="@tagId" />
@@ -70,15 +95,27 @@
     @{
         var activePeriod = Model.FilterPeriod ?? "";
     }
-    <div class="btn-group mb-3" role="group" aria-label="Period filter">
-        <a href="@Url.Action("Index", new { departmentId = Model.FilterDepartmentId, fromDate = Model.FilterFromDate, toDate = Model.FilterToDate })"
-           class="btn btn-sm @(string.IsNullOrEmpty(activePeriod) ? "btn-primary" : "btn-outline-primary")">@Localizer["Shifts_All"]</a>
-        <a href="@Url.Action("Index", new { departmentId = Model.FilterDepartmentId, period = "Build" })"
-           class="btn btn-sm @(activePeriod == "Build" ? "btn-info" : "btn-outline-info")">@Localizer["Shifts_SetUp"]</a>
-        <a href="@Url.Action("Index", new { departmentId = Model.FilterDepartmentId, period = "Event" })"
-           class="btn btn-sm @(activePeriod == "Event" ? "btn-success" : "btn-outline-success")">@Localizer["Shifts_Event"]</a>
-        <a href="@Url.Action("Index", new { departmentId = Model.FilterDepartmentId, period = "Strike" })"
-           class="btn btn-sm @(activePeriod == "Strike" ? "btn-secondary" : "btn-outline-secondary")">@Localizer["Shifts_Strike"]</a>
+    <div class="d-flex flex-wrap gap-3 mb-3 align-items-center">
+        <div class="btn-group" role="group" aria-label="Period filter">
+            <a href="@Url.Action("Index", new { departmentId = Model.FilterDepartmentId, fromDate = Model.FilterFromDate, toDate = Model.FilterToDate, sort = Model.Sort })"
+               class="btn btn-sm @(string.IsNullOrEmpty(activePeriod) ? "btn-primary" : "btn-outline-primary")">@Localizer["Shifts_All"]</a>
+            <a href="@Url.Action("Index", new { departmentId = Model.FilterDepartmentId, period = "Build", sort = Model.Sort })"
+               class="btn btn-sm @(activePeriod == "Build" ? "btn-info" : "btn-outline-info")">@Localizer["Shifts_SetUp"]</a>
+            <a href="@Url.Action("Index", new { departmentId = Model.FilterDepartmentId, period = "Event", sort = Model.Sort })"
+               class="btn btn-sm @(activePeriod == "Event" ? "btn-success" : "btn-outline-success")">@Localizer["Shifts_Event"]</a>
+            <a href="@Url.Action("Index", new { departmentId = Model.FilterDepartmentId, period = "Strike", sort = Model.Sort })"
+               class="btn btn-sm @(activePeriod == "Strike" ? "btn-secondary" : "btn-outline-secondary")">@Localizer["Shifts_Strike"]</a>
+        </div>
+        <div class="btn-group" role="group" aria-label="Sort order">
+            <a href="@Url.Action("Index", urgencySortRoute)"
+               class="btn btn-sm @(isUrgencySort ? "btn-warning" : "btn-outline-warning")" title="@Localizer["Shifts_SortUrgencyHint"]">
+                <i class="fa-solid fa-fire me-1"></i>@Localizer["Shifts_SortUrgency"]
+            </a>
+            <a href="@Url.Action("Index", deptSortRoute)"
+               class="btn btn-sm @(!isUrgencySort ? "btn-warning" : "btn-outline-warning")" title="@Localizer["Shifts_SortDeptHint"]">
+                <i class="fa-solid fa-building me-1"></i>@Localizer["Shifts_SortDept"]
+            </a>
+        </div>
     </div>
 
     @if (Model.AllTags.Count > 0)
@@ -101,6 +138,8 @@
                         routeValues["toDate"] = Model.FilterToDate;
                     if (!string.IsNullOrEmpty(Model.FilterPeriod))
                         routeValues["period"] = Model.FilterPeriod;
+                    if (!string.IsNullOrEmpty(Model.Sort))
+                        routeValues["sort"] = Model.Sort;
                     for (var i = 0; i < newTagIds.Count; i++)
                         routeValues[$"tags[{i}]"] = newTagIds[i].ToString();
                     @if (isActive)
@@ -175,84 +214,258 @@
     {
         <div class="alert alert-info">@Localizer["Shifts_NoShiftsAvailable"]</div>
     }
-    else
+    else if (isUrgencySort)
     {
-        @foreach (var dept in Model.Departments)
+        @* === Urgency-sorted flat view: rotas ranked by most needed === *@
+        @foreach (var rotaGroup in Model.UrgencyRankedRotas)
         {
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">@dept.TeamName</h5>
+            var rotaMatchesPreference = Model.UserPreferredTagIds.Count > 0
+                && rotaGroup.Rota.Tags.Any(t => Model.UserPreferredTagIds.Contains(t.Id));
+            var fillPercent = rotaGroup.TotalSlots > 0 ? (int)Math.Round(100.0 * rotaGroup.TotalConfirmed / rotaGroup.TotalSlots) : 0;
+            var fillColor = fillPercent >= 80 ? "bg-success" : fillPercent >= 40 ? "bg-warning" : "bg-danger";
+            var hasOpenSlots = rotaGroup.Shifts.Any(s => s.RemainingSlots > 0);
+            var urgRotaId = $"urg-rota-{rotaGroup.Rota.Id:N}";
+
+            <div class="card mb-3 @(!hasOpenSlots ? "opacity-75" : "")">
+                <div class="card-header py-2" role="button" data-bs-toggle="collapse" data-bs-target="#@urgRotaId" aria-expanded="false" aria-controls="@urgRotaId" style="cursor: pointer;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fa-solid fa-chevron-right fa-xs disclosure-chevron"></i>
+                            <div>
+                                <span class="fw-semibold">@rotaGroup.Rota.Name</span>
+                                @if (rotaMatchesPreference)
+                                {
+                                    <i class="fa-solid fa-star text-warning ms-1" title="@Localizer["Shifts_MatchesPrefs"].Value"></i>
+                                }
+                                @if (rotaGroup.Rota.Priority == ShiftPriority.Essential)
+                                {
+                                    <span class="badge bg-danger ms-1">@Localizer["Shifts_Essential"]</span>
+                                }
+                                else if (rotaGroup.Rota.Priority == ShiftPriority.Important)
+                                {
+                                    <span class="badge bg-warning text-dark ms-1">@Localizer["Shifts_Important"]</span>
+                                }
+                                @if (!string.IsNullOrEmpty(rotaGroup.DepartmentName))
+                                {
+                                    <br /><small class="text-muted"><i class="fa-solid fa-building me-1"></i>@rotaGroup.DepartmentName</small>
+                                }
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2" style="min-width: 160px;">
+                            <div class="progress flex-grow-1" style="height: 8px;" title="@rotaGroup.TotalConfirmed / @rotaGroup.TotalSlots @Localizer["Shifts_SlotsFilled"]">
+                                <div class="progress-bar @fillColor" role="progressbar" style="width: @fillPercent%;" aria-valuenow="@rotaGroup.TotalConfirmed" aria-valuemin="0" aria-valuemax="@rotaGroup.TotalSlots"></div>
+                            </div>
+                            <small class="text-muted text-nowrap">@rotaGroup.TotalConfirmed/@rotaGroup.TotalSlots</small>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    @{
-                        var rotasByPeriod = dept.Rotas
-                            .GroupBy(r => r.Rota.Period)
-                            .OrderBy(g => g.Key)
-                            .ToList();
-                    }
-                    @foreach (var periodGroup in rotasByPeriod)
-                    {
-                        var periodName = periodGroup.Key == RotaPeriod.Build ? Localizer["Shifts_SetUp"].Value
-                            : periodGroup.Key == RotaPeriod.Strike ? Localizer["Shifts_Strike"].Value
-                            : Localizer["Shifts_Event"].Value;
-                        <h5 class="mt-4 mb-2 border-bottom pb-1">
-                            <span class="badge @(periodGroup.Key == RotaPeriod.Build ? "bg-info" : periodGroup.Key == RotaPeriod.Strike ? "bg-secondary" : "bg-success") me-1">@periodName</span>
-                            @periodName
-                        </h5>
-                        var hasAvailable = periodGroup.Any(r => r.Shifts.Any(s => s.RemainingSlots > 0));
-                        @if (!hasAvailable)
+                <div class="collapse" id="@urgRotaId">
+                    <div class="card-body pt-2">
+                        @if (!string.IsNullOrEmpty(rotaGroup.Rota.Description))
                         {
-                            <p class="text-muted fst-italic">@string.Format(Localizer["Shifts_AllShiftsFull"].Value, periodName.ToLowerInvariant())</p>
+                            <div class="text-muted small mb-2">@Html.SanitizedMarkdown(rotaGroup.Rota.Description)</div>
                         }
-                        @foreach (var rotaGroup in periodGroup)
+                        @if (!string.IsNullOrEmpty(rotaGroup.Rota.PracticalInfo))
                         {
+                            <div class="text-muted small mb-2"><i class="fa-solid fa-circle-info me-1"></i>@Html.SanitizedMarkdown(rotaGroup.Rota.PracticalInfo)</div>
+                        }
+                        @{
                             var hasAllDayShifts = rotaGroup.Shifts.Any(s => s.Shift.IsAllDay);
                             var hasTimedShifts = rotaGroup.Shifts.Any(s => !s.Shift.IsAllDay);
                             var isBuildStrike = rotaGroup.Rota.Period != RotaPeriod.Event;
-                            var rotaMatchesPreference = Model.UserPreferredTagIds.Count > 0
-                                && rotaGroup.Rota.Tags.Any(t => Model.UserPreferredTagIds.Contains(t.Id));
-                            @await Html.PartialAsync("_RotaHeader", new RotaHeaderViewModel { Rota = rotaGroup.Rota, ShowPreferenceStar = rotaMatchesPreference })
+                        }
+                        @if (isBuildStrike || hasAllDayShifts)
+                        {
+                            @await Html.PartialAsync("_BuildStrikeRotaTable", new BuildStrikeRotaTableViewModel
+                            {
+                                RotaGroup = rotaGroup,
+                                EventSettings = es,
+                                UserSignupShiftIds = Model.UserSignupShiftIds,
+                                ShowSignups = Model.ShowSignups,
+                                FilterDepartmentId = Model.FilterDepartmentId,
+                                FilterFromDate = Model.FilterFromDate,
+                                FilterToDate = Model.FilterToDate,
+                                FilterPeriod = Model.FilterPeriod,
+                                FilterTagIds = Model.FilterTagIds
+                            })
+                        }
+                        @if (!isBuildStrike || hasTimedShifts)
+                        {
+                            var timedShifts = isBuildStrike ? rotaGroup.Shifts.Where(s => !s.Shift.IsAllDay).ToList() : rotaGroup.Shifts.ToList();
+                            @await Html.PartialAsync("_EventRotaTable", new EventRotaTableViewModel
+                            {
+                                Shifts = timedShifts,
+                                EventSettings = es,
+                                UserSignupShiftIds = Model.UserSignupShiftIds,
+                                UserSignupStatuses = Model.UserSignupStatuses,
+                                ShowSignups = Model.ShowSignups,
+                                FilterDepartmentId = Model.FilterDepartmentId,
+                                FilterFromDate = Model.FilterFromDate,
+                                FilterToDate = Model.FilterToDate,
+                                FilterPeriod = Model.FilterPeriod,
+                                FilterTagIds = Model.FilterTagIds
+                            })
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        @* === Default department-grouped view === *@
+        var singleDept = Model.Departments.Count == 1;
+        var filteredToDept = Model.FilterDepartmentId.HasValue;
+        @foreach (var dept in Model.Departments)
+        {
+            var deptId = $"dept-{dept.TeamId:N}";
+            var deptExpanded = singleDept || filteredToDept;
+            var deptTotalConfirmed = dept.Rotas.Sum(r => r.TotalConfirmed);
+            var deptTotalSlots = dept.Rotas.Sum(r => r.TotalSlots);
+            var deptFillPercent = deptTotalSlots > 0 ? (int)Math.Round(100.0 * deptTotalConfirmed / deptTotalSlots) : 0;
+            var deptFillColor = deptFillPercent >= 80 ? "bg-success" : deptFillPercent >= 40 ? "bg-warning" : "bg-danger";
+            var deptRotaCount = dept.Rotas.Count;
+            var deptShiftCount = dept.Rotas.Sum(r => r.Shifts.Count);
 
-                            @if (isBuildStrike || hasAllDayShifts)
+            <div class="card mb-3">
+                <div class="card-header py-2" role="button" data-bs-toggle="collapse" data-bs-target="#@deptId" aria-expanded="@(deptExpanded ? "true" : "false")" aria-controls="@deptId" style="cursor: pointer;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fa-solid fa-chevron-right fa-xs disclosure-chevron @(deptExpanded ? "rotated" : "")"></i>
+                            <h5 class="mb-0">@dept.TeamName</h5>
+                            <small class="text-muted">@deptRotaCount @(deptRotaCount == 1 ? Localizer["Shifts_RotaSingular"] : Localizer["Shifts_RotaPlural"])</small>
+                        </div>
+                        <div class="d-flex align-items-center gap-2" style="min-width: 160px;">
+                            <div class="progress flex-grow-1" style="height: 8px;" title="@deptTotalConfirmed / @deptTotalSlots @Localizer["Shifts_SlotsFilled"]">
+                                <div class="progress-bar @deptFillColor" role="progressbar" style="width: @deptFillPercent%;" aria-valuenow="@deptTotalConfirmed" aria-valuemin="0" aria-valuemax="@deptTotalSlots"></div>
+                            </div>
+                            <small class="text-muted text-nowrap">@deptTotalConfirmed/@deptTotalSlots</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="collapse @(deptExpanded ? "show" : "")" id="@deptId">
+                    <div class="card-body pt-2">
+                        @{
+                            var rotasByPeriod = dept.Rotas
+                                .GroupBy(r => r.Rota.Period)
+                                .OrderBy(g => g.Key)
+                                .ToList();
+                        }
+                        @foreach (var periodGroup in rotasByPeriod)
+                        {
+                            var periodName = periodGroup.Key == RotaPeriod.Build ? Localizer["Shifts_SetUp"].Value
+                                : periodGroup.Key == RotaPeriod.Strike ? Localizer["Shifts_Strike"].Value
+                                : Localizer["Shifts_Event"].Value;
+                            <h6 class="mt-3 mb-2 text-muted text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.05em;">
+                                <span class="badge @(periodGroup.Key == RotaPeriod.Build ? "bg-info" : periodGroup.Key == RotaPeriod.Strike ? "bg-secondary" : "bg-success") me-1">@periodName</span>
+                            </h6>
+                            @foreach (var rotaGroup in periodGroup)
                             {
-                                @await Html.PartialAsync("_BuildStrikeRotaTable", new BuildStrikeRotaTableViewModel
-                                {
-                                    RotaGroup = rotaGroup,
-                                    EventSettings = es,
-                                    UserSignupShiftIds = Model.UserSignupShiftIds,
-                                    ShowSignups = Model.ShowSignups,
-                                    FilterDepartmentId = Model.FilterDepartmentId,
-                                    FilterFromDate = Model.FilterFromDate,
-                                    FilterToDate = Model.FilterToDate,
-                                    FilterPeriod = Model.FilterPeriod,
-                                    FilterTagIds = Model.FilterTagIds
-                                })
-                            }
-                            @if (!isBuildStrike || hasTimedShifts)
-                            {
-                                var timedShifts = isBuildStrike ? rotaGroup.Shifts.Where(s => !s.Shift.IsAllDay).ToList() : rotaGroup.Shifts.ToList();
-                                @await Html.PartialAsync("_EventRotaTable", new EventRotaTableViewModel
-                                {
-                                    Shifts = timedShifts,
-                                    EventSettings = es,
-                                    UserSignupShiftIds = Model.UserSignupShiftIds,
-                                    UserSignupStatuses = Model.UserSignupStatuses,
-                                    ShowSignups = Model.ShowSignups,
-                                    FilterDepartmentId = Model.FilterDepartmentId,
-                                    FilterFromDate = Model.FilterFromDate,
-                                    FilterToDate = Model.FilterToDate,
-                                    FilterPeriod = Model.FilterPeriod,
-                                    FilterTagIds = Model.FilterTagIds
-                                })
+                                var rotaId = $"rota-{rotaGroup.Rota.Id:N}";
+                                var rotaMatchesPreference = Model.UserPreferredTagIds.Count > 0
+                                    && rotaGroup.Rota.Tags.Any(t => Model.UserPreferredTagIds.Contains(t.Id));
+                                var rotaFillPercent = rotaGroup.TotalSlots > 0 ? (int)Math.Round(100.0 * rotaGroup.TotalConfirmed / rotaGroup.TotalSlots) : 0;
+                                var rotaFillColor = rotaFillPercent >= 80 ? "bg-success" : rotaFillPercent >= 40 ? "bg-warning" : "bg-danger";
+                                var hasOpenSlots = rotaGroup.Shifts.Any(s => s.RemainingSlots > 0);
+
+                                <div class="card mb-2 @(!hasOpenSlots ? "opacity-75" : "")">
+                                    <div class="card-header py-2 bg-transparent" role="button" data-bs-toggle="collapse" data-bs-target="#@rotaId" aria-expanded="false" aria-controls="@rotaId" style="cursor: pointer;">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <i class="fa-solid fa-chevron-right fa-xs disclosure-chevron"></i>
+                                                <span class="fw-semibold">@rotaGroup.Rota.Name</span>
+                                                @if (rotaMatchesPreference)
+                                                {
+                                                    <i class="fa-solid fa-star text-warning" title="@Localizer["Shifts_MatchesPrefs"].Value"></i>
+                                                }
+                                                @if (rotaGroup.Rota.Priority == ShiftPriority.Essential)
+                                                {
+                                                    <span class="badge bg-danger">@Localizer["Shifts_Essential"]</span>
+                                                }
+                                                else if (rotaGroup.Rota.Priority == ShiftPriority.Important)
+                                                {
+                                                    <span class="badge bg-warning text-dark">@Localizer["Shifts_Important"]</span>
+                                                }
+                                                <small class="text-muted d-none d-md-inline">@rotaGroup.Shifts.Count @(rotaGroup.Shifts.Count == 1 ? Localizer["Shifts_ShiftSingular"] : Localizer["Shifts_ShiftPlural"])</small>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-2" style="min-width: 120px;">
+                                                <div class="progress flex-grow-1" style="height: 6px;" title="@rotaGroup.TotalConfirmed / @rotaGroup.TotalSlots @Localizer["Shifts_SlotsFilled"]">
+                                                    <div class="progress-bar @rotaFillColor" role="progressbar" style="width: @rotaFillPercent%;" aria-valuenow="@rotaGroup.TotalConfirmed" aria-valuemin="0" aria-valuemax="@rotaGroup.TotalSlots"></div>
+                                                </div>
+                                                <small class="text-muted text-nowrap">@rotaGroup.TotalConfirmed/@rotaGroup.TotalSlots</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="collapse" id="@rotaId">
+                                        <div class="card-body pt-2">
+                                            @if (!string.IsNullOrEmpty(rotaGroup.Rota.Description))
+                                            {
+                                                <div class="text-muted small mb-2">@Html.SanitizedMarkdown(rotaGroup.Rota.Description)</div>
+                                            }
+                                            @if (!string.IsNullOrEmpty(rotaGroup.Rota.PracticalInfo))
+                                            {
+                                                <div class="text-muted small mb-2"><i class="fa-solid fa-circle-info me-1"></i>@Html.SanitizedMarkdown(rotaGroup.Rota.PracticalInfo)</div>
+                                            }
+                                            @{
+                                                var hasAllDayShifts = rotaGroup.Shifts.Any(s => s.Shift.IsAllDay);
+                                                var hasTimedShifts = rotaGroup.Shifts.Any(s => !s.Shift.IsAllDay);
+                                                var isBuildStrike = rotaGroup.Rota.Period != RotaPeriod.Event;
+                                            }
+                                            @if (isBuildStrike || hasAllDayShifts)
+                                            {
+                                                @await Html.PartialAsync("_BuildStrikeRotaTable", new BuildStrikeRotaTableViewModel
+                                                {
+                                                    RotaGroup = rotaGroup,
+                                                    EventSettings = es,
+                                                    UserSignupShiftIds = Model.UserSignupShiftIds,
+                                                    ShowSignups = Model.ShowSignups,
+                                                    FilterDepartmentId = Model.FilterDepartmentId,
+                                                    FilterFromDate = Model.FilterFromDate,
+                                                    FilterToDate = Model.FilterToDate,
+                                                    FilterPeriod = Model.FilterPeriod,
+                                                    FilterTagIds = Model.FilterTagIds
+                                                })
+                                            }
+                                            @if (!isBuildStrike || hasTimedShifts)
+                                            {
+                                                var timedShifts = isBuildStrike ? rotaGroup.Shifts.Where(s => !s.Shift.IsAllDay).ToList() : rotaGroup.Shifts.ToList();
+                                                @await Html.PartialAsync("_EventRotaTable", new EventRotaTableViewModel
+                                                {
+                                                    Shifts = timedShifts,
+                                                    EventSettings = es,
+                                                    UserSignupShiftIds = Model.UserSignupShiftIds,
+                                                    UserSignupStatuses = Model.UserSignupStatuses,
+                                                    ShowSignups = Model.ShowSignups,
+                                                    FilterDepartmentId = Model.FilterDepartmentId,
+                                                    FilterFromDate = Model.FilterFromDate,
+                                                    FilterToDate = Model.FilterToDate,
+                                                    FilterPeriod = Model.FilterPeriod,
+                                                    FilterTagIds = Model.FilterTagIds
+                                                })
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
                             }
                         }
-                    }
+                    </div>
                 </div>
             </div>
         }
     }
 </div>
 <script>
+    // Rotate disclosure chevrons on Bootstrap collapse show/hide
+    document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(function(trigger) {
+        var targetId = trigger.getAttribute('data-bs-target');
+        var target = document.querySelector(targetId);
+        if (!target) return;
+        var chevron = trigger.querySelector('.disclosure-chevron');
+        if (!chevron) return;
+        target.addEventListener('show.bs.collapse', function() { chevron.classList.add('rotated'); });
+        target.addEventListener('hide.bs.collapse', function() { chevron.classList.remove('rotated'); });
+    });
+
     // Expand/collapse compressed date ranges — must run after table HTML is rendered
     document.querySelectorAll('.shift-range-header').forEach(function(el) {
         el.addEventListener('click', function() {

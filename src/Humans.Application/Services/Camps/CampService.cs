@@ -43,12 +43,14 @@ namespace Humans.Application.Services.Camps;
 public sealed class CampService : ICampService, IUserDataContributor
 {
     private readonly ICampRepository _repo;
+    private readonly ICampRoleRepository _roleRepo;
     private readonly IUserService _userService;
     private readonly IAuditLogService _auditLog;
     private readonly ISystemTeamSync _systemTeamSync;
     private readonly ICampImageStorage _imageStorage;
     private readonly INotificationEmitter _notificationEmitter;
     private readonly ICampLeadJoinRequestsBadgeCacheInvalidator _leadBadgeInvalidator;
+    private readonly Lazy<ICampRoleService> _campRoleService;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
     private readonly ILogger<CampService> _logger;
@@ -58,23 +60,27 @@ public sealed class CampService : ICampService, IUserDataContributor
 
     public CampService(
         ICampRepository repo,
+        ICampRoleRepository roleRepo,
         IUserService userService,
         IAuditLogService auditLog,
         ISystemTeamSync systemTeamSync,
         ICampImageStorage imageStorage,
         INotificationEmitter notificationEmitter,
         ICampLeadJoinRequestsBadgeCacheInvalidator leadBadgeInvalidator,
+        Lazy<ICampRoleService> campRoleService,
         IClock clock,
         IMemoryCache cache,
         ILogger<CampService> logger)
     {
         _repo = repo;
+        _roleRepo = roleRepo;
         _userService = userService;
         _auditLog = auditLog;
         _systemTeamSync = systemTeamSync;
         _imageStorage = imageStorage;
         _notificationEmitter = notificationEmitter;
         _leadBadgeInvalidator = leadBadgeInvalidator;
+        _campRoleService = campRoleService;
         _clock = clock;
         _cache = cache;
         _logger = logger;
@@ -308,6 +314,16 @@ public sealed class CampService : ICampService, IUserDataContributor
     {
         var camps = await _repo.GetAllCampsForYearAsync(year, cancellationToken);
         return camps.ToList();
+    }
+
+    public async Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId)>>
+        GetCampSeasonsForComplianceAsync(int year, CancellationToken cancellationToken = default)
+    {
+        var camps = await _repo.GetAllCampsForYearAsync(year, cancellationToken);
+        // Camp.Name lives on CampSeason, not Camp — pull s.Name not c.Name (deviation
+        // from plan; reflects actual schema where the canonical name is per-season).
+        return camps.SelectMany(c => c.Seasons.Where(s => s.Year == year).Select(s =>
+            (c.Id, s.Name, c.Slug, s.Id))).ToList();
     }
 
     public async Task<IReadOnlyList<CampPublicSummary>> GetCampPublicSummariesForYearAsync(
@@ -1117,6 +1133,12 @@ public sealed class CampService : ICampService, IUserDataContributor
         Guid userId, Guid campId, CancellationToken cancellationToken = default) =>
         _repo.IsUserActiveLeadAsync(userId, campId, cancellationToken);
 
+    public async Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken cancellationToken = default)
+    {
+        var row = await _repo.GetMemberLookupAsync(campMemberId, cancellationToken);
+        return row is null ? null : new CampMemberLookup(row.Value.CampSeasonId, row.Value.UserId, row.Value.Status);
+    }
+
     // ==========================================================================
     // Images
     // ==========================================================================
@@ -1540,6 +1562,24 @@ public sealed class CampService : ICampService, IUserDataContributor
             relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
     }
 
+    public async Task<Guid> AddCampMemberAsLeadAsync(Guid campSeasonId, Guid userId, Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        var now = _clock.GetCurrentInstant();
+        var result = await _repo.AddActiveMembershipAsync(campSeasonId, userId, now, actorUserId, cancellationToken);
+
+        if (result.Outcome != CampMemberInsertOutcome.AlreadyActive)
+        {
+            await _auditLog.LogAsync(
+                AuditAction.CampMemberAddedByLead,
+                nameof(CampMember), result.MemberId,
+                "Lead added human as active camp member.",
+                actorUserId,
+                relatedEntityId: userId, relatedEntityType: nameof(User));
+        }
+
+        return result.MemberId;
+    }
+
     public async Task WithdrawCampMembershipRequestAsync(
         Guid campMemberId, Guid userId, CancellationToken cancellationToken = default)
     {
@@ -1550,6 +1590,9 @@ public sealed class CampService : ICampService, IUserDataContributor
         {
             throw new InvalidOperationException($"Cannot withdraw a camp member request with status {member.Status}.");
         }
+
+        // Cascade role-assignment cleanup before soft-delete (C1 fix).
+        await _campRoleService.Value.RemoveAllForMemberAsync(campMemberId, userId, cancellationToken);
 
         var now = _clock.GetCurrentInstant();
         member.Status = CampMemberStatus.Removed;
@@ -1576,6 +1619,9 @@ public sealed class CampService : ICampService, IUserDataContributor
         {
             throw new InvalidOperationException($"Cannot leave a camp membership with status {member.Status}.");
         }
+
+        // Cascade role-assignment cleanup before soft-delete (C1 fix).
+        await _campRoleService.Value.RemoveAllForMemberAsync(campMemberId, userId, cancellationToken);
 
         var now = _clock.GetCurrentInstant();
         member.Status = CampMemberStatus.Removed;
@@ -1682,6 +1728,10 @@ public sealed class CampService : ICampService, IUserDataContributor
         return new CampMemberListData(campSeasonId, info.Year, pending, active);
     }
 
+    public Task<IReadOnlyList<CampMember>> GetSeasonMembersAsync(
+        Guid campSeasonId, CancellationToken cancellationToken = default) =>
+        _repo.GetSeasonMembersAsync(campSeasonId, cancellationToken);
+
     public Task<int> GetPendingMembershipCountForLeadAsync(
         Guid userId, CancellationToken cancellationToken = default) =>
         _repo.CountPendingMembershipsForLeadAsync(userId, cancellationToken);
@@ -1712,7 +1762,7 @@ public sealed class CampService : ICampService, IUserDataContributor
     {
         var leadAssignments = await _repo.GetAllLeadAssignmentsForUserAsync(userId, ct);
 
-        var shaped = leadAssignments.Select(cl => new
+        var shapedLeads = leadAssignments.Select(cl => new
         {
             CampSlug = cl.Camp.Slug,
             cl.Role,
@@ -1720,6 +1770,21 @@ public sealed class CampService : ICampService, IUserDataContributor
             LeftAt = cl.LeftAt.ToInvariantInstantString()
         }).ToList();
 
-        return [new UserDataSlice(GdprExportSections.CampLeadAssignments, shaped)];
+        var roleAssignments = await _roleRepo.GetAllAssignmentsForUserAsync(userId, ct);
+
+        var shapedRoles = roleAssignments.Select(a => new
+        {
+            CampSlug = a.CampSeason.Camp.Slug,
+            SeasonYear = a.CampSeason.Year,
+            RoleName = a.Definition.Name,
+            AssignedAt = a.AssignedAt.ToInvariantInstantString(),
+            a.AssignedByUserId
+        }).ToList();
+
+        return
+        [
+            new UserDataSlice(GdprExportSections.CampLeadAssignments, shapedLeads),
+            new UserDataSlice(GdprExportSections.CampRoleAssignments, shapedRoles)
+        ];
     }
 }

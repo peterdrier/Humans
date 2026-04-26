@@ -1,11 +1,33 @@
 @using NodaTime
+@using Humans.Application.DTOs.Calendar
+@using Humans.Web.Models.Calendar
 @model Humans.Web.Models.Calendar.CalendarAgendaViewModel
 @{
     ViewData["Title"] = "Calendar — Agenda";
     ViewData["ActiveView"] = "agenda";
     var zone = DateTimeZoneProviders.Tzdb[Model.ViewerTimezoneLabel];
-    var grouped = Model.Occurrences
-        .GroupBy(o => o.OccurrenceStartUtc.InZone(zone).Date)
+    var invariant = System.Globalization.CultureInfo.InvariantCulture;
+
+    // Expand each occurrence across every day it covers (inclusive) so multi-day events
+    // appear on each day they span, not just the start day.
+    var windowStart = Model.FromUtc.InZone(zone).Date;
+    var windowEnd = Model.ToUtc.Minus(Duration.FromNanoseconds(1)).InZone(zone).Date;
+
+    var expanded = new List<(LocalDate Day, CalendarOccurrence Occ)>();
+    foreach (var o in Model.Occurrences)
+    {
+        var s = o.StartLocalDate(zone);
+        var e = o.EndLocalDate(zone);
+        var clipStart = s < windowStart ? windowStart : s;
+        var clipEnd = e > windowEnd ? windowEnd : e;
+        for (var d = clipStart; d <= clipEnd; d = d.PlusDays(1))
+        {
+            expanded.Add((d, o));
+        }
+    }
+
+    var grouped = expanded
+        .GroupBy(x => x.Day)
         .OrderBy(g => g.Key)
         .ToList();
 }
@@ -32,11 +54,22 @@
         {
             <h2 class="h5 mt-4">@dayGroup.Key.ToString("d MMM yyyy (ddd)", System.Globalization.CultureInfo.CurrentCulture)</h2>
             <ul class="list-unstyled">
-                @foreach (var o in dayGroup.OrderBy(x => x.OccurrenceStartUtc))
+                @foreach (var (day, o) in dayGroup.OrderBy(x => x.Occ.OccurrenceStartUtc))
                 {
                     var localStart = o.OccurrenceStartUtc.InZone(zone).LocalDateTime;
+                    var hideTime = o.ShouldHideTimeLabel(zone);
+                    var isContinuation = o.StartLocalDate(zone) != day;
                     <li class="mb-2">
-                        <span class="badge bg-light text-dark me-2">@localStart.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture)</span>
+                        @if (hideTime)
+                        {
+                            <span class="badge bg-light text-dark me-2">
+                                @(isContinuation ? "continues" : "all day")
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-light text-dark me-2">@localStart.ToString("HH:mm", invariant)</span>
+                        }
                         <a asp-action="Event" asp-route-id="@o.EventId">@o.Title</a>
                         <small class="text-muted">— @o.OwningTeamName</small>
                         @if (!string.IsNullOrWhiteSpace(o.Location))

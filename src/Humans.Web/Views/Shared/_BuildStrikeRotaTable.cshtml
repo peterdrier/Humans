@@ -86,9 +86,17 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
                             @rangeStart.ToDisplayShiftDate()–@rangeEnd.ToDisplayShiftDate()
                             <small class="text-muted">(@range.Count @Localizer["Shifts_Days"])</small>
                         </td>
-                        <td>
-                            <span class="@(anyUnderstaffed ? "text-danger fw-bold" : "")">@totalConfirmed</span>
-                            <small class="text-muted">/ @totalMax @Localizer["Shifts_Total"]</small>
+                        <td style="min-width: 120px;">
+                            @{
+                                var rangeFillPercent = totalMax > 0 ? (int)Math.Round(100.0 * totalConfirmed / totalMax) : 0;
+                                var rangeFillColor = rangeFillPercent >= 80 ? "bg-success" : rangeFillPercent >= 40 ? "bg-warning" : "bg-danger";
+                            }
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="progress flex-grow-1" style="height: 6px;">
+                                    <div class="progress-bar @rangeFillColor" role="progressbar" style="width: @rangeFillPercent%;" aria-valuenow="@totalConfirmed" aria-valuemin="0" aria-valuemax="@totalMax"></div>
+                                </div>
+                                <small class="text-nowrap @(anyUnderstaffed ? "text-danger fw-bold" : "text-muted")">@totalConfirmed/@totalMax</small>
+                            </div>
                         </td>
                         <td>
                             @if (userSignedUpDays == range.Count)
@@ -119,9 +127,17 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
                         var understaffed = item.ConfirmedCount < item.Shift.MinVolunteers;
                         <tr class="d-none range-detail-@rangeKey @(isFull ? "table-secondary" : "")">
                             <td class="ps-4">@es.GateOpeningDate.PlusDays(item.Shift.DayOffset).ToDisplayShiftDate()</td>
-                            <td>
-                                <span class="@(understaffed ? "text-danger fw-bold" : "")">@item.ConfirmedCount</span>
-                                <small class="text-muted">/ @item.Shift.MaxVolunteers</small>
+                            <td style="min-width: 120px;">
+                                @{
+                                    var dayFillPercent = item.Shift.MaxVolunteers > 0 ? (int)Math.Round(100.0 * item.ConfirmedCount / item.Shift.MaxVolunteers) : 0;
+                                    var dayFillColor = dayFillPercent >= 80 ? "bg-success" : dayFillPercent >= 40 ? "bg-warning" : "bg-danger";
+                                }
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 6px;">
+                                        <div class="progress-bar @dayFillColor" role="progressbar" style="width: @dayFillPercent%;" aria-valuenow="@item.ConfirmedCount" aria-valuemin="0" aria-valuemax="@item.Shift.MaxVolunteers"></div>
+                                    </div>
+                                    <small class="text-nowrap @(understaffed ? "text-danger fw-bold" : "text-muted")">@item.ConfirmedCount/@item.Shift.MaxVolunteers</small>
+                                </div>
                             </td>
                             <td>
                                 @if (Model.UserSignupShiftIds.Contains(item.Shift.Id))
@@ -170,9 +186,17 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
                     var understaffed = item.ConfirmedCount < item.Shift.MinVolunteers;
                     <tr class="@(isFull ? "table-secondary" : "")">
                         <td>@es.GateOpeningDate.PlusDays(item.Shift.DayOffset).ToDisplayShiftDate()</td>
-                        <td>
-                            <span class="@(understaffed ? "text-danger fw-bold" : "")">@item.ConfirmedCount</span>
-                            <small class="text-muted">/ @item.Shift.MaxVolunteers</small>
+                        <td style="min-width: 120px;">
+                            @{
+                                var singleFillPercent = item.Shift.MaxVolunteers > 0 ? (int)Math.Round(100.0 * item.ConfirmedCount / item.Shift.MaxVolunteers) : 0;
+                                var singleFillColor = singleFillPercent >= 80 ? "bg-success" : singleFillPercent >= 40 ? "bg-warning" : "bg-danger";
+                            }
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="progress flex-grow-1" style="height: 6px;">
+                                    <div class="progress-bar @singleFillColor" role="progressbar" style="width: @singleFillPercent%;" aria-valuenow="@item.ConfirmedCount" aria-valuemin="0" aria-valuemax="@item.Shift.MaxVolunteers"></div>
+                                </div>
+                                <small class="text-nowrap @(understaffed ? "text-danger fw-bold" : "text-muted")">@item.ConfirmedCount/@item.Shift.MaxVolunteers</small>
+                            </div>
                         </td>
                         <td>
                             @if (Model.UserSignupShiftIds.Contains(item.Shift.Id))

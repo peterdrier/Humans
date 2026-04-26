@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Hangfire;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Email;
@@ -25,6 +26,7 @@ namespace Humans.Infrastructure.Jobs;
 /// <c>campaign_grants</c> (design-rules §2c) — this job no longer touches
 /// <c>HumansDbContext</c> at all.
 /// </remarks>
+[DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class ProcessEmailOutboxJob : IRecurringJob
 {
     private readonly IEmailOutboxRepository _outboxRepo;

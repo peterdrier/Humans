@@ -1,3 +1,17 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Notifications/**
+  src/Humans.Web/Controllers/NotificationController.cs
+  src/Humans.Web/ViewComponents/NotificationBellViewComponent.cs
+  src/Humans.Domain/Entities/Notification.cs
+  src/Humans.Domain/Entities/NotificationRecipient.cs
+  src/Humans.Domain/Entities/CommunicationPreference.cs
+  src/Humans.Infrastructure/Data/Configurations/Notifications/**
+  src/Humans.Infrastructure/Jobs/CleanupNotificationsJob.cs
+-->
+<!-- freshness:flag-on-change
+  Notification entities, dispatch methods, source list, resolution semantics, or InboxEnabled suppression may have shifted.
+-->
+
 # Notification Inbox
 
 ## Business Context

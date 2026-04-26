@@ -1,3 +1,20 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Governance/**
+  src/Humans.Domain/Entities/Application.cs
+  src/Humans.Domain/Entities/ApplicationStateHistory.cs
+  src/Humans.Domain/Entities/BoardVote.cs
+  src/Humans.Infrastructure/Data/Configurations/ApplicationConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/ApplicationStateHistoryConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/BoardVoteConfiguration.cs
+  src/Humans.Infrastructure/Repositories/ApplicationRepository.cs
+  src/Humans.Web/Controllers/ApplicationController.cs
+  src/Humans.Web/Controllers/BoardController.cs
+  src/Humans.Web/Controllers/GovernanceController.cs
+-->
+<!-- freshness:flag-on-change
+  Application state machine, Board voting flow, term-expiry calculation, and BoardVote deletion-on-finalize — review when Governance service/entities/controllers change.
+-->
+
 # Governance — Section Invariants
 
 Colaborador and Asociado tier applications, Board voting workflow, term lifecycle. **Not** volunteer onboarding — that lives under `docs/sections/Onboarding.md` and is explicitly a separate track.
@@ -6,7 +23,7 @@ Colaborador and Asociado tier applications, Board voting workflow, term lifecycl
 
 - **Volunteer** is the standard membership tier. Nearly all humans are Volunteers. Becoming a Volunteer happens through the onboarding process — not through the application/voting workflow described here.
 - **Colaborador** is an active contributor with project and event responsibilities. Requires an application and Board vote. 2-year term.
-- **Asociado** is a voting member with governance rights (assemblies, elections). Requires an application and Board vote. 2-year term. A human must first be an approved Colaborador before applying for Asociado.
+- **Asociado** is a voting member with governance rights (assemblies, elections). Requires an application and Board vote. 2-year term. There is no code-enforced prerequisite of being a Colaborador first — the Application/Create UI defaults the radio to Asociado when the applicant is already an approved Colaborador, but the Submit endpoint accepts either tier from any volunteer.
 - **Application** is a formal request to become a Colaborador or Asociado. Never used for becoming a Volunteer.
 - **Board Vote** is an individual Board member's vote on a tier application. Board votes are transient working data — they are deleted when the application is finalized, and only the collective decision note and meeting date are retained (GDPR data minimization).
 - **Term** — Colaborador and Asociado memberships have synchronized 2-year terms expiring on December 31 of odd years (2027, 2029, 2031...).
@@ -23,13 +40,16 @@ Tier application entity with state machine workflow. Used for Colaborador and As
 |----------|------|---------|
 | Id | Guid | PK |
 | UserId | Guid | FK → User — **FK only**, no nav |
-| MembershipTier | MembershipTier | Tier being applied for (Colaborador or Asociado) |
-| Status | ApplicationStatus | Current state (Submitted, Approved, Rejected, Withdrawn) |
+| MembershipTier | MembershipTier | Tier being applied for (Colaborador or Asociado), stored as string |
+| Status | ApplicationStatus | Current state (Submitted, Approved, Rejected, Withdrawn), stored as string |
 | Motivation | string (4000) | Required motivation statement |
 | AdditionalInfo | string? (4000) | Optional additional information |
+| SignificantContribution | string? | Asociado-only: applicant's most significant contribution to Nowhere or another Burn |
+| RoleUnderstanding | string? | Asociado-only: applicant's understanding of the asociado role and why they want it |
 | Language | string? (10) | UI language at submission (ISO 639-1 code) |
 | SubmittedAt | Instant | When submitted |
 | UpdatedAt | Instant | Last update |
+| ReviewStartedAt | Instant? | When review began (currently unused — no controller path triggers it) |
 | ResolvedAt | Instant? | When resolved (approved/rejected/withdrawn) |
 | ReviewedByUserId | Guid? | Reviewer ID — **FK only**, no nav |
 | ReviewNotes | string? (4000) | Reviewer notes / rejection reason |
@@ -42,9 +62,9 @@ Tier application entity with state machine workflow. Used for Colaborador and As
 
 ### ApplicationStateHistory
 
-Append-only per design-rules §12 — `IApplicationRepository` exposes no update or delete surface for this table.
+Append-only per design-rules §12 — `IApplicationRepository` exposes no update or delete surface for this table. (Append-only is enforced at the repository layer, not via DB triggers — only `consent_records` has DB-level immutability triggers.)
 
-**Table:** `application_state_histories`
+**Table:** `application_state_history`
 
 ### BoardVote
 
@@ -89,7 +109,7 @@ Stored as string via `HasConversion<string>()`.
 Colaborador and Asociado memberships have 2-year synchronized terms expiring Dec 31 of **odd years** (2027, 2029, 2031...). `TermExpiryCalculator.ComputeTermExpiry()` computes the expiry as the next Dec 31 of an odd year that is at least 2 years from the approval date.
 
 - On approval: `Application.TermExpiresAt` is set.
-- On expiry without renewal: human reverts to Volunteer tier, removed from Colaboradors/Asociados system team.
+- On expiry without renewal: the next `SystemTeamSyncJob` run removes the human from the Colaboradors / Asociados system team (computed via `HasActiveApprovedTierAsync`). The profile's `MembershipTier` field is not automatically reset to Volunteer — it remains until a new approval changes it.
 - Renewal: new Application entity (same tier), goes through normal Board voting.
 - Reminder: `TermRenewalReminderJob` sends reminders 90 days before expiry.
 
@@ -98,21 +118,22 @@ Colaborador and Asociado memberships have 2-year synchronized terms expiring Dec
 | Actor | Capabilities |
 |-------|--------------|
 | Any authenticated human | View own governance status (tier, active applications). Submit a Colaborador or Asociado application |
-| Board | View all pending applications and role assignments. Cast individual votes on applications. View Board voting detail |
-| Board, Admin | Approve or reject tier applications with a decision note and meeting date. Manage role assignments (all roles except Admin) |
-| Admin | Assign the Admin role. All Board capabilities |
+| Board | View all pending applications and role assignments. Cast individual votes on applications. View Board voting detail. Manage role assignments (all `BoardManageableRoles` — i.e. every role except Admin) |
+| HumanAdmin | Manage role assignments (all `BoardManageableRoles` — i.e. every role except Admin). View admin profile pages. (Cannot vote, cannot finalize.) |
+| Board, Admin | Reach the Finalize endpoint to approve/reject (route allows both). The Finalize UI form is rendered only for Admin (`CanFinalize = isAdmin`) |
+| Admin | Assign and revoke the Admin role. All Board capabilities. Sole UI-visible finalizer for tier applications |
 
 ## Invariants
 
-- Application status follows: Submitted then Approved, Rejected, or Withdrawn. No other transitions.
-- Each Board member gets exactly one vote per application.
+- Application status follows: Submitted then Approved, Rejected, or Withdrawn. The state machine also defines a `RequestMoreInfo` self-transition on Submitted, but no controller path currently invokes it.
+- Each Board member gets exactly one vote per application (DB-enforced via unique index on `(ApplicationId, BoardMemberUserId)`).
 - On approval, the term expiry is set to the next December 31 of an odd year that is at least 2 years from the approval date.
 - On approval, the human's membership tier is updated and they are added to the corresponding system team (Colaboradors or Asociados).
 - On finalization (approval or rejection), all individual Board vote records for that application are deleted. Only the collective decision note and Board meeting date survive.
-- Admin can assign all roles. Board and HumanAdmin can assign all roles except Admin.
+- Admin can assign all roles. Board and HumanAdmin can assign all roles except Admin (per `RoleAssignmentAuthorizationHandler` + `RoleNames.BoardManageableRoles`).
 - Role assignments track temporal membership with valid-from and optional valid-to dates. See `Auth.md` for the role-assignment entity.
 - Volunteer onboarding is never blocked by tier applications — they are separate, parallel paths.
-- `application_state_histories` is append-only per §12 — repository exposes `AddAsync` and `GetXxxAsync` but no `UpdateAsync` / `DeleteAsync`.
+- `application_state_history` is append-only per §12 — repository exposes `AddAsync` and `GetXxxAsync` but no `UpdateAsync` / `DeleteAsync`.
 
 ## Negative Access Rules
 
@@ -123,11 +144,13 @@ Colaborador and Asociado memberships have 2-year synchronized terms expiring Dec
 
 ## Triggers
 
-- When an application is approved: the human's tier is updated on their profile, and they are added to the Colaboradors or Asociados system team.
+- When an application is submitted: an in-app notification is dispatched to all Board members (`NotificationSource.ApplicationSubmitted`, best-effort).
+- When an application is approved: the human's tier is updated on their profile (`IProfileService.SetMembershipTierAsync`), they are added to the Colaboradors or Asociados system team via `ISystemTeamSync`, an audit-log entry is written (`AuditAction.TierApplicationApproved`), an approval email is sent (`SendApplicationApprovedAsync`), and an in-app notification is dispatched (`NotificationSource.ApplicationApproved`). Email + notification are best-effort.
+- When an application is rejected: an audit-log entry is written (`AuditAction.TierApplicationRejected`), a rejection email is sent (`SendApplicationRejectedAsync`), and an in-app notification is dispatched (`NotificationSource.ApplicationRejected`). Email + notification are best-effort.
 - When an application is approved or rejected: all Board vote records for that application are deleted (atomic inside `IApplicationRepository.FinalizeAsync`).
-- A renewal reminder is sent 90 days before term expiry (`TermRenewalReminderJob`).
-- On term expiry without renewal: the human reverts to Volunteer tier and is removed from the tier system team.
-- After every write, `ApplicationDecisionService` invalidates `INavBadgeCacheInvalidator` and `INotificationMeterCacheInvalidator`; on approve/reject it also invalidates each affected voter's `IVotingBadgeCacheInvalidator` entry.
+- A renewal reminder email + in-app notification is dispatched 90 days before term expiry (`TermRenewalReminderJob`, `NotificationSource.TermRenewalReminder`).
+- On term expiry without renewal: the next `SystemTeamSyncJob` removes the human from the Colaboradors / Asociados system team (driven by `HasActiveApprovedTierAsync`). The profile's `MembershipTier` field is **not** automatically reset — it remains set until a new approval changes it.
+- After every write, `ApplicationDecisionService` invalidates `INavBadgeCacheInvalidator` and `INotificationMeterCacheInvalidator`; on approve/reject it also invalidates each affected voter's `IVotingBadgeCacheInvalidator` entry; on Board-vote upsert it invalidates the voter's `IVotingBadgeCacheInvalidator` entry.
 
 ## Cross-Section Dependencies
 
@@ -139,12 +162,13 @@ Colaborador and Asociado memberships have 2-year synchronized terms expiring Dec
 
 ## Architecture
 
-**Owning services:** `ApplicationDecisionService`
-**Owned tables:** `applications`, `application_state_histories`, `board_votes`
+**Owning services:** `ApplicationDecisionService`, `MembershipCalculator`, `MembershipQuery`
+**Owned tables:** `applications`, `application_state_history`, `board_votes`
 **Status:** (A) Migrated (peterdrier/Humans PR #503, 2026-04-15). Store/decorator layer subsequently removed under issue nobodies-collective/Humans#533.
 
-- `ApplicationDecisionService` lives in `Humans.Application/Services/Governance/` and depends only on Application-layer abstractions. No `HumansDbContext`, no `IMemoryCache`.
-- `IApplicationRepository` (impl `Humans.Infrastructure/Repositories/ApplicationRepository.cs`) is the only non-test file that touches `DbContext.Applications` / `BoardVotes` / `ApplicationStateHistories`. Aggregate loads include `Application` + `ApplicationStateHistory` + `BoardVote`.
+- `ApplicationDecisionService`, `MembershipCalculator`, and `MembershipQuery` all live in `Humans.Application/Services/Governance/` and depend only on Application-layer abstractions. No `HumansDbContext`, no `IMemoryCache`.
+- `MembershipCalculator` owns no tables — it computes status by orchestrating reads through `IProfileService`, `IMembershipQuery` (a thin pass-through over `ITeamService` + `IRoleAssignmentService`, used to break the DI cycle with `ISystemTeamSync`), `IUserService`, `ILegalDocumentSyncService`, and `IConsentService` (resolved lazily via `IServiceProvider` to break a second cycle).
+- `IApplicationRepository` (impl `Humans.Infrastructure/Repositories/Governance/ApplicationRepository.cs`) is the only non-test file that touches `DbContext.Applications` / `BoardVotes` / `ApplicationStateHistories`. Aggregate loads include `Application` + `ApplicationStateHistory` + `BoardVote`.
 - `FinalizeAsync(app, ct)` is the atomic approve/reject commit: application update + board-vote bulk delete in one `SaveChangesAsync`.
 - **Decorator decision — no caching decorator.** At this section's traffic level (a handful of Board-driven writes per week and a few admin reads per day) a caching layer isn't worth the complexity. The earlier store/decorator from peterdrier/Humans PR #503 was removed under issue nobodies-collective/Humans#533 once §15 (`CachingProfileService`) established the canonical shape.
 - **Cross-domain navs stripped:** `Application.User`, `Application.ReviewedByUser`, `ApplicationStateHistory.ChangedByUser`, `BoardVote.BoardMemberUser`. Display data resolves via `IUserService.GetByIdsAsync` and is stitched into DTOs (`ApplicationAdminDetailDto`, `ApplicationUserDetailDto`, `ApplicationAdminRowDto`, `ApplicationStateHistoryDto`).

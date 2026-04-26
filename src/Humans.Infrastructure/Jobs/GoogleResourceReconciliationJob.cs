@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
@@ -12,6 +13,7 @@ namespace Humans.Infrastructure.Jobs;
 /// Scheduled job that reconciles Google resources.
 /// Add/remove behavior is controlled by SyncSettings, enforced by the service gateway methods.
 /// </summary>
+[DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class GoogleResourceReconciliationJob : IRecurringJob
 {
     private readonly IGoogleSyncService _googleSyncService;

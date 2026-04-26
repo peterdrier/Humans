@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.DTOs;
@@ -28,6 +29,7 @@ namespace Humans.Infrastructure.Jobs;
 /// <see cref="Humans.Infrastructure.Data.HumansDbContext"/> directly
 /// (design-rules §2c).
 /// </remarks>
+[DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class SendAdminDailyDigestJob : IRecurringJob
 {
     private readonly IUserService _userService;

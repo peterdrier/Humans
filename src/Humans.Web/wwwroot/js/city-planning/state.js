@@ -9,4 +9,5 @@ export const appState = {
     previewCampSeasonId: null,  // non-null while previewing a historical version
     remoteCursors:     {},
     currentPopup:      null,
+    measuringActive:   false,
 };

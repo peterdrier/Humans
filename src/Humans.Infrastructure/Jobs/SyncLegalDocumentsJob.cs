@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Extensions;
@@ -20,6 +21,7 @@ namespace Humans.Infrastructure.Jobs;
 /// (design-rules §2c). Consent lookups remain on <see cref="IConsentRepository"/>
 /// which is already the Legal &amp; Consent section's owned repository.
 /// </remarks>
+[DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class SyncLegalDocumentsJob : IRecurringJob
 {
     private readonly ILegalDocumentSyncService _syncService;

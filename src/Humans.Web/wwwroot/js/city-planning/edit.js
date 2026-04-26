@@ -29,7 +29,7 @@ function escHtml(s) {
 // --- Popup ---
 
 export function onCampPolygonClick(e) {
-    if (appState.activeCampSeasonId) return;
+    if (appState.activeCampSeasonId || appState.measuringActive) return;
     const props = e.features[0].properties;
     const campSeasonId = props.campSeasonId;
     const isOwn = props.campSeasonId === CONFIG.USER_CAMP_SEASON_ID;
@@ -50,8 +50,11 @@ export function onCampPolygonClick(e) {
     const historyBtn   = `<button class="btn btn-outline-secondary btn-sm js-history-barrio-btn"><i class="fa fa-history me-1"></i>History</button>`;
 
     if (appState.currentPopup) appState.currentPopup.remove();
+    const nameHtml = props.campSlug
+        ? `<a href="/Barrios/${encodeURIComponent(props.campSlug)}" class="fw-bold text-decoration-none">${escHtml(props.campName || 'Camp')}</a>`
+        : `<strong>${escHtml(props.campName || 'Camp')}</strong>`;
     appState.currentPopup = new maplibregl.Popup().setLngLat(e.lngLat)
-        .setHTML(`<div><strong>${escHtml(props.campName || 'Camp')}</strong></div>${area}${warning}${overlapWarn}${sizeWarn}${soundZoneWarn}<div class="d-flex flex-column gap-1 mt-1">${editBtn}${historyBtn}</div>`)
+        .setHTML(`<div>${nameHtml}</div>${area}${warning}${overlapWarn}${sizeWarn}${soundZoneWarn}<div class="d-flex flex-column gap-1 mt-1">${editBtn}${historyBtn}</div>`)
         .addTo(appState.map);
 
     if (canEdit) {

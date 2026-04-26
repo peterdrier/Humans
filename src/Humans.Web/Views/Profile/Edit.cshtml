@@ -40,10 +40,6 @@
                         <div class="d-flex align-items-center gap-3 mb-2">
                             <vc:user-avatar user-id="@Model.UserId"
                                             size="80" />
-                            @if (!Model.HasCustomProfilePicture && !string.IsNullOrEmpty(Model.ProfilePictureUrl))
-                            {
-                                <span class="text-muted small">@Localizer["ProfileEdit_GoogleAvatar"]</span>
-                            }
                         </div>
                         <input type="file" asp-for="ProfilePictureUpload" class="form-control" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif,.heic,.heif,.avif" />
                         <span asp-validation-for="ProfilePictureUpload" class="text-danger"></span>
@@ -56,6 +52,20 @@
                             </div>
                         }
                     </div>
+                    @if (Model.CanImportGooglePicture)
+                    {
+                        @* Submits to the sibling import form declared at the bottom of the
+                           view, using the HTML5 form attribute so we don't nest forms. *@
+                        <div class="mb-3">
+                            <button type="submit"
+                                    form="importGooglePhotoForm"
+                                    class="btn btn-outline-secondary btn-sm">
+                                <i class="fa-brands fa-google me-1"></i>
+                                @Localizer["ProfileEdit_ImportGooglePhoto"]
+                            </button>
+                            <div class="form-text">@Localizer["ProfileEdit_ImportGooglePhotoHelp"]</div>
+                        </div>
+                    }
 
                     <hr />
 
@@ -495,6 +505,14 @@
                 <button type="submit" class="btn btn-primary">@Localizer["Common_Save"]</button>
             </div>
         </form>
+
+        @* Sibling form targeted via the HTML5 form attribute on the Import button. Keeping
+           it out of the Edit form avoids form nesting and lets the import POST independently
+           (no profile fields shipped with the import click). *@
+        @if (Model.CanImportGooglePicture)
+        {
+            <form id="importGooglePhotoForm" asp-action="ImportGooglePhoto" method="post"></form>
+        }
     </div>
 </div>
 

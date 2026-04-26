@@ -1,0 +1,78 @@
+@using Humans.Web.Models.CampAdmin
+@model CampRoleComplianceViewModel
+@{
+    ViewData["Title"] = $"Required role compliance — {Model.Year}";
+    var nonCompliant = Model.Camps.Where(c => !c.IsCompliant).ToList();
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Index">@Localizer["Camp_Plural"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Camp_AdminTitle"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Compliance</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Required role compliance &mdash; @Model.Year</h1>
+    <form asp-controller="CampAdmin" asp-action="Compliance" method="get" class="d-flex gap-2 align-items-center">
+        <label for="year" class="form-label mb-0 text-nowrap">Year</label>
+        <input type="number" id="year" name="year" class="form-control form-control-sm" style="max-width: 120px;" value="@Model.Year" min="2024" max="2099" required />
+        <button type="submit" class="btn btn-outline-primary btn-sm">
+            <i class="fa-solid fa-arrows-rotate me-1"></i>Show
+        </button>
+    </form>
+</div>
+
+<vc:temp-data-alerts />
+
+@if (nonCompliant.Count == 0)
+{
+    <div class="alert alert-success">
+        <i class="fa-solid fa-circle-check me-1"></i>
+        All active barrios have their required roles filled for @Model.Year.
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-header">
+            <i class="fa-solid fa-triangle-exclamation me-2"></i>@nonCompliant.Count barrio(s) missing required roles
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Barrio</th>
+                        <th>Missing roles</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in nonCompliant)
+                    {
+                        var unmet = row.Roles.Where(r => !r.IsMet).ToList();
+                        <tr>
+                            <td>
+                                <a asp-controller="Camp" asp-action="Details" asp-route-slug="@row.CampSlug">@row.CampName</a>
+                            </td>
+                            <td>
+                                @foreach (var role in unmet)
+                                {
+                                    <span class="badge bg-warning text-dark me-1" title="@role.Filled / @role.MinimumRequired filled">
+                                        @role.DefinitionName (@role.Filled/@role.MinimumRequired)
+                                    </span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <a asp-controller="Camp" asp-action="Details" asp-route-slug="@row.CampSlug" class="btn btn-outline-primary btn-sm">
+                                    <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Open
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

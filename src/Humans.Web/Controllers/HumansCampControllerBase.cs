@@ -22,12 +22,12 @@ public abstract class HumansCampControllerBase : HumansControllerBase
         _authorizationService = authorizationService;
     }
 
-    protected Task<Camp?> GetCampBySlugAsync(string slug)
+    protected Task<Camp?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
-        return _campService.GetCampBySlugAsync(slug);
+        return _campService.GetCampBySlugAsync(slug, cancellationToken);
     }
 
-    protected async Task<(bool IsLead, bool IsCampAdmin)> ResolveCampViewerStateAsync(Camp camp)
+    protected async Task<(bool IsLead, bool IsCampAdmin)> ResolveCampViewerStateAsync(Camp camp, User? user, CancellationToken cancellationToken = default)
     {
         var canManage = (await _authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.Manage)).Succeeded;
         if (!canManage)
@@ -35,14 +35,12 @@ public abstract class HumansCampControllerBase : HumansControllerBase
             return (false, false);
         }
 
-        // Determine whether access is via lead or admin role for view-level distinctions
-        var user = await GetCurrentUserAsync();
         if (user is null)
         {
             return (false, false);
         }
 
-        var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
+        var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id, cancellationToken);
         var isCampAdmin = Authorization.RoleChecks.IsCampAdmin(User);
 
         return (isLead, isCampAdmin);

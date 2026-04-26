@@ -1,3 +1,19 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Governance/**
+  src/Humans.Web/Controllers/OnboardingReviewController.cs
+  src/Humans.Web/Controllers/BoardController.cs
+  src/Humans.Web/Views/OnboardingReview/**
+  src/Humans.Domain/Entities/BoardVote.cs
+  src/Humans.Domain/Entities/Application.cs
+  src/Humans.Domain/Entities/ApplicationStateHistory.cs
+  src/Humans.Domain/TermExpiryCalculator.cs
+  src/Humans.Infrastructure/Data/Configurations/BoardVoteConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/ApplicationConfiguration.cs
+-->
+<!-- freshness:flag-on-change
+  Board voting workflow, finalize/approve/reject effects, BoardVote deletion-on-finalization rule, and voting routes — review when ApplicationDecisionService, BoardVote entity, or OnboardingReview voting actions change.
+-->
+
 # Board Voting
 
 ## Business Context

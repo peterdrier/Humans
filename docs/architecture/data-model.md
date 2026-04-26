@@ -16,6 +16,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | UserEmail | [Profiles](../sections/Profiles.md) | |
 | ContactField | [Profiles](../sections/Profiles.md) | |
 | CommunicationPreference | [Profiles](../sections/Profiles.md) | |
+| ProfileLanguage | [Profiles](../sections/Profiles.md) | |
 | VolunteerHistoryEntry | [Profiles](../sections/Profiles.md) | Sub-aggregate of Profile. |
 | AccountMergeRequest | [Profiles](../sections/Profiles.md) | `AccountMergeService` + `DuplicateAccountService` live in `Humans.Application.Services.Profile/`. |
 | Application | [Governance](../sections/Governance.md) | |
@@ -30,10 +31,10 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | TeamJoinRequestStateHistory | [Teams](../sections/Teams.md) | Append-only (§12). |
 | TeamRoleDefinition | [Teams](../sections/Teams.md) | |
 | TeamRoleAssignment | [Teams](../sections/Teams.md) | |
-| TeamPage | [Teams](../sections/Teams.md) | |
 | GoogleResource | [Teams](../sections/Teams.md) | Team Resources sub-aggregate. |
 | Camp / CampSeason / CampLead / CampImage / CampHistoricalName / CampSettings | [Camps](../sections/Camps.md) | |
 | CampMember | [Camps](../sections/Camps.md) | Per-season, post-hoc human/camp affiliation (Pending/Active/Removed). Partial unique on `(CampSeasonId, UserId) WHERE Status <> 'Removed'`. |
+| CampRoleDefinition / CampRoleAssignment | [Camps](../sections/Camps.md) | Per-camp role catalogue + per-season assignments. Owned by `CampRoleService`. Unique on `(CampSeasonId, CampRoleDefinitionId, CampMemberId)`. |
 | CityPlanningSettings | [City Planning](../sections/CityPlanning.md) | |
 | CampPolygon | [City Planning](../sections/CityPlanning.md) | |
 | CampPolygonHistory | [City Planning](../sections/CityPlanning.md) | Append-only (§12). |
@@ -64,7 +65,7 @@ Users/Identity
   ← Application, BoardVote, ApplicationStateHistory (Governance)
   ← ConsentRecord (Legal & Consent)
   ← TeamMember, TeamJoinRequest, TeamRoleAssignment (Teams)
-  ← Camp.CreatedByUser, CampLead, CampSeason.ReviewedByUser (Camps)
+  ← Camp.CreatedByUser, CampLead, CampSeason.ReviewedByUser, CampRoleAssignment.AssignedByUser (Camps)
   ← CampPolygon.LastModifiedByUser, CampPolygonHistory.ModifiedByUser (City Planning)
   ← CalendarEvent.CreatedByUser, CalendarEventException.CreatedByUser (Calendar)
   ← EmailOutboxMessage.User (Email)
@@ -91,6 +92,13 @@ DocumentVersion (Legal & Consent)
 
 CampSeason (Camps)
   ← CampMember (Camps, aggregate-local — partial unique on (CampSeasonId, UserId) WHERE Status <> 'Removed')
+  ← CampRoleAssignment (Camps, aggregate-local — unique on (CampSeasonId, CampRoleDefinitionId, CampMemberId))
+
+CampRoleDefinition (Camps)
+  ← CampRoleAssignment (Camps, aggregate-local — OnDelete Restrict)
+
+CampMember (Camps)
+  ← CampRoleAssignment (Camps, aggregate-local — OnDelete Cascade; soft-delete cleared in service)
 
 Campaign (Campaigns)
   ← CampaignCode, CampaignGrant (Campaigns, aggregate-local)

@@ -1,3 +1,16 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Tickets/**
+  src/Humans.Application/Services/Shifts/ShiftManagementService.cs
+  src/Humans.Web/Controllers/TicketController.cs
+  src/Humans.Domain/Entities/EventParticipation.cs
+  src/Humans.Domain/Entities/EventSettings.cs
+  src/Humans.Infrastructure/Data/Configurations/Shifts/EventParticipationConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/Shifts/EventSettingsConfiguration.cs
+-->
+<!-- freshness:flag-on-change
+  EventParticipation entity, status lifecycle transitions, or "Who Hasn't Bought" exclusion rule may have shifted.
+-->
+
 # Event Participation Tracking
 
 ## Business Context

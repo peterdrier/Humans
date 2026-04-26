@@ -255,6 +255,52 @@ public static class SectionHelpContent
             - Ticket data syncs from the vendor on a regular schedule
             - Order status updates are reflected automatically
             """,
+
+        ["CityPlanning"] = """
+            ## How City Planning Works
+
+            City Planning is an interactive map for placing barrios (camps) on the event site. Each registered camp can claim a physical footprint by drawing a polygon on the shared map.
+
+            ### The Map
+
+            The main City Planning page is a full-screen map showing every placed barrio for the current year. Everyone with an account can view the map and see where each barrio is. Polygons update in real time — when another human saves an edit, the map refreshes for everyone connected.
+
+            ### Placement Phase
+
+            Editing is controlled by the **placement phase**, which a Map Admin opens and closes from the Admin panel. Camp leads can only draw or adjust their own camp's polygon while the phase is **open**. When it's closed, the map is read-only for everyone except Map Admins.
+
+            The Admin panel can also schedule the phase to open and close automatically on specific dates.
+
+            ### Drawing Your Camp
+
+            1. Wait for placement to open (or check the schedule at the top of the map)
+            2. Click **Add my barrio** — the map enters draw mode
+            3. Click points to trace the outline of your camp's footprint
+            4. Click **Save** to commit, or **Cancel** to discard
+
+            Only the **Camp Lead** of a camp can edit that camp's polygon. One polygon per camp per year.
+
+            ### Polygon History
+
+            Every save is recorded in an append-only history. Map Admins can open the history panel from the toolbar and restore a previous version — restoring writes the current polygon to history before overwriting, so nothing is ever lost.
+
+            ### For Map Admins
+
+            **Map Admin** is not a standalone role. You are a Map Admin if you hold the `CampAdmin` role **or** belong to the `city-planning` team. Map Admins can edit any polygon at any time (regardless of placement phase), open/close placement, upload overlays, and export GeoJSON.
+
+            The Admin panel (`/CityPlanning/Admin`) provides:
+
+            - **Placement phase** — open/close now, or schedule dates
+            - **Limit zone** — upload a GeoJSON outline of the site boundary (for visual reference)
+            - **Official zones** — upload a GeoJSON layer of pre-defined zones (for visual reference)
+            - **Export** — download the year's polygons as a GeoJSON file
+
+            ### What Happens Automatically
+
+            - A `CityPlanningSettings` record is created automatically for each event year
+            - Every polygon save writes a history entry for audit
+            - Every save broadcasts a real-time update to all connected humans via SignalR
+            """,
     };
 
     private static readonly Dictionary<string, string> Glossaries = new(StringComparer.Ordinal)
@@ -389,6 +435,26 @@ public static class SectionHelpContent
 | **Sync** | The process of pulling ticket data from the vendor into the system. |
 | **Discount Code** | A promotional code that provides a discount on ticket purchases. |
 | **TicketAdmin** | A role with access to ticket management, sync operations, and discount codes. |
+""",
+
+        ["CityPlanning"] = """
+## City Planning Glossary
+
+| Term | Definition |
+|------|-----------|
+| **Human** | A member of Nobodies Collective. We say "humans", not "members" or "volunteers". |
+| **Barrio** | A themed village or camp at the event. Same thing as a "camp" — we use "barrio" for the placed footprint on the map. |
+| **Camp Polygon** | The polygon a barrio has drawn on the map to claim its physical footprint. One per camp per year. |
+| **Camp Lead** | The human responsible for a camp — the only non-admin who can edit that camp's polygon. |
+| **Placement Phase** | The window during which camp leads can draw or edit their polygons. Opened and closed by Map Admins. |
+| **Placement Window / Dates** | Scheduled open and close times for the placement phase — the phase auto-opens/closes on these dates. |
+| **Map Admin** | Effective role for city-planning administration. Granted by holding `CampAdmin` **or** being a member of the `city-planning` team. |
+| **CampAdmin** | System role with full admin access to camps and city planning. |
+| **Limit Zone** | A GeoJSON polygon showing the boundary of the event site, displayed on the map for reference. |
+| **Official Zones** | A GeoJSON layer of pre-defined zones (e.g., quiet zones, sound stages) displayed as an overlay. |
+| **GeoJSON** | The open standard file format used for map polygons. Used for imports (limit zone, official zones) and exports. |
+| **Polygon History** | The append-only log of every save to a camp's polygon. Map Admins can view and restore previous versions. |
+| **SignalR** | The real-time channel used to push polygon updates to everyone on the map simultaneously. |
 """,
     };
 }

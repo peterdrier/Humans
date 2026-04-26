@@ -10,9 +10,14 @@ namespace Humans.Web.ViewComponents;
 /// Renders a user's avatar by looking up all display data from the cached profile
 /// given only a user ID. Resolution precedence:
 /// 1. Custom uploaded picture (served via <c>/Profile/{profileId}/Picture</c>)
-/// 2. Google OAuth <c>User.ProfilePictureUrl</c>
-/// 3. Initial-letter fallback from the display name
+/// 2. Initial-letter fallback from the display name
 /// </summary>
+/// <remarks>
+/// Google OAuth avatar URLs are intentionally not used as a fallback — they frequently
+/// fail to load due to hotlink restrictions and format drift. Users who want their Google
+/// photo must import it once via the "Import my Google photo" button on <c>/Profile/Edit</c>.
+/// See issue #532.
+/// </remarks>
 public class UserAvatarViewComponent : ViewComponent
 {
     private readonly IProfileService _profileService;
@@ -46,11 +51,11 @@ public class UserAvatarViewComponent : ViewComponent
             }
             else if (IsCurrentUser(userId))
             {
-                // Onboarding/guest users have no Profile row yet. Fall back to the Google
-                // claims on the signed-in principal so their own avatar still renders in
-                // the nav and dashboard until a Profile is created.
+                // Onboarding/guest users have no Profile row yet. Use display name from the
+                // signed-in principal so the initial-letter placeholder still renders in the
+                // nav and dashboard until a Profile is created. No avatar URL until they
+                // upload a custom picture (or import their Google photo once the profile exists).
                 displayName = UserClaimsPrincipal.FindFirstValue(ClaimTypes.Name);
-                profilePictureUrl = UserClaimsPrincipal.FindFirstValue("urn:google:picture");
             }
         }
 
@@ -81,7 +86,8 @@ public class UserAvatarViewComponent : ViewComponent
                 values: new { id = fullProfile.ProfileId, v = fullProfile.UpdatedAtTicks });
         }
 
-        return fullProfile.ProfilePictureUrl;
+        // No Google URL fallback — see class-level remarks.
+        return null;
     }
 
     private bool IsCurrentUser(Guid userId)

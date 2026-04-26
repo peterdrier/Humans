@@ -1,3 +1,19 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Onboarding/**
+  src/Humans.Application/Services/Profile/ProfileService.cs
+  src/Humans.Application/Services/Users/UserService.cs
+  src/Humans.Application/Services/Users/AccountProvisioningService.cs
+  src/Humans.Application/Services/Consent/**
+  src/Humans.Application/Services/Governance/ApplicationDecisionService.cs
+  src/Humans.Application/Services/Teams/TeamService.cs
+  src/Humans.Web/Controllers/OnboardingReviewController.cs
+  src/Humans.Web/Controllers/AccountController.cs
+  src/Humans.Web/Authorization/MembershipRequiredFilter.cs
+-->
+<!-- freshness:flag-on-change
+  Onboarding orchestration across Profile/Consent/Governance/Teams, membership gate, and IOnboardingEligibilityQuery seam — review when OnboardingService or any of its cross-section dependencies change.
+-->
+
 # Onboarding — Section Invariants
 
 Pure orchestrator over Profiles, Legal & Consent, Teams, and Governance. Owns no tables.
@@ -6,14 +22,14 @@ Pure orchestrator over Profiles, Legal & Consent, Teams, and Governance. Owns no
 
 - **Onboarding** is the process a new human goes through to become an active Volunteer: sign up via Google OAuth, complete their profile, consent to all required legal documents, and pass a profile review by a Consent Coordinator. The last two steps can happen in any order.
 - The **Membership Gate** restricts most of the application to active Volunteers. Humans still onboarding are limited to their profile, consent, feedback, legal documents, camps (public), and the home dashboard. All admin and coordinator roles bypass this gate entirely.
-- **Profileless accounts** are authenticated users with no Profile record (e.g., ticket holders, newsletter subscribers created by imports). They are redirected to the Guest dashboard instead of the Home dashboard and see a reduced nav: Guest Dashboard, Camps, Teams (public), Legal. They can create a profile to enter the standard onboarding flow.
+- **Profileless accounts** are authenticated users with no Profile record (e.g., ticket holders, newsletter subscribers created by imports). They are redirected to the Guest dashboard instead of the Home dashboard and see a reduced nav: Guest Dashboard, Camps, Teams (public), Calendar, Legal. They can create a profile to enter the standard onboarding flow.
 - The **Profile Review** (consent check) and **Legal Document Signing** are independent, parallel tracks. A Consent Coordinator can clear the profile review before or after legal documents are signed. Admission to the Volunteers team only happens when both are complete.
 
 ## Data Model
 
 This section owns no tables. Entity detail for the objects Onboarding reads / mutates lives in the owning sections: `docs/sections/Profiles.md` (Profile, User, ConsentCheckStatus), `docs/sections/LegalAndConsent.md` (ConsentRecord), `docs/sections/Governance.md` (Application, BoardVote), `docs/sections/Teams.md` (TeamMember, Volunteers system team).
 
-The only onboarding-specific value type is the narrow `IOnboardingEligibilityQuery` seam used to break the DI cycle between `OnboardingService` and `ProfileService`/`ConsentService` (see Architecture).
+The only onboarding-specific value type is the narrow `IOnboardingEligibilityQuery` seam used to break the DI cycle between `OnboardingService` and `ProfileService` (see Architecture).
 
 ## Actors & Roles
 
@@ -21,9 +37,9 @@ The only onboarding-specific value type is the narrow `IOnboardingEligibilityQue
 |-------|--------------|
 | Unauthenticated visitor | Sign up via Google OAuth (or magic link) |
 | Authenticated human (pre-approval) | Complete profile, sign legal documents, submit a tier application (optional), submit feedback |
-| ConsentCoordinator | Clear or flag consent checks in the onboarding review queue |
-| VolunteerCoordinator | Read-only access to the onboarding review queue (cannot clear/flag or reject) |
-| Board, Admin | All ConsentCoordinator capabilities. Reject signups. Manage Board voting on tier applications |
+| ConsentCoordinator | Clear, flag, or reject signups in the onboarding review queue (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
+| VolunteerCoordinator | Read-only access to the onboarding review queue (`PolicyNames.ReviewQueueAccess`) — cannot clear, flag, or reject |
+| Board, Admin | All ConsentCoordinator capabilities, plus manual `ApproveVolunteerAsync` to override a flagged profile, and Board voting on Colaborador/Asociado tier applications |
 
 ## Invariants
 
@@ -33,22 +49,23 @@ The only onboarding-specific value type is the narrow `IOnboardingEligibilityQue
 - All admin and coordinator roles bypass the membership gate entirely — they can access the full application regardless of membership status.
 - OAuth login checks verified UserEmails, unverified UserEmails, and User.Email before creating a new account — preventing duplicate accounts when the same email exists on another user in any form.
 - `OnboardingService` depends only on interfaces (plus `IClock`) — no `DbContext`, `IDbContextFactory`, `DbSet<T>`, `IMemoryCache`, `IFullProfileInvalidator`, or repository. Enforced by `OnboardingArchitectureTests`.
-- The DI cycle between `OnboardingService` and `ProfileService` / `ConsentService` is broken by the narrow `IOnboardingEligibilityQuery` interface (`SetConsentCheckPendingIfEligibleAsync(userId, ct)`). `OnboardingService` implements it; Profile and Consent depend on it instead of the full `IOnboardingService`.
+- The DI cycle between `OnboardingService` and `ProfileService` is broken by the narrow `IOnboardingEligibilityQuery` interface (`SetConsentCheckPendingIfEligibleAsync(userId, ct)`). `OnboardingService` implements it; `ProfileService` depends on it. `ConsentService` currently depends on the full `IOnboardingService` (cycle broken via `IServiceProvider` for `IMembershipCalculator` rather than the narrow interface — see ConsentService ctor) — narrowing Consent to `IOnboardingEligibilityQuery` is a follow-up.
 
 ## Negative Access Rules
 
-- VolunteerCoordinator **cannot** clear or flag consent checks, and **cannot** reject signups. They have read-only access to the review queue.
-- ConsentCoordinator **cannot** reject signups. Rejection requires Board or Admin.
+- VolunteerCoordinator **cannot** clear, flag, or reject in the review queue. They have read-only access only (`PolicyNames.ReviewQueueAccess` lets them view; the Clear/Flag/Reject POST endpoints all require `PolicyNames.ConsentCoordinatorBoardOrAdmin`).
+- ConsentCoordinator **cannot** cast Board votes on tier applications, **cannot** finalize tier-application Approve/Reject decisions (Board+Admin only via `OnboardingReviewController.Vote` / `Finalize`), and **cannot** manually `ApproveVolunteerAsync` a flagged profile (Board+Admin only via `ProfileController.ApproveVolunteer`).
 - Regular humans still onboarding **cannot** access most of the application (teams, shifts, budget, tickets, governance, etc.) until they become active Volunteers.
 - Profileless accounts **cannot** access the Home dashboard, City Planning, Budget, Shifts, Governance, or any member-only features. They are redirected to the Guest dashboard.
 
 ## Triggers
 
-- When a human completes their profile and signs all required documents: their consent check status becomes Pending.
-- When a profile review is cleared: the profile is approved. If all legal documents are also signed, the human is added to the Volunteers system team and a welcome email is sent. If documents are still pending, admission happens automatically when the last document is signed.
-- When a legal document is signed: the system checks if the profile is also approved. If both conditions are met, the human is added to the Volunteers team.
-- When a consent check is flagged: onboarding is blocked. Board or Admin must review.
-- When a signup is rejected: the rejection reason and timestamp are recorded on the profile. The human is notified.
+- When a human completes their profile and signs all required documents: `OnboardingService.SetConsentCheckPendingIfEligibleAsync` flips `Profile.ConsentCheckStatus` to `Pending` (only if not already approved and `IMembershipCalculator.HasAllRequiredConsentsForTeamAsync(Volunteers)` returns true), and notifies the ConsentCoordinator role.
+- When a profile review is cleared: `Profile.IsApproved` is set to true and `ConsentCheckStatus = Cleared`. `ISystemTeamSync.SyncVolunteersMembershipForUserAsync` runs — it adds the user to the Volunteers system team only if `IsApproved && !IsSuspended && HasAllRequiredConsentsForTeam(Volunteers)` is true, so admission happens whenever the last condition is met (cleared first then last consent signed, or all consents signed first then cleared). If the user already has approved Colaborador/Asociado tiers, those team syncs run too. No email is sent on this auto-approval path.
+- When a legal document is signed: `ConsentService.SubmitConsentAsync` calls `SetConsentCheckPendingIfEligibleAsync` (flipping the consent check to Pending if all consents are now in) and `SyncVolunteersMembershipForUserAsync` (which admits the user iff `IsApproved` is also true).
+- When a consent check is flagged: `Profile.IsApproved` is set to false, `ConsentCheckStatus = Flagged`, and Volunteers / Colaborador / Asociado memberships are de-provisioned via `DeprovisionApprovalGatedSystemTeamsAsync`. Board or Admin must resolve via `ProfileController.ApproveVolunteer` (manual override).
+- When a signup is rejected: `Profile.RejectedAt`, `RejectionReason`, and `RejectedByUserId` are recorded; `IsApproved` is set to false; system team memberships are de-provisioned; a `SignupRejected` email and `ProfileRejected` notification are dispatched. (`Profile` has no `IsRejected` boolean — rejection is detected by `RejectedAt is not null`.)
+- When a Board+Admin manually `ApproveVolunteerAsync` (override path used after a flag is resolved): `IsApproved` is set to true, Volunteers team sync runs, and a `VolunteerApproved` notification ("Welcome! You have been approved") is dispatched.
 
 ## Cross-Section Dependencies
 
@@ -57,7 +74,7 @@ The only onboarding-specific value type is the narrow `IOnboardingEligibilityQue
 - **Governance:** `IApplicationDecisionService` — pending-application lookup, board voting dashboard/detail, board vote recording, unvoted-count, admin stats, pending-application count.
 - **Auth:** `IRoleAssignmentService` — cross-section Board-member resolution (`GetActiveUserIdsInRoleAsync`). Used from within `IApplicationDecisionService.GetBoardVotingDashboardAsync`.
 - **Teams:** `ISystemTeamSync` — Volunteers / Colaboradors / Asociados system team membership sync.
-- **Notifications / Email:** `IEmailService`, `INotificationService`, `INotificationInboxService` — welcome emails, onboarding notifications.
+- **Notifications / Email:** `IEmailService` (`SendSignupRejectedAsync`), `INotificationService` (`VolunteerApproved`, `ProfileRejected`, `AccessSuspended`, `ConsentReviewNeeded` dispatch), `INotificationInboxService` (resolve `AccessSuspended` on unsuspend / consents complete).
 - **Cross-cutting:** `IMembershipCalculator` (consent-check eligibility + admin-dashboard partition), `IHumansMetrics`, `ILogger`.
 
 ## Architecture
@@ -69,7 +86,7 @@ The only onboarding-specific value type is the narrow `IOnboardingEligibilityQue
 - `OnboardingService` lives in `src/Humans.Application/Services/Onboarding/OnboardingService.cs` and depends only on interfaces (plus `IClock`).
 - **Decorator decision — no caching decorator.** Onboarding owns no cached data. Every cache invalidation for an Onboarding-driven write happens inside the owning section's service or decorator (Profile decorator refreshes `_byUserId` after clear/flag/reject/approve/suspend/unsuspend; `INavBadgeCacheInvalidator` and `INotificationMeterCacheInvalidator` fire from the same write path; `IVotingBadgeCacheInvalidator` fires from `IApplicationDecisionService.CastBoardVoteAsync`).
 - **Cross-domain navs stripped:** N/A — Onboarding owns no entities.
-- **DI-cycle break:** `IOnboardingEligibilityQuery` is the narrow interface Profile and Consent depend on. `IOnboardingService` extends it; `OnboardingService` implements it. Reviewers should reject any change that widens the interface Profile / Consent depend on.
+- **DI-cycle break:** `IOnboardingEligibilityQuery` is the narrow interface `ProfileService` depends on (`IOnboardingService` extends it; `OnboardingService` implements it). `ConsentService` still depends on the full `IOnboardingService` — narrowing it to `IOnboardingEligibilityQuery` is a follow-up. Reviewers should reject any change that widens the interface `ProfileService` depends on.
 - **Architecture test** — `tests/Humans.Application.Tests/Architecture/OnboardingArchitectureTests.cs` enforces: lives in `Humans.Application.Services.Onboarding`; no `DbContext` / `IDbContextFactory` / `DbSet<T>` ctor parameters; no `IMemoryCache` parameter; no `IFullProfileInvalidator` parameter; no repository parameters; implements `IOnboardingEligibilityQuery`; every ctor parameter is an interface (plus `IClock`).
 
 The owning-section repositories (`IProfileRepository`, `IUserRepository`, `IApplicationRepository`) each grew a handful of methods to serve Onboarding's cross-section read + write needs — see each repository's XML docs for the onboarding-support block.

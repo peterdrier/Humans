@@ -17,7 +17,12 @@
     <span asp-validation-for="OwningTeamId" class="text-danger small"></span>
 </div>
 
-<div class="row">
+<div class="form-check mb-3">
+    <input asp-for="IsAllDay" class="form-check-input" id="calendar-event-isallday" />
+    <label asp-for="IsAllDay" class="form-check-label">All-day event</label>
+</div>
+
+<div class="row @(Model.IsAllDay ? "d-none" : null)" data-when-timed>
     <div class="col-md-6 mb-3">
         <label asp-for="StartLocal" class="form-label">Start</label>
         <input asp-for="StartLocal" type="datetime-local" class="form-control" />
@@ -30,9 +35,18 @@
     </div>
 </div>
 
-<div class="form-check mb-3">
-    <input asp-for="IsAllDay" class="form-check-input" />
-    <label asp-for="IsAllDay" class="form-check-label">All-day event</label>
+<div class="row @(Model.IsAllDay ? null : "d-none")" data-when-allday>
+    <div class="col-md-6 mb-3">
+        <label asp-for="StartDateLocal" class="form-label">Start date</label>
+        <input asp-for="StartDateLocal" type="date" class="form-control" />
+        <span asp-validation-for="StartDateLocal" class="text-danger small"></span>
+    </div>
+    <div class="col-md-6 mb-3">
+        <label asp-for="EndDateLocal" class="form-label">End date</label>
+        <input asp-for="EndDateLocal" type="date" class="form-control" />
+        <span asp-validation-for="EndDateLocal" class="text-danger small"></span>
+        <small class="text-muted">Inclusive — leave blank for a single-day event.</small>
+    </div>
 </div>
 
 <div class="mb-3">
@@ -70,3 +84,21 @@
         <small class="text-muted">IANA TZ, e.g. <code>Europe/Madrid</code></small>
     </div>
 </div>
+
+<script nonce="@Context.Items["CspNonce"]">
+    (function () {
+        var checkbox = document.getElementById('calendar-event-isallday');
+        if (!checkbox) return;
+        var form = checkbox.closest('form');
+        if (!form) return;
+        var timed = form.querySelector('[data-when-timed]');
+        var allDay = form.querySelector('[data-when-allday]');
+        if (!timed || !allDay) return;
+        function update() {
+            timed.classList.toggle('d-none', checkbox.checked);
+            allDay.classList.toggle('d-none', !checkbox.checked);
+        }
+        checkbox.addEventListener('change', update);
+        update();
+    })();
+</script>

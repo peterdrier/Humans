@@ -1,4 +1,6 @@
 @using NodaTime
+@using Humans.Application.DTOs.Calendar
+@using Humans.Web.Models.Calendar
 @model Humans.Web.Models.Calendar.CalendarMonthViewModel
 @{
     var teamName = ViewData["TeamName"] as string ?? "Team";
@@ -6,13 +8,34 @@
     var zone = DateTimeZoneProviders.Tzdb[Model.ViewerTimezoneLabel];
     var prev = Model.Month.PlusMonths(-1);
     var next = Model.Month.PlusMonths(1);
-
-    var byDate = Model.Occurrences
-        .GroupBy(o => o.OccurrenceStartUtc.InZone(zone).Date)
-        .ToDictionary(g => g.Key, g => g.OrderBy(x => x.OccurrenceStartUtc).ToList());
+    var invariant = System.Globalization.CultureInfo.InvariantCulture;
 
     var firstOfMonth = new LocalDate(Model.Month.Year, Model.Month.Month, 1);
     var daysInMonth = firstOfMonth.Calendar.GetDaysInMonth(Model.Month.Year, Model.Month.Month);
+    var lastOfMonth = firstOfMonth.PlusDays(daysInMonth - 1);
+
+    // Expand multi-day occurrences across every day they cover inside this month.
+    var byDate = new Dictionary<LocalDate, List<CalendarOccurrence>>();
+    foreach (var o in Model.Occurrences)
+    {
+        var s = o.StartLocalDate(zone);
+        var e = o.EndLocalDate(zone);
+        var clipStart = s < firstOfMonth ? firstOfMonth : s;
+        var clipEnd = e > lastOfMonth ? lastOfMonth : e;
+        for (var d = clipStart; d <= clipEnd; d = d.PlusDays(1))
+        {
+            if (!byDate.TryGetValue(d, out var list))
+            {
+                list = new List<CalendarOccurrence>();
+                byDate[d] = list;
+            }
+            list.Add(o);
+        }
+    }
+    foreach (var key in byDate.Keys.ToList())
+    {
+        byDate[key] = byDate[key].OrderBy(x => x.OccurrenceStartUtc).ToList();
+    }
 }
 
 <div class="container py-4">
@@ -46,8 +69,19 @@
                             @foreach (var o in dayOccs)
                             {
                                 var localStart = o.OccurrenceStartUtc.InZone(zone).LocalDateTime;
+                                var hideTime = o.ShouldHideTimeLabel(zone);
+                                var isContinuation = o.StartLocalDate(zone) != day;
                                 <div>
-                                    <span class="badge bg-light text-dark">@localStart.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture)</span>
+                                    @if (hideTime)
+                                    {
+                                        <span class="badge bg-light text-dark">
+                                            @(isContinuation ? "continues" : "all day")
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-light text-dark">@localStart.ToString("HH:mm", invariant)</span>
+                                    }
                                     <a asp-action="Event" asp-route-id="@o.EventId">@o.Title</a>
                                 </div>
                             }

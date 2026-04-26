@@ -139,6 +139,14 @@ public interface ICampService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Lead-driven add: creates a CampMember with Status=Active directly, bypassing
+    /// the request/approve flow. Used by the "Add active member" button on the camp Edit
+    /// page. Idempotent — if an Active membership already exists, returns its id without
+    /// auditing again. Authorization is the caller's responsibility (CampOperationRequirement.Manage).
+    /// </summary>
+    Task<Guid> AddCampMemberAsLeadAsync(Guid campSeasonId, Guid userId, Guid actorUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Human withdraws their own pending request. Scoped to the caller's user id.
     /// </summary>
     Task WithdrawCampMembershipRequestAsync(
@@ -166,6 +174,16 @@ public interface ICampService
         Guid campSeasonId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns the raw <see cref="CampMember"/> rows (Active + Pending) for a
+    /// given camp season — no display-name stitching, no lead union. Used by
+    /// the Camp Edit page to build the per-camp roles picker (which needs
+    /// CampMember.Id and UserId for active members only). Privileged view
+    /// (no authorization inside — caller must gate).
+    /// </summary>
+    Task<IReadOnlyList<CampMember>> GetSeasonMembersAsync(
+        Guid campSeasonId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Lists Active/Pending memberships for a human, grouped by year. Used for
     /// the human's own profile dashboard (MyCamps).
     /// </summary>
@@ -180,7 +198,22 @@ public interface ICampService
     /// </summary>
     Task<int> GetPendingMembershipCountForLeadAsync(
         Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the season + status + user of a camp member, or null if not found.
+    /// Used by ICampRoleService to enforce the active-member-in-correct-season precondition.
+    /// </summary>
+    Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns (CampId, CampName, CampSlug, CampSeasonId) tuples for every camp that has
+    /// any season in the given year. Used by the camp role compliance report.
+    /// </summary>
+    Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId)>>
+        GetCampSeasonsForComplianceAsync(int year, CancellationToken ct = default);
 }
+
+public sealed record CampMemberLookup(Guid CampSeasonId, Guid UserId, CampMemberStatus Status);
 
 /// <summary>
 /// Result of a camp membership request action.

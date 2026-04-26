@@ -58,6 +58,7 @@ export function buildCampPolygonFeatures(campPolygons) {
         f.properties = Object.assign(f.properties || {}, {
             campSeasonId:        p.campSeasonId,
             campName:            p.campName,
+            campSlug:            p.campSlug,
             areaSqm:             p.areaSqm,
             isOwn:               p.campSeasonId === CONFIG.USER_CAMP_SEASON_ID,
             soundZone:           soundZoneVal,

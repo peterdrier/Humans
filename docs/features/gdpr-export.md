@@ -1,3 +1,28 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Gdpr/**
+  src/Humans.Application/Interfaces/Gdpr/**
+  src/Humans.Web/Controllers/ProfileController.cs
+  src/Humans.Web/Controllers/GuestController.cs
+  src/Humans.Application/Services/Profile/ProfileService.cs
+  src/Humans.Application/Services/Users/UserService.cs
+  src/Humans.Application/Services/Consent/ConsentService.cs
+  src/Humans.Application/Services/Teams/TeamService.cs
+  src/Humans.Application/Services/Auth/RoleAssignmentService.cs
+  src/Humans.Application/Services/Shifts/ShiftSignupService.cs
+  src/Humans.Application/Services/Feedback/FeedbackService.cs
+  src/Humans.Application/Services/Notifications/NotificationInboxService.cs
+  src/Humans.Application/Services/Tickets/TicketQueryService.cs
+  src/Humans.Application/Services/Campaigns/CampaignService.cs
+  src/Humans.Application/Services/Camps/**
+  src/Humans.Application/Services/AuditLog/**
+  src/Humans.Application/Services/Budget/BudgetService.cs
+  src/Humans.Application/Services/Profile/AccountMergeService.cs
+  src/Humans.Application/Services/Governance/ApplicationDecisionService.cs
+-->
+<!-- freshness:flag-on-change
+  Contributor list, JSON section names/shapes, or fan-out orchestration may have shifted; per-section table must stay in sync with each contributor's slice.
+-->
+
 # GDPR Data Export
 
 GDPR Article 15 gives every human the right to obtain a copy of all personal
@@ -104,6 +129,7 @@ service has no data for this user are omitted.
 | `TicketAttendeeMatches` | `TicketQueryService` | Array of `{ AttendeeName, AttendeeEmail, TicketTypeName, Price, Status }`. |
 | `CampaignGrants` | `CampaignService` | Array of `{ CampaignTitle, Code, AssignedAt, RedeemedAt, EmailStatus }`. |
 | `CampLeadAssignments` | `CampService` | Array of `{ CampSlug, Role, JoinedAt, LeftAt }`. |
+| `CampRoleAssignments` | `CampService` | Array of `{ CampSlug, SeasonYear, RoleName, AssignedAt, AssignedByUserId }`. |
 | `AccountMergeRequests` | `AccountMergeService` | Array of `{ Status, Role, CreatedAt, ResolvedAt }` (Role is "Target" or "Source"). |
 | `AuditLog` | `AuditLogService` | Array of `{ Action, EntityType, OccurredAt, Role }` (Role is "Actor" or "Subject"). |
 | `BudgetAuditLog` | `BudgetService` | Array of `{ EntityType, FieldName, Description, OccurredAt }`. |

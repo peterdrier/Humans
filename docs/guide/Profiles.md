@@ -1,3 +1,25 @@
+<!-- freshness:triggers
+  src/Humans.Web/Views/Profile/**
+  src/Humans.Web/Controllers/ProfileController.cs
+  src/Humans.Web/Controllers/ProfileApiController.cs
+  src/Humans.Web/Controllers/ContactsController.cs
+  src/Humans.Web/ViewComponents/ProfileCardViewComponent.cs
+  src/Humans.Web/ViewComponents/UserAvatarViewComponent.cs
+  src/Humans.Application/Services/Profile/**
+  src/Humans.Application/Services/Users/UserService.cs
+  src/Humans.Application/Services/Gdpr/**
+  src/Humans.Domain/Entities/Profile.cs
+  src/Humans.Domain/Entities/ProfileLanguage.cs
+  src/Humans.Domain/Entities/ContactField.cs
+  src/Humans.Domain/Entities/UserEmail.cs
+  src/Humans.Domain/Entities/CommunicationPreference.cs
+  src/Humans.Domain/Entities/User.cs
+  src/Humans.Infrastructure/Data/Configurations/Profiles/**
+-->
+<!-- freshness:flag-on-change
+  Personal profile, contact-field visibility, email management, communication preferences, search, GDPR export/deletion, and admin profile actions (suspend/approve/reject/roles). Review when profile views, services, or entities change.
+-->
+
 # Profiles
 
 ## What this section is for
@@ -12,7 +34,7 @@ Each contact field has its own visibility setting, so you can share your Signal 
 - **Edit profile** (`/Profile/Me/Edit`) — update personal info, contact fields, picture, birthday
 - **Emails** (`/Profile/Me/Emails`) — add, verify, and manage your email addresses
 - **Shift info** (`/Profile/Me/ShiftInfo`) — preferences and availability info used for shift planning
-- **Notifications** (`/Profile/Me/Notifications`) — communication preferences by category
+- **Communication preferences** (`/Profile/Me/CommunicationPreferences`) — per-category email and in-app preferences (the older `/Profile/Me/Notifications` URL still works as a permanent redirect)
 - **Privacy** (`/Profile/Me/Privacy`) — data export and account deletion
 - **Outbox** (`/Profile/Me/Outbox`) — the emails the system has sent to you
 - **View another human** (`/Profile/{id}`) — another human's profile, filtered by visibility
@@ -41,7 +63,7 @@ On the edit page, add contact fields for Phone, Signal, Telegram, WhatsApp, Disc
 
 ### Upload a profile picture
 
-On the edit page, choose an image (JPEG, PNG, or WebP, up to 2 MB). Your custom picture takes precedence over your Google avatar everywhere in the app. You can remove it later to revert to the Google avatar.
+On the edit page, choose an image (JPEG, PNG, WebP, or HEIC/HEIF/AVIF from a phone camera, up to 20 MB). The system rotates and resizes it server-side to a long edge of 1000 px and re-encodes as JPEG. Your custom picture takes precedence over your Google avatar everywhere in the app. You can remove it later to revert to the Google avatar.
 
 ### Manage your email addresses
 
@@ -49,7 +71,7 @@ Go to `/Profile/Me/Emails`. Your OAuth login email is always there and cannot be
 
 ### Set communication preferences
 
-Go to `/Profile/Me/Notifications`. Categories like Facilitated Messages, Volunteer Updates, Team Updates, Governance, and Marketing can each be toggled for email and in-app alerts. System and Campaign Codes are always on. If you have a matched ticket, Ticketing is locked on. Opting out of Facilitated Messages hides the Send Message button on your profile for other humans.
+Go to `/Profile/Me/CommunicationPreferences`. Categories — Facilitated Messages, Ticketing, Volunteer Updates, Team Updates, Governance, and Marketing — can each be toggled for email and in-app alerts. System and Campaign Codes are always on and cannot be opted out of. If you have a matched ticket order for the current year, Ticketing is locked on. Opting out of Facilitated Messages hides the Send Message button on your profile for other humans.
 
 ### Set shift preferences
 
@@ -69,7 +91,7 @@ Go to `/Profile/Search` and type a name. Results respect your access level and e
 
 ### Export your data
 
-Go to `/Profile/Me/Privacy` and choose Download My Data. You get a JSON file containing your profile, contact fields, emails, team memberships, consent records, applications, and role assignments.
+Go to `/Profile/Me/Privacy` and choose Download My Data (the underlying URL is `/Profile/Me/DownloadData`). You get a JSON file containing every section of personal data the system holds about you — account, emails, profile, contact fields, volunteer history, languages, communication preferences, team memberships and join requests, role assignments, applications, consents, shift signups and availability, ticket orders and attendee matches, campaign grants, camp lead assignments, feedback reports, in-app notifications, account-merge requests, and audit-log entries you appear in.
 
 ### Request account deletion
 

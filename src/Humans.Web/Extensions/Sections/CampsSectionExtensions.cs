@@ -6,6 +6,7 @@ using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Repositories.Camps;
 using Humans.Infrastructure.Services;
 using CampsCampContactService = Humans.Application.Services.Camps.CampContactService;
+using CampsCampRoleService = Humans.Application.Services.Camps.CampRoleService;
 using CampsCampService = Humans.Application.Services.Camps.CampService;
 
 namespace Humans.Web.Extensions.Sections;
@@ -20,6 +21,11 @@ internal static class CampsSectionExtensions
         services.AddScoped<CampsCampService>();
         services.AddScoped<ICampService>(sp => sp.GetRequiredService<CampsCampService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CampsCampService>());
+
+        services.AddSingleton<ICampRoleRepository, CampRoleRepository>();
+        services.AddScoped<ICampRoleService, CampsCampRoleService>();
+        // Lazy<ICampRoleService> resolves a circular dep: CampService → ICampRoleService → ICampService.
+        services.AddTransient(sp => new Lazy<ICampRoleService>(() => sp.GetRequiredService<ICampRoleService>()));
 
         services.AddScoped<ICampContactService, CampsCampContactService>();
 

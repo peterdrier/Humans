@@ -1,0 +1,76 @@
+@using Humans.Web.Models.CampAdmin
+@model CampRoleDefinitionFormViewModel
+@{
+    var isEdit = Model.Id.HasValue;
+    ViewData["Title"] = isEdit ? "Edit camp role" : "Add camp role";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Index">@Localizer["Camp_Plural"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Camp_AdminTitle"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Roles">Roles</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@(isEdit ? "Edit" : "Add")</li>
+    </ol>
+</nav>
+
+<h1 class="mb-3">@(isEdit ? "Edit camp role" : "Add camp role")</h1>
+
+<vc:temp-data-alerts />
+
+<div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+<div class="row">
+    <div class="col-md-8">
+        <form asp-controller="CampAdmin" asp-action="@(isEdit ? "EditRole" : "CreateRole")" asp-route-id="@(isEdit ? Model.Id : null)" method="post">
+            @Html.AntiForgeryToken()
+            @if (isEdit)
+            {
+                <input type="hidden" asp-for="Id" />
+            }
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label asp-for="Name" class="form-label">Name</label>
+                        <input asp-for="Name" class="form-control" maxlength="100" required />
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Description" class="form-label">Description</label>
+                        <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                        <div class="form-text">Markdown allowed.</div>
+                        <span asp-validation-for="Description" class="text-danger"></span>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label asp-for="SlotCount" class="form-label">Slots</label>
+                            <input asp-for="SlotCount" class="form-control" type="number" min="1" required />
+                            <span asp-validation-for="SlotCount" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="MinimumRequired" class="form-label">Minimum required</label>
+                            <input asp-for="MinimumRequired" class="form-control" type="number" min="0" required />
+                            <div class="form-text">0 &le; Min &le; Slots</div>
+                            <span asp-validation-for="MinimumRequired" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="SortOrder" class="form-label">Sort order</label>
+                            <input asp-for="SortOrder" class="form-control" type="number" required />
+                            <span asp-validation-for="SortOrder" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <a asp-action="Roles" class="btn btn-outline-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-floppy-disk me-1"></i>@(isEdit ? "Save" : "Create")
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

@@ -3,6 +3,7 @@ using System;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Profile;
 using Humans.Domain.Entities;
+using Humans.Testing;
 using Microsoft.AspNetCore.Identity;
 using NodaTime;
 using NodaTime.Testing;
@@ -86,6 +87,50 @@ public class UserEmailServiceTests
             .Returns(emails);
 
         var act = async () => await _service.SetNotificationTargetAsync(userId, targetId);
+
+        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
+        await _fullProfileInvalidator.DidNotReceive().InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task DeleteEmailAsync_InvalidatesFullProfile()
+    {
+        var userId = Guid.NewGuid();
+        var emailId = Guid.NewGuid();
+        _repository.GetByIdAndUserIdAsync(emailId, userId, Arg.Any<CancellationToken>())
+            .Returns(new UserEmail
+            {
+                Id = emailId,
+                UserId = userId,
+                Email = "secondary@example.com",
+                IsOAuth = false,
+                IsVerified = true,
+                IsNotificationTarget = false
+            });
+
+        await _service.DeleteEmailAsync(userId, emailId);
+
+        await _repository.Received(1).RemoveAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _fullProfileInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task DeleteEmailAsync_OAuthEmail_ThrowsValidationException()
+    {
+        var userId = Guid.NewGuid();
+        var emailId = Guid.NewGuid();
+        _repository.GetByIdAndUserIdAsync(emailId, userId, Arg.Any<CancellationToken>())
+            .Returns(new UserEmail
+            {
+                Id = emailId,
+                UserId = userId,
+                Email = "signin@example.com",
+                IsOAuth = true,
+                IsVerified = true,
+                IsNotificationTarget = true
+            });
+
+        var act = async () => await _service.DeleteEmailAsync(userId, emailId);
 
         await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
         await _fullProfileInvalidator.DidNotReceive().InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());

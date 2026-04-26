@@ -56,10 +56,10 @@ public class AboutController : HumansControllerBase
             var (assignments, _) = await _roleAssignmentService.GetFilteredAsync(
                 roleFilter: null, activeOnly: true, page: 1, pageSize: 500, now);
 
-            // Resolve effective profile picture URLs (custom uploads take priority over Google avatars)
+            // Resolve effective profile picture URLs (custom uploads only — see issue #532).
             var effectiveUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
                 _profileService, Url,
-                assignments.Select(ra => (ra.UserId, ra.User.ProfilePictureUrl)));
+                assignments.Select(ra => ra.UserId));
 
             // Define role display order and metadata
             var roleDefinitions = StaffViewModel.GetRoleDefinitions();

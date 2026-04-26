@@ -67,6 +67,19 @@ public class AccountController : Controller
             return RedirectToAction(nameof(Login), new { returnUrl, error = "oauth" });
         }
 
+        // Log once per sign-in whether the Google avatar URL was provided. We capture the
+        // URL on User.ProfilePictureUrl but never render it — see issue #532 and the
+        // "Import my Google photo" button on /Profile/Edit.
+        var googlePictureClaim = info.Principal.FindFirstValue("urn:google:picture");
+        if (!string.IsNullOrEmpty(googlePictureClaim))
+        {
+            _logger.LogInformation("Google avatar URL captured for {Provider} sign-in", info.LoginProvider);
+        }
+        else
+        {
+            _logger.LogInformation("Google avatar URL not captured for {Provider} sign-in (claim missing)", info.LoginProvider);
+        }
+
         // Sign in the user with this external login provider if the user already has a login
         var result = await _signInManager.ExternalLoginSignInAsync(
             info.LoginProvider,

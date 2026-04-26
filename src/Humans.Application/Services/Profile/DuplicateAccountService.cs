@@ -208,6 +208,12 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
             // AsyncFlowOption.Enabled is mandatory for scopes containing
             // await — without it the transaction doesn't flow across
             // continuations.
+            // Sequential-only: the awaits inside this scope MUST stay
+            // sequential (no Task.WhenAll / Parallel.ForEachAsync). Ambient
+            // System.Transactions flow follows a single async continuation;
+            // concurrent awaits inside the scope leak out of the ambient
+            // transaction and those writes commit independently, defeating
+            // the all-or-nothing guarantee.
             using (var scope = new TransactionScope(
                 TransactionScopeOption.Required,
                 new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },

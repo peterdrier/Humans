@@ -1,3 +1,25 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Camps/**
+  src/Humans.Web/Controllers/CampController.cs
+  src/Humans.Web/Controllers/CampAdminController.cs
+  src/Humans.Web/Controllers/CampApiController.cs
+  src/Humans.Web/Controllers/HumansCampControllerBase.cs
+  src/Humans.Web/Views/Camp/**
+  src/Humans.Web/Views/CampAdmin/**
+  src/Humans.Domain/Entities/Camp.cs
+  src/Humans.Domain/Entities/CampSeason.cs
+  src/Humans.Domain/Entities/CampLead.cs
+  src/Humans.Domain/Entities/CampMember.cs
+  src/Humans.Domain/Entities/CampImage.cs
+  src/Humans.Domain/Entities/CampHistoricalName.cs
+  src/Humans.Domain/Entities/CampSettings.cs
+  src/Humans.Infrastructure/Data/Configurations/Camps/**
+  src/Humans.Infrastructure/Data/Configurations/CampMemberConfiguration.cs
+-->
+<!-- freshness:flag-on-change
+  Camp registration/season approval workflow, CampMember per-season affiliation, lead management, and route table — review when Camp services, controllers, or entities change.
+-->
+
 # Camps
 
 ## Business Context
@@ -132,7 +154,27 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Includes: name, slug, status, contact info, leads, season data (languages, member count, placement, vibes)
 - CSV file named `barrios-{year}.csv`
 
-### US-20.12: Tell Humans I'm in a camp this season
+### US-20.12: Per-camp roles
+**As a** camp lead, CampAdmin, or Admin
+**I want to** assign humans in my camp to per-camp roles defined by CampAdmin
+**So that** the org knows who is responsible for the role each season and can flag camps that are missing required leads
+
+**As a** CampAdmin
+**I want to** manage the catalogue of role definitions (name, description, slot count, minimum required for compliance, sort order, required-for-compliance flag)
+**So that** the role list can evolve year over year without code changes
+
+**Acceptance Criteria:**
+- CampAdmin can create, edit, deactivate, and reactivate role definitions at `/Camps/Admin/Roles`. Deactivated definitions are hidden from new-assignment UI but historical assignments stay intact.
+- Per-camp role assignments live on the Camp Edit page (`/Camps/{slug}/Edit`), one card per active role definition, ordered by `SortOrder`. Each card renders one row per slot up to `SlotCount`; filled slots show the assigned human plus an unassign button, empty slots show a `_HumanSearchInput` member picker.
+- Assigning a role requires the picked human to be an Active member of the **same camp-season**. Service rejects with `MemberNotActive` / `MemberSeasonMismatch` otherwise.
+- Soft-cap: the service rejects an assignment that would exceed `SlotCount`. If a CampAdmin reduces `SlotCount` below current usage, the card renders an "over capacity" indicator and a lead must unassign one to drop back into capacity.
+- A human cannot hold the same role twice in the same season (DB unique index + `AlreadyHoldsRole` outcome).
+- Lead-add-active-member shortcut: if the human a lead wants to assign isn't yet a CampMember, the lead can add them directly at `/Camps/{slug}/Members/Add` (creates `CampMember(Active)` without going through the request/approve flow). Audited as `CampMemberAddedByLead`.
+- Compliance report at `/Camps/Admin/Compliance` lists camps where any required role's filled-slot count is below `MinimumRequired` for the chosen year (defaults to current public year).
+- All role visibility is **auth-gated**. The public Camp Details page does not render role assignments — only authenticated users see the roles section.
+- Removing a CampMember (Leave / Withdraw / Remove) clears any role assignments held by that member via `ICampRoleService.RemoveAllForMemberAsync`.
+
+### US-20.13: Tell Humans I'm in a camp this season
 **As an** authenticated human
 **I want to** tell Humans which camp I've joined this season
 **So that** I can receive per-camp notifications, be assigned to per-camp roles (e.g. LNT lead), and claim Early Entry allocations — without the app claiming to manage the camp's real membership.
@@ -258,6 +300,44 @@ CampMember
   `CampMembershipSeasonClosed` notification. Membership rows are not
   auto-mutated — if the season is reactivated the pending request is still live.
 
+### CampRoleDefinition (catalogue of per-camp roles, issue nobodies-collective#489)
+
+CampAdmin-managed catalogue. Each row defines a per-camp role (name, slot count,
+compliance threshold). Soft-deleted definitions preserve historical assignments
+but are hidden from new-assignment UI.
+
+```
+CampRoleDefinition
+├── Id: Guid
+├── Name: string [unique]
+├── Description: string? [Markdown]
+├── SlotCount: int (default 1) — how many slot rows render per camp-season; soft cap enforced in service
+├── MinimumRequired: int (default 1) — slots required for compliance; 0 ≤ MinimumRequired ≤ SlotCount; 0 = role not tracked in the compliance report
+├── SortOrder: int — display order on the Camp Edit roles panel
+├── DeactivatedAt: Instant? (null = active)
+├── CreatedAt: Instant
+└── UpdatedAt: Instant
+```
+
+### CampRoleAssignment (per-season role assignment, issue nobodies-collective#489)
+
+Assigns a `CampMember` to a `CampRoleDefinition` for a specific `CampSeason`.
+
+```
+CampRoleAssignment
+├── Id: Guid
+├── CampSeasonId: Guid (FK → CampSeason, ON DELETE CASCADE)
+├── CampRoleDefinitionId: Guid (FK → CampRoleDefinition, ON DELETE RESTRICT)
+├── CampMemberId: Guid (FK → CampMember, ON DELETE CASCADE)
+├── AssignedAt: Instant
+└── AssignedByUserId: Guid (scalar; no nav per design-rules §6)
+```
+
+- Unique index on `(CampSeasonId, CampRoleDefinitionId, CampMemberId)` — same human cannot hold the same role twice in the same season.
+- Service precondition: the linked `CampMember` must have `Status = Active` for the same `CampSeasonId`.
+- Cascades: removing a `CampMember` (Leave / Withdraw / Remove paths) calls `ICampRoleService.RemoveAllForMemberAsync` to clear assignments before the soft-delete.
+- The catalogue ships empty. There are no default role definitions — CampAdmin creates every row via the management UI.
+
 ### Enums
 ```
 CampSeasonStatus: Pending(0), Active(1), Full(2), Rejected(4), Withdrawn(5)
@@ -359,6 +439,11 @@ Transitions:
 | Set public year | CampAdmin or Admin |
 | Set name lock date | CampAdmin or Admin |
 | Delete camp | Admin only |
+| Manage role definitions (create/edit/deactivate/reactivate) | CampAdmin or Admin |
+| Assign / unassign per-camp role | Camp Lead, CampAdmin, or Admin |
+| Add active member to camp (lead-driven shortcut) | Camp Lead, CampAdmin, or Admin |
+| View role assignments | Authenticated users only (no anonymous render) |
+| Compliance report | CampAdmin or Admin |
 | JSON API | Public (AllowAnonymous) |
 
 ## URL Structure
@@ -387,6 +472,15 @@ Transitions:
 | `POST /Camps/Admin/SetPublicYear` | Set public year |
 | `POST /Camps/Admin/SetNameLockDate` | Set name lock date |
 | `POST /Camps/Admin/Delete/{campId}` | Delete camp |
+| `GET /Camps/Admin/Roles` | List role definitions |
+| `POST /Camps/Admin/Roles/Create` | Create role definition |
+| `POST /Camps/Admin/Roles/{id}/Edit` | Edit role definition |
+| `POST /Camps/Admin/Roles/{id}/Deactivate` | Soft-delete role definition |
+| `POST /Camps/Admin/Roles/{id}/Reactivate` | Reactivate a soft-deleted role definition |
+| `GET /Camps/Admin/Compliance` | Required-role compliance report (defaults to current public year) |
+| `POST /Camps/{slug}/Members/Add` | Lead-adds-active-member shortcut |
+| `POST /Camps/{slug}/Roles/Assign` | Assign role for the current season |
+| `POST /Camps/{slug}/Roles/{assignmentId}/Unassign` | Unassign role (controller verifies cross-camp ownership) |
 | `GET /api/camps/{year}` | JSON API: camps for year |
 | `GET /api/camps/{year}/placement` | JSON API: placement data |
 

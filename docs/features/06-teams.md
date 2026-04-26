@@ -1,3 +1,24 @@
+<!-- freshness:triggers
+  src/Humans.Application/Services/Teams/**
+  src/Humans.Web/Controllers/TeamController.cs
+  src/Humans.Web/Controllers/TeamAdminController.cs
+  src/Humans.Web/Controllers/HumansTeamControllerBase.cs
+  src/Humans.Web/Views/Team/**
+  src/Humans.Web/Views/TeamAdmin/**
+  src/Humans.Domain/Entities/Team.cs
+  src/Humans.Domain/Entities/TeamMember.cs
+  src/Humans.Domain/Entities/TeamJoinRequest.cs
+  src/Humans.Domain/Entities/TeamJoinRequestStateHistory.cs
+  src/Humans.Domain/Entities/TeamRoleDefinition.cs
+  src/Humans.Domain/Entities/TeamRoleAssignment.cs
+  src/Humans.Domain/Constants/SystemTeamIds.cs
+  src/Humans.Infrastructure/Data/Configurations/Teams/**
+  src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs
+-->
+<!-- freshness:flag-on-change
+  Team data model, hierarchy/department rules, system-team sync, IsManagement role behavior, role slots, and route table — review when Teams services, entities, or controllers change.
+-->
+
 # Teams & Working Groups
 
 ## Business Context

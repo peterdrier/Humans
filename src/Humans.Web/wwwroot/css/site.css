@@ -448,16 +448,38 @@ h5, .h5 { font-size: 1.1rem; }
 }
 
 .btn-warning {
-    background-color: var(--h-amber);
-    border-color: var(--h-amber);
+    background-color: var(--h-umber);
+    border-color: var(--h-umber);
     color: var(--h-text-on-dark);
     border-radius: var(--h-radius);
     font-weight: 700;
 }
 
 .btn-warning:hover {
-    background-color: var(--h-amber-dark);
-    border-color: var(--h-amber-dark);
+    background-color: var(--h-aged-ink-light);
+    border-color: var(--h-aged-ink-light);
+    color: var(--h-text-on-dark);
+}
+
+.btn-outline-warning {
+    border-color: var(--h-umber);
+    color: var(--h-umber);
+    border-radius: var(--h-radius);
+    font-weight: 700;
+    transition: all 0.2s ease;
+}
+
+.btn-outline-warning:hover {
+    background-color: var(--h-umber);
+    border-color: var(--h-umber);
+    color: var(--h-text-on-dark);
+}
+
+.btn-outline-warning:focus,
+.btn-outline-warning.active,
+.btn-outline-warning:active {
+    background-color: var(--h-umber);
+    border-color: var(--h-umber);
     color: var(--h-text-on-dark);
 }
 
@@ -1507,3 +1529,99 @@ tr[data-href] {
     max-width: none;
 }
 
+/* ─── Calendar Grid ─── */
+
+.calendar-grid {
+    border-collapse: collapse;
+}
+
+.calendar-day-cell {
+    height: 7rem;
+    vertical-align: top;
+    padding: 0.25rem;
+}
+
+/* Multi-day banner bars. The "banner" is rendered in the SAME slot index inside each
+   covered day cell so the bars visually line up across a week row. The start cell
+   carries the title; continuation cells carry just the background stripe.
+   Flat-capped ends indicate the banner continues into an adjacent week. */
+.calendar-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: 1.25rem;
+    margin: 0 -0.25rem 0.125rem;  /* bleed to cell edges so bars join across cells */
+    padding: 0.0625rem 0.375rem;
+    background: var(--h-gold-light, #d9c08e);
+    color: var(--h-aged-ink, #3d2b1f);
+    font-size: 0.75rem;
+    line-height: 1.1;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.calendar-banner-cap-left {
+    border-top-left-radius: 0.25rem;
+    border-bottom-left-radius: 0.25rem;
+    margin-left: 0;
+}
+
+.calendar-banner-cap-right {
+    border-top-right-radius: 0.25rem;
+    border-bottom-right-radius: 0.25rem;
+    margin-right: 0;
+}
+
+/* Banners that continue across a week boundary keep flat caps on the crossing edge
+   AND show a subtle arrow cue so the user knows the event extends off-screen. */
+.calendar-banner-open-left {
+    margin-left: 0;
+}
+
+.calendar-banner-open-right {
+    margin-right: 0;
+}
+
+.calendar-banner-cue {
+    font-size: 0.7rem;
+    color: var(--h-aged-ink, #3d2b1f);
+    flex: 0 0 auto;
+}
+
+.calendar-banner-link {
+    color: inherit;
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.calendar-banner-link:hover {
+    text-decoration: underline;
+}
+
+/* Empty slot placeholder keeps per-day items vertically aligned with banner rows
+   when some slots in the week are empty for this particular day. */
+.calendar-banner-spacer {
+    background: transparent;
+    visibility: hidden;
+}
+
+/* Mobile: keep the table scrollable horizontally rather than letting banners force
+   a reflow that squeezes columns below legibility. */
+@media (max-width: 576px) {
+    .calendar-grid {
+        font-size: 0.75rem;
+    }
+
+    .calendar-day-cell {
+        height: 6rem;
+        padding: 0.125rem;
+    }
+
+    .calendar-banner {
+        font-size: 0.7rem;
+        padding: 0.0625rem 0.25rem;
+    }
+}

@@ -1,3 +1,7 @@
+<!-- freshness:flag-on-change
+  Reviewer-facing reject rules (Razor booleans, authorization gaps, missing .Include, exception swallowing, cache invalidation, JSON serialization, migration integrity). Flag if any architectural pattern shift in src/** changes what reviewers must catch.
+-->
+
 # Code Review Rules
 
 Hard rules for code review. Every item here is a **reject** — if any of these are violated, the review must flag it as CRITICAL regardless of context. These rules are passed verbatim to all reviewers (Claude, Codex, Gemini) via `/code-review`.

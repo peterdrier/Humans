@@ -10,6 +10,32 @@ You are autonomously improving a ~70k-line ASP.NET Core 10 Clean Architecture co
 
 ---
 
+## PRIORITY FOCUS: §15 Service-Ownership Migration
+
+The codebase is mid-migration to the **§15 Profile Section Pattern** — every service owns its data behind a repository, no cross-service DB access, cross-section reads go through owning-service interfaces. This is the highest-value tech debt in the project right now. **Before picking generic cleanups, check whether a §15 lead is unfinished.**
+
+**Read these first** (they are authoritative and current):
+- `docs/architecture/design-rules.md` §2 (Service Ownership), §6 (Nav-Strip), §15 (full pattern), §15i (known current violations list)
+- `docs/architecture/tech-debt-2026-04-23.md` — prioritized backlog of §15 leads with file:line citations
+- `docs/architecture/service-data-access-map.md` — per-section ownership map
+
+**Highest-value §15 leads (as of 2026-04-23 — verify against current code before acting):**
+
+1. **Repository pattern inconsistency.** 6 repositories still use the old Scoped + `HumansDbContext` shape; 20 use the §15 Singleton + `IDbContextFactory` shape. Flip the stragglers (BudgetRepository, CampaignRepository, FeedbackRepository, RoleAssignmentRepository, ShiftSignupRepository — and leave ApplicationRepository alone if #533's no-decorator decision still stands).
+2. **Jobs injecting `HumansDbContext` directly (§2c violations).** `ProcessAccountDeletionsJob`, `ProcessEmailOutboxJob`, `ProcessGoogleSyncOutboxJob`, `SendAdminDailyDigestJob`, `SendBoardDailyDigestJob`, `SendReConsentReminderJob`, `SuspendNonCompliantMembersJob`. Route reads/writes through owning-service interfaces.
+3. **Cross-domain nav reads missing `#pragma warning disable CS0618`.** `GoogleWorkspaceSyncService`, `SystemTeamSyncJob`, residual sites in `TeamService`. Either add the pragma + migrate off the nav via an in-memory join, or wrap with the pragma if the nav is still declared.
+4. **CalendarService not in the §15i migration list.** `src/Humans.Infrastructure/Services/CalendarService.cs` still lives in Infrastructure and has a cross-domain `.Include(e => e.OwningTeam)`. Needs the full migration (repository + Application-layer move + `ITeamService` stitch for owning-team display).
+5. **§15i documentation drift.** `design-rules.md` has stale counts ("~25 services", "14 repositories") — the real numbers are 4 business services and 26 repos. Update if you touch adjacent text.
+6. **Cross-domain navigation properties on User.** `User.Profile`, `User.UserEmails`, `User.TeamMemberships`, `User.RoleAssignments`, `User.Applications`, `User.ConsentRecords`, `User.CommunicationPreferences`, `User.GetEffectiveEmail()` still read freely from ~15 call sites (TeamService, GoogleWorkspaceSyncService, SendBoardDailyDigestJob, SyncLegalDocumentsJob, SystemTeamSyncJob, SuspendNonCompliantMembersJob, ProfileController). Small migration increments welcome.
+
+**§15 working rules:**
+- **One section per PR/commit.** Never half-migrate a section. If you extract a repository, finish the full stack (service + repo + cross-service interface changes) in the same commit.
+- **Cross-section reads** go through `IOtherService.GetXAsync` methods — never `Include(otherSection)` across domain boundaries. Use §6b "in-memory join" (batched `GetByIdsAsync` + `ToDictionary`) to stitch display fields.
+- **Cross-domain navs** get `[Obsolete]` marking per §6c; remaining read sites wrap with `#pragma warning disable CS0618` until the nav-strip follow-up.
+- **New services from day one** follow §15 — repository the same day, not "migrate later."
+
+---
+
 ## Architecture (4 layers)
 
 ```
@@ -43,6 +69,8 @@ Also do not modify:
 - **Migration files** — never edit, never create manually.
 - **ConsentRecord** — append-only table with database triggers preventing UPDATE/DELETE.
 - **Test files** in `tests/` — don't modify existing tests. You may add new tests if useful but don't change existing ones.
+- **Known-load-bearing lazy `IServiceProvider` resolutions.** `TeamService` uses lazy `IServiceProvider` resolution for `IEmailService` specifically to break the `UserService → TeamService → EmailService → UserEmailService → UserService` cycle. Do NOT "clean this up" — it goes away when `AccountMergeService` migrates to `Humans.Application.Services.Profile`. Check for a comment explaining why before removing any lazy-resolve pattern.
+- **`IAuthorizationService` in service constructors.** Injecting `IAuthorizationService` pulls every authorization handler's transitive dependencies and can create construction cycles that only surface at startup. Services stay auth-free (§design-rules §2); authorization happens in controllers.
 
 ---
 
@@ -79,7 +107,9 @@ dotnet build Humans.slnx -v q && dotnet test Humans.slnx -v q --filter "FullyQua
 
 ## What to look for
 
-Use your judgement. Scan the codebase and prioritize by impact. Here are the *kinds* of smells worth finding — but don't limit yourself to these:
+**First, check the §15 priority section above.** If there's a specific §15 lead you can knock down, do that — it's higher-value than generic cleanup. Also check `docs/architecture/tech-debt-2026-04-23.md` for the current backlog with file:line citations; don't re-discover what's already catalogued there.
+
+Otherwise use your judgement. Scan the codebase and prioritize by impact. Here are the *kinds* of smells worth finding — but don't limit yourself to these:
 
 ### Pattern divergence
 When the same thing is done multiple ways across the codebase. Examples: caching (GetOrCreateAsync vs TryGetValue+Set vs Get+Set), error handling (TempData vs ModelState vs nothing), authorization (attributes vs inline checks vs service calls). Pick the best pattern and consolidate.
@@ -107,5 +137,8 @@ Before every change, verify:
 3. **Am I removing a property that looks unused?** → STOP, it's likely used via reflection.
 4. **Am I changing a method signature on an interface in `Application/`?** → Check all implementations AND all callers.
 5. **Am I changing authorization?** → Verify the attribute/policy matches the original access level exactly.
-6. **Does `dotnet build Humans.slnx` still pass?** → Must pass after every change.
-7. **Does `dotnet test Humans.slnx` still pass?** → Must pass after every change.
+6. **Am I removing a lazy `IServiceProvider` resolution?** → Check for a comment explaining why. If it exists to break a ctor cycle (common in §15 migrations), leave it alone.
+7. **Am I splitting a large "god class" service?** → STOP. Large cohesive services are preferred over fragmented ones here; splitting breaks caching and cross-method state. Do NOT split services to reduce line count.
+8. **Am I about to half-migrate a §15 section?** → STOP. If you extract a repository you must also move the service to `Humans.Application.Services.X`, stitch cross-section reads through owning-service interfaces, and commit everything together.
+9. **Does `dotnet build Humans.slnx` still pass?** → Must pass after every change.
+10. **Does `dotnet test Humans.slnx` still pass?** → Must pass after every change.

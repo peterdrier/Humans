@@ -921,9 +921,17 @@
   <data name="Profile_DateOfBirth" xml:space="preserve"><value>Aniversari</value></data>
   <data name="Profile_PictureTooLarge" xml:space="preserve"><value>La foto de perfil ha de ser inferior a 20MB.</value></data>
   <data name="Profile_PictureInvalidFormat" xml:space="preserve"><value>La foto de perfil ha d'estar en format JPEG, PNG, WebP o HEIC.</value></data>
-  <data name="ProfileEdit_GoogleAvatar" xml:space="preserve"><value>(avatar de Google)</value></data>
-  <data name="ProfileEdit_PictureHelp" xml:space="preserve"><value>Puja una imatge JPEG, PNG, WebP o HEIC (màx. 20MB). Les imatges grans es redimensionen automàticament. Això substitueix el teu avatar de Google.</value></data>
-  <data name="ProfileEdit_RemovePicture" xml:space="preserve"><value>Elimina foto personalitzada (tornar a l'avatar de Google)</value></data>
+  <data name="ProfileEdit_PictureHelp" xml:space="preserve"><value>Puja una imatge JPEG, PNG, WebP o HEIC (màx. 20MB). Les imatges grans es redimensionen automàticament.</value></data>
+  <data name="ProfileEdit_RemovePicture" xml:space="preserve"><value>Elimina foto personalitzada</value></data>
+  <data name="ProfileEdit_ImportGooglePhoto" xml:space="preserve"><value>Importa la meva foto de Google</value></data>
+  <data name="ProfileEdit_ImportGooglePhotoHelp" xml:space="preserve"><value>Copia la foto del teu compte de Google com a foto de perfil. Podràs reemplaçar-la més endavant pujant-ne una de nova.</value></data>
+  <data name="Profile_ImportGooglePhoto_Success" xml:space="preserve"><value>La teva foto de Google s'ha importat com a foto de perfil.</value></data>
+  <data name="Profile_ImportGooglePhoto_Unavailable" xml:space="preserve"><value>No podem importar una foto de Google: el teu compte no està vinculat a Google o no es va capturar cap avatar en iniciar sessió.</value></data>
+  <data name="Profile_ImportGooglePhoto_NoProfile" xml:space="preserve"><value>Acaba de configurar el teu perfil primer i després podràs importar la teva foto de Google.</value></data>
+  <data name="Profile_ImportGooglePhoto_AlreadyHasCustom" xml:space="preserve"><value>Ja tens una foto de perfil personalitzada. Elimina-la primer per importar la teva foto de Google.</value></data>
+  <data name="Profile_ImportGooglePhoto_FetchFailed" xml:space="preserve"><value>No hem pogut obtenir la teva foto de Google. Prova-ho més tard o puja'n una directament.</value></data>
+  <data name="Profile_ImportGooglePhoto_InvalidFormat" xml:space="preserve"><value>No s'ha pogut processar la teva foto de Google: format no admès o resposta incorrecta.</value></data>
+  <data name="Profile_ImportGooglePhoto_NotGoogleUrl" xml:space="preserve"><value>No hem pogut importar la teva foto de Google: la URL de l'avatar emmagatzemat no sembla una adreça de Google. Puja'n una directament.</value></data>
   <data name="ProfileEdit_DateOfBirthHelp" xml:space="preserve"><value>Només visible per a tu i la junta directiva. S'utilitza per al calendari d'aniversaris.</value></data>
   <data name="TeamDetail_TeamCoordinators" xml:space="preserve"><value>Coordinadors</value></data>
 
@@ -1207,6 +1215,30 @@
   <data name="Nav_Review" xml:space="preserve"><value>Revisió</value></data>
   <data name="Nav_Voting" xml:space="preserve"><value>Votació</value></data>
   <data name="Nav_Board" xml:space="preserve"><value>Junta</value></data>
+  <data name="Nav_Scanner" xml:space="preserve"><value>Escàner</value></data>
+
+  <!-- Scanner section (issue nobodies-collective/Humans#525) -->
+  <data name="Scanner_Section" xml:space="preserve"><value>Escàner</value></data>
+  <data name="Scanner_Index_Title" xml:space="preserve"><value>Eines d'escàner</value></data>
+  <data name="Scanner_Index_Intro" xml:space="preserve"><value>Eines d'escàner al navegador. No s'envien dades al servidor — tot s'executa al teu dispositiu.</value></data>
+  <data name="Scanner_Barcode_Title" xml:space="preserve"><value>Escàner de codis de barres</value></data>
+  <data name="Scanner_Barcode_Open" xml:space="preserve"><value>Obre l'escàner</value></data>
+  <data name="Scanner_Barcode_CardBlurb" xml:space="preserve"><value>Decodifica codis QR i CODE128 amb la càmera del dispositiu.</value></data>
+  <data name="Scanner_Barcode_NotForCheckIn" xml:space="preserve"><value>Aquesta és una eina de prova — no s'usa per al check-in. Escanejar una entrada aquí no marca ningú com a entrat.</value></data>
+  <data name="Scanner_Barcode_Intro" xml:space="preserve"><value>Prem Escaneja per obrir la càmera, apunta-la al codi i el valor decodificat apareixerà a sota. No es desa res.</value></data>
+  <data name="Scanner_Barcode_Scan" xml:space="preserve"><value>Escaneja</value></data>
+  <data name="Scanner_Barcode_Stop" xml:space="preserve"><value>Atura</value></data>
+  <data name="Scanner_Barcode_VideoAria" xml:space="preserve"><value>Vista prèvia en directe de la càmera</value></data>
+  <data name="Scanner_Barcode_DecodedTitle" xml:space="preserve"><value>Codis decodificats</value></data>
+  <data name="Scanner_Barcode_DecodedHelp" xml:space="preserve"><value>El més recent a dalt. Aquesta llista es manté només al teu navegador i s'esborra en sortir.</value></data>
+  <data name="Scanner_Barcode_NoResultsYet" xml:space="preserve"><value>Encara no s'ha decodificat cap codi.</value></data>
+  <data name="Scanner_Barcode_Status_Starting" xml:space="preserve"><value>Iniciant càmera…</value></data>
+  <data name="Scanner_Barcode_Status_Running" xml:space="preserve"><value>Escanejant</value></data>
+  <data name="Scanner_Barcode_Status_Stopped" xml:space="preserve"><value>Aturat</value></data>
+  <data name="Scanner_Barcode_Path_Native" xml:space="preserve"><value>detector natiu</value></data>
+  <data name="Scanner_Barcode_Path_ZXing" xml:space="preserve"><value>fallback ZXing</value></data>
+  <data name="Scanner_Barcode_Error_Camera" xml:space="preserve"><value>No s'ha pogut accedir a la càmera. Assegura't d'haver donat permís i que la pàgina es serveix per HTTPS.</value></data>
+  <data name="Scanner_Barcode_Error_NoDecoder" xml:space="preserve"><value>El teu navegador no té descodificador integrat i la llibreria de fallback no s'ha carregat. Prova amb Chrome o Safari mòbil recents.</value></data>
 
   <!-- Team admin: add member -->
   <data name="TeamAdmin_AddMember" xml:space="preserve"><value>Afegeix membre</value></data>
@@ -1425,7 +1457,9 @@
   <data name="CityPlanning_AddABarrioOption" xml:space="preserve"><value>Afegir un barrio…</value></data>
   <data name="CityPlanning_SaveButton" xml:space="preserve"><value>Desar</value></data>
   <data name="CityPlanning_HistoryButton" xml:space="preserve"><value>Historial</value></data>
+  <data name="CityPlanning_MeasureButton" xml:space="preserve"><value>Mesurar</value></data>
   <data name="CityPlanning_AdminLink" xml:space="preserve"><value>Admin</value></data>
+  <data name="CityPlanning_GoToPlacementMap" xml:space="preserve"><value>Anar al mapa de col·locació</value></data>
   <data name="CityPlanning_Admin_Title" xml:space="preserve"><value>Admin del Mapa de Barrios</value></data>
   <data name="CityPlanning_Admin_ViewMap" xml:space="preserve"><value>Veure mapa</value></data>
   <data name="CityPlanning_Admin_PlacementPhaseCard" xml:space="preserve"><value>Fase de Col·locació</value></data>
@@ -1492,6 +1526,7 @@
   <data name="CityPlanning_Help_Adjusting_Reposition" xml:space="preserve"><value>Arrossega tota la forma per reposicionar-la</value></data>
   <data name="CityPlanning_Help_Adjusting_AddVertex" xml:space="preserve"><value>Fes clic al punt mig d'un costat (on es mostra la longitud en metres) per afegir una nova cantonada</value></data>
   <data name="CityPlanning_Help_Adjusting_DeleteVertex" xml:space="preserve"><value>Fes clic en un punt per seleccionar-lo (es torna taronja), després prem Delete o Backspace per eliminar-lo</value></data>
+  <data name="CityPlanning_Help_Adjusting_MultiSelect" xml:space="preserve"><value>Mantén Majúscules i fes clic als punts per seleccionar-ne diversos alhora, o fes clic i arrossega en un espai buit per dibuixar un rectangle de selecció</value></data>
   <data name="CityPlanning_Help_Adjusting_Area" xml:space="preserve"><value>La superfície en m² es mostra al centre i s'actualitza en editar</value></data>
   <data name="CityPlanning_Help_SavingTitle" xml:space="preserve"><value>Desar &amp; editar més tard</value></data>
   <data name="CityPlanning_Help_SavingBody" xml:space="preserve"><value>Satisfet? Prem Save. Després, fes clic al teu barrio al mapa per veure la mida, i Edit per tornar al mode d'edició. Cada desat crea una entrada a l'historial — usa el botó History per navegar i restaurar versions anteriors. Sense estrès, no pots trencar res!</value></data>
@@ -1636,6 +1671,15 @@
   <data name="Shifts_AllPhases" xml:space="preserve"><value>Totes les fases</value></data>
   <data name="Shifts_HiddenBadge" xml:space="preserve"><value>Ocult</value></data>
   <data name="Shifts_MatchesPrefs" xml:space="preserve"><value>Coincideix amb les teves preferències</value></data>
+  <data name="Shifts_SortUrgency" xml:space="preserve"><value>On m&#233;s calen</value></data>
+  <data name="Shifts_SortDept" xml:space="preserve"><value>Per departament</value></data>
+  <data name="Shifts_SortUrgencyHint" xml:space="preserve"><value>Els torns que necessiten gent primer</value></data>
+  <data name="Shifts_SortDeptHint" xml:space="preserve"><value>Agrupar torns per departament</value></data>
+  <data name="Shifts_SlotsFilled" xml:space="preserve"><value>places cobertes</value></data>
+  <data name="Shifts_RotaSingular" xml:space="preserve"><value>torn</value></data>
+  <data name="Shifts_RotaPlural" xml:space="preserve"><value>torns</value></data>
+  <data name="Shifts_ShiftSingular" xml:space="preserve"><value>franja</value></data>
+  <data name="Shifts_ShiftPlural" xml:space="preserve"><value>franges</value></data>
   <data name="Shifts_SignUpButton" xml:space="preserve"><value>Inscriure's</value></data>
   <data name="Shifts_BrowsingClosed" xml:space="preserve"><value>L'exploració de torns encara no està oberta. Torna més tard!</value></data>
   <data name="Shifts_NoActiveEvent" xml:space="preserve"><value>No hi ha cap esdeveniment actiu configurat. Un administrador ha de configurar els ajustos de l'esdeveniment primer.</value></data>

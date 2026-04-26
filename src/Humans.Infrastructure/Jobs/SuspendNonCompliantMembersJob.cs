@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
@@ -31,6 +32,7 @@ namespace Humans.Infrastructure.Jobs;
 /// <see cref="IRoleAssignmentClaimsCacheInvalidator"/>,
 /// <see cref="IShiftAuthorizationInvalidator"/>) rather than IMemoryCache.
 /// </remarks>
+[DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class SuspendNonCompliantMembersJob : IRecurringJob
 {
     private readonly IUserService _userService;
