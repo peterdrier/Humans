@@ -7,6 +7,7 @@
     var incomeData = Model.IncomeSlices.Select(s => s.Amount).ToList();
     var expenseLabels = Model.ExpenseSlices.Select(s => s.Name).ToList();
     var expenseData = Model.ExpenseSlices.Select(s => s.Amount).ToList();
+    var holdedActuals = ViewData["HoldedActuals"] as IReadOnlyDictionary<Guid, decimal>;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -378,6 +379,13 @@
                         var remainingLabel = isExpenseBudget ? "Remaining" : (displayRemaining >= 0 ? "Over target" : "Under target");
                         var budgetLabel = isExpenseBudget ? "Planned spend" : "Income target";
 
+                        // Holded actuals: planned-vs-actual against allocated amount.
+                        // Direction-aware over/under: expense (positive allocated) is OVER if actual exceeds allocated;
+                        // income (negative allocated) is OVER if actual is more negative than allocated.
+                        var holdedActual = holdedActuals is not null && holdedActuals.TryGetValue(cat.Id, out var ha) ? ha : 0m;
+                        var holdedVariance = catBudget - holdedActual;
+                        var holdedIsOver = catBudget >= 0 ? holdedActual > catBudget : holdedActual < catBudget;
+
                         <div class="accordion-item border-0 border-bottom">
                             <h2 class="accordion-header">
                                 <button class="accordion-button collapsed py-2 ps-4" type="button" data-bs-toggle="collapse" data-bs-target="#cat-@catId">
@@ -394,12 +402,27 @@
                                             <span class="@(displayRemaining >= 0 ? "text-success" : "text-danger")">
                                                 @remainingLabel: &euro;@Math.Abs(displayRemaining).ToString("N2")
                                             </span>
+                                            <span class="mx-1">&middot;</span>
+                                            <span class="text-muted">Holded:</span> &euro;@holdedActual.ToString("N2")
+                                            <span class="mx-1">&middot;</span>
+                                            <span class="@(holdedIsOver ? "text-danger" : "text-success")">
+                                                Variance: &euro;@holdedVariance.ToString("N2")
+                                            </span>
                                         </div>
                                     </div>
                                 </button>
                             </h2>
-                            <div id="cat-@catId" class="accordion-collapse collapse">
+                            <div id="cat-@catId" class="accordion-collapse collapse"
+                                 data-holded-category-id="@cat.Id" data-holded-loaded="false">
                                 <div class="accordion-body p-0">
+                                    <div class="p-3 border-bottom bg-light holded-drilldown">
+                                        <strong class="d-block mb-2 small text-muted">
+                                            <i class="fa-solid fa-receipt me-1"></i>Holded actuals
+                                        </strong>
+                                        <div class="holded-drilldown-content">
+                                            <p class="text-muted small mb-0">Loading&hellip;</p>
+                                        </div>
+                                    </div>
                                     @if (cat.LineItems.Any())
                                     {
                                         <div class="table-responsive">
@@ -500,6 +523,30 @@
     </div>
 }
 </div>
+
+<script>
+(function() {
+    // Lazy-load Holded actuals into each category accordion on first expand.
+    // The collapse target carries data-holded-category-id; result is cached via
+    // data-holded-loaded so re-expanding doesn't refetch.
+    document.querySelectorAll('[data-holded-category-id]').forEach(function(el) {
+        el.addEventListener('show.bs.collapse', function() {
+            if (el.getAttribute('data-holded-loaded') === 'true') return;
+            el.setAttribute('data-holded-loaded', 'true');
+            var categoryId = el.getAttribute('data-holded-category-id');
+            var target = el.querySelector('.holded-drilldown-content');
+            if (!target) return;
+            fetch('/Finance/HoldedByCategory/' + categoryId, { credentials: 'same-origin' })
+                .then(function(r) { return r.ok ? r.text() : Promise.reject(r.status); })
+                .then(function(html) { target.innerHTML = html; })
+                .catch(function() {
+                    target.innerHTML = '<p class="text-danger small mb-0">Failed to load Holded actuals.</p>';
+                    el.setAttribute('data-holded-loaded', 'false');
+                });
+        });
+    });
+})();
+</script>
 
 @if (Model.IncomeSlices.Any() || Model.ExpenseSlices.Any())
 {
