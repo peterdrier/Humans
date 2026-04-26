@@ -1,0 +1,5 @@
+/* admin-shell.css — Renaissance admin console styles.
+   ALL rules in this file MUST be scoped under body.admin-shell so they
+   never bleed into member pages that use _Layout.cshtml. */
+
+/* Phase 4 fills this file with sidebar/breadcrumb/page-head/dashboard/offcanvas styles. */
