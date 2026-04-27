@@ -21,8 +21,10 @@ function selectVerticesInRect(mode, state, rect) {
     const featureId = state.featureId;
     const newSelected = [];
 
-    // Skip last coord — it's the closing duplicate of the first vertex
-    for (let i = 0; i < coords.length - 1; i++) {
+    // MapboxDraw's Polygon strips the closing duplicate from its internal coordinates,
+    // so coords here has NO closing coord — every entry
+    // is a real, unique point that MapboxDraw renders as a handle.
+    for (let i = 0; i < coords.length; i++) {
         const pt = mode.map.project(coords[i]);
         if (pt.x >= rect.minX && pt.x <= rect.maxX && pt.y >= rect.minY && pt.y <= rect.maxY) {
             newSelected.push({ feature_id: featureId, coord_path: `0.${i}` });
