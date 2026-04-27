@@ -183,18 +183,16 @@ public class CityPlanningApiController : ControllerBase
 
         var containers = await _containerService.GetAllByYearAsync(year, cancellationToken);
 
-        var result = containers.Select(c => new
-        {
-            id = c.Id,
-            name = c.Name,
-            description = c.Description,
-            campSeasonId = c.CampSeasonId,
-            locationGeoJson = c.LocationGeoJson,
-            canEdit = isMapAdmin ||
-                      (settings.IsContainerPlacementOpen &&
-                       userSeasonId.HasValue &&
-                       c.CampSeasonId == userSeasonId),
-        });
+        var result = containers.Select(c => new ContainerPlacementDto(
+            c.Id,
+            c.Name,
+            c.Description,
+            c.CampSeasonId,
+            c.LocationGeoJson,
+            isMapAdmin ||
+                (settings.IsContainerPlacementOpen &&
+                 userSeasonId.HasValue &&
+                 c.CampSeasonId == userSeasonId)));
 
         return Ok(result);
     }
@@ -281,7 +279,7 @@ public class CityPlanningApiController : ControllerBase
             if (!props.TryGetProperty("rotation_degrees", out _)) return false;
             return true;
         }
-        catch
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or KeyNotFoundException)
         {
             return false;
         }
@@ -289,3 +287,11 @@ public class CityPlanningApiController : ControllerBase
 }
 
 public record SaveContainerPlacementRequest(string GeoJson);
+
+public record ContainerPlacementDto(
+    Guid Id,
+    string Name,
+    string? Description,
+    Guid? CampSeasonId,
+    string? LocationGeoJson,
+    bool CanEdit);
