@@ -63,7 +63,9 @@ public sealed class WorkspaceUserDirectoryClient : IWorkspaceUserDirectoryClient
                 "Google Workspace credentials not configured. Set ServiceAccountKeyPath or ServiceAccountKeyJson.");
         }
 
-        return credential.CreateScoped(DirectoryService.Scope.AdminDirectoryUser);
+        return credential.CreateScoped(
+            DirectoryService.Scope.AdminDirectoryUser,
+            DirectoryService.Scope.AdminDirectoryUserSecurity);
     }
 
     public async Task<IReadOnlyList<WorkspaceUserAccount>> ListAccountsAsync(
@@ -175,6 +177,33 @@ public sealed class WorkspaceUserDirectoryClient : IWorkspaceUserDirectoryClient
         await service.Users.Update(update, primaryEmail).ExecuteAsync(ct);
     }
 
+    public async Task<IReadOnlyList<string>> GenerateBackupCodesAsync(
+        string primaryEmail, CancellationToken ct = default)
+    {
+        var service = await GetDirectoryServiceAsync();
+
+        // Generate issues a fresh set of codes. Google always issues 10 codes and
+        // invalidates any previously issued set in the same call.
+        await service.VerificationCodes.Generate(primaryEmail).ExecuteAsync(ct);
+
+        // List returns the freshly generated codes so we can surface them to the admin.
+        var response = await service.VerificationCodes.List(primaryEmail).ExecuteAsync(ct);
+
+        var codes = response.Items?
+            .Select(c => c.VerificationCodeValue)
+            .Where(v => !string.IsNullOrEmpty(v))
+            .ToList() ?? [];
+
+        return codes;
+    }
+
+    public async Task InvalidateBackupCodesAsync(
+        string primaryEmail, CancellationToken ct = default)
+    {
+        var service = await GetDirectoryServiceAsync();
+        await service.VerificationCodes.Invalidate(primaryEmail).ExecuteAsync(ct);
+    }
+
     private static WorkspaceUserAccount MapToAccount(User user)
     {
         return new WorkspaceUserAccount(
@@ -187,6 +216,7 @@ public sealed class WorkspaceUserDirectoryClient : IWorkspaceUserDirectoryClient
                 : DateTime.MinValue,
             LastLoginTime: user.LastLoginTimeRaw is not null
                 ? DateTime.Parse(user.LastLoginTimeRaw, System.Globalization.CultureInfo.InvariantCulture)
-                : null);
+                : null,
+            IsEnrolledIn2Sv: user.IsEnrolledIn2Sv ?? false);
     }
 }

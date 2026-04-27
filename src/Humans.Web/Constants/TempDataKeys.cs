@@ -12,4 +12,5 @@ public static class TempDataKeys
     public const string GroupSettingsResult = "GroupSettingsResult";
     public const string EmailBackfillResult = "EmailBackfillResult";
     public const string EmailRenameResult = "EmailRenameResult";
+    public const string WorkspaceBackupCodes = "WorkspaceBackupCodes";
 }

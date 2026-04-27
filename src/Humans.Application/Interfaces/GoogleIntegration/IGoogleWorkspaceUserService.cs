@@ -48,6 +48,26 @@ public interface IGoogleWorkspaceUserService
     /// Gets a single account's details.
     /// </summary>
     Task<WorkspaceUserAccount?> GetAccountAsync(string primaryEmail, CancellationToken ct = default);
+
+    /// <summary>
+    /// Generates a fresh set of backup verification codes for the account and returns them.
+    /// Google reissues the full set on generate — any previously issued codes are invalidated.
+    /// The account must be enrolled in 2-Step Verification for generated codes to be usable.
+    /// </summary>
+    /// <param name="primaryEmail">The @nobodies.team account to generate codes for.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The freshly issued backup codes (typically 10 codes).</returns>
+    Task<IReadOnlyList<string>> GenerateBackupCodesAsync(
+        string primaryEmail,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Invalidates all backup verification codes for the account. Use when codes may
+    /// have leaked or to revoke previously issued codes without issuing new ones.
+    /// </summary>
+    Task InvalidateBackupCodesAsync(
+        string primaryEmail,
+        CancellationToken ct = default);
 }
 
 /// <summary>
@@ -59,4 +79,5 @@ public record WorkspaceUserAccount(
     string LastName,
     bool IsSuspended,
     DateTime CreationTime,
-    DateTime? LastLoginTime);
+    DateTime? LastLoginTime,
+    bool IsEnrolledIn2Sv);
