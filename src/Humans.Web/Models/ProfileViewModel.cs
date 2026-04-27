@@ -102,6 +102,11 @@ public class ProfileViewModel
 
     [StringLength(2000)]
     [DataType(DataType.MultilineText)]
+    [Display(Name = "Personal Boundaries")]
+    public string? PersonalBoundaries { get; set; }
+
+    [StringLength(2000)]
+    [DataType(DataType.MultilineText)]
     [Display(Name = "Notes for the Board")]
     public string? BoardNotes { get; set; }
 

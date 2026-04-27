@@ -990,6 +990,8 @@
   <!-- ======================== -->
   <data name="Profile_ContributionInterests" xml:space="preserve"><value>Como me gustaría contribuir</value></data>
   <data name="ProfileEdit_ContributionInterestsHelp" xml:space="preserve"><value>Comparte tus habilidades, intereses y cómo te gustaría participar. Visible para todos los humans.</value></data>
+  <data name="Profile_PersonalBoundaries" xml:space="preserve"><value>Límites personales</value></data>
+  <data name="ProfileEdit_PersonalBoundariesHelp" xml:space="preserve"><value>Cualquier cosa que te gustaría que los colaboradores y coordinadores sepan por adelantado: limitaciones de disponibilidad, cosas que preferirías no hacer, preferencias de comunicación. Opcional.</value></data>
   <data name="Profile_BoardNotes" xml:space="preserve"><value>Notas para la Junta</value></data>
   <data name="ProfileEdit_BoardNotesHelp" xml:space="preserve"><value>Notas privadas para la Junta.</value></data>
   <data name="Validation_PhoneE164" xml:space="preserve"><value>{0} debe empezar con + y c&#xF3;digo de pa&#xED;s (ej. +34 612 345 678)</value></data>

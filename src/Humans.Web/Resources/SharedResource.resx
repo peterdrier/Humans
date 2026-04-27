@@ -1008,6 +1008,8 @@
   <!-- ======================== -->
   <data name="Profile_ContributionInterests" xml:space="preserve"><value>How I'd Like to Contribute</value></data>
   <data name="ProfileEdit_ContributionInterestsHelp" xml:space="preserve"><value>Share your skills, interests, and how you'd like to get involved. Visible to all humans.</value></data>
+  <data name="Profile_PersonalBoundaries" xml:space="preserve"><value>Personal Boundaries</value></data>
+  <data name="ProfileEdit_PersonalBoundariesHelp" xml:space="preserve"><value>Anything you'd like collaborators and coordinators to know up front — availability constraints, things you'd rather not do, communication preferences. Optional.</value></data>
   <data name="Profile_BoardNotes" xml:space="preserve"><value>Notes for the Board</value></data>
   <data name="ProfileEdit_BoardNotesHelp" xml:space="preserve"><value>Private notes for the Board.</value></data>
   <data name="Validation_PhoneE164" xml:space="preserve"><value>{0} must start with + and country code (e.g. +34 612 345 678)</value></data>

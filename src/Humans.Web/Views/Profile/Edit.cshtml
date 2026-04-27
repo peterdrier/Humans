@@ -374,6 +374,13 @@
                         <span asp-validation-for="ContributionInterests" class="text-danger"></span>
                         <div class="form-text">@Localizer["ProfileEdit_ContributionInterestsHelp"]</div>
                     </div>
+
+                    <div class="mb-3">
+                        <label asp-for="PersonalBoundaries" class="form-label">@Localizer["Profile_PersonalBoundaries"]</label>
+                        <textarea asp-for="PersonalBoundaries" class="form-control" rows="3"></textarea>
+                        <span asp-validation-for="PersonalBoundaries" class="text-danger"></span>
+                        <div class="form-text">@Localizer["ProfileEdit_PersonalBoundariesHelp"]</div>
+                    </div>
                 </div>
             </div>
 

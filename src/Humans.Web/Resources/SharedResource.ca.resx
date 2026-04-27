@@ -990,6 +990,8 @@
   <!-- ======================== -->
   <data name="Profile_ContributionInterests" xml:space="preserve"><value>Com m'agradaria contribuir</value></data>
   <data name="ProfileEdit_ContributionInterestsHelp" xml:space="preserve"><value>Comparteix les teves habilitats, interessos i com t'agradaria participar. Visible per a tots els humans.</value></data>
+  <data name="Profile_PersonalBoundaries" xml:space="preserve"><value>Límits personals</value></data>
+  <data name="ProfileEdit_PersonalBoundariesHelp" xml:space="preserve"><value>Qualsevol cosa que t'agradaria que col·laboradors i coordinadors sàpiguen per endavant: limitacions de disponibilitat, coses que preferiries no fer, preferències de comunicació. Opcional.</value></data>
   <data name="Profile_BoardNotes" xml:space="preserve"><value>Notes per a la Junta</value></data>
   <data name="ProfileEdit_BoardNotesHelp" xml:space="preserve"><value>Notes privades per a la Junta.</value></data>
   <data name="Validation_PhoneE164" xml:space="preserve"><value>{0} ha de començar amb + i codi de país (ex. +34 612 345 678)</value></data>

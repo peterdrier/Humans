@@ -3,6 +3,7 @@ using System;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NodaTime;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    partial class HumansDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260426112907_AddProfilePersonalBoundaries")]
+    partial class AddProfilePersonalBoundaries
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -934,84 +937,6 @@ namespace Humans.Infrastructure.Migrations
                     b.HasIndex("CampSeasonId", "ModifiedAt");
 
                     b.ToTable("camp_polygon_histories", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.CampRoleAssignment", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("AssignedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("AssignedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CampMemberId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CampRoleDefinitionId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CampSeasonId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CampMemberId");
-
-                    b.HasIndex("CampRoleDefinitionId");
-
-                    b.HasIndex("CampSeasonId", "CampRoleDefinitionId", "CampMemberId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_camp_role_assignments_unique");
-
-                    b.ToTable("camp_role_assignments", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.CampRoleDefinition", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Instant?>("DeactivatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<int>("MinimumRequired")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<int>("SlotCount")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<Instant>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Name")
-                        .IsUnique()
-                        .HasDatabaseName("IX_camp_role_definitions_name_unique");
-
-                    b.HasIndex("SortOrder");
-
-                    b.ToTable("camp_role_definitions", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.CampSeason", b =>
@@ -4061,33 +3986,6 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("ModifiedByUser");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.CampRoleAssignment", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.CampMember", "CampMember")
-                        .WithMany()
-                        .HasForeignKey("CampMemberId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Humans.Domain.Entities.CampRoleDefinition", "Definition")
-                        .WithMany("Assignments")
-                        .HasForeignKey("CampRoleDefinitionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Humans.Domain.Entities.CampSeason", "CampSeason")
-                        .WithMany()
-                        .HasForeignKey("CampSeasonId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("CampMember");
-
-                    b.Navigation("CampSeason");
-
-                    b.Navigation("Definition");
-                });
-
             modelBuilder.Entity("Humans.Domain.Entities.CampSeason", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.Camp", "Camp")
@@ -4778,11 +4676,6 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("Leads");
 
                     b.Navigation("Seasons");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.CampRoleDefinition", b =>
-                {
-                    b.Navigation("Assignments");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Campaign", b =>

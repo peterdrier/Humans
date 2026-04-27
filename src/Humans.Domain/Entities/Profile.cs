@@ -142,6 +142,14 @@ public class Profile
     public string? ContributionInterests { get; set; }
 
     /// <summary>
+    /// Member-stated personal boundaries — availability constraints, things they'd rather
+    /// not do, communication preferences. Publicly visible on the profile (same scope as Bio).
+    /// Optional.
+    /// </summary>
+    [PersonalData]
+    public string? PersonalBoundaries { get; set; }
+
+    /// <summary>
     /// Notes from the member intended for the Board (visible to self and board only).
     /// </summary>
     [PersonalData]

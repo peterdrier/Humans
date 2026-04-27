@@ -334,7 +334,7 @@ public class CachingProfileServiceTests
     private static ProfileSaveRequest SampleSaveRequest() => new(
         BurnerName: "Burner", FirstName: "First", LastName: "Last",
         City: null, CountryCode: null, Latitude: null, Longitude: null, PlaceId: null,
-        Bio: null, Pronouns: null, ContributionInterests: null, BoardNotes: null,
+        Bio: null, Pronouns: null, ContributionInterests: null, PersonalBoundaries: null, BoardNotes: null,
         BirthdayMonth: null, BirthdayDay: null,
         EmergencyContactName: null, EmergencyContactPhone: null, EmergencyContactRelationship: null,
         NoPriorBurnExperience: false,
@@ -346,6 +346,7 @@ public class CachingProfileServiceTests
         UserId: userId, DisplayName: "Name", ProfilePictureUrl: null,
         HasCustomPicture: false, ProfileId: Guid.NewGuid(), UpdatedAtTicks: 0,
         BurnerName: null, Bio: null, Pronouns: null, ContributionInterests: null,
+        PersonalBoundaries: null,
         City: null, CountryCode: null, Latitude: null, Longitude: null,
         BirthdayDay: null, BirthdayMonth: null,
         IsApproved: true, IsSuspended: false,

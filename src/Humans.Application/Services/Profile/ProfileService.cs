@@ -227,6 +227,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         profile.Bio = request.Bio?.TrimEnd();
         profile.Pronouns = request.Pronouns;
         profile.ContributionInterests = request.ContributionInterests?.TrimEnd();
+        profile.PersonalBoundaries = request.PersonalBoundaries?.TrimEnd();
         profile.BoardNotes = request.BoardNotes?.TrimEnd();
         profile.EmergencyContactName = request.EmergencyContactName;
         profile.EmergencyContactPhone = request.EmergencyContactPhone;
@@ -727,6 +728,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
                 profile.Bio,
                 profile.Pronouns,
                 profile.ContributionInterests,
+                profile.PersonalBoundaries,
                 profile.BoardNotes,
                 profile.MembershipTier,
                 profile.IsApproved,

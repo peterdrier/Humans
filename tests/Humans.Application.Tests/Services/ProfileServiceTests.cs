@@ -1467,6 +1467,7 @@ public class ProfileServiceTests : IDisposable
             Bio: profile.Bio,
             Pronouns: profile.Pronouns,
             ContributionInterests: profile.ContributionInterests,
+            PersonalBoundaries: profile.PersonalBoundaries,
             City: profile.City,
             CountryCode: profile.CountryCode,
             Latitude: profile.Latitude,
@@ -1490,7 +1491,7 @@ public class ProfileServiceTests : IDisposable
         return new ProfileSaveRequest(
             BurnerName: burnerName, FirstName: firstName, LastName: lastName,
             City: city, CountryCode: null, Latitude: null, Longitude: null, PlaceId: null,
-            Bio: null, Pronouns: null, ContributionInterests: null, BoardNotes: null,
+            Bio: null, Pronouns: null, ContributionInterests: null, PersonalBoundaries: null, BoardNotes: null,
             BirthdayMonth: birthdayMonth, BirthdayDay: birthdayDay,
             EmergencyContactName: null, EmergencyContactPhone: null, EmergencyContactRelationship: null,
             NoPriorBurnExperience: false,
