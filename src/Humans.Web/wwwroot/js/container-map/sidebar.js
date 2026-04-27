@@ -29,13 +29,13 @@ export function setContainers(containers) {
 }
 
 /** Mark a container as having been successfully placed (moves card to Placed). */
-export function markPlaced(id) {
+export function markPlaced(_id) {
     _activeId = null;
     render();
 }
 
 /** Mark a container as unplaced (moves card back to Unplaced). */
-export function markUnplaced(id) {
+export function markUnplaced(_id) {
     render();
 }
 
