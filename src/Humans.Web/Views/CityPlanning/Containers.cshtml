@@ -12,6 +12,9 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>@Localizer["Container_Breadcrumb"] <small class="text-muted">@Model.Year</small></h1>
+    <a asp-action="ContainerMap" asp-route-year="@Model.Year" class="btn btn-outline-primary btn-sm">
+        <i class="fa-solid fa-map-location-dot me-1"></i> @Localizer["ContainerMap_PlaceOnMap"]
+    </a>
 </div>
 
 <vc:temp-data-alerts />

@@ -19,6 +19,13 @@
             <i class="fa-solid fa-plus me-1"></i> @Localizer["Common_Add"]
         </button>
     }
+    @if (Model.CanManage || Model.IsPlacementOpen)
+    {
+        <a asp-controller="CityPlanning" asp-action="ContainerMap" asp-route-year="@Model.Year"
+           class="btn btn-outline-primary btn-sm ms-auto">
+            <i class="fa-solid fa-map-location-dot me-1"></i> @Localizer["ContainerMap_PlaceOnMap"]
+        </a>
+    }
 </div>
 
 <vc:temp-data-alerts />

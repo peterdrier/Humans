@@ -1557,6 +1557,12 @@
   <data name="Container_RemoveImageTitle" xml:space="preserve"><value>Remove image</value></data>
   <data name="Container_RemoveImageConfirm" xml:space="preserve"><value>Remove image from {0}?</value><comment>{0} = container name</comment></data>
   <data name="Container_DeleteConfirm" xml:space="preserve"><value>Delete container {0}?</value><comment>{0} = container name</comment></data>
+  <data name="ContainerMap_Unplaced" xml:space="preserve"><value>Unplaced</value></data>
+  <data name="ContainerMap_Placed" xml:space="preserve"><value>Placed</value></data>
+  <data name="ContainerMap_Placing" xml:space="preserve"><value>Placing…</value></data>
+  <data name="ContainerMap_ClearPlacement" xml:space="preserve"><value>Clear placement</value></data>
+  <data name="ContainerMap_PlaceOnMap" xml:space="preserve"><value>Place on map</value></data>
+  <data name="ContainerMap_ConfirmClear" xml:space="preserve"><value>Remove placement for «{0}»? This cannot be undone.</value><comment>{0} = container name</comment></data>
   <!-- ======================== -->
   <!-- User-Facing Views        -->
   <!-- ======================== -->

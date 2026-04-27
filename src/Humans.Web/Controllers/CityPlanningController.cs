@@ -291,6 +291,27 @@ public class CityPlanningController : HumansControllerBase
     // Containers
     // ======================================================================
 
+    [HttpGet("ContainerMap/{year:int}")]
+    public async Task<IActionResult> ContainerMap(int year, CancellationToken cancellationToken)
+    {
+        var (error, user) = await RequireCurrentUserAsync();
+        if (error != null) return error;
+
+        var isMapAdmin = await IsMapAdminAsync(user.Id, cancellationToken);
+        var userSeasonId = await _campService.GetCampLeadSeasonIdForYearAsync(user.Id, year, cancellationToken);
+        var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
+
+        if (!isMapAdmin && (!settings.IsContainerPlacementOpen || !userSeasonId.HasValue))
+            return Forbid();
+
+        return View(new ContainerMapViewModel
+        {
+            Year = year,
+            IsMapAdmin = isMapAdmin,
+            UserCampSeasonId = userSeasonId?.ToString() ?? string.Empty,
+        });
+    }
+
     [HttpGet("Admin/Containers/{year}")]
     public async Task<IActionResult> Containers(int year, CancellationToken cancellationToken)
     {

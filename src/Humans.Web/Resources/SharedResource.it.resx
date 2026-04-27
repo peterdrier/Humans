@@ -1537,6 +1537,12 @@
   <data name="Container_RemoveImageTitle" xml:space="preserve"><value>Rimuovi immagine</value></data>
   <data name="Container_RemoveImageConfirm" xml:space="preserve"><value>Rimuovere l'immagine da {0}?</value></data>
   <data name="Container_DeleteConfirm" xml:space="preserve"><value>Eliminare il contenitore {0}?</value></data>
+  <data name="ContainerMap_Unplaced" xml:space="preserve"><value>Non posizionati</value></data>
+  <data name="ContainerMap_Placed" xml:space="preserve"><value>Posizionati</value></data>
+  <data name="ContainerMap_Placing" xml:space="preserve"><value>In posizionamento…</value></data>
+  <data name="ContainerMap_ClearPlacement" xml:space="preserve"><value>Rimuovi posizione</value></data>
+  <data name="ContainerMap_PlaceOnMap" xml:space="preserve"><value>Posiziona sulla mappa</value></data>
+  <data name="ContainerMap_ConfirmClear" xml:space="preserve"><value>Rimuovere il posizionamento di «{0}»? Questa azione non può essere annullata.</value></data>
   <!-- ======================== -->
   <!-- User-Facing Views        -->
   <!-- ======================== -->

@@ -47,3 +47,10 @@ public class BarrioContainerGroup
     public string CampSlug { get; set; } = string.Empty;
     public List<ContainerViewModel> Containers { get; set; } = new();
 }
+
+public class ContainerMapViewModel
+{
+    public int Year { get; set; }
+    public bool IsMapAdmin { get; set; }
+    public string UserCampSeasonId { get; set; } = string.Empty; // empty for admins
+}
