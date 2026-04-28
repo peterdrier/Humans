@@ -58,13 +58,17 @@
             </li>
         </ul>
         <div class="d-flex gap-2">
-            <vc:access-matrix section="Shifts" />
+            @* Hide the info button but keep the modal in the DOM for the "Learn more" button *@
+            <span class="shifts-hidden-info-btn"><vc:access-matrix section="Shifts" /></span>
             <a asp-controller="ShiftDashboard" asp-action="Index" class="btn btn-outline-warning btn-sm" authorize-policy="ShiftDepartmentManager"><i class="fa-solid fa-gauge-high me-1"></i>Dashboard <i class="fa-solid fa-lock auth-lock-icon"></i></a>
             <a asp-action="Settings" class="btn btn-outline-secondary btn-sm" authorize-policy="AdminOnly"><i class="fa-solid fa-gear me-1"></i>Settings <i class="fa-solid fa-lock auth-lock-icon"></i></a>
         </div>
     </div>
 
-    <vc:temp-data-alerts />
+    @* Toast alerts — bottom-right, auto-dismiss *@
+    <div class="shifts-toast-container">
+        <vc:temp-data-alerts />
+    </div>
 
     @* === Hero Banner === *@
     <div class="shifts-hero-banner mb-4">
@@ -269,6 +273,14 @@
                 cb.checked = !cb.checked;
                 cb.dispatchEvent(new Event('change'));
             });
+        });
+
+        // Auto-dismiss toast alerts after 4 seconds
+        document.querySelectorAll('.shifts-toast-container .alert').forEach(function(alert) {
+            setTimeout(function() {
+                var bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+                bsAlert.close();
+            }, 4000);
         });
     </script>
 
