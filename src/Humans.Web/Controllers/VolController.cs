@@ -255,7 +255,9 @@ public class VolController : HumansControllerBase
                 UserSignupStatuses = userSignupStatuses,
                 Departments = departments,
                 AllDepartments = allDepartments,
-                ShowSignups = isPrivileged,
+                // Temporarily public — signups list visible to all browsers. Keep the isPrivileged
+                // computation in place so we can flip back to `ShowSignups = isPrivileged` if folks object.
+                ShowSignups = true,
                 IsPrivileged = isPrivileged
             };
 
