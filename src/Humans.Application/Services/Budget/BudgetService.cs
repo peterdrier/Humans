@@ -3,6 +3,7 @@ using Humans.Application.DTOs;
 using Humans.Application.DTOs.Finance;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Budget;
+using Humans.Application.Interfaces.Finance;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
@@ -38,6 +39,7 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
     private readonly IBudgetRepository _repository;
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
+    private readonly IHoldedTransactionService _holdedTransactions;
     private readonly IClock _clock;
     private readonly ILogger<BudgetService> _logger;
 
@@ -45,12 +47,14 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
         IBudgetRepository repository,
         ITeamService teamService,
         IUserService userService,
+        IHoldedTransactionService holdedTransactions,
         IClock clock,
         ILogger<BudgetService> logger)
     {
         _repository = repository;
         _teamService = teamService;
         _userService = userService;
+        _holdedTransactions = holdedTransactions;
         _clock = clock;
         _logger = logger;
     }
@@ -246,6 +250,16 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
 
     public async Task DeleteCategoryAsync(Guid categoryId, Guid actorUserId)
     {
+        // Pre-check: HoldedTransaction.BudgetCategoryId is FK with OnDelete:Restrict.
+        // Letting the DB error bubble produces a 500; surface a friendly InvalidOperationException
+        // the controller can present to the treasurer instead.
+        var matchedTransactions = await _holdedTransactions.GetByCategoryAsync(categoryId);
+        if (matchedTransactions.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"Cannot delete category — {matchedTransactions.Count} Holded transaction(s) are matched to it. Reassign them first.");
+        }
+
         var now = _clock.GetCurrentInstant();
 
         var ok = await _repository.DeleteCategoryAsync(categoryId, actorUserId, now);

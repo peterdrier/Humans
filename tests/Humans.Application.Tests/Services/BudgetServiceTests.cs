@@ -1,4 +1,6 @@
 using AwesomeAssertions;
+using Humans.Application.DTOs.Finance;
+using Humans.Application.Interfaces.Finance;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
@@ -22,6 +24,7 @@ public class BudgetServiceTests : IAsyncLifetime
     private readonly IDbContextFactory<HumansDbContext> _factory;
     private readonly BudgetRepository _repository;
     private readonly ITeamService _teamService;
+    private readonly IHoldedTransactionService _holdedTransactions;
     private readonly FakeClock _clock;
     private readonly BudgetServiceImpl _service;
     private readonly Guid _yearId = Guid.NewGuid();
@@ -39,12 +42,16 @@ public class BudgetServiceTests : IAsyncLifetime
         var userService = Substitute.For<IUserService>();
         userService.GetMergedSourceIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((IReadOnlySet<Guid>)new HashSet<Guid>());
+        _holdedTransactions = Substitute.For<IHoldedTransactionService>();
+        _holdedTransactions.GetByCategoryAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<HoldedTransactionDto>());
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 31, 12, 0));
 
         _service = new BudgetServiceImpl(
             _repository,
             _teamService,
             userService,
+            _holdedTransactions,
             _clock,
             NullLogger<BudgetServiceImpl>.Instance);
     }
@@ -113,6 +120,71 @@ public class BudgetServiceTests : IAsyncLifetime
 
         await act.Should().ThrowAsync<ArgumentOutOfRangeException>()
             .WithMessage("*between 0 and 21*");
+    }
+
+    // ─── DeleteCategoryAsync — Holded FK protection ────────────────────────
+
+    [HumansFact]
+    public async Task DeleteCategoryAsync_throws_when_matched_holded_transactions_exist()
+    {
+        var category = await SeedCategoryAsync();
+
+        IReadOnlyList<HoldedTransactionDto> matched =
+        [
+            new(
+                HoldedDocId: "doc-1",
+                HoldedDocNumber: "F260001",
+                ContactName: "Vendor",
+                Date: new LocalDate(2026, 3, 1),
+                Total: 100m,
+                PaymentsTotal: 0m,
+                PaymentsPending: 100m,
+                Currency: "eur",
+                Approved: true,
+                Tags: ["departments-operations"],
+                MatchStatusReason: "Matched",
+                HoldedDeepLinkUrl: "https://app.holded.com/invoicing/purchases/doc-1",
+                BudgetCategoryId: category.Id),
+            new(
+                HoldedDocId: "doc-2",
+                HoldedDocNumber: "F260002",
+                ContactName: "Vendor 2",
+                Date: new LocalDate(2026, 3, 2),
+                Total: 50m,
+                PaymentsTotal: 50m,
+                PaymentsPending: 0m,
+                Currency: "eur",
+                Approved: true,
+                Tags: ["departments-operations"],
+                MatchStatusReason: "Matched",
+                HoldedDeepLinkUrl: "https://app.holded.com/invoicing/purchases/doc-2",
+                BudgetCategoryId: category.Id),
+        ];
+        _holdedTransactions.GetByCategoryAsync(category.Id, Arg.Any<CancellationToken>())
+            .Returns(matched);
+
+        var act = () => _service.DeleteCategoryAsync(category.Id, Guid.NewGuid());
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*2 Holded transaction(s) are matched*");
+
+        // Category was not deleted.
+        await using var ctx = await _factory.CreateDbContextAsync();
+        var stillThere = await ctx.BudgetCategories.FindAsync(category.Id);
+        stillThere.Should().NotBeNull();
+    }
+
+    [HumansFact]
+    public async Task DeleteCategoryAsync_succeeds_when_no_matched_holded_transactions()
+    {
+        var category = await SeedCategoryAsync();
+
+        // Default mock returns empty list — no matched transactions.
+        await _service.DeleteCategoryAsync(category.Id, Guid.NewGuid());
+
+        await using var ctx = await _factory.CreateDbContextAsync();
+        var deleted = await ctx.BudgetCategories.FindAsync(category.Id);
+        deleted.Should().BeNull();
     }
 
     // ─── CreateYearAsync with scaffold ──────────────────────────────────────
