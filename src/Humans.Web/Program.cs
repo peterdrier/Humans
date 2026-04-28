@@ -166,7 +166,14 @@ builder.Services.AddDataProtection()
 // Configure ASP.NET Core Identity
 builder.Services.AddIdentity<User, IdentityRole<Guid>>(options =>
     {
-        options.User.RequireUniqueEmail = true;
+        // Email uniqueness is enforced at the UserEmails layer
+        // (UserEmailService.AddEmailAsync + cross-User merge detection in
+        // AccountMergeService). After PR 1 of the email-identity-decoupling
+        // spec, User.Email is left null on new users — Identity-level
+        // uniqueness would either fire spuriously on the null column or, more
+        // likely, be a no-op. Disabling it makes the contract explicit: the
+        // UserEmail table owns email uniqueness.
+        options.User.RequireUniqueEmail = false;
         options.SignIn.RequireConfirmedEmail = false;
     })
     .AddEntityFrameworkStores<HumansDbContext>()

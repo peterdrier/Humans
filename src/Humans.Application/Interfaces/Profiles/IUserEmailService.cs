@@ -64,7 +64,16 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Deletes a non-OAuth email address.
+    /// Deletes a UserEmail row. Blocks the delete only if removing it would
+    /// leave the user with zero verified UserEmail rows AND zero AspNetUserLogins
+    /// rows (the "preserve at least one auth method" invariant). The OAuth-tied
+    /// row (currently flagged via <see cref="UserEmail.IsOAuth"/>) is now
+    /// deletable as long as another auth method remains — the
+    /// <c>AspNetUserLogins</c> row is independent of the UserEmail row, so
+    /// OAuth sign-in continues to work after the delete. Unverified rows are
+    /// always deletable since they can't be used for sign-in. See
+    /// <c>docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md</c>
+    /// PR 1 for the design rationale.
     /// </summary>
     Task DeleteEmailAsync(
         Guid userId,

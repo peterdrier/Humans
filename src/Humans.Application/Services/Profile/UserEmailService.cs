@@ -248,20 +248,46 @@ public sealed class UserEmailService : IUserEmailService
         var email = await _repository.GetByIdAndUserIdAsync(emailId, userId, cancellationToken)
             ?? throw new InvalidOperationException("Email not found.");
 
-        if (email.IsOAuth)
-            throw new ValidationException("The sign-in email cannot be deleted.");
-
-        // If this was the notification target, reassign to OAuth email
-        if (email.IsNotificationTarget)
+        // Preserve-at-least-one-auth-method invariant — replaces the old
+        // IsOAuth-based block per email-identity-decoupling spec PR 1
+        // (docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md).
+        // Auth methods are:
+        //   (a) verified UserEmail rows (used by magic-link sign-in)
+        //   (b) AspNetUserLogins rows (used by OAuth sign-in)
+        // We only enforce when removing a verified row — unverified rows aren't
+        // usable for sign-in, so deleting one cannot reduce the auth-method count.
+        if (email.IsVerified)
         {
             var allEmails = await _repository.GetByUserIdForMutationAsync(userId, cancellationToken);
-            var oauthEmail = allEmails.FirstOrDefault(e => e.IsOAuth);
-            if (oauthEmail is not null)
+            var verifiedRemaining = allEmails.Count(e => e.IsVerified && e.Id != emailId);
+
+            var user = await _userService.GetByIdAsync(userId, cancellationToken)
+                ?? throw new InvalidOperationException("User not found.");
+            var loginCount = (await _userManager.GetLoginsAsync(user)).Count;
+
+            if (verifiedRemaining == 0 && loginCount == 0)
             {
-                oauthEmail.IsNotificationTarget = true;
-                oauthEmail.UpdatedAt = _clock.GetCurrentInstant();
-                // Persist reassignment before the delete so both changes are durable
-                await _repository.UpdateAsync(oauthEmail, cancellationToken);
+                throw new ValidationException(
+                    "Cannot remove your last sign-in method. Add another verified email or link an OAuth provider first.");
+            }
+
+            // If this row is the notification target, hand off to the next-best
+            // verified row before the delete, so the user keeps a usable
+            // notification address. Prefer an OAuth-flagged successor (matches
+            // historical behaviour where the OAuth row was the implicit primary).
+            if (email.IsNotificationTarget)
+            {
+                var successor = allEmails
+                    .Where(e => e.Id != emailId && e.IsVerified)
+                    .OrderByDescending(e => e.IsOAuth)
+                    .ThenBy(e => e.DisplayOrder)
+                    .FirstOrDefault();
+                if (successor is not null)
+                {
+                    successor.IsNotificationTarget = true;
+                    successor.UpdatedAt = _clock.GetCurrentInstant();
+                    await _repository.UpdateAsync(successor, cancellationToken);
+                }
             }
         }
 
