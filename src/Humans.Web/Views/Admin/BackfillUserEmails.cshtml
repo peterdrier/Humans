@@ -18,9 +18,11 @@
 <p class="text-muted">
     This is a one-shot data fix tied to PR 1 of the email-identity-decoupling work
     (<code>docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md</code>).
-    Idempotent — safe to re-run any number of times. Required before PR 2 deploys;
-    PR 2's startup orphan guard will refuse to boot the application if any orphan
-    humans remain.
+    Idempotent — safe to re-run any number of times. Recommended before PR 2 deploys
+    so any humans needing manual triage (no <code>User.Email</code> to backfill from)
+    are flagged ahead of the column-drop migration. The PR 2 migration also runs an
+    idempotent defensive backfill before dropping the columns, so this button is the
+    preferred path but not the last line of defence.
 </p>
 
 @if (Model.HasRun)

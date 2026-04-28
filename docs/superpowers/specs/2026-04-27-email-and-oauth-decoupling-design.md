@@ -7,12 +7,12 @@
 **Revision 2026-04-28 (PR 1 / PR 2 split):** Read sweep moved from PR 1 to PR 2.
 PR 1 stops writes only and adds an admin-triggered backfill button + restructures the
 OAuth-callback new-account-creation branch to remove silent-duplicate risk. PR 2 absorbs
-the read sweep, the orphan-User backfill verification (via startup guard), and the
-column drop. This is safer because (1) legacy Users with stale `User.Email` and missing
-UserEmail rows remain reachable via fallback queries through PR 1, (2) the backfill is
-idempotent + observable, and (3) the column drop in PR 2 is gated by a startup guard
-that throws if any orphan Users remain. The fallback reads literally cannot survive past
-PR 2 (column gone), so PR 2 is the natural home for the read sweep regardless.
+the read sweep and the column drop. The PR 2 migration runs an idempotent
+`INSERT … WHERE NOT EXISTS` defensive backfill before the `DROP COLUMN` so any
+orphans missed by the admin button are repaired in the same migration. Both the
+button and the migration's defensive INSERT are idempotent — re-running either is
+safe. Fallback reads literally cannot survive past PR 2 (column gone), so PR 2 is
+the natural home for the read sweep regardless.
 
 ## Goals
 
@@ -205,10 +205,10 @@ For each User with at least one `AspNetUserLogins` row:
 - New admin endpoint that finds Users missing a UserEmail row and inserts one from `User.Email` / `User.EmailConfirmed`. Idempotent (`WHERE NOT EXISTS`). Audited per insert. Returns operator-visible count.
 - Operator clicks on QA, verifies count = 0 (or the expected legacy-orphan count), then on prod, verifies, then PR 2 ships.
 
-### PR 2 — drop Identity columns + startup orphan guard
+### PR 2 — drop Identity columns
 
 - Verified by EF migration reviewer agent (per `CLAUDE.md` migration gate).
-- Startup guard verifies no orphan Users remain before allowing the migration deploy to serve traffic; refuses to boot otherwise.
+- The migration runs `INSERT INTO user_emails … WHERE NOT EXISTS …` from `User.Email` / `User.EmailConfirmed` / `AspNetUserLogins` before `DROP COLUMN`, repairing any orphans the admin button missed. Idempotent — if the migration fails partway, fix the cause and re-run.
 - Anonymization writes in `UserRepository` (rename / merge / purge / deletion) become no-op assignments once the columns are dropped — remove those four `user.Email = / user.UserName = / ...` blocks in the same PR.
 
 ## PR sequence
@@ -220,7 +220,7 @@ Each PR independently shippable to production with no continuity loss; numbered 
 | Transition | Schema risk | Rollback |
 |------------|-------------|----------|
 | → PR 1 | None (write-decouple + admin button) | Revert deploy |
-| PR 1 → PR 2 | Drops 4 columns + 2 indexes; orphan-Users startup guard refuses to boot if backfill button wasn't clicked | Forward-only after deploy; orphan-guard catches missed backfill before traffic |
+| PR 1 → PR 2 | Drops 4 columns + 2 indexes; migration repairs any orphan Users before the drop via idempotent `INSERT … WHERE NOT EXISTS` | Forward-only after deploy; if migration fails partway, fix the cause and re-run |
 | PR 2 → PR 3 | Adds Provider/ProviderKey/IsGoogle; backfills; drops IsOAuth/DisplayOrder | Forward-only after deploy |
 | PR 3 → PR 4 | None | Revert deploy |
 | PR 4 → PR 5 | None | Revert deploy |
@@ -260,7 +260,7 @@ In-flight magic-link tokens, OAuth sessions, and auth cookies remain valid acros
 
 **Risk:** Low (write-only, leaves all read paths intact, no functional regression for legacy data). Mitigation: architecture test + browser smoke for OAuth signin (existing user, new user), magic-link signup (existing user, new user), dev login (legacy persona reuse, new persona seed), email-add+delete flow on a multi-email account, admin backfill button on QA.
 
-### PR 2 — Override Identity properties + drop columns + read sweep + orphan guard
+### PR 2 — Override Identity properties + drop columns + read sweep
 
 **Replaces:** nobodies-collective/Humans#560
 
@@ -274,14 +274,14 @@ In-flight magic-link tokens, OAuth sessions, and auth cookies remain valid acros
   - `DevLoginController.SignIn:116` (`FindByEmailAsync` post-seed path).
   - `UserEmailService.GetNotificationTargetEmailsAsync:437` (User.Email fallback).
   - Any other `_userManager.FindByEmailAsync` / `IUserRepository.GetByNormalizedEmailAsync` callers surfaced by the architecture test.
-- **Startup guard:** add a hosted-service / startup check that runs `SELECT COUNT(*) FROM Users u WHERE NOT EXISTS (SELECT 1 FROM UserEmails ue WHERE ue.UserId = u.Id)` — if non-zero, throw `InvalidOperationException` and refuse to boot. Belt-and-suspenders against deploying PR 2 without first clicking the PR 1 backfill button.
+- **Defensive backfill in the migration:** before `DROP COLUMN`, run `INSERT INTO user_emails (…) SELECT … FROM "AspNetUsers" u WHERE u.email IS NOT NULL AND NOT EXISTS (SELECT 1 FROM user_emails e WHERE e.user_id = u.id)`. Repairs any orphans the admin button missed. Idempotent — if the migration fails partway, fix the cause and re-run.
 - Override `User.Email`, `User.NormalizedEmail`, `User.EmailConfirmed`, `User.NormalizedUserName` (compute from UserEmails / throw on set).
 - Implement `HumansUserStore : IUserStore<User>, IUserEmailStore<User>, IUserPasswordStore<User>`.
 - `UserConfiguration` adds `b.Ignore(...)` for the four overrides.
 - EF migration drops the four columns + `EmailIndex` + `UserNameIndex`. The anonymization writes in `UserRepository` (lines 274-277, 320-323, 425-428, 496-499) become no-ops once columns are dropped — remove those assignments in the same PR for cleanliness.
 - Architecture test extended to forbid reads of the four columns in `Application` + `Web` (PR 2 scope) and to forbid all writes in `Infrastructure` outside `Data/Configurations/UserConfiguration.cs` and `HumansUserStore`.
 
-**Risk:** High (Identity surgery). Mitigation: HumansUserStore unit tests + full sign-in regression (magic link via any verified email, OAuth via Google, multi-email user, dev personas, admin user impersonation if any) + startup guard verified by intentionally orphaning a test User and confirming the app refuses to boot.
+**Risk:** High (Identity surgery). Mitigation: HumansUserStore unit tests + full sign-in regression (magic link via any verified email, OAuth via Google, multi-email user, dev personas, admin user impersonation if any). The migration's defensive backfill is verified on a staging DB snapshot before prod deploy.
 
 ### PR 3 — UserEmails modernization + rename detection
 

@@ -4,7 +4,7 @@
 
 **Goal:** Stop writing the four ASP.NET Identity email/username columns (`Email`, `NormalizedEmail`, `EmailConfirmed`, `UserName` — `NormalizedUserName` is auto-derived) on User-creation paths, restructure the OAuth callback's new-User branch to remove silent-duplicate risk, replace the IsOAuth-based deletion guard with a "preserve at least one auth method" invariant, and add an admin-triggered backfill button that creates UserEmail rows for any orphan Users in the database. **Reads of those columns stay untouched until PR 2.**
 
-**Architecture:** PR 1 of a 6-PR sequence to decouple human identity from `IdentityUser` columns. This PR is write-decoupling only — leaves all read paths intact, leaves the four columns in the schema, leaves anonymization writes in `UserRepository` (they become no-ops in PR 2 when columns drop). The admin backfill button is the one-shot data-fix mechanism that gates PR 2; PR 2 will refuse to boot if any orphan Users remain.
+**Architecture:** PR 1 of a 6-PR sequence to decouple human identity from `IdentityUser` columns. This PR is write-decoupling only — leaves all read paths intact, leaves the four columns in the schema, leaves anonymization writes in `UserRepository` (they become no-ops in PR 2 when columns drop). The admin backfill button is the preferred pre-deploy data-fix path; PR 2's column-drop migration also runs an idempotent defensive backfill so missed orphans are repaired before the drop.
 
 **Tech Stack:** ASP.NET Core 10, ASP.NET Identity, EF Core 10 + PostgreSQL, NodaTime (`Instant`), AwesomeAssertions, xUnit, NetArchTest-style reflection-based architecture tests (already used in `tests/Humans.Application.Tests/Architecture/`).
 
@@ -50,7 +50,7 @@
 
 - [x] Header revision note added (lines under Date).
 - [x] PR 1 section rewritten (write-only scope + admin button, lockout-relink and FindUserByAnyEmailAsync stay).
-- [x] PR 2 section absorbs read sweep + startup orphan guard + UserRepository anonymization-write removal.
+- [x] PR 2 section absorbs read sweep + defensive backfill in the migration + UserRepository anonymization-write removal.
 - [x] Migration section split into PR 1 (admin button) + PR 2 (column drop + guard).
 - [x] Continuity table updated.
 
@@ -741,9 +741,9 @@ namespace Humans.Application.Interfaces.Users;
 ///
 /// Introduced in PR 1 of the email-identity-decoupling spec
 /// (docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md).
-/// PR 2 will add a startup orphan-guard that refuses to boot the application
-/// if any orphan Users remain, gating the column-drop migration on this button
-/// having been clicked.
+/// The PR 2 migration also runs an idempotent defensive backfill before the
+/// column drop, so this button is the preferred pre-deploy path but not the
+/// last line of defence.
 /// </summary>
 public interface IUserEmailBackfillService
 {
@@ -984,8 +984,9 @@ Add to the chosen controller:
     /// <summary>
     /// PR 1 of email-identity-decoupling spec: one-shot operator-triggered
     /// backfill of UserEmail rows for any orphan Users. Idempotent — safe to
-    /// re-run. PR 2's startup orphan guard depends on this having been clicked
-    /// in each environment before the column-drop migration deploys.
+    /// re-run. Recommended before PR 2 deploys so any humans needing manual
+    /// triage (no User.Email) are surfaced ahead of the column-drop migration;
+    /// the migration itself also runs a defensive INSERT-WHERE-NOT-EXISTS.
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> BackfillUserEmails(CancellationToken ct)
@@ -1056,7 +1057,9 @@ Create `src/Humans.Web/Views/Admin/Users/BackfillUserEmails.cshtml`:
 
 <p>
     This step is required before deploying PR 2 of the email-identity-decoupling
-    work; PR 2's startup guard refuses to boot if any orphan Users remain.
+    work. The PR 2 migration also runs a defensive INSERT-WHERE-NOT-EXISTS
+    before dropping the columns, so this button is the preferred pre-deploy
+    path but not the last line of defence.
 </p>
 
 @if (Model.RowsInserted is not null)
@@ -1183,7 +1186,7 @@ revised 2026-04-28).
 - Stop writing `Email` / `NormalizedEmail` / `EmailConfirmed` / `UserName` on User-creation paths in the OAuth callback, magic-link signup, account provisioning, and dev-login persona seeding. UserName becomes `id.ToString()`; the email columns stay null. UserEmail rows are now the source of truth.
 - Restructure `AccountController.ExternalLoginCallback` new-User branch to delete the just-created User if `AddLoginAsync` fails — prevents orphan Users with no auth method now that `RequireUniqueEmail = false` removes the existing safety.
 - Replace the `IsOAuth`-based deletion guard in `UserEmailService.DeleteEmailAsync` with the "preserve at least one auth method" invariant (block only if zero verified UserEmails AND zero AspNetUserLogins remain).
-- Add `/Admin/Users/BackfillUserEmails` admin one-shot action — idempotent backfill of UserEmail rows for any orphan Users. Required before PR 2's column-drop migration ships (PR 2 adds a startup guard that refuses to boot if any orphan Users remain).
+- Add `/Admin/Users/BackfillUserEmails` admin one-shot action — idempotent backfill of UserEmail rows for any orphan Users. Recommended before PR 2's column-drop migration so any humans needing manual triage are flagged ahead of time; the PR 2 migration also runs a defensive INSERT-WHERE-NOT-EXISTS so missed orphans are repaired before the drop.
 - Architecture test forbidding writes to the four Identity columns in Application + Web (Infrastructure exempt — UserRepository's anonymization writes become no-ops in PR 2; DevLoginController exempt for transitional `UserName = id.ToString()`).
 - Set `RequireUniqueEmail = false` (uniqueness now enforced at UserEmail layer).
 
@@ -1244,4 +1247,4 @@ After implementing all tasks above:
 
 3. **Type consistency:** `IUserEmailBackfillService` has `BackfillAsync` (Task 10 step 1) and `PreviewAsync` (Task 11 step 2) — Task 11 step 2 will need to add `PreviewAsync` to the interface or simplify the controller to single-GET (the alternative is also presented). Decide at Task 11 time.
 
-4. **One known gap:** the admin backfill button is added in PR 1 but PR 2's startup orphan guard isn't part of this PR (correctly — that's PR 2's scope). The doc note in Task 11's view template flags this.
+4. **PR 2 scope reminder:** the column-drop migration in PR 2 must include the defensive `INSERT … WHERE NOT EXISTS` before the `DROP COLUMN`. The admin button added in this PR is the preferred operator path; the migration's defensive INSERT is the last line of defence.

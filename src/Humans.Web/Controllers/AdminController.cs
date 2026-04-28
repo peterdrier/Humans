@@ -244,10 +244,12 @@ public class AdminController : HumansControllerBase
 
     /// <summary>
     /// One-shot backfill of <c>UserEmail</c> rows for any orphan Users (Users
-    /// with no <c>user_emails</c> row). Idempotent — safe to re-run. Required
-    /// before PR 2 of the email-identity-decoupling spec deploys; PR 2's
-    /// startup orphan guard refuses to boot if any orphan Users remain.
-    /// See <c>docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md</c>.
+    /// with no <c>user_emails</c> row). Idempotent — safe to re-run. Recommended
+    /// before PR 2 of the email-identity-decoupling spec deploys so any humans
+    /// needing manual triage (no <c>User.Email</c> to backfill from) are flagged
+    /// ahead of the column-drop migration. The PR 2 migration also runs an
+    /// idempotent defensive backfill before the drop. See
+    /// <c>docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md</c>.
     /// </summary>
     [HttpGet("BackfillUserEmails")]
     [Authorize(Policy = PolicyNames.AdminOnly)]

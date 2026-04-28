@@ -10,9 +10,10 @@ namespace Humans.Application.Interfaces.Users;
 /// <para>
 /// Introduced in PR 1 of the email-identity-decoupling spec
 /// (<c>docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md</c>).
-/// PR 2's startup-time orphan guard refuses to boot the app if any
-/// orphan Users remain, so this button must be clicked in each environment
-/// (QA, prod) before the PR 2 deploy ships.
+/// The PR 2 migration also runs an idempotent defensive backfill before
+/// dropping the Identity email columns, so this button is the preferred
+/// pre-deploy operator path (audit-logged, surfaces skipped users with no
+/// <c>User.Email</c>) but the migration itself is the last line of defence.
 /// </para>
 /// </summary>
 public interface IUserEmailBackfillService
