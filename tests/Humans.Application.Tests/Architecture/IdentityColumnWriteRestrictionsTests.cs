@@ -28,11 +28,14 @@ namespace Humans.Application.Tests.Architecture;
 /// column-drop migration.
 /// </para>
 ///
-/// <para>Exemptions:</para>
+/// <para>Exemptions (each carries a downstream read that depends on
+/// <c>User.Email</c>; the write stays through PR 1 and is removed in PR 2
+/// once the read is swept to <c>UserEmail</c>):</para>
 /// <list type="bullet">
 ///   <item><description><c>Humans.Infrastructure</c> — <c>UserRepository</c>'s rename / merge / purge / deletion-anonymization writes stay through PR 1; they become no-op assignments in PR 2 when the columns are dropped.</description></item>
-///   <item><description><c>Humans.Web.Controllers.DevLoginController</c> — historical exemption (no email writes remain after PR 1, kept as a marker for PR 2 cleanup).</description></item>
-///   <item><description><c>Humans.Web.Infrastructure.DevelopmentDashboardSeeder</c> — dev seed cleanup queries <c>u.Email</c> at line 421-424; sweeping that read is PR 2 scope.</description></item>
+///   <item><description><c>Humans.Web.Controllers.DevLoginController</c> — <c>EnsurePersonaAsync</c> + <c>SeedProfilelessUserAsync</c> still write <c>Email</c> / <c>EmailConfirmed</c> / <c>UserName = email</c>. The integration-test fixture <c>HumansWebApplicationFactory.SignInAsFullyOnboardedAsync</c> looks up dev personas via <c>db.Users.FirstOrDefaultAsync(u =&gt; u.Email == email)</c>, and <c>DevLoginController.SignInAsUser</c> uses <c>FindByEmailAsync</c> as a legacy-persona reuse path. Dropping the write before PR 2's read sweep would break dev login and the integration suite.</description></item>
+///   <item><description><c>Humans.Web.Infrastructure.DevelopmentDashboardSeeder</c> — dev seed cleanup queries <c>u.Email</c> at <c>ResetAsync</c> (DevelopmentDashboardSeeder.cs:421-424) to find seeded dev users. Same shape as the DevLoginController exemption.</description></item>
+///   <item><description><c>Humans.Application.Services.Profile.ContactService</c> — <c>CreateContactAsync</c> still writes <c>Email</c> / <c>UserName</c> / <c>EmailConfirmed</c>. The /Contacts admin UI (<c>ContactsController.Detail</c> + <c>AdminContactRow</c>) renders <c>c.Email</c>, and <c>GetFilteredContactsAsync</c> uses <c>User.Email</c> for search. Stopping the write here without sweeping those reads first produces blank-email contacts.</description></item>
 /// </list>
 ///
 /// <para>
@@ -109,16 +112,17 @@ public class IdentityColumnWriteRestrictionsTests
 
     private static bool IsExemptType(string fullName)
     {
-        // DevLoginController's UserName = id.ToString() during persona seed is transitional.
-        // Removed in PR 2 once HumansUserStore + virtual property overrides land.
+        // Each exemption carries a downstream User.Email READ that depends on
+        // the write. PR 2 sweeps both reads and writes; until then the writes
+        // stay to keep the read paths working. See class XML doc for the
+        // specific read each exemption protects.
         if (fullName.StartsWith("Humans.Web.Controllers.DevLoginController", StringComparison.Ordinal))
             return true;
 
-        // DevelopmentDashboardSeeder seeds 120 dev humans for dashboard demo data.
-        // Cleanup queries u.Email to find them (DevelopmentDashboardSeeder.cs:421-424),
-        // so stopping the write here would orphan the cleanup path. PR 2 sweeps reads
-        // and updates the cleanup to query via UserEmails, removing this exemption.
         if (fullName.StartsWith("Humans.Web.Infrastructure.DevelopmentDashboardSeeder", StringComparison.Ordinal))
+            return true;
+
+        if (fullName.StartsWith("Humans.Application.Services.Profile.ContactService", StringComparison.Ordinal))
             return true;
 
         return false;
@@ -142,8 +146,14 @@ public class IdentityColumnWriteRestrictionsTests
             {
                 current = current.Resolve()?.BaseType;
             }
-            catch
+            catch (Exception)
             {
+                // Cecil cannot resolve external-assembly types (e.g., NuGet
+                // dependencies whose .dll isn't in the test output dir). A
+                // resolution failure here means the type is not a User
+                // subclass — the check returns false, which is the intended
+                // behaviour for non-User types regardless of why resolution
+                // failed.
                 return false;
             }
         }

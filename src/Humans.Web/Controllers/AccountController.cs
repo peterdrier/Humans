@@ -427,8 +427,37 @@ public class AccountController : Controller
             return View("MagicLinkError");
         }
 
-        // Create UserEmail record via service (non-OAuth, verified, notification target)
-        await _userEmailService.AddOAuthEmailAsync(user.Id, email);
+        // Create the verified UserEmail row. Misnomer alert: AddOAuthEmailAsync
+        // sets IsOAuth=true even though this is a magic-link signup, not OAuth.
+        // The IsOAuth flag is repurposed in PR 3 (becomes Provider/ProviderKey)
+        // and this call site will be revisited then.
+        //
+        // If creating the UserEmail row fails (race condition, DB error, etc.)
+        // delete the just-created User. RequireUniqueEmail = false means
+        // Identity no longer rejects partial state on its own; an orphan User
+        // with no UserEmail row would be unreachable via either OAuth or
+        // magic link. Same pattern as the OAuth callback new-user branch.
+        try
+        {
+            await _userEmailService.AddOAuthEmailAsync(user.Id, email);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to create UserEmail for magic-link signup {UserId} ({Email}); rolling back user",
+                user.Id, email);
+            try
+            {
+                await _userManager.DeleteAsync(user);
+            }
+            catch (Exception deleteEx)
+            {
+                _logger.LogError(deleteEx,
+                    "Failed to clean up orphan user {UserId} after AddOAuthEmailAsync failure",
+                    user.Id);
+            }
+            return View("MagicLinkError");
+        }
 
         await _signInManager.SignInAsync(user, isPersistent: false);
         _logger.LogInformation("Magic link signup: user {UserId} created account for {Email}", user.Id, email);

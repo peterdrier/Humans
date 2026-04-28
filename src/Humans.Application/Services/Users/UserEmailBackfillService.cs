@@ -78,6 +78,12 @@ public sealed class UserEmailBackfillService : IUserEmailBackfillService
             await _userEmailRepository.AddAsync(userEmail, ct);
             rowsInserted++;
 
+            // ContactCreated is a semantic approximation — there's no
+            // dedicated UserEmailAdded / UserEmailBackfilled action today,
+            // and adding one for a one-shot operation would dilute the enum.
+            // The description string is the load-bearing context for
+            // operators reviewing the audit trail; the action category just
+            // groups it with other "row appeared from nowhere" events.
             await _auditLogService.LogAsync(
                 AuditAction.ContactCreated,
                 nameof(User), user.Id,
