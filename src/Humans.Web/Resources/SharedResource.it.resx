@@ -1641,6 +1641,10 @@
   <data name="Shifts_SetPreferences" xml:space="preserve"><value>Imposta le tue preferenze</value></data>
   <data name="Shifts_PreferencesHelp" xml:space="preserve"><value>Seleziona i tag che corrispondono al tipo di lavoro che ti piace. I turni corrispondenti saranno evidenziati con una stella.</value></data>
   <data name="Shifts_SavePreferences" xml:space="preserve"><value>Salva preferenze</value></data>
+  <data name="Shifts_HeroTitle" xml:space="preserve"><value>Trova il tuo turno perfetto</value></data>
+  <data name="Shifts_HeroSubtitle" xml:space="preserve"><value>Esplora le opzioni di volontariato, filtra per fase o reparto e iscriviti ai turni più adatti a te.</value></data>
+  <data name="Shifts_LearnMore" xml:space="preserve"><value>Scopri di più</value></data>
+  <data name="Shifts_EditPreferences" xml:space="preserve"><value>Modifica preferenze</value></data>
   <data name="Shifts_NotOpenYet" xml:space="preserve"><value>I turni non sono ancora aperti. Solo coordinatori e admin possono vedere questa pagina.</value></data>
   <data name="Shifts_NoShiftsAvailable" xml:space="preserve"><value>Nessun turno disponibile al momento.</value></data>
   <data name="Shifts_AllShiftsFull" xml:space="preserve"><value>Tutti i turni di {0} sono completi.</value><comment>{0} = period name</comment></data>

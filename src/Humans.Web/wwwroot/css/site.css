@@ -1742,3 +1742,66 @@ tr[data-href] {
         font-size: 0.6rem;
     }
 }
+
+/* --- Shifts Header Redesign --- */
+
+/* Tabs — Renaissance style */
+.shifts-nav-tabs .nav-link {
+    color: var(--h-aged-ink-light);
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 0.5rem 1rem;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+.shifts-nav-tabs .nav-link:hover {
+    color: var(--h-aged-ink);
+    border-bottom-color: var(--h-gold-light);
+}
+.shifts-nav-tabs .nav-link.active {
+    color: var(--h-aged-ink);
+    border-bottom-color: var(--h-gold);
+    background: transparent;
+}
+
+/* Hero Banner */
+.shifts-hero-banner {
+    background: var(--h-parchment-light, #faf3e6);
+    border: 1px solid var(--h-parchment-dark, #e8d4ab);
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+}
+.shifts-hero-icon {
+    color: var(--h-gold, #c9a96e);
+}
+
+/* Phase Multiselect Cards */
+.phase-card {
+    border: 2px solid var(--h-parchment-dark, #e8d4ab);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s;
+    background: var(--h-warm-white, #fefaf3);
+}
+.phase-card:hover {
+    border-color: var(--h-gold-light, #d9c08e);
+}
+.phase-card-active.phase-card-build {
+    border-color: var(--bs-info, #0dcaf0);
+    background-color: rgba(13, 202, 240, 0.06);
+}
+.phase-card-active.phase-card-event {
+    border-color: var(--bs-success, #198754);
+    background-color: rgba(25, 135, 84, 0.06);
+}
+.phase-card-active.phase-card-strike {
+    border-color: var(--bs-secondary, #6c757d);
+    background-color: rgba(108, 117, 125, 0.06);
+}
+
+/* Tag preferred highlight */
+.shift-tag-preferred {
+    border-color: var(--h-gold-light, #d9c08e);
+}

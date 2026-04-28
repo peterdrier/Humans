@@ -1661,6 +1661,10 @@
   <data name="Shifts_SetPreferences" xml:space="preserve"><value>Set your preferences</value></data>
   <data name="Shifts_PreferencesHelp" xml:space="preserve"><value>Select tags that match the kind of work you enjoy. Matching shifts will be highlighted with a star.</value></data>
   <data name="Shifts_SavePreferences" xml:space="preserve"><value>Save Preferences</value></data>
+  <data name="Shifts_HeroTitle" xml:space="preserve"><value>Find your perfect shift</value></data>
+  <data name="Shifts_HeroSubtitle" xml:space="preserve"><value>Browse volunteer options, filter by phase or department, and sign up for the shifts that suit you best.</value></data>
+  <data name="Shifts_LearnMore" xml:space="preserve"><value>Learn more</value></data>
+  <data name="Shifts_EditPreferences" xml:space="preserve"><value>Edit preferences</value></data>
   <data name="Shifts_NotOpenYet" xml:space="preserve"><value>Shifts aren't open yet. Only coordinators and admins can see this page.</value></data>
   <data name="Shifts_NoShiftsAvailable" xml:space="preserve"><value>No shifts available yet.</value></data>
   <data name="Shifts_AllShiftsFull" xml:space="preserve"><value>All {0} shifts are full.</value><comment>{0} = period name</comment></data>

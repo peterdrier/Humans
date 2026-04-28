@@ -1643,6 +1643,10 @@
   <data name="Shifts_SetPreferences" xml:space="preserve"><value>Configura tus preferencias</value></data>
   <data name="Shifts_PreferencesHelp" xml:space="preserve"><value>Selecciona etiquetas que coincidan con el trabajo que te gusta. Los turnos coincidentes se resaltarán con una estrella.</value></data>
   <data name="Shifts_SavePreferences" xml:space="preserve"><value>Guardar preferencias</value></data>
+  <data name="Shifts_HeroTitle" xml:space="preserve"><value>Encuentra tu turno perfecto</value></data>
+  <data name="Shifts_HeroSubtitle" xml:space="preserve"><value>Explora las opciones de voluntariado, filtra por fase o departamento, y apúntate a los turnos que mejor se adapten a ti.</value></data>
+  <data name="Shifts_LearnMore" xml:space="preserve"><value>Saber más</value></data>
+  <data name="Shifts_EditPreferences" xml:space="preserve"><value>Editar preferencias</value></data>
   <data name="Shifts_NotOpenYet" xml:space="preserve"><value>Los turnos aún no están abiertos. Solo coordinadores y administradores pueden ver esta página.</value></data>
   <data name="Shifts_NoShiftsAvailable" xml:space="preserve"><value>Aún no hay turnos disponibles.</value></data>
   <data name="Shifts_AllShiftsFull" xml:space="preserve"><value>Todos los turnos de {0} están completos.</value><comment>{0} = period name</comment></data>

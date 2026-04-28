@@ -1641,6 +1641,10 @@
   <data name="Shifts_SetPreferences" xml:space="preserve"><value>Präferenzen festlegen</value></data>
   <data name="Shifts_PreferencesHelp" xml:space="preserve"><value>Wähle Tags aus, die zur Art von Arbeit passen, die du magst. Passende Schichten werden mit einem Stern markiert.</value></data>
   <data name="Shifts_SavePreferences" xml:space="preserve"><value>Präferenzen speichern</value></data>
+  <data name="Shifts_HeroTitle" xml:space="preserve"><value>Finde deine perfekte Schicht</value></data>
+  <data name="Shifts_HeroSubtitle" xml:space="preserve"><value>Durchsuche die Freiwilligenoptionen, filtere nach Phase oder Abteilung und melde dich für Schichten an, die zu dir passen.</value></data>
+  <data name="Shifts_LearnMore" xml:space="preserve"><value>Mehr erfahren</value></data>
+  <data name="Shifts_EditPreferences" xml:space="preserve"><value>Einstellungen bearbeiten</value></data>
   <data name="Shifts_NotOpenYet" xml:space="preserve"><value>Schichten sind noch nicht geöffnet. Nur Koordinatoren und Admins können diese Seite sehen.</value></data>
   <data name="Shifts_NoShiftsAvailable" xml:space="preserve"><value>Noch keine Schichten verfügbar.</value></data>
   <data name="Shifts_AllShiftsFull" xml:space="preserve"><value>Alle {0}-Schichten sind voll.</value><comment>{0} = period name</comment></data>

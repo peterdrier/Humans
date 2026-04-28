@@ -33,16 +33,16 @@
 }
 
 <div class="container py-4">
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a asp-action="Index">Shifts</a></li>
-            <li class="breadcrumb-item active" aria-current="page">My Shifts</li>
-        </ol>
-    </nav>
-
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>@Localizer["Shifts_MyShiftsTitle"]</h2>
-        <a asp-action="Index" class="btn btn-outline-primary">@Localizer["Shifts_BrowseTitle"]</a>
+    @* === Tabs: Browse / My Shifts === *@
+    <div class="mb-3">
+        <ul class="nav nav-tabs shifts-nav-tabs border-0" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link" asp-action="Index">@Localizer["Shifts_BrowseTitle"]</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link active" href="#">@Localizer["Shifts_MyShiftsTitle"]</a>
+            </li>
+        </ul>
     </div>
 
     <vc:temp-data-alerts />

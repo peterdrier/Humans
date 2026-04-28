@@ -1641,6 +1641,10 @@
   <data name="Shifts_SetPreferences" xml:space="preserve"><value>Définir vos préférences</value></data>
   <data name="Shifts_PreferencesHelp" xml:space="preserve"><value>Sélectionnez les tags correspondant au type de travail que vous aimez. Les quarts correspondants seront mis en valeur avec une étoile.</value></data>
   <data name="Shifts_SavePreferences" xml:space="preserve"><value>Enregistrer les préférences</value></data>
+  <data name="Shifts_HeroTitle" xml:space="preserve"><value>Trouve ton créneau idéal</value></data>
+  <data name="Shifts_HeroSubtitle" xml:space="preserve"><value>Explore les options de bénévolat, filtre par phase ou département, et inscris-toi aux créneaux qui te conviennent.</value></data>
+  <data name="Shifts_LearnMore" xml:space="preserve"><value>En savoir plus</value></data>
+  <data name="Shifts_EditPreferences" xml:space="preserve"><value>Modifier les préférences</value></data>
   <data name="Shifts_NotOpenYet" xml:space="preserve"><value>Les quarts ne sont pas encore ouverts. Seuls les coordinateurs et admins peuvent voir cette page.</value></data>
   <data name="Shifts_NoShiftsAvailable" xml:space="preserve"><value>Aucun quart disponible pour le moment.</value></data>
   <data name="Shifts_AllShiftsFull" xml:space="preserve"><value>Tous les quarts de {0} sont complets.</value><comment>{0} = period name</comment></data>

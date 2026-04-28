@@ -44,7 +44,7 @@ public class ShiftsController : HumansControllerBase
     }
 
     [HttpGet("")]
-    public async Task<IActionResult> Index(Guid? departmentId, string? fromDate, string? toDate, string? period, bool showFull = false, [FromQuery(Name = "tags")] List<Guid>? tagIds = null, string? sort = null)
+    public async Task<IActionResult> Index(Guid? departmentId, string? fromDate, string? toDate, string? period, bool showFull = false, [FromQuery(Name = "tags")] List<Guid>? tagIds = null, string? sort = null, [FromQuery(Name = "periods")] List<string>? periods = null)
     {
         var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
         if (currentUserNotFound is not null)
@@ -79,12 +79,40 @@ public class ShiftsController : HumansControllerBase
         if ((!string.IsNullOrEmpty(fromDate) || !string.IsNullOrEmpty(toDate)) && !string.IsNullOrEmpty(period))
             period = null;
 
-        // Apply period filter — compute date boundaries from EventSettings offsets
-        if (!string.IsNullOrEmpty(period) && Enum.TryParse<ShiftPeriod>(period, true, out var parsedPeriod))
+        // Multiselect period support: if specific periods are provided, compute the union date range.
+        // When all 3 are selected (or none), treat as "no filter" — same as legacy single-period "All".
+        var activePeriods = (periods ?? [])
+            .Where(p => Enum.TryParse<ShiftPeriod>(p, true, out _))
+            .Select(p => Enum.Parse<ShiftPeriod>(p, true))
+            .Distinct()
+            .ToList();
+        var allPeriodsSelected = activePeriods.Count == 3 ||
+            (activePeriods.Count == 0 && string.IsNullOrEmpty(period));
+
+        // Legacy single-period param: fold into activePeriods for unified handling
+        if (activePeriods.Count == 0 && !string.IsNullOrEmpty(period) &&
+            Enum.TryParse<ShiftPeriod>(period, true, out var parsedPeriod))
         {
-            var (periodFrom, periodTo) = GetPeriodDateRange(es, parsedPeriod);
-            filterFromDate ??= periodFrom;
-            filterToDate ??= periodTo;
+            activePeriods = [parsedPeriod];
+        }
+
+        // Apply period filter — for single contiguous period, use date range query.
+        // For multi-period or non-contiguous, fetch all and post-filter by shift period.
+        var postFilterByPeriod = false;
+        if (activePeriods.Count > 0 && !allPeriodsSelected)
+        {
+            if (activePeriods.Count == 1)
+            {
+                // Single period: use efficient date range query
+                var (periodFrom, periodTo) = GetPeriodDateRange(es, activePeriods[0]);
+                filterFromDate ??= periodFrom;
+                filterToDate ??= periodTo;
+            }
+            else
+            {
+                // Multiple non-contiguous periods (e.g., Build + Strike): fetch all, filter after
+                postFilterByPeriod = true;
+            }
         }
 
         // Build the browse view — show all active shifts, hide AdminOnly from regular volunteers.
@@ -95,11 +123,16 @@ public class ShiftsController : HumansControllerBase
             includeAdminOnly: isPrivileged, includeSignups: true,
             includeHidden: isPrivileged);
 
+        // Post-filter by period when multiple non-contiguous periods are selected (e.g., Build + Strike)
+        var periodFilteredShifts = postFilterByPeriod
+            ? urgentShifts.Where(u => activePeriods.Contains(u.Shift.GetShiftPeriod(es))).ToList()
+            : (IReadOnlyList<UrgentShift>)urgentShifts;
+
         // Apply tag filter — keep only shifts whose rota has at least one of the selected tags
         var activeTagFilter = tagIds?.Where(id => id != Guid.Empty).ToList() ?? [];
         var filteredShifts = activeTagFilter.Count > 0
-            ? urgentShifts.Where(u => u.Shift.Rota.Tags.Any(t => activeTagFilter.Contains(t.Id))).ToList()
-            : urgentShifts;
+            ? periodFilteredShifts.Where(u => u.Shift.Rota.Tags.Any(t => activeTagFilter.Contains(t.Id))).ToList()
+            : periodFilteredShifts;
 
         // Resolve team name/slug cross-section (Shifts doesn't own Team data).
         var shiftTeamIds = filteredShifts.Select(u => u.Shift.Rota.TeamId).Distinct().ToList();
@@ -170,8 +203,8 @@ public class ShiftsController : HumansControllerBase
             .OrderBy(d => d.TeamName, StringComparer.Ordinal)
             .ToList();
 
-        // Build urgency-ranked flat rota list (used when sort=urgency)
-        var isUrgencySort = string.Equals(sort, "urgency", StringComparison.OrdinalIgnoreCase);
+        // Build urgency-ranked flat rota list — default sort is now "urgency" (most needed first)
+        var isUrgencySort = !string.Equals(sort, "department", StringComparison.OrdinalIgnoreCase);
         var urgencyRankedRotas = isUrgencySort
             ? departments.SelectMany(d => d.Rotas)
                 .OrderByDescending(r => r.MaxUrgencyScore)
@@ -205,6 +238,7 @@ public class ShiftsController : HumansControllerBase
             FilterFromDate = fromDate,
             FilterToDate = toDate,
             FilterPeriod = period,
+            FilterPeriods = activePeriods.Select(p => p.ToString()).ToList(),
             ShowFullShifts = showFull,
             UserSignupShiftIds = userSignupShiftIds,
             UserSignupStatuses = userSignupStatuses,
@@ -213,11 +247,12 @@ public class ShiftsController : HumansControllerBase
             // Temporarily public — signups list visible to all browsers. Keep the isPrivileged
             // computation in place so we can flip back to `ShowSignups = isPrivileged` if folks object.
             ShowSignups = true,
-            Sort = isUrgencySort ? "urgency" : null,
+            Sort = isUrgencySort ? "urgency" : "department",
             UrgencyRankedRotas = urgencyRankedRotas,
             AllTags = allTags.ToList(),
             FilterTagIds = activeTagFilter,
-            UserPreferredTagIds = userPreferredTags.Select(t => t.Id).ToHashSet()
+            UserPreferredTagIds = userPreferredTags.Select(t => t.Id).ToHashSet(),
+            MySignupCount = userSignups.Count(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
         };
 
         return View(model);
@@ -275,7 +310,7 @@ public class ShiftsController : HumansControllerBase
         return RedirectToAction(nameof(Index), BuildFilterRouteValues(departmentId, fromDate, toDate, period, tagIds));
     }
 
-    private static RouteValueDictionary BuildFilterRouteValues(Guid? departmentId, string? fromDate, string? toDate, string? period, List<Guid>? tagIds, string? sort = null)
+    private static RouteValueDictionary BuildFilterRouteValues(Guid? departmentId, string? fromDate, string? toDate, string? period, List<Guid>? tagIds, string? sort = null, List<string>? periods = null)
     {
         var rv = new RouteValueDictionary();
         if (departmentId.HasValue) rv["departmentId"] = departmentId.Value;
@@ -286,6 +321,9 @@ public class ShiftsController : HumansControllerBase
         if (tagIds is { Count: > 0 })
             for (var i = 0; i < tagIds.Count; i++)
                 rv[$"tags[{i}]"] = tagIds[i];
+        if (periods is { Count: > 0 })
+            for (var i = 0; i < periods.Count; i++)
+                rv[$"periods[{i}]"] = periods[i];
         return rv;
     }
 

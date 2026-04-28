@@ -1643,6 +1643,10 @@
   <data name="Shifts_SetPreferences" xml:space="preserve"><value>Configura les teves preferències</value></data>
   <data name="Shifts_PreferencesHelp" xml:space="preserve"><value>Selecciona etiquetes que coincideixin amb el treball que t'agrada. Els torns coincidents es ressaltaran amb una estrella.</value></data>
   <data name="Shifts_SavePreferences" xml:space="preserve"><value>Desar preferències</value></data>
+  <data name="Shifts_HeroTitle" xml:space="preserve"><value>Troba el teu torn perfecte</value></data>
+  <data name="Shifts_HeroSubtitle" xml:space="preserve"><value>Explora les opcions de voluntariat, filtra per fase o departament, i apunta't als torns que millor s'adaptin a tu.</value></data>
+  <data name="Shifts_LearnMore" xml:space="preserve"><value>Saber-ne més</value></data>
+  <data name="Shifts_EditPreferences" xml:space="preserve"><value>Editar preferències</value></data>
   <data name="Shifts_NotOpenYet" xml:space="preserve"><value>Els torns encara no estan oberts. Només coordinadors i administradors poden veure aquesta pàgina.</value></data>
   <data name="Shifts_NoShiftsAvailable" xml:space="preserve"><value>Encara no hi ha torns disponibles.</value></data>
   <data name="Shifts_AllShiftsFull" xml:space="preserve"><value>Tots els torns de {0} estan complets.</value><comment>{0} = period name</comment></data>
