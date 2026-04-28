@@ -154,6 +154,7 @@ Stored as string via `HasConversion<string>()`.
 - **Teams:** `ITeamService.GetBudgetableTeamsAsync` / `ITeamService.GetEffectiveBudgetCoordinatorTeamIdsAsync` — narrow cross-section reads for team lookups and coordinator-scope resolution.
 - **Tickets:** `ITicketingBudgetRepository` (Tickets-owned, added for PR #545b) — paid-order lookups for ticketing budget projections. Budget no longer has a code path that reads Tickets tables directly.
 - **Users/Identity:** `IUserService.GetByIdsAsync` — actor display names for audit log. `IUserService.GetMergedSourceIdsAsync` — chain-follow merge tombstones on `BudgetAuditLog` GDPR export so source-attributed entries surface for the fold target.
+- **Finance:** `IHoldedTransactionService.GetByCategoryAsync` — pre-check guard in `BudgetService.DeleteCategoryAsync` (HoldedTransaction → BudgetCategory FK is `OnDelete: Restrict`; the pre-check surfaces a friendly message instead of letting the DB error bubble).
 - **Admin:** Budget year lifecycle management is restricted to FinanceAdmin and Admin.
 
 ## Architecture

@@ -4,7 +4,7 @@
   src/Humans.Domain/Entities/HoldedTransaction.cs
   src/Humans.Domain/Entities/HoldedSyncState.cs
   src/Humans.Infrastructure/Data/Configurations/Finance/**
-  src/Humans.Infrastructure/Repositories/HoldedRepository.cs
+  src/Humans.Infrastructure/Repositories/Finance/HoldedRepository.cs
   src/Humans.Infrastructure/Services/HoldedClient.cs
   src/Humans.Infrastructure/Jobs/HoldedSyncJob.cs
   src/Humans.Web/Controllers/FinanceController.cs
@@ -142,7 +142,7 @@ Stored as string via `HasConversion<string>()`.
 - **Budget:** `IBudgetService.GetCategoryBySlugAsync(year, groupSlug, categorySlug)`, `IBudgetService.GetYearForDateAsync(date)`, `IBudgetService.GetCategoriesByYearAsync(yearId)`, `IBudgetService.GetTagInventoryAsync(yearId)` — all read-only.
 - **Audit Log:** `IAuditLogService.LogAsync(...)` — manual-reassignment audit trail.
 
-Budget never calls into Finance.
+Budget calls into Finance only for the `IHoldedTransactionService.GetByCategoryAsync` pre-check guard in `BudgetService.DeleteCategoryAsync` (Restrict-FK protection); no other Budget → Finance calls exist.
 
 ## Architecture
 
@@ -151,7 +151,7 @@ Budget never calls into Finance.
 **Status:** (A) Migrated — new section, born under design-rules §15h(1) (new code starts in `Humans.Application` with a repository).
 
 - Services live in `Humans.Application.Services.Finance/` and never import `Microsoft.EntityFrameworkCore`.
-- `IHoldedRepository` (impl `Humans.Infrastructure/Repositories/HoldedRepository.cs`, §15b Singleton + `IDbContextFactory`) is the only file that touches Finance tables via `DbContext`.
+- `IHoldedRepository` (impl `Humans.Infrastructure/Repositories/Finance/HoldedRepository.cs`, §15b Singleton + `IDbContextFactory`) is the only file that touches Finance tables via `DbContext`.
 - `IHoldedClient` (impl `Humans.Infrastructure/Services/HoldedClient.cs`) is a typed `HttpClient` wrapper. API key is bound from env var `HOLDED_API_KEY`; never logged.
 - `HoldedSyncJob` (`Humans.Infrastructure/Jobs/HoldedSyncJob.cs`) is a Hangfire recurring job at `0 30 4 * * *` UTC.
 - **Decorator decision — no caching decorator.** Finance is FinanceAdmin-only and low-traffic. Same rationale as Budget / Governance.
