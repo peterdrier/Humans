@@ -82,24 +82,48 @@ public sealed class UserEmailBackfillService : IUserEmailBackfillService
             await _userEmailRepository.AddAsync(userEmail, ct);
             rowsInserted++;
 
-            // FullProfile.EmailAddresses derives from user_emails; the
-            // CachingProfileService dictionary holds a stale copy that lists
-            // no emails for this user until invalidated. Per code-review-rules
-            // §Cache Invalidation: every mutation evicts affected cache
-            // entries in the same service method.
-            await _fullProfileInvalidator.InvalidateAsync(user.Id, ct);
+            // The insert succeeded — the user's UserEmail row is durably in
+            // place. Both follow-on calls (cache invalidation and audit log)
+            // are best-effort within this batch loop: per design-rules §7a
+            // audit calls are best-effort by doctrine, and cache invalidation
+            // in a batch loop follows the same policy so a single transient
+            // failure doesn't abort an idempotent operator-triggered backfill
+            // mid-iteration. Both failures are logged loudly so they're
+            // visible in the operator's run.
 
-            // ContactCreated is a semantic approximation — there's no
-            // dedicated UserEmailAdded / UserEmailBackfilled action today,
-            // and adding one for a one-shot operation would dilute the enum.
-            // The description string is the load-bearing context for
-            // operators reviewing the audit trail; the action category just
-            // groups it with other "row appeared from nowhere" events.
-            await _auditLogService.LogAsync(
-                AuditAction.ContactCreated,
-                nameof(User), user.Id,
-                $"Backfilled missing UserEmail row from User.Email = {user.Email} (verified={user.EmailConfirmed}, oauth={hasOAuthLogin})",
-                nameof(UserEmailBackfillService));
+            try
+            {
+                // FullProfile.EmailAddresses derives from user_emails; the
+                // CachingProfileService dictionary holds a stale copy with
+                // EmailAddresses=[] for this user until invalidated.
+                await _fullProfileInvalidator.InvalidateAsync(user.Id, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "UserEmailBackfill: FullProfile cache invalidation failed for user {UserId} — continuing batch",
+                    user.Id);
+            }
+
+            try
+            {
+                // ContactCreated is a semantic approximation — there's no
+                // dedicated UserEmailAdded / UserEmailBackfilled action
+                // today, and adding one for a one-shot operation would
+                // dilute the enum. The description string carries the
+                // load-bearing operator-visible context.
+                await _auditLogService.LogAsync(
+                    AuditAction.ContactCreated,
+                    nameof(User), user.Id,
+                    $"Backfilled missing UserEmail row from User.Email = {user.Email} (verified={user.EmailConfirmed}, oauth={hasOAuthLogin})",
+                    nameof(UserEmailBackfillService));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "UserEmailBackfill: audit log failed for user {UserId} — best-effort, continuing batch",
+                    user.Id);
+            }
 
             _logger.LogInformation(
                 "UserEmailBackfill: inserted UserEmail for user {UserId} ({Email})",

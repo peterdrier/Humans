@@ -82,6 +82,54 @@ public class UserEmailBackfillServiceTests
     }
 
     [HumansFact]
+    public async Task InvalidationFailure_DoesNotAbortBatch_AndCountsAreAccurate()
+    {
+        // Per design-rules §7a: cache invalidation in a batch loop is
+        // best-effort. A transient invalidation failure must not abort the
+        // remaining inserts or corrupt the returned counts.
+        var u1 = new User { Id = Guid.NewGuid(), Email = "a@example.com", EmailConfirmed = true };
+        var u2 = new User { Id = Guid.NewGuid(), Email = "b@example.com", EmailConfirmed = true };
+        _userRepository.GetUsersWithoutUserEmailRowAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<User> { u1, u2 });
+        _userManager.GetLoginsAsync(Arg.Any<User>())
+            .Returns(new List<UserLoginInfo>());
+        _fullProfileInvalidator.InvalidateAsync(u1.Id, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("simulated cache failure")));
+
+        var result = await _sut.BackfillAsync();
+
+        result.OrphansFound.Should().Be(2);
+        result.RowsInserted.Should().Be(2);
+        await _userEmailRepository.Received(2).AddAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        // Second user's invalidation still attempted.
+        await _fullProfileInvalidator.Received(1).InvalidateAsync(u2.Id, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task AuditFailure_DoesNotAbortBatch_AndCountsAreAccurate()
+    {
+        // Per design-rules §7a: audit calls are best-effort by doctrine.
+        var u1 = new User { Id = Guid.NewGuid(), Email = "a@example.com", EmailConfirmed = true };
+        var u2 = new User { Id = Guid.NewGuid(), Email = "b@example.com", EmailConfirmed = true };
+        _userRepository.GetUsersWithoutUserEmailRowAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<User> { u1, u2 });
+        _userManager.GetLoginsAsync(Arg.Any<User>())
+            .Returns(new List<UserLoginInfo>());
+        _auditLogService
+            .When(s => s.LogAsync(
+                Arg.Any<Humans.Domain.Enums.AuditAction>(),
+                nameof(User), u1.Id, Arg.Any<string>(), nameof(UserEmailBackfillService),
+                Arg.Any<Guid?>(), Arg.Any<string?>()))
+            .Do(_ => throw new InvalidOperationException("simulated audit failure"));
+
+        var result = await _sut.BackfillAsync();
+
+        result.OrphansFound.Should().Be(2);
+        result.RowsInserted.Should().Be(2);
+        await _userEmailRepository.Received(2).AddAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task SkippedOrphan_DoesNotInvalidate()
     {
         // Skipped users (no User.Email) had no UserEmail row inserted, so
