@@ -1,8 +1,18 @@
 # Email Identity & OAuth Decoupling — Design Spec
 
-**Date:** 2026-04-27
+**Date:** 2026-04-27 (revised 2026-04-28)
 **Status:** Approved for PR breakdown
 **Supersedes:** nobodies-collective/Humans#505, #506, #507, #560
+
+**Revision 2026-04-28 (PR 1 / PR 2 split):** Read sweep moved from PR 1 to PR 2.
+PR 1 stops writes only and adds an admin-triggered backfill button + restructures the
+OAuth-callback new-account-creation branch to remove silent-duplicate risk. PR 2 absorbs
+the read sweep, the orphan-User backfill verification (via startup guard), and the
+column drop. This is safer because (1) legacy Users with stale `User.Email` and missing
+UserEmail rows remain reachable via fallback queries through PR 1, (2) the backfill is
+idempotent + observable, and (3) the column drop in PR 2 is gated by a startup guard
+that throws if any orphan Users remain. The fallback reads literally cannot survive past
+PR 2 (column gone), so PR 2 is the natural home for the read sweep regardless.
 
 ## Goals
 
@@ -190,10 +200,16 @@ For each User with at least one `AspNetUserLogins` row:
 - Set `IsGoogle = true` on the row matching `User.GetGoogleServiceEmail()` (if set).
 - Otherwise leave all rows `IsGoogle = false`. User picks via the grid post-migration.
 
-### PR 2 — drop Identity columns
+### PR 1 — admin backfill button (one-shot)
+
+- New admin endpoint that finds Users missing a UserEmail row and inserts one from `User.Email` / `User.EmailConfirmed`. Idempotent (`WHERE NOT EXISTS`). Audited per insert. Returns operator-visible count.
+- Operator clicks on QA, verifies count = 0 (or the expected legacy-orphan count), then on prod, verifies, then PR 2 ships.
+
+### PR 2 — drop Identity columns + startup orphan guard
 
 - Verified by EF migration reviewer agent (per `CLAUDE.md` migration gate).
-- Coordinated with PR 1 so no production reads or writes remain when columns are dropped.
+- Startup guard verifies no orphan Users remain before allowing the migration deploy to serve traffic; refuses to boot otherwise.
+- Anonymization writes in `UserRepository` (rename / merge / purge / deletion) become no-op assignments once the columns are dropped — remove those four `user.Email = / user.UserName = / ...` blocks in the same PR.
 
 ## PR sequence
 
@@ -203,8 +219,8 @@ Each PR independently shippable to production with no continuity loss; numbered 
 
 | Transition | Schema risk | Rollback |
 |------------|-------------|----------|
-| → PR 1 | None | Revert deploy |
-| PR 1 → PR 2 | Drops 4 columns + 2 indexes; brief deploy downtime, no in-flight inconsistency | Forward-only after deploy |
+| → PR 1 | None (write-decouple + admin button) | Revert deploy |
+| PR 1 → PR 2 | Drops 4 columns + 2 indexes; orphan-Users startup guard refuses to boot if backfill button wasn't clicked | Forward-only after deploy; orphan-guard catches missed backfill before traffic |
 | PR 2 → PR 3 | Adds Provider/ProviderKey/IsGoogle; backfills; drops IsOAuth/DisplayOrder | Forward-only after deploy |
 | PR 3 → PR 4 | None | Revert deploy |
 | PR 4 → PR 5 | None | Revert deploy |
@@ -212,38 +228,60 @@ Each PR independently shippable to production with no continuity loss; numbered 
 
 In-flight magic-link tokens, OAuth sessions, and auth cookies remain valid across all PRs (no token-format or storage-format changes).
 
-### PR 1 — Decouple application code from Identity columns
+### PR 1 — Stop writes + admin backfill button
 
-**Replaces:** nobodies-collective/Humans#506
+**Replaces:** nobodies-collective/Humans#506 (write-decoupling half only — read sweep deferred to PR 2)
 
-- Sweep all **reads** of `User.Email` / `NormalizedEmail` / `UserName` / `NormalizedUserName` to UserEmails queries.
-- **Stop writes** to the four Identity columns in all User-creation paths:
-  - `AccountController.ExternalLoginCallback:247-249` — set `UserName = user.Id.ToString()`; leave `Email`/`NormalizedEmail`/`EmailConfirmed` at defaults (null/null/false). UserEmail row still created via `AddOAuthEmailAsync` at line 263.
-  - `AccountProvisioningService.cs:121` — same treatment.
-  - `DevLoginController.cs:242, 598` — same treatment.
+**Scope (writes only — reads stay until PR 2):**
+
+- **Stop writes** to `Email` / `NormalizedEmail` / `EmailConfirmed` / `UserName` / `NormalizedUserName` in all User-creation paths. Set `UserName = user.Id.ToString()` (Identity requires non-empty unique UserName); leave the four email columns at defaults (null/null/false/null). `NormalizedUserName` is auto-populated by Identity from `UserName`. UserEmail rows continue to be created in the same paths via `AddOAuthEmailAsync` / direct entity add.
+  - `AccountController.ExternalLoginCallback` — new-User branch (currently around line 245-254).
+  - `AccountController.CompleteSignup` — magic-link-signup branch (currently around line 387-395). **Spec previously omitted this site; included here.**
+  - `AccountProvisioningService.FindOrCreateUserByEmailAsync` (currently around line 118-126).
+  - `DevLoginController.EnsurePersonaAsync` (currently around line 218-227).
+  - `DevLoginController.SeedProfilelessUserAsync` (currently around line 573-582).
   - This is **the load-bearing prerequisite** for PR 2's setter-throws override; without it, PR 2 breaks user creation in production.
-- Port the OAuth-callback link-by-email path from `User.Email` to UserEmails.
-- Replace the `IsOAuth`-based deletion guard with the "preserve at least one auth method" invariant.
-- Delete `GoogleAdminService.BackfillEmails` action + service method + admin UI entry point.
-- Delete the `MagicLinkService.cs:77, 155, 171` Identity-column fallback queries.
-- Anonymization paths (`OnboardingService:657`, `DuplicateAccountService:355`, `AccountMergeService:203`, `ProcessAccountDeletionsJob:171`) stop writing the four Identity email columns.
-- DI: `RequireUniqueEmail = false`.
-- Architecture test forbids reads **and writes** of the four Identity columns outside `Infrastructure/Data/`.
-- **No schema changes.**
 
-**Risk:** Medium (touches many call sites). Mitigation: architecture test + browser smoke for sign-in flows (magic link, Google OAuth, account with multi-email).
+- **Anonymization writes in `UserRepository`** (lines 274-277, 320-323, 425-428, 496-499) **stay through PR 1** — they become harmless no-ops in PR 2 when the columns are dropped. Spec previously claimed these writes were in `OnboardingService` / `DuplicateAccountService` / `AccountMergeService` / `ProcessAccountDeletionsJob`; that was wrong — those services call into UserRepository methods which are the actual write sites.
 
-### PR 2 — Override Identity properties + drop columns
+- **Restructure `AccountController.ExternalLoginCallback` new-User branch** to remove silent-duplicate risk. Today's `RequireUniqueEmail = true` rejects a duplicate-create at the Identity layer if `AddLoginAsync` to an existing user fails and the code falls through. After PR 1 sets `RequireUniqueEmail = false`, that fallback would silently create a duplicate. Fix: after `CreateAsync` succeeds, if `AddLoginAsync` fails, delete the just-created User (best-effort) and return the login error view. Do **not** allow a half-provisioned User to persist.
+
+- **Replace the `IsOAuth`-based deletion guard** in `UserEmailService.DeleteEmailAsync` (line 251-252) with the "preserve at least one auth method" invariant: count remaining verified UserEmail rows + AspNetUserLogins rows after the deletion; block if both would be zero. The OAuth-tied UserEmail row is now deletable as long as another auth method remains. Use `_userManager.GetLoginsAsync(user)` to count the OAuth side.
+
+- **Add admin backfill button** at `/Admin/Users/BackfillUserEmails` (or under existing maintenance area). Idempotent — for each User missing a UserEmail row, insert one from `User.Email` / `User.EmailConfirmed`, audit-log per insert, return count. Operator clicks on QA, verifies, then on prod, verifies, then PR 2 ships. **This replaces the migration-side backfill from earlier drafts of the spec.**
+
+- **DI:** `RequireUniqueEmail = false` in `Program.cs:169`.
+
+- **Architecture test (writes only):** forbid `Email = ` / `NormalizedEmail = ` / `EmailConfirmed = ` / `UserName = ` / `NormalizedUserName = ` writes in `Humans.Application` and `Humans.Web` assemblies. `Humans.Infrastructure` (UserRepository anonymization writes) and `Humans.Web.Controllers.DevLoginController` (transitional — the `UserName = id.ToString()` write) are exempt. Reads are unrestricted in PR 1.
+
+- **No schema changes. No reads removed. Lockout-relink branch and `FindUserByAnyEmailAsync` branch in OAuth callback stay** — they protect legacy data and are removed in PR 2 along with the read sweep.
+
+- **Items previously listed in PR 1 that are removed:** (a) "Delete `GoogleAdminService.BackfillEmails`" — already deleted in upstream; nothing to do. (b) "Delete `MagicLinkService.cs:77, 155, 171` Identity-column fallback queries" — moved to PR 2. (c) "Anonymization paths stop writing Identity columns" — moved to PR 2 (becomes natural no-op when columns drop).
+
+**Risk:** Low (write-only, leaves all read paths intact, no functional regression for legacy data). Mitigation: architecture test + browser smoke for OAuth signin (existing user, new user), magic-link signup (existing user, new user), dev login (legacy persona reuse, new persona seed), email-add+delete flow on a multi-email account, admin backfill button on QA.
+
+### PR 2 — Override Identity properties + drop columns + read sweep + orphan guard
 
 **Replaces:** nobodies-collective/Humans#560
 
+- Sweep all reads of `User.Email` / `NormalizedEmail` / `UserName` / `NormalizedUserName` to UserEmails queries:
+  - `MagicLinkService.SendMagicLinkAsync` step 2 fallback (`FindByEmailAsync`).
+  - `MagicLinkService.FindUserByVerifiedEmailAsync` final fallback (`FindByEmailAsync`).
+  - `MagicLinkService.FindUserByAnyEmailAsync` step 2 (`GetByNormalizedEmailAsync`).
+  - `AccountProvisioningService.FindOrCreateUserByEmailAsync` step 2 (`GetByEmailOrAlternateAsync`).
+  - `AccountController.ExternalLoginCallback` lockout-relink branch and `FindUserByAnyEmailAsync` branch — remove entirely (lockout-relink is covered by the new deletion guard from PR 1; `FindUserByAnyEmailAsync` becomes meaningless once the User.Email column is gone).
+  - `DevLoginController.EnsurePersonaAsync:185` (`FindByEmailAsync` legacy-persona path).
+  - `DevLoginController.SignIn:116` (`FindByEmailAsync` post-seed path).
+  - `UserEmailService.GetNotificationTargetEmailsAsync:437` (User.Email fallback).
+  - Any other `_userManager.FindByEmailAsync` / `IUserRepository.GetByNormalizedEmailAsync` callers surfaced by the architecture test.
+- **Startup guard:** add a hosted-service / startup check that runs `SELECT COUNT(*) FROM Users u WHERE NOT EXISTS (SELECT 1 FROM UserEmails ue WHERE ue.UserId = u.Id)` — if non-zero, throw `InvalidOperationException` and refuse to boot. Belt-and-suspenders against deploying PR 2 without first clicking the PR 1 backfill button.
 - Override `User.Email`, `User.NormalizedEmail`, `User.EmailConfirmed`, `User.NormalizedUserName` (compute from UserEmails / throw on set).
 - Implement `HumansUserStore : IUserStore<User>, IUserEmailStore<User>, IUserPasswordStore<User>`.
 - `UserConfiguration` adds `b.Ignore(...)` for the four overrides.
-- EF migration drops the four columns + `EmailIndex` + `UserNameIndex`.
-- Architecture test extended to forbid writes/mappings.
+- EF migration drops the four columns + `EmailIndex` + `UserNameIndex`. The anonymization writes in `UserRepository` (lines 274-277, 320-323, 425-428, 496-499) become no-ops once columns are dropped — remove those assignments in the same PR for cleanliness.
+- Architecture test extended to forbid reads of the four columns in `Application` + `Web` (PR 2 scope) and to forbid all writes in `Infrastructure` outside `Data/Configurations/UserConfiguration.cs` and `HumansUserStore`.
 
-**Risk:** High (Identity surgery). Mitigation: HumansUserStore unit tests + full sign-in regression (magic link via any verified email, OAuth via Google, multi-email user, admin user impersonation if any).
+**Risk:** High (Identity surgery). Mitigation: HumansUserStore unit tests + full sign-in regression (magic link via any verified email, OAuth via Google, multi-email user, dev personas, admin user impersonation if any) + startup guard verified by intentionally orphaning a test User and confirming the app refuses to boot.
 
 ### PR 3 — UserEmails modernization + rename detection
 
