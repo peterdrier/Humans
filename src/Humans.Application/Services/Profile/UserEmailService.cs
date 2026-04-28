@@ -248,27 +248,33 @@ public sealed class UserEmailService : IUserEmailService
         var email = await _repository.GetByIdAndUserIdAsync(emailId, userId, cancellationToken)
             ?? throw new InvalidOperationException("Email not found.");
 
-        // Preserve-at-least-one-auth-method invariant — replaces the old
+        // Preserve-at-least-one-verified-email invariant — replaces the old
         // IsOAuth-based block per email-identity-decoupling spec PR 1
         // (docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md).
-        // Auth methods are:
-        //   (a) verified UserEmail rows (used by magic-link sign-in)
-        //   (b) AspNetUserLogins rows (used by OAuth sign-in)
-        // We only enforce when removing a verified row — unverified rows aren't
-        // usable for sign-in, so deleting one cannot reduce the auth-method count.
+        //
+        // The original rule was "preserve at least one auth method" (verified
+        // UserEmail OR AspNetUserLogins row). Tightened to "preserve at least
+        // one verified UserEmail" because OAuth-only users are still un-
+        // notifiable: GetEffectiveEmail() falls back to User.Email which is
+        // null for post-PR-1 users, so an OAuth-only state would silently
+        // drop every system email (re-consent reminders, suspension notices,
+        // password resets, etc.). The OAuth login still works for sign-in,
+        // but signing in to an account that can't receive notifications is
+        // worse UX than blocking the delete.
+        //
+        // We only enforce when removing a verified row — unverified rows
+        // aren't notification targets and aren't usable for magic-link
+        // sign-in, so deleting one cannot reduce the verified-email count.
         if (email.IsVerified)
         {
             var allEmails = await _repository.GetByUserIdForMutationAsync(userId, cancellationToken);
             var verifiedRemaining = allEmails.Count(e => e.IsVerified && e.Id != emailId);
 
-            var user = await _userService.GetByIdAsync(userId, cancellationToken)
-                ?? throw new InvalidOperationException("User not found.");
-            var loginCount = (await _userManager.GetLoginsAsync(user)).Count;
-
-            if (verifiedRemaining == 0 && loginCount == 0)
+            if (verifiedRemaining == 0)
             {
                 throw new ValidationException(
-                    "Cannot remove your last sign-in method. Add another verified email or link an OAuth provider first.");
+                    "Cannot remove your last verified email. Add another verified email first " +
+                    "so you can still receive system notifications.");
             }
 
             // If this row is the notification target, hand off to the next

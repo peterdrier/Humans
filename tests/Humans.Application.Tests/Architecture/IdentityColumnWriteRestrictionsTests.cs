@@ -146,14 +146,17 @@ public class IdentityColumnWriteRestrictionsTests
             {
                 current = current.Resolve()?.BaseType;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 // Cecil cannot resolve external-assembly types (e.g., NuGet
                 // dependencies whose .dll isn't in the test output dir). A
                 // resolution failure here means the type is not a User
                 // subclass — the check returns false, which is the intended
                 // behaviour for non-User types regardless of why resolution
-                // failed.
+                // failed. Diagnostic written so a future debugger can see
+                // why a particular type wasn't classified as a User subclass.
+                System.Diagnostics.Debug.WriteLine(
+                    $"IsUserOrIdentityUser: Cecil resolution failed for {current?.FullName ?? "<null>"}: {ex.GetType().Name}");
                 return false;
             }
         }

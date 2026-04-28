@@ -291,8 +291,35 @@ public class AccountController : Controller
             return View(nameof(Login));
         }
 
-        // Create OAuth UserEmail record for the login email
-        await _userEmailService.AddOAuthEmailAsync(user.Id, email);
+        // Create OAuth UserEmail record for the login email. If this fails
+        // after CreateAsync + AddLoginAsync both succeeded, we still have an
+        // orphan: the User + AspNetUserLogins row persist, but no UserEmail
+        // row exists, so GetEffectiveEmail() returns null and the user
+        // becomes un-notifiable. Symmetric to CompleteSignup's cleanup.
+        try
+        {
+            await _userEmailService.AddOAuthEmailAsync(user.Id, email);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to create UserEmail for OAuth signup {UserId} ({Email}); rolling back user + login",
+                user.Id, email);
+            try
+            {
+                await _userManager.DeleteAsync(user);
+            }
+            catch (Exception deleteEx)
+            {
+                _logger.LogError(deleteEx,
+                    "Failed to clean up orphan user {UserId} after AddOAuthEmailAsync failure",
+                    user.Id);
+            }
+            ModelState.AddModelError(string.Empty,
+                "We couldn't finish setting up your account. Please try again.");
+            ViewData["ReturnUrl"] = returnUrl;
+            return View(nameof(Login));
+        }
 
         await _signInManager.SignInAsync(user, isPersistent: false);
         _logger.LogInformation("User created an account using {Provider}", info.LoginProvider);

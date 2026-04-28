@@ -103,13 +103,21 @@ public class UserEmailServiceTests
         var keepingId = Guid.NewGuid();
         var deleting = new UserEmail
         {
-            Id = deletingId, UserId = userId, Email = "secondary@example.com",
-            IsOAuth = false, IsVerified = true, IsNotificationTarget = false,
+            Id = deletingId,
+            UserId = userId,
+            Email = "secondary@example.com",
+            IsOAuth = false,
+            IsVerified = true,
+            IsNotificationTarget = false,
         };
         var keeping = new UserEmail
         {
-            Id = keepingId, UserId = userId, Email = "primary@example.com",
-            IsOAuth = false, IsVerified = true, IsNotificationTarget = true,
+            Id = keepingId,
+            UserId = userId,
+            Email = "primary@example.com",
+            IsOAuth = false,
+            IsVerified = true,
+            IsNotificationTarget = true,
         };
         _repository.GetByIdAndUserIdAsync(deletingId, userId, Arg.Any<CancellationToken>())
             .Returns(deleting);
@@ -139,13 +147,21 @@ public class UserEmailServiceTests
         var secondaryId = Guid.NewGuid();
         var oauthRow = new UserEmail
         {
-            Id = oauthRowId, UserId = userId, Email = "google@example.com",
-            IsOAuth = true, IsVerified = true, IsNotificationTarget = true,
+            Id = oauthRowId,
+            UserId = userId,
+            Email = "google@example.com",
+            IsOAuth = true,
+            IsVerified = true,
+            IsNotificationTarget = true,
         };
         var secondary = new UserEmail
         {
-            Id = secondaryId, UserId = userId, Email = "personal@example.com",
-            IsOAuth = false, IsVerified = true, IsNotificationTarget = false,
+            Id = secondaryId,
+            UserId = userId,
+            Email = "personal@example.com",
+            IsOAuth = false,
+            IsVerified = true,
+            IsNotificationTarget = false,
         };
         _repository.GetByIdAndUserIdAsync(oauthRowId, userId, Arg.Any<CancellationToken>())
             .Returns(oauthRow);
@@ -173,8 +189,12 @@ public class UserEmailServiceTests
         var emailId = Guid.NewGuid();
         var only = new UserEmail
         {
-            Id = emailId, UserId = userId, Email = "only@example.com",
-            IsOAuth = false, IsVerified = true, IsNotificationTarget = true,
+            Id = emailId,
+            UserId = userId,
+            Email = "only@example.com",
+            IsOAuth = false,
+            IsVerified = true,
+            IsNotificationTarget = true,
         };
         _repository.GetByIdAndUserIdAsync(emailId, userId, Arg.Any<CancellationToken>())
             .Returns(only);
@@ -193,30 +213,36 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task DeleteEmailAsync_LastVerifiedEmailWithOAuthLogin_DeletesSuccessfully()
+    public async Task DeleteEmailAsync_LastVerifiedEmailEvenWithOAuthLogin_ThrowsValidationException()
     {
-        // The user has one verified UserEmail but also one AspNetUserLogins row
-        // (OAuth). Deleting the email is allowed because OAuth sign-in still works.
+        // Tightened from the original auth-method rule: even with an OAuth
+        // login present, deleting the last verified email is blocked because
+        // GetEffectiveEmail() falls back to User.Email which is null for
+        // post-PR-1 users — the user would be un-notifiable. OAuth sign-in
+        // still working isn't enough; the user must keep at least one
+        // verified email so system mail (re-consent reminders, suspension
+        // notices) has somewhere to go.
         var userId = Guid.NewGuid();
         var emailId = Guid.NewGuid();
         var only = new UserEmail
         {
-            Id = emailId, UserId = userId, Email = "only@example.com",
-            IsOAuth = false, IsVerified = true, IsNotificationTarget = true,
+            Id = emailId,
+            UserId = userId,
+            Email = "only@example.com",
+            IsOAuth = false,
+            IsVerified = true,
+            IsNotificationTarget = true,
         };
         _repository.GetByIdAndUserIdAsync(emailId, userId, Arg.Any<CancellationToken>())
             .Returns(only);
         _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { only });
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = userId });
-        _userManager.GetLoginsAsync(Arg.Any<User>())
-            .Returns(new List<UserLoginInfo> { new("Google", "sub-123", "Google") });
 
-        await _service.DeleteEmailAsync(userId, emailId);
+        var act = async () => await _service.DeleteEmailAsync(userId, emailId);
 
-        await _repository.Received(1).RemoveAsync(only, Arg.Any<CancellationToken>());
-        await _fullProfileInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>());
+        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
+        await _repository.DidNotReceive().RemoveAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _fullProfileInvalidator.DidNotReceive().InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -230,8 +256,12 @@ public class UserEmailServiceTests
         _repository.GetByIdAndUserIdAsync(emailId, userId, Arg.Any<CancellationToken>())
             .Returns(new UserEmail
             {
-                Id = emailId, UserId = userId, Email = "unverified@example.com",
-                IsOAuth = false, IsVerified = false, IsNotificationTarget = false,
+                Id = emailId,
+                UserId = userId,
+                Email = "unverified@example.com",
+                IsOAuth = false,
+                IsVerified = false,
+                IsNotificationTarget = false,
             });
 
         await _service.DeleteEmailAsync(userId, emailId);
