@@ -141,6 +141,8 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task<IReadOnlyList<User>> GetUsersWithoutUserEmailRowAsync(CancellationToken ct = default) =>
+            throw new NotSupportedException();
         public Task<User?> GetByNormalizedEmailAsync(string? normalizedEmail, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlyList<User>> GetContactUsersAsync(string? search, CancellationToken ct = default) =>
@@ -345,7 +347,9 @@ public class AccountProvisioningServiceTests
             "alice@example.com", "Alice Smith", ContactSource.TicketTailor);
 
         result.Created.Should().BeTrue();
-        result.User.Email.Should().Be("alice@example.com");
+        // Per PR 1 of email-identity-decoupling spec: User.Email is no longer
+        // populated on creation — the UserEmail row carries the email.
+        result.User.Email.Should().BeNull();
         result.User.DisplayName.Should().Be("Alice Smith");
         result.User.ContactSource.Should().Be(ContactSource.TicketTailor);
 
@@ -540,7 +544,11 @@ public class AccountProvisioningServiceTests
         result2.Created.Should().BeFalse();
         result3.Created.Should().BeFalse();
 
-        // Only one user should exist
-        _userRepo.All.Count(u => string.Equals(u.Email, "henry@example.com", StringComparison.Ordinal)).Should().Be(1);
+        // Only one user should exist. Per PR 1 of email-identity-decoupling
+        // spec, User.Email is null on newly-created users — assert via the
+        // UserEmail row instead.
+        _userEmailRepo.All
+            .Count(ue => string.Equals(ue.Email, "henry@example.com", StringComparison.Ordinal))
+            .Should().Be(1);
     }
 }

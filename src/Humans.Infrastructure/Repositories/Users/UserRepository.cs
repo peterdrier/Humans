@@ -75,6 +75,16 @@ public sealed class UserRepository : IUserRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<User>> GetUsersWithoutUserEmailRowAsync(
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Users
+            .AsNoTracking()
+            .Where(u => !ctx.UserEmails.Any(ue => ue.UserId == u.Id))
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<Guid>> GetAllUserIdsAsync(CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

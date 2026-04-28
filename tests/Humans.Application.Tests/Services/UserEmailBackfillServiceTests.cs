@@ -1,0 +1,187 @@
+using AwesomeAssertions;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Services.Users;
+using Humans.Domain.Entities;
+using Humans.Testing;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging.Abstractions;
+using NodaTime;
+using NodaTime.Testing;
+using NSubstitute;
+using Xunit;
+
+namespace Humans.Application.Tests.Services;
+
+/// <summary>
+/// Tests for the PR 1 email-identity-decoupling admin backfill service
+/// (<c>docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md</c>).
+/// </summary>
+public class UserEmailBackfillServiceTests
+{
+    private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
+    private readonly IUserEmailRepository _userEmailRepository = Substitute.For<IUserEmailRepository>();
+    private readonly UserManager<User> _userManager;
+    private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
+    private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 28, 12, 0));
+    private readonly UserEmailBackfillService _sut;
+
+    public UserEmailBackfillServiceTests()
+    {
+        var store = Substitute.For<IUserStore<User>>();
+        _userManager = Substitute.For<UserManager<User>>(
+            store, null, null, null, null, null, null, null, null);
+
+        _sut = new UserEmailBackfillService(
+            _userRepository,
+            _userEmailRepository,
+            _userManager,
+            _auditLogService,
+            _clock,
+            NullLogger<UserEmailBackfillService>.Instance);
+    }
+
+    [HumansFact]
+    public async Task NoOrphans_ReturnsZeroCounts()
+    {
+        _userRepository.GetUsersWithoutUserEmailRowAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<User>());
+
+        var result = await _sut.BackfillAsync();
+
+        result.OrphansFound.Should().Be(0);
+        result.RowsInserted.Should().Be(0);
+        result.SkippedUserIds.Should().BeEmpty();
+        await _userEmailRepository.DidNotReceive().AddAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task OneOrphanWithVerifiedEmail_InsertsOneRow()
+    {
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = "x@example.com",
+            EmailConfirmed = true,
+        };
+        _userRepository.GetUsersWithoutUserEmailRowAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<User> { user });
+        _userManager.GetLoginsAsync(Arg.Any<User>())
+            .Returns(new List<UserLoginInfo>());
+
+        var result = await _sut.BackfillAsync();
+
+        result.OrphansFound.Should().Be(1);
+        result.RowsInserted.Should().Be(1);
+        result.SkippedUserIds.Should().BeEmpty();
+
+        await _userEmailRepository.Received(1).AddAsync(
+            Arg.Is<UserEmail>(ue =>
+                ue.UserId == user.Id &&
+                ue.Email == "x@example.com" &&
+                ue.IsVerified == true &&
+                ue.IsNotificationTarget == true &&
+                ue.IsOAuth == false),
+            Arg.Any<CancellationToken>());
+
+        await _auditLogService.Received(1).LogAsync(
+            Arg.Any<Humans.Domain.Enums.AuditAction>(),
+            nameof(User),
+            user.Id,
+            Arg.Any<string>(),
+            nameof(UserEmailBackfillService));
+    }
+
+    [HumansFact]
+    public async Task OrphanWithEmailAndOAuthLogin_SetsIsOAuthTrue()
+    {
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = "google@example.com",
+            EmailConfirmed = true,
+        };
+        _userRepository.GetUsersWithoutUserEmailRowAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<User> { user });
+        _userManager.GetLoginsAsync(user)
+            .Returns(new List<UserLoginInfo> { new("Google", "sub-123", "Google") });
+
+        await _sut.BackfillAsync();
+
+        await _userEmailRepository.Received(1).AddAsync(
+            Arg.Is<UserEmail>(ue => ue.IsOAuth == true),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task OrphanWithoutEmail_RecordsSkip_NoRowInserted()
+    {
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = null,
+            EmailConfirmed = false,
+        };
+        _userRepository.GetUsersWithoutUserEmailRowAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<User> { user });
+
+        var result = await _sut.BackfillAsync();
+
+        result.OrphansFound.Should().Be(1);
+        result.RowsInserted.Should().Be(0);
+        result.SkippedUserIds.Should().ContainSingle().Which.Should().Be(user.Id);
+        await _userEmailRepository.DidNotReceive().AddAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _auditLogService.DidNotReceive().LogAsync(
+            Arg.Any<Humans.Domain.Enums.AuditAction>(),
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task UnverifiedEmail_PreservesIsVerifiedFlagAndDoesNotSetNotificationTarget()
+    {
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = "unconfirmed@example.com",
+            EmailConfirmed = false,
+        };
+        _userRepository.GetUsersWithoutUserEmailRowAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<User> { user });
+        _userManager.GetLoginsAsync(Arg.Any<User>())
+            .Returns(new List<UserLoginInfo>());
+
+        await _sut.BackfillAsync();
+
+        await _userEmailRepository.Received(1).AddAsync(
+            Arg.Is<UserEmail>(ue =>
+                ue.IsVerified == false &&
+                ue.IsNotificationTarget == false),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Idempotent_SecondRunSeesNoOrphans()
+    {
+        // First call returns one orphan; the GetUsersWithoutUserEmailRowAsync
+        // mock returns it. Once the test code "runs" once, the subsequent
+        // call (set up with .Returns(empty)) reflects the persisted insert.
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = "x@example.com",
+            EmailConfirmed = true,
+        };
+        _userRepository.GetUsersWithoutUserEmailRowAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<User> { user }, new List<User>());
+        _userManager.GetLoginsAsync(Arg.Any<User>())
+            .Returns(new List<UserLoginInfo>());
+
+        var first = await _sut.BackfillAsync();
+        var second = await _sut.BackfillAsync();
+
+        first.RowsInserted.Should().Be(1);
+        second.OrphansFound.Should().Be(0);
+        second.RowsInserted.Should().Be(0);
+    }
+}

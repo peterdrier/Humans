@@ -476,3 +476,29 @@ public class AudienceSegmentationViewModel
     /// <summary>Currently selected event year filter, or null for all time.</summary>
     public int? SelectedYear { get; set; }
 }
+
+/// <summary>
+/// View model for the <c>/Admin/BackfillUserEmails</c> page. The page is
+/// rendered twice — once as a confirmation form (<see cref="HasRun"/> = false)
+/// and once after the operator triggers the backfill (<see cref="HasRun"/> =
+/// true) showing the results.
+/// </summary>
+/// <param name="HasRun">
+/// False on the initial GET (operator hasn't clicked Run yet); true after
+/// the POST has executed.
+/// </param>
+/// <param name="OrphansFound">
+/// Total Users with no UserEmail row at the start of the run.
+/// </param>
+/// <param name="RowsInserted">
+/// UserEmail rows inserted during the run.
+/// </param>
+/// <param name="SkippedUserIds">
+/// Orphan User ids the backfill could not auto-fix because they had no
+/// <c>User.Email</c> to seed from. Operator triages these by hand.
+/// </param>
+public sealed record BackfillUserEmailsViewModel(
+    bool HasRun,
+    int OrphansFound,
+    int RowsInserted,
+    IReadOnlyList<Guid> SkippedUserIds);

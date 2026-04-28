@@ -52,6 +52,16 @@ public interface IUserRepository
     Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Returns every <see cref="User"/> that has no
+    /// <see cref="UserEmail"/> row. Used by
+    /// <c>IUserEmailBackfillService</c> to find orphan Users during the PR 1
+    /// admin backfill operation
+    /// (<c>docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md</c>).
+    /// Read-only (AsNoTracking).
+    /// </summary>
+    Task<IReadOnlyList<User>> GetUsersWithoutUserEmailRowAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the ids of every user in the system, read-only. Used by the
     /// admin dashboard to partition all users into status buckets without
     /// loading the full User graph.
