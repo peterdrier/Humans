@@ -6,7 +6,23 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Migrations
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// Adds the Slug columns to <c>budget_groups</c> and <c>budget_categories</c>
+    /// (used by the Finance section to compose Holded tags) and seeds the
+    /// <c>holded_sync_states</c> singleton row.
+    ///
+    /// <para>
+    /// Uses <c>migrationBuilder.Sql()</c> three times — two backfill UPDATEs
+    /// (one per Slug column, deriving values from existing Name) and one
+    /// singleton-seed INSERT for <c>holded_sync_states</c>. This is an explicit
+    /// exception to the coding-rules ban on data migrations: small static
+    /// reference tables (BudgetGroup ~15 rows, BudgetCategory ~80 rows at full
+    /// org scale), one-shot operation, and the backfill must be atomic with
+    /// the schema change so the unique index can be added in the same
+    /// migration. Approved by spec PR peterdrier#347 + the EF migration
+    /// reviewer agent.
+    /// </para>
+    /// </summary>
     public partial class AddHoldedAndBudgetSlugs : Migration
     {
         /// <inheritdoc />
