@@ -9,6 +9,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
     <PackageReference Include="NodaTime.Testing" />
+    <PackageReference Include="Mono.Cecil" />
   </ItemGroup>
 
 </Project>
