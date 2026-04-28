@@ -11,19 +11,28 @@ namespace Humans.Application.Tests.Architecture;
 /// (<c>docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md</c>).
 ///
 /// <para>
-/// PR 1 stops writes to the four ASP.NET Identity-derived <see cref="User"/>
-/// columns (<c>Email</c>, <c>NormalizedEmail</c>, <c>EmailConfirmed</c>,
-/// <c>UserName</c>; <c>NormalizedUserName</c> is included for completeness even
-/// though Identity auto-derives it) in <c>Humans.Application</c> and
-/// <c>Humans.Web</c> assemblies. Reads are unrestricted in PR 1 — they sweep
-/// to <see cref="Domain.Entities.UserEmail"/> queries in PR 2 alongside the
+/// PR 1 stops writes to the three ASP.NET Identity-derived email columns on
+/// <see cref="User"/> — <c>Email</c>, <c>NormalizedEmail</c>,
+/// <c>EmailConfirmed</c> — in <c>Humans.Application</c> and <c>Humans.Web</c>.
+/// <c>UserName</c> / <c>NormalizedUserName</c> are deliberately NOT in this
+/// PR's forbidden set: User creation paths now write
+/// <c>UserName = user.Id.ToString()</c> (Identity needs a unique non-empty
+/// UserName), and that transitional write is part of the decoupling, not a
+/// violation of it. PR 2 forbids <c>set_UserName</c> globally once
+/// <c>HumansUserStore</c> + virtual overrides take over.
+/// </para>
+///
+/// <para>
+/// Reads are unrestricted in PR 1 — they sweep to
+/// <see cref="Domain.Entities.UserEmail"/> queries in PR 2 alongside the
 /// column-drop migration.
 /// </para>
 ///
 /// <para>Exemptions:</para>
 /// <list type="bullet">
 ///   <item><description><c>Humans.Infrastructure</c> — <c>UserRepository</c>'s rename / merge / purge / deletion-anonymization writes stay through PR 1; they become no-op assignments in PR 2 when the columns are dropped.</description></item>
-///   <item><description><c>Humans.Web.Controllers.DevLoginController</c> — the transitional <c>UserName = id.ToString()</c> write during persona seeding is allowed; this exemption deletes in PR 2 once <c>HumansUserStore</c> + virtual property overrides land.</description></item>
+///   <item><description><c>Humans.Web.Controllers.DevLoginController</c> — historical exemption (no email writes remain after PR 1, kept as a marker for PR 2 cleanup).</description></item>
+///   <item><description><c>Humans.Web.Infrastructure.DevelopmentDashboardSeeder</c> — dev seed cleanup queries <c>u.Email</c> at line 421-424; sweeping that read is PR 2 scope.</description></item>
 /// </list>
 ///
 /// <para>
@@ -42,8 +51,6 @@ public class IdentityColumnWriteRestrictionsTests
         "set_Email",
         "set_NormalizedEmail",
         "set_EmailConfirmed",
-        "set_UserName",
-        "set_NormalizedUserName",
     };
 
     private static readonly string[] ScannedAssemblies =
@@ -90,11 +97,10 @@ public class IdentityColumnWriteRestrictionsTests
         }
 
         offenders.Should().BeEmpty(
-            because: "PR 1 of the email-identity-decoupling spec stops writes to the four Identity-derived " +
-                     "User columns (Email/NormalizedEmail/EmailConfirmed/UserName, plus NormalizedUserName) " +
-                     "in Application + Web. Set UserName = user.Id.ToString() on creation and leave the email " +
-                     "columns at defaults; the UserEmail row carries the email going forward. " +
-                     "DevLoginController is exempt for transitional UserName seeding (cleared in PR 2). " +
+            because: "PR 1 of the email-identity-decoupling spec stops writes to the three Identity-derived " +
+                     "User EMAIL columns (Email/NormalizedEmail/EmailConfirmed) in Application + Web. " +
+                     "On user creation: leave these columns at defaults and set UserName = user.Id.ToString(); " +
+                     "the UserEmail row created alongside the User carries the email going forward. " +
                      "Offenders found: {0}", string.Join("; ", offenders));
     }
 

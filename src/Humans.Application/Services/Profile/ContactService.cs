@@ -84,15 +84,19 @@ public sealed class ContactService : IContactService
 
         var now = _clock.GetCurrentInstant();
 
+        // Identity-column writes decoupled per email-identity-decoupling spec PR 1
+        // (docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md).
+        // AddVerifiedEmailAsync below creates the UserEmail row that becomes the
+        // source of truth for the email.
+        var newUserId = Guid.NewGuid();
         var user = new User
         {
-            UserName = email,
-            Email = email,
+            Id = newUserId,
+            UserName = newUserId.ToString(),
             DisplayName = displayName,
             ContactSource = source,
             ExternalSourceId = externalSourceId,
             CreatedAt = now,
-            EmailConfirmed = true
         };
 
         var result = await _userManager.CreateAsync(user);
