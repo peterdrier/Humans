@@ -1,4 +1,5 @@
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
@@ -22,6 +23,7 @@ public sealed class UserEmailBackfillService : IUserEmailBackfillService
     private readonly IUserEmailRepository _userEmailRepository;
     private readonly UserManager<User> _userManager;
     private readonly IAuditLogService _auditLogService;
+    private readonly IFullProfileInvalidator _fullProfileInvalidator;
     private readonly IClock _clock;
     private readonly ILogger<UserEmailBackfillService> _logger;
 
@@ -30,6 +32,7 @@ public sealed class UserEmailBackfillService : IUserEmailBackfillService
         IUserEmailRepository userEmailRepository,
         UserManager<User> userManager,
         IAuditLogService auditLogService,
+        IFullProfileInvalidator fullProfileInvalidator,
         IClock clock,
         ILogger<UserEmailBackfillService> logger)
     {
@@ -37,6 +40,7 @@ public sealed class UserEmailBackfillService : IUserEmailBackfillService
         _userEmailRepository = userEmailRepository;
         _userManager = userManager;
         _auditLogService = auditLogService;
+        _fullProfileInvalidator = fullProfileInvalidator;
         _clock = clock;
         _logger = logger;
     }
@@ -77,6 +81,13 @@ public sealed class UserEmailBackfillService : IUserEmailBackfillService
 
             await _userEmailRepository.AddAsync(userEmail, ct);
             rowsInserted++;
+
+            // FullProfile.EmailAddresses derives from user_emails; the
+            // CachingProfileService dictionary holds a stale copy that lists
+            // no emails for this user until invalidated. Per code-review-rules
+            // §Cache Invalidation: every mutation evicts affected cache
+            // entries in the same service method.
+            await _fullProfileInvalidator.InvalidateAsync(user.Id, ct);
 
             // ContactCreated is a semantic approximation — there's no
             // dedicated UserEmailAdded / UserEmailBackfilled action today,

@@ -271,16 +271,19 @@ public sealed class UserEmailService : IUserEmailService
                     "Cannot remove your last sign-in method. Add another verified email or link an OAuth provider first.");
             }
 
-            // If this row is the notification target, hand off to the next-best
-            // verified row before the delete, so the user keeps a usable
-            // notification address. Prefer an OAuth-flagged successor (matches
-            // historical behaviour where the OAuth row was the implicit primary).
+            // If this row is the notification target, hand off to the next
+            // verified row by display order so the user keeps a usable
+            // notification address. The earlier "prefer IsOAuth" successor
+            // ranking is intentionally dropped: AddOAuthEmailAsync sets
+            // IsOAuth=true for magic-link signups too (pre-existing misnomer
+            // tracked for PR 3 when the flag becomes Provider/ProviderKey),
+            // so leaning on it here would mis-pick successors for users
+            // who never signed up via OAuth.
             if (email.IsNotificationTarget)
             {
                 var successor = allEmails
                     .Where(e => e.Id != emailId && e.IsVerified)
-                    .OrderByDescending(e => e.IsOAuth)
-                    .ThenBy(e => e.DisplayOrder)
+                    .OrderBy(e => e.DisplayOrder)
                     .FirstOrDefault();
                 if (successor is not null)
                 {

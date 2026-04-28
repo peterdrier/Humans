@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Users;
 using Humans.Domain.Entities;
@@ -23,6 +24,7 @@ public class UserEmailBackfillServiceTests
     private readonly IUserEmailRepository _userEmailRepository = Substitute.For<IUserEmailRepository>();
     private readonly UserManager<User> _userManager;
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
+    private readonly IFullProfileInvalidator _fullProfileInvalidator = Substitute.For<IFullProfileInvalidator>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 28, 12, 0));
     private readonly UserEmailBackfillService _sut;
 
@@ -37,6 +39,7 @@ public class UserEmailBackfillServiceTests
             _userEmailRepository,
             _userManager,
             _auditLogService,
+            _fullProfileInvalidator,
             _clock,
             NullLogger<UserEmailBackfillService>.Instance);
     }
@@ -53,6 +56,43 @@ public class UserEmailBackfillServiceTests
         result.RowsInserted.Should().Be(0);
         result.SkippedUserIds.Should().BeEmpty();
         await _userEmailRepository.DidNotReceive().AddAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _fullProfileInvalidator.DidNotReceive().InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SuccessfulInsert_InvalidatesFullProfileForThatUser()
+    {
+        // FullProfile.EmailAddresses is derived from user_emails — the cache
+        // for the orphan user must be evicted after the insert so a follow-on
+        // read sees the new address (per code-review-rules §Cache Invalidation).
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = "x@example.com",
+            EmailConfirmed = true,
+        };
+        _userRepository.GetUsersWithoutUserEmailRowAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<User> { user });
+        _userManager.GetLoginsAsync(Arg.Any<User>())
+            .Returns(new List<UserLoginInfo>());
+
+        await _sut.BackfillAsync();
+
+        await _fullProfileInvalidator.Received(1).InvalidateAsync(user.Id, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SkippedOrphan_DoesNotInvalidate()
+    {
+        // Skipped users (no User.Email) had no UserEmail row inserted, so
+        // there's nothing to invalidate.
+        var user = new User { Id = Guid.NewGuid(), Email = null };
+        _userRepository.GetUsersWithoutUserEmailRowAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<User> { user });
+
+        await _sut.BackfillAsync();
+
+        await _fullProfileInvalidator.DidNotReceive().InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
