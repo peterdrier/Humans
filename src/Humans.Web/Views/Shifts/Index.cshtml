@@ -245,10 +245,10 @@
                                 {
                                     <span class="badge bg-warning text-dark ms-1">@Localizer["Shifts_Important"]</span>
                                 }
-                                @* Rota is server-side filtered out for non-privileged users, so the pill only renders for admin/coordinator. *@
+                                @* Rota is server-side filtered out for non-privileged users, so the pill only renders for admin/coordinator. Matches _RotaHeader.cshtml styling. *@
                                 @if (!rotaGroup.Rota.IsVisibleToVolunteers)
                                 {
-                                    <span class="badge bg-dark ms-1" title="@Localizer["Shifts_Hidden"]"><i class="fa-solid fa-eye-slash me-1"></i>@Localizer["Shifts_Hidden"]</span>
+                                    <span class="badge bg-warning text-dark ms-1"><i class="fa-solid fa-eye-slash me-1"></i>@Localizer["Shifts_HiddenBadge"]</span>
                                 }
                                 @if (!string.IsNullOrEmpty(rotaGroup.DepartmentName))
                                 {
@@ -393,7 +393,7 @@
                                                 }
                                                 @if (!rotaGroup.Rota.IsVisibleToVolunteers)
                                                 {
-                                                    <span class="badge bg-dark" title="@Localizer["Shifts_Hidden"]"><i class="fa-solid fa-eye-slash me-1"></i>@Localizer["Shifts_Hidden"]</span>
+                                                    <span class="badge bg-warning text-dark"><i class="fa-solid fa-eye-slash me-1"></i>@Localizer["Shifts_HiddenBadge"]</span>
                                                 }
                                                 <small class="text-muted d-none d-md-inline">@rotaGroup.Shifts.Count @(rotaGroup.Shifts.Count == 1 ? Localizer["Shifts_ShiftSingular"] : Localizer["Shifts_ShiftPlural"])</small>
                                             </div>

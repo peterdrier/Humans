@@ -1668,7 +1668,6 @@
   <data name="Shifts_FullDay" xml:space="preserve"><value>Día completo</value></data>
   <data name="Shifts_Essential" xml:space="preserve"><value>Esencial</value></data>
   <data name="Shifts_Important" xml:space="preserve"><value>Importante</value></data>
-  <data name="Shifts_Hidden" xml:space="preserve"><value>Oculto</value></data>
   <data name="Shifts_AllPhases" xml:space="preserve"><value>Todas las fases</value></data>
   <data name="Shifts_HiddenBadge" xml:space="preserve"><value>Oculto</value></data>
   <data name="Shifts_MatchesPrefs" xml:space="preserve"><value>Coincide con tus preferencias</value></data>

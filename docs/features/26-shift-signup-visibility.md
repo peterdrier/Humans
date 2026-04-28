@@ -20,12 +20,10 @@ Coordinators and admins managing shifts cannot currently see who has signed up f
 
 ## Authorization
 
-Signup names/avatars use existing per-page auth checks — no new authorization logic needed:
+> **Policy change (under evaluation):** Signup lists on the browse page (`/Shifts` and `/Vol/Shifts`) are temporarily visible to **all** authenticated viewers — not just coordinators/admins. The `isPrivileged` computation is intentionally retained in both controllers so the gate can be reinstated by flipping `ShowSignups` and `includeSignups` back to `isPrivileged` if folks object. Acceptance criteria below are written against the current (public) policy.
 
-- **Browse page (`/Shifts`):** Uses the existing `isPrivileged` variable in `ShiftsController` — true for Admin, NoInfoAdmin, or any department coordinator (`GetCoordinatorDepartmentIdsAsync().Count > 0`).
-- **Admin page (`/Teams/{slug}/Shifts`):** Uses the existing `CanApproveAsync` helper in `ShiftAdminController` — true for Admin, NoInfoAdmin, VolunteerCoordinator, or coordinator of that specific team.
-
-Regular volunteers see only fill counts (existing behavior, unchanged).
+- **Browse page (`/Shifts`, `/Vol/Shifts`):** Signup lists visible to every authenticated user. The `isPrivileged` variable still gates other admin-only behaviour (AdminOnly shift visibility, hidden rota visibility, browsing-while-closed).
+- **Admin page (`/Teams/{slug}/Shifts`):** Uses the existing `CanApproveAsync` helper in `ShiftAdminController` — true for Admin, NoInfoAdmin, VolunteerCoordinator, or coordinator of that specific team. Unchanged.
 
 ## User Stories
 
@@ -41,7 +39,7 @@ Regular volunteers see only fill counts (existing behavior, unchanged).
 - Pending names render in muted/italic with a "(pending)" label
 - Only Confirmed and Pending signups are shown — Refused, Bailed, NoShow, and Cancelled are excluded
 - Empty cell when no signups (Filled column already shows "0/N")
-- Column only renders for coordinator/admin viewers — omitted entirely for regular volunteers
+- Column renders for all authenticated viewers on `/Shifts` and `/Vol/Shifts` (temporary public policy — see Authorization)
 - Applies to both future and current shifts (past shifts retain existing collapsible pattern on admin page)
 
 ### US-2: See who signed up for Build/Strike shifts
@@ -57,7 +55,7 @@ Regular volunteers see only fill counts (existing behavior, unchanged).
 - Pending avatars render at 50% opacity with a dashed border
 - Only Confirmed and Pending signups are shown
 - Avatars wrap naturally when many signups are present (no truncation or "+N more" needed at ~500-user scale)
-- Column only renders for coordinator/admin viewers
+- Column renders for all authenticated viewers on `/Shifts` and `/Vol/Shifts` (temporary public policy — see Authorization)
 
 ## Data Model
 
@@ -65,7 +63,7 @@ Regular volunteers see only fill counts (existing behavior, unchanged).
 
 ### Service Layer
 
-Pass `includeSignups: true` to `GetBrowseShiftsAsync` when the viewer is privileged. The service includes `User` navigation on `ShiftSignup` entities and filters to Confirmed + Pending status only. When `includeSignups` is false (regular volunteers), `Signups` is an empty list.
+`GetBrowseShiftsAsync` is called with `includeSignups: true` unconditionally on `/Shifts` and `/Vol/Shifts` while the public policy is in effect. The service includes `User` navigation on `ShiftSignup` entities and filters to Confirmed + Pending status only. When the policy is reverted, both `ShowSignups` and `includeSignups` flip back to `isPrivileged` together.
 
 ### ViewModel Changes
 
@@ -77,7 +75,7 @@ public record ShiftSignupInfo(Guid UserId, string DisplayName, SignupStatus Stat
 
 `ProfilePictureUrl` is the route `/Human/{userId}/Picture` (or null if no picture uploaded). This is passed directly to `UserAvatarViewComponent`.
 
-`ShiftDisplayItem` gains: `IReadOnlyList<ShiftSignupInfo> Signups` — always populated when viewer is privileged (empty list otherwise). The view chooses name-list vs avatar display based on the parent rota's `RotaPeriod`.
+`ShiftDisplayItem` gains: `IReadOnlyList<ShiftSignupInfo> Signups`. The view chooses name-list vs avatar display based on the parent rota's `RotaPeriod`.
 
 ## Affected Pages
 

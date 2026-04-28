@@ -40,10 +40,10 @@
             {
                 <span class="badge bg-warning text-dark ms-1">Important</span>
             }
-            @* Rota is server-side filtered out for non-privileged users, so the pill only renders for admin/coordinator. *@
+            @* Rota is server-side filtered out for non-privileged users, so the pill only renders for admin/coordinator. Matches _RotaHeader.cshtml styling. *@
             @if (!rota.IsVisibleToVolunteers)
             {
-                <span class="badge bg-dark ms-1" title="Hidden"><i class="fa-solid fa-eye-slash me-1"></i>Hidden</span>
+                <span class="badge bg-warning text-dark ms-1"><i class="fa-solid fa-eye-slash me-1"></i>@Localizer["Shifts_HiddenBadge"]</span>
             }
             <span class="badge @periodBadge.Item1 ms-1">@periodBadge.Item2</span>
             <small class="text-muted ms-2">@rotaGroup.Shifts.Count shift@(rotaGroup.Shifts.Count != 1 ? "s" : "")</small>
