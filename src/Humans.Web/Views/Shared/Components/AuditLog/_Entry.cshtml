@@ -6,6 +6,7 @@
     string GetName(Guid id) => userNames.TryGetValue(id, out var n) ? n : "Unknown";
 
     var verb = AuditLogViewComponent.GetActionVerb(Model.Action);
+    var selfVerb = AuditLogViewComponent.GetActionSelfVerb(Model.Action);
 
     // Subject: the user being acted upon
     Guid? subjectId = Model.EntityType is "User" or "Profile" or "WorkspaceAccount"
@@ -40,7 +41,7 @@
             <span class="text-muted">System</span>
         }
 
-        <span>@verb</span>
+        <span>@(actorIsSubject && selfVerb != null ? selfVerb : verb)</span>
 
         @* Subject (skip if same as actor) *@
         @if (subjectId.HasValue && !actorIsSubject)

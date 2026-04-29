@@ -117,6 +117,20 @@ public class AuditLogViewComponent : ViewComponent
         AuditAction.ShiftSignupCancelled => "removed signup for",
         _ => null
     };
+
+    /// <summary>
+    /// Self-form verb for actions where actor == subject. Avoids dangling
+    /// prepositions like "Frank confirmed signup for —" when the partial
+    /// suppresses the duplicate subject. Returns null to fall back to the
+    /// transitive form for actions where actor == subject is not a natural case.
+    /// </summary>
+    public static string? GetActionSelfVerb(AuditAction action) => action switch
+    {
+        AuditAction.ShiftSignupConfirmed => "signed up for",
+        AuditAction.ShiftSignupBailed => "bailed from",
+        AuditAction.ShiftSignupCancelled => "cancelled signup for",
+        _ => null
+    };
 }
 
 public class AuditLogComponentViewModel
