@@ -10,8 +10,8 @@ public class IssueComment
 
     public Guid? SenderUserId { get; init; }
 
-    [Obsolete("Cross-domain nav — resolve via IUserService instead. See design-rules §6c.")]
-    public User? Sender { get; set; }
+    [Obsolete("Cross-domain nav — resolve via IUserService instead of navigating IssueComment.SenderUser. See design-rules §6c.")]
+    public User? SenderUser { get; set; }
 
     public string Content { get; set; } = string.Empty;
     public Instant CreatedAt { get; init; }
