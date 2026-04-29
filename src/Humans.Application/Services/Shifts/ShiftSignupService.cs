@@ -148,8 +148,9 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         {
             await _auditLogService.LogAsync(
                 AuditAction.ShiftSignupConfirmed, nameof(ShiftSignup), signup.Id,
-                $"Auto-confirmed signup for shift '{shift.Rota.Name}'",
-                userId);
+                $"shift '{shift.Rota.Name}'",
+                userId,
+                userId, nameof(User));
 
             await DispatchSignupChangeNotificationAsync(signup, shift,
                 $"New confirmed signup for '{shift.Rota.Name}' on day {shift.DayOffset}.");
@@ -202,8 +203,9 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupConfirmed, nameof(ShiftSignup), signup.Id,
-            $"Approved signup for shift '{signup.Shift.Rota.Name}'",
-            reviewerUserId);
+            $"shift '{signup.Shift.Rota.Name}'",
+            reviewerUserId,
+            signup.UserId, nameof(User));
 
         await DispatchSignupChangeNotificationAsync(signup, signup.Shift,
             $"Signup approved for '{signup.Shift.Rota.Name}' on day {signup.Shift.DayOffset}.");
@@ -222,8 +224,9 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupRefused, nameof(ShiftSignup), signup.Id,
-            $"Refused signup for shift '{signup.Shift.Rota.Name}'" + (reason is not null ? $": {reason}" : ""),
-            reviewerUserId);
+            $"shift '{signup.Shift.Rota.Name}'" + (reason is not null ? $": {reason}" : ""),
+            reviewerUserId,
+            signup.UserId, nameof(User));
 
         await DispatchSignupChangeNotificationAsync(signup, signup.Shift,
             $"Signup refused for '{signup.Shift.Rota.Name}' on day {signup.Shift.DayOffset}.");
@@ -255,8 +258,9 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupBailed, nameof(ShiftSignup), signup.Id,
-            $"Bailed from shift '{signup.Shift.Rota.Name}'" + (reason is not null ? $": {reason}" : ""),
-            actorUserId);
+            $"shift '{signup.Shift.Rota.Name}'" + (reason is not null ? $": {reason}" : ""),
+            actorUserId,
+            signup.UserId, nameof(User));
 
         await DispatchSignupChangeNotificationAsync(signup, signup.Shift,
             $"Volunteer bailed from '{signup.Shift.Rota.Name}' on day {signup.Shift.DayOffset}.");
@@ -310,7 +314,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupVoluntold, nameof(ShiftSignup), signup.Id,
-            $"Voluntold for shift '{shift.Rota.Name}'",
+            $"shift '{shift.Rota.Name}'",
             enrollerUserId,
             userId, nameof(User));
 
@@ -437,7 +441,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         {
             await _auditLogService.LogAsync(
                 AuditAction.ShiftSignupVoluntold, nameof(ShiftSignup), auditedSignup.Id,
-                $"Voluntold range for '{rota.Name}' day {dayOffset} (block {blockId})",
+                $"'{rota.Name}' day {dayOffset} (range)",
                 enrollerUserId,
                 userId, nameof(User));
         }
@@ -483,8 +487,9 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupNoShow, nameof(ShiftSignup), signup.Id,
-            $"Marked no-show for shift '{signup.Shift.Rota.Name}'",
-            reviewerUserId);
+            $"shift '{signup.Shift.Rota.Name}'",
+            reviewerUserId,
+            signup.UserId, nameof(User));
 
         return SignupResult.Ok(signup);
     }
@@ -503,9 +508,10 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupCancelled, nameof(ShiftSignup), signup.Id,
-            $"Removed from shift '{signup.Shift.Rota.Name}'" +
+            $"shift '{signup.Shift.Rota.Name}'" +
             (reason is not null ? $": {reason}" : ""),
-            removedByUserId);
+            removedByUserId,
+            signup.UserId, nameof(User));
 
         await DispatchSignupChangeNotificationAsync(signup, signup.Shift,
             $"Removed from '{signup.Shift.Rota.Name}' on day {signup.Shift.DayOffset}.");
@@ -666,8 +672,9 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
                 await _auditLogService.LogAsync(
                     AuditAction.ShiftSignupConfirmed,
                     nameof(ShiftSignup), auditedSignup.Id,
-                    $"Range signup for '{rota.Name}' day {dayOffset} (block {blockId})",
-                    userId);
+                    $"'{rota.Name}' day {dayOffset} (range)",
+                    userId,
+                    userId, nameof(User));
             }
 
             await DispatchSignupChangeNotificationAsync(lastSignup!, availableShifts[^1], rota,
@@ -743,8 +750,9 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
                 {
                     await _auditLogService.LogAsync(
                         AuditAction.ShiftSignupRefused, nameof(ShiftSignup), skipped.Id,
-                        $"Auto-refused (at capacity) for shift '{skipped.Shift.Rota.Name}' day {skipped.Shift.DayOffset} (block {signupBlockId})",
-                        reviewerUserId);
+                        $"shift '{skipped.Shift.Rota.Name}' day {skipped.Shift.DayOffset} (auto-refused, at capacity)",
+                        reviewerUserId,
+                        skipped.UserId, nameof(User));
                 }
             }
             return SignupResult.Fail("Cannot approve: all shifts in this range are at capacity.");
@@ -756,16 +764,18 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         {
             await _auditLogService.LogAsync(
                 AuditAction.ShiftSignupConfirmed, nameof(ShiftSignup), approvedSignup.Id,
-                $"Range approved for shift '{approvedSignup.Shift.Rota.Name}' day {approvedSignup.Shift.DayOffset} (block {signupBlockId})",
-                reviewerUserId);
+                $"shift '{approvedSignup.Shift.Rota.Name}' day {approvedSignup.Shift.DayOffset} (range)",
+                reviewerUserId,
+                approvedSignup.UserId, nameof(User));
         }
 
         foreach (var skipped in skippedAtCapacity)
         {
             await _auditLogService.LogAsync(
                 AuditAction.ShiftSignupRefused, nameof(ShiftSignup), skipped.Id,
-                $"Auto-refused (at capacity) for shift '{skipped.Shift.Rota.Name}' day {skipped.Shift.DayOffset} (block {signupBlockId})",
-                reviewerUserId);
+                $"shift '{skipped.Shift.Rota.Name}' day {skipped.Shift.DayOffset} (auto-refused, at capacity)",
+                reviewerUserId,
+                skipped.UserId, nameof(User));
         }
 
         await DispatchSignupChangeNotificationAsync(approved[0], approved[0].Shift,
@@ -792,9 +802,10 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         {
             await _auditLogService.LogAsync(
                 AuditAction.ShiftSignupRefused, nameof(ShiftSignup), signup.Id,
-                $"Range refused for shift '{signup.Shift.Rota.Name}' day {signup.Shift.DayOffset} (block {signupBlockId})" +
+                $"shift '{signup.Shift.Rota.Name}' day {signup.Shift.DayOffset} (range)" +
                 (reason is not null ? $": {reason}" : ""),
-                reviewerUserId);
+                reviewerUserId,
+                signup.UserId, nameof(User));
         }
 
         await DispatchSignupChangeNotificationAsync(signups[0], signups[0].Shift,
@@ -833,9 +844,10 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         {
             await _auditLogService.LogAsync(
                 AuditAction.ShiftSignupBailed, nameof(ShiftSignup), signup.Id,
-                $"Range bail from '{signup.Shift.Rota.Name}' day {signup.Shift.DayOffset} (block {signupBlockId})" +
+                $"shift '{signup.Shift.Rota.Name}' day {signup.Shift.DayOffset} (range)" +
                 (reason is not null ? $": {reason}" : ""),
-                actorUserId);
+                actorUserId,
+                signup.UserId, nameof(User));
         }
 
         await DispatchSignupChangeNotificationAsync(firstSignup, firstSignup.Shift,

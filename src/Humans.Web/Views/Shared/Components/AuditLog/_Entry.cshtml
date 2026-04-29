@@ -6,6 +6,14 @@
     string GetName(Guid id) => userNames.TryGetValue(id, out var n) ? n : "Unknown";
 
     var verb = AuditLogViewComponent.GetActionVerb(Model.Action);
+    var selfVerb = AuditLogViewComponent.GetActionSelfVerb(Model.Action);
+
+    // Trims a dangling " for"/" to" preposition. Used when we can't render a
+    // subject (old rows pre-RelatedEntityId fix, or unmapped subject-less actions).
+    string TrimDanglingPreposition(string v)
+        => v.EndsWith(" for", StringComparison.Ordinal) ? v[..^4]
+         : v.EndsWith(" to", StringComparison.Ordinal) ? v[..^3]
+         : v;
 
     // Subject: the user being acted upon
     Guid? subjectId = Model.EntityType is "User" or "Profile" or "WorkspaceAccount"
@@ -25,7 +33,7 @@
     var actorIsSubject = Model.ActorUserId.HasValue && subjectId.HasValue && Model.ActorUserId.Value == subjectId.Value;
 }
 
-<div class="d-flex align-items-baseline gap-1 small">
+<div class="d-flex align-items-baseline gap-1 small flex-wrap">
     <span class="text-muted text-nowrap">@Model.OccurredAt.ToAuditTimestamp()</span>
     <span class="text-muted">—</span>
     @if (verb != null)
@@ -40,7 +48,13 @@
             <span class="text-muted">System</span>
         }
 
-        <span>@verb</span>
+        @* When the view will not render a subject (actor==subject or subject unknown),
+           use selfVerb if defined, else trim a trailing preposition from the transitive verb. *@
+        var noVisibleSubject = actorIsSubject || !subjectId.HasValue;
+        var displayVerb = noVisibleSubject && selfVerb != null ? selfVerb
+                        : noVisibleSubject ? TrimDanglingPreposition(verb)
+                        : verb;
+        <span>@displayVerb</span>
 
         @* Subject (skip if same as actor) *@
         @if (subjectId.HasValue && !actorIsSubject)
@@ -54,9 +68,40 @@
             <span class="text-muted">in</span>
             <a asp-controller="Team" asp-action="Details" asp-route-slug="@team.Slug" class="text-decoration-none">@team.Name</a>
         }
+
+        @* Description tail — only for actions whose descriptions are written as tails (e.g. ShiftSignup*).
+           Sentence-style descriptions (Team*, Role*, Member*) would render redundantly here. *@
+        @if (!string.IsNullOrWhiteSpace(Model.Description) && AuditLogViewComponent.ShouldRenderDescriptionTail(Model.Action))
+        {
+            <span class="text-muted">— @Model.Description</span>
+        }
     }
     else
     {
-        <span>@Model.Description</span>
+        @* Unmapped action — render rough but fully attributed: actor · ActionName · subject · in team · "description" *@
+        @if (Model.ActorUserId.HasValue)
+        {
+            <human-link user-id="@Model.ActorUserId.Value" display-name="@GetName(Model.ActorUserId.Value)" mode="Text" />
+        }
+        else
+        {
+            <span class="text-muted">System</span>
+        }
+        <span class="text-muted">·</span>
+        <span>@Model.Action.ToString()</span>
+        @if (subjectId.HasValue && !actorIsSubject)
+        {
+            <span class="text-muted">·</span>
+            <human-link user-id="@subjectId.Value" display-name="@GetName(subjectId.Value)" mode="Text" />
+        }
+        @if (targetTeamId.HasValue && teamNames.TryGetValue(targetTeamId.Value, out var fallbackTeam))
+        {
+            <span class="text-muted">in</span>
+            <a asp-controller="Team" asp-action="Details" asp-route-slug="@fallbackTeam.Slug" class="text-decoration-none">@fallbackTeam.Name</a>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.Description))
+        {
+            <span class="text-muted">— @Model.Description</span>
+        }
     }
 </div>
