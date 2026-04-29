@@ -43,7 +43,7 @@ The `User.GetGoogleServiceEmail()` doc-comment misleading-`?? Email`-fallback co
 - `src/Humans.Infrastructure/Data/Configurations/Profiles/UserEmailConfiguration.cs` — add column mappings for the three new properties; replace `Property(e => e.IsOAuth)` and `Property(e => e.DisplayOrder)` with **shadow-property** declarations (`b.Property<bool>("IsOAuth").HasColumnName("IsOAuth").HasDefaultValue(false)` and `b.Property<int>("DisplayOrder").HasColumnName("DisplayOrder").HasDefaultValue(0)`).
 - `src/Humans.Infrastructure/Data/Configurations/Users/UserConfiguration.cs` — replace `Property(u => u.GoogleEmail)` with shadow property `b.Property<string>("GoogleEmail").HasColumnName("GoogleEmail").HasMaxLength(256).IsRequired(false)`.
 - `src/Humans.Application/Services/Profile/UserEmailService.cs` — service-enforced invariants for `(Provider, ProviderKey)` and `IsGoogle`; per-callsite read sweep (`IsOAuth` → `Provider != null` for Auth-side reads); delete `IsOAuth = ...` write paths.
-- `src/Humans.Application/Interfaces/Profiles/IUserEmailService.cs` — new methods: `SetGoogleAsync(Guid userEmailId, ...)`, `SetProviderAsync(Guid userEmailId, string provider, string providerKey, ...)`, `FindByProviderKeyAsync(string provider, string providerKey, CancellationToken)`. **Interface budget ratchet:** every new method must be paired with a removal from the same interface in the same PR — see Task 11 for the rationale and removed methods.
+- `src/Humans.Application/Interfaces/Profiles/IUserEmailService.cs` — two new methods: `SetProviderAsync(Guid userEmailId, string provider, string providerKey, ...)` and `FindByProviderKeyAsync(string provider, string providerKey, CancellationToken)`. **Interface budget ratchet:** every new method must be paired with a removal from the same interface in the same PR — see Task 11 for the deletions. (A third method, `SetGoogleAsync`, is a PR 4 concern: only the grid UI calls it. The backfill writes `IsGoogle` directly inside its own service.)
 - `src/Humans.Application/DTOs/UserEmailDto.cs` — rename `IsOAuth` field to `IsGoogle` on the DTO; add `Provider` and `ProviderKey` (nullable).
 - `src/Humans.Application/Services/Users/UserEmailBackfillService.cs` — delete the `IsOAuth = ...` write line(s); delete the `DisplayOrder = ...` write line(s).
 - `src/Humans.Application/Services/Users/AccountProvisioningService.cs` — drop `IsOAuth = true` set on the new UserEmail in OAuth-create branch; set `Provider` / `ProviderKey` instead.
@@ -442,7 +442,7 @@ git commit -m "feat(infra): EF column mappings for Provider/ProviderKey/IsGoogle
 
 ## Task 5: Service — invariant-enforcing methods on `IUserEmailService`
 
-The new methods enforce the two service-side invariants. Tests first, then implementation.
+The new methods enforce the `(Provider, ProviderKey)` single-row invariant and provide the OAuth-callback lookup. Tests first, then implementation. (`SetGoogleAsync` is intentionally NOT in this PR — it's a PR 4 concern when the grid UI lands.)
 
 **Files:**
 - Modify: `src/Humans.Application/Interfaces/Profiles/IUserEmailService.cs`
@@ -450,13 +450,11 @@ The new methods enforce the two service-side invariants. Tests first, then imple
 - Create: `tests/Humans.Application.Tests/Services/UserEmailServiceProviderInvariantsTests.cs`
 
 - [ ] **Step 1: Write the failing tests.** Create `UserEmailServiceProviderInvariantsTests.cs`. Tests:
-  1. `SetGoogleAsync_ClearsIsGoogle_OnSiblingRows` — seed two verified `UserEmail` rows for one User, both `IsGoogle = false`. Call `SetGoogleAsync(rowB.Id)`. Reload. Assert: rowA `IsGoogle == false`, rowB `IsGoogle == true`.
-  2. `SetGoogleAsync_FlipsTrueRow_BackToFalse_BeforeSettingNew` — same as above but rowA starts `IsGoogle = true`. After `SetGoogleAsync(rowB.Id)`, rowA flipped to false, rowB true.
-  3. `SetGoogleAsync_RejectsUnverifiedRow` — seed an unverified row, call `SetGoogleAsync(unverified.Id)`. Expect `Result.Failure` with message containing "verified".
-  4. `SetGoogleAsync_RejectsCrossUserRow` — seed user1 and user2 each with one row. Call `SetGoogleAsync(user2Row.Id)` while passing `user1.Id` as actor. Expect failure.
-  5. `SetProviderAsync_ClearsProviderOnConflictingRow` — seed two verified rows, both `(Provider, ProviderKey) == (null, null)`. Set `(Google, sub-A)` on rowA. Set `(Google, sub-A)` on rowB (same pair). Reload. Assert: rowA `(null, null)`, rowB `(Google, sub-A)`.
-  6. `FindByProviderKeyAsync_ReturnsRow_WhenSingleMatch` — seed rowA with `(Google, sub-X)`. Call `FindByProviderKeyAsync("Google", "sub-X")`. Assert: returns rowA.
-  7. `FindByProviderKeyAsync_ReturnsNull_WhenNoMatch` — same but call with `sub-Y`. Returns null.
+  1. `SetProviderAsync_SetsPairOnTargetRow` — seed verified rowA with `(null, null)`. Call `SetProviderAsync(rowA.Id, "Google", "sub-A")`. Reload. Assert: rowA has `("Google", "sub-A")`.
+  2. `SetProviderAsync_ClearsProviderOnConflictingRow` — seed verified rowA with `("Google", "sub-A")` and rowB with `(null, null)`. Call `SetProviderAsync(rowB.Id, "Google", "sub-A")`. Reload. Assert: rowA `(null, null)`, rowB `("Google", "sub-A")`.
+  3. `SetProviderAsync_OnNonexistentRow_ReturnsFailure` — call with random Guid. Expect failure.
+  4. `FindByProviderKeyAsync_ReturnsRow_WhenSingleMatch` — seed rowA with `("Google", "sub-X")`. Call `FindByProviderKeyAsync("Google", "sub-X")`. Returns rowA.
+  5. `FindByProviderKeyAsync_ReturnsNull_WhenNoMatch` — same but call with `sub-Y`. Returns null.
 
 Use the existing `UserEmailServiceTests` fixture pattern (search for it; PR 1 added one). Use `NSubstitute` for `IAuditLogService` if present.
 
@@ -470,18 +468,11 @@ Expected: FAIL — methods don't exist.
 
 ```csharp
 /// <summary>
-/// Marks the given UserEmail row as the user's canonical Google Workspace
-/// identity. Clears <see cref="UserEmail.IsGoogle"/> on every other row
-/// belonging to the same user inside the same transaction. Rejects
-/// unverified rows and cross-user attempts. Audit-logged.
-/// </summary>
-Task<Result> SetGoogleAsync(Guid userEmailId, Guid actingUserId, CancellationToken cancellationToken = default);
-
-/// <summary>
 /// Sets <see cref="UserEmail.Provider"/> / <see cref="UserEmail.ProviderKey"/>
 /// on the given row. Clears the same pair on any sibling row inside the same
-/// transaction. Used by the OAuth callback when linking a UserEmail to its
-/// OAuth identity. Audit-logged.
+/// transaction (service-enforced single-row-per-pair invariant per
+/// feedback_db_enforcement_minimal). Used by the OAuth callback when linking
+/// a UserEmail to its OAuth identity. Audit-logged.
 /// </summary>
 Task<Result> SetProviderAsync(Guid userEmailId, string provider, string providerKey, CancellationToken cancellationToken = default);
 
@@ -497,46 +488,6 @@ Task<UserEmail?> FindByProviderKeyAsync(string provider, string providerKey, Can
 - [ ] **Step 4: Implement in `UserEmailService`.**
 
 ```csharp
-public async Task<Result> SetGoogleAsync(
-    Guid userEmailId,
-    Guid actingUserId,
-    CancellationToken cancellationToken = default)
-{
-    await using var tx = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
-
-    var target = await _dbContext.Set<UserEmail>()
-        .FirstOrDefaultAsync(e => e.Id == userEmailId, cancellationToken);
-
-    if (target is null)
-        return Result.Failure("UserEmail row not found.");
-
-    if (target.UserId != actingUserId)
-        return Result.Failure("Cannot mark a UserEmail belonging to another user as Google.");
-
-    if (!target.IsVerified)
-        return Result.Failure("Only verified UserEmail rows can be marked as Google.");
-
-    var siblings = await _dbContext.Set<UserEmail>()
-        .Where(e => e.UserId == target.UserId && e.Id != target.Id && e.IsGoogle)
-        .ToListAsync(cancellationToken);
-
-    var now = _clock.GetCurrentInstant();
-    foreach (var sibling in siblings)
-    {
-        sibling.IsGoogle = false;
-        sibling.UpdatedAt = now;
-    }
-
-    target.IsGoogle = true;
-    target.UpdatedAt = now;
-
-    await _dbContext.SaveChangesAsync(cancellationToken);
-    await _auditLog.WriteAsync(/* entity: target.UserId, kind: "UserEmail.SetGoogle", details: ... */);
-    await tx.CommitAsync(cancellationToken);
-
-    return Result.Success();
-}
-
 public async Task<Result> SetProviderAsync(
     Guid userEmailId,
     string provider,
@@ -592,7 +543,7 @@ public Task<UserEmail?> FindByProviderKeyAsync(
 
 Run: `dotnet test tests/Humans.Application.Tests/Humans.Application.Tests.csproj --filter "UserEmailServiceProviderInvariantsTests" -v quiet`
 
-Expected: 7 passed.
+Expected: 5 passed.
 
 - [ ] **Step 6: Commit.**
 
@@ -600,7 +551,7 @@ Expected: 7 passed.
 git add src/Humans.Application/Interfaces/Profiles/IUserEmailService.cs \
         src/Humans.Application/Services/Profile/UserEmailService.cs \
         tests/Humans.Application.Tests/Services/UserEmailServiceProviderInvariantsTests.cs
-git commit -m "feat(profile): UserEmailService.SetGoogleAsync / SetProviderAsync / FindByProviderKeyAsync with service-enforced invariants"
+git commit -m "feat(profile): UserEmailService.SetProviderAsync / FindByProviderKeyAsync with service-enforced invariants"
 ```
 
 ---
@@ -1018,7 +969,7 @@ git commit -m "refactor: delete UserEmail.IsOAuth/DisplayOrder + User.GoogleEmai
 
 ## Task 11: Interface budget reconciliation
 
-`InterfaceMethodBudgetTests` is the consolidation ratchet — adding a method requires removing one from the same interface in the same PR. `IUserEmailService` is gaining three: `SetGoogleAsync`, `SetProviderAsync`, `FindByProviderKeyAsync`.
+`InterfaceMethodBudgetTests` is the consolidation ratchet — adding a method requires removing one from the same interface in the same PR. `IUserEmailService` is gaining two: `SetProviderAsync`, `FindByProviderKeyAsync`.
 
 **Files:**
 - Modify: `src/Humans.Application/Interfaces/Profiles/IUserEmailService.cs`
@@ -1031,15 +982,15 @@ Run: `grep -nE "Task|^\s*\w+ \w+\(" src/Humans.Application/Interfaces/Profiles/I
 
 Identify methods that are dead, redundant under PR 3's reads, or trivially absorbable into the three new methods.
 
-- [ ] **Step 2: Identify three deletions.** Strong candidates (verify each by `git grep "<MethodName>("`):
+- [ ] **Step 2: Identify two deletions.** Strong candidates (verify each by `git grep "<MethodName>("`):
   - **A method that previously took an `IsOAuth` parameter** and is now dead under the read sweep.
   - **A method whose only caller was `/Contacts` admin** (already deleted in PR 2).
   - **`SetIsOAuthAsync` / `MarkAsOAuthAsync`** if any such method exists.
   - **A trivial pass-through** to a repository method that should now be inlined (Auth/Identity/Display-only helpers that no longer have a single primary caller).
 
-If you cannot find three legitimate deletions, **STOP and ask Peter** before adding a method to a different interface or before splitting `IUserEmailService` into a sub-interface. Do not work around the budget — the ratchet exists to prevent exactly that workaround.
+If you cannot find two legitimate deletions, **STOP and ask Peter** before adding a method to a different interface or before splitting `IUserEmailService` into a sub-interface. Do not work around the budget — the ratchet exists to prevent exactly that workaround.
 
-- [ ] **Step 3: Delete the three identified methods from the interface and the service.** Update any remaining callers to use the surviving methods or to inline the LINQ.
+- [ ] **Step 3: Delete the two identified methods from the interface and the service.** Update any remaining callers to use the surviving methods or to inline the LINQ.
 
 - [ ] **Step 4: Run the interface budget test.**
 
@@ -1057,7 +1008,7 @@ Expected: 0 failures.
 
 ```bash
 git add src tests
-git commit -m "refactor(profile): consolidate IUserEmailService surface — delete N dead methods to budget for SetGoogle/SetProvider/FindByProviderKey"
+git commit -m "refactor(profile): consolidate IUserEmailService surface — delete 2 dead methods to budget for SetProvider/FindByProviderKey"
 git push
 ```
 
