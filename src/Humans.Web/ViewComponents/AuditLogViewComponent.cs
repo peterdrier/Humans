@@ -109,6 +109,12 @@ public class AuditLogViewComponent : ViewComponent
         AuditAction.SignupRejected => "rejected signup for",
         AuditAction.TierApplicationApproved => "approved tier application for",
         AuditAction.TierApplicationRejected => "rejected tier application for",
+        AuditAction.ShiftSignupConfirmed => "confirmed signup for",
+        AuditAction.ShiftSignupRefused => "refused signup for",
+        AuditAction.ShiftSignupVoluntold => "voluntold",
+        AuditAction.ShiftSignupBailed => "bailed signup for",
+        AuditAction.ShiftSignupNoShow => "marked no-show for",
+        AuditAction.ShiftSignupCancelled => "removed signup for",
         _ => null
     };
 }

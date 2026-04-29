@@ -25,7 +25,7 @@
     var actorIsSubject = Model.ActorUserId.HasValue && subjectId.HasValue && Model.ActorUserId.Value == subjectId.Value;
 }
 
-<div class="d-flex align-items-baseline gap-1 small">
+<div class="d-flex align-items-baseline gap-1 small flex-wrap">
     <span class="text-muted text-nowrap">@Model.OccurredAt.ToAuditTimestamp()</span>
     <span class="text-muted">—</span>
     @if (verb != null)
@@ -54,9 +54,39 @@
             <span class="text-muted">in</span>
             <a asp-controller="Team" asp-action="Details" asp-route-slug="@team.Slug" class="text-decoration-none">@team.Name</a>
         }
+
+        @* Description tail (context like shift name, reason) *@
+        @if (!string.IsNullOrWhiteSpace(Model.Description))
+        {
+            <span class="text-muted">— @Model.Description</span>
+        }
     }
     else
     {
-        <span>@Model.Description</span>
+        @* Unmapped action — render rough but fully attributed: actor · ActionName · subject · in team · "description" *@
+        @if (Model.ActorUserId.HasValue)
+        {
+            <human-link user-id="@Model.ActorUserId.Value" display-name="@GetName(Model.ActorUserId.Value)" mode="Text" />
+        }
+        else
+        {
+            <span class="text-muted">System</span>
+        }
+        <span class="text-muted">·</span>
+        <span>@Model.Action.ToString()</span>
+        @if (subjectId.HasValue && !actorIsSubject)
+        {
+            <span class="text-muted">·</span>
+            <human-link user-id="@subjectId.Value" display-name="@GetName(subjectId.Value)" mode="Text" />
+        }
+        @if (targetTeamId.HasValue && teamNames.TryGetValue(targetTeamId.Value, out var fallbackTeam))
+        {
+            <span class="text-muted">in</span>
+            <a asp-controller="Team" asp-action="Details" asp-route-slug="@fallbackTeam.Slug" class="text-decoration-none">@fallbackTeam.Name</a>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.Description))
+        {
+            <span class="text-muted">— @Model.Description</span>
+        }
     }
 </div>
