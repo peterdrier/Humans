@@ -6,6 +6,7 @@ using Humans.Application.Interfaces.Issues;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Filters;
+using Humans.Web.Models;
 
 // Issue cross-domain nav properties (Reporter, Assignee, ResolvedByUser) and
 // IssueComment.SenderUser are [Obsolete] — IssuesService stitches them in memory
@@ -301,33 +302,4 @@ public class ApiCreateIssueModel
     public string? Section { get; set; }
 
     public LocalDate? DueDate { get; set; }
-}
-
-public class PostIssueCommentModel
-{
-    [Required]
-    [StringLength(10_000)]
-    public string Content { get; set; } = string.Empty;
-}
-
-public class UpdateIssueStatusModel
-{
-    [Required]
-    [JsonConverter(typeof(JsonStringEnumConverter))]
-    public IssueStatus Status { get; set; }
-}
-
-public class UpdateIssueAssigneeModel
-{
-    public Guid? AssigneeUserId { get; set; }
-}
-
-public class UpdateIssueSectionModel
-{
-    public string? Section { get; set; }
-}
-
-public class SetIssueGitHubIssueModel
-{
-    public int? GitHubIssueNumber { get; set; }
 }
