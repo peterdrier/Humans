@@ -541,6 +541,7 @@ public class BuildStrikeRotaTableViewModel
     public string? FilterFromDate { get; set; }
     public string? FilterToDate { get; set; }
     public string? FilterPeriod { get; set; }
+    public List<string> FilterPeriods { get; set; } = [];
     public List<Guid> FilterTagIds { get; set; } = [];
 }
 
@@ -555,6 +556,7 @@ public class EventRotaTableViewModel
     public string? FilterFromDate { get; set; }
     public string? FilterToDate { get; set; }
     public string? FilterPeriod { get; set; }
+    public List<string> FilterPeriods { get; set; } = [];
     public List<Guid> FilterTagIds { get; set; } = [];
 }
 

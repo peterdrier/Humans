@@ -14,6 +14,7 @@
         @if (!string.IsNullOrEmpty(Model.FilterFromDate)) { <input type="hidden" name="fromDate" value="@Model.FilterFromDate" /> }
         @if (!string.IsNullOrEmpty(Model.FilterToDate)) { <input type="hidden" name="toDate" value="@Model.FilterToDate" /> }
         @if (!string.IsNullOrEmpty(Model.FilterPeriod)) { <input type="hidden" name="period" value="@Model.FilterPeriod" /> }
+        @foreach (var p in Model.FilterPeriods) { <input type="hidden" name="periods" value="@p" /> }
         @foreach (var tagId in Model.FilterTagIds) { <input type="hidden" name="tags" value="@tagId" /> }
         <div class="col-auto">
             <label class="form-label form-label-sm">@Localizer["Shifts_Start"]</label>

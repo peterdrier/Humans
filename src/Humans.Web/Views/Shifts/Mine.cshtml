@@ -36,11 +36,11 @@
     @* === Tabs: Browse / My Shifts === *@
     <div class="mb-3">
         <ul class="nav nav-tabs shifts-nav-tabs border-0" role="tablist">
-            <li class="nav-item">
-                <a class="nav-link" asp-action="Index">@Localizer["Shifts_BrowseTitle"]</a>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link" asp-action="Index" role="tab" aria-selected="false">@Localizer["Shifts_BrowseTitle"]</a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link active" href="#">@Localizer["Shifts_MyShiftsTitle"]</a>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link active" asp-action="Mine" role="tab" aria-selected="true" aria-current="page">@Localizer["Shifts_MyShiftsTitle"]</a>
             </li>
         </ul>
     </div>

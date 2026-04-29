@@ -44,11 +44,11 @@
     @* === Tabs: Browse / My Shifts === *@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <ul class="nav nav-tabs shifts-nav-tabs border-0" role="tablist">
-            <li class="nav-item">
-                <a class="nav-link active" href="#">@Localizer["Shifts_BrowseTitle"]</a>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link active" asp-action="Index" role="tab" aria-selected="true" aria-current="page">@Localizer["Shifts_BrowseTitle"]</a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link" asp-action="Mine">
+            <li class="nav-item" role="presentation">
+                <a class="nav-link" asp-action="Mine" role="tab" aria-selected="false">
                     @Localizer["Shifts_MyShiftsTitle"]
                     @if (Model.MySignupCount > 0)
                     {
@@ -268,7 +268,8 @@
         // Clicking on phase card toggles its checkbox
         document.querySelectorAll('.phase-card').forEach(function(card) {
             card.addEventListener('click', function(e) {
-                if (e.target.closest('.form-check-input')) return; // Let native checkbox handle
+                // Let native checkbox/label behavior handle clicks on the input or its label
+                if (e.target.closest('.form-check-input, .form-check-label')) return;
                 var cb = this.querySelector('.phase-check');
                 cb.checked = !cb.checked;
                 cb.dispatchEvent(new Event('change'));
@@ -370,6 +371,7 @@
                                 FilterFromDate = Model.FilterFromDate,
                                 FilterToDate = Model.FilterToDate,
                                 FilterPeriod = Model.FilterPeriod,
+                                FilterPeriods = Model.FilterPeriods,
                                 FilterTagIds = Model.FilterTagIds
                             })
                         }
@@ -387,6 +389,7 @@
                                 FilterFromDate = Model.FilterFromDate,
                                 FilterToDate = Model.FilterToDate,
                                 FilterPeriod = Model.FilterPeriod,
+                                FilterPeriods = Model.FilterPeriods,
                                 FilterTagIds = Model.FilterTagIds
                             })
                         }
@@ -515,6 +518,7 @@
                                                     FilterFromDate = Model.FilterFromDate,
                                                     FilterToDate = Model.FilterToDate,
                                                     FilterPeriod = Model.FilterPeriod,
+                                                    FilterPeriods = Model.FilterPeriods,
                                                     FilterTagIds = Model.FilterTagIds
                                                 })
                                             }
@@ -532,6 +536,7 @@
                                                     FilterFromDate = Model.FilterFromDate,
                                                     FilterToDate = Model.FilterToDate,
                                                     FilterPeriod = Model.FilterPeriod,
+                                                    FilterPeriods = Model.FilterPeriods,
                                                     FilterTagIds = Model.FilterTagIds
                                                 })
                                             }
