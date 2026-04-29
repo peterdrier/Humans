@@ -1,25 +1,25 @@
 // Sidebar DOM management for the container placement map.
-// Renders unplaced/placed container cards and handles card clicks.
+// Renders containers grouped by barrio, split into Unplaced / Placed sections.
 
 const unplacedEl = document.getElementById('sidebar-unplaced');
 const placedEl   = document.getElementById('sidebar-placed');
 
 let _containers  = [];    // current container data array
+let _campNames   = {};    // campSeasonId → campName
 let _activeId    = null;  // currently active container ID
 let _onActivate  = null;  // callback(container) when user clicks an unplaced card
 let _onClear     = null;  // callback(container) when user clicks "Clear placement"
 let _onSelect    = null;  // callback(container) when user clicks a placed card
 
-/**
- * Initialise the sidebar with callbacks.
- * @param {function} onActivate - called with container object when unplaced card is clicked
- * @param {function} onClear    - called with container object when "Clear" button is clicked
- * @param {function} onSelect   - called with container object when placed card is clicked
- */
 export function initSidebar(onActivate, onClear, onSelect) {
     _onActivate = onActivate;
     _onClear    = onClear;
     _onSelect   = onSelect;
+}
+
+/** Provide the campSeasonId → campName lookup used for barrio group headers. */
+export function setCampNames(campNames) {
+    _campNames = campNames;
 }
 
 /** Replace the container list and re-render. */
@@ -52,61 +52,91 @@ export function scrollToPlaced(id) {
 }
 
 function render() {
-    const unplaced = _containers.filter(c => !c.locationGeoJson);
-    const placed   = _containers.filter(c =>  c.locationGeoJson);
+    renderSection(unplacedEl, _containers.filter(c => !c.locationGeoJson), false);
+    renderSection(placedEl,   _containers.filter(c =>  c.locationGeoJson), true);
+}
 
-    // Keep the section label, replace the rest
-    const unplacedLabel = unplacedEl.querySelector('.sidebar-section-label');
-    unplacedEl.innerHTML = '';
-    if (unplacedLabel) unplacedEl.appendChild(unplacedLabel);
+function renderSection(sectionEl, items, isPlaced) {
+    const label = sectionEl.querySelector('.sidebar-section-label');
+    sectionEl.innerHTML = '';
+    if (label) sectionEl.appendChild(label);
 
-    const placedLabel = placedEl.querySelector('.sidebar-section-label');
-    placedEl.innerHTML = '';
-    if (placedLabel) placedEl.appendChild(placedLabel);
+    const groups = groupByCamp(items);
+    const showHeaders = groups.size > 1;
 
-    for (const c of unplaced) {
-        const isActive = c.id === _activeId;
-        const canClick = !isActive && c.canEdit;
-        const card = document.createElement('div');
-        card.className = 'list-group-item' + (isActive ? ' active' : '') + (canClick ? ' list-group-item-action' : '');
-        card.dataset.id = c.id;
-        card.innerHTML = `
-            <div class="fw-semibold small">${escHtml(c.name)}</div>
-            ${c.description ? `<div class="small text-truncate ${isActive ? 'opacity-75' : 'text-muted'}">${escHtml(c.description)}</div>` : ''}
-        `;
-        if (canClick) {
-            card.addEventListener('click', () => _onActivate?.(c));
+    for (const [campSeasonId, groupItems] of groups) {
+        if (showHeaders) {
+            const hdr = document.createElement('div');
+            hdr.className = 'list-group-item py-1 px-3 small text-muted bg-body-secondary';
+            hdr.textContent = campSeasonId === null
+                ? 'Nobodies'
+                : (_campNames[campSeasonId] ?? campSeasonId);
+            sectionEl.appendChild(hdr);
         }
-        unplacedEl.appendChild(card);
+        for (const c of groupItems) {
+            sectionEl.appendChild(isPlaced ? makePlacedCard(c) : makeUnplacedCard(c));
+        }
     }
+}
 
-    for (const c of placed) {
-        const card = document.createElement('div');
-        card.className = 'list-group-item list-group-item-success' + (c.canEdit ? ' list-group-item-action' : '');
-        card.dataset.id = c.id;
-        card.innerHTML = `
-            <div class="fw-semibold small">✓ ${escHtml(c.name)}</div>
-            ${c.description ? `<div class="small text-truncate opacity-75">${escHtml(c.description)}</div>` : ''}
-            ${c.canEdit ? `<div class="mt-1">
-                <button class="btn btn-outline-danger btn-sm py-0 px-2" style="font-size:11px;"
-                    data-clear-id="${c.id}">Clear placement</button>
-            </div>` : ''}
-        `;
-        if (c.canEdit) {
-            card.addEventListener('click', (e) => {
-                if (e.target.closest('[data-clear-id]')) return;
-                _onSelect?.(c);
+function groupByCamp(items) {
+    const groups = new Map();
+    for (const c of items) {
+        const key = c.campSeasonId ?? null;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(c);
+    }
+    // Org containers (null key) first, then barrios sorted by name
+    return new Map([...groups.entries()].sort(([a], [b]) => {
+        if (a === null) return -1;
+        if (b === null) return 1;
+        return (_campNames[a] ?? '').localeCompare(_campNames[b] ?? '');
+    }));
+}
+
+function makeUnplacedCard(c) {
+    const isActive = c.id === _activeId;
+    const canClick = !isActive && c.canEdit;
+    const card = document.createElement('div');
+    card.className = 'list-group-item'
+        + (isActive ? ' active' : '')
+        + (canClick ? ' list-group-item-action' : '');
+    card.dataset.id = c.id;
+    card.innerHTML = `
+        <div class="fw-semibold small">${escHtml(c.name)}</div>
+        ${c.description ? `<div class="small text-truncate ${isActive ? 'opacity-75' : 'text-muted'}">${escHtml(c.description)}</div>` : ''}
+    `;
+    if (canClick) card.addEventListener('click', () => _onActivate?.(c));
+    return card;
+}
+
+function makePlacedCard(c) {
+    const card = document.createElement('div');
+    card.className = 'list-group-item list-group-item-success'
+        + (c.canEdit ? ' list-group-item-action' : '');
+    card.dataset.id = c.id;
+    card.innerHTML = `
+        <div class="fw-semibold small">✓ ${escHtml(c.name)}</div>
+        ${c.description ? `<div class="small text-truncate opacity-75">${escHtml(c.description)}</div>` : ''}
+        ${c.canEdit ? `<div class="mt-1">
+            <button class="btn btn-outline-danger btn-sm py-0 px-2" style="font-size:11px;"
+                data-clear-id="${c.id}">Clear placement</button>
+        </div>` : ''}
+    `;
+    if (c.canEdit) {
+        card.addEventListener('click', (e) => {
+            if (e.target.closest('[data-clear-id]')) return;
+            _onSelect?.(c);
+        });
+        const clearBtn = card.querySelector('[data-clear-id]');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                _onClear?.(c);
             });
-            const clearBtn = card.querySelector('[data-clear-id]');
-            if (clearBtn) {
-                clearBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    _onClear?.(c);
-                });
-            }
         }
-        placedEl.appendChild(card);
     }
+    return card;
 }
 
 function escHtml(str) {

@@ -2,7 +2,7 @@
 import { CONFIG }                                          from './config.js';
 import { loadContainers, savePlacement, clearPlacement }   from './api.js';
 import { addBackgroundLayers, addContainerLayers, updateContainerSource } from './layers.js';
-import { initSidebar, setContainers, setActiveId, markPlaced, scrollToPlaced } from './sidebar.js';
+import { initSidebar, setCampNames, setContainers, setActiveId, markPlaced, scrollToPlaced } from './sidebar.js';
 import { initInteraction, activateContainer, selectPlacedContainer, deactivate } from './interaction.js';
 
 const toast = document.getElementById('map-toast');
@@ -37,6 +37,14 @@ async function init() {
     const stateData = await fetch('/api/city-planning/state').then(r => r.json());
     addBackgroundLayers(map, stateData);
     addContainerLayers(map);
+
+    // Build campSeasonId → campName lookup for sidebar grouping
+    const campNames = Object.fromEntries(
+        (stateData.campPolygons ?? [])
+            .filter(p => p.campSeasonId && p.campName)
+            .map(p => [p.campSeasonId, p.campName])
+    );
+    setCampNames(campNames);
 
     // Load containers
     containers = await loadContainers(CONFIG.YEAR);
