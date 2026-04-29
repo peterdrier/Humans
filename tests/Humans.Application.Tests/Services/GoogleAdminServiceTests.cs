@@ -225,7 +225,7 @@ public class GoogleAdminServiceTests
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
         await _auditLogService.DidNotReceive().LogAsync(
-            Arg.Any<Domain.Enums.AuditAction>(),
+            Arg.Any<Humans.Domain.Enums.AuditAction>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
