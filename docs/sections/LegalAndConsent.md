@@ -78,7 +78,7 @@ Cross-aggregate nav `ConsentRecord.DocumentVersion` — still declared and walke
 
 - When a human signs all required global documents: their consent check status transitions to Pending AND `ISystemTeamSync.SyncVolunteersMembershipForUserAsync` admits them to the Volunteers system team. Admission does not depend on Consent Coordinator review.
 - When a Consent Coordinator clears a consent check: `Profile.IsApproved` is set to true and `ConsentCheckStatus = Cleared`. This is an audit annotation; the human is already a Volunteer.
-- When a Consent Coordinator flags a consent check: `Profile.IsApproved` is set to false and `ConsentCheckStatus = Flagged`; the existing deprovision behavior (`DeprovisionApprovalGatedSystemTeamsAsync`) still runs. Tighter Flag→Suspend semantics are a follow-up.
+- When a Consent Coordinator flags a consent check: `Profile.IsApproved` is set to false, `ConsentCheckStatus = Flagged`, and `DeprovisionApprovalGatedSystemTeamsAsync` removes the user from Volunteers / Colaborador / Asociado teams. The Volunteers admission criteria explicitly exclude `ConsentCheckStatus == Flagged`, so the user stays out until Board or Admin resolves via `ProfileController.ApproveVolunteer`.
 - When a new document version is published: affected humans are notified to re-consent. A background job sends re-consent reminders.
 - A background job suspends humans who no longer have valid consents for required documents.
 

@@ -295,7 +295,7 @@ Teams are either **departments** (top-level, no parent) or **sub-teams** (have a
 
 | Team | Auto-Add Trigger | Auto-Remove Trigger |
 |------|------------------|---------------------|
-| **Volunteers** | Profile + all required consents signed (no CC approval required) | Missing consent or suspended |
+| **Volunteers** | Profile + all required consents signed (no CC approval required) | Missing consent, suspended, CC-flagged, or rejected |
 | **Coordinators** | Become Coordinator of any team + team consents | No longer Coordinator anywhere |
 | **Board** | Active "Board" RoleAssignment + team consents | RoleAssignment expires |
 
@@ -314,7 +314,7 @@ Volunteers team membership is the source of truth for "active volunteer" status.
 SystemTeamSyncJob (scheduled hourly, currently disabled; also triggered inline):
 
   1. SyncVolunteersTeamAsync()
-     - Get all users with a profile where !IsSuspended
+     - Get all users with a profile where !IsSuspended, ConsentCheckStatus != Flagged, RejectedAt is null
      - Filter to those with all required Volunteers-team consents
      - Add missing members, remove ineligible
      - (Profile.IsApproved is the CC's audit annotation; not consulted here)

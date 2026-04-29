@@ -179,9 +179,9 @@ Both call `SyncVolunteersMembershipForUserAsync(userId)`, which evaluates a sing
 **Process**:
 ```
 1. SyncVolunteersTeamAsync()
-   - Eligible: Has a profile, !IsSuspended, with all required Volunteers-team consents
+   - Eligible: Has a profile, !IsSuspended, ConsentCheckStatus != Flagged, RejectedAt is null, with all required Volunteers-team consents
    - Add: New eligible users
-   - Remove: Users who lost eligibility
+   - Remove: Users who lost eligibility (suspended, flagged, rejected, or consent lapsed)
    - (Profile.IsApproved is the CC audit annotation; not consulted)
 
 2. SyncCoordinatorsTeamAsync()
@@ -202,7 +202,7 @@ Both call `SyncVolunteersMembershipForUserAsync(userId)`, which evaluates a sing
 **System Teams**:
 | Team | Eligibility Criteria |
 |------|---------------------|
-| Volunteers | HasProfile AND !IsSuspended AND HasAllRequiredConsentsForTeam(Volunteers) |
+| Volunteers | HasProfile AND !IsSuspended AND ConsentCheckStatus != Flagged AND RejectedAt is null AND HasAllRequiredConsentsForTeam(Volunteers) |
 | Coordinators | TeamMember.Role = Coordinator (non-system teams) AND HasAllRequiredConsentsForTeam(Coordinators) |
 | Board | RoleAssignment.RoleName = "Board" AND active AND HasAllRequiredConsentsForTeam(Board) |
 

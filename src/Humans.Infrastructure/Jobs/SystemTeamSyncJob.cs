@@ -235,13 +235,19 @@ public class SystemTeamSyncJob : ISystemTeamSync
         }
 
         // Volunteers admission no longer requires Profile.IsApproved (CC clearance) —
-        // any human with a profile, not suspended, with all required consents signed
-        // is admitted. Profile.IsApproved is still maintained as the CC's audit
-        // annotation but is not consulted here.
+        // any human with a profile, not suspended, not flagged, not rejected, and
+        // with all required consents signed is admitted. Profile.IsApproved is
+        // maintained as the CC's audit annotation but is not consulted here. The
+        // Flagged + RejectedAt exclusions preserve the CC's existing kick-out
+        // levers (FlagConsentCheckAsync and RejectSignupAsync set those fields
+        // before calling DeprovisionApprovalGatedSystemTeamsAsync).
         var allUserIds = await _userService.GetAllUserIdsAsync(cancellationToken);
         var profiles = await ProfileService.GetByUserIdsAsync(allUserIds, cancellationToken);
         var candidateIds = allUserIds
-            .Where(id => profiles.TryGetValue(id, out var p) && !p.IsSuspended)
+            .Where(id => profiles.TryGetValue(id, out var p)
+                && !p.IsSuspended
+                && p.ConsentCheckStatus != ConsentCheckStatus.Flagged
+                && p.RejectedAt is null)
             .ToList();
 
         var eligibleSet = await MembershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
@@ -402,9 +408,13 @@ public class SystemTeamSyncJob : ISystemTeamSync
         profiles.TryGetValue(userId, out var profile);
 
         // Volunteers admission no longer requires Profile.IsApproved (CC clearance).
-        // Profile.IsApproved is still tracked as the CC's audit annotation but is
-        // not consulted for team admission.
-        var isEligible = profile is { IsSuspended: false }
+        // Profile.IsApproved is tracked as the CC's audit annotation but is not
+        // consulted for team admission. Flagged consent checks and rejected
+        // signups remain excluded so DeprovisionApprovalGatedSystemTeamsAsync
+        // (called from FlagConsentCheckAsync / RejectSignupAsync after those
+        // mutations) actually removes the user from Volunteers.
+        var isEligible = profile is { IsSuspended: false, RejectedAt: null }
+            && profile.ConsentCheckStatus != ConsentCheckStatus.Flagged
             && await MembershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, cancellationToken);
 
         // Build a single-user eligible list and let the existing sync logic handle add/remove
