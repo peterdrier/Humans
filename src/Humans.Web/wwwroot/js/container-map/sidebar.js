@@ -66,14 +66,15 @@ function render() {
 
     for (const c of unplaced) {
         const isActive = c.id === _activeId;
+        const canClick = !isActive && c.canEdit;
         const card = document.createElement('div');
-        card.className = 'container-card' + (isActive ? ' active' : '');
+        card.className = 'list-group-item' + (isActive ? ' active' : '') + (canClick ? ' list-group-item-action' : '');
         card.dataset.id = c.id;
         card.innerHTML = `
-            <div class="container-card-name">${escHtml(c.name)}</div>
-            ${c.description ? `<div class="container-card-desc">${escHtml(c.description)}</div>` : ''}
+            <div class="fw-semibold small">${escHtml(c.name)}</div>
+            ${c.description ? `<div class="small text-truncate ${isActive ? 'opacity-75' : 'text-muted'}">${escHtml(c.description)}</div>` : ''}
         `;
-        if (!isActive && c.canEdit) {
+        if (canClick) {
             card.addEventListener('click', () => _onActivate?.(c));
         }
         unplacedEl.appendChild(card);
@@ -81,20 +82,19 @@ function render() {
 
     for (const c of placed) {
         const card = document.createElement('div');
-        card.className = 'container-card placed';
+        card.className = 'list-group-item list-group-item-success' + (c.canEdit ? ' list-group-item-action' : '');
         card.dataset.id = c.id;
         card.innerHTML = `
-            <div class="container-card-name placed-name">✓ ${escHtml(c.name)}</div>
-            ${c.description ? `<div class="container-card-desc">${escHtml(c.description)}</div>` : ''}
-            ${c.canEdit ? `<div class="container-card-actions">
-                <button class="btn btn-outline-danger btn-sm" style="font-size:11px;padding:2px 8px;"
+            <div class="fw-semibold small">✓ ${escHtml(c.name)}</div>
+            ${c.description ? `<div class="small text-truncate opacity-75">${escHtml(c.description)}</div>` : ''}
+            ${c.canEdit ? `<div class="mt-1">
+                <button class="btn btn-outline-danger btn-sm py-0 px-2" style="font-size:11px;"
                     data-clear-id="${c.id}">Clear placement</button>
             </div>` : ''}
         `;
         if (c.canEdit) {
-            card.style.cursor = 'pointer';
             card.addEventListener('click', (e) => {
-                if (e.target.closest('[data-clear-id]')) return; // handled below
+                if (e.target.closest('[data-clear-id]')) return;
                 _onSelect?.(c);
             });
             const clearBtn = card.querySelector('[data-clear-id]');
