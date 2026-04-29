@@ -6,6 +6,7 @@ using Humans.Application.Interfaces.Issues;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Web.Authorization.Requirements;
 using Humans.Web.Helpers;
 using Humans.Web.Models;
 
@@ -22,17 +23,20 @@ namespace Humans.Web.Controllers;
 public class IssuesController : HumansControllerBase
 {
     private readonly IIssuesService _issues;
+    private readonly IAuthorizationService _authorization;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ILogger<IssuesController> _logger;
 
     public IssuesController(
         IIssuesService issues,
+        IAuthorizationService authorization,
         UserManager<User> userManager,
         IStringLocalizer<SharedResource> localizer,
         ILogger<IssuesController> logger)
         : base(userManager)
     {
         _issues = issues;
+        _authorization = authorization;
         _localizer = localizer;
         _logger = logger;
     }
@@ -189,7 +193,7 @@ public class IssuesController : HumansControllerBase
         var issue = await _issues.GetIssueByIdAsync(id);
         if (issue is null) return NotFound();
 
-        var canHandle = CanHandle(issue);
+        var canHandle = (await _authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)).Succeeded;
         var isReporter = issue.ReporterUserId == user.Id;
         if (!canHandle && !isReporter) return NotFound();
 
@@ -214,7 +218,7 @@ public class IssuesController : HumansControllerBase
         var issue = await _issues.GetIssueByIdAsync(id);
         if (issue is null) return NotFound();
 
-        var canHandle = CanHandle(issue);
+        var canHandle = (await _authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)).Succeeded;
         var isReporter = issue.ReporterUserId == user.Id;
         if (!canHandle && !isReporter) return NotFound();
 
@@ -258,7 +262,8 @@ public class IssuesController : HumansControllerBase
 
         var issue = await _issues.GetIssueByIdAsync(id);
         if (issue is null) return NotFound();
-        if (!CanHandle(issue)) return Forbid();
+        var auth = await _authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
+        if (!auth.Succeeded) return Forbid();
 
         try
         {
@@ -287,7 +292,8 @@ public class IssuesController : HumansControllerBase
 
         var issue = await _issues.GetIssueByIdAsync(id);
         if (issue is null) return NotFound();
-        if (!CanHandle(issue)) return Forbid();
+        var auth = await _authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
+        if (!auth.Succeeded) return Forbid();
 
         try
         {
@@ -316,7 +322,8 @@ public class IssuesController : HumansControllerBase
 
         var issue = await _issues.GetIssueByIdAsync(id);
         if (issue is null) return NotFound();
-        if (!CanHandle(issue)) return Forbid();
+        var auth = await _authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
+        if (!auth.Succeeded) return Forbid();
 
         try
         {
@@ -345,7 +352,8 @@ public class IssuesController : HumansControllerBase
 
         var issue = await _issues.GetIssueByIdAsync(id);
         if (issue is null) return NotFound();
-        if (!CanHandle(issue)) return Forbid();
+        var auth = await _authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
+        if (!auth.Succeeded) return Forbid();
 
         try
         {
@@ -363,19 +371,6 @@ public class IssuesController : HumansControllerBase
         }
 
         return RedirectToAction(nameof(Index), new { selected = id });
-    }
-
-    /// <summary>
-    /// Returns true if the current user can handle (triage / assign / change status of)
-    /// this issue: Admin, or holds any role mapped to <c>issue.Section</c>.
-    /// Reads from claims (populated by RoleAssignmentClaimsTransformation) — see
-    /// coding-rules.md "claims-first" rule; do NOT reach for UserManager here.
-    /// </summary>
-    private bool CanHandle(Issue issue)
-    {
-        if (User.IsInRole(RoleNames.Admin)) return true;
-        var sectionRoles = IssueSectionRouting.RolesFor(issue.Section);
-        return sectionRoles.Any(r => User.IsInRole(r));
     }
 
     private static IssueListItemViewModel MapListItem(Issue i) => new()
