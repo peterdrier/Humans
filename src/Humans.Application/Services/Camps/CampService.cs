@@ -194,6 +194,15 @@ public sealed class CampService : ICampService, IUserDataContributor
             return null;
         }
 
+        return await BuildCampDetailDataAsync(camp, preferredYear, fallbackToLatestSeason, cancellationToken);
+    }
+
+    public async Task<CampDetailData?> BuildCampDetailDataAsync(
+        Camp camp,
+        int? preferredYear = null,
+        bool fallbackToLatestSeason = true,
+        CancellationToken cancellationToken = default)
+    {
         var targetYear = preferredYear;
         if (!targetYear.HasValue)
         {

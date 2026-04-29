@@ -30,6 +30,11 @@ public interface ICampService
         int? preferredYear = null,
         bool fallbackToLatestSeason = true,
         CancellationToken cancellationToken = default);
+    Task<CampDetailData?> BuildCampDetailDataAsync(
+        Camp camp,
+        int? preferredYear = null,
+        bool fallbackToLatestSeason = true,
+        CancellationToken cancellationToken = default);
     Task<CampEditData?> GetCampEditDataAsync(
         Guid campId,
         int? preferredYear = null,
