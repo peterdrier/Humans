@@ -81,16 +81,17 @@ jobs:
     # above) but break at apply time — FK to a column that no longer exists,
     # index on a column with the wrong type, ordering bugs.
     #
-    # Runner pinning: `humans-host` is a custom label registered on
-    # humans-runner-1 and humans-runner-2 (Linux containers running on Peter's
-    # Windows dev box via Docker). The job is intentionally NOT eligible for
-    # nuc-runner (different physical machine) or GitHub-hosted runners. If
-    # both humans-host runners are offline the job queues until one comes
-    # back — the rest of CI is unaffected because this job only `needs:` the
-    # cheap detect-migration-changes job, not the main build/test job.
+    # Runner pinning: `devbox` is a custom label registered on humans-runner-1
+    # and humans-runner-2 (Linux containers running on Peter's Windows dev box
+    # via Docker). The job is intentionally NOT eligible for nuc-runner
+    # (different physical machine) or GitHub-hosted runners — keeps Layer 2
+    # work on the dev box rather than burning NUC cycles. If both devbox
+    # runners are offline the job queues until one comes back — the rest of CI
+    # is unaffected because this job only `needs:` the cheap
+    # detect-migration-changes job, not the main build/test job.
     needs: detect-migration-changes
     if: needs.detect-migration-changes.outputs.migrations == 'true'
-    runs-on: [self-hosted, humans-host]
+    runs-on: [self-hosted, devbox]
 
     steps:
       - uses: actions/checkout@v6
