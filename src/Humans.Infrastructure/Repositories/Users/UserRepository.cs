@@ -267,10 +267,10 @@ public sealed class UserRepository : IUserRepository
             return (false, null);
 
         var oldEmail = user.Email;
-        user.Email = newEmail;
-        user.UserName = newEmail;
-        user.NormalizedEmail = newEmail.ToUpperInvariant();
-        user.NormalizedUserName = newEmail.ToUpperInvariant();
+        // Identity-column writes removed per email-identity-decoupling spec PR 2.
+        // The email rename is now applied to the UserEmail row instead — see
+        // IUserEmailService.RewriteEmailAddressAsync, which the rename-fix
+        // admin flow calls alongside this method.
         await ctx.SaveChangesAsync(ct);
         return (true, oldEmail);
     }
@@ -310,13 +310,12 @@ public sealed class UserRepository : IUserRepository
         if (user is null)
             return false;
 
-        var anonymizedId = $"merged-{user.Id:N}";
-
+        // Identity-column writes removed per email-identity-decoupling spec PR 2;
+        // the columns are dropped from AspNetUsers, and email/username are now
+        // computed by the User overrides (Email from UserEmails, UserName from
+        // Id). UserEmails are removed below, which also clears the email
+        // surface area for this user.
         user.DisplayName = "Merged User";
-        user.Email = $"{anonymizedId}@merged.local";
-        user.NormalizedEmail = user.Email.ToUpperInvariant();
-        user.UserName = anonymizedId;
-        user.NormalizedUserName = anonymizedId.ToUpperInvariant();
         user.ProfilePictureUrl = null;
         user.PhoneNumber = null;
         user.PhoneNumberConfirmed = false;
@@ -412,16 +411,13 @@ public sealed class UserRepository : IUserRepository
 
         var displayName = user.DisplayName;
 
-        // Remove UserEmails so the unique index doesn't block the new account
+        // Remove UserEmails so the unique index doesn't block the new account.
+        // Post-PR-2 of email-identity-decoupling, this also strips the
+        // computed User.Email value (User.Email derives from UserEmails) and
+        // is sufficient to prevent email-based lookup from matching.
         var userEmails = await ctx.UserEmails.Where(e => e.UserId == userId).ToListAsync(ct);
         ctx.UserEmails.RemoveRange(userEmails);
 
-        // Change email so email-based lookup won't match
-        var purgedEmail = $"purged-{Guid.NewGuid()}@deleted.local";
-        user.Email = purgedEmail;
-        user.NormalizedEmail = purgedEmail.ToUpperInvariant();
-        user.UserName = purgedEmail;
-        user.NormalizedUserName = purgedEmail.ToUpperInvariant();
         user.DisplayName = $"Purged ({displayName})";
 
         // Lock out the account permanently
@@ -484,15 +480,11 @@ public sealed class UserRepository : IUserRepository
         var originalDisplayName = user.DisplayName;
         var preferredLanguage = user.PreferredLanguage;
 
-        // Synthetic anonymized identifier derived from the user id so the
-        // collision surface for the sentinel email is zero (one per user).
-        var anonymizedId = $"deleted-{user.Id:N}";
-
+        // Identity-column writes removed per email-identity-decoupling spec PR 2;
+        // the columns are dropped from AspNetUsers, and email/username are now
+        // computed by the User overrides. The UserEmails removal below clears
+        // the email surface area for this user.
         user.DisplayName = "Deleted User";
-        user.Email = $"{anonymizedId}@deleted.local";
-        user.NormalizedEmail = user.Email.ToUpperInvariant();
-        user.UserName = anonymizedId;
-        user.NormalizedUserName = anonymizedId.ToUpperInvariant();
         user.ProfilePictureUrl = null;
         user.PhoneNumber = null;
         user.PhoneNumberConfirmed = false;
