@@ -342,19 +342,20 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         if (issue.AssigneeUserId == newAssigneeUserId) return;
 
         var oldAssigneeId = issue.AssigneeUserId;
-        var oldName = "Unassigned";
-        var newName = "Unassigned";
+        var idsToResolve = new List<Guid>(2);
+        if (oldAssigneeId.HasValue) idsToResolve.Add(oldAssigneeId.Value);
+        if (newAssigneeUserId.HasValue) idsToResolve.Add(newAssigneeUserId.Value);
 
-        if (oldAssigneeId.HasValue)
-        {
-            var u = await _users.GetByIdAsync(oldAssigneeId.Value, ct);
-            oldName = u?.DisplayName ?? oldAssigneeId.Value.ToString();
-        }
-        if (newAssigneeUserId.HasValue)
-        {
-            var u = await _users.GetByIdAsync(newAssigneeUserId.Value, ct);
-            newName = u?.DisplayName ?? newAssigneeUserId.Value.ToString();
-        }
+        var users = idsToResolve.Count == 0
+            ? null
+            : await _users.GetByIdsAsync(idsToResolve, ct);
+
+        var oldName = oldAssigneeId.HasValue
+            ? (users!.TryGetValue(oldAssigneeId.Value, out var ou) ? ou.DisplayName : oldAssigneeId.Value.ToString())
+            : "Unassigned";
+        var newName = newAssigneeUserId.HasValue
+            ? (users!.TryGetValue(newAssigneeUserId.Value, out var nu) ? nu.DisplayName : newAssigneeUserId.Value.ToString())
+            : "Unassigned";
 
         issue.AssigneeUserId = newAssigneeUserId;
         issue.UpdatedAt = _clock.GetCurrentInstant();

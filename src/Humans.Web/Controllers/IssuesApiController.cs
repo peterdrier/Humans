@@ -239,10 +239,10 @@ public class IssuesApiController : ControllerBase
         i.PageUrl,
         i.UserAgent,
         i.AdditionalContext,
-        ReporterName = i.Reporter.DisplayName,
-        ReporterEmail = i.Reporter.Email,
+        ReporterName = i.Reporter?.DisplayName,
+        ReporterEmail = i.Reporter?.Email,
         ReporterUserId = i.ReporterUserId,
-        ReporterLanguage = i.Reporter.PreferredLanguage,
+        ReporterLanguage = i.Reporter?.PreferredLanguage,
         AssigneeUserId = i.AssigneeUserId,
         AssigneeName = i.Assignee?.DisplayName,
         i.GitHubIssueNumber,
@@ -292,11 +292,11 @@ public class ApiCreateIssueModel
     public IssueCategory Category { get; set; }
 
     [Required]
-    [StringLength(500)]
+    [StringLength(200)]
     public string Title { get; set; } = string.Empty;
 
     [Required]
-    [StringLength(10_000)]
+    [StringLength(5000)]
     public string Description { get; set; } = string.Empty;
 
     public string? Section { get; set; }

@@ -1,14 +1,6 @@
 @model Humans.Web.Models.SubmitIssueViewModel
 @{
     ViewData["Title"] = Localizer["Issue_New_Title"].Value;
-
-    string CategoryEmoji(IssueCategory c) => c switch
-    {
-        IssueCategory.Bug => "🐛",
-        IssueCategory.Feature => "✨",
-        IssueCategory.Question => "❓",
-        _ => string.Empty
-    };
 }
 
 <div class="container issues-new mt-3" style="max-width: 960px;">
@@ -28,7 +20,7 @@
 
                 <div class="mb-3">
                     <label asp-for="Title" class="form-label">@Localizer["Issue_Title"]</label>
-                    <input asp-for="Title" class="form-control" maxlength="500" autofocus required />
+                    <input asp-for="Title" class="form-control" maxlength="200" autofocus required />
                     <span asp-validation-for="Title" class="text-danger small"></span>
                 </div>
 
@@ -40,11 +32,11 @@
                             {
                                 if (Model.Category == c)
                                 {
-                                    <option value="@c" selected>@CategoryEmoji(c) @c</option>
+                                    <option value="@c" selected>@IssuePresentation.CategoryEmoji(c) @c</option>
                                 }
                                 else
                                 {
-                                    <option value="@c">@CategoryEmoji(c) @c</option>
+                                    <option value="@c">@IssuePresentation.CategoryEmoji(c) @c</option>
                                 }
                             }
                         </select>
@@ -72,7 +64,7 @@
 
                 <div class="mb-3">
                     <label asp-for="Description" class="form-label">@Localizer["Issue_Description"]</label>
-                    <textarea asp-for="Description" class="form-control" rows="8" maxlength="10000" required
+                    <textarea asp-for="Description" class="form-control" rows="8" maxlength="5000" required
                               placeholder="@Localizer["Issue_Description_Placeholder"]"></textarea>
                     <span asp-validation-for="Description" class="text-danger small"></span>
                 </div>

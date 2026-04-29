@@ -1,26 +1,6 @@
 @model Humans.Web.Models.IssuePageViewModel
 @{
     ViewData["Title"] = Localizer["Issue_PageTitle"].Value;
-
-    string StatusPillClass(IssueStatus s)
-    {
-        var name = s.ToString().ToLowerInvariant();
-        // CSS hooks expect these specific tokens
-        return name switch
-        {
-            "inprogress" => "status-progress",
-            "wontfix" => "status-wontfix",
-            _ => $"status-{name}"
-        };
-    }
-
-    string CategoryEmoji(IssueCategory c) => c switch
-    {
-        IssueCategory.Bug => "🐛",
-        IssueCategory.Feature => "✨",
-        IssueCategory.Question => "❓",
-        _ => string.Empty
-    };
 }
 
 <div class="container-fluid issues-index">
@@ -140,11 +120,11 @@
                     <tr class="issues-list-item @(isSelected ? "table-active" : "")"
                         data-issue-id="@issue.Id" style="cursor: pointer;">
                         <td>
-                            <span class="badge status-pill @StatusPillClass(issue.Status)">@issue.Status</span>
+                            <span class="badge status-pill @IssuePresentation.StatusPillClass(issue.Status)">@issue.Status</span>
                         </td>
                         <td>
                             <div class="d-flex align-items-center gap-1">
-                                <span title="@issue.Category">@CategoryEmoji(issue.Category)</span>
+                                <span title="@issue.Category">@IssuePresentation.CategoryEmoji(issue.Category)</span>
                                 <span class="fw-semibold text-truncate" style="max-width: 240px;">
                                     @issue.Title
                                 </span>
