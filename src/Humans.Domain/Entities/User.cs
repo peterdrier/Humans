@@ -69,52 +69,36 @@ public class User : IdentityUser<Guid>
     public ICollection<UserEmail> UserEmails { get; } = new List<UserEmail>();
 
     /// <summary>
-    /// Email is sourced from <see cref="UserEmails"/> per the
-    /// email-identity-decoupling spec PR 2: returns the first verified row
-    /// ordered by <see cref="UserEmail.IsNotificationTarget"/> descending,
-    /// falling back to the in-memory <c>base.Email</c> value when the user
-    /// has no UserEmail rows (e.g., in-memory test fixtures, post-anonymization
-    /// reads). The EF column is <c>Ignore()</c>'d so persistence flows entirely
-    /// through <c>UserEmails</c>.
-    /// <para>
-    /// Setter delegates to <c>base.Email</c> for in-memory continuity (tests +
-    /// any transient assignments), but should not be called from production
-    /// code outside <c>HumansUserStore</c>. The
-    /// <c>IdentityColumnWriteRestrictionsTests</c> architecture test enforces
-    /// this in <c>Humans.Application</c> + <c>Humans.Web</c>; modify
-    /// <see cref="UserEmail"/> rows via <c>IUserEmailService</c> for the
-    /// canonical write path.
-    /// </para>
+    /// First verified <see cref="UserEmail"/>, ordered by
+    /// <see cref="UserEmail.IsNotificationTarget"/> desc; falls back to
+    /// <c>base.Email</c> when no UserEmails are loaded (test fixtures,
+    /// post-anonymization reads). Requires <see cref="UserEmails"/> to be
+    /// loaded for production reads.
     /// </summary>
     public override string? Email
     {
         get
         {
-            var fromUserEmails = UserEmails
+            if (UserEmails.Count == 0)
+                return base.Email;
+
+            return UserEmails
                 .Where(e => e.IsVerified)
                 .OrderByDescending(e => e.IsNotificationTarget)
                 .Select(e => e.Email)
-                .FirstOrDefault();
-            return fromUserEmails ?? base.Email;
+                .FirstOrDefault() ?? base.Email;
         }
         set => base.Email = value;
     }
 
-    /// <summary>
-    /// Derived from <see cref="Email"/>; falls back to <c>base.NormalizedEmail</c>
-    /// for in-memory continuity. Setter delegates to base.
-    /// </summary>
+    /// <inheritdoc />
     public override string? NormalizedEmail
     {
-        get => Email?.ToUpperInvariant() ?? base.NormalizedEmail;
+        get => Email?.ToUpperInvariant();
         set => base.NormalizedEmail = value;
     }
 
-    /// <summary>
-    /// True when the user has at least one verified <see cref="UserEmail"/>,
-    /// or when <c>base.EmailConfirmed</c> was set (e.g., test fixture).
-    /// Setter delegates to base.
-    /// </summary>
+    /// <inheritdoc />
     public override bool EmailConfirmed
     {
         get => UserEmails.Any(e => e.IsVerified) || base.EmailConfirmed;
@@ -122,12 +106,9 @@ public class User : IdentityUser<Guid>
     }
 
     /// <summary>
-    /// Identity needs a unique non-empty UserName for validator + uniqueness
-    /// checks; we anchor it to <see cref="IdentityUser{TKey}.Id"/>. Setter
-    /// silently delegates to base (Identity's <c>SetUserNameAsync</c> contract
-    /// requires the call to succeed) but the EF column is <c>Ignore()</c>'d,
-    /// so the value never round-trips to the database. Getter returns the
-    /// last-set value if any, falling back to <c>Id.ToString()</c>.
+    /// Anchored to <see cref="IdentityUser{TKey}.Id"/> so Identity's username
+    /// uniqueness validator always sees a non-empty unique value without
+    /// callers having to populate it.
     /// </summary>
     public override string? UserName
     {
@@ -135,12 +116,7 @@ public class User : IdentityUser<Guid>
         set => base.UserName = value;
     }
 
-    /// <summary>
-    /// Mirrors <see cref="UserName"/> normalization. Same silent-set semantics
-    /// — the EF column is dropped, so persistence is irrelevant; the value is
-    /// only used for in-memory uniqueness checks routed through
-    /// <c>HumansUserStore.FindByNameAsync</c>.
-    /// </summary>
+    /// <inheritdoc />
     public override string? NormalizedUserName
     {
         get => base.NormalizedUserName ?? Id.ToString().ToUpperInvariant();
@@ -148,12 +124,8 @@ public class User : IdentityUser<Guid>
     }
 
     /// <summary>
-    /// Gets the effective email address for system notifications. Identical
-    /// to <see cref="Email"/> after PR 2 of the email-identity-decoupling
-    /// spec — the override on <see cref="Email"/> already returns the first
-    /// verified row by IsNotificationTarget desc. Kept as a separate method
-    /// for callers that want the explicit "this is the notify-this-human
-    /// address" intent. Requires <see cref="UserEmails"/> to be loaded.
+    /// Effective email for system notifications. Requires
+    /// <see cref="UserEmails"/> to be loaded.
     /// </summary>
     public string? GetEffectiveEmail() => Email;
 

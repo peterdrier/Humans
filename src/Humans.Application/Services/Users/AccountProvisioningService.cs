@@ -89,19 +89,13 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
             }
         }
 
-        // No match found — create new User + UserEmail. The UserEmail table
-        // is the canonical source post-PR-2; the User.Email column is gone, so
-        // there's no separate property-based fallback to check.
+        // No match found — create new User + UserEmail.
         var resolvedDisplayName = string.IsNullOrWhiteSpace(displayName)
             ? email.Split('@')[0]
             : displayName;
 
         var now = _clock.GetCurrentInstant();
 
-        // Identity-column writes decoupled per email-identity-decoupling spec PR 2.
-        // User.UserName / NormalizedUserName are computed from Id by the override;
-        // Email/EmailConfirmed are computed from UserEmails. The UserEmail row
-        // created below carries the email.
         var newUserId = Guid.NewGuid();
         var newUser = new User
         {

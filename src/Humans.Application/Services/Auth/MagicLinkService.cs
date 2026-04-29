@@ -58,11 +58,6 @@ public sealed class MagicLinkService : IMagicLinkService
 
     public async Task SendMagicLinkAsync(string email, string? returnUrl, CancellationToken ct = default)
     {
-        // Look up by verified UserEmail (UserEmails is the canonical source of
-        // truth for a human's email post-PR-2 of the email-identity-decoupling
-        // spec). UserManager.FindByEmailAsync is also routed through
-        // HumansUserStore → IUserEmailService, so a fallback there would just
-        // re-query the same table; no separate fallback is needed.
         var userEmail = await _userEmailService.FindVerifiedEmailWithUserAsync(email, ct);
         if (userEmail is not null)
         {

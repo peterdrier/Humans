@@ -69,9 +69,12 @@ public sealed class UserRepository : IUserRepository
 
     public async Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default)
     {
+        // Include UserEmails so callers reading User.Email get the override's
+        // computed value rather than null. Cheap at ~500-user scale.
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Users
             .AsNoTracking()
+            .Include(u => u.UserEmails)
             .ToListAsync(ct);
     }
 
@@ -267,10 +270,9 @@ public sealed class UserRepository : IUserRepository
             return (false, null);
 
         var oldEmail = user.Email;
-        // Identity-column writes removed per email-identity-decoupling spec PR 2.
-        // The email rename is now applied to the UserEmail row instead — see
-        // IUserEmailService.RewriteEmailAddressAsync, which the rename-fix
-        // admin flow calls alongside this method.
+        // The email rename is applied to the UserEmail row by the admin flow's
+        // call to IUserEmailService.RewriteEmailAddressAsync; this method only
+        // returns the previous value for audit logging.
         await ctx.SaveChangesAsync(ct);
         return (true, oldEmail);
     }
@@ -310,11 +312,6 @@ public sealed class UserRepository : IUserRepository
         if (user is null)
             return false;
 
-        // Identity-column writes removed per email-identity-decoupling spec PR 2;
-        // the columns are dropped from AspNetUsers, and email/username are now
-        // computed by the User overrides (Email from UserEmails, UserName from
-        // Id). UserEmails are removed below, which also clears the email
-        // surface area for this user.
         user.DisplayName = "Merged User";
         user.ProfilePictureUrl = null;
         user.PhoneNumber = null;
@@ -411,10 +408,8 @@ public sealed class UserRepository : IUserRepository
 
         var displayName = user.DisplayName;
 
-        // Remove UserEmails so the unique index doesn't block the new account.
-        // Post-PR-2 of email-identity-decoupling, this also strips the
-        // computed User.Email value (User.Email derives from UserEmails) and
-        // is sufficient to prevent email-based lookup from matching.
+        // Remove UserEmails so the unique index doesn't block the new account
+        // and the computed User.Email becomes null.
         var userEmails = await ctx.UserEmails.Where(e => e.UserId == userId).ToListAsync(ct);
         ctx.UserEmails.RemoveRange(userEmails);
 
@@ -480,10 +475,6 @@ public sealed class UserRepository : IUserRepository
         var originalDisplayName = user.DisplayName;
         var preferredLanguage = user.PreferredLanguage;
 
-        // Identity-column writes removed per email-identity-decoupling spec PR 2;
-        // the columns are dropped from AspNetUsers, and email/username are now
-        // computed by the User overrides. The UserEmails removal below clears
-        // the email surface area for this user.
         user.DisplayName = "Deleted User";
         user.ProfilePictureUrl = null;
         user.PhoneNumber = null;

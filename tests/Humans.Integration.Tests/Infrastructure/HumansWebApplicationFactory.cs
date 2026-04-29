@@ -16,6 +16,7 @@ using NSubstitute;
 using Testcontainers.PostgreSql;
 using Xunit;
 using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Integration.Tests.Infrastructure;
 
@@ -145,13 +146,8 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var email = $"dev-{slug}@localhost";
-        // Post-PR-2 of email-identity-decoupling the User.Email column is gone;
-        // resolve via the UserEmail row created by DevLoginController on seed.
-        var userId = await db.UserEmails
-            .AsNoTracking()
-            .Where(e => e.Email == email)
-            .Select(e => (Guid?)e.UserId)
-            .FirstOrDefaultAsync()
+        var userEmailService = scope.ServiceProvider.GetRequiredService<IUserEmailService>();
+        var userId = await userEmailService.GetUserIdByVerifiedEmailAsync(email)
             ?? throw new InvalidOperationException(
                 $"Persona '{slug}' was not found after dev login (email {email}).");
         var user = await db.Users

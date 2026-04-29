@@ -103,9 +103,6 @@ public class AccountController : Controller
 
         if (result.IsLockedOut)
         {
-            // Lockout-relink branch removed in PR 2 of the email-identity-decoupling
-            // spec — the "preserve at least one auth method" deletion guard added
-            // in PR 1 prevents the lockout state that this branch existed to repair.
             return RedirectToAction(nameof(Login), new { returnUrl, error = "lockedout" });
         }
 
@@ -156,16 +153,7 @@ public class AccountController : Controller
             }
         }
 
-        // FindUserByAnyEmailAsync branch removed in PR 2 of the
-        // email-identity-decoupling spec. The branch existed to match by
-        // unverified UserEmail or by User.Email column; with the column dropped
-        // and User.Email computed from verified UserEmails, the "any" match
-        // collapses to the verified-email check above.
-
-        // No existing account — create a new one. Identity-column writes
-        // decoupled per email-identity-decoupling spec PR 2: User.UserName is
-        // computed from Id by the override (User.cs), Email/EmailConfirmed
-        // from UserEmails. The UserEmail row created below carries the email.
+        // No existing account — create a new one.
         var newUserId = Guid.NewGuid();
         var user = new User
         {
@@ -352,9 +340,6 @@ public class AccountController : Controller
         }
 
         var now = _clock.GetCurrentInstant();
-        // Identity-column writes decoupled per email-identity-decoupling spec PR 2.
-        // User.UserName is computed from Id by the override; AddOAuthEmailAsync
-        // below creates the verified UserEmail row that drives Email/EmailConfirmed.
         var newUserId = Guid.NewGuid();
         var user = new User
         {

@@ -263,13 +263,10 @@ public sealed class DevelopmentDashboardSeeder
             var email = $"{DevUserEmailPrefix}{i:D3}{DevUserEmailSuffix}";
             var createdAt = now.Minus(Duration.FromDays(_rng.Next(30, 400)));
             var lastLoginDaysAgo = _rng.Next(0, 85);
-            // Identity-column writes decoupled per email-identity-decoupling spec PR 2.
-            // User.UserName / Email / EmailConfirmed are computed from Id / UserEmails
-            // by the User overrides; the UserEmail row created below carries the email.
-            // Id MUST be set explicitly here — UserManager's username uniqueness validator
+            // Id MUST be set explicitly: UserManager's username uniqueness validator
             // reads user.UserName before EF assigns the PK, and the override returns
-            // Id.ToString(). Without an explicit Id, every loop iteration would resolve
-            // to UserName = Guid.Empty.ToString(), failing on the second insert.
+            // Id.ToString(). Without an explicit Id, every loop iteration resolves
+            // to UserName = Guid.Empty.ToString() and fails on the second insert.
             var userId = Guid.NewGuid();
             var user = new User
             {

@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Humans.Application.Configuration;
 using Humans.Application.Extensions;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Infrastructure.Configuration;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -46,6 +47,7 @@ public class DevLoginController : Controller
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
     private readonly HumansDbContext _db;
+    private readonly IUserEmailService _userEmailService;
     private readonly IClock _clock;
     private readonly IWebHostEnvironment _env;
     private readonly IConfiguration _config;
@@ -58,6 +60,7 @@ public class DevLoginController : Controller
         UserManager<User> userManager,
         SignInManager<User> signInManager,
         HumansDbContext db,
+        IUserEmailService userEmailService,
         IClock clock,
         IWebHostEnvironment env,
         IConfiguration config,
@@ -69,6 +72,7 @@ public class DevLoginController : Controller
         _userManager = userManager;
         _signInManager = signInManager;
         _db = db;
+        _userEmailService = userEmailService;
         _clock = clock;
         _env = env;
         _config = config;
@@ -115,12 +119,7 @@ public class DevLoginController : Controller
         var user = await _userManager.FindByIdAsync(resolvedUserId.ToString());
         if (user is null)
         {
-            // Post-PR-2 the User.Email column is gone; fall back to the
-            // UserEmails row created during seed.
-            var byEmailUserId = await _db.UserEmails
-                .Where(e => e.Email == email)
-                .Select(e => (Guid?)e.UserId)
-                .FirstOrDefaultAsync();
+            var byEmailUserId = await _userEmailService.GetUserIdByVerifiedEmailAsync(email);
             if (byEmailUserId is not null)
                 user = await _userManager.FindByIdAsync(byEmailUserId.Value.ToString());
         }
@@ -192,11 +191,7 @@ public class DevLoginController : Controller
         var email = $"dev-{info.Slug}@localhost";
 
         // Legacy personas may exist with old hardcoded GUIDs — reuse them.
-        // Post-PR-2 the User.Email column is dropped; resolve via UserEmails.
-        var byEmailUserId = await _db.UserEmails
-            .Where(e => e.Email == email)
-            .Select(e => (Guid?)e.UserId)
-            .FirstOrDefaultAsync();
+        var byEmailUserId = await _userEmailService.GetUserIdByVerifiedEmailAsync(email);
         if (byEmailUserId is not null)
         {
             _logger.LogInformation("DEV: found legacy persona {Email} ({OldId}), reusing", email, byEmailUserId.Value);
