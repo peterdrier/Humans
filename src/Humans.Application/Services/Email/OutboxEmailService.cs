@@ -368,6 +368,25 @@ public sealed class OutboxEmailService : IEmailService
             request.CampaignGrantId, request.RecipientEmail);
     }
 
+    /// <inheritdoc />
+    public Task SendIssueCommentAsync(
+        string to,
+        string displayName,
+        string issueTitle,
+        string commentContent,
+        string issueLink,
+        string preferredLanguage,
+        CancellationToken ct = default)
+    {
+        // Phase 5 of the Issues section feature will wire the renderer and the
+        // outbox-enqueue path. Until then we log a marker so test runs make it
+        // visible that the email path is pending.
+        _logger.LogInformation(
+            "[Issues:Phase5-pending] Would queue issue comment email to {To} ({Name}) for {Title} link {Link}",
+            to, displayName, issueTitle, issueLink);
+        return Task.CompletedTask;
+    }
+
     private async Task EnqueueAsync(
         string recipientEmail,
         string recipientName,

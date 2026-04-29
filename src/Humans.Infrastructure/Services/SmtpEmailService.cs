@@ -319,6 +319,24 @@ public class SmtpEmailService : IEmailService
         _metrics.RecordEmailSent("campaign_code");
     }
 
+    public Task SendIssueCommentAsync(
+        string to,
+        string displayName,
+        string issueTitle,
+        string commentContent,
+        string issueLink,
+        string preferredLanguage,
+        CancellationToken ct = default)
+    {
+        // Phase 5 of the Issues section feature will add the renderer/template
+        // wiring. Until then this implementation is a no-op so the compile
+        // graph stays green.
+        _logger.LogInformation(
+            "[Issues:Phase5-pending] Would send issue comment email to {To} ({Name}) for {Title} link {Link}",
+            to, displayName, issueTitle, issueLink);
+        return Task.CompletedTask;
+    }
+
     private async Task SendEmailAsync(
         string toAddress,
         string subject,
