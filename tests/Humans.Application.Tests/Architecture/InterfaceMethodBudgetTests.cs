@@ -11,29 +11,31 @@ using Xunit;
 namespace Humans.Application.Tests.Architecture;
 
 /// <summary>
-/// Method-count budget for major service interfaces. **Strict down-only
-/// ratchet for agents.** A PR that adds a method to a budgeted interface MUST
-/// remove another in the same PR; net delta over the PR is ≤ 0. Agents must
-/// not raise a number here for any reason — only the repo owner can authorize
-/// a raise, and only after explicit out-of-band discussion. The bloat this
-/// test exists to clean up was accrued one "this addition is justified, +1"
-/// PR at a time; agent justifications are precisely the failure mode.
+/// Method-count budget for major service interfaces. This is a
+/// **consolidation ratchet** — the goal is for budgeted interfaces to get
+/// smaller over time, not stable, not redistributed.
 ///
-/// What's in scope: interfaces with a meaningful surface (≥10 methods) where
+/// Agent rules (strict):
+/// - No raises. Adding a method requires removing one from the SAME
+///   interface in the SAME PR. Net delta is ≤ 0.
+/// - No splits as a workaround. Don't extract a sub-interface to put methods
+///   under a fresh budget — that defeats the consolidation goal.
+/// - No "replace 2 methods with 1 broader bag-of-flags method" tricks. The
+///   count drops but the surface grows.
+/// - When net delta is negative, lower the budget number to match the new
+///   count exactly. Budgets_are_tight_and_not_padded forbids headroom.
+/// - Hit a wall? STOP and ask the repo owner. Only the owner authorizes
+///   raises, and only out-of-band — never preemptively in a PR.
+///
+/// Why: the audit-surface skill kept finding bloat that accrued one
+/// "this addition is justified, +1" PR at a time. Every raise had a
+/// justification. A split-it escape hatch redistributes the same surface
+/// across two budgets with fresh growth runway in each. The mechanism only
+/// works when agents cannot reach for either lever on their own initiative.
+///
+/// In scope: interfaces with a meaningful surface (≥10 methods) where
 /// growth would matter. Smaller interfaces aren't budgeted — adding the 3rd
 /// method to a 2-method interface isn't a smell.
-///
-/// What to do when this fails:
-/// - You added a method without removing one. Remove one. Or replace the
-///   added method with a refinement of an existing signature so the count
-///   doesn't grow. Or split the interface (run /audit-surface).
-/// - You removed methods and the count dropped: lower the budget here to
-///   match the new count exactly. The Budgets_are_tight_and_not_padded test
-///   forbids headroom.
-/// - The interface genuinely needs to grow with no room to remove? STOP and
-///   ask the repo owner before raising. Do not raise on your own initiative
-///   under any circumstances. Do not pre-raise "to make room for later
-///   work." The expected default is split-or-shrink, not raise.
 /// </summary>
 public class InterfaceMethodBudgetTests
 {
