@@ -11,27 +11,29 @@ using Xunit;
 namespace Humans.Application.Tests.Architecture;
 
 /// <summary>
-/// Method-count budget for major service interfaces. Each entry is a hard ceiling
-/// pinned at the count when the test was last updated. CI fails if any interface
-/// grows past its budget — adding a new method to a budgeted interface requires
-/// either deleting an existing one in the same PR (decrement-only ratchet) or
-/// raising the budget here with a one-line justification in the PR.
-///
-/// Why: the audit-surface skill keeps finding bloat that nobody noticed accruing
-/// because each PR only adds 1-2 methods. Without a tripwire, the only feedback
-/// loop is a periodic audit. This makes growth visible at the moment it happens.
+/// Method-count budget for major service interfaces. **Strict down-only
+/// ratchet for agents.** A PR that adds a method to a budgeted interface MUST
+/// remove another in the same PR; net delta over the PR is ≤ 0. Agents must
+/// not raise a number here for any reason — only the repo owner can authorize
+/// a raise, and only after explicit out-of-band discussion. The bloat this
+/// test exists to clean up was accrued one "this addition is justified, +1"
+/// PR at a time; agent justifications are precisely the failure mode.
 ///
 /// What's in scope: interfaces with a meaningful surface (≥10 methods) where
 /// growth would matter. Smaller interfaces aren't budgeted — adding the 3rd
 /// method to a 2-method interface isn't a smell.
 ///
 /// What to do when this fails:
-/// - If the new method is genuinely needed and you've already removed something:
-///   lower the budget here to match the new count.
-/// - If you can't remove anything but the addition is justified: raise the
-///   budget here, document why in the PR description, and consider whether the
-///   interface should be split (run /audit-surface).
-/// - Don't bypass the test. The point is to make growth deliberate.
+/// - You added a method without removing one. Remove one. Or replace the
+///   added method with a refinement of an existing signature so the count
+///   doesn't grow. Or split the interface (run /audit-surface).
+/// - You removed methods and the count dropped: lower the budget here to
+///   match the new count exactly. The Budgets_are_tight_and_not_padded test
+///   forbids headroom.
+/// - The interface genuinely needs to grow with no room to remove? STOP and
+///   ask the repo owner before raising. Do not raise on your own initiative
+///   under any circumstances. Do not pre-raise "to make room for later
+///   work." The expected default is split-or-shrink, not raise.
 /// </summary>
 public class InterfaceMethodBudgetTests
 {
