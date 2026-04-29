@@ -1503,18 +1503,20 @@ public sealed class TeamService : ITeamService, IUserDataContributor
             }
         }
 
+        IEnumerable<TeamRosterSlotSummary> filtered = slots;
+
         if (!string.IsNullOrEmpty(priority))
-            slots = slots.Where(s => string.Equals(s.Priority, priority, StringComparison.OrdinalIgnoreCase)).ToList();
+            filtered = filtered.Where(s => string.Equals(s.Priority, priority, StringComparison.OrdinalIgnoreCase));
 
         if (string.Equals(status, "Open", StringComparison.OrdinalIgnoreCase))
-            slots = slots.Where(s => !s.IsFilled).ToList();
+            filtered = filtered.Where(s => !s.IsFilled);
         else if (string.Equals(status, "Filled", StringComparison.OrdinalIgnoreCase))
-            slots = slots.Where(s => s.IsFilled).ToList();
+            filtered = filtered.Where(s => s.IsFilled);
 
         if (!string.IsNullOrEmpty(period))
-            slots = slots.Where(s => string.Equals(s.Period, period, StringComparison.OrdinalIgnoreCase)).ToList();
+            filtered = filtered.Where(s => string.Equals(s.Period, period, StringComparison.OrdinalIgnoreCase));
 
-        return slots
+        return filtered
             .OrderBy(slot => slot.Priority switch
             {
                 nameof(SlotPriority.Critical) => 0,

@@ -534,6 +534,11 @@ public class TeamController : HumansControllerBase
             return NotFound();
         }
 
+        var coordinatorUserIds = team.Members
+            .Where(m => m.Role == TeamMemberRole.Coordinator)
+            .Select(m => m.UserId)
+            .ToList();
+
         try
         {
             if (team.RequiresApproval)
@@ -541,15 +546,9 @@ public class TeamController : HumansControllerBase
                 await _teamService.RequestToJoinTeamAsync(team.Id, user.Id, model.Message);
                 SetSuccess(_localizer["Team_JoinRequestSubmitted"].Value);
 
-                // Notify team coordinators (best-effort)
-                try
+                if (coordinatorUserIds.Count > 0)
                 {
-                    var coordinatorUserIds = team.Members
-                        .Where(m => m.Role == TeamMemberRole.Coordinator)
-                        .Select(m => m.UserId)
-                        .ToList();
-
-                    if (coordinatorUserIds.Count > 0)
+                    try
                     {
                         await _notificationService.SendAsync(
                             NotificationSource.TeamJoinRequestSubmitted,
@@ -561,10 +560,10 @@ public class TeamController : HumansControllerBase
                             actionUrl: $"/Teams/{slug}/Members",
                             actionLabel: "Review request");
                     }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to dispatch TeamJoinRequestSubmitted notification for team {TeamId}", team.Id);
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to dispatch TeamJoinRequestSubmitted notification for team {TeamId}", team.Id);
+                    }
                 }
             }
             else
@@ -572,15 +571,9 @@ public class TeamController : HumansControllerBase
                 await _teamService.JoinTeamDirectlyAsync(team.Id, user.Id);
                 SetSuccess(_localizer["Team_Joined"].Value);
 
-                // Notify team coordinators of new member (best-effort)
-                try
+                if (coordinatorUserIds.Count > 0)
                 {
-                    var coordinatorUserIds = team.Members
-                        .Where(m => m.Role == TeamMemberRole.Coordinator)
-                        .Select(m => m.UserId)
-                        .ToList();
-
-                    if (coordinatorUserIds.Count > 0)
+                    try
                     {
                         await _notificationService.SendAsync(
                             NotificationSource.TeamMemberAdded,
@@ -592,10 +585,10 @@ public class TeamController : HumansControllerBase
                             actionUrl: $"/Teams/{slug}/Members",
                             actionLabel: "View members");
                     }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to dispatch TeamMemberAdded notification for team {TeamId}", team.Id);
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to dispatch TeamMemberAdded notification for team {TeamId}", team.Id);
+                    }
                 }
             }
 
