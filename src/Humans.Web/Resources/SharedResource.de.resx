@@ -1985,4 +1985,14 @@
   <data name="Issue_Section_Updated" xml:space="preserve"><value>Bereich aktualisiert.</value></data>
   <data name="Issue_GitHub_Linked" xml:space="preserve"><value>Mit GitHub verknüpft.</value></data>
 
+  <data name="Welcome_Title" xml:space="preserve"><value>Willkommen</value></data>
+  <data name="Welcome_Heading" xml:space="preserve"><value>Du bist dabei.</value></data>
+  <data name="Welcome_Subtitle" xml:space="preserve"><value>Dein Ticket für Elsewhere 2026 ist bestätigt.</value></data>
+  <data name="Welcome_ShiftsTitle" xml:space="preserve"><value>Jetzt machen wir das gemeinsam möglich.</value></data>
+  <data name="Welcome_ShiftsBody" xml:space="preserve"><value>Elsewhere ist kein Festival, zu dem du einfach kommst — es ist eines, das du mitaufbaust. Jeder human wählt Schichten: Aufbau vorher, Betrieb währenddessen und Abbau danach.</value></data>
+  <data name="Welcome_ShiftsBody2" xml:space="preserve"><value>Um Schichten zu sehen und dich anzumelden, brauchst du ein Humans-Konto. Das dauert nur ein paar Minuten.</value></data>
+  <data name="Welcome_CTA" xml:space="preserve"><value>Anmelden oder Konto erstellen</value></data>
+  <data name="Welcome_Footer" xml:space="preserve"><value>Schon ein Konto? Gleicher Button — melde dich an und du landest direkt bei den Schichten.</value></data>
+  <data name="Welcome_Contact" xml:space="preserve"><value>Fragen? Schreib uns an</value></data>
+
 </root>

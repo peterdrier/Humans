@@ -920,6 +920,107 @@ a:hover {
     }
 }
 
+/* --- Welcome / Thank You page (post-ticket-purchase landing) --- */
+.welcome-hero {
+    padding: 3rem 1rem 1.5rem;
+}
+
+.welcome-checkmark {
+    font-size: 3rem;
+    color: var(--h-sage);
+    margin-bottom: 0.75rem;
+}
+
+.welcome-heading {
+    font-family: var(--h-font-display);
+    font-size: 2.2rem;
+    color: var(--h-aged-ink);
+    margin-bottom: 0.5rem;
+}
+
+.welcome-subtitle {
+    font-size: 1.1rem;
+    color: var(--h-sepia);
+    margin-bottom: 0;
+}
+
+.welcome-shifts-card {
+    background-color: var(--h-parchment-light);
+    border: 1px solid var(--h-border-light);
+    border-radius: 0.5rem;
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1.75rem;
+}
+
+.welcome-shifts-title {
+    font-family: var(--h-font-display);
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--h-aged-ink);
+    margin-bottom: 0.75rem;
+}
+
+.welcome-shifts-body {
+    font-size: 0.95rem;
+    color: var(--h-sepia);
+    line-height: 1.7;
+    margin-bottom: 0.75rem;
+}
+
+.welcome-shifts-body:last-child {
+    margin-bottom: 0;
+}
+
+.welcome-cta {
+    background-color: var(--h-sage);
+    border-color: var(--h-sage);
+    color: #fff;
+    padding: 0.6rem 2rem;
+    font-size: 1rem;
+}
+
+.welcome-cta:hover {
+    background-color: var(--h-sage-dark);
+    border-color: var(--h-sage-dark);
+    color: #fff;
+}
+
+.welcome-footer {
+    font-size: 0.85rem;
+    color: var(--h-sepia-light);
+    margin-bottom: 2rem;
+}
+
+.welcome-contact {
+    border-top: 1px solid var(--h-border-light);
+    padding-top: 1rem;
+    margin-bottom: 2rem;
+}
+
+.welcome-contact p {
+    font-size: 0.85rem;
+    color: var(--h-sepia-light);
+    margin-bottom: 0;
+}
+
+.welcome-contact a {
+    color: var(--h-blue-muted);
+}
+
+@media (max-width: 767.98px) {
+    .welcome-hero {
+        padding: 2rem 0.5rem 1rem;
+    }
+
+    .welcome-heading {
+        font-size: 1.8rem;
+    }
+
+    .welcome-shifts-card {
+        padding: 1.25rem;
+    }
+}
+
 /* --- Decorative rule — used as section separator --- */
 hr {
     border-color: var(--h-border);

@@ -1985,4 +1985,14 @@
   <data name="Issue_Section_Updated" xml:space="preserve"><value>Section mise à jour.</value></data>
   <data name="Issue_GitHub_Linked" xml:space="preserve"><value>Lié à GitHub.</value></data>
 
+  <data name="Welcome_Title" xml:space="preserve"><value>Bienvenue</value></data>
+  <data name="Welcome_Heading" xml:space="preserve"><value>C'est bon, t'es dedans.</value></data>
+  <data name="Welcome_Subtitle" xml:space="preserve"><value>Ton billet pour Elsewhere 2026 est confirmé.</value></data>
+  <data name="Welcome_ShiftsTitle" xml:space="preserve"><value>Maintenant, on fait ça ensemble.</value></data>
+  <data name="Welcome_ShiftsBody" xml:space="preserve"><value>Elsewhere, c'est pas un festival où tu viens — c'est un que tu aides à construire. Chaque human choisit des créneaux : montage avant, opération pendant et démontage après.</value></data>
+  <data name="Welcome_ShiftsBody2" xml:space="preserve"><value>Pour voir les créneaux et t'inscrire, il te faut un compte Humans. Ça prend juste quelques minutes.</value></data>
+  <data name="Welcome_CTA" xml:space="preserve"><value>Se connecter ou créer un compte</value></data>
+  <data name="Welcome_Footer" xml:space="preserve"><value>Déjà un compte ? Même bouton — connecte-toi et tu arrives directement sur les créneaux.</value></data>
+  <data name="Welcome_Contact" xml:space="preserve"><value>Des questions ? Écris-nous à</value></data>
+
 </root>

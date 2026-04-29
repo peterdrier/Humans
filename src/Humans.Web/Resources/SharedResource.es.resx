@@ -2011,4 +2011,14 @@
   <data name="Issue_Section_Updated" xml:space="preserve"><value>Sección actualizada.</value></data>
   <data name="Issue_GitHub_Linked" xml:space="preserve"><value>Vinculada con GitHub.</value></data>
 
+  <data name="Welcome_Title" xml:space="preserve"><value>Bienvenida</value></data>
+  <data name="Welcome_Heading" xml:space="preserve"><value>Ya estás dentro.</value></data>
+  <data name="Welcome_Subtitle" xml:space="preserve"><value>Tu entrada para Elsewhere 2026 está confirmada.</value></data>
+  <data name="Welcome_ShiftsTitle" xml:space="preserve"><value>Ahora vamos a hacer que esto pase entre todos.</value></data>
+  <data name="Welcome_ShiftsBody" xml:space="preserve"><value>Elsewhere no es un festival al que vienes — es uno que ayudas a construir. Cada human elige turnos: montaje antes, operación durante y desmontaje después.</value></data>
+  <data name="Welcome_ShiftsBody2" xml:space="preserve"><value>Para ver los turnos y apuntarte, necesitas una cuenta en Humans. Solo lleva un par de minutos.</value></data>
+  <data name="Welcome_CTA" xml:space="preserve"><value>Iniciar sesión o crear cuenta</value></data>
+  <data name="Welcome_Footer" xml:space="preserve"><value>¿Ya tienes cuenta? El mismo botón — inicia sesión y llegarás directamente a los turnos.</value></data>
+  <data name="Welcome_Contact" xml:space="preserve"><value>¿Preguntas? Escríbenos a</value></data>
+
 </root>

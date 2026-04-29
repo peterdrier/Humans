@@ -1985,4 +1985,14 @@
   <data name="Issue_Section_Updated" xml:space="preserve"><value>Sezione aggiornata.</value></data>
   <data name="Issue_GitHub_Linked" xml:space="preserve"><value>Collegata a GitHub.</value></data>
 
+  <data name="Welcome_Title" xml:space="preserve"><value>Benvenuto/a</value></data>
+  <data name="Welcome_Heading" xml:space="preserve"><value>Ci sei.</value></data>
+  <data name="Welcome_Subtitle" xml:space="preserve"><value>Il tuo biglietto per Elsewhere 2026 è confermato.</value></data>
+  <data name="Welcome_ShiftsTitle" xml:space="preserve"><value>Ora facciamo succedere tutto insieme.</value></data>
+  <data name="Welcome_ShiftsBody" xml:space="preserve"><value>Elsewhere non è un festival a cui partecipi — è uno che aiuti a costruire. Ogni human sceglie i turni: allestimento prima, operazione durante e smontaggio dopo.</value></data>
+  <data name="Welcome_ShiftsBody2" xml:space="preserve"><value>Per vedere i turni e iscriverti, ti serve un account Humans. Ci vogliono solo un paio di minuti.</value></data>
+  <data name="Welcome_CTA" xml:space="preserve"><value>Accedi o crea un account</value></data>
+  <data name="Welcome_Footer" xml:space="preserve"><value>Hai già un account? Stesso pulsante — accedi e arrivi direttamente ai turni.</value></data>
+  <data name="Welcome_Contact" xml:space="preserve"><value>Domande? Scrivici a</value></data>
+
 </root>

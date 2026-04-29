@@ -1987,4 +1987,14 @@
   <data name="Issue_Section_Updated" xml:space="preserve"><value>Secció actualitzada.</value></data>
   <data name="Issue_GitHub_Linked" xml:space="preserve"><value>Vinculada amb GitHub.</value></data>
 
+  <data name="Welcome_Title" xml:space="preserve"><value>Benvinguda</value></data>
+  <data name="Welcome_Heading" xml:space="preserve"><value>Ja hi ets.</value></data>
+  <data name="Welcome_Subtitle" xml:space="preserve"><value>La teva entrada per a Elsewhere 2026 està confirmada.</value></data>
+  <data name="Welcome_ShiftsTitle" xml:space="preserve"><value>Ara fem que això passi entre tots.</value></data>
+  <data name="Welcome_ShiftsBody" xml:space="preserve"><value>Elsewhere no és un festival on véns — és un que ajudes a construir. Cada human tria torns: muntatge abans, operació durant i desmuntatge després.</value></data>
+  <data name="Welcome_ShiftsBody2" xml:space="preserve"><value>Per veure els torns i apuntar-t'hi, necessites un compte a Humans. Només porta un parell de minuts.</value></data>
+  <data name="Welcome_CTA" xml:space="preserve"><value>Inicia sessió o crea un compte</value></data>
+  <data name="Welcome_Footer" xml:space="preserve"><value>Ja tens compte? El mateix botó — inicia sessió i arribaràs directament als torns.</value></data>
+  <data name="Welcome_Contact" xml:space="preserve"><value>Preguntes? Escriu-nos a</value></data>
+
 </root>
