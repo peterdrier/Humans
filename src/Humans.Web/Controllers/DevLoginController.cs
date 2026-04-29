@@ -112,8 +112,18 @@ public class DevLoginController : Controller
         }
 
         var email = $"dev-{info.Slug}@localhost";
-        var user = await _userManager.FindByIdAsync(resolvedUserId.ToString())
-                   ?? await _userManager.FindByEmailAsync(email);
+        var user = await _userManager.FindByIdAsync(resolvedUserId.ToString());
+        if (user is null)
+        {
+            // Post-PR-2 the User.Email column is gone; fall back to the
+            // UserEmails row created during seed.
+            var byEmailUserId = await _db.UserEmails
+                .Where(e => e.Email == email)
+                .Select(e => (Guid?)e.UserId)
+                .FirstOrDefaultAsync();
+            if (byEmailUserId is not null)
+                user = await _userManager.FindByIdAsync(byEmailUserId.Value.ToString());
+        }
         if (user is null)
         {
             _logger.LogError("Dev persona {Slug} ({Id}) not found after seeding", info.Slug, resolvedUserId);
@@ -181,12 +191,16 @@ public class DevLoginController : Controller
 
         var email = $"dev-{info.Slug}@localhost";
 
-        // Legacy personas may exist with old hardcoded GUIDs — reuse them
-        var byEmail = await _userManager.FindByEmailAsync(email);
-        if (byEmail is not null)
+        // Legacy personas may exist with old hardcoded GUIDs — reuse them.
+        // Post-PR-2 the User.Email column is dropped; resolve via UserEmails.
+        var byEmailUserId = await _db.UserEmails
+            .Where(e => e.Email == email)
+            .Select(e => (Guid?)e.UserId)
+            .FirstOrDefaultAsync();
+        if (byEmailUserId is not null)
         {
-            _logger.LogInformation("DEV: found legacy persona {Email} ({OldId}), reusing", email, byEmail.Id);
-            return byEmail.Id;
+            _logger.LogInformation("DEV: found legacy persona {Email} ({OldId}), reusing", email, byEmailUserId.Value);
+            return byEmailUserId.Value;
         }
 
         var now = _clock.GetCurrentInstant();

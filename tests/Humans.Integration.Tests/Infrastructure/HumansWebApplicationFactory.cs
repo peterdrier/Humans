@@ -145,11 +145,18 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var email = $"dev-{slug}@localhost";
-        var user = await db.Users
+        // Post-PR-2 of email-identity-decoupling the User.Email column is gone;
+        // resolve via the UserEmail row created by DevLoginController on seed.
+        var userId = await db.UserEmails
             .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Email == email)
+            .Where(e => e.Email == email)
+            .Select(e => (Guid?)e.UserId)
+            .FirstOrDefaultAsync()
             ?? throw new InvalidOperationException(
                 $"Persona '{slug}' was not found after dev login (email {email}).");
+        var user = await db.Users
+            .AsNoTracking()
+            .FirstAsync(u => u.Id == userId);
 
         // 3) Seed ConsentRecord for every current required document version the
         //    user hasn't already consented to. ConsentRecord is append-only

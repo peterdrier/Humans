@@ -116,34 +116,53 @@ public sealed class UserRepository : IUserRepository
     public async Task<User?> GetByEmailOrAlternateAsync(
         string normalizedEmail, string? alternateEmail, CancellationToken ct = default)
     {
-        // ILIKE without escape treats '_' and '%' in the input as wildcards,
-        // so alex_smith@example.com would also match alexXsmith@example.com.
-        // Escape the pattern and pass '\' as the explicit escape character for
-        // literal (case-insensitive) matching.
+        // PR 2 of the email-identity-decoupling spec drops the User.Email
+        // column; verified email lookups now route through user_emails. The
+        // User.GoogleEmail field stays through PR 2 (PR 3 deletes it), so we
+        // still match against it here. ILIKE without escape treats '_' / '%'
+        // in the input as wildcards, so alex_smith@example.com would also
+        // match alexXsmith@example.com — escape the pattern with '\'.
         var escapedEmail = EscapeLikePattern(normalizedEmail);
         var escapedAlternate = alternateEmail is null ? null : EscapeLikePattern(alternateEmail);
 
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
+        // Step 1: look up by verified UserEmail (canonical email source).
+        var userIdByEmail = escapedAlternate is null
+            ? await ctx.UserEmails
+                .Where(e => e.IsVerified && EF.Functions.ILike(e.Email, escapedEmail, "\\"))
+                .Select(e => (Guid?)e.UserId)
+                .FirstOrDefaultAsync(ct)
+            : await ctx.UserEmails
+                .Where(e => e.IsVerified && (
+                    EF.Functions.ILike(e.Email, escapedEmail, "\\") ||
+                    EF.Functions.ILike(e.Email, escapedAlternate, "\\")))
+                .Select(e => (Guid?)e.UserId)
+                .FirstOrDefaultAsync(ct);
+
+        if (userIdByEmail is not null)
+        {
+            return await ctx.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userIdByEmail.Value, ct);
+        }
+
+        // Step 2: fall back to User.GoogleEmail (until PR 3 removes that field).
         if (escapedAlternate is null)
         {
             return await ctx.Users
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u =>
-                    (u.Email != null && EF.Functions.ILike(u.Email, escapedEmail, "\\")) ||
-                    (u.GoogleEmail != null && EF.Functions.ILike(u.GoogleEmail, escapedEmail, "\\")),
+                    u.GoogleEmail != null && EF.Functions.ILike(u.GoogleEmail, escapedEmail, "\\"),
                     ct);
         }
 
         return await ctx.Users
             .AsNoTracking()
             .FirstOrDefaultAsync(u =>
-                (u.Email != null && (
-                    EF.Functions.ILike(u.Email, escapedEmail, "\\") ||
-                    EF.Functions.ILike(u.Email, escapedAlternate, "\\"))) ||
-                (u.GoogleEmail != null && (
+                u.GoogleEmail != null && (
                     EF.Functions.ILike(u.GoogleEmail, escapedEmail, "\\") ||
-                    EF.Functions.ILike(u.GoogleEmail, escapedAlternate, "\\"))),
+                    EF.Functions.ILike(u.GoogleEmail, escapedAlternate, "\\")),
                 ct);
     }
 

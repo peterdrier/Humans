@@ -89,26 +89,9 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
             }
         }
 
-        // 2. Also check User.Email directly (in case UserEmail record is missing)
-        var matchingUser = await _userRepository.GetByEmailOrAlternateAsync(
-            normalizedEmail, alternateEmail, ct);
-
-        if (matchingUser is not null)
-        {
-            _logger.LogDebug(
-                "Found existing account {UserId} via User.Email match for {Email} (source: {Source})",
-                matchingUser.Id, email, source);
-
-            if (matchingUser.ContactSource is null)
-            {
-                await _userRepository.SetContactSourceIfNullAsync(matchingUser.Id, source, ct);
-                matchingUser.ContactSource = source;
-            }
-
-            return new AccountProvisioningResult(matchingUser, Created: false);
-        }
-
-        // 3. No match found — create new User + UserEmail
+        // No match found — create new User + UserEmail. The UserEmail table
+        // is the canonical source post-PR-2; the User.Email column is gone, so
+        // there's no separate property-based fallback to check.
         var resolvedDisplayName = string.IsNullOrWhiteSpace(displayName)
             ? email.Split('@')[0]
             : displayName;
