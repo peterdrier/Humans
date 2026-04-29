@@ -113,41 +113,58 @@ public class AccountController : Controller
             // LockoutEnd = MaxValue on merge/anonymize). Move the login to the
             // active User identified by the OAuth claim email so the human
             // can keep signing in via Google. See Auth.md.
-            if (!string.IsNullOrEmpty(email))
+            //
+            // Wrapped in try/catch because UserManager calls EF Core which can
+            // throw DbException / DbUpdateException / timeouts. Without the
+            // wrapper, RemoveLoginAsync succeeding then AddLoginAsync throwing
+            // would orphan the OAuth login (removed from source, not present
+            // on target) and the user's next sign-in would create a fresh
+            // duplicate. Catching and falling through to the lockedout
+            // redirect leaves the source row intact for retry.
+            try
             {
-                var lockedSource = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
-                var activeTarget = await _magicLinkService.FindUserByVerifiedEmailAsync(email);
-                if (lockedSource is not null && activeTarget is not null && lockedSource.Id != activeTarget.Id)
+                if (!string.IsNullOrEmpty(email))
                 {
-                    var removeResult = await _userManager.RemoveLoginAsync(
-                        lockedSource, info.LoginProvider, info.ProviderKey);
-                    if (removeResult.Succeeded)
+                    var lockedSource = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
+                    var activeTarget = await _magicLinkService.FindUserByVerifiedEmailAsync(email);
+                    if (lockedSource is not null && activeTarget is not null && lockedSource.Id != activeTarget.Id)
                     {
-                        var relinkResult = await _userManager.AddLoginAsync(activeTarget, info);
-                        if (relinkResult.Succeeded)
+                        var removeResult = await _userManager.RemoveLoginAsync(
+                            lockedSource, info.LoginProvider, info.ProviderKey);
+                        if (removeResult.Succeeded)
                         {
-                            activeTarget.LastLoginAt = _clock.GetCurrentInstant();
-                            await _userManager.UpdateAsync(activeTarget);
-                            await _signInManager.SignInAsync(activeTarget, isPersistent: false);
-                            _logger.LogInformation(
-                                "Relinked {Provider} login from locked source {SourceId} to active target {TargetId}",
-                                info.LoginProvider, lockedSource.Id, activeTarget.Id);
-                            return RedirectToLocal(returnUrl);
-                        }
+                            var relinkResult = await _userManager.AddLoginAsync(activeTarget, info);
+                            if (relinkResult.Succeeded)
+                            {
+                                activeTarget.LastLoginAt = _clock.GetCurrentInstant();
+                                await _userManager.UpdateAsync(activeTarget);
+                                await _signInManager.SignInAsync(activeTarget, isPersistent: false);
+                                _logger.LogInformation(
+                                    "Relinked {Provider} login from locked source {SourceId} to active target {TargetId}",
+                                    info.LoginProvider, lockedSource.Id, activeTarget.Id);
+                                return RedirectToLocal(returnUrl);
+                            }
 
-                        _logger.LogWarning(
-                            "Lockout-relink: AddLoginAsync to {TargetId} failed: {Errors}",
-                            activeTarget.Id,
-                            string.Join(", ", relinkResult.Errors.Select(e => e.Description)));
-                    }
-                    else
-                    {
-                        _logger.LogWarning(
-                            "Lockout-relink: RemoveLoginAsync from {SourceId} failed: {Errors}",
-                            lockedSource.Id,
-                            string.Join(", ", removeResult.Errors.Select(e => e.Description)));
+                            _logger.LogWarning(
+                                "Lockout-relink: AddLoginAsync to {TargetId} failed: {Errors}",
+                                activeTarget.Id,
+                                string.Join(", ", relinkResult.Errors.Select(e => e.Description)));
+                        }
+                        else
+                        {
+                            _logger.LogWarning(
+                                "Lockout-relink: RemoveLoginAsync from {SourceId} failed: {Errors}",
+                                lockedSource.Id,
+                                string.Join(", ", removeResult.Errors.Select(e => e.Description)));
+                        }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Error during lockout-relink for {Provider}; falling through to lockedout redirect",
+                    info.LoginProvider);
             }
 
             return RedirectToAction(nameof(Login), new { returnUrl, error = "lockedout" });

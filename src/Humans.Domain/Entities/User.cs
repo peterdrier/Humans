@@ -75,6 +75,20 @@ public class User : IdentityUser<Guid>
     /// post-anonymization reads). Requires <see cref="UserEmails"/> to be
     /// loaded for production reads.
     /// </summary>
+    /// <remarks>
+    /// SILENT-FALLBACK FOOTGUN: when <see cref="UserEmails"/> is not loaded
+    /// (the navigation collection is empty), the getter returns
+    /// <c>base.Email</c> — the Identity column. After PR 2 of the
+    /// email-identity-decoupling spec, <c>base.Email</c> is <c>null</c> for
+    /// users created post-PR 1 (writes were stopped); for pre-PR 1 users it
+    /// still holds the legacy column value. Either result is wrong when the
+    /// caller wanted the canonical UserEmails-derived address. Always
+    /// <c>.Include(u =&gt; u.UserEmails)</c> when loading a User whose
+    /// <c>Email</c> will be read. Repository methods that intentionally skip
+    /// the include (e.g., projections that don't read Email) are responsible
+    /// for documenting that constraint locally — there is no runtime warning
+    /// when the include is missing.
+    /// </remarks>
     public override string? Email
     {
         get
