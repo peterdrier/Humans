@@ -153,18 +153,6 @@ public sealed class UserRepository : IUserRepository
             .Replace("%", "\\%")
             .Replace("_", "\\_");
 
-    public async Task<User?> GetByNormalizedEmailAsync(
-        string? normalizedEmail, CancellationToken ct = default)
-    {
-        if (normalizedEmail is null)
-            return null;
-
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail, ct);
-    }
-
     public async Task<IReadOnlyList<Instant>> GetLoginTimestampsInWindowAsync(
         Instant fromInclusive, Instant toExclusive, CancellationToken ct = default)
     {

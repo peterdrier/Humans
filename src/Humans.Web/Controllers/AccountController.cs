@@ -103,57 +103,9 @@ public class AccountController : Controller
 
         if (result.IsLockedOut)
         {
-            // The external login is linked to a locked-out account (e.g., a merged source account).
-            // Check if the OAuth email belongs to a different, active account and re-link.
-            var lockedOutEmail = info.Principal.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
-            if (!string.IsNullOrEmpty(lockedOutEmail))
-            {
-                var activeUser = await _magicLinkService.FindUserByVerifiedEmailAsync(lockedOutEmail);
-                if (activeUser is not null &&
-                    (activeUser.LockoutEnd is null || activeUser.LockoutEnd <= DateTimeOffset.UtcNow))
-                {
-                    try
-                    {
-                        // Remove the stale login from the locked source account
-                        var lockedUser = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
-                        if (lockedUser is not null && lockedUser.Id != activeUser.Id)
-                        {
-                            await _userManager.RemoveLoginAsync(lockedUser, info.LoginProvider, info.ProviderKey);
-                        }
-
-                        // Add the login to the active target account
-                        var linkResult = await _userManager.AddLoginAsync(activeUser, info);
-                        if (linkResult.Succeeded)
-                        {
-                            activeUser.LastLoginAt = _clock.GetCurrentInstant();
-                            var pictureUrlClaim = info.Principal.FindFirstValue("urn:google:picture");
-                            if (string.IsNullOrEmpty(activeUser.ProfilePictureUrl) && pictureUrlClaim is not null)
-                            {
-                                activeUser.ProfilePictureUrl = pictureUrlClaim;
-                            }
-                            await _userManager.UpdateAsync(activeUser);
-
-                            await _signInManager.SignInAsync(activeUser, isPersistent: false);
-                            _logger.LogInformation(
-                                "Re-linked {Provider} login from locked account to active user {UserId} via email match",
-                                info.LoginProvider, activeUser.Id);
-                            return RedirectToLocal(returnUrl);
-                        }
-
-                        _logger.LogWarning(
-                            "Failed to re-link {Provider} to active user {UserId} after lockout: {Errors}",
-                            info.LoginProvider, activeUser.Id,
-                            string.Join(", ", linkResult.Errors.Select(e => e.Description)));
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex,
-                            "Error re-linking {Provider} to active user {UserId} after lockout",
-                            info.LoginProvider, activeUser.Id);
-                    }
-                }
-            }
-
+            // Lockout-relink branch removed in PR 2 of the email-identity-decoupling
+            // spec — the "preserve at least one auth method" deletion guard added
+            // in PR 1 prevents the lockout state that this branch existed to repair.
             return RedirectToAction(nameof(Login), new { returnUrl, error = "lockedout" });
         }
 
@@ -204,42 +156,11 @@ public class AccountController : Controller
             }
         }
 
-        // Before creating a new account, check unverified UserEmails and User.Email
-        // to prevent duplicates (e.g., email added to another account but not yet verified)
-        var existingByAnyEmail = await _magicLinkService.FindUserByAnyEmailAsync(email);
-        if (existingByAnyEmail is not null)
-        {
-            try
-            {
-                var linkAnyResult = await _userManager.AddLoginAsync(existingByAnyEmail, info);
-                if (linkAnyResult.Succeeded)
-                {
-                    existingByAnyEmail.LastLoginAt = _clock.GetCurrentInstant();
-                    if (string.IsNullOrEmpty(existingByAnyEmail.ProfilePictureUrl) && pictureUrl is not null)
-                    {
-                        existingByAnyEmail.ProfilePictureUrl = pictureUrl;
-                    }
-                    await _userManager.UpdateAsync(existingByAnyEmail);
-
-                    await _signInManager.SignInAsync(existingByAnyEmail, isPersistent: false);
-                    _logger.LogInformation(
-                        "Linked {Provider} login to existing user {UserId} via unverified/User.Email match",
-                        info.LoginProvider, existingByAnyEmail.Id);
-                    return RedirectToLocal(returnUrl);
-                }
-
-                _logger.LogWarning(
-                    "Failed to link {Provider} to existing user {UserId} via unverified email: {Errors}",
-                    info.LoginProvider, existingByAnyEmail.Id,
-                    string.Join(", ", linkAnyResult.Errors.Select(e => e.Description)));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Error linking {Provider} to existing user {UserId} via unverified email, falling through to create new account",
-                    info.LoginProvider, existingByAnyEmail.Id);
-            }
-        }
+        // FindUserByAnyEmailAsync branch removed in PR 2 of the
+        // email-identity-decoupling spec. The branch existed to match by
+        // unverified UserEmail or by User.Email column; with the column dropped
+        // and User.Email computed from verified UserEmails, the "any" match
+        // collapses to the verified-email check above.
 
         // No existing account — create a new one. Identity-column writes
         // decoupled per email-identity-decoupling spec PR 2: User.UserName is

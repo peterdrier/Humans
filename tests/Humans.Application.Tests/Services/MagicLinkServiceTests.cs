@@ -3,7 +3,6 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
@@ -23,7 +22,6 @@ public class MagicLinkServiceTests : IDisposable
     private readonly FakeClock _clock;
     private readonly UserManager<User> _userManager;
     private readonly IUserEmailService _userEmailService;
-    private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
     private readonly IMagicLinkUrlBuilder _urlBuilder;
     private readonly IMagicLinkRateLimiter _rateLimiter;
@@ -50,11 +48,6 @@ public class MagicLinkServiceTests : IDisposable
             .FindVerifiedEmailWithUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns((UserEmailWithUser?)null);
 
-        _userRepository = Substitute.For<IUserRepository>();
-        _userRepository
-            .GetByNormalizedEmailAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns((User?)null);
-
         _emailService = Substitute.For<IEmailService>();
         _urlBuilder = Substitute.For<IMagicLinkUrlBuilder>();
         _urlBuilder.BuildLoginUrl(Arg.Any<Guid>(), Arg.Any<string?>()).Returns(call =>
@@ -69,7 +62,6 @@ public class MagicLinkServiceTests : IDisposable
         _service = new MagicLinkService(
             _userManager,
             _userEmailService,
-            _userRepository,
             _emailService,
             _urlBuilder,
             _rateLimiter,
@@ -116,20 +108,20 @@ public class MagicLinkServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SendMagicLinkAsync_ExistingUserByPrimaryEmail_SendsLoginLink()
+    public async Task SendMagicLinkAsync_ExistingUserByVerifiedUserEmail_SendsLoginLink()
     {
         var userId = Guid.NewGuid();
         var user = new User
         {
             Id = userId,
-            UserName = "alice@gmail.com",
-            Email = "alice@gmail.com",
-            NormalizedEmail = "ALICE@GMAIL.COM",
             DisplayName = "Alice",
             CreatedAt = _clock.GetCurrentInstant()
         };
 
-        _userManager.FindByEmailAsync("alice@gmail.com").Returns(user);
+        _userEmailService
+            .FindVerifiedEmailWithUserAsync("alice@gmail.com", Arg.Any<CancellationToken>())
+            .Returns(new UserEmailWithUser(userId, "alice@gmail.com", null, null));
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
         _userManager.UpdateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
 
         await _service.SendMagicLinkAsync("alice@gmail.com", null);
@@ -145,8 +137,8 @@ public class MagicLinkServiceTests : IDisposable
     [HumansFact]
     public async Task SendMagicLinkAsync_UnknownEmail_SendsSignupLink()
     {
-        _userManager.FindByEmailAsync(Arg.Any<string>()).Returns((User?)null);
-
+        // Default _userEmailService.FindVerifiedEmailWithUserAsync returns null —
+        // no setup needed; the service falls through to signup.
         await _service.SendMagicLinkAsync("newperson@example.com", "/welcome");
 
         await _emailService.Received(1).SendMagicLinkSignupAsync(
@@ -185,8 +177,6 @@ public class MagicLinkServiceTests : IDisposable
     [HumansFact]
     public async Task SendMagicLinkAsync_SignupRateLimited_DoesNotSendEmail()
     {
-        _userManager.FindByEmailAsync(Arg.Any<string>()).Returns((User?)null);
-
         // First call succeeds
         await _service.SendMagicLinkAsync("newperson@example.com", null);
         _emailService.ClearReceivedCalls();
@@ -205,9 +195,9 @@ public class MagicLinkServiceTests : IDisposable
     public async Task SendMagicLinkAsync_UnverifiedEmail_DoesNotMatch()
     {
         // The repository-level FindVerifiedEmailWithUserAsync already returns null
-        // for unverified rows; the default substitute returns null.
-        _userManager.FindByEmailAsync(Arg.Any<string>()).Returns((User?)null);
-
+        // for unverified rows; the default substitute returns null. Post-PR-2
+        // there is no User.Email-column fallback either, so the service routes
+        // straight to the signup-link branch.
         await _service.SendMagicLinkAsync("alice@work.com", null);
 
         await _emailService.Received(1).SendMagicLinkSignupAsync(
@@ -292,15 +282,12 @@ public class MagicLinkServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task FindUserByVerifiedEmailAsync_FallsBackToIdentityEmail()
+    public async Task FindUserByVerifiedEmailAsync_NoVerifiedUserEmail_ReturnsNull()
     {
-        var userId = Guid.NewGuid();
-        var user = new User { Id = userId, UserName = "test@test.com", Email = "test@test.com" };
-        _userManager.FindByEmailAsync("test@test.com").Returns(user);
+        // Post-PR-2 there is no User.Email column fallback; the only path is
+        // through the verified UserEmail row. Default substitute returns null.
+        var result = await _service.FindUserByVerifiedEmailAsync("nobody@nowhere.com");
 
-        var result = await _service.FindUserByVerifiedEmailAsync("test@test.com");
-
-        result.Should().NotBeNull();
-        result!.Id.Should().Be(userId);
+        result.Should().BeNull();
     }
 }

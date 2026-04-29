@@ -88,16 +88,6 @@ public interface IUserRepository
         string normalizedEmail, string? alternateEmail, CancellationToken ct = default);
 
     /// <summary>
-    /// Finds a user whose <c>NormalizedEmail</c> exactly matches the supplied
-    /// value. The caller is responsible for normalizing the input (Identity's
-    /// <c>UserManager.NormalizeEmail</c>). Read-only (AsNoTracking). Used by
-    /// <c>MagicLinkService.FindUserByAnyEmailAsync</c> as the fallback lookup
-    /// when no verified UserEmail row exists.
-    /// </summary>
-    Task<User?> GetByNormalizedEmailAsync(
-        string? normalizedEmail, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the <c>LastLoginAt</c> timestamp of every user whose last login
     /// falls within the half-open window <c>[fromInclusive, toExclusive)</c>.
     /// Read-only (AsNoTracking). Used by the shift coordinator dashboard.
