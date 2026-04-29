@@ -1257,12 +1257,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor
         if (team.IsSystemTeam)
             throw new InvalidOperationException("Cannot add role definitions to system teams");
 
-        if (slotCount < 1)
-            throw new InvalidOperationException("Slot count must be at least 1");
-
-        if (priorities.Count != slotCount)
-            throw new InvalidOperationException($"Priorities count ({priorities.Count}) must match slot count ({slotCount})");
-
+        ValidateSlotCountAndPriorities(slotCount, priorities);
         ValidateRoleName(name);
 
         var lowerName = name.ToLowerInvariant();
@@ -1314,11 +1309,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor
         if (!canManage)
             throw new InvalidOperationException("User does not have permission to manage role definitions for this team");
 
-        if (slotCount < 1)
-            throw new InvalidOperationException("Slot count must be at least 1");
-
-        if (priorities.Count != slotCount)
-            throw new InvalidOperationException($"Priorities count ({priorities.Count}) must match slot count ({slotCount})");
+        ValidateSlotCountAndPriorities(slotCount, priorities);
 
         if (slotCount < definition.Assignments.Count)
             throw new InvalidOperationException(
@@ -2296,6 +2287,15 @@ public sealed class TeamService : ITeamService, IUserDataContributor
 
         if (name.Length > 100)
             throw new InvalidOperationException("Role name cannot exceed 100 characters");
+    }
+
+    private static void ValidateSlotCountAndPriorities(int slotCount, List<SlotPriority> priorities)
+    {
+        if (slotCount < 1)
+            throw new InvalidOperationException("Slot count must be at least 1");
+
+        if (priorities.Count != slotCount)
+            throw new InvalidOperationException($"Priorities count ({priorities.Count}) must match slot count ({slotCount})");
     }
 
     // ==========================================================================

@@ -190,9 +190,13 @@ public class TeamController : HumansControllerBase
             var childTeamIds = teamPage.ChildTeams.Select(c => c.Id).ToList();
             var managementRolesByTeam = await _teamService.GetManagementRoleNamesByTeamIdsAsync(childTeamIds);
 
+            var allChildMembers = await _teamService.GetActiveMembersForTeamsAsync(childTeamIds);
+            var childMembersByTeam = allChildMembers.GroupBy(m => m.TeamId).ToDictionary(g => g.Key, g => g.ToList());
+
             foreach (var child in teamPage.ChildTeams)
             {
-                var childMembers = await _teamService.GetTeamMembersAsync(child.Id);
+                if (!childMembersByTeam.TryGetValue(child.Id, out var childMembers))
+                    continue;
                 var managementRoleName = managementRolesByTeam.GetValueOrDefault(child.Id);
 
                 foreach (var cm in childMembers)

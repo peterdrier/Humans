@@ -451,6 +451,7 @@ public sealed partial class TeamResourceService : ITeamResourceService
         var existing = await _repository.GetByIdAsync(resourceId, ct);
         if (existing is null)
         {
+            _logger.LogWarning("UnlinkResourceAsync: resource {ResourceId} not found", resourceId);
             return;
         }
 
@@ -495,6 +496,10 @@ public sealed partial class TeamResourceService : ITeamResourceService
         {
             _logger.LogInformation("Updated DrivePermissionLevel to {Level} for resource {ResourceId}", level, resourceId);
         }
+        else
+        {
+            _logger.LogWarning("UpdatePermissionLevelAsync: resource {ResourceId} not found or no change applied", resourceId);
+        }
     }
 
     public async Task SetRestrictInheritedAccessAsync(Guid resourceId, bool restrict, CancellationToken ct = default)
@@ -502,6 +507,7 @@ public sealed partial class TeamResourceService : ITeamResourceService
         var existing = await _repository.GetByIdAsync(resourceId, ct);
         if (existing is null)
         {
+            _logger.LogWarning("SetRestrictInheritedAccessAsync: resource {ResourceId} not found", resourceId);
             return;
         }
 
