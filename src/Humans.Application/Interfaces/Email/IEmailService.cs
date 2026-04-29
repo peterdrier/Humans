@@ -293,6 +293,22 @@ public interface IEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Sends a notification to an issue reporter that an admin has commented
+    /// on their issue. Phase 5 of the Issues section feature wires the body
+    /// and templates; the interface is added in Phase 4 so
+    /// <see cref="Humans.Application.Services.Issues"/> can compile and be
+    /// covered by unit tests.
+    /// </summary>
+    Task SendIssueCommentAsync(
+        string to,
+        string displayName,
+        string issueTitle,
+        string commentContent,
+        string issueLink,
+        string preferredLanguage,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Enqueue a campaign code email to a recipient. Campaign content (subject and
     /// markdown body with {{Code}}/{{Name}} placeholders) is rendered and wrapped in
     /// the system email template by the outbox service, then linked to the grant
