@@ -61,6 +61,11 @@ public sealed class CampService : ICampService, IUserDataContributor
     private static readonly TimeSpan CampsForYearCacheTtl = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan CampSettingsCacheTtl = TimeSpan.FromMinutes(5);
 
+    private static readonly HashSet<string> AllowedImageContentTypes =
+        new(StringComparer.OrdinalIgnoreCase) { "image/jpeg", "image/png", "image/webp" };
+    private static readonly HashSet<string> AllowedImageExtensions =
+        new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
+
     public CampService(
         ICampRepository repo,
         ICampRoleRepository roleRepo,
@@ -1168,11 +1173,7 @@ public sealed class CampService : ICampService, IUserDataContributor
             throw new InvalidOperationException("Maximum 5 images per camp.");
         }
 
-        var allowedTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "image/jpeg", "image/png", "image/webp"
-        };
-        if (!allowedTypes.Contains(contentType))
+        if (!AllowedImageContentTypes.Contains(contentType))
         {
             throw new InvalidOperationException("Only JPEG, PNG, and WebP images are allowed.");
         }
@@ -1186,12 +1187,8 @@ public sealed class CampService : ICampService, IUserDataContributor
         // could pass MIME validation with image/jpeg but supply a .html
         // filename, and static-file middleware would then serve the upload
         // as HTML (script-injection vector).
-        var allowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ".jpg", ".jpeg", ".png", ".webp"
-        };
         var ext = Path.GetExtension(fileName);
-        if (!allowedExtensions.Contains(ext))
+        if (!AllowedImageExtensions.Contains(ext))
         {
             throw new InvalidOperationException(
                 "Image filename must end in .jpg, .jpeg, .png, or .webp.");

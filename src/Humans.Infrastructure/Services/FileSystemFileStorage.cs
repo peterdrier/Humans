@@ -50,8 +50,11 @@ public sealed class FileSystemFileStorage : IFileStorage
         {
             File.Move(tempPath, fullPath, overwrite: true);
         }
-        catch
+        catch (Exception moveEx)
         {
+            _logger.LogWarning(moveEx,
+                "Failed to rename temp file {TempPath} to {FinalPath}; cleaning up",
+                tempPath, fullPath);
             try
             {
                 File.Delete(tempPath);
@@ -91,6 +94,11 @@ public sealed class FileSystemFileStorage : IFileStorage
         }
     }
 
+    // Synchronous I/O wrapped as Task for the IFileStorage contract.
+    // File.Exists / File.Delete block for the duration of the syscall;
+    // at our scale (<5 deletes per request, single server) the impact
+    // is negligible. If this ever moves to a high-throughput path,
+    // wrap in Task.Run.
     public Task DeleteAsync(string key, CancellationToken ct = default)
     {
         var fullPath = ResolveAbsolute(key);

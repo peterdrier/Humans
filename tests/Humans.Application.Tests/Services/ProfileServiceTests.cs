@@ -48,8 +48,10 @@ public class ProfileServiceTests : IDisposable
     private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();
     private readonly InMemoryFileStorage _fileStorage = new();
 
+    // Delegate to the production helper (made internal for test access)
+    // so the test can't drift from the real key construction.
     private static string PicKey(Guid profileId, string contentType) =>
-        $"uploads/profile-pictures/{profileId}{(contentType switch { "image/jpeg" => ".jpg", "image/png" => ".png", "image/webp" => ".webp", _ => throw new InvalidOperationException() })}";
+        ProfileService.ProfilePictureKey(profileId, contentType);
 
     public ProfileServiceTests()
     {

@@ -1136,10 +1136,10 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
     /// The extension is derived from the content type (empty string for
     /// unknown types — file lives at the bare profile id).
     /// </summary>
-    private static string ProfilePictureKey(Guid profileId, string contentType) =>
+    internal static string ProfilePictureKey(Guid profileId, string contentType) =>
         $"uploads/profile-pictures/{profileId}{ExtensionFromContentType(contentType)}";
 
-    private static string ExtensionFromContentType(string contentType) => contentType switch
+    internal static string ExtensionFromContentType(string contentType) => contentType switch
     {
         "image/jpeg" => ".jpg",
         "image/png" => ".png",
