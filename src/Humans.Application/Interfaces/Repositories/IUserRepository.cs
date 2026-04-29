@@ -98,13 +98,6 @@ public interface IUserRepository
         string? normalizedEmail, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all contact users (ContactSource != null, LastLoginAt == null),
-    /// optionally filtered by display name or email substring.
-    /// Ordered by CreatedAt descending. Read-only.
-    /// </summary>
-    Task<IReadOnlyList<User>> GetContactUsersAsync(string? search, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the <c>LastLoginAt</c> timestamp of every user whose last login
     /// falls within the half-open window <c>[fromInclusive, toExclusive)</c>.
     /// Read-only (AsNoTracking). Used by the shift coordinator dashboard.

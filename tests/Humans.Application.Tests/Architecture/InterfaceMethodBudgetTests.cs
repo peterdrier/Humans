@@ -55,7 +55,9 @@ public class InterfaceMethodBudgetTests
         // the FullProfile cache directly).
         // +1 for GetActiveApprovedCountAsync (admin dashboard active-humans tile, peterdrier#349).
         [typeof(IProfileService)] = 41,
-        [typeof(IUserService)] = 32,
+        // -1 for GetContactUsersAsync removal (/Contacts surface deleted in PR 2 of
+        // email-identity-decoupling — only ContactService called it).
+        [typeof(IUserService)] = 31,
     };
 
     [HumansTheory]

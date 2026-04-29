@@ -122,9 +122,6 @@ public sealed class UserService : IUserService, IUserDataContributor
         return _repo.GetByEmailOrAlternateAsync(normalized, alternate, ct);
     }
 
-    public Task<IReadOnlyList<User>> GetContactUsersAsync(string? search, CancellationToken ct = default) =>
-        _repo.GetContactUsersAsync(search, ct);
-
     public Task<IReadOnlyList<Instant>> GetLoginTimestampsInWindowAsync(
         Instant fromInclusive, Instant toExclusive, CancellationToken ct = default) =>
         _repo.GetLoginTimestampsInWindowAsync(fromInclusive, toExclusive, ct);

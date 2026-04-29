@@ -9,7 +9,6 @@ using ProfilesProfileService = Humans.Application.Services.Profile.ProfileServic
 using ProfilesContactFieldService = Humans.Application.Services.Profile.ContactFieldService;
 using ProfilesUserEmailService = Humans.Application.Services.Profile.UserEmailService;
 using ProfilesCommunicationPreferenceService = Humans.Application.Services.Profile.CommunicationPreferenceService;
-using ProfilesContactService = Humans.Application.Services.Profile.ContactService;
 using ProfilesAccountMergeService = Humans.Application.Services.Profile.AccountMergeService;
 using ProfilesDuplicateAccountService = Humans.Application.Services.Profile.DuplicateAccountService;
 using UsersAccountProvisioningService = Humans.Application.Services.Users.AccountProvisioningService;
@@ -56,7 +55,6 @@ internal static class ProfileSectionExtensions
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ProfilesAccountMergeService>());
 
         services.AddScoped<IDuplicateAccountService, ProfilesDuplicateAccountService>();
-        services.AddScoped<IContactService, ProfilesContactService>();
         services.AddScoped<IAccountProvisioningService, UsersAccountProvisioningService>();
         services.AddScoped<IUserEmailBackfillService, UsersUserEmailBackfillService>();
 

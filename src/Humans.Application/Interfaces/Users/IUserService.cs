@@ -215,13 +215,6 @@ public interface IUserService
     Task<User?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all contact users (ContactSource != null, LastLoginAt == null),
-    /// optionally filtered by display name or email search term.
-    /// Ordered by CreatedAt descending.
-    /// </summary>
-    Task<IReadOnlyList<User>> GetContactUsersAsync(string? search, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the <c>LastLoginAt</c> timestamp of every user whose last login falls
     /// within the half-open window <c>[fromInclusive, toExclusive)</c>. Used by the
     /// shift coordinator dashboard to chart distinct logins by day without reading

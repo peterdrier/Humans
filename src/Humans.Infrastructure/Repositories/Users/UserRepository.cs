@@ -165,27 +165,6 @@ public sealed class UserRepository : IUserRepository
             .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail, ct);
     }
 
-    public async Task<IReadOnlyList<User>> GetContactUsersAsync(
-        string? search, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var query = ctx.Users
-            .AsNoTracking()
-            .Where(u => u.ContactSource != null && u.LastLoginAt == null);
-
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            var pattern = $"%{search}%";
-            query = query.Where(u =>
-                EF.Functions.ILike(u.DisplayName, pattern) ||
-                (u.Email != null && EF.Functions.ILike(u.Email, pattern)));
-        }
-
-        return await query
-            .OrderByDescending(u => u.CreatedAt)
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<Instant>> GetLoginTimestampsInWindowAsync(
         Instant fromInclusive, Instant toExclusive, CancellationToken ct = default)
     {
