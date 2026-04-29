@@ -29,7 +29,8 @@ export function initInteraction(map, onSave, onSelect) {
     _onSave   = onSave;
     _onSelect = onSelect;
 
-    // Drag-to-move: mousedown on editable container fill
+    // Drag-to-move: mousedown on the active or editable fill layer
+    map.on('mousedown', 'containers-active-fill',   onContainerMouseDown);
     map.on('mousedown', 'containers-editable-fill', onContainerMouseDown);
 
     // Click on placed editable container to select it
