@@ -48,16 +48,12 @@
             <span class="text-muted">System</span>
         }
 
-        @* Pick verb form:
-           - actor==subject: selfVerb when defined (avoids dangling "for")
-           - subject missing (old rows pre-RelatedEntityId fix): selfVerb if defined,
-             else trim trailing preposition. Most subject-less ShiftSignup* old rows
-             are self-actions so selfVerb is the honest default. *@
-        var displayVerb =
-            actorIsSubject && selfVerb != null ? selfVerb :
-            !subjectId.HasValue && selfVerb != null ? selfVerb :
-            !subjectId.HasValue ? TrimDanglingPreposition(verb) :
-            verb;
+        @* When the view will not render a subject (actor==subject or subject unknown),
+           use selfVerb if defined, else trim a trailing preposition from the transitive verb. *@
+        var noVisibleSubject = actorIsSubject || !subjectId.HasValue;
+        var displayVerb = noVisibleSubject && selfVerb != null ? selfVerb
+                        : noVisibleSubject ? TrimDanglingPreposition(verb)
+                        : verb;
         <span>@displayVerb</span>
 
         @* Subject (skip if same as actor) *@

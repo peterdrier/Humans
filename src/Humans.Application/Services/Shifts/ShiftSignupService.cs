@@ -148,7 +148,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         {
             await _auditLogService.LogAsync(
                 AuditAction.ShiftSignupConfirmed, nameof(ShiftSignup), signup.Id,
-                $"shift '{shift.Rota.Name}' (self-signup)",
+                $"shift '{shift.Rota.Name}'",
                 userId,
                 userId, nameof(User));
 
