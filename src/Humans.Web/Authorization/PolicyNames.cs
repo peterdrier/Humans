@@ -23,7 +23,6 @@ public static class PolicyNames
     public const string ShiftDepartmentManager = nameof(ShiftDepartmentManager);
     public const string PrivilegedSignupApprover = nameof(PrivilegedSignupApprover);
     public const string VolunteerManager = nameof(VolunteerManager);
-    public const string VolunteerSectionAccess = nameof(VolunteerSectionAccess);
     public const string MedicalDataViewer = nameof(MedicalDataViewer);
 
     /// <summary>

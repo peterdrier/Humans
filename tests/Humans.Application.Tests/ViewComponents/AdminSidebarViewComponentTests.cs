@@ -34,12 +34,12 @@ public class AdminSidebarViewComponentTests
         var auth = Substitute.For<IAuthorizationService>();
         // Allow only items in the Operations group
         auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
-                Arg.Is<string>(p => p == PolicyNames.VolunteerSectionAccess || p == PolicyNames.TicketAdminBoardOrAdmin))
+                Arg.Is<string>(p => p == PolicyNames.TicketAdminBoardOrAdmin))
             .Returns(AuthorizationResult.Success());
         auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
-                Arg.Is<string>(p => p != PolicyNames.VolunteerSectionAccess && p != PolicyNames.TicketAdminBoardOrAdmin))
+                Arg.Is<string>(p => p != PolicyNames.TicketAdminBoardOrAdmin))
             .Returns(AuthorizationResult.Failed());
-        var sut = MakeSut(auth, "Vol", "Index");
+        var sut = MakeSut(auth, "Ticket", "Index");
         var result = await sut.InvokeAsync() as ViewViewComponentResult;
         var model = result!.ViewData!.Model as AdminSidebarViewModel;
         model!.Groups.Should().HaveCount(1);
@@ -56,9 +56,9 @@ public class AdminSidebarViewComponentTests
         var ticketsItem = model!.Groups.SelectMany(g => g.Items)
             .Single(i => string.Equals(i.Label, "Tickets", StringComparison.Ordinal));
         ticketsItem.IsActive.Should().BeTrue();
-        var volunteersItem = model.Groups.SelectMany(g => g.Items)
-            .Single(i => string.Equals(i.Label, "Volunteers", StringComparison.Ordinal));
-        volunteersItem.IsActive.Should().BeFalse();
+        var scannerItem = model.Groups.SelectMany(g => g.Items)
+            .Single(i => string.Equals(i.Label, "Scanner", StringComparison.Ordinal));
+        scannerItem.IsActive.Should().BeFalse();
     }
 
     [HumansFact]

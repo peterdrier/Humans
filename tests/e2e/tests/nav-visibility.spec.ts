@@ -22,7 +22,6 @@ import {
  *
  * Nav items gated by authorize-policy in _Layout.cshtml:
  *   Volunteer  → ActiveMemberOrShiftAccess
- *   V          → VolunteerSectionAccess
  *   Review     → ReviewQueueAccess
  *   Voting     → BoardOrAdmin
  *   Board      → BoardOrAdmin
@@ -41,16 +40,15 @@ import {
  * always seeded into the Volunteers team.
  */
 
-type NavItem = 'volunteer' | 'v' | 'review' | 'voting' | 'board' | 'humans' | 'admin' | 'google' | 'tickets' | 'finance';
+type NavItem = 'volunteer' | 'review' | 'voting' | 'board' | 'humans' | 'admin' | 'google' | 'tickets' | 'finance';
 
-const ALL_NAV_ITEMS: NavItem[] = ['volunteer', 'v', 'review', 'voting', 'board', 'humans', 'admin', 'google', 'tickets', 'finance'];
+const ALL_NAV_ITEMS: NavItem[] = ['volunteer', 'review', 'voting', 'board', 'humans', 'admin', 'google', 'tickets', 'finance'];
 
 function getNavLocators(nav: Locator): Record<NavItem, Locator> {
   // Scope to ul.navbar-nav to exclude the navbar brand (also named "Humans")
   const items = nav.locator('ul.navbar-nav');
   return {
     volunteer: items.getByRole('link', { name: 'Volunteer', exact: true }),
-    v: items.getByRole('link', { name: 'V', exact: true }),
     review: items.getByRole('link', { name: /^Review/ }),
     voting: items.getByRole('link', { name: /^Voting/ }),
     board: items.getByRole('link', { name: 'Board', exact: true }),
@@ -91,13 +89,13 @@ const roles: RoleTest[] = [
   {
     name: 'admin',
     login: loginAsAdmin,
-    visible: ['volunteer', 'v', 'review', 'voting', 'board', 'admin', 'google', 'tickets', 'finance'],
+    visible: ['volunteer', 'review', 'voting', 'board', 'admin', 'google', 'tickets', 'finance'],
     // 'humans' is NOT visible — HumanAdminOnly requires HumanAdmin AND NOT Admin
   },
   {
     name: 'board',
     login: loginAsBoard,
-    visible: ['volunteer', 'v', 'review', 'voting', 'board', 'tickets'],
+    visible: ['volunteer', 'review', 'voting', 'board', 'tickets'],
   },
   {
     name: 'humanAdmin',
@@ -107,7 +105,7 @@ const roles: RoleTest[] = [
   {
     name: 'teamsAdmin',
     login: loginAsTeamsAdmin,
-    visible: ['volunteer', 'v'],
+    visible: ['volunteer'],
   },
   {
     name: 'ticketAdmin',
@@ -142,7 +140,7 @@ const roles: RoleTest[] = [
   {
     name: 'volunteerCoordinator',
     login: loginAsVolunteerCoordinator,
-    visible: ['volunteer', 'v', 'review'],
+    visible: ['volunteer', 'review'],
   },
 ];
 

@@ -187,14 +187,6 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | `ShiftAdminController` | Class | `[Authorize]` (authenticated) | Coordinator checks at runtime via `HumansTeamControllerBase` |
 | `ShiftDashboardController` | Class | `Admin, NoInfoAdmin, VolunteerCoordinator` | `PolicyNames.ShiftDashboardAccess` |
 
-### Volunteer Management Section
-
-| Controller | Scope | Roles | Source |
-|---|---|---|---|
-| `VolController` | Class | `[Authorize]` (authenticated) | — |
-| `VolController.Settings` (GET/POST) | Action | `Admin` | `PolicyNames.AdminOnly` |
-| `VolController` runtime guards (Management/Dashboard/etc.) | In-method | `ShiftRoleChecks.CanAccessDashboard(User)` / `RoleChecks.IsVolunteerManager(User)` | RoleChecks helpers |
-
 ### Calendar Section
 
 | Controller | Scope | Roles | Source |
@@ -293,8 +285,7 @@ Views express authorization four ways today:
 | 33–40 | `User.IsInRole(RoleNames.Admin) \|\| HumanAdmin \|\| TeamsAdmin \|\| CampAdmin \|\| TicketAdmin \|\| FeedbackAdmin \|\| FinanceAdmin \|\| NoInfoAdmin` | Build-hash tooltip on brand link (any admin role sees commit SHA on hover) |
 | 101 | `authorize-policy="IsActiveMember"` | City Planning nav link |
 | 110 | `authorize-policy="ActiveMemberOrShiftAccess"` | Shifts nav link |
-| 113 | `authorize-policy="VolunteerSectionAccess"` | "V" (Vol Management) nav link |
-| 116 | `authorize-policy="ReviewQueueAccess"` | Review nav link + queue badges |
+| 113 | `authorize-policy="ReviewQueueAccess"` | Review nav link + queue badges |
 | 119 | `authorize-policy="BoardOrAdmin"` | Voting nav link + queue badges |
 | 122 | `authorize-policy="BoardOrAdmin"` | Board nav link |
 | 125 | `authorize-policy="HumanAdminOnly"` | "Humans" nav link (standalone HumanAdmin without Board/Admin) |
@@ -327,24 +318,6 @@ Views express authorization four ways today:
 | `ShiftAdmin/Index.cshtml` | 66, 558, 594 | `Model.CanViewMedical` | Medical badge in volunteer profile partial |
 | `ShiftAdmin/Index.cshtml` | 169, 204, 429, 461, 660, 791, 868, 930 | `Model.CanManageShifts` | Rota/shift edit/delete buttons, add-rota/add-shift forms |
 | `ShiftAdmin/Index.cshtml` | 335, 393, 440, 538, 572, 633, 734 | `Model.CanApproveSignups` | Signups column header, approve/reject buttons, signup table cells |
-
-### Volunteer Management Views
-
-| View | Line | Check | Controls |
-|---|---|---|---|
-| `Vol/_VolLayout.cshtml` | 26 | `authorize-policy="ShiftDashboardAccess"` | Urgent nav tab |
-| `Vol/_VolLayout.cshtml` | 31 | `authorize-policy="ShiftDashboardAccess"` | Management nav tab |
-| `Vol/_VolLayout.cshtml` | 36 | `authorize-policy="AdminOnly"` | Settings nav tab |
-| `Vol/Management.cshtml` | 37 | `authorize-policy="AdminOnly"` | "Change in Settings" button (System Status card) |
-| `Vol/Management.cshtml` | 103 | `authorize-policy="AdminOnly"` | Settings action card |
-| `Vol/NoActiveEvent.cshtml` | 9 | `authorize-policy="AdminOnly"` | "Configure Event Settings" link |
-| `Vol/DepartmentDetail.cshtml` | 52 | `Model.IsCoordinator` | Pending request count badge on child team |
-| `Vol/ChildTeamDetail.cshtml` | 92 | `Model.IsCoordinator` (passed to `_RotaCard` partial) | Coordinator-only rota interactions |
-| `Vol/ChildTeamDetail.cshtml` | 99 | `Model.IsCoordinator` | Pending join requests card |
-| `Vol/Settings.cshtml` | 79 | `Model.IsShiftBrowsingOpen` | Shift-browsing toggle initial state |
-| `Vol/Shifts.cshtml` | 98 | `Model.ShowSignups` (passed to `_RotaCard` partial) | Signup column visibility |
-| `Vol/_ShiftRow.cshtml` | 58 | `Model.ShowSignups` | Signup status cell |
-| `Vol/_RotaCard.cshtml` | 71, 81 | `Model.ShowSignups` | Signup column header + propagation to `_ShiftRow` |
 
 ### Profile Views
 
@@ -492,7 +465,6 @@ Post Phase-1 retirement, controllers and views express the same authorization ru
 | Board only | `[Authorize(Policy = PolicyNames.BoardOnly)]` | `authorize-policy="BoardOnly"` |
 | Shift dashboard access | `[Authorize(Policy = PolicyNames.ShiftDashboardAccess)]` | `authorize-policy="ShiftDashboardAccess"` |
 | Active member or shift access | `[Authorize(Policy = PolicyNames.ActiveMemberOrShiftAccess)]` | `authorize-policy="ActiveMemberOrShiftAccess"` |
-| Volunteer section access | `[Authorize(Policy = PolicyNames.VolunteerSectionAccess)]` (no controller use) | `authorize-policy="VolunteerSectionAccess"` |
 | Active member | `[Authorize(Policy = PolicyNames.IsActiveMember)]` | `authorize-policy="IsActiveMember"` |
 | Resource: team coord/admin | `_authorizationService.AuthorizeAsync(User, team, TeamOperationRequirement.ManageCoordinators)` | `Model.IsCurrentUserCoordinator` (view-model) |
 | Resource: camp lead/admin | `_authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.Manage)` | `Model.IsCurrentUserLead \|\| Model.IsCurrentUserCampAdmin` (view-model) |
@@ -507,9 +479,6 @@ Post Phase-1 retirement, controllers and views express the same authorization ru
 
 | Location | Check | Risk |
 |---|---|---|
-| `Vol/Management.cshtml` — "Create Department" | `RoleChecks.IsAdmin(User)` in view | `VolController.Management` is `[Authorize]` (any authenticated user). The POST create action has runtime checks but no `[Authorize(Policy)]` attribute. |
-| `Vol/_VolLayout.cshtml` — Dashboard tab | `ShiftRoleChecks.CanAccessDashboard(User)` in view | Dashboard GET actions guard with `if (!ShiftRoleChecks.CanAccessDashboard(User))` at runtime, not via attribute. |
-| `Vol/_VolLayout.cshtml` — Settings tab | `RoleChecks.IsAdmin(User)` in view | Settings action has `[Authorize(Policy = PolicyNames.AdminOnly)]` attribute — **OK, enforced server-side**. |
 | `CampAdmin/Index.cshtml` — "Delete Camp" | `RoleChecks.IsAdmin(User)` in view | Delete action has `[Authorize(Policy = PolicyNames.AdminOnly)]` — **OK, narrower than class-level CampAdminOrAdmin**. |
 | `Team/Summary.cshtml` — Edit/Delete/Archive links | `RoleChecks.IsAdminOrBoard(User)` in view | Team edit actions have `[Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]` — view is **stricter** than server (hides from TeamsAdmin). |
 | `Ticket/Index.cshtml` — "Event Settings" link | `RoleChecks.IsAdmin(User)` in view | Targets `Shifts/Settings` which has `[Authorize(Policy = PolicyNames.AdminOnly)]` — **OK**. |
@@ -527,9 +496,6 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 
 | Controller | Action | Guard |
 |---|---|---|
-| `VolController` | `Dashboard`, `Urgent`, `Voluntell`, `SearchVolunteers` | `ShiftRoleChecks.CanAccessDashboard(User)` |
-| `VolController` | `DepartmentDetail`, `ChildTeamDetail`, `ApproveJoinRequest`, `RejectJoinRequest` | `RoleChecks.IsVolunteerManager(User)` + coordinator-of-team |
-| `VolController` | `Approve`, `Refuse`, `NoShow` | `ShiftRoleChecks.IsPrivilegedSignupApprover(User)` + coordinator-of-team |
 | `ShiftAdminController` | All non-public actions | Coordinator-of-team check via `HumansTeamControllerBase.ResolveTeamManagementAsync` (resource-based) |
 | `TeamAdminController` | All non-public actions | Coordinator-of-team check via `HumansTeamControllerBase.ResolveTeamManagementAsync` (resource-based) |
 | `BudgetController` | `Index`, `Summary`, `CategoryDetail`, line-item CRUD | `_authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` and `_authService.AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)` |
@@ -566,7 +532,6 @@ These are the named ASP.NET policies registered in `AuthorizationPolicyExtension
 | `ShiftDepartmentManager` | Admin, NoInfoAdmin, VolunteerCoordinator | `PolicyNames.ShiftDepartmentManager`, `ShiftRoleChecks.CanManageDepartment` |
 | `PrivilegedSignupApprover` | Admin, NoInfoAdmin | `PolicyNames.PrivilegedSignupApprover`, `ShiftRoleChecks.IsPrivilegedSignupApprover` |
 | `VolunteerManager` | Admin, VolunteerCoordinator | `PolicyNames.VolunteerManager`, `RoleChecks.IsVolunteerManager` |
-| `VolunteerSectionAccess` | TeamsAdmin, Board, Admin, VolunteerCoordinator | `PolicyNames.VolunteerSectionAccess`, `RoleChecks.CanAccessVolunteers` |
 | `ActiveMemberOrShiftAccess` | ActiveMember claim OR ShiftDashboardAccess | `PolicyNames.ActiveMemberOrShiftAccess` (composite — `ActiveMemberOrShiftAccessHandler`) |
 | `IsActiveMember` | ActiveMember claim OR TeamsAdmin/Board/Admin | `PolicyNames.IsActiveMember` (composite — `IsActiveMemberHandler`) |
 | `HumanAdminOnly` | HumanAdmin AND NOT (Admin OR Board) | `PolicyNames.HumanAdminOnly` (composite — `HumanAdminOnlyHandler`) |
@@ -655,7 +620,6 @@ Composite (non-resource) handlers registered alongside the above:
 | `IsFeedbackAdmin` | `FeedbackAdminOrAdmin` |
 | `IsFinanceAdmin` / `CanAccessFinance` | `FinanceAdminOrAdmin` |
 | `IsVolunteerManager` | `VolunteerManager` |
-| `CanAccessVolunteers` | `VolunteerSectionAccess` |
 | `BypassesMembershipRequirement` | (filter-level in `MembershipRequiredFilter`, not a page policy) |
 | `GetAssignableRoles` / `CanManageRole` | `RoleAssignmentOperationRequirement.Manage` (resource-based, see §6) |
 

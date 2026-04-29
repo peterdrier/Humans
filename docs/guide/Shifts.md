@@ -2,12 +2,10 @@
   src/Humans.Web/Views/Shifts/**
   src/Humans.Web/Views/ShiftAdmin/**
   src/Humans.Web/Views/ShiftDashboard/**
-  src/Humans.Web/Views/Vol/**
   src/Humans.Web/Views/Profile/Me/ShiftInfo.cshtml
   src/Humans.Web/Controllers/ShiftsController.cs
   src/Humans.Web/Controllers/ShiftAdminController.cs
   src/Humans.Web/Controllers/ShiftDashboardController.cs
-  src/Humans.Web/Controllers/VolController.cs
   src/Humans.Web/ViewComponents/ShiftSignupsViewComponent.cs
   src/Humans.Web/Authorization/ShiftRoleChecks.cs
   src/Humans.Application/Services/Shifts/**

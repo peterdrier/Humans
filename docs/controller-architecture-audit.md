@@ -5,7 +5,7 @@ Living document. Last updated: 2026-04-25 (freshness sweep).
 ## Part 1: Action Name Audit
 
 ### Summary
-- Controllers audited: 46 (excludes 3 abstract base classes: `HumansControllerBase`, `HumansTeamControllerBase`, `HumansCampControllerBase`)
+- Controllers audited: 45 (excludes 3 abstract base classes: `HumansControllerBase`, `HumansTeamControllerBase`, `HumansCampControllerBase`)
 - Renames suggested: 6
 - Already OK: rest
 
@@ -631,32 +631,6 @@ Living document. Last updated: 2026-04-25 (freshness sweep).
 | Confirm | /Unsubscribe/{token} | POST | Execute legacy unsubscribe | OK |
 | OneClick | /Unsubscribe/OneClick | POST | RFC 8058 one-click unsubscribe | OK |
 
-## VolController
-
-| Method | Route | Verb | Purpose | Suggestion |
-|--------|-------|------|---------|------------|
-| Index | /Vol | GET | Redirect to MyShifts | OK |
-| MyShifts | /Vol/MyShifts | GET | Volunteer's shift list | OK |
-| Bail | /Vol/Bail | POST | Bail from a shift | OK |
-| Shifts | /Vol/Shifts | GET | Browse all shifts | OK |
-| SignUp | /Vol/SignUp | POST | Sign up for a shift | OK |
-| Teams | /Vol/Teams | GET | Department/teams overview | OK |
-| DepartmentDetail | /Vol/Teams/{slug} | GET | Department detail page | OK |
-| ChildTeamDetail | /Vol/Teams/{parentSlug}/{childSlug} | GET | Child team detail page | OK |
-| Approve | /Vol/Approve | POST | Approve a signup | OK |
-| Refuse | /Vol/Refuse | POST | Refuse a signup | OK |
-| NoShow | /Vol/NoShow | POST | Mark no-show | OK |
-| ApproveJoinRequest | /Vol/ApproveJoinRequest | POST | Approve team join request | OK |
-| RejectJoinRequest | /Vol/RejectJoinRequest | POST | Reject team join request | OK |
-| Urgent | /Vol/Urgent | GET | Urgent shifts dashboard | OK |
-| Voluntell | /Vol/Voluntell | POST | Assign volunteer to shift | OK |
-| Management | /Vol/Management | GET | Management dashboard | OK |
-| Settings | /Vol/Settings | GET | Event settings (Admin) | OK |
-| Settings | /Vol/Settings | POST | Save event settings (Admin) | OK |
-| SearchVolunteers | /Vol/SearchVolunteers | GET | Search volunteers (JSON) | OK |
-
----
-
 ## ViewComponents
 
 ViewComponents don't have routes — they are invoked from views via `@await Component.InvokeAsync("Name")`. Listed for completeness:
@@ -718,7 +692,7 @@ Several of the splits proposed in the original audit have since shipped:
 |-------------|-----------------|---------|------------|
 | `Birthdays` | TeamController | Community birthday calendar — not team-specific | **CommunityController** (`/Community/Birthdays`) |
 | `Map` | TeamController | Member location map — not team-specific | **CommunityController** (`/Community/Map`) |
-| `Roster` | TeamController | Shift roster — belongs with shift domain | **ShiftsController** or **VolController** |
+| `Roster` | TeamController | Shift roster — belongs with shift domain | **ShiftsController** |
 | `Summary`, `CreateTeam`, `EditTeam`, `DeleteTeam` | TeamController | Admin team CRUD | **TeamAdminController** already exists — move these there (route: `/Teams/Admin/...`) |
 
 #### ApplicationController — user + admin on one controller
@@ -760,12 +734,6 @@ The profile controller has grown — it now owns own-profile, email, privacy, sh
 |-------------|-----------------|---------|------------|
 | `Index` | GovernanceController | Governance info page | Stay |
 | `Roles` | GovernanceController | Admin role assignment list (Board/Admin only) | Move to a dedicated **RoleAdminController** or under `/Profile/Admin/Roles` |
-
-### VolController — intentional duplication
-
-VolController (~19 actions) substantially duplicates ShiftsController, ShiftAdminController, and ShiftDashboardController. It's a mobile-first redesign of the same shift domain. This isn't "misplaced" — it's a parallel UI — but worth flagging since the two UIs will drift unless there's a deliberate strategy for which one is canonical.
-
----
 
 ### Priority Ranking for Splits
 

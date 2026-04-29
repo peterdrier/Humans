@@ -52,7 +52,6 @@ public class AuthorizationPillFilter : IActionFilter
         [PolicyNames.ShiftDepartmentManager] = [RoleNames.Admin, RoleNames.NoInfoAdmin, RoleNames.VolunteerCoordinator],
         [PolicyNames.PrivilegedSignupApprover] = [RoleNames.Admin, RoleNames.NoInfoAdmin],
         [PolicyNames.VolunteerManager] = [RoleNames.Admin, RoleNames.VolunteerCoordinator],
-        [PolicyNames.VolunteerSectionAccess] = [RoleNames.TeamsAdmin, RoleNames.Board, RoleNames.Admin, RoleNames.VolunteerCoordinator],
         [PolicyNames.MedicalDataViewer] = [RoleNames.Admin, RoleNames.NoInfoAdmin],
     };
 

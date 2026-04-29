@@ -17,7 +17,6 @@ public static class AdminNavTree
     {
         new("Operations", new AdminNavItem[]
         {
-            new("Volunteers", "Vol", "Index",       null, null, "fa-solid fa-people-group",     PolicyNames.VolunteerSectionAccess),
             new("Tickets",    "Ticket", "Index",    null, null, "fa-solid fa-ticket",            PolicyNames.TicketAdminBoardOrAdmin),
             new("Scanner",    "Scanner", "Index",   null, null, "fa-solid fa-qrcode",            PolicyNames.TicketAdminBoardOrAdmin),
         }),

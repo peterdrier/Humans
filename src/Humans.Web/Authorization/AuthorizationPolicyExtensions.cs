@@ -103,10 +103,6 @@ public static class AuthorizationPolicyExtensions
             options.AddPolicy(PolicyNames.VolunteerManager, policy =>
                 policy.RequireRole(RoleNames.Admin, RoleNames.VolunteerCoordinator));
 
-            options.AddPolicy(PolicyNames.VolunteerSectionAccess, policy =>
-                policy.RequireRole(RoleNames.TeamsAdmin, RoleNames.Board, RoleNames.Admin,
-                    RoleNames.VolunteerCoordinator));
-
             options.AddPolicy(PolicyNames.MedicalDataViewer, policy =>
                 policy.RequireRole(RoleNames.Admin, RoleNames.NoInfoAdmin));
 

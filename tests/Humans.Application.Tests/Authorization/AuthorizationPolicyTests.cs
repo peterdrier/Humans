@@ -320,21 +320,6 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().Be(expected);
     }
 
-    // --- VolunteerSectionAccess ---
-
-    [HumansTheory]
-    [InlineData(RoleNames.TeamsAdmin, true)]
-    [InlineData(RoleNames.Board, true)]
-    [InlineData(RoleNames.Admin, true)]
-    [InlineData(RoleNames.VolunteerCoordinator, true)]
-    [InlineData(RoleNames.NoInfoAdmin, false)]
-    [InlineData(RoleNames.CampAdmin, false)]
-    public async Task VolunteerSectionAccess_ChecksCorrectRoles(string role, bool expected)
-    {
-        var result = await AuthorizeAsync(PolicyNames.VolunteerSectionAccess, role);
-        result.Succeeded.Should().Be(expected);
-    }
-
     // --- MedicalDataViewer ---
 
     [HumansTheory]
