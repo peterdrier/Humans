@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -53,7 +54,7 @@ public interface IProfileService
     /// profile has no picture or has been anonymized (the DB content-type
     /// column is null), so a stale on-disk file left behind by a failed
     /// anonymization cleanup is not served. Centralizing the read path here
-    /// keeps controllers free of <see cref="Profiles.IProfilePictureStore"/>.
+    /// keeps controllers free of <see cref="IFileStorage"/>.
     /// </summary>
     Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(Guid profileId, CancellationToken ct = default);
 

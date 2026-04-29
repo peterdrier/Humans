@@ -61,7 +61,7 @@ Cross-domain nav `CampLead.User` is **stripped** (PR for issue nobodies-collecti
 
 ### CampImage
 
-Image metadata; files are stored on disk via `ICampImageStorage` (Application interface). Display order is tracked per camp.
+Image metadata; files are stored on disk via the shared `IFileStorage` abstraction (key `uploads/camps/{campId}/{guid}{.ext}`, served as static files at `/uploads/camps/...`). Display order is tracked per camp.
 
 **Table:** `camp_images`
 
@@ -168,7 +168,7 @@ All stored as strings via `HasConversion<string>()`. `Vibes` stored as jsonb arr
 - Each camp has a unique slug used for URL routing.
 - Camp season status follows: Pending then Active, Full, Rejected, or Withdrawn. Only CampAdmin can approve or reject a season.
 - Only camp leads or CampAdmin can edit a camp.
-- Camp images are stored on disk via `ICampImageStorage`; metadata and display order are tracked per camp.
+- Camp images are stored on disk via the shared `IFileStorage` abstraction (key prefix `uploads/camps/{campId}/`); metadata and display order are tracked per camp.
 - Historical names are recorded when a camp is renamed.
 - Camp settings control which year is shown publicly and which seasons accept registrations.
 - Resource-based authorization per design-rules §11: `CampAuthorizationHandler` + `CampOperationRequirement` gate all admin writes.
@@ -227,7 +227,7 @@ All stored as strings via `HasConversion<string>()`. `Vibes` stored as jsonb arr
 - `CampService` lives in `Humans.Application.Services.Camps.CampService` and goes through `ICampRepository` (`Humans.Application.Interfaces.Repositories`) for all data access. It never imports `Microsoft.EntityFrameworkCore` — enforced at compile time by `Humans.Application.csproj`'s reference graph.
 - `CampRepository` lives in `Humans.Infrastructure.Repositories`, uses `IDbContextFactory<HumansDbContext>`, and is registered as Singleton.
 - **Decorator decision — no caching decorator.** The ~100-row camp list uses short-TTL `IMemoryCache` inside the service for `camps-for-year` and `camp-settings` (~5 min) per design-rules §15f. These are request-acceleration caches, not canonical domain data caches.
-- Filesystem I/O for camp images is abstracted behind `ICampImageStorage` (Application interface + `CampImageStorage` implementation in `Humans.Infrastructure`); the service never touches `System.IO`.
+- Filesystem I/O for camp images is abstracted behind the shared `IFileStorage` abstraction (Application interface + `FileSystemFileStorage` implementation in `Humans.Infrastructure`, rooted at `wwwroot/`); the service never touches `System.IO`.
 - **Cross-domain navs stripped:** `CampLead.User` (issue nobodies-collective/Humans#542) — consumers route through `IUserService.GetByIdsAsync(...)`.
 - `CampContactService` has no owned DB tables and does not inject `HumansDbContext`; it retains its `IMemoryCache` rate-limit usage since that's a request-acceleration cache, not canonical domain data.
 - `CampRoleService` lives in `Humans.Application.Services.Camps.CampRoleService` and goes through `ICampRoleRepository` (`Humans.Application.Interfaces.Repositories`) for all data access. It owns `camp_role_definitions` and `camp_role_assignments` and never imports `Microsoft.EntityFrameworkCore`. Display-name stitching for `AssignedByUserId` routes through `IUserService.GetByIdsAsync`. Plain pass-through (no caching decorator); add `IMemoryCache` later if list-of-definitions reads dominate.

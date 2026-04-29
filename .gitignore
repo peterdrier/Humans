@@ -120,12 +120,8 @@ Thumbs.db
 # Docker
 docker-compose.override.yml
 
-# Uploads (bind-mounted volume)
+# Uploads (bind-mounted volume — wwwroot/uploads/ in production)
 uploads/
-
-# Profile pictures filesystem store (bind-mounted volume in prod;
-# issue nobodies-collective/Humans#527).
-App_Data/
 
 .gemini/
 .superpowers/

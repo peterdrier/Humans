@@ -46,7 +46,10 @@ public class ProfileServiceTests : IDisposable
     private readonly ICampaignService _campaignService = Substitute.For<ICampaignService>();
     private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
     private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();
-    private readonly InMemoryProfilePictureStore _profilePictureStore = new();
+    private readonly InMemoryFileStorage _fileStorage = new();
+
+    private static string PicKey(Guid profileId, string contentType) =>
+        $"uploads/profile-pictures/{profileId}{(contentType switch { "image/jpeg" => ".jpg", "image/png" => ".png", "image/webp" => ".webp", _ => throw new InvalidOperationException() })}";
 
     public ProfileServiceTests()
     {
@@ -71,7 +74,7 @@ public class ProfileServiceTests : IDisposable
             _membershipCalculator, _consentService, _ticketQueryService,
             _applicationDecisionService, _campaignService,
             _roleAssignmentService, _accountDeletionService,
-            _profilePictureStore,
+            _fileStorage,
             _clock,
             NullLogger<ProfileService>.Instance);
 
@@ -205,10 +208,10 @@ public class ProfileServiceTests : IDisposable
         // DB was written
         profile.ProfilePictureData.Should().BeEquivalentTo(payload);
         profile.ProfilePictureContentType.Should().Be("image/jpeg");
-        // Filesystem was written with the same bytes, keyed by profile id
-        _profilePictureStore.Files.Should().ContainKey(profile.Id);
-        _profilePictureStore.Files[profile.Id].Data.Should().BeEquivalentTo(payload);
-        _profilePictureStore.Files[profile.Id].ContentType.Should().Be("image/jpeg");
+        // Filesystem was written with the same bytes, keyed under uploads/profile-pictures/
+        var key = PicKey(profile.Id, "image/jpeg");
+        _fileStorage.Files.Should().ContainKey(key);
+        _fileStorage.Files[key].Should().BeEquivalentTo(payload);
     }
 
     [HumansFact]
@@ -216,8 +219,10 @@ public class ProfileServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var profileId = await SeedUserWithProfileAsync(userId, withPicture: true);
-        // Pre-seed the filesystem side so we can assert deletion.
-        await _profilePictureStore.WriteAsync(profileId, new byte[] { 1 }, "image/jpeg");
+        // Pre-seed the filesystem side at the same content-type the seeded
+        // profile uses (image/png — see SeedUserWithProfileAsync) so we can
+        // assert deletion.
+        await _fileStorage.SaveAsync(PicKey(profileId, "image/png"), new byte[] { 1 });
 
         var request = MakeRequest(removeProfilePicture: true);
         await _service.SaveProfileAsync(userId, "Test", request, "en");
@@ -225,7 +230,7 @@ public class ProfileServiceTests : IDisposable
         var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.ProfilePictureData.Should().BeNull();
         profile.ProfilePictureContentType.Should().BeNull();
-        _profilePictureStore.Files.Should().NotContainKey(profile.Id);
+        _fileStorage.Files.Should().NotContainKey(PicKey(profile.Id, "image/png"));
     }
 
     [HumansFact]
@@ -460,7 +465,7 @@ public class ProfileServiceTests : IDisposable
         var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
 
         var fsPayload = new byte[] { 9, 9, 9, 9 };
-        await _profilePictureStore.WriteAsync(profile.Id, fsPayload, "image/png");
+        await _fileStorage.SaveAsync(PicKey(profile.Id, "image/png"), fsPayload);
 
         var result = await _service.GetProfilePictureAsync(profile.Id);
 
@@ -480,7 +485,7 @@ public class ProfileServiceTests : IDisposable
         await SeedUserWithProfileAsync(userId, withPicture: true);
         var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
 
-        _profilePictureStore.Files.ContainsKey(profile.Id).Should().BeFalse();
+        _fileStorage.Files.ContainsKey(PicKey(profile.Id, "image/png")).Should().BeFalse();
 
         var result = await _service.GetProfilePictureAsync(profile.Id);
 
@@ -488,10 +493,9 @@ public class ProfileServiceTests : IDisposable
         result!.Value.Data.Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
         result.Value.ContentType.Should().Be("image/png");
 
-        // Migrate-on-read should have populated the store.
-        _profilePictureStore.Files.TryGetValue(profile.Id, out var stored).Should().BeTrue();
-        stored.Data.Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
-        stored.ContentType.Should().Be("image/png");
+        // Migrate-on-read should have populated the store under the content-typed key.
+        _fileStorage.Files.TryGetValue(PicKey(profile.Id, "image/png"), out var stored).Should().BeTrue();
+        stored.Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
     }
 
     [HumansFact]
@@ -506,7 +510,7 @@ public class ProfileServiceTests : IDisposable
         var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
 
         // Seed a stale on-disk file as if a prior anonymization left it behind.
-        await _profilePictureStore.WriteAsync(profile.Id, new byte[] { 7, 7, 7 }, "image/png");
+        await _fileStorage.SaveAsync(PicKey(profile.Id, "image/png"), new byte[] { 7, 7, 7 });
 
         // Now anonymize via the service and force the FS delete to fail by
         // pre-removing the entry, then re-add it AFTER the anonymize call.
@@ -517,7 +521,7 @@ public class ProfileServiceTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         // Confirm the stale file is still on disk to make the gate meaningful.
-        _profilePictureStore.Files.ContainsKey(profile.Id).Should().BeTrue();
+        _fileStorage.Files.ContainsKey(PicKey(profile.Id, "image/png")).Should().BeTrue();
 
         var result = await _service.GetProfilePictureAsync(profile.Id);
 
@@ -1551,7 +1555,7 @@ public class ProfileServiceTests : IDisposable
         _membershipCalculator, _consentService, _ticketQueryService,
         _applicationDecisionService, _campaignService,
         _roleAssignmentService, _accountDeletionService,
-        _profilePictureStore,
+        _fileStorage,
         _clock,
         NullLogger<ProfileService>.Instance);
 

@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
@@ -64,8 +65,8 @@ public class CampsArchitectureTests
         var ctor = typeof(CampService).GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
-        paramTypes.Should().Contain(typeof(ICampImageStorage),
-            because: "filesystem I/O is delegated to an infrastructure abstraction — the Application project can't touch System.IO directly (design-rules §1)");
+        paramTypes.Should().Contain(typeof(IFileStorage),
+            because: "filesystem I/O is delegated to the shared IFileStorage abstraction — the Application project can't touch System.IO directly (design-rules §1)");
     }
 
     [HumansFact]

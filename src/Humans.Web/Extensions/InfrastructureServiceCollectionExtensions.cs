@@ -1,4 +1,6 @@
 using Humans.Application.Configuration;
+using Humans.Application.Interfaces;
+using Humans.Infrastructure.Services;
 using Humans.Web.Extensions.Infrastructure;
 using Humans.Web.Extensions.Sections;
 
@@ -19,6 +21,11 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddGoogleWorkspaceInfrastructure(configuration, environment);
         services.AddTicketVendorInfrastructure(configuration, environment);
         services.AddStripeInfrastructure();
+
+        // Single key-addressed file storage rooted at wwwroot. Camps,
+        // profile pictures, and any future file-bearing section share this
+        // mount (production: Coolify volume at /app/wwwroot/uploads/).
+        services.AddSingleton<IFileStorage, FileSystemFileStorage>();
 
         // Section-owned registrations. Each section file registers its own
         // repositories, services, jobs, options, and GDPR contributor forwarding.

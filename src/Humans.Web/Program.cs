@@ -570,6 +570,24 @@ if (!app.Environment.IsDevelopment())
     app.UseResponseCompression();
 }
 
+// Profile pictures share the wwwroot/uploads/ mount with publicly-served
+// camp images but must NOT be reachable as static files — they're served
+// only via /Profile/Picture/{id} so the GDPR anonymization gate (DB
+// content-type) applies on every read. This middleware sits in front of
+// UseStaticFiles so direct requests under /uploads/profile-pictures/ 404
+// before the file provider sees them.
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path.Value;
+    if (path is not null &&
+        path.StartsWith("/uploads/profile-pictures/", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+    await next();
+});
+
 app.UseStaticFiles();
 
 // Serve .well-known directory (blocked by default since it starts with a dot)

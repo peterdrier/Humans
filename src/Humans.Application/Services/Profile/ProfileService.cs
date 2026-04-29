@@ -15,6 +15,7 @@ using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
 
@@ -41,7 +42,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
     private readonly ICampaignService _campaignService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IAccountDeletionService _accountDeletionService;
-    private readonly IProfilePictureStore _profilePictureStore;
+    private readonly IFileStorage _fileStorage;
     private readonly IClock _clock;
     private readonly ILogger<ProfileService> _logger;
 
@@ -60,7 +61,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         ICampaignService campaignService,
         IRoleAssignmentService roleAssignmentService,
         IAccountDeletionService accountDeletionService,
-        IProfilePictureStore profilePictureStore,
+        IFileStorage fileStorage,
         IClock clock,
         ILogger<ProfileService> logger)
     {
@@ -78,7 +79,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         _campaignService = campaignService;
         _roleAssignmentService = roleAssignmentService;
         _accountDeletionService = accountDeletionService;
-        _profilePictureStore = profilePictureStore;
+        _fileStorage = fileStorage;
         _clock = clock;
         _logger = logger;
     }
@@ -147,10 +148,31 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
             return;
         }
 
+        var oldContentType = profile.ProfilePictureContentType;
         profile.ProfilePictureData = pictureData;
         profile.ProfilePictureContentType = contentType;
         profile.UpdatedAt = _clock.GetCurrentInstant();
         await _profileRepository.UpdateAsync(profile, ct);
+
+        try
+        {
+            // If the previous picture used a different content type (and
+            // therefore a different extension on disk), remove the old file
+            // so it doesn't linger orphaned.
+            if (oldContentType is not null &&
+                !string.Equals(oldContentType, contentType, StringComparison.Ordinal))
+            {
+                await _fileStorage.DeleteAsync(
+                    ProfilePictureKey(profile.Id, oldContentType), ct);
+            }
+            await _fileStorage.SaveAsync(ProfilePictureKey(profile.Id, contentType), pictureData, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex,
+                "Failed to write profile picture to filesystem for {ProfileId}; DB write still applied",
+                profile.Id);
+        }
 
         // FullProfile cache invalidation handled by CachingProfileService decorator.
     }
@@ -198,25 +220,24 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
     public async Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(
         Guid profileId, CancellationToken ct = default)
     {
-        // Anonymization gate (issue nobodies-collective/Humans#527, GDPR):
-        // a cheap scalar projection of the DB content-type column is the
-        // source of truth for whether a picture should be served. If
-        // AnonymizeExpiredProfileAsync (or any future cleanup) has cleared
-        // the DB column, do not serve from disk even if a stale file
-        // remains — that closes the loop for the case where the
-        // best-effort filesystem delete failed during anonymization.
+        // Anonymization gate (GDPR): a cheap scalar projection of the DB
+        // content-type column is the source of truth for whether a picture
+        // should be served. If anonymization (or any future cleanup) has
+        // cleared the DB column, do not serve from disk even if a stale
+        // file remains.
         var dbContentType = await _profileRepository.GetProfilePictureContentTypeAsync(profileId, ct);
         if (string.IsNullOrEmpty(dbContentType))
         {
             return null;
         }
 
-        // Filesystem fast path. Avoids loading the bytea column when the
-        // file is already on disk (the common case after migrate-on-read).
-        var fsHit = await _profilePictureStore.TryReadAsync(profileId, ct);
-        if (fsHit is not null)
+        // Filesystem fast path. Avoids loading the bytea column when the file
+        // is already on disk (the common case after migrate-on-read).
+        var key = ProfilePictureKey(profileId, dbContentType);
+        var fsBytes = await _fileStorage.TryReadAsync(key, ct);
+        if (fsBytes is not null)
         {
-            return (fsHit.Value.Data, fsHit.Value.ContentType);
+            return (fsBytes, dbContentType);
         }
 
         // DB fallback + migrate-on-read.
@@ -228,7 +249,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
 
         try
         {
-            await _profilePictureStore.WriteAsync(profileId, data, contentType, ct);
+            await _fileStorage.SaveAsync(ProfilePictureKey(profileId, contentType), data, ct);
             _logger.LogInformation(
                 "Profile picture {ProfileId} served from DB fallback; migrated to filesystem",
                 profileId);
@@ -303,27 +324,42 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         // DB columns once phase 1 has bedded in.
         if (request.RemoveProfilePicture)
         {
+            var oldContentType = profile.ProfilePictureContentType;
             profile.ProfilePictureData = null;
             profile.ProfilePictureContentType = null;
-            try
+            if (oldContentType is not null)
             {
-                await _profilePictureStore.DeleteAsync(profile.Id, ct);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                _logger.LogWarning(ex,
-                    "Failed to delete profile picture from filesystem for {ProfileId}; DB delete still applied",
-                    profile.Id);
+                try
+                {
+                    await _fileStorage.DeleteAsync(ProfilePictureKey(profile.Id, oldContentType), ct);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    _logger.LogWarning(ex,
+                        "Failed to delete profile picture from filesystem for {ProfileId}; DB delete still applied",
+                        profile.Id);
+                }
             }
         }
         else if (request.ProfilePictureData is not null && request.ProfilePictureContentType is not null)
         {
+            var oldContentType = profile.ProfilePictureContentType;
             profile.ProfilePictureData = request.ProfilePictureData;
             profile.ProfilePictureContentType = request.ProfilePictureContentType;
             try
             {
-                await _profilePictureStore.WriteAsync(
-                    profile.Id, request.ProfilePictureData, request.ProfilePictureContentType, ct);
+                // If the previous picture used a different content type (and
+                // therefore a different on-disk extension), remove the old
+                // file so it doesn't linger orphaned.
+                if (oldContentType is not null &&
+                    !string.Equals(oldContentType, request.ProfilePictureContentType, StringComparison.Ordinal))
+                {
+                    await _fileStorage.DeleteAsync(ProfilePictureKey(profile.Id, oldContentType), ct);
+                }
+                await _fileStorage.SaveAsync(
+                    ProfilePictureKey(profile.Id, request.ProfilePictureContentType),
+                    request.ProfilePictureData,
+                    ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -1068,11 +1104,12 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         // an operator can clean up the stale file out-of-band.
         var profile = await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
         var anonymized = await _profileRepository.AnonymizeForDeletionByUserIdAsync(userId, ct);
-        if (anonymized && profile is not null)
+        if (anonymized && profile?.ProfilePictureContentType is not null)
         {
             try
             {
-                await _profilePictureStore.DeleteAsync(profile.Id, ct);
+                await _fileStorage.DeleteAsync(
+                    ProfilePictureKey(profile.Id, profile.ProfilePictureContentType), ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -1085,6 +1122,30 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         }
         return anonymized;
     }
+
+    // ==========================================================================
+    // Profile picture filesystem helpers
+    // ==========================================================================
+
+    /// <summary>
+    /// Returns the IFileStorage key for a profile picture with the given
+    /// content type. Profile pictures live under <c>uploads/profile-pictures/</c>
+    /// but are NOT publicly served — Program.cs configures static-file
+    /// middleware to 404 that subpath so reads must go through
+    /// <see cref="GetProfilePictureAsync"/> (which applies the GDPR gate).
+    /// The extension is derived from the content type (empty string for
+    /// unknown types — file lives at the bare profile id).
+    /// </summary>
+    private static string ProfilePictureKey(Guid profileId, string contentType) =>
+        $"uploads/profile-pictures/{profileId}{ExtensionFromContentType(contentType)}";
+
+    private static string ExtensionFromContentType(string contentType) => contentType switch
+    {
+        "image/jpeg" => ".jpg",
+        "image/png" => ".png",
+        "image/webp" => ".webp",
+        _ => string.Empty
+    };
 
     public Task<IReadOnlySet<Guid>> SuspendForMissingConsentAsync(
         IReadOnlyCollection<Guid> userIds,

@@ -101,9 +101,11 @@ Profile.HasCustomProfilePicture: bool (computed, not mapped)
 ```
 
 ### Storage Approach
-Profile pictures are stored on the application's filesystem under a configured root (`ProfilePictureStorage:Path`, defaulting to `App_Data/profile-pictures`), with the original `bytea` columns on `Profile` retained as a phase-1 fallback so a rollback stays safe (issue [nobodies-collective#527](https://github.com/nobodies-collective/Humans/issues/527)). One file per profile is named `{profileId}.{ext}` where `ext` is derived from the resized content type (`.jpg`, `.png`, `.webp`); writes go to a temporary sibling and rename into place so readers never see a partial file.
+Profile pictures are stored on the application's filesystem via the shared `IFileStorage` abstraction (rooted at `wwwroot/`, the same Coolify-mounted volume that serves camp images and any future uploads). The key format is `uploads/profile-pictures/{profileId}{.ext}` where `.ext` is derived from the content type (`.jpg`, `.png`, `.webp`, or empty for unknown). The original `bytea` columns on `Profile` are retained as a phase-1 fallback so a rollback stays safe (issue [nobodies-collective#527](https://github.com/nobodies-collective/Humans/issues/527)). Writes go to a temporary sibling and rename into place so readers never see a partial file.
 
-The read path lives in `IProfileService.GetProfilePictureAsync` and is the only entry point the `Profile/Picture` endpoint calls — the controller no longer touches `IProfilePictureStore` directly. The service:
+Profile pictures live under `uploads/` but are NOT publicly served — `Program.cs` registers middleware that 404s `/uploads/profile-pictures/*` before `UseStaticFiles` sees it, so reads must go through the controller (and therefore through the GDPR gate below).
+
+The read path lives in `IProfileService.GetProfilePictureAsync` and is the only entry point the `Profile/Picture` endpoint calls — the controller does not touch `IFileStorage` directly. The service:
 
 1. Reads the DB `ProfilePictureContentType` column via a cheap scalar projection. If null (no picture, or the row was anonymized), it returns `null` and the endpoint responds with 404 — even if a stale file still exists on disk.
 2. Otherwise tries the filesystem store first. A hit is returned immediately, avoiding a `bytea` load.

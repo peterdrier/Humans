@@ -511,7 +511,7 @@ Repository: `ICampRepository`.
 | `NavBadge:CampLeadJoinRequests:{userId}` (`ICampLeadJoinRequestsBadgeCacheInvalidator`) | 2 min | | | yes (per lead) |
 
 Cross-section calls via `IUserService`, `ISystemTeamSync`,
-`IAuditLogService`, `ICampImageStorage`. Implements
+`IAuditLogService`, `IFileStorage`. Implements
 `IUserDataContributor` for GDPR exports.
 
 ### CampContactService (Scoped)

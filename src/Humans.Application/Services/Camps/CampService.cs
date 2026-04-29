@@ -1,6 +1,7 @@
 using Humans.Application;
 using Humans.Application.Extensions;
 using Humans.Application.Helpers;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Camps;
@@ -32,8 +33,10 @@ namespace Humans.Application.Services.Camps;
 ///     cross-domain nav (design-rules §6).</item>
 ///   <item><see cref="ISystemTeamSync"/> — the Barrio Leads system team
 ///     membership is kept in sync after lead mutations.</item>
-///   <item><see cref="ICampImageStorage"/> — infrastructure concern that
-///     owns disk writes for uploaded images.</item>
+///   <item><see cref="IFileStorage"/> — infrastructure concern that owns
+///     disk writes for uploaded images (camp images live under
+///     <c>uploads/camps/{campId}/</c> and are publicly served as static
+///     files at <c>/uploads/camps/...</c>).</item>
 /// </list>
 /// Caching: short-TTL <see cref="IMemoryCache"/> is used for "camps for
 /// year" and "camp settings" reads (<c>~5 min</c>). At ~100 camps these
@@ -47,7 +50,7 @@ public sealed class CampService : ICampService, IUserDataContributor
     private readonly IUserService _userService;
     private readonly IAuditLogService _auditLog;
     private readonly ISystemTeamSync _systemTeamSync;
-    private readonly ICampImageStorage _imageStorage;
+    private readonly IFileStorage _fileStorage;
     private readonly INotificationEmitter _notificationEmitter;
     private readonly ICampLeadJoinRequestsBadgeCacheInvalidator _leadBadgeInvalidator;
     private readonly Lazy<ICampRoleService> _campRoleService;
@@ -64,7 +67,7 @@ public sealed class CampService : ICampService, IUserDataContributor
         IUserService userService,
         IAuditLogService auditLog,
         ISystemTeamSync systemTeamSync,
-        ICampImageStorage imageStorage,
+        IFileStorage fileStorage,
         INotificationEmitter notificationEmitter,
         ICampLeadJoinRequestsBadgeCacheInvalidator leadBadgeInvalidator,
         Lazy<ICampRoleService> campRoleService,
@@ -77,7 +80,7 @@ public sealed class CampService : ICampService, IUserDataContributor
         _userService = userService;
         _auditLog = auditLog;
         _systemTeamSync = systemTeamSync;
-        _imageStorage = imageStorage;
+        _fileStorage = fileStorage;
         _notificationEmitter = notificationEmitter;
         _leadBadgeInvalidator = leadBadgeInvalidator;
         _campRoleService = campRoleService;
@@ -974,7 +977,19 @@ public sealed class CampService : ICampService, IUserDataContributor
             throw new InvalidOperationException("Camp not found.");
         }
 
-        _imageStorage.DeleteImages(deletedImagePaths);
+        foreach (var path in deletedImagePaths)
+        {
+            try
+            {
+                await _fileStorage.DeleteAsync(path, cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(ex,
+                    "Failed to delete camp image file at {StoragePath} during camp delete for {CampId}; DB row already removed",
+                    path, campId);
+            }
+        }
 
         await _auditLog.LogAsync(
             AuditAction.CampDeleted, nameof(Camp), campId,
@@ -1167,15 +1182,16 @@ public sealed class CampService : ICampService, IUserDataContributor
             throw new InvalidOperationException("Image must be under 10MB.");
         }
 
-        var relativePath = await _imageStorage.SaveImageAsync(
-            campId, fileStream, contentType, cancellationToken);
+        var ext = Path.GetExtension(fileName);
+        var storageKey = $"uploads/camps/{campId}/{Guid.NewGuid()}{ext}";
+        await _fileStorage.SaveAsync(storageKey, fileStream, cancellationToken);
 
         var image = new CampImage
         {
             Id = Guid.NewGuid(),
             CampId = campId,
             FileName = fileName,
-            StoragePath = relativePath,
+            StoragePath = storageKey,
             ContentType = contentType,
             SortOrder = imageCount,
             UploadedAt = _clock.GetCurrentInstant()
@@ -1199,7 +1215,16 @@ public sealed class CampService : ICampService, IUserDataContributor
         var result = await _repo.DeleteImageAsync(imageId, cancellationToken)
             ?? throw new InvalidOperationException("Image not found.");
 
-        _imageStorage.DeleteImage(result.StoragePath);
+        try
+        {
+            await _fileStorage.DeleteAsync(result.StoragePath, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex,
+                "Failed to delete camp image file at {StoragePath} for image {ImageId}; DB row already removed",
+                result.StoragePath, imageId);
+        }
 
         await _auditLog.LogAsync(
             AuditAction.CampImageDeleted, nameof(CampImage), imageId,
