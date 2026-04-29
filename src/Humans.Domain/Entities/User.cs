@@ -69,16 +69,93 @@ public class User : IdentityUser<Guid>
     public ICollection<UserEmail> UserEmails { get; } = new List<UserEmail>();
 
     /// <summary>
-    /// Gets the effective email address for system notifications.
-    /// Returns the verified notification-target email if available, otherwise the OAuth email.
-    /// Requires UserEmails to be loaded (Include).
+    /// Email is sourced from <see cref="UserEmails"/> per the
+    /// email-identity-decoupling spec PR 2: returns the first verified row
+    /// ordered by <see cref="UserEmail.IsNotificationTarget"/> descending,
+    /// falling back to the in-memory <c>base.Email</c> value when the user
+    /// has no UserEmail rows (e.g., in-memory test fixtures, post-anonymization
+    /// reads). The EF column is <c>Ignore()</c>'d so persistence flows entirely
+    /// through <c>UserEmails</c>.
+    /// <para>
+    /// Setter delegates to <c>base.Email</c> for in-memory continuity (tests +
+    /// any transient assignments), but should not be called from production
+    /// code outside <c>HumansUserStore</c>. The
+    /// <c>IdentityColumnWriteRestrictionsTests</c> architecture test enforces
+    /// this in <c>Humans.Application</c> + <c>Humans.Web</c>; modify
+    /// <see cref="UserEmail"/> rows via <c>IUserEmailService</c> for the
+    /// canonical write path.
+    /// </para>
     /// </summary>
-    public string? GetEffectiveEmail()
+    public override string? Email
     {
-        var notificationEmail = UserEmails
-            .FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified);
-        return notificationEmail?.Email ?? Email;
+        get
+        {
+            var fromUserEmails = UserEmails
+                .Where(e => e.IsVerified)
+                .OrderByDescending(e => e.IsNotificationTarget)
+                .Select(e => e.Email)
+                .FirstOrDefault();
+            return fromUserEmails ?? base.Email;
+        }
+        set => base.Email = value;
     }
+
+    /// <summary>
+    /// Derived from <see cref="Email"/>; falls back to <c>base.NormalizedEmail</c>
+    /// for in-memory continuity. Setter delegates to base.
+    /// </summary>
+    public override string? NormalizedEmail
+    {
+        get => Email?.ToUpperInvariant() ?? base.NormalizedEmail;
+        set => base.NormalizedEmail = value;
+    }
+
+    /// <summary>
+    /// True when the user has at least one verified <see cref="UserEmail"/>,
+    /// or when <c>base.EmailConfirmed</c> was set (e.g., test fixture).
+    /// Setter delegates to base.
+    /// </summary>
+    public override bool EmailConfirmed
+    {
+        get => UserEmails.Any(e => e.IsVerified) || base.EmailConfirmed;
+        set => base.EmailConfirmed = value;
+    }
+
+    /// <summary>
+    /// Identity needs a unique non-empty UserName for validator + uniqueness
+    /// checks; we anchor it to <see cref="IdentityUser{TKey}.Id"/>. Setter
+    /// silently delegates to base (Identity's <c>SetUserNameAsync</c> contract
+    /// requires the call to succeed) but the EF column is <c>Ignore()</c>'d,
+    /// so the value never round-trips to the database. Getter returns the
+    /// last-set value if any, falling back to <c>Id.ToString()</c>.
+    /// </summary>
+    public override string? UserName
+    {
+        get => base.UserName ?? Id.ToString();
+        set => base.UserName = value;
+    }
+
+    /// <summary>
+    /// Mirrors <see cref="UserName"/> normalization. Same silent-set semantics
+    /// — the EF column is dropped, so persistence is irrelevant; the value is
+    /// only used for in-memory uniqueness checks routed through
+    /// <c>HumansUserStore.FindByNameAsync</c>.
+    /// </summary>
+    public override string? NormalizedUserName
+    {
+        get => base.NormalizedUserName ?? Id.ToString().ToUpperInvariant();
+        set => base.NormalizedUserName = value;
+    }
+
+    /// <summary>
+    /// Gets the effective email address for system notifications. Identical
+    /// to <see cref="Email"/> after PR 2 of the email-identity-decoupling
+    /// spec — the override on <see cref="Email"/> already returns the first
+    /// verified row by IsNotificationTarget desc. Kept as a separate method
+    /// for callers that want the explicit "this is the notify-this-human
+    /// address" intent. Requires <see cref="UserEmails"/> to be loaded.
+    /// </summary>
+    public string? GetEffectiveEmail() => Email;
 
     /// <summary>
     /// When the last re-consent reminder email was sent (for rate limiting).
