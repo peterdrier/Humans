@@ -55,6 +55,7 @@ public sealed class IssuesRepository : IIssuesRepository
 
         if (f.Statuses is { Length: > 0 })   q = q.Where(i => f.Statuses.Contains(i.Status));
         if (f.Categories is { Length: > 0 }) q = q.Where(i => f.Categories.Contains(i.Category));
+        if (f.Sections is { Length: > 0 })   q = q.Where(i => f.Sections.Contains(i.Section));
         if (f.ReporterUserId is { } rid)     q = q.Where(i => i.ReporterUserId == rid);
         if (f.AssigneeUserId is { } aid)     q = q.Where(i => i.AssigneeUserId == aid);
         if (!string.IsNullOrWhiteSpace(f.SearchText))
@@ -88,15 +89,20 @@ public sealed class IssuesRepository : IIssuesRepository
     public async Task SaveTrackedIssueAsync(Issue issue, CancellationToken ct = default)
     {
         await using var db = await _factory.CreateDbContextAsync(ct);
-        db.Issues.Update(issue);
+        db.Attach(issue);
+        db.Entry(issue).State = EntityState.Modified;
         await db.SaveChangesAsync(ct);
     }
 
     public async Task AddCommentAndSaveIssueAsync(IssueComment comment, Issue issue, CancellationToken ct = default)
     {
         await using var db = await _factory.CreateDbContextAsync(ct);
+        // Attach the issue (mutated by the caller) and mark it modified so
+        // timestamp/status fields are persisted in the same transaction as the
+        // new comment.
+        db.Attach(issue);
+        db.Entry(issue).State = EntityState.Modified;
         db.IssueComments.Add(comment);
-        db.Issues.Update(issue);
         await db.SaveChangesAsync(ct);
     }
 
