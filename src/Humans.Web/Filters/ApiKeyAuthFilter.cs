@@ -10,6 +10,12 @@ public class FeedbackApiSettings
     public string ApiKey { get; set; } = string.Empty;
 }
 
+public class IssuesApiSettings
+{
+    public const string SectionName = "IssuesApi";
+    public string ApiKey { get; set; } = string.Empty;
+}
+
 public class LogApiSettings
 {
     public string ApiKey { get; set; } = string.Empty;

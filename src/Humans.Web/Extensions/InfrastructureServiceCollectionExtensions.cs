@@ -41,6 +41,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddCalendarSection();
         services.AddTicketsSection();
         services.AddFeedbackSection();
+        services.AddIssuesSection();
         services.AddNotificationsSection();
         services.AddLegalAndConsentSection();
         services.AddCampaignsSection();
