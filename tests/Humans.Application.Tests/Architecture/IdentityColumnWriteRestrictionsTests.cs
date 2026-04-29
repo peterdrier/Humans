@@ -7,36 +7,42 @@ using Mono.Cecil.Cil;
 namespace Humans.Application.Tests.Architecture;
 
 /// <summary>
-/// Architecture test enforcing PR 1 of the email-identity-decoupling spec
+/// Architecture test enforcing the email-identity-decoupling spec
 /// (<c>docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md</c>).
 ///
 /// <para>
-/// PR 1 stops writes to the three ASP.NET Identity-derived email columns on
+/// PR 2 forbids writes to the five ASP.NET Identity-derived columns on
 /// <see cref="User"/> — <c>Email</c>, <c>NormalizedEmail</c>,
-/// <c>EmailConfirmed</c> — in <c>Humans.Application</c> and <c>Humans.Web</c>.
-/// <c>UserName</c> / <c>NormalizedUserName</c> are deliberately NOT in this
-/// PR's forbidden set: User creation paths now write
-/// <c>UserName = user.Id.ToString()</c> (Identity needs a unique non-empty
-/// UserName), and that transitional write is part of the decoupling, not a
-/// violation of it. PR 2 forbids <c>set_UserName</c> globally once
-/// <c>HumansUserStore</c> + virtual overrides take over.
+/// <c>EmailConfirmed</c>, <c>UserName</c>, <c>NormalizedUserName</c> — in
+/// <c>Humans.Application</c> and <c>Humans.Web</c>. By the end of PR 2
+/// the columns themselves are dropped from <c>AspNetUsers</c> and the
+/// in-memory properties are routed through virtual overrides on
+/// <see cref="User"/> (<c>Email</c> / <c>NormalizedEmail</c> /
+/// <c>EmailConfirmed</c> compute from <see cref="Domain.Entities.UserEmail"/>;
+/// <c>UserName</c> / <c>NormalizedUserName</c> compute from <c>User.Id</c>).
+/// All five setters either throw <see cref="NotSupportedException"/> or
+/// silently ignore — so any direct write from Application/Web is at best
+/// a runtime exception and at worst a stale in-memory value.
 /// </para>
 ///
 /// <para>
-/// Reads are unrestricted in PR 1 — they sweep to
-/// <see cref="Domain.Entities.UserEmail"/> queries in PR 2 alongside the
-/// column-drop migration.
+/// PR 1 (predecessor) was write-only with three type exemptions
+/// (<c>DevLoginController</c>, <c>DevelopmentDashboardSeeder</c>,
+/// <c>ContactService</c>) that protected downstream reads. PR 2 sweeps
+/// those reads to <see cref="Domain.Entities.UserEmail"/> queries,
+/// removes the entire <c>/Contacts</c> admin surface, and clears all type
+/// exemptions.
 /// </para>
 ///
-/// <para>Exemptions (each carries a downstream read that depends on
-/// <c>User.Email</c>; the write stays through PR 1 and is removed in PR 2
-/// once the read is swept to <c>UserEmail</c>):</para>
-/// <list type="bullet">
-///   <item><description><c>Humans.Infrastructure</c> — <c>UserRepository</c>'s rename / merge / purge / deletion-anonymization writes stay through PR 1; they become no-op assignments in PR 2 when the columns are dropped.</description></item>
-///   <item><description><c>Humans.Web.Controllers.DevLoginController</c> — <c>EnsurePersonaAsync</c> + <c>SeedProfilelessUserAsync</c> still write <c>Email</c> / <c>EmailConfirmed</c> / <c>UserName = email</c>. The integration-test fixture <c>HumansWebApplicationFactory.SignInAsFullyOnboardedAsync</c> looks up dev personas via <c>db.Users.FirstOrDefaultAsync(u =&gt; u.Email == email)</c>, and <c>DevLoginController.SignInAsUser</c> uses <c>FindByEmailAsync</c> as a legacy-persona reuse path. Dropping the write before PR 2's read sweep would break dev login and the integration suite.</description></item>
-///   <item><description><c>Humans.Web.Infrastructure.DevelopmentDashboardSeeder</c> — dev seed cleanup queries <c>u.Email</c> at <c>ResetAsync</c> (DevelopmentDashboardSeeder.cs:421-424) to find seeded dev users. Same shape as the DevLoginController exemption.</description></item>
-///   <item><description><c>Humans.Application.Services.Profile.ContactService</c> — <c>CreateContactAsync</c> still writes <c>Email</c> / <c>UserName</c> / <c>EmailConfirmed</c>. The /Contacts admin UI (<c>ContactsController.Detail</c> + <c>AdminContactRow</c>) renders <c>c.Email</c>, and <c>GetFilteredContactsAsync</c> uses <c>User.Email</c> for search. Stopping the write here without sweeping those reads first produces blank-email contacts.</description></item>
-/// </list>
+/// <para>Exemption strategy in PR 2: ZERO type-level exemptions for
+/// scanned assemblies. The override implementations themselves live in
+/// <c>Humans.Domain.Entities.User</c> (Domain layer — not scanned) and
+/// <c>Humans.Infrastructure.Identity.HumansUserStore</c> (Infrastructure
+/// layer — not scanned). Identity's internal calls to
+/// <c>SetNormalizedUserNameAsync</c> originate inside
+/// <c>Microsoft.AspNetCore.Identity</c> (not scanned). Therefore no
+/// in-scope code path can legitimately write any of the five forbidden
+/// setters.</para>
 ///
 /// <para>
 /// Implementation reads IL via Mono.Cecil rather than reflection because
@@ -46,6 +52,18 @@ namespace Humans.Application.Tests.Architecture;
 /// (<c>user.Email = ...</c>) equally — both lower to <c>callvirt</c> on the
 /// generated setter.
 /// </para>
+///
+/// <para>
+/// PR 2 deliberately does NOT forbid property GETs. Reads are routed
+/// correctly via the virtual overrides on <see cref="User"/> — accessing
+/// <c>user.Email</c> after PR 2 returns the first verified
+/// <see cref="Domain.Entities.UserEmail"/> row, which is the correct
+/// semantic. The DB-translated reads that ARE broken by the column drop
+/// (LINQ filters in repos / dev seeders / test fixtures) are swept site-by-site
+/// in this PR's other tasks; the failing-build feedback from removed
+/// methods (<c>GetByEmailOrAlternateAsync</c>, <c>GetByNormalizedEmailAsync</c>,
+/// <c>GetContactUsersAsync</c>) is the safety net for those.
+/// </para>
 /// </summary>
 public class IdentityColumnWriteRestrictionsTests
 {
@@ -54,6 +72,8 @@ public class IdentityColumnWriteRestrictionsTests
         "set_Email",
         "set_NormalizedEmail",
         "set_EmailConfirmed",
+        "set_UserName",
+        "set_NormalizedUserName",
     };
 
     private static readonly string[] ScannedAssemblies =
@@ -100,10 +120,14 @@ public class IdentityColumnWriteRestrictionsTests
         }
 
         offenders.Should().BeEmpty(
-            because: "PR 1 of the email-identity-decoupling spec stops writes to the three Identity-derived " +
-                     "User EMAIL columns (Email/NormalizedEmail/EmailConfirmed) in Application + Web. " +
-                     "On user creation: leave these columns at defaults and set UserName = user.Id.ToString(); " +
-                     "the UserEmail row created alongside the User carries the email going forward. " +
+            because: "PR 2 of the email-identity-decoupling spec forbids writes to all five " +
+                     "Identity-derived User columns (Email/NormalizedEmail/EmailConfirmed/UserName/" +
+                     "NormalizedUserName) in Application + Web. The columns are dropped from the DB " +
+                     "and the in-memory properties are routed through virtual overrides on User " +
+                     "(Email/NormalizedEmail/EmailConfirmed compute from UserEmails; UserName/" +
+                     "NormalizedUserName compute from User.Id). Caller code should never write any " +
+                     "of these — create UserEmail rows via IUserEmailService for emails, and let " +
+                     "the User overrides supply UserName/NormalizedUserName from Id. " +
                      "Offenders found: {0}", string.Join("; ", offenders));
     }
 
@@ -112,19 +136,11 @@ public class IdentityColumnWriteRestrictionsTests
 
     private static bool IsExemptType(string fullName)
     {
-        // Each exemption carries a downstream User.Email READ that depends on
-        // the write. PR 2 sweeps both reads and writes; until then the writes
-        // stay to keep the read paths working. See class XML doc for the
-        // specific read each exemption protects.
-        if (fullName.StartsWith("Humans.Web.Controllers.DevLoginController", StringComparison.Ordinal))
-            return true;
-
-        if (fullName.StartsWith("Humans.Web.Infrastructure.DevelopmentDashboardSeeder", StringComparison.Ordinal))
-            return true;
-
-        if (fullName.StartsWith("Humans.Application.Services.Profile.ContactService", StringComparison.Ordinal))
-            return true;
-
+        // PR 2: zero type-level exemptions in scanned assemblies. The override
+        // implementations live in Humans.Domain (User.cs) and
+        // Humans.Infrastructure (HumansUserStore) — neither is scanned, so the
+        // legitimate "writers" naturally fall outside this test's scope. See
+        // class XML doc for the full strategy.
         return false;
     }
 
