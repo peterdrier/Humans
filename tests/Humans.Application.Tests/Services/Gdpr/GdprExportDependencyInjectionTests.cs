@@ -16,6 +16,7 @@ using UsersUserService = Humans.Application.Services.Users.UserService;
 using AuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
 using CampService = Humans.Application.Services.Camps.CampService;
 using FeedbackService = Humans.Application.Services.Feedback.FeedbackService;
+using IssuesService = Humans.Application.Services.Issues.IssuesService;
 using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
 using ConsentService = Humans.Application.Services.Consent.ConsentService;
 using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
@@ -80,6 +81,7 @@ public class GdprExportDependencyInjectionTests
         typeof(RoleAssignmentService),
         typeof(ShiftSignupService),
         typeof(FeedbackService),
+        typeof(IssuesService),
         typeof(NotificationInboxService),
         typeof(TicketsTicketQueryService),
         typeof(CampaignService),
