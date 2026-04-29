@@ -380,6 +380,12 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
 
         if (string.Equals(issue.Section, newSection, StringComparison.Ordinal)) return;
 
+        if (issue.Status.IsTerminal())
+        {
+            throw new InvalidOperationException(
+                $"Cannot change section on a terminal issue (status: {issue.Status}).");
+        }
+
         var oldSection = issue.Section ?? "(unknown)";
         var nextSection = newSection ?? "(unknown)";
 

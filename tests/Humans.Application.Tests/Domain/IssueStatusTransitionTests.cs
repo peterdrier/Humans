@@ -8,12 +8,12 @@ namespace Humans.Application.Tests.Domain;
 public class IssueStatusTransitionTests
 {
     [HumansTheory]
-    [InlineData(IssueStatus.Triage,     false)]
-    [InlineData(IssueStatus.Open,       false)]
+    [InlineData(IssueStatus.Triage, false)]
+    [InlineData(IssueStatus.Open, false)]
     [InlineData(IssueStatus.InProgress, false)]
-    [InlineData(IssueStatus.Resolved,   true)]
-    [InlineData(IssueStatus.WontFix,    true)]
-    [InlineData(IssueStatus.Duplicate,  true)]
+    [InlineData(IssueStatus.Resolved, true)]
+    [InlineData(IssueStatus.WontFix, true)]
+    [InlineData(IssueStatus.Duplicate, true)]
     public void IsTerminal_returns_correct_value(IssueStatus s, bool expected)
     {
         s.IsTerminal().Should().Be(expected);

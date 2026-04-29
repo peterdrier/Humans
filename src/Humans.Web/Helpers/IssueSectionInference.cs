@@ -21,7 +21,7 @@ public static class IssueSectionInference
         if (!Uri.TryCreate(path, UriKind.RelativeOrAbsolute, out var uri))
             return null;
 
-        var p = uri.IsAbsoluteUri ? uri.AbsolutePath : path;
+        var p = uri.IsAbsoluteUri ? uri.AbsolutePath : StripQueryAndFragment(path);
         var trimmed = p.Trim('/');
         if (trimmed.Length == 0) return null;
 
@@ -29,19 +29,25 @@ public static class IssueSectionInference
         return Map(first);
     }
 
+    private static string StripQueryAndFragment(string path)
+    {
+        var qIdx = path.IndexOfAny(['?', '#']);
+        return qIdx < 0 ? path : path[..qIdx];
+    }
+
     private static string? Map(string segment) => segment.ToLowerInvariant() switch
     {
-        "camps" or "barrios"  => IssueSectionRouting.Camps,
-        "tickets"             => IssueSectionRouting.Tickets,
-        "teams"               => IssueSectionRouting.Teams,
-        "shifts" or "vol"     => IssueSectionRouting.Shifts,
-        "onboardingreview"    => IssueSectionRouting.Onboarding,
-        "profile"             => IssueSectionRouting.Profiles,
-        "humans"              => IssueSectionRouting.Users,
+        "camps" or "barrios" => IssueSectionRouting.Camps,
+        "tickets" => IssueSectionRouting.Tickets,
+        "teams" => IssueSectionRouting.Teams,
+        "shifts" or "vol" => IssueSectionRouting.Shifts,
+        "onboardingreview" => IssueSectionRouting.Onboarding,
+        "profile" => IssueSectionRouting.Profiles,
+        "humans" => IssueSectionRouting.Users,
         "finance" or "budget" => IssueSectionRouting.Budget,
-        "board" or "voting"   => IssueSectionRouting.Governance,
-        "legal" or "consent"  => IssueSectionRouting.Legal,
-        "city"                => IssueSectionRouting.CityPlanning,
-        _                     => null
+        "board" or "voting" => IssueSectionRouting.Governance,
+        "legal" or "consent" => IssueSectionRouting.Legal,
+        "city" => IssueSectionRouting.CityPlanning,
+        _ => null
     };
 }
