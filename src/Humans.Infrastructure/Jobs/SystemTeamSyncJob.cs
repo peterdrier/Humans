@@ -234,15 +234,20 @@ public class SystemTeamSyncJob : ISystemTeamSync
             return;
         }
 
-        // All users with profiles that are approved and not suspended.
-        var allApprovedIds = await ProfileService.GetActiveApprovedUserIdsAsync(cancellationToken);
+        // Volunteers admission no longer requires Profile.IsApproved (CC clearance) —
+        // any human with a profile, not suspended, with all required consents signed
+        // is admitted. Profile.IsApproved is still maintained as the CC's audit
+        // annotation but is not consulted here.
+        var allUserIds = await _userService.GetAllUserIdsAsync(cancellationToken);
+        var profiles = await ProfileService.GetByUserIdsAsync(allUserIds, cancellationToken);
+        var candidateIds = allUserIds
+            .Where(id => profiles.TryGetValue(id, out var p) && !p.IsSuspended)
+            .ToList();
 
-        // Use shared partition to determine eligibility (Active = approved +
-        // not suspended + all consents signed).
-        var partition = await MembershipCalculator.PartitionUsersAsync(allApprovedIds, cancellationToken);
-        var eligibleUserIds = partition.Active.ToList();
+        var eligibleSet = await MembershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
+            candidateIds, SystemTeamIds.Volunteers, cancellationToken);
 
-        await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, step: step);
+        await SyncTeamMembershipAsync(team, eligibleSet.ToList(), cancellationToken, step: step);
         report?.Steps.Add(step);
     }
 
@@ -396,7 +401,10 @@ public class SystemTeamSyncJob : ISystemTeamSync
         var profiles = await ProfileService.GetByUserIdsAsync([userId], cancellationToken);
         profiles.TryGetValue(userId, out var profile);
 
-        var isEligible = profile is { IsApproved: true, IsSuspended: false }
+        // Volunteers admission no longer requires Profile.IsApproved (CC clearance).
+        // Profile.IsApproved is still tracked as the CC's audit annotation but is
+        // not consulted for team admission.
+        var isEligible = profile is { IsSuspended: false }
             && await MembershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, cancellationToken);
 
         // Build a single-user eligible list and let the existing sync logic handle add/remove
