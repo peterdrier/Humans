@@ -1280,6 +1280,17 @@
 &lt;p&gt;Danke, dass du uns hilfst, besser zu werden!&lt;/p&gt;
 &lt;p&gt;Das Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = original description, {2} = response message</comment></data>
 
+  <!-- Issue Comment Email -->
+  <data name="Email_IssueComment_Subject" xml:space="preserve"><value>Neuer Kommentar zu deinem Issue: {0}</value></data>
+  <data name="Email_IssueComment_Body" xml:space="preserve"><value>&lt;h2&gt;Neuer Kommentar zu deinem Issue&lt;/h2&gt;
+&lt;p&gt;Hallo {0},&lt;/p&gt;
+&lt;p&gt;Es gibt einen neuen Kommentar zu deinem Issue:&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Issue:&lt;/strong&gt; {1}&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Kommentar:&lt;/strong&gt;&lt;/p&gt;
+&lt;blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #666;"&gt;{2}&lt;/blockquote&gt;
+&lt;p&gt;&lt;a href="{3}"&gt;Issue öffnen&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;— Das Humans-Team&lt;/p&gt;</value><comment>{0} = display name, {1} = issue title, {2} = comment HTML, {3} = issue URL</comment></data>
+
   <!-- Feedback Widget -->
   <data name="Feedback_Button" xml:space="preserve"><value>Feedback</value></data>
   <data name="Feedback_Title" xml:space="preserve"><value>Feedback senden</value></data>

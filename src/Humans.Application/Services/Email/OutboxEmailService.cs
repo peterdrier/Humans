@@ -369,7 +369,7 @@ public sealed class OutboxEmailService : IEmailService
     }
 
     /// <inheritdoc />
-    public Task SendIssueCommentAsync(
+    public async Task SendIssueCommentAsync(
         string to,
         string displayName,
         string issueTitle,
@@ -378,13 +378,9 @@ public sealed class OutboxEmailService : IEmailService
         string preferredLanguage,
         CancellationToken ct = default)
     {
-        // Phase 5 of the Issues section feature will wire the renderer and the
-        // outbox-enqueue path. Until then we log a marker so test runs make it
-        // visible that the email path is pending.
-        _logger.LogInformation(
-            "[Issues:Phase5-pending] Would queue issue comment email to {To} ({Name}) for {Title} link {Link}",
-            to, displayName, issueTitle, issueLink);
-        return Task.CompletedTask;
+        var content = _renderer.RenderIssueComment(displayName, issueTitle, commentContent, issueLink, preferredLanguage);
+        await EnqueueAsync(to, displayName, content, "issue_comment", ct,
+            category: MessageCategory.System);
     }
 
     private async Task EnqueueAsync(
