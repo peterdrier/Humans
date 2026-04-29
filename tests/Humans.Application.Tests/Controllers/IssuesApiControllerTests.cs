@@ -4,6 +4,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Controllers;
 using Humans.Web.Filters;
+using Humans.Web.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
