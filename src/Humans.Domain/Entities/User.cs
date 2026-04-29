@@ -110,6 +110,26 @@ public class User : IdentityUser<Guid>
     /// uniqueness validator always sees a non-empty unique value without
     /// callers having to populate it.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// CALLER CONTRACT: <see cref="IdentityUser{TKey}.Id"/> MUST be assigned
+    /// <em>before</em> any code path reads <c>UserName</c>, including
+    /// <c>UserManager.CreateAsync</c>'s username-uniqueness validator. EF
+    /// assigns <c>Id</c> at <c>SaveChanges</c>, which is too late — the
+    /// validator runs first, sees <c>base.UserName == null</c>, and the getter
+    /// returns <c>Guid.Empty.ToString()</c>. Multiple users created in one
+    /// run will then collide on <c>"00000000-0000-0000-0000-000000000000"</c>
+    /// and <c>CreateAsync</c> fails on the second user.
+    /// </para>
+    /// <para>
+    /// Always set the Id explicitly:
+    /// <code>
+    /// var userId = Guid.NewGuid();
+    /// var user = new User { Id = userId, ... };
+    /// await _userManager.CreateAsync(user);
+    /// </code>
+    /// </para>
+    /// </remarks>
     public override string? UserName
     {
         get => base.UserName ?? Id.ToString();

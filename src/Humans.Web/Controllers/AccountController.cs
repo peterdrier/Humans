@@ -101,15 +101,57 @@ public class AccountController : Controller
             return RedirectToLocal(returnUrl);
         }
 
-        if (result.IsLockedOut)
-        {
-            return RedirectToAction(nameof(Login), new { returnUrl, error = "lockedout" });
-        }
-
         // No existing login — try to link to an existing account by email
         var email = info.Principal.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
         var name = info.Principal.FindFirstValue(ClaimTypes.Name);
         var pictureUrl = info.Principal.FindFirstValue("urn:google:picture");
+
+        if (result.IsLockedOut)
+        {
+            // Lockout-relink: a merge or deletion locked out the source User
+            // that owns this OAuth login (UserRepository sets
+            // LockoutEnd = MaxValue on merge/anonymize). Move the login to the
+            // active User identified by the OAuth claim email so the human
+            // can keep signing in via Google. See Auth.md.
+            if (!string.IsNullOrEmpty(email))
+            {
+                var lockedSource = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
+                var activeTarget = await _magicLinkService.FindUserByVerifiedEmailAsync(email);
+                if (lockedSource is not null && activeTarget is not null && lockedSource.Id != activeTarget.Id)
+                {
+                    var removeResult = await _userManager.RemoveLoginAsync(
+                        lockedSource, info.LoginProvider, info.ProviderKey);
+                    if (removeResult.Succeeded)
+                    {
+                        var relinkResult = await _userManager.AddLoginAsync(activeTarget, info);
+                        if (relinkResult.Succeeded)
+                        {
+                            activeTarget.LastLoginAt = _clock.GetCurrentInstant();
+                            await _userManager.UpdateAsync(activeTarget);
+                            await _signInManager.SignInAsync(activeTarget, isPersistent: false);
+                            _logger.LogInformation(
+                                "Relinked {Provider} login from locked source {SourceId} to active target {TargetId}",
+                                info.LoginProvider, lockedSource.Id, activeTarget.Id);
+                            return RedirectToLocal(returnUrl);
+                        }
+
+                        _logger.LogWarning(
+                            "Lockout-relink: AddLoginAsync to {TargetId} failed: {Errors}",
+                            activeTarget.Id,
+                            string.Join(", ", relinkResult.Errors.Select(e => e.Description)));
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "Lockout-relink: RemoveLoginAsync from {SourceId} failed: {Errors}",
+                            lockedSource.Id,
+                            string.Join(", ", removeResult.Errors.Select(e => e.Description)));
+                    }
+                }
+            }
+
+            return RedirectToAction(nameof(Login), new { returnUrl, error = "lockedout" });
+        }
 
         if (string.IsNullOrEmpty(email))
         {

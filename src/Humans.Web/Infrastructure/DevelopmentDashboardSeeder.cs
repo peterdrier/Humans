@@ -299,7 +299,17 @@ public sealed class DevelopmentDashboardSeeder
 
             users.Add(user);
         }
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to save seeded UserEmail rows ({UserCount} users); aborting dev seed",
+                users.Count);
+            throw;
+        }
 
         // Coordinators: 2 per parent team, routed via ITeamService.AddSeededMemberAsync so
         // we never touch TeamMembers directly. Infrastructure coords logged in 9 days ago

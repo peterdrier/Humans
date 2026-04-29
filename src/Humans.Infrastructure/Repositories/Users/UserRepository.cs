@@ -147,6 +147,7 @@ public sealed class UserRepository : IUserRepository
         {
             return await ctx.Users
                 .AsNoTracking()
+                .Include(u => u.UserEmails)
                 .FirstOrDefaultAsync(u => u.Id == userIdByEmail.Value, ct);
         }
 
@@ -155,6 +156,7 @@ public sealed class UserRepository : IUserRepository
         {
             return await ctx.Users
                 .AsNoTracking()
+                .Include(u => u.UserEmails)
                 .FirstOrDefaultAsync(u =>
                     u.GoogleEmail != null && EF.Functions.ILike(u.GoogleEmail, escapedEmail, "\\"),
                     ct);
@@ -162,6 +164,7 @@ public sealed class UserRepository : IUserRepository
 
         return await ctx.Users
             .AsNoTracking()
+            .Include(u => u.UserEmails)
             .FirstOrDefaultAsync(u =>
                 u.GoogleEmail != null && (
                     EF.Functions.ILike(u.GoogleEmail, escapedEmail, "\\") ||
