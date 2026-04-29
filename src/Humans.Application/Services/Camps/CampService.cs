@@ -287,7 +287,7 @@ public sealed class CampService : ICampService, IUserDataContributor
         var camps = await GetCampsForYearAsync(year, cancellationToken);
 
         var cards = ApplyCampDirectoryFilter(
-            camps.Where(c => c.IsPublic).Select(camp => CreateCampDirectoryCard(camp, year)),
+            camps.Where(c => c.HasPublicSeasonForYear(year)).Select(camp => CreateCampDirectoryCard(camp, year)),
             filter)
             .OrderBy(card => card.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -342,7 +342,7 @@ public sealed class CampService : ICampService, IUserDataContributor
         var camps = await GetCampsForYearAsync(year, cancellationToken);
 
         return camps
-            .Where(c => c.IsPublic)
+            .Where(c => c.HasPublicSeasonForYear(year))
             .Select(camp => CreateCampPublicSummary(camp, year))
             .OrderBy(camp => camp.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -355,7 +355,7 @@ public sealed class CampService : ICampService, IUserDataContributor
         var camps = await GetCampsForYearAsync(year, cancellationToken);
 
         return camps
-            .Where(c => c.IsPublic)
+            .Where(c => c.HasPublicSeasonForYear(year))
             .Select(camp => CreateCampPlacementSummary(camp, year))
             .Where(summary => summary is not null)
             .Select(summary => summary!)

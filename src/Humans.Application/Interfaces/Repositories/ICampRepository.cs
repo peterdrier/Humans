@@ -41,7 +41,7 @@ public interface ICampRepository
     /// <summary>
     /// Returns every camp that has any season for the year, with seasons
     /// (year-filtered), images and historical names included. Read-only.
-    /// Caller-side filter via <c>Camp.IsPublic</c> for the public subset.
+    /// Caller-side filter via <c>Camp.HasPublicSeasonForYear(year)</c> for the public subset.
     /// </summary>
     Task<IReadOnlyList<Camp>> GetAllCampsForYearAsync(int year, CancellationToken ct = default);
 

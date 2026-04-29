@@ -27,8 +27,7 @@ public class Camp
     public ICollection<CampHistoricalName> HistoricalNames { get; set; } = new List<CampHistoricalName>();
     public ICollection<CampImage> Images { get; set; } = new List<CampImage>();
 
-    // Assumes Seasons is loaded already filtered to a single year — true for
-    // every callsite (repo's year-based loaders include Seasons.Where(s => s.Year == year)).
-    public bool IsPublic =>
-        Seasons.Any(s => s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full);
+    public bool HasPublicSeasonForYear(int year) =>
+        Seasons.Any(s => s.Year == year &&
+            (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full));
 }
