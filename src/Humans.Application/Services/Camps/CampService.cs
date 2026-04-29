@@ -1182,7 +1182,20 @@ public sealed class CampService : ICampService, IUserDataContributor
             throw new InvalidOperationException("Image must be under 10MB.");
         }
 
+        // Filename extension must also be on the image whitelist — a client
+        // could pass MIME validation with image/jpeg but supply a .html
+        // filename, and static-file middleware would then serve the upload
+        // as HTML (script-injection vector).
+        var allowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ".jpg", ".jpeg", ".png", ".webp"
+        };
         var ext = Path.GetExtension(fileName);
+        if (!allowedExtensions.Contains(ext))
+        {
+            throw new InvalidOperationException(
+                "Image filename must end in .jpg, .jpeg, .png, or .webp.");
+        }
         var storageKey = $"uploads/camps/{campId}/{Guid.NewGuid()}{ext}";
         await _fileStorage.SaveAsync(storageKey, fileStream, cancellationToken);
 
