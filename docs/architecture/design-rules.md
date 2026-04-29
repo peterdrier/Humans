@@ -258,6 +258,7 @@ Each section's service owns these tables. Cross-service access goes through the 
 | **Google Integration** | `GoogleSyncService`, `GoogleAdminService`, `GoogleWorkspaceSyncService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService` | `sync_service_settings`, `google_sync_outbox_events` |
 | **Email** | `EmailOutboxService`, `OutboxEmailService`, `EmailService` | `email_outbox_messages`; owns `system_settings` key `email_outbox_paused` |
 | **Feedback** | `FeedbackService` | `feedback_reports`, `feedback_messages` |
+| **Issues** | `IssuesService` | `issues`, `issue_comments` |
 | **Notifications** | `NotificationService`, `NotificationInboxService`, `NotificationMeterProvider` | `notifications`, `notification_recipients` |
 | **Audit Log** | `AuditLogService` | `audit_log_entries` |
 
