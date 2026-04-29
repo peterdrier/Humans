@@ -67,28 +67,17 @@
                             <small class="text-nowrap @(understaffed ? "text-danger fw-bold" : "text-muted")">@item.ConfirmedCount/@shift.MaxVolunteers</small>
                         </div>
                     </td>
-                    @if (Model.ShowSignups)
-                    {
-                        <td class="small">
-                            @for (var i = 0; i < item.Signups.Count; i++)
-                            {
-                                var signup = item.Signups[i];
-                                if (i > 0) { <text>, </text> }
-                                <human-link user-id="@signup.UserId" display-name="@signup.DisplayName" show-popover="true"
-                                           class="@(signup.Status == SignupStatus.Pending ? "text-muted fst-italic" : "")" />@if (signup.Status == SignupStatus.Pending)
-                                {<small class="text-muted"> @Localizer["Shifts_Pending"]</small>}
-                            }
-                        </td>
-                    }
-                    else if (item.Signups.Count > 0)
+                    @if (item.Signups.Count > 0)
                     {
                         <td>
                             <div class="d-flex flex-wrap gap-1">
-                                @foreach (var signup in item.Signups.Where(s => s.Status == SignupStatus.Confirmed))
+                                @foreach (var signup in item.Signups)
                                 {
                                     <human-link user-id="@signup.UserId" display-name="@signup.DisplayName" mode="Avatar" size="26"
                                                profile-picture-url="@signup.ProfilePictureUrl" show-popover="true"
-                                               title="@signup.DisplayName" />
+                                               title="@signup.DisplayName@(signup.Status == SignupStatus.Pending ? $" {Localizer["Shifts_Pending"]}" : "")"
+                                               class="@(signup.Status == SignupStatus.Pending ? "opacity-50" : "")"
+                                               style="@(signup.Status == SignupStatus.Pending ? "border: 1px dashed var(--h-muted-text); border-radius: 50%;" : "")" />
                                 }
                             </div>
                         </td>

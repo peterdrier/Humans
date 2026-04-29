@@ -150,7 +150,7 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
                                     <span class="badge bg-warning text-dark">@Localizer["Shifts_NeedsHelp"]</span>
                                 }
                             </td>
-                            @if (Model.ShowSignups)
+                            @if (item.Signups.Count > 0)
                             {
                                 <td>
                                     <div class="d-flex flex-wrap gap-1">
@@ -161,19 +161,6 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
                                                        title="@signup.DisplayName@(signup.Status == SignupStatus.Pending ? $" {Localizer["Shifts_Pending"]}" : "")"
                                                        class="@(signup.Status == SignupStatus.Pending ? "opacity-50" : "")"
                                                        style="@(signup.Status == SignupStatus.Pending ? "border: 1px dashed var(--h-muted-text); border-radius: 50%;" : "")" />
-                                        }
-                                    </div>
-                                </td>
-                            }
-                            else if (item.Signups.Count > 0)
-                            {
-                                <td>
-                                    <div class="d-flex flex-wrap gap-1">
-                                        @foreach (var signup in item.Signups.Where(s => s.Status == SignupStatus.Confirmed))
-                                        {
-                                            <human-link user-id="@signup.UserId" display-name="@signup.DisplayName" mode="Avatar" size="26"
-                                                       profile-picture-url="@signup.ProfilePictureUrl" show-popover="true"
-                                                       title="@signup.DisplayName" />
                                         }
                                     </div>
                                 </td>
@@ -226,7 +213,7 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
                                 <span class="badge bg-warning text-dark">@Localizer["Shifts_NeedsHelp"]</span>
                             }
                         </td>
-                        @if (Model.ShowSignups)
+                        @if (item.Signups.Count > 0)
                         {
                             <td>
                                 <div class="d-flex flex-wrap gap-1">
@@ -237,19 +224,6 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
                                                    title="@signup.DisplayName@(signup.Status == SignupStatus.Pending ? $" {Localizer["Shifts_Pending"]}" : "")"
                                                    class="@(signup.Status == SignupStatus.Pending ? "opacity-50" : "")"
                                                    style="@(signup.Status == SignupStatus.Pending ? "border: 1px dashed var(--h-muted-text); border-radius: 50%;" : "")" />
-                                    }
-                                </div>
-                            </td>
-                        }
-                        else if (item.Signups.Count > 0)
-                        {
-                            <td>
-                                <div class="d-flex flex-wrap gap-1">
-                                    @foreach (var signup in item.Signups.Where(s => s.Status == SignupStatus.Confirmed))
-                                    {
-                                        <human-link user-id="@signup.UserId" display-name="@signup.DisplayName" mode="Avatar" size="26"
-                                                   profile-picture-url="@signup.ProfilePictureUrl" show-popover="true"
-                                                   title="@signup.DisplayName" />
                                     }
                                 </div>
                             </td>

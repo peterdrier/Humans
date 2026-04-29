@@ -28,15 +28,16 @@ Coordinators and admins managing shifts cannot currently see who has signed up f
 ## User Stories
 
 ### US-1: See who signed up for Event shifts
-**As a** coordinator or admin browsing shifts,
-**I want to** see the names of volunteers signed up for each Event (hourly) shift,
-**so that** I can coordinate team composition and make informed approval decisions.
+**As a** volunteer browsing shifts,
+**I want to** see avatar thumbnails of who is signed up for each Event (hourly) shift,
+**so that** I can coordinate with my team at a glance and make informed signup decisions.
 
 **Acceptance Criteria:**
 - A "Signed Up" column appears to the right of the Filled column on both `/Shifts` (browse) and `/Teams/{slug}/Shifts` (admin) for Event rotas
-- Column shows comma-separated display names, each linked to `/Human/{userId}`
-- Confirmed names render in normal weight
-- Pending names render in muted/italic with a "(pending)" label
+- Column shows a row of small circular avatar thumbnails (~26px), reusing `<human-link mode="Avatar">`
+- Each avatar links to `/Human/{userId}` with a hover popover showing display name
+- Confirmed avatars render at full opacity
+- Pending avatars render at 50% opacity with a dashed border (and the title carries the localized "Pending" label)
 - Only Confirmed and Pending signups are shown — Refused, Bailed, NoShow, and Cancelled are excluded
 - Empty cell when no signups (Filled column already shows "0/N")
 - Column renders for all authenticated viewers on `/Shifts` and `/Vol/Shifts` (temporary public policy — see Authorization)
@@ -81,7 +82,7 @@ public record ShiftSignupInfo(Guid UserId, string DisplayName, SignupStatus Stat
 
 | Page | Route | Rota Type | Display Pattern |
 |------|-------|-----------|----------------|
-| Shift browse | `/Shifts` | Event | Name list column |
+| Shift browse | `/Shifts` | Event | Avatar row column |
 | Shift browse | `/Shifts` | Build/Strike | Avatar row column |
 | Shift admin | `/Teams/{slug}/Shifts` | Event | Name list column |
 | Shift admin | `/Teams/{slug}/Shifts` | Build/Strike | Avatar row column |
@@ -95,9 +96,7 @@ public record ShiftSignupInfo(Guid UserId, string DisplayName, SignupStatus Stat
 
 ## Localization
 
-~2-3 new keys across 5 languages:
-- Column header: "Signed Up" / "Apuntados" / "Angemeldet" / "Inscrits" / "Iscritti"
-- Pending label: "(pending)" / "(pendiente)" / "(ausstehend)" / "(en attente)" / "(in attesa)"
+Existing keys cover all browse-page strings — no new keys needed for the avatar-chip rendering. The existing `Shifts_SignedUp` column header and `Shifts_Pending` label (used in avatar tooltips) are already in all 6 locales.
 
 ## Related Features
 
