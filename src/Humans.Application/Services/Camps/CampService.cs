@@ -287,7 +287,7 @@ public sealed class CampService : ICampService, IUserDataContributor
         var camps = await GetCampsForYearAsync(year, cancellationToken);
 
         var cards = ApplyCampDirectoryFilter(
-            camps.Select(camp => CreateCampDirectoryCard(camp, year)),
+            camps.Where(c => c.IsPublic).Select(camp => CreateCampDirectoryCard(camp, year)),
             filter)
             .OrderBy(card => card.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -319,23 +319,16 @@ public sealed class CampService : ICampService, IUserDataContributor
             async entry =>
             {
                 entry.AbsoluteExpirationRelativeToNow = CampsForYearCacheTtl;
-                return await _repo.GetPublicCampsForYearAsync(year, cancellationToken);
+                return await _repo.GetAllCampsForYearAsync(year, cancellationToken);
             });
 
         return cached is null ? new List<Camp>() : cached.ToList();
     }
 
-    public async Task<List<Camp>> GetAllCampsForYearAsync(
-        int year, CancellationToken cancellationToken = default)
-    {
-        var camps = await _repo.GetAllCampsForYearAsync(year, cancellationToken);
-        return camps.ToList();
-    }
-
     public async Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId)>>
         GetCampSeasonsForComplianceAsync(int year, CancellationToken cancellationToken = default)
     {
-        var camps = await _repo.GetAllCampsForYearAsync(year, cancellationToken);
+        var camps = await GetCampsForYearAsync(year, cancellationToken);
         // Camp.Name lives on CampSeason, not Camp — pull s.Name not c.Name (deviation
         // from plan; reflects actual schema where the canonical name is per-season).
         return camps.SelectMany(c => c.Seasons.Where(s => s.Year == year).Select(s =>
@@ -349,6 +342,7 @@ public sealed class CampService : ICampService, IUserDataContributor
         var camps = await GetCampsForYearAsync(year, cancellationToken);
 
         return camps
+            .Where(c => c.IsPublic)
             .Select(camp => CreateCampPublicSummary(camp, year))
             .OrderBy(camp => camp.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -361,6 +355,7 @@ public sealed class CampService : ICampService, IUserDataContributor
         var camps = await GetCampsForYearAsync(year, cancellationToken);
 
         return camps
+            .Where(c => c.IsPublic)
             .Select(camp => CreateCampPlacementSummary(camp, year))
             .Where(summary => summary is not null)
             .Select(summary => summary!)

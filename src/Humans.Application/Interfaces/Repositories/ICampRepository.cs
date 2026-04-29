@@ -39,15 +39,9 @@ public interface ICampRepository
     Task<Camp?> GetByIdAsync(Guid campId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns camps whose seasons for the year have status Active or Full,
-    /// with seasons (year-filtered), images (sort-ordered), and historical
-    /// names included. Read-only.
-    /// </summary>
-    Task<IReadOnlyList<Camp>> GetPublicCampsForYearAsync(int year, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns every camp that has any season for the year, with seasons
-    /// (year-filtered), images and historical names included. Admin-only.
+    /// (year-filtered), images and historical names included. Read-only.
+    /// Caller-side filter via <c>Camp.IsPublic</c> for the public subset.
     /// </summary>
     Task<IReadOnlyList<Camp>> GetAllCampsForYearAsync(int year, CancellationToken ct = default);
 

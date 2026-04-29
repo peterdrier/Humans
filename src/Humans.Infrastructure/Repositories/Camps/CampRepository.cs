@@ -56,21 +56,6 @@ public sealed class CampRepository : ICampRepository
             .FirstOrDefaultAsync(b => b.Id == campId, ct);
     }
 
-    public async Task<IReadOnlyList<Camp>> GetPublicCampsForYearAsync(
-        int year, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Camps
-            .AsNoTracking()
-            .Include(b => b.Seasons.Where(s => s.Year == year &&
-                (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full)))
-            .Include(b => b.Images.OrderBy(i => i.SortOrder))
-            .Include(b => b.HistoricalNames)
-            .Where(b => b.Seasons.Any(s => s.Year == year &&
-                (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full)))
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<Camp>> GetAllCampsForYearAsync(
         int year, CancellationToken ct = default)
     {
