@@ -366,7 +366,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
 
         if (newAssigneeUserId.HasValue)
         {
-            await DispatchAssignedNotificationAsync(issue, newAssigneeUserId.Value, ct);
+            await DispatchAssignedNotificationAsync(issue, newAssigneeUserId.Value, actorUserId, ct);
         }
     }
 
@@ -602,8 +602,13 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
     }
 
     private async Task DispatchAssignedNotificationAsync(
-        Issue issue, Guid newAssigneeUserId, CancellationToken ct)
+        Issue issue, Guid newAssigneeUserId, Guid? actorUserId, CancellationToken ct)
     {
+        // Self-assign is a no-op for notifications — the actor doesn't need
+        // a "you assigned yourself" alert. Mirrors the actor-exclusion pattern
+        // in DispatchCommentNotificationsAsync / DispatchStatusChangedNotificationAsync.
+        if (newAssigneeUserId == actorUserId) return;
+
         try
         {
             await _notifications.SendAsync(
