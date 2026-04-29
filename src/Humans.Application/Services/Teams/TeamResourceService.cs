@@ -452,7 +452,7 @@ public sealed partial class TeamResourceService : ITeamResourceService
         }
         else
         {
-            _logger.LogWarning("UpdatePermissionLevelAsync: resource {ResourceId} not found or no change applied", resourceId);
+            _logger.LogWarning("UpdatePermissionLevelAsync: resource {ResourceId} not found", resourceId);
         }
     }
 
