@@ -8,6 +8,13 @@
     var verb = AuditLogViewComponent.GetActionVerb(Model.Action);
     var selfVerb = AuditLogViewComponent.GetActionSelfVerb(Model.Action);
 
+    // Trims a dangling " for"/" to" preposition. Used when we can't render a
+    // subject (old rows pre-RelatedEntityId fix, or unmapped subject-less actions).
+    string TrimDanglingPreposition(string v)
+        => v.EndsWith(" for", StringComparison.Ordinal) ? v[..^4]
+         : v.EndsWith(" to", StringComparison.Ordinal) ? v[..^3]
+         : v;
+
     // Subject: the user being acted upon
     Guid? subjectId = Model.EntityType is "User" or "Profile" or "WorkspaceAccount"
         ? Model.EntityId
@@ -41,7 +48,17 @@
             <span class="text-muted">System</span>
         }
 
-        <span>@(actorIsSubject && selfVerb != null ? selfVerb : verb)</span>
+        @* Pick verb form:
+           - actor==subject: selfVerb when defined (avoids dangling "for")
+           - subject missing (old rows pre-RelatedEntityId fix): selfVerb if defined,
+             else trim trailing preposition. Most subject-less ShiftSignup* old rows
+             are self-actions so selfVerb is the honest default. *@
+        var displayVerb =
+            actorIsSubject && selfVerb != null ? selfVerb :
+            !subjectId.HasValue && selfVerb != null ? selfVerb :
+            !subjectId.HasValue ? TrimDanglingPreposition(verb) :
+            verb;
+        <span>@displayVerb</span>
 
         @* Subject (skip if same as actor) *@
         @if (subjectId.HasValue && !actorIsSubject)
