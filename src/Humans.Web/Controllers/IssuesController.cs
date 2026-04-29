@@ -189,7 +189,7 @@ public class IssuesController : HumansControllerBase
         var issue = await _issues.GetIssueByIdAsync(id);
         if (issue is null) return NotFound();
 
-        var canHandle = await CanHandleAsync(issue);
+        var canHandle = CanHandle(issue);
         var isReporter = issue.ReporterUserId == user.Id;
         if (!canHandle && !isReporter) return NotFound();
 
@@ -214,7 +214,7 @@ public class IssuesController : HumansControllerBase
         var issue = await _issues.GetIssueByIdAsync(id);
         if (issue is null) return NotFound();
 
-        var canHandle = await CanHandleAsync(issue);
+        var canHandle = CanHandle(issue);
         var isReporter = issue.ReporterUserId == user.Id;
         if (!canHandle && !isReporter) return NotFound();
 
@@ -258,7 +258,7 @@ public class IssuesController : HumansControllerBase
 
         var issue = await _issues.GetIssueByIdAsync(id);
         if (issue is null) return NotFound();
-        if (!await CanHandleAsync(issue)) return Forbid();
+        if (!CanHandle(issue)) return Forbid();
 
         try
         {
@@ -287,7 +287,7 @@ public class IssuesController : HumansControllerBase
 
         var issue = await _issues.GetIssueByIdAsync(id);
         if (issue is null) return NotFound();
-        if (!await CanHandleAsync(issue)) return Forbid();
+        if (!CanHandle(issue)) return Forbid();
 
         try
         {
@@ -316,7 +316,7 @@ public class IssuesController : HumansControllerBase
 
         var issue = await _issues.GetIssueByIdAsync(id);
         if (issue is null) return NotFound();
-        if (!await CanHandleAsync(issue)) return Forbid();
+        if (!CanHandle(issue)) return Forbid();
 
         try
         {
@@ -345,7 +345,7 @@ public class IssuesController : HumansControllerBase
 
         var issue = await _issues.GetIssueByIdAsync(id);
         if (issue is null) return NotFound();
-        if (!await CanHandleAsync(issue)) return Forbid();
+        if (!CanHandle(issue)) return Forbid();
 
         try
         {
@@ -368,15 +368,14 @@ public class IssuesController : HumansControllerBase
     /// <summary>
     /// Returns true if the current user can handle (triage / assign / change status of)
     /// this issue: Admin, or holds any role mapped to <c>issue.Section</c>.
+    /// Reads from claims (populated by RoleAssignmentClaimsTransformation) — see
+    /// coding-rules.md "claims-first" rule; do NOT reach for UserManager here.
     /// </summary>
-    private async Task<bool> CanHandleAsync(Issue issue)
+    private bool CanHandle(Issue issue)
     {
         if (User.IsInRole(RoleNames.Admin)) return true;
-        var current = await UserManager.GetUserAsync(User);
-        if (current is null) return false;
-        var roles = await UserManager.GetRolesAsync(current);
         var sectionRoles = IssueSectionRouting.RolesFor(issue.Section);
-        return sectionRoles.Any(r => roles.Contains(r, StringComparer.Ordinal));
+        return sectionRoles.Any(r => User.IsInRole(r));
     }
 
     private static IssueListItemViewModel MapListItem(Issue i) => new()
