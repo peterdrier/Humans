@@ -93,5 +93,9 @@ public enum AuditAction
     CampRoleDefinitionReactivated,
     CampRoleAssigned,
     CampRoleUnassigned,
+    IssueStatusChanged,
+    IssueAssigneeChanged,
+    IssueSectionChanged,
+    IssueGitHubLinked,
     AccountPurged,
 }
