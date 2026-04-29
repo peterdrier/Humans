@@ -3,14 +3,14 @@
 <div class="sidebar-scroll">
     @foreach (var group in Model.Groups)
     {
-        <h4>@Localizer[group.LabelKey]</h4>
+        <h4>@group.Label</h4>
         @foreach (var item in group.Items)
         {
             if (item.RawHref is not null)
             {
                 <a class="@(item.IsActive ? "active" : null)" href="@item.RawHref">
                     <i class="@item.IconCssClass" aria-hidden="true"></i>
-                    <span>@Localizer[item.LabelKey]</span>
+                    <span>@item.Label</span>
                     @if (item.PillCount.HasValue)
                     {
                         <span class="pill">@item.PillCount.Value</span>
@@ -22,7 +22,7 @@
                 <a class="@(item.IsActive ? "active" : null)"
                    asp-controller="@item.Controller" asp-action="@item.Action">
                     <i class="@item.IconCssClass" aria-hidden="true"></i>
-                    <span>@Localizer[item.LabelKey]</span>
+                    <span>@item.Label</span>
                     @if (item.PillCount.HasValue)
                     {
                         <span class="pill">@item.PillCount.Value</span>

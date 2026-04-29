@@ -1,17 +1,14 @@
 @model Humans.Web.Models.AdminDashboardViewModel
 @{
-    ViewData["Title"] = Localizer["AdminNav_Dashboard"];
+    ViewData["Title"] = "Dashboard";
 }
 
 <div class="page-head">
     <div>
-        <h1 class="title">@Localizer["AdminDashboard_Greeting", Model.GreetingFirstName]</h1>
+        <h1 class="title">Welcome back, @Model.GreetingFirstName.</h1>
         <p class="sub">
-            @Localizer["AdminDashboard_Subtitle",
-                Model.ActiveHumans,
-                Model.ShiftCoveragePercent,
-                Model.OpenFeedback,
-                Model.SystemAllNormal ? Localizer["AdminDashboard_AllSystemsNormal"].Value : Localizer["AdminDashboard_NeedsAttention"].Value]
+            @Model.ActiveHumans active humans · @Model.ShiftCoveragePercent% shift coverage · @Model.OpenFeedback open feedback ·
+            @(Model.SystemAllNormal ? "all systems normal" : "needs attention")
         </p>
     </div>
 </div>
@@ -23,8 +20,8 @@
 <div class="split-panels">
     <div class="card">
         <div class="card-head">
-            <h3>@Localizer["AdminDashboard_RecentActivity"]</h3>
-            <small>@Localizer["AdminDashboard_RecentActivity_Caption"]</small>
+            <h3>Recent activity</h3>
+            <small>last 24h</small>
         </div>
         <partial name="_DashboardActivity" model="Model.RecentActivity" />
     </div>

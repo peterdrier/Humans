@@ -2,6 +2,7 @@ using Hangfire;
 using Humans.Application.Interfaces.Admin;
 using Humans.Web.Infrastructure;
 using Microsoft.Extensions.Logging;
+using NodaTime;
 using Serilog.Events;
 
 namespace Humans.Web.Services;
@@ -26,7 +27,7 @@ public sealed class AdminDashboardService : IAdminDashboardService
 
     public Task<AdminSystemHealth> GetSystemHealthAsync(CancellationToken ct = default)
     {
-        var since = DateTimeOffset.UtcNow.AddHours(-24);
+        var since = SystemClock.Instance.GetCurrentInstant().Minus(Duration.FromHours(24)).ToDateTimeOffset();
         var events = InMemoryLogSink.Instance.GetEvents(200);
         var errors = CountErrorsSince(events, since);
 

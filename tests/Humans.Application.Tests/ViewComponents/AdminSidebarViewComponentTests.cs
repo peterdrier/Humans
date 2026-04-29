@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace Humans.Application.Tests.ViewComponents;
@@ -42,7 +43,7 @@ public class AdminSidebarViewComponentTests
         var result = await sut.InvokeAsync() as ViewViewComponentResult;
         var model = result!.ViewData!.Model as AdminSidebarViewModel;
         model!.Groups.Should().HaveCount(1);
-        model.Groups.Single().LabelKey.Should().Be("AdminGroup_Operations");
+        model.Groups.Single().Label.Should().Be("Operations");
     }
 
     [HumansFact]
@@ -53,10 +54,10 @@ public class AdminSidebarViewComponentTests
         var result = await sut.InvokeAsync() as ViewViewComponentResult;
         var model = result!.ViewData!.Model as AdminSidebarViewModel;
         var ticketsItem = model!.Groups.SelectMany(g => g.Items)
-            .Single(i => string.Equals(i.LabelKey, "AdminNav_Tickets", StringComparison.Ordinal));
+            .Single(i => string.Equals(i.Label, "Tickets", StringComparison.Ordinal));
         ticketsItem.IsActive.Should().BeTrue();
         var volunteersItem = model.Groups.SelectMany(g => g.Items)
-            .Single(i => string.Equals(i.LabelKey, "AdminNav_Volunteers", StringComparison.Ordinal));
+            .Single(i => string.Equals(i.Label, "Volunteers", StringComparison.Ordinal));
         volunteersItem.IsActive.Should().BeFalse();
     }
 
@@ -73,7 +74,7 @@ public class AdminSidebarViewComponentTests
         var allItems = model!.Groups.SelectMany(g => g.Items).ToList();
         var activeItems = allItems.Where(i => i.IsActive).ToList();
         activeItems.Should().HaveCount(1);
-        activeItems.Single().LabelKey.Should().Be("AdminNav_Logs");
+        activeItems.Single().Label.Should().Be("Logs");
     }
 
     [HumansFact]
@@ -84,7 +85,7 @@ public class AdminSidebarViewComponentTests
         var sut = MakeSut(AlwaysAllow(), "Home", "Index", env);
         var result = await sut.InvokeAsync() as ViewViewComponentResult;
         var model = result!.ViewData!.Model as AdminSidebarViewModel;
-        model!.Groups.Should().NotContain(g => g.LabelKey == "AdminGroup_Dev");
+        model!.Groups.Should().NotContain(g => g.Label == "Dev");
     }
 
     private static IAuthorizationService AlwaysAllow()
@@ -101,7 +102,7 @@ public class AdminSidebarViewComponentTests
         env ??= MakeDevEnv();
         var sp = Substitute.For<IServiceProvider>();
         var http = Substitute.For<IHttpContextAccessor>();
-        var sut = new AdminSidebarViewComponent(auth, env, sp, http);
+        var sut = new AdminSidebarViewComponent(auth, env, sp, http, NullLogger<AdminSidebarViewComponent>.Instance);
 
         var viewContext = new Microsoft.AspNetCore.Mvc.Rendering.ViewContext
         {

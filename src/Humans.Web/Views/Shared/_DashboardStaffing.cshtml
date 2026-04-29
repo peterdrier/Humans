@@ -2,11 +2,11 @@
 
 <div class="card">
     <div class="card-head">
-        <h3>@Localizer["AdminDashboard_Staffing_Title"]</h3>
+        <h3>Staffing by department</h3>
         <small>
             @if (Model.ShiftTotalOf.HasValue)
             {
-                @Localizer["AdminDashboard_Staffing_Caption", Model.ShiftFilledOf!, Model.ShiftTotalOf!]
+                <text>event-wide · @Model.ShiftFilledOf / @Model.ShiftTotalOf shifts</text>
             }
         </small>
     </div>
@@ -14,8 +14,8 @@
         @if (Model.StaffingByDepartment.Count == 0)
         {
             <p class="text-muted px-3">
-                @Localizer["AdminDashboard_Staffing_Placeholder"]
-                <a asp-controller="Vol" asp-action="Index">@Localizer["AdminNav_Volunteers"]</a>.
+                Live staffing tile coming — see
+                <a asp-controller="Vol" asp-action="Index">Volunteers</a>.
             </p>
         }
         else

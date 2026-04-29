@@ -1,8 +1,9 @@
-@model IReadOnlyList<AuditLogEntry>
+@using Humans.Domain.Enums
+@model IReadOnlyList<Humans.Web.Models.DashboardActivityRow>
 
 @if (Model.Count == 0)
 {
-    <p class="text-muted px-3 py-3">@Localizer["AdminDashboard_RecentActivity_Empty"]</p>
+    <p class="text-muted px-3 py-3">No recent activity.</p>
 }
 else
 {

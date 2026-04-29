@@ -1,11 +1,10 @@
-@using Microsoft.AspNetCore.Identity
-@using Humans.Domain.Entities
 @using Humans.Web.Authorization
-@inject UserManager<User> UserManager
 
 @{
-    var user = User.Identity?.IsAuthenticated == true ? await UserManager.GetUserAsync(User) : null;
-    var initials = user is null ? "?" : string.Concat(user.UserName?.Split(' ').Select(s => s.Length > 0 ? s[0] : '?').Take(2) ?? new[] { '?' });
+    var displayName = User.Identity?.Name ?? "";
+    var initials = string.IsNullOrEmpty(displayName)
+        ? "?"
+        : string.Concat(displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(s => s[0]).Take(2));
     var roleLabel = AdminUserRoleSummary.PrimaryRole(User);
 }
 
@@ -15,7 +14,7 @@
     </a>
     <ul class="dropdown-menu dropdown-menu-end">
         <li class="px-3 py-2">
-            <div class="fw-semibold small">@(user?.UserName ?? "—")</div>
+            <div class="fw-semibold small">@(string.IsNullOrEmpty(displayName) ? "—" : displayName)</div>
             @if (!string.IsNullOrEmpty(roleLabel))
             {
                 <div class="text-muted" style="font-size: 0.7rem; letter-spacing: 0.05em;">@roleLabel</div>

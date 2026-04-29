@@ -2,11 +2,11 @@
 
 <div class="stats">
     <div class="stat">
-        <div class="label">@Localizer["AdminDashboard_Stat_ActiveHumans"]</div>
+        <div class="label">Active humans</div>
         <div class="value">@Model.ActiveHumans</div>
     </div>
     <div class="stat">
-        <div class="label">@Localizer["AdminDashboard_Stat_Shifts"]</div>
+        <div class="label">Shifts staffed</div>
         <div class="value">
             @if (Model.ShiftTotalOf.HasValue)
             {
@@ -17,18 +17,18 @@
                 <em>—</em>
             }
         </div>
-        <div class="delta">@Model.ShiftCoveragePercent% @Localizer["AdminDashboard_Stat_Shifts_Caption"]</div>
+        <div class="delta">@Model.ShiftCoveragePercent% of slots filled</div>
     </div>
     <div class="stat">
-        <div class="label">@Localizer["AdminDashboard_Stat_OpenFeedback"]</div>
+        <div class="label">Open feedback</div>
         <div class="value">@Model.OpenFeedback</div>
     </div>
     <div class="stat">
-        <div class="label">@Localizer["AdminDashboard_Stat_SystemHealth"]</div>
+        <div class="label">System health</div>
         <div class="value @(Model.SystemAllNormal ? "" : "text-danger")">
             @if (Model.SystemAllNormal)
             {
-                @Localizer["AdminDashboard_AllSystemsNormal"]
+                <text>all systems normal</text>
             }
             else
             {

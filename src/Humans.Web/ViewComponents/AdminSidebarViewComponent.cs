@@ -2,9 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Humans.Web.ViewComponents;
 
@@ -14,24 +12,24 @@ public sealed class AdminSidebarViewComponent : ViewComponent
     private readonly IWebHostEnvironment _environment;
     private readonly IServiceProvider _serviceProvider;
     private readonly IHttpContextAccessor _httpContext;
+    private readonly ILogger<AdminSidebarViewComponent> _logger;
 
     public AdminSidebarViewComponent(
         IAuthorizationService authorization,
         IWebHostEnvironment environment,
         IServiceProvider serviceProvider,
-        IHttpContextAccessor httpContext)
+        IHttpContextAccessor httpContext,
+        ILogger<AdminSidebarViewComponent> logger)
     {
         _authorization = authorization;
         _environment = environment;
         _serviceProvider = serviceProvider;
         _httpContext = httpContext;
+        _logger = logger;
     }
 
     public async Task<IViewComponentResult> InvokeAsync()
     {
-        var logger = _serviceProvider.GetService<ILogger<AdminSidebarViewComponent>>()
-                     ?? NullLogger<AdminSidebarViewComponent>.Instance;
-
         var activeController = (string?)RouteData.Values["controller"];
         var activeAction = (string?)RouteData.Values["action"];
         var visibleGroups = new List<AdminSidebarGroupViewModel>(AdminNavTree.Groups.Count);
@@ -63,13 +61,13 @@ public sealed class AdminSidebarViewComponent : ViewComponent
                     }
                     catch (Exception ex)
                     {
-                        logger.LogWarning(ex, "Failed to compute pill count for nav item {LabelKey}", item.LabelKey);
+                        _logger.LogWarning(ex, "Failed to compute pill count for nav item {Label}", item.Label);
                         pill = null;
                     }
                 }
 
                 visibleItems.Add(new AdminSidebarItemViewModel(
-                    LabelKey: item.LabelKey,
+                    Label: item.Label,
                     Controller: item.Controller,
                     Action: item.Action,
                     RouteValues: item.RouteValues,
@@ -82,7 +80,7 @@ public sealed class AdminSidebarViewComponent : ViewComponent
             }
 
             if (visibleItems.Count > 0)
-                visibleGroups.Add(new AdminSidebarGroupViewModel(group.LabelKey, visibleItems));
+                visibleGroups.Add(new AdminSidebarGroupViewModel(group.Label, visibleItems));
         }
 
         return View(new AdminSidebarViewModel(visibleGroups));

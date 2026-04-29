@@ -73,7 +73,9 @@ public class AdminController : HumansControllerBase
         var (filled, total, ratio) = await shifts.GetOverallCoverageAsync(ct);
         var openFeedback = await feedback.GetActionableCountAsync(ct);
         var health = await adminDashboard.GetSystemHealthAsync(ct);
-        var recent = await auditLog.GetRecentAsync(8, ct);
+        var recent = (await auditLog.GetRecentAsync(8, ct))
+            .Select(e => new DashboardActivityRow(e.Action, e.Description, e.OccurredAt))
+            .ToArray();
         var staffing = Array.Empty<DepartmentCoverage>();
 
         var vm = new AdminDashboardViewModel(
@@ -148,6 +150,10 @@ public class AdminController : HumansControllerBase
         ViewBag.LifetimeCounts = sink.GetLifetimeCounts();
         return View(events);
     }
+
+    [HttpGet("Maintenance")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    public IActionResult Maintenance() => View();
 
     [HttpGet("Configuration")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
@@ -275,7 +281,7 @@ public class AdminController : HumansControllerBase
 
         _logger.LogWarning("Admin cleared {Count} stale Hangfire locks", deleted);
         SetSuccess($"Cleared {deleted} Hangfire lock(s). Restart the app to re-register recurring jobs.");
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Maintenance));
     }
 
     /// <summary>
