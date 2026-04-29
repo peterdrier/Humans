@@ -69,8 +69,9 @@
             <a asp-controller="Team" asp-action="Details" asp-route-slug="@team.Slug" class="text-decoration-none">@team.Name</a>
         }
 
-        @* Description tail (context like shift name, reason) *@
-        @if (!string.IsNullOrWhiteSpace(Model.Description))
+        @* Description tail — only for actions whose descriptions are written as tails (e.g. ShiftSignup*).
+           Sentence-style descriptions (Team*, Role*, Member*) would render redundantly here. *@
+        @if (!string.IsNullOrWhiteSpace(Model.Description) && AuditLogViewComponent.ShouldRenderDescriptionTail(Model.Action))
         {
             <span class="text-muted">— @Model.Description</span>
         }

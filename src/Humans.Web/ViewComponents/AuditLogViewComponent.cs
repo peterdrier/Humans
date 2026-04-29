@@ -125,6 +125,17 @@ public class AuditLogViewComponent : ViewComponent
         AuditAction.ShiftSignupBailed => "bailed from",
         _ => null
     };
+
+    // True when the action's description is written as a context tail (e.g. "shift 'X'") rather
+    // than a stand-alone sentence (e.g. "Joined Build Team directly"). Tail-style descriptions
+    // append cleanly after the structured verb+subject; sentence-style ones produce redundancy.
+    public static bool ShouldRenderDescriptionTail(AuditAction action) => action
+        is AuditAction.ShiftSignupConfirmed
+        or AuditAction.ShiftSignupRefused
+        or AuditAction.ShiftSignupVoluntold
+        or AuditAction.ShiftSignupBailed
+        or AuditAction.ShiftSignupNoShow
+        or AuditAction.ShiftSignupCancelled;
 }
 
 public class AuditLogComponentViewModel
