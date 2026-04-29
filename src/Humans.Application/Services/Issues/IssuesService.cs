@@ -328,7 +328,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         await LogAuditAsync(
             AuditAction.IssueStatusChanged, issueId, actorUserId,
             $"Issue {issueId} status changed: {oldStatus} → {newStatus}");
-        await DispatchStatusChangedNotificationAsync(issue, oldStatus, newStatus, ct);
+        await DispatchStatusChangedNotificationAsync(issue, oldStatus, newStatus, actorUserId, ct);
         _navBadge.Invalidate();
     }
 
@@ -570,8 +570,16 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
     }
 
     private async Task DispatchStatusChangedNotificationAsync(
-        Issue issue, IssueStatus oldStatus, IssueStatus newStatus, CancellationToken ct)
+        Issue issue, IssueStatus oldStatus, IssueStatus newStatus,
+        Guid? actorUserId, CancellationToken ct)
     {
+        // Notify reporter + assignee (both must differ from the actor). An
+        // actor flipping their own issue's status doesn't notify themself.
+        var recipients = new HashSet<Guid>();
+        if (issue.ReporterUserId != actorUserId) recipients.Add(issue.ReporterUserId);
+        if (issue.AssigneeUserId is { } aid && aid != actorUserId) recipients.Add(aid);
+        if (recipients.Count == 0) return;
+
         try
         {
             await _notifications.SendAsync(
@@ -579,7 +587,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
                 NotificationClass.Informational,
                 NotificationPriority.Normal,
                 $"Issue status changed: {issue.Title}",
-                [issue.ReporterUserId],
+                recipients.ToList(),
                 body: $"Status: {oldStatus} → {newStatus}",
                 actionUrl: $"/Issues/{issue.Id}",
                 actionLabel: "View issue",

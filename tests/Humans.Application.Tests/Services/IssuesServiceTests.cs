@@ -311,6 +311,59 @@ public class IssuesServiceTests : IDisposable
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
+    [HumansFact]
+    public async Task UpdateStatusAsync_notifies_reporter_and_assignee_excluding_actor()
+    {
+        var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open);
+
+        // Stamp an assignee on the issue so the dispatch helper has somebody
+        // to notify alongside the reporter.
+        var assigneeId = Guid.NewGuid();
+        _dbContext.Users.Add(new User { Id = assigneeId, Email = "ass@x.com", DisplayName = "Assignee" });
+        await _dbContext.SaveChangesAsync();
+        await _service.UpdateAssigneeAsync(issueId, assigneeId, Guid.NewGuid());
+        _notificationService.ClearReceivedCalls();
+
+        // Actor is the assignee — they should NOT receive a notification, but
+        // the reporter still should.
+        await _service.UpdateStatusAsync(issueId, IssueStatus.Resolved, assigneeId);
+
+        await _notificationService.Received(1).SendAsync(
+            NotificationSource.IssueStatusChanged,
+            NotificationClass.Informational,
+            NotificationPriority.Normal,
+            Arg.Any<string>(),
+            Arg.Is<IReadOnlyList<Guid>>(ids =>
+                ids.Contains(reporterId) && !ids.Contains(assigneeId) && ids.Count == 1),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UpdateStatusAsync_short_circuits_when_actor_is_only_recipient()
+    {
+        // Reporter flips their own issue's status with no assignee → recipient
+        // set is empty → no notification is dispatched.
+        var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open);
+
+        await _service.UpdateStatusAsync(issueId, IssueStatus.Resolved, reporterId);
+
+        await _notificationService.DidNotReceive().SendAsync(
+            NotificationSource.IssueStatusChanged,
+            Arg.Any<NotificationClass>(),
+            Arg.Any<NotificationPriority>(),
+            Arg.Any<string>(),
+            Arg.Any<IReadOnlyList<Guid>>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
     // ==========================================================================
     // UpdateAssigneeAsync
     // ==========================================================================
