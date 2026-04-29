@@ -575,4 +575,44 @@ public sealed class UserEmailService : IUserEmailService
 
         return null;
     }
+
+    /// <inheritdoc />
+    public async Task SetProviderAsync(
+        Guid userEmailId, string provider, string providerKey,
+        CancellationToken cancellationToken = default)
+    {
+        var target = await _repository.GetByIdReadOnlyAsync(userEmailId, cancellationToken)
+            ?? throw new ValidationException($"UserEmail row {userEmailId} not found.");
+
+        var existing = await _repository.FindAllByProviderKeyAsync(
+            provider, providerKey, cancellationToken);
+
+        var now = _clock.GetCurrentInstant();
+        var updates = new List<UserEmail>();
+
+        foreach (var conflict in existing.Where(e => e.Id != userEmailId))
+        {
+            conflict.Provider = null;
+            conflict.ProviderKey = null;
+            conflict.UpdatedAt = now;
+            updates.Add(conflict);
+        }
+
+        target.Provider = provider;
+        target.ProviderKey = providerKey;
+        target.UpdatedAt = now;
+        updates.Add(target);
+
+        await _repository.UpdateBatchAsync(updates, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<UserEmail?> FindByProviderKeyAsync(
+        string provider, string providerKey,
+        CancellationToken cancellationToken = default)
+    {
+        var matches = await _repository.FindAllByProviderKeyAsync(
+            provider, providerKey, cancellationToken);
+        return matches.Count == 0 ? null : matches[0];
+    }
 }

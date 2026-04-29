@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 
@@ -256,6 +257,31 @@ public interface IUserEmailService
     /// </summary>
     Task<IReadOnlyList<UserEmailMatch>> MatchByEmailsAsync(
         IReadOnlyCollection<string> emails,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sets <see cref="UserEmail.Provider"/> / <see cref="UserEmail.ProviderKey"/>
+    /// on the given row. Clears the same pair from any sibling row in the same
+    /// write batch (service-enforced single-row-per-pair invariant per
+    /// <c>feedback_db_enforcement_minimal</c>). Used by the OAuth callback when
+    /// linking a UserEmail to its OAuth identity (PR 3 of the
+    /// email-identity-decoupling spec). Throws
+    /// <see cref="System.ComponentModel.DataAnnotations.ValidationException"/>
+    /// when the target row does not exist.
+    /// </summary>
+    Task SetProviderAsync(
+        Guid userEmailId, string provider, string providerKey,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Looks up the <see cref="UserEmail"/> row tagged with
+    /// <paramref name="provider"/> / <paramref name="providerKey"/>. Returns
+    /// <c>null</c> when no row matches. Used by the OAuth callback's rename
+    /// detection to compare the row's <see cref="UserEmail.Email"/> against the
+    /// incoming claim email and update the row when they diverge.
+    /// </summary>
+    Task<UserEmail?> FindByProviderKeyAsync(
+        string provider, string providerKey,
         CancellationToken cancellationToken = default);
 }
 

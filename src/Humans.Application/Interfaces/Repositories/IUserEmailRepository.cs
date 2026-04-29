@@ -198,6 +198,18 @@ public interface IUserEmailRepository
         Guid userId, string oldEmail, string newEmail, Instant updatedAt,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns every <see cref="UserEmail"/> row with matching
+    /// <paramref name="provider"/> / <paramref name="providerKey"/>.
+    /// Read-only (AsNoTracking). Used by <c>UserEmailService.SetProviderAsync</c>
+    /// to find rows that need their pair cleared, and by
+    /// <c>UserEmailService.FindByProviderKeyAsync</c> for OAuth-callback rename
+    /// detection. The single-row-per-pair invariant is service-enforced; a
+    /// healthy database returns 0 or 1 rows.
+    /// </summary>
+    Task<IReadOnlyList<UserEmail>> FindAllByProviderKeyAsync(
+        string provider, string providerKey, CancellationToken ct = default);
+
     Task AddAsync(UserEmail email, CancellationToken ct = default);
     Task RemoveAsync(UserEmail email, CancellationToken ct = default);
     Task RemoveAllForUserAsync(Guid userId, CancellationToken ct = default);

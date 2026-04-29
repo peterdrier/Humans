@@ -301,6 +301,9 @@ public class AccountProvisioningServiceTests
         public Task<bool> RewriteEmailAddressAsync(
             Guid userId, string oldEmail, string newEmail, Instant now, CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task<IReadOnlyList<UserEmail>> FindAllByProviderKeyAsync(
+            string provider, string providerKey, CancellationToken ct = default) =>
+            throw new NotSupportedException();
     }
 
     private readonly FakeClock _clock;

@@ -423,4 +423,14 @@ public sealed class UserEmailRepository : IUserEmailRepository
         }
         await ctx.SaveChangesAsync(ct);
     }
+
+    public async Task<IReadOnlyList<UserEmail>> FindAllByProviderKeyAsync(
+        string provider, string providerKey, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.UserEmails
+            .AsNoTracking()
+            .Where(e => e.Provider == provider && e.ProviderKey == providerKey)
+            .ToListAsync(ct);
+    }
 }
