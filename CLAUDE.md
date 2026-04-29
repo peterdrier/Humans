@@ -102,8 +102,7 @@ When invoking `gh` for issues/PRs, always pass `--repo peterdrier/Humans` or `--
 
 **Development flow:**
 
-- **Small changes:** commit directly to `main` on peter's fork. Coolify auto-deploys to QA.
-- **Larger changes:** feature branch → PR to `main` on peter's fork (squash merge if multiple commits). Preview environments deploy per-PR at `{pr_id}.n.burn.camp`.
+- **All changes go on a feature branch** → PR to `main` on peter's fork (squash merge if multiple commits). Preview environments deploy per-PR at `{pr_id}.n.burn.camp`. Use a worktree under `.worktrees/<name>`.
 - **Promote to production:** batch changes on peter's `main`, PR to nobodies' `main` (rebase merge, since individual efforts were already squashed going into peter's `main`).
 - **After production merge:** reset peter's `main` to nobodies' `main`:
   ```bash
