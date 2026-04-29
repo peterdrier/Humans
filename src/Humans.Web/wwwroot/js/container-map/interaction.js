@@ -59,6 +59,7 @@ export function activateContainer(container, centerLng, centerLat) {
     _currentCenter   = { lng: centerLng, lat: centerLat };
     _currentRotation = 0;
     _activeFeature   = buildContainerPolygon(centerLng, centerLat, 0);
+    _activeFeature.properties.name = container.name;
 
     updateActiveSource(_map, _activeFeature);
     repositionHandle();
@@ -76,6 +77,7 @@ export function selectPlacedContainer(container) {
     _currentCenter   = { lng: f.properties.center_lng, lat: f.properties.center_lat };
     _currentRotation = f.properties.rotation_degrees;
     _activeFeature   = f;
+    _activeFeature.properties.name = container.name;
 
     updateActiveSource(_map, _activeFeature);
     repositionHandle();
@@ -123,6 +125,7 @@ function onMapMouseMove(e) {
         lat: _dragStartCenter.lat + dLat,
     };
     _activeFeature = buildContainerPolygon(_currentCenter.lng, _currentCenter.lat, _currentRotation);
+    _activeFeature.properties.name = _activeContainer.name;
     updateActiveSource(_map, _activeFeature);
     repositionHandle();
 }
@@ -159,6 +162,7 @@ function onDocumentMouseMove(e) {
 
     _currentRotation = rotationFromBearing(bearing);
     _activeFeature   = buildContainerPolygon(_currentCenter.lng, _currentCenter.lat, _currentRotation);
+    _activeFeature.properties.name = _activeContainer.name;
     updateActiveSource(_map, _activeFeature);
     repositionHandle();
 }

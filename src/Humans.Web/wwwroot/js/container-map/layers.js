@@ -140,6 +140,18 @@ export function addContainerLayers(map) {
         },
         paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1 },
     });
+
+    // Label on the active (selected/being-placed) container — always visible
+    map.addLayer({
+        id: 'containers-active-label', type: 'symbol', source: 'container-active',
+        layout: {
+            'text-field': ['get', 'name'],
+            'text-size': 10,
+            'text-anchor': 'center',
+            'text-allow-overlap': true,
+        },
+        paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1 },
+    });
 }
 
 /**
