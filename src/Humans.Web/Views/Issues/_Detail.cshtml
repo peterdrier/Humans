@@ -1,24 +1,4 @@
 @model Humans.Web.Models.IssueDetailViewModel
-@{
-    string StatusPillClass(IssueStatus s)
-    {
-        var name = s.ToString().ToLowerInvariant();
-        return name switch
-        {
-            "inprogress" => "status-progress",
-            "wontfix" => "status-wontfix",
-            _ => $"status-{name}"
-        };
-    }
-
-    string CategoryEmoji(IssueCategory c) => c switch
-    {
-        IssueCategory.Bug => "🐛",
-        IssueCategory.Feature => "✨",
-        IssueCategory.Question => "❓",
-        _ => string.Empty
-    };
-}
 
 <div class="issue-detail">
     <!-- Header -->
@@ -27,11 +7,11 @@
             <div>
                 <div class="text-muted small mb-1">@Localizer["Issue_Detail_Heading"] · @Model.Id.ToString().Substring(0, 8)</div>
                 <h4 class="mb-1">
-                    @CategoryEmoji(Model.Category)
+                    @IssuePresentation.CategoryEmoji(Model.Category)
                     @Model.Title
                 </h4>
                 <div class="d-flex gap-2 align-items-center flex-wrap">
-                    <span class="badge status-pill @StatusPillClass(Model.Status)">@Model.Status</span>
+                    <span class="badge status-pill @IssuePresentation.StatusPillClass(Model.Status)">@Model.Status</span>
                     <span class="badge bg-light text-muted border">@Model.Category</span>
                     <span class="badge bg-light text-muted border">@Model.AreaLabel</span>
                 </div>
@@ -115,7 +95,7 @@
                 <form asp-action="PostComment" asp-route-id="@Model.Id" method="post" class="mt-3">
                     @Html.AntiForgeryToken()
                     <textarea name="Content" class="form-control" rows="3"
-                              placeholder="@Localizer["Issue_ComposerPlaceholder"]" required maxlength="10000"></textarea>
+                              placeholder="@Localizer["Issue_ComposerPlaceholder"]" required maxlength="5000"></textarea>
                     <div class="d-flex gap-2 mt-2 flex-wrap">
                         <button type="submit" class="btn btn-primary btn-sm">
                             @Localizer["Issue_Comment"]
@@ -164,7 +144,7 @@
                     }
                     else
                     {
-                        <span class="badge status-pill @StatusPillClass(Model.Status)">@Model.Status</span>
+                        <span class="badge status-pill @IssuePresentation.StatusPillClass(Model.Status)">@Model.Status</span>
                     }
                 </dd>
 

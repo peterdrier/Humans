@@ -14,11 +14,11 @@ namespace Humans.Web.Models;
 public class SubmitIssueViewModel
 {
     [Required]
-    [StringLength(500)]
+    [StringLength(200)]
     public string Title { get; set; } = string.Empty;
 
     [Required]
-    [StringLength(10_000)]
+    [StringLength(5000)]
     public string Description { get; set; } = string.Empty;
 
     [Required]
@@ -152,7 +152,7 @@ public class IssueThreadEventViewModel
 public class PostIssueCommentModel
 {
     [Required]
-    [StringLength(10_000)]
+    [StringLength(5000)]
     public string Content { get; set; } = string.Empty;
 
     /// <summary>
