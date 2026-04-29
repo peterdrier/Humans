@@ -1,0 +1,145 @@
+using Humans.Application.Interfaces.Issues;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using Humans.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+
+namespace Humans.Infrastructure.Repositories.Issues;
+
+/// <summary>
+/// EF-backed implementation of <see cref="IIssuesRepository"/>. The only
+/// non-test file that touches <c>DbContext.Issues</c> or
+/// <c>DbContext.IssueComments</c>. Uses <see cref="IDbContextFactory{TContext}"/>
+/// so the repository can be registered as Singleton while
+/// <c>HumansDbContext</c> remains Scoped.
+/// </summary>
+public sealed class IssuesRepository : IIssuesRepository
+{
+    private readonly IDbContextFactory<HumansDbContext> _factory;
+
+    public IssuesRepository(IDbContextFactory<HumansDbContext> factory) => _factory = factory;
+
+    public async Task AddIssueAsync(Issue issue, CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        db.Issues.Add(issue);
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task<Issue?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        return await db.Issues
+            .AsNoTracking()
+            .Include(i => i.Comments.OrderBy(c => c.CreatedAt))
+            .FirstOrDefaultAsync(i => i.Id == id, ct);
+    }
+
+    public async Task<Issue?> FindForMutationAsync(Guid id, CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        return await db.Issues
+            .Include(i => i.Comments)
+            .FirstOrDefaultAsync(i => i.Id == id, ct);
+    }
+
+    public async Task<IReadOnlyList<Issue>> GetListAsync(
+        IssueListFilter f,
+        IReadOnlySet<string>? sectionFilter,
+        Guid? reporterFallback,
+        CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        IQueryable<Issue> q = db.Issues.AsNoTracking().Include(i => i.Comments);
+
+        if (f.Statuses is { Length: > 0 })   q = q.Where(i => f.Statuses.Contains(i.Status));
+        if (f.Categories is { Length: > 0 }) q = q.Where(i => f.Categories.Contains(i.Category));
+        if (f.ReporterUserId is { } rid)     q = q.Where(i => i.ReporterUserId == rid);
+        if (f.AssigneeUserId is { } aid)     q = q.Where(i => i.AssigneeUserId == aid);
+        if (!string.IsNullOrWhiteSpace(f.SearchText))
+            q = q.Where(i => i.Title.Contains(f.SearchText) || i.Description.Contains(f.SearchText));
+
+        // Visibility filter:
+        //  - sectionFilter null = no constraint (Admin)
+        //  - sectionFilter non-null = "section IN sectionFilter OR ReporterUserId == reporterFallback"
+        if (sectionFilter is not null)
+        {
+            var sectionList = sectionFilter.ToList();
+            var fallback = reporterFallback;
+            q = q.Where(i =>
+                (i.Section != null && sectionList.Contains(i.Section)) ||
+                (fallback.HasValue && i.ReporterUserId == fallback.Value));
+        }
+
+        return await q.OrderByDescending(i => i.UpdatedAt).Take(f.Limit).ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<IssueComment>> GetCommentsAsync(Guid issueId, CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        return await db.IssueComments
+            .AsNoTracking()
+            .Where(c => c.IssueId == issueId)
+            .OrderBy(c => c.CreatedAt)
+            .ToListAsync(ct);
+    }
+
+    public async Task SaveTrackedIssueAsync(Issue issue, CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        db.Issues.Update(issue);
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task AddCommentAndSaveIssueAsync(IssueComment comment, Issue issue, CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        db.IssueComments.Add(comment);
+        db.Issues.Update(issue);
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task<int> CountActionableAsync(
+        IReadOnlySet<string>? sectionFilter,
+        Guid? viewerFallback,
+        CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        IQueryable<Issue> q = db.Issues.AsNoTracking()
+            .Where(i => i.Status == IssueStatus.Open || i.Status == IssueStatus.Triage);
+
+        if (sectionFilter is not null)
+        {
+            var sectionList = sectionFilter.ToList();
+            var fallback = viewerFallback;
+            q = q.Where(i =>
+                (i.Section != null && sectionList.Contains(i.Section)) ||
+                (fallback.HasValue && i.ReporterUserId == fallback.Value));
+        }
+
+        return await q.CountAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<DistinctReporterRow>> GetReporterCountsAsync(CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        var rows = await db.Issues.AsNoTracking()
+            .GroupBy(i => i.ReporterUserId)
+            .Select(g => new { UserId = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+
+        // DisplayName left blank — service stitches via IUserService.
+        return rows.Select(r => new DistinctReporterRow(r.UserId, string.Empty, r.Count)).ToList();
+    }
+
+    public async Task<IReadOnlyList<Issue>> GetForUserExportAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        return await db.Issues
+            .AsNoTracking()
+            .Include(i => i.Comments.OrderBy(c => c.CreatedAt))
+            .Where(i => i.ReporterUserId == userId)
+            .ToListAsync(ct);
+    }
+}
