@@ -263,11 +263,11 @@ public sealed class DevelopmentDashboardSeeder
             var email = $"{DevUserEmailPrefix}{i:D3}{DevUserEmailSuffix}";
             var createdAt = now.Minus(Duration.FromDays(_rng.Next(30, 400)));
             var lastLoginDaysAgo = _rng.Next(0, 85);
+            // Identity-column writes decoupled per email-identity-decoupling spec PR 2.
+            // User.UserName / Email / EmailConfirmed are computed from Id / UserEmails
+            // by the User overrides; the UserEmail row created below carries the email.
             var user = new User
             {
-                UserName = email,
-                Email = email,
-                EmailConfirmed = true,
                 DisplayName = display,
                 CreatedAt = createdAt,
                 LastLoginAt = now.Minus(Duration.FromDays(lastLoginDaysAgo)).Minus(Duration.FromHours(_rng.Next(0, 23))),
@@ -280,8 +280,23 @@ public sealed class DevelopmentDashboardSeeder
                     $"Failed to create seeded dev user '{email}': {string.Join(", ", createResult.Errors.Select(e => e.Description))}");
             }
 
+            _dbContext.UserEmails.Add(new UserEmail
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                Email = email,
+                IsVerified = true,
+                IsNotificationTarget = true,
+                IsOAuth = false,
+                Visibility = ContactFieldVisibility.BoardOnly,
+                DisplayOrder = 0,
+                CreatedAt = createdAt,
+                UpdatedAt = createdAt,
+            });
+
             users.Add(user);
         }
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         // Coordinators: 2 per parent team, routed via ITeamService.AddSeededMemberAsync so
         // we never touch TeamMembers directly. Infrastructure coords logged in 9 days ago
@@ -417,12 +432,14 @@ public sealed class DevelopmentDashboardSeeder
             .Select(e => e.Id)
             .ToListAsync(cancellationToken);
 
-        // Dev users — looked up via UserManager's query surface (framework-owned).
-        var devUserIds = await _userManager.Users
-            .Where(u => u.Email != null
-                        && u.Email.EndsWith(DevUserEmailSuffix)
-                        && u.Email.StartsWith(DevUserEmailPrefix))
-            .Select(u => u.Id)
+        // Dev users — match the seed marker on UserEmails (post-PR-2 the User
+        // table no longer has an Email column; the seeder creates a verified
+        // UserEmail row for each dev human and we filter on that here).
+        var devUserIds = await _dbContext.UserEmails
+            .Where(ue => ue.Email.EndsWith(DevUserEmailSuffix)
+                      && ue.Email.StartsWith(DevUserEmailPrefix))
+            .Select(ue => ue.UserId)
+            .Distinct()
             .ToListAsync(cancellationToken);
 
         // Rotas created by the seeder live under the seeded event IDs; remove their

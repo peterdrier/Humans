@@ -218,9 +218,6 @@ public class DevLoginController : Controller
         var user = new User
         {
             Id = id,
-            UserName = email,
-            Email = email,
-            EmailConfirmed = true,
             DisplayName = displayName,
             CreatedAt = now,
             LastLoginAt = now
@@ -573,9 +570,6 @@ public class DevLoginController : Controller
         var user = new User
         {
             Id = id,
-            UserName = email,
-            Email = email,
-            EmailConfirmed = true,
             DisplayName = displayName,
             CreatedAt = now,
             LastLoginAt = now

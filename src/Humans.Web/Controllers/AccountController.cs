@@ -241,16 +241,14 @@ public class AccountController : Controller
             }
         }
 
-        // No existing account — create a new one.
-        // Identity-column writes decoupled per email-identity-decoupling spec PR 1
-        // (docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md).
-        // UserName = id.ToString() (Identity needs a unique non-empty UserName);
-        // the email columns stay at defaults — UserEmail row is the source of truth.
+        // No existing account — create a new one. Identity-column writes
+        // decoupled per email-identity-decoupling spec PR 2: User.UserName is
+        // computed from Id by the override (User.cs), Email/EmailConfirmed
+        // from UserEmails. The UserEmail row created below carries the email.
         var newUserId = Guid.NewGuid();
         var user = new User
         {
             Id = newUserId,
-            UserName = newUserId.ToString(),
             DisplayName = name ?? email,
             ProfilePictureUrl = pictureUrl,
             CreatedAt = _clock.GetCurrentInstant(),
@@ -433,14 +431,13 @@ public class AccountController : Controller
         }
 
         var now = _clock.GetCurrentInstant();
-        // Identity-column writes decoupled per email-identity-decoupling spec PR 1.
-        // AddOAuthEmailAsync below creates the verified UserEmail row that
-        // becomes the source of truth for the email.
+        // Identity-column writes decoupled per email-identity-decoupling spec PR 2.
+        // User.UserName is computed from Id by the override; AddOAuthEmailAsync
+        // below creates the verified UserEmail row that drives Email/EmailConfirmed.
         var newUserId = Guid.NewGuid();
         var user = new User
         {
             Id = newUserId,
-            UserName = newUserId.ToString(),
             DisplayName = string.IsNullOrWhiteSpace(displayName) ? email : displayName.Trim(),
             CreatedAt = now,
             LastLoginAt = now

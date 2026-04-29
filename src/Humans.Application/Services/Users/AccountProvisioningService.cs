@@ -115,16 +115,14 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
 
         var now = _clock.GetCurrentInstant();
 
-        // Identity-column writes decoupled per email-identity-decoupling spec PR 1
-        // (docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md).
-        // The UserEmail row created below is the source of truth for the user's
-        // email; UserName is the User.Id GUID so Identity has a unique non-empty
-        // UserName but the value carries no semantic meaning.
+        // Identity-column writes decoupled per email-identity-decoupling spec PR 2.
+        // User.UserName / NormalizedUserName are computed from Id by the override;
+        // Email/EmailConfirmed are computed from UserEmails. The UserEmail row
+        // created below carries the email.
         var newUserId = Guid.NewGuid();
         var newUser = new User
         {
             Id = newUserId,
-            UserName = newUserId.ToString(),
             DisplayName = resolvedDisplayName,
             ContactSource = source,
             CreatedAt = now,
