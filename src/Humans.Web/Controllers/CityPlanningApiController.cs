@@ -106,9 +106,9 @@ public class CityPlanningApiController : ControllerBase
             note: request.Note ?? "Saved",
             cancellationToken: cancellationToken);
 
-        var soundZone = await _campService.GetCampSeasonSoundZoneAsync(campSeasonId, cancellationToken);
-        var soundZoneValue = soundZone.HasValue ? (int)soundZone.Value : -1;
-        var campName = await _campService.GetCampSeasonNameAsync(campSeasonId, cancellationToken) ?? string.Empty;
+        var season = await _campService.GetCampSeasonByIdAsync(campSeasonId, cancellationToken);
+        var soundZoneValue = season?.SoundZone is { } sz ? (int)sz : -1;
+        var campName = season?.Name ?? string.Empty;
         try
         {
             await _hubContext.Clients.All.SendAsync(
@@ -137,9 +137,9 @@ public class CityPlanningApiController : ControllerBase
         var (polygon, _) = await _cityPlanningService.RestoreCampPolygonVersionAsync(
             campSeasonId, historyId, userId, cancellationToken);
 
-        var soundZone = await _campService.GetCampSeasonSoundZoneAsync(campSeasonId, cancellationToken);
-        var soundZoneValue = soundZone.HasValue ? (int)soundZone.Value : -1;
-        var campName = await _campService.GetCampSeasonNameAsync(campSeasonId, cancellationToken) ?? string.Empty;
+        var season = await _campService.GetCampSeasonByIdAsync(campSeasonId, cancellationToken);
+        var soundZoneValue = season?.SoundZone is { } sz ? (int)sz : -1;
+        var campName = season?.Name ?? string.Empty;
         try
         {
             await _hubContext.Clients.All.SendAsync(

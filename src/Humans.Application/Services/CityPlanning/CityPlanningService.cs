@@ -204,11 +204,11 @@ public sealed class CityPlanningService : ICityPlanningService
         var settings = await GetSettingsAsync(cancellationToken);
         if (!settings.IsPlacementOpen) return false;
 
-        var campSeasonInfo = await _campService.GetCampSeasonInfoAsync(campSeasonId, cancellationToken);
-        if (campSeasonInfo is null) return false;
-        if (campSeasonInfo.Year != settings.Year) return false;
+        var season = await _campService.GetCampSeasonByIdAsync(campSeasonId, cancellationToken);
+        if (season is null) return false;
+        if (season.Year != settings.Year) return false;
 
-        return await _campService.IsUserCampLeadAsync(userId, campSeasonInfo.CampId, cancellationToken);
+        return await _campService.IsUserCampLeadAsync(userId, season.CampId, cancellationToken);
     }
 
     // ==========================================================================

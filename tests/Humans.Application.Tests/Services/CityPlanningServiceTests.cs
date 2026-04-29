@@ -201,8 +201,8 @@ public class CityPlanningServiceTests : IDisposable
         _teamService.GetTeamBySlugAsync("city-planning", Arg.Any<CancellationToken>())
             .Returns((Team?)null);
 
-        _campService.GetCampSeasonInfoAsync(campSeasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonInfo(campSeasonId, campId, 2026));
+        _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
+            .Returns(new CampSeason { Id = campSeasonId, CampId = campId, Year = 2026 });
         _campService.IsUserCampLeadAsync(userId, campId, Arg.Any<CancellationToken>())
             .Returns(true);
 
@@ -221,8 +221,8 @@ public class CityPlanningServiceTests : IDisposable
         _teamService.GetTeamBySlugAsync("city-planning", Arg.Any<CancellationToken>())
             .Returns((Team?)null);
 
-        _campService.GetCampSeasonInfoAsync(campSeasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonInfo(campSeasonId, campId, 2026));
+        _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
+            .Returns(new CampSeason { Id = campSeasonId, CampId = campId, Year = 2026 });
         _campService.IsUserCampLeadAsync(userId, campId, Arg.Any<CancellationToken>())
             .Returns(true);
 
@@ -241,8 +241,8 @@ public class CityPlanningServiceTests : IDisposable
         _teamService.GetTeamBySlugAsync("city-planning", Arg.Any<CancellationToken>())
             .Returns((Team?)null);
 
-        _campService.GetCampSeasonInfoAsync(campSeasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonInfo(campSeasonId, campId, 2026));
+        _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
+            .Returns(new CampSeason { Id = campSeasonId, CampId = campId, Year = 2026 });
         _campService.IsUserCampLeadAsync(userId, campId, Arg.Any<CancellationToken>())
             .Returns(false);
 
@@ -262,8 +262,8 @@ public class CityPlanningServiceTests : IDisposable
             .Returns((Team?)null);
 
         // Camp season is for 2027, but settings year is 2026
-        _campService.GetCampSeasonInfoAsync(campSeasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonInfo(campSeasonId, campId, 2027));
+        _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
+            .Returns(new CampSeason { Id = campSeasonId, CampId = campId, Year = 2027 });
 
         var result = await _sut.CanUserEditAsync(userId, campSeasonId);
         result.Should().BeFalse();

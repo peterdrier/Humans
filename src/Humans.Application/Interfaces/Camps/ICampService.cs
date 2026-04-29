@@ -80,9 +80,7 @@ public interface ICampService
     Task RemoveHistoricalNameAsync(Guid historicalNameId, CancellationToken cancellationToken = default);
 
     // Cross-service queries (used by CityPlanningService)
-    Task<SoundZone?> GetCampSeasonSoundZoneAsync(Guid campSeasonId, CancellationToken cancellationToken = default);
-    Task<string?> GetCampSeasonNameAsync(Guid campSeasonId, CancellationToken cancellationToken = default);
-    Task<CampSeasonInfo?> GetCampSeasonInfoAsync(Guid campSeasonId, CancellationToken cancellationToken = default);
+    Task<CampSeason?> GetCampSeasonByIdAsync(Guid campSeasonId, CancellationToken cancellationToken = default);
     Task<IReadOnlyDictionary<Guid, CampSeasonDisplayData>> GetCampSeasonDisplayDataForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampSeasonBrief>> GetCampSeasonBriefsForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<Guid?> GetCampLeadSeasonIdForYearAsync(Guid userId, int year, CancellationToken cancellationToken = default);
@@ -109,111 +107,56 @@ public interface ICampService
     // Camp membership per season (issue nobodies-collective#488)
     // ==========================================================================
 
-    /// <summary>
-    /// Human requests to join a camp for the currently-open season. No-op if
-    /// an active or pending row already exists — the existing row's id is
-    /// returned with an <c>Already*</c> outcome. Handles concurrent duplicate
-    /// submissions idempotently.
-    /// </summary>
+    /// <summary>Idempotent — returns existing row's id with an <c>Already*</c> outcome if one exists.</summary>
     Task<CampMemberRequestResult> RequestCampMembershipAsync(
         Guid campId, Guid userId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Lead / CampAdmin approves a pending request. Scoped to the authorizing
-    /// camp: throws if the membership's season belongs to a different camp.
-    /// Sends <c>CampMembershipApproved</c> notification to the requester.
-    /// </summary>
+    /// <summary>Throws if the membership's season belongs to a different camp than <paramref name="scopedCampId"/>.</summary>
     Task ApproveCampMemberAsync(
         Guid scopedCampId, Guid campMemberId, Guid approvedByUserId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Lead / CampAdmin rejects a pending request. Scoped to the authorizing
-    /// camp: throws if the membership's season belongs to a different camp.
-    /// Sends <c>CampMembershipRejected</c> notification to the requester.
-    /// </summary>
+    /// <summary>Throws if the membership's season belongs to a different camp than <paramref name="scopedCampId"/>.</summary>
     Task RejectCampMemberAsync(
         Guid scopedCampId, Guid campMemberId, Guid rejectedByUserId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Lead / CampAdmin removes an active member. Scoped to the authorizing camp.
-    /// </summary>
+    /// <summary>Throws if the membership's season belongs to a different camp than <paramref name="scopedCampId"/>.</summary>
     Task RemoveCampMemberAsync(
         Guid scopedCampId, Guid campMemberId, Guid removedByUserId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Lead-driven add: creates a CampMember with Status=Active directly, bypassing
-    /// the request/approve flow. Used by the "Add active member" button on the camp Edit
-    /// page. Idempotent — if an Active membership already exists, returns its id without
-    /// auditing again. Authorization is the caller's responsibility (CampOperationRequirement.Manage).
-    /// </summary>
+    /// <summary>Bypasses the request/approve flow. Idempotent. Caller authorizes.</summary>
     Task<Guid> AddCampMemberAsLeadAsync(Guid campSeasonId, Guid userId, Guid actorUserId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Human withdraws their own pending request. Scoped to the caller's user id.
-    /// </summary>
+    /// <summary>Throws if <paramref name="userId"/> is not the row's owner.</summary>
     Task WithdrawCampMembershipRequestAsync(
         Guid campMemberId, Guid userId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Human leaves their own active membership. Scoped to the caller's user id.
-    /// </summary>
+    /// <summary>Throws if <paramref name="userId"/> is not the row's owner.</summary>
     Task LeaveCampAsync(
         Guid campMemberId, Guid userId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Gets the current user's membership state for a camp's open-season
-    /// (or <c>NoOpenSeason</c> if the camp has no Active/Full season this year).
-    /// </summary>
+    /// <summary>Returns <c>NoOpenSeason</c> if no Active/Full season exists for the public year.</summary>
     Task<CampMembershipState> GetMembershipStateForCampAsync(
         Guid campId, Guid userId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Lists Pending + Active members for a given camp season, stitched with
-    /// display names via <c>IUserService</c>. Privileged view (no authorization
-    /// inside — caller must gate).
-    /// </summary>
+    /// <summary>Privileged — caller must authorize.</summary>
     Task<CampMemberListData> GetCampMembersAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Returns the raw <see cref="CampMember"/> rows (Active + Pending) for a
-    /// given camp season — no display-name stitching, no lead union. Used by
-    /// the Camp Edit page to build the per-camp roles picker (which needs
-    /// CampMember.Id and UserId for active members only). Privileged view
-    /// (no authorization inside — caller must gate).
-    /// </summary>
+    /// <summary>Raw rows (no display-name stitching, no lead union). Privileged — caller must authorize.</summary>
     Task<IReadOnlyList<CampMember>> GetSeasonMembersAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Lists Active/Pending memberships for a human, grouped by year. Used for
-    /// the human's own profile dashboard (MyCamps).
-    /// </summary>
     Task<IReadOnlyList<CampMembershipSummary>> GetCampMembershipsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Total number of Pending membership requests across all camps where the
-    /// user is an active lead. Used by the notification meter to show a single
-    /// "N people want to join your camp" counter instead of emitting a stored
-    /// notification per request.
-    /// </summary>
     Task<int> GetPendingMembershipCountForLeadAsync(
         Guid userId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Returns the season + status + user of a camp member, or null if not found.
-    /// Used by ICampRoleService to enforce the active-member-in-correct-season precondition.
-    /// </summary>
     Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns (CampId, CampName, CampSlug, CampSeasonId) tuples for every camp that has
-    /// any season in the given year. Used by the camp role compliance report.
-    /// </summary>
     Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId)>>
         GetCampSeasonsForComplianceAsync(int year, CancellationToken ct = default);
 }
@@ -451,18 +394,6 @@ public record CampPlacementSummary(
     string Status,
     string? ElectricalGrid);
 
-/// <summary>
-/// Core camp season info for cross-service lookups (CampId + Year).
-/// </summary>
-public record CampSeasonInfo(Guid CampSeasonId, Guid CampId, int Year);
-
-/// <summary>
-/// Display data for camp seasons: name, camp slug, and sound zone.
-/// Used by CityPlanningService for polygon display/export.
-/// </summary>
 public record CampSeasonDisplayData(string Name, string CampSlug, SoundZone? SoundZone, SpaceSize? SpaceRequirement);
 
-/// <summary>
-/// Lightweight camp season summary (ID, name, camp slug) for listing.
-/// </summary>
 public record CampSeasonBrief(Guid CampSeasonId, string Name, string CampSlug, SpaceSize? SpaceRequirement);

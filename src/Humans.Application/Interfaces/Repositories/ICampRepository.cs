@@ -199,21 +199,8 @@ public interface ICampRepository
     // Cross-service queries (CampSeason by id)
     // ==========================================================================
 
-    /// <summary>
-    /// Returns the sound zone of the given season, read-only.
-    /// </summary>
-    Task<SoundZone?> GetSeasonSoundZoneAsync(Guid campSeasonId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the name of the given season, read-only.
-    /// </summary>
-    Task<string?> GetSeasonNameAsync(Guid campSeasonId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns core (CampSeasonId, CampId, Year) info, read-only.
-    /// </summary>
-    Task<(Guid CampSeasonId, Guid CampId, int Year)?> GetSeasonInfoAsync(
-        Guid campSeasonId, CancellationToken ct = default);
+    /// <summary>Read-only fetch by id; null if not found.</summary>
+    Task<CampSeason?> GetSeasonByIdAsync(Guid campSeasonId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns a tuple-shaped dictionary keyed by season id for seasons in the

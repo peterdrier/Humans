@@ -47,7 +47,9 @@ public class InterfaceMethodBudgetTests
         // AddCampMemberAsLeadAsync, GetSeasonMembersAsync, GetCampMemberStatusAsync,
         // GetCampSeasonsForComplianceAsync — all needed by ICampRoleService and the
         // Camp Edit page roles panel.
-        [typeof(ICampService)] = 57,
+        // 57→56: simplify pass — added BuildCampDetailDataAsync, replaced 3 scoped
+        // CampSeason getters (SoundZone/Name/Info) with single GetCampSeasonByIdAsync.
+        [typeof(ICampService)] = 56,
         // +1: GetOverallCoverageAsync for admin dashboard shift-coverage tile (peterdrier#349).
         [typeof(IShiftManagementService)] = 50,
         // +1 for SetProfilePictureAsync (nobodies-collective/Humans#532 — Google avatar import button needs a
