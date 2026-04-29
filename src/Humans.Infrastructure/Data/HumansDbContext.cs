@@ -68,6 +68,8 @@ public class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<GeneralAvailability> GeneralAvailability => Set<GeneralAvailability>();
     public DbSet<FeedbackReport> FeedbackReports => Set<FeedbackReport>();
     public DbSet<FeedbackMessage> FeedbackMessages => Set<FeedbackMessage>();
+    public DbSet<Issue> Issues => Set<Issue>();
+    public DbSet<IssueComment> IssueComments => Set<IssueComment>();
     public DbSet<AccountMergeRequest> AccountMergeRequests => Set<AccountMergeRequest>();
     public DbSet<CommunicationPreference> CommunicationPreferences => Set<CommunicationPreference>();
     public DbSet<BudgetYear> BudgetYears => Set<BudgetYear>();
