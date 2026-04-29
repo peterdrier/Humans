@@ -19,9 +19,6 @@ public class UserEmailConfiguration : IEntityTypeConfiguration<UserEmail>
         builder.Property(e => e.IsVerified)
             .IsRequired();
 
-        builder.Property(e => e.IsOAuth)
-            .IsRequired();
-
         builder.Property(e => e.IsNotificationTarget)
             .IsRequired();
 
@@ -29,13 +26,40 @@ public class UserEmailConfiguration : IEntityTypeConfiguration<UserEmail>
             .HasConversion<string>()
             .HasMaxLength(50);
 
-        builder.Property(e => e.DisplayOrder)
-            .IsRequired();
-
         builder.Property(e => e.CreatedAt)
             .IsRequired();
 
         builder.Property(e => e.UpdatedAt)
+            .IsRequired();
+
+        // PR 3 (additive): Provider / ProviderKey carry the OAuth identity tied
+        // to this row; IsGoogle marks the canonical Workspace identity.
+        // Single-row-per-(Provider, ProviderKey) and at-most-one-IsGoogle-true-
+        // per-UserId are service-enforced inside UserEmailService — no DB
+        // indexes per feedback_db_enforcement_minimal.
+        builder.Property(e => e.Provider)
+            .HasMaxLength(64);
+
+        builder.Property(e => e.ProviderKey)
+            .HasMaxLength(256);
+
+        builder.Property(e => e.IsGoogle)
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        // PR 3: IsOAuth / DisplayOrder columns are kept on disk; their C#
+        // properties are deleted in Task 10 of the plan, at which point these
+        // mappings switch to shadow-property declarations
+        // (Property<T>("Name").HasColumnName(...)) so the EF model still sees
+        // the columns and the migration scaffolder doesn't generate a
+        // DropColumn. Column drops happen in PR 7 after end-to-end prod
+        // verification per architecture_no_drops_until_prod_verified.
+        builder.Property(e => e.IsOAuth)
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        builder.Property(e => e.DisplayOrder)
+            .HasDefaultValue(0)
             .IsRequired();
 
         builder.HasOne<User>()
