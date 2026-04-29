@@ -1864,4 +1864,72 @@
   <data name="ShiftDash_Status_BelowTarget" xml:space="preserve"><value>Unter Ziel</value></data>
   <data name="ShiftDash_Coordinators_StaleLabel" xml:space="preserve"><value>Über 7 Tage inaktiv</value></data>
 
+  <!-- Issues section -->
+  <data name="Issue_PageTitle" xml:space="preserve"><value>Tickets</value></data>
+  <data name="Issue_New" xml:space="preserve"><value>Neues Ticket</value></data>
+  <data name="Issue_New_Title" xml:space="preserve"><value>Neues Ticket erstellen</value></data>
+  <data name="Issue_BackToList" xml:space="preserve"><value>Zurück zur Liste</value></data>
+  <data name="Issue_All" xml:space="preserve"><value>Alle</value></data>
+  <data name="Issue_Open" xml:space="preserve"><value>Offen</value></data>
+  <data name="Issue_Mine" xml:space="preserve"><value>Meine</value></data>
+  <data name="Issue_Closed" xml:space="preserve"><value>Geschlossen</value></data>
+  <data name="Issue_AllCategories" xml:space="preserve"><value>Alle Typen</value></data>
+  <data name="Issue_AllAreas" xml:space="preserve"><value>Alle Bereiche</value></data>
+  <data name="Issue_AllReporters" xml:space="preserve"><value>Alle Melder</value></data>
+  <data name="Issue_SearchPlaceholder" xml:space="preserve"><value>Titel oder Beschreibung suchen…</value></data>
+  <data name="Issue_Apply" xml:space="preserve"><value>Anwenden</value></data>
+  <data name="Issue_Clear" xml:space="preserve"><value>Zurücksetzen</value></data>
+  <data name="Issue_NoneFound" xml:space="preserve"><value>Keine Tickets entsprechen den aktuellen Filtern.</value></data>
+  <data name="Issue_AssignedTo" xml:space="preserve"><value>zugewiesen an</value></data>
+  <data name="Issue_SelectOne" xml:space="preserve"><value>Wähle ein Ticket aus der Liste, um Details zu sehen.</value></data>
+  <data name="Issue_Detail_Heading" xml:space="preserve"><value>Ticket</value></data>
+  <data name="Issue_OpenedBy" xml:space="preserve"><value>Eröffnet von</value></data>
+  <data name="Issue_Screenshot" xml:space="preserve"><value>Screenshot</value></data>
+  <data name="Issue_Thread" xml:space="preserve"><value>Konversation</value></data>
+  <data name="Issue_NoActivity" xml:space="preserve"><value>Noch keine Aktivität.</value></data>
+  <data name="Issue_Reporter" xml:space="preserve"><value>Melder</value></data>
+  <data name="Issue_ComposerPlaceholder" xml:space="preserve"><value>Kommentar hinzufügen…</value></data>
+  <data name="Issue_Comment" xml:space="preserve"><value>Kommentieren</value></data>
+  <data name="Issue_CommentAndResolve" xml:space="preserve"><value>Kommentieren &amp; als gelöst markieren</value></data>
+  <data name="Issue_ReopenByCommenting" xml:space="preserve"><value>Ein Kommentar öffnet dieses Ticket erneut.</value></data>
+  <data name="Issue_Details" xml:space="preserve"><value>Details</value></data>
+  <data name="Issue_Status" xml:space="preserve"><value>Status</value></data>
+  <data name="Issue_Type" xml:space="preserve"><value>Typ</value></data>
+  <data name="Issue_Area" xml:space="preserve"><value>Bereich</value></data>
+  <data name="Issue_Unspecified" xml:space="preserve"><value>Nicht angegeben</value></data>
+  <data name="Issue_Assignee" xml:space="preserve"><value>Bearbeiter</value></data>
+  <data name="Issue_Unassigned" xml:space="preserve"><value>Nicht zugewiesen</value></data>
+  <data name="Issue_GitHub" xml:space="preserve"><value>GitHub</value></data>
+  <data name="Issue_Opened" xml:space="preserve"><value>Eröffnet</value></data>
+  <data name="Issue_LastUpdate" xml:space="preserve"><value>Letzte Aktualisierung</value></data>
+  <data name="Issue_Due" xml:space="preserve"><value>Fällig</value></data>
+  <data name="Issue_Resolved" xml:space="preserve"><value>Gelöst</value></data>
+  <data name="Issue_ResolvedBy" xml:space="preserve"><value>von</value></data>
+  <data name="Issue_Title" xml:space="preserve"><value>Titel</value></data>
+  <data name="Issue_Area_Auto" xml:space="preserve"><value>Automatisch erkennen</value></data>
+  <data name="Issue_Area_Hint" xml:space="preserve"><value>Leer lassen, um den Bereich von der aktuellen Seite zu erkennen.</value></data>
+  <data name="Issue_Description" xml:space="preserve"><value>Beschreibung</value></data>
+  <data name="Issue_Description_Placeholder" xml:space="preserve"><value>Was ist passiert? Was hast du erwartet?</value></data>
+  <data name="Issue_Attachment" xml:space="preserve"><value>Screenshot (optional)</value></data>
+  <data name="Issue_Attachment_Hint" xml:space="preserve"><value>PNG oder JPEG, max. 5 MB.</value></data>
+  <data name="Issue_FileIssue" xml:space="preserve"><value>Ticket erstellen</value></data>
+  <data name="Issue_Cancel" xml:space="preserve"><value>Abbrechen</value></data>
+  <data name="Issue_Tips_Title" xml:space="preserve"><value>Tipps für ein gutes Ticket</value></data>
+  <data name="Issue_Tips_Bullet1" xml:space="preserve"><value>Beschreibe, was du tun wolltest.</value></data>
+  <data name="Issue_Tips_Bullet2" xml:space="preserve"><value>Beschreibe, was passiert ist und was du erwartet hast.</value></data>
+  <data name="Issue_Tips_Bullet3" xml:space="preserve"><value>Füge einen Screenshot hinzu, wenn er hilft.</value></data>
+  <data name="Issue_Tips_Bullet4" xml:space="preserve"><value>Ein Ticket pro Meldung — verschiedene Probleme gehören in separate Tickets.</value></data>
+  <data name="Issue_NotEmail_Notice" xml:space="preserve"><value>Das ist keine E-Mail — Antworten erscheinen hier in der Konversation.</value></data>
+
+  <!-- Issues — Controller-Statusmeldungen (TempData) -->
+  <data name="Issue_Submitted" xml:space="preserve"><value>Ticket gesendet. Danke!</value></data>
+  <data name="Issue_Error" xml:space="preserve"><value>Etwas ist schiefgelaufen. Bitte versuche es erneut.</value></data>
+  <data name="Issue_Comment_Posted" xml:space="preserve"><value>Kommentar veröffentlicht.</value></data>
+  <data name="Issue_Comment_Reopened" xml:space="preserve"><value>Ticket erneut geöffnet.</value></data>
+  <data name="Issue_Comment_PostFailed" xml:space="preserve"><value>Kommentar konnte nicht veröffentlicht werden.</value></data>
+  <data name="Issue_Status_Updated" xml:space="preserve"><value>Status aktualisiert.</value></data>
+  <data name="Issue_Assignee_Updated" xml:space="preserve"><value>Bearbeiter aktualisiert.</value></data>
+  <data name="Issue_Section_Updated" xml:space="preserve"><value>Bereich aktualisiert.</value></data>
+  <data name="Issue_GitHub_Linked" xml:space="preserve"><value>Mit GitHub verknüpft.</value></data>
+
 </root>

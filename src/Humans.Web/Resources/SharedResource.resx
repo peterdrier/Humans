@@ -1908,4 +1908,72 @@
   <data name="ShiftDash_Status_BelowTarget" xml:space="preserve"><value>Below target</value></data>
   <data name="ShiftDash_Coordinators_StaleLabel" xml:space="preserve"><value>Inactive over 7 days</value></data>
 
+  <!-- Issues section -->
+  <data name="Issue_PageTitle" xml:space="preserve"><value>Issues</value></data>
+  <data name="Issue_New" xml:space="preserve"><value>New issue</value></data>
+  <data name="Issue_New_Title" xml:space="preserve"><value>File a new issue</value></data>
+  <data name="Issue_BackToList" xml:space="preserve"><value>Back to list</value></data>
+  <data name="Issue_All" xml:space="preserve"><value>All</value></data>
+  <data name="Issue_Open" xml:space="preserve"><value>Open</value></data>
+  <data name="Issue_Mine" xml:space="preserve"><value>Mine</value></data>
+  <data name="Issue_Closed" xml:space="preserve"><value>Closed</value></data>
+  <data name="Issue_AllCategories" xml:space="preserve"><value>All types</value></data>
+  <data name="Issue_AllAreas" xml:space="preserve"><value>All areas</value></data>
+  <data name="Issue_AllReporters" xml:space="preserve"><value>All reporters</value></data>
+  <data name="Issue_SearchPlaceholder" xml:space="preserve"><value>Search title or description…</value></data>
+  <data name="Issue_Apply" xml:space="preserve"><value>Apply</value></data>
+  <data name="Issue_Clear" xml:space="preserve"><value>Clear</value></data>
+  <data name="Issue_NoneFound" xml:space="preserve"><value>No issues match the current filters.</value></data>
+  <data name="Issue_AssignedTo" xml:space="preserve"><value>assigned to</value></data>
+  <data name="Issue_SelectOne" xml:space="preserve"><value>Select an issue from the list to view details.</value></data>
+  <data name="Issue_Detail_Heading" xml:space="preserve"><value>Issue</value></data>
+  <data name="Issue_OpenedBy" xml:space="preserve"><value>Opened by</value></data>
+  <data name="Issue_Screenshot" xml:space="preserve"><value>Screenshot</value></data>
+  <data name="Issue_Thread" xml:space="preserve"><value>Conversation</value></data>
+  <data name="Issue_NoActivity" xml:space="preserve"><value>No activity yet.</value></data>
+  <data name="Issue_Reporter" xml:space="preserve"><value>Reporter</value></data>
+  <data name="Issue_ComposerPlaceholder" xml:space="preserve"><value>Add a comment…</value></data>
+  <data name="Issue_Comment" xml:space="preserve"><value>Comment</value></data>
+  <data name="Issue_CommentAndResolve" xml:space="preserve"><value>Comment &amp; mark resolved</value></data>
+  <data name="Issue_ReopenByCommenting" xml:space="preserve"><value>Posting a comment will reopen this issue.</value></data>
+  <data name="Issue_Details" xml:space="preserve"><value>Details</value></data>
+  <data name="Issue_Status" xml:space="preserve"><value>Status</value></data>
+  <data name="Issue_Type" xml:space="preserve"><value>Type</value></data>
+  <data name="Issue_Area" xml:space="preserve"><value>Area</value></data>
+  <data name="Issue_Unspecified" xml:space="preserve"><value>Unspecified</value></data>
+  <data name="Issue_Assignee" xml:space="preserve"><value>Assignee</value></data>
+  <data name="Issue_Unassigned" xml:space="preserve"><value>Unassigned</value></data>
+  <data name="Issue_GitHub" xml:space="preserve"><value>GitHub</value></data>
+  <data name="Issue_Opened" xml:space="preserve"><value>Opened</value></data>
+  <data name="Issue_LastUpdate" xml:space="preserve"><value>Last update</value></data>
+  <data name="Issue_Due" xml:space="preserve"><value>Due</value></data>
+  <data name="Issue_Resolved" xml:space="preserve"><value>Resolved</value></data>
+  <data name="Issue_ResolvedBy" xml:space="preserve"><value>by</value></data>
+  <data name="Issue_Title" xml:space="preserve"><value>Title</value></data>
+  <data name="Issue_Area_Auto" xml:space="preserve"><value>Auto-detect</value></data>
+  <data name="Issue_Area_Hint" xml:space="preserve"><value>Leave blank to auto-detect from the current page.</value></data>
+  <data name="Issue_Description" xml:space="preserve"><value>Description</value></data>
+  <data name="Issue_Description_Placeholder" xml:space="preserve"><value>What happened? What did you expect?</value></data>
+  <data name="Issue_Attachment" xml:space="preserve"><value>Screenshot (optional)</value></data>
+  <data name="Issue_Attachment_Hint" xml:space="preserve"><value>PNG or JPEG, max 5 MB.</value></data>
+  <data name="Issue_FileIssue" xml:space="preserve"><value>File issue</value></data>
+  <data name="Issue_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Issue_Tips_Title" xml:space="preserve"><value>Tips for a good issue</value></data>
+  <data name="Issue_Tips_Bullet1" xml:space="preserve"><value>Describe what you were trying to do.</value></data>
+  <data name="Issue_Tips_Bullet2" xml:space="preserve"><value>Describe what happened, and what you expected.</value></data>
+  <data name="Issue_Tips_Bullet3" xml:space="preserve"><value>Include a screenshot if it helps explain.</value></data>
+  <data name="Issue_Tips_Bullet4" xml:space="preserve"><value>One issue per report — separate problems should be separate issues.</value></data>
+  <data name="Issue_NotEmail_Notice" xml:space="preserve"><value>This isn't email — replies happen here, in the conversation thread on the issue.</value></data>
+
+  <!-- Issues — controller status messages (TempData) -->
+  <data name="Issue_Submitted" xml:space="preserve"><value>Issue submitted. Thanks!</value></data>
+  <data name="Issue_Error" xml:space="preserve"><value>Something went wrong. Please try again.</value></data>
+  <data name="Issue_Comment_Posted" xml:space="preserve"><value>Comment posted.</value></data>
+  <data name="Issue_Comment_Reopened" xml:space="preserve"><value>Issue reopened.</value></data>
+  <data name="Issue_Comment_PostFailed" xml:space="preserve"><value>Could not post comment.</value></data>
+  <data name="Issue_Status_Updated" xml:space="preserve"><value>Status updated.</value></data>
+  <data name="Issue_Assignee_Updated" xml:space="preserve"><value>Assignee updated.</value></data>
+  <data name="Issue_Section_Updated" xml:space="preserve"><value>Section updated.</value></data>
+  <data name="Issue_GitHub_Linked" xml:space="preserve"><value>Linked to GitHub.</value></data>
+
 </root>

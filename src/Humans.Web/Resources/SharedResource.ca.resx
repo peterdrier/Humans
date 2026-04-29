@@ -1866,4 +1866,72 @@
   <data name="ShiftDash_Status_BelowTarget" xml:space="preserve"><value>Per sota de l'objectiu</value></data>
   <data name="ShiftDash_Coordinators_StaleLabel" xml:space="preserve"><value>Inactiu més de 7 dies</value></data>
 
+  <!-- Issues section -->
+  <data name="Issue_PageTitle" xml:space="preserve"><value>Incidències</value></data>
+  <data name="Issue_New" xml:space="preserve"><value>Nova incidència</value></data>
+  <data name="Issue_New_Title" xml:space="preserve"><value>Reportar una nova incidència</value></data>
+  <data name="Issue_BackToList" xml:space="preserve"><value>Tornar a la llista</value></data>
+  <data name="Issue_All" xml:space="preserve"><value>Totes</value></data>
+  <data name="Issue_Open" xml:space="preserve"><value>Obertes</value></data>
+  <data name="Issue_Mine" xml:space="preserve"><value>Meves</value></data>
+  <data name="Issue_Closed" xml:space="preserve"><value>Tancades</value></data>
+  <data name="Issue_AllCategories" xml:space="preserve"><value>Tots els tipus</value></data>
+  <data name="Issue_AllAreas" xml:space="preserve"><value>Totes les àrees</value></data>
+  <data name="Issue_AllReporters" xml:space="preserve"><value>Tots els reporters</value></data>
+  <data name="Issue_SearchPlaceholder" xml:space="preserve"><value>Cerca títol o descripció…</value></data>
+  <data name="Issue_Apply" xml:space="preserve"><value>Aplicar</value></data>
+  <data name="Issue_Clear" xml:space="preserve"><value>Netejar</value></data>
+  <data name="Issue_NoneFound" xml:space="preserve"><value>Cap incidència coincideix amb els filtres actuals.</value></data>
+  <data name="Issue_AssignedTo" xml:space="preserve"><value>assignada a</value></data>
+  <data name="Issue_SelectOne" xml:space="preserve"><value>Selecciona una incidència de la llista per veure els detalls.</value></data>
+  <data name="Issue_Detail_Heading" xml:space="preserve"><value>Incidència</value></data>
+  <data name="Issue_OpenedBy" xml:space="preserve"><value>Oberta per</value></data>
+  <data name="Issue_Screenshot" xml:space="preserve"><value>Captura de pantalla</value></data>
+  <data name="Issue_Thread" xml:space="preserve"><value>Conversa</value></data>
+  <data name="Issue_NoActivity" xml:space="preserve"><value>Encara no hi ha activitat.</value></data>
+  <data name="Issue_Reporter" xml:space="preserve"><value>Reporter</value></data>
+  <data name="Issue_ComposerPlaceholder" xml:space="preserve"><value>Afegir un comentari…</value></data>
+  <data name="Issue_Comment" xml:space="preserve"><value>Comentar</value></data>
+  <data name="Issue_CommentAndResolve" xml:space="preserve"><value>Comentar i marcar com a resolta</value></data>
+  <data name="Issue_ReopenByCommenting" xml:space="preserve"><value>Publicar un comentari reobrirà aquesta incidència.</value></data>
+  <data name="Issue_Details" xml:space="preserve"><value>Detalls</value></data>
+  <data name="Issue_Status" xml:space="preserve"><value>Estat</value></data>
+  <data name="Issue_Type" xml:space="preserve"><value>Tipus</value></data>
+  <data name="Issue_Area" xml:space="preserve"><value>Àrea</value></data>
+  <data name="Issue_Unspecified" xml:space="preserve"><value>Sense especificar</value></data>
+  <data name="Issue_Assignee" xml:space="preserve"><value>Assignada a</value></data>
+  <data name="Issue_Unassigned" xml:space="preserve"><value>Sense assignar</value></data>
+  <data name="Issue_GitHub" xml:space="preserve"><value>GitHub</value></data>
+  <data name="Issue_Opened" xml:space="preserve"><value>Oberta</value></data>
+  <data name="Issue_LastUpdate" xml:space="preserve"><value>Última actualització</value></data>
+  <data name="Issue_Due" xml:space="preserve"><value>Data límit</value></data>
+  <data name="Issue_Resolved" xml:space="preserve"><value>Resolta</value></data>
+  <data name="Issue_ResolvedBy" xml:space="preserve"><value>per</value></data>
+  <data name="Issue_Title" xml:space="preserve"><value>Títol</value></data>
+  <data name="Issue_Area_Auto" xml:space="preserve"><value>Detectar automàticament</value></data>
+  <data name="Issue_Area_Hint" xml:space="preserve"><value>Deixa-ho en blanc per detectar-ho des de la pàgina actual.</value></data>
+  <data name="Issue_Description" xml:space="preserve"><value>Descripció</value></data>
+  <data name="Issue_Description_Placeholder" xml:space="preserve"><value>Què va passar? Què esperaves que passés?</value></data>
+  <data name="Issue_Attachment" xml:space="preserve"><value>Captura (opcional)</value></data>
+  <data name="Issue_Attachment_Hint" xml:space="preserve"><value>PNG o JPEG, màxim 5 MB.</value></data>
+  <data name="Issue_FileIssue" xml:space="preserve"><value>Reportar incidència</value></data>
+  <data name="Issue_Cancel" xml:space="preserve"><value>Cancel·lar</value></data>
+  <data name="Issue_Tips_Title" xml:space="preserve"><value>Consells per a una bona incidència</value></data>
+  <data name="Issue_Tips_Bullet1" xml:space="preserve"><value>Descriu què intentaves fer.</value></data>
+  <data name="Issue_Tips_Bullet2" xml:space="preserve"><value>Descriu què va passar i què esperaves.</value></data>
+  <data name="Issue_Tips_Bullet3" xml:space="preserve"><value>Inclou una captura si ajuda a explicar-ho.</value></data>
+  <data name="Issue_Tips_Bullet4" xml:space="preserve"><value>Una incidència per report — els problemes diferents han d'anar en incidències separades.</value></data>
+  <data name="Issue_NotEmail_Notice" xml:space="preserve"><value>Això no és correu — les respostes passen aquí, en la conversa de la incidència.</value></data>
+
+  <!-- Issues — missatges d'estat del controlador (TempData) -->
+  <data name="Issue_Submitted" xml:space="preserve"><value>Incidència enviada. Gràcies!</value></data>
+  <data name="Issue_Error" xml:space="preserve"><value>Alguna cosa ha anat malament. Torna-ho a provar.</value></data>
+  <data name="Issue_Comment_Posted" xml:space="preserve"><value>Comentari publicat.</value></data>
+  <data name="Issue_Comment_Reopened" xml:space="preserve"><value>Incidència reoberta.</value></data>
+  <data name="Issue_Comment_PostFailed" xml:space="preserve"><value>No s'ha pogut publicar el comentari.</value></data>
+  <data name="Issue_Status_Updated" xml:space="preserve"><value>Estat actualitzat.</value></data>
+  <data name="Issue_Assignee_Updated" xml:space="preserve"><value>Assignació actualitzada.</value></data>
+  <data name="Issue_Section_Updated" xml:space="preserve"><value>Secció actualitzada.</value></data>
+  <data name="Issue_GitHub_Linked" xml:space="preserve"><value>Vinculada amb GitHub.</value></data>
+
 </root>

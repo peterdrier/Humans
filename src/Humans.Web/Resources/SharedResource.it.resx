@@ -1864,4 +1864,72 @@
   <data name="ShiftDash_Status_BelowTarget" xml:space="preserve"><value>Sotto obiettivo</value></data>
   <data name="ShiftDash_Coordinators_StaleLabel" xml:space="preserve"><value>Inattivo da più di 7 giorni</value></data>
 
+  <!-- Issues section -->
+  <data name="Issue_PageTitle" xml:space="preserve"><value>Segnalazioni</value></data>
+  <data name="Issue_New" xml:space="preserve"><value>Nuova segnalazione</value></data>
+  <data name="Issue_New_Title" xml:space="preserve"><value>Apri una nuova segnalazione</value></data>
+  <data name="Issue_BackToList" xml:space="preserve"><value>Torna all'elenco</value></data>
+  <data name="Issue_All" xml:space="preserve"><value>Tutte</value></data>
+  <data name="Issue_Open" xml:space="preserve"><value>Aperte</value></data>
+  <data name="Issue_Mine" xml:space="preserve"><value>Le mie</value></data>
+  <data name="Issue_Closed" xml:space="preserve"><value>Chiuse</value></data>
+  <data name="Issue_AllCategories" xml:space="preserve"><value>Tutti i tipi</value></data>
+  <data name="Issue_AllAreas" xml:space="preserve"><value>Tutte le aree</value></data>
+  <data name="Issue_AllReporters" xml:space="preserve"><value>Tutti i segnalatori</value></data>
+  <data name="Issue_SearchPlaceholder" xml:space="preserve"><value>Cerca titolo o descrizione…</value></data>
+  <data name="Issue_Apply" xml:space="preserve"><value>Applica</value></data>
+  <data name="Issue_Clear" xml:space="preserve"><value>Pulisci</value></data>
+  <data name="Issue_NoneFound" xml:space="preserve"><value>Nessuna segnalazione corrisponde ai filtri attuali.</value></data>
+  <data name="Issue_AssignedTo" xml:space="preserve"><value>assegnata a</value></data>
+  <data name="Issue_SelectOne" xml:space="preserve"><value>Seleziona una segnalazione dall'elenco per vedere i dettagli.</value></data>
+  <data name="Issue_Detail_Heading" xml:space="preserve"><value>Segnalazione</value></data>
+  <data name="Issue_OpenedBy" xml:space="preserve"><value>Aperta da</value></data>
+  <data name="Issue_Screenshot" xml:space="preserve"><value>Schermata</value></data>
+  <data name="Issue_Thread" xml:space="preserve"><value>Conversazione</value></data>
+  <data name="Issue_NoActivity" xml:space="preserve"><value>Ancora nessuna attività.</value></data>
+  <data name="Issue_Reporter" xml:space="preserve"><value>Segnalatore</value></data>
+  <data name="Issue_ComposerPlaceholder" xml:space="preserve"><value>Aggiungi un commento…</value></data>
+  <data name="Issue_Comment" xml:space="preserve"><value>Commenta</value></data>
+  <data name="Issue_CommentAndResolve" xml:space="preserve"><value>Commenta e segna come risolta</value></data>
+  <data name="Issue_ReopenByCommenting" xml:space="preserve"><value>Pubblicare un commento riaprirà questa segnalazione.</value></data>
+  <data name="Issue_Details" xml:space="preserve"><value>Dettagli</value></data>
+  <data name="Issue_Status" xml:space="preserve"><value>Stato</value></data>
+  <data name="Issue_Type" xml:space="preserve"><value>Tipo</value></data>
+  <data name="Issue_Area" xml:space="preserve"><value>Area</value></data>
+  <data name="Issue_Unspecified" xml:space="preserve"><value>Non specificata</value></data>
+  <data name="Issue_Assignee" xml:space="preserve"><value>Assegnataria</value></data>
+  <data name="Issue_Unassigned" xml:space="preserve"><value>Non assegnata</value></data>
+  <data name="Issue_GitHub" xml:space="preserve"><value>GitHub</value></data>
+  <data name="Issue_Opened" xml:space="preserve"><value>Aperta</value></data>
+  <data name="Issue_LastUpdate" xml:space="preserve"><value>Ultimo aggiornamento</value></data>
+  <data name="Issue_Due" xml:space="preserve"><value>Scadenza</value></data>
+  <data name="Issue_Resolved" xml:space="preserve"><value>Risolta</value></data>
+  <data name="Issue_ResolvedBy" xml:space="preserve"><value>da</value></data>
+  <data name="Issue_Title" xml:space="preserve"><value>Titolo</value></data>
+  <data name="Issue_Area_Auto" xml:space="preserve"><value>Rileva automaticamente</value></data>
+  <data name="Issue_Area_Hint" xml:space="preserve"><value>Lascia vuoto per rilevare l'area dalla pagina corrente.</value></data>
+  <data name="Issue_Description" xml:space="preserve"><value>Descrizione</value></data>
+  <data name="Issue_Description_Placeholder" xml:space="preserve"><value>Cosa è successo? Cosa ti aspettavi?</value></data>
+  <data name="Issue_Attachment" xml:space="preserve"><value>Schermata (opzionale)</value></data>
+  <data name="Issue_Attachment_Hint" xml:space="preserve"><value>PNG o JPEG, max 5 MB.</value></data>
+  <data name="Issue_FileIssue" xml:space="preserve"><value>Invia segnalazione</value></data>
+  <data name="Issue_Cancel" xml:space="preserve"><value>Annulla</value></data>
+  <data name="Issue_Tips_Title" xml:space="preserve"><value>Consigli per una buona segnalazione</value></data>
+  <data name="Issue_Tips_Bullet1" xml:space="preserve"><value>Descrivi cosa stavi cercando di fare.</value></data>
+  <data name="Issue_Tips_Bullet2" xml:space="preserve"><value>Descrivi cosa è successo e cosa ti aspettavi.</value></data>
+  <data name="Issue_Tips_Bullet3" xml:space="preserve"><value>Includi una schermata se aiuta a spiegare.</value></data>
+  <data name="Issue_Tips_Bullet4" xml:space="preserve"><value>Una segnalazione per report — problemi diversi vanno in segnalazioni separate.</value></data>
+  <data name="Issue_NotEmail_Notice" xml:space="preserve"><value>Questa non è un'email — le risposte avvengono qui, nella conversazione della segnalazione.</value></data>
+
+  <!-- Issues — messaggi di stato del controller (TempData) -->
+  <data name="Issue_Submitted" xml:space="preserve"><value>Segnalazione inviata. Grazie!</value></data>
+  <data name="Issue_Error" xml:space="preserve"><value>Qualcosa è andato storto. Riprova.</value></data>
+  <data name="Issue_Comment_Posted" xml:space="preserve"><value>Commento pubblicato.</value></data>
+  <data name="Issue_Comment_Reopened" xml:space="preserve"><value>Segnalazione riaperta.</value></data>
+  <data name="Issue_Comment_PostFailed" xml:space="preserve"><value>Impossibile pubblicare il commento.</value></data>
+  <data name="Issue_Status_Updated" xml:space="preserve"><value>Stato aggiornato.</value></data>
+  <data name="Issue_Assignee_Updated" xml:space="preserve"><value>Assegnataria aggiornata.</value></data>
+  <data name="Issue_Section_Updated" xml:space="preserve"><value>Sezione aggiornata.</value></data>
+  <data name="Issue_GitHub_Linked" xml:space="preserve"><value>Collegata a GitHub.</value></data>
+
 </root>
