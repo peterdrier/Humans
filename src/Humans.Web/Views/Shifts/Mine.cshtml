@@ -206,19 +206,17 @@
         }
 
         @* General Availability — Calendar Grid *@
-        @{
-            var culture = System.Globalization.CultureInfo.CurrentUICulture;
-            var shortDays = culture.DateTimeFormat.AbbreviatedDayNames;
-            var monFirstDays = new[] { shortDays[1], shortDays[2], shortDays[3], shortDays[4], shortDays[5], shortDays[6], shortDays[0] };
-            int AvailLeadOffset(LocalDate d) => ((int)d.DayOfWeek + 6) % 7;
+        var culture = System.Globalization.CultureInfo.CurrentUICulture;
+        var shortDays = culture.DateTimeFormat.AbbreviatedDayNames;
+        var monFirstDays = new[] { shortDays[1], shortDays[2], shortDays[3], shortDays[4], shortDays[5], shortDays[6], shortDays[0] };
+        int AvailLeadOffset(LocalDate d) => ((int)d.DayOfWeek + 6) % 7;
 
-            var phases = new List<(string Label, string BadgeClass, int StartOffset, int EndOffset)>
-            {
-                (Localizer["Shifts_SetUp"].Value, "bg-info", es.BuildStartOffset, -1),
-                (Localizer["Shifts_Event"].Value, "bg-success", 0, es.EventEndOffset),
-                (Localizer["Shifts_Strike"].Value, "bg-secondary", es.EventEndOffset + 1, es.StrikeEndOffset)
-            };
-        }
+        var phases = new List<(string Label, string BadgeClass, int StartOffset, int EndOffset)>
+        {
+            (Localizer["Shifts_SetUp"].Value, "bg-info", es.BuildStartOffset, -1),
+            (Localizer["Shifts_Event"].Value, "bg-success", 0, es.EventEndOffset),
+            (Localizer["Shifts_Strike"].Value, "bg-secondary", es.EventEndOffset + 1, es.StrikeEndOffset)
+        };
         <div class="card mb-4">
             <div class="card-header"><h5 class="mb-0">@Localizer["Shifts_GeneralAvailability"]</h5></div>
             <div class="card-body">
