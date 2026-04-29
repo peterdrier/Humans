@@ -1894,4 +1894,72 @@
   <data name="EmailGrid_LinkFailed" xml:space="preserve"><value>Nous n'avons pas pu associer ce compte Google. Veuillez réessayer.</value></data>
   <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>Gérer les e-mails</value></data>
 
+  <!-- Issues section -->
+  <data name="Issue_PageTitle" xml:space="preserve"><value>Incidents</value></data>
+  <data name="Issue_New" xml:space="preserve"><value>Nouvel incident</value></data>
+  <data name="Issue_New_Title" xml:space="preserve"><value>Signaler un nouvel incident</value></data>
+  <data name="Issue_BackToList" xml:space="preserve"><value>Retour à la liste</value></data>
+  <data name="Issue_All" xml:space="preserve"><value>Tous</value></data>
+  <data name="Issue_Open" xml:space="preserve"><value>Ouverts</value></data>
+  <data name="Issue_Mine" xml:space="preserve"><value>Les miens</value></data>
+  <data name="Issue_Closed" xml:space="preserve"><value>Fermés</value></data>
+  <data name="Issue_AllCategories" xml:space="preserve"><value>Tous les types</value></data>
+  <data name="Issue_AllAreas" xml:space="preserve"><value>Toutes les zones</value></data>
+  <data name="Issue_AllReporters" xml:space="preserve"><value>Tous les rapporteurs</value></data>
+  <data name="Issue_SearchPlaceholder" xml:space="preserve"><value>Rechercher un titre ou une description…</value></data>
+  <data name="Issue_Apply" xml:space="preserve"><value>Appliquer</value></data>
+  <data name="Issue_Clear" xml:space="preserve"><value>Effacer</value></data>
+  <data name="Issue_NoneFound" xml:space="preserve"><value>Aucun incident ne correspond aux filtres actuels.</value></data>
+  <data name="Issue_AssignedTo" xml:space="preserve"><value>assigné à</value></data>
+  <data name="Issue_SelectOne" xml:space="preserve"><value>Sélectionnez un incident dans la liste pour voir les détails.</value></data>
+  <data name="Issue_Detail_Heading" xml:space="preserve"><value>Incident</value></data>
+  <data name="Issue_OpenedBy" xml:space="preserve"><value>Ouvert par</value></data>
+  <data name="Issue_Screenshot" xml:space="preserve"><value>Capture d'écran</value></data>
+  <data name="Issue_Thread" xml:space="preserve"><value>Conversation</value></data>
+  <data name="Issue_NoActivity" xml:space="preserve"><value>Aucune activité pour le moment.</value></data>
+  <data name="Issue_Reporter" xml:space="preserve"><value>Rapporteur</value></data>
+  <data name="Issue_ComposerPlaceholder" xml:space="preserve"><value>Ajouter un commentaire…</value></data>
+  <data name="Issue_Comment" xml:space="preserve"><value>Commenter</value></data>
+  <data name="Issue_CommentAndResolve" xml:space="preserve"><value>Commenter et marquer résolu</value></data>
+  <data name="Issue_ReopenByCommenting" xml:space="preserve"><value>Publier un commentaire rouvrira cet incident.</value></data>
+  <data name="Issue_Details" xml:space="preserve"><value>Détails</value></data>
+  <data name="Issue_Status" xml:space="preserve"><value>Statut</value></data>
+  <data name="Issue_Type" xml:space="preserve"><value>Type</value></data>
+  <data name="Issue_Area" xml:space="preserve"><value>Zone</value></data>
+  <data name="Issue_Unspecified" xml:space="preserve"><value>Non spécifié</value></data>
+  <data name="Issue_Assignee" xml:space="preserve"><value>Responsable</value></data>
+  <data name="Issue_Unassigned" xml:space="preserve"><value>Non attribué</value></data>
+  <data name="Issue_GitHub" xml:space="preserve"><value>GitHub</value></data>
+  <data name="Issue_Opened" xml:space="preserve"><value>Ouvert</value></data>
+  <data name="Issue_LastUpdate" xml:space="preserve"><value>Dernière mise à jour</value></data>
+  <data name="Issue_Due" xml:space="preserve"><value>Échéance</value></data>
+  <data name="Issue_Resolved" xml:space="preserve"><value>Résolu</value></data>
+  <data name="Issue_ResolvedBy" xml:space="preserve"><value>par</value></data>
+  <data name="Issue_Title" xml:space="preserve"><value>Titre</value></data>
+  <data name="Issue_Area_Auto" xml:space="preserve"><value>Détecter automatiquement</value></data>
+  <data name="Issue_Area_Hint" xml:space="preserve"><value>Laissez vide pour détecter depuis la page actuelle.</value></data>
+  <data name="Issue_Description" xml:space="preserve"><value>Description</value></data>
+  <data name="Issue_Description_Placeholder" xml:space="preserve"><value>Que s'est-il passé ? Qu'attendiez-vous ?</value></data>
+  <data name="Issue_Attachment" xml:space="preserve"><value>Capture (optionnelle)</value></data>
+  <data name="Issue_Attachment_Hint" xml:space="preserve"><value>PNG ou JPEG, 5 Mo max.</value></data>
+  <data name="Issue_FileIssue" xml:space="preserve"><value>Signaler l'incident</value></data>
+  <data name="Issue_Cancel" xml:space="preserve"><value>Annuler</value></data>
+  <data name="Issue_Tips_Title" xml:space="preserve"><value>Conseils pour un bon signalement</value></data>
+  <data name="Issue_Tips_Bullet1" xml:space="preserve"><value>Décrivez ce que vous essayiez de faire.</value></data>
+  <data name="Issue_Tips_Bullet2" xml:space="preserve"><value>Décrivez ce qui s'est passé et ce que vous attendiez.</value></data>
+  <data name="Issue_Tips_Bullet3" xml:space="preserve"><value>Ajoutez une capture d'écran si elle aide à expliquer.</value></data>
+  <data name="Issue_Tips_Bullet4" xml:space="preserve"><value>Un incident par signalement — des problèmes différents doivent être signalés séparément.</value></data>
+  <data name="Issue_NotEmail_Notice" xml:space="preserve"><value>Ce n'est pas un email — les réponses se font ici, dans la conversation de l'incident.</value></data>
+
+  <!-- Issues — messages d'état du contrôleur (TempData) -->
+  <data name="Issue_Submitted" xml:space="preserve"><value>Incident envoyé. Merci !</value></data>
+  <data name="Issue_Error" xml:space="preserve"><value>Une erreur est survenue. Veuillez réessayer.</value></data>
+  <data name="Issue_Comment_Posted" xml:space="preserve"><value>Commentaire publié.</value></data>
+  <data name="Issue_Comment_Reopened" xml:space="preserve"><value>Incident rouvert.</value></data>
+  <data name="Issue_Comment_PostFailed" xml:space="preserve"><value>Impossible de publier le commentaire.</value></data>
+  <data name="Issue_Status_Updated" xml:space="preserve"><value>Statut mis à jour.</value></data>
+  <data name="Issue_Assignee_Updated" xml:space="preserve"><value>Responsable mis à jour.</value></data>
+  <data name="Issue_Section_Updated" xml:space="preserve"><value>Section mise à jour.</value></data>
+  <data name="Issue_GitHub_Linked" xml:space="preserve"><value>Lié à GitHub.</value></data>
+
 </root>
