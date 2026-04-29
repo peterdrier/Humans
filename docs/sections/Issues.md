@@ -130,7 +130,7 @@ Two controllers serve this section:
 - Visibility: a regular human sees only the issues they reported. A section role-holder sees all issues whose `Section` maps to one of their roles. Admin sees every issue.
 - Mutation: only handlers (Admin or section role-holders) may change status, assignee, section, or GitHub link, or post a comment as a non-reporter. The reporter may post a comment but cannot change other fields.
 - `Section` is editable in any non-terminal state (handlers may re-route at any time before the issue closes).
-- Screenshots are validated for allowed file types (JPEG, PNG, WebP) and a max size of 5 MB before storage.
+- Screenshots are validated for allowed file types (JPEG, PNG, WebP) and a max size of 10 MB before storage.
 - All issue mutations are audit-logged via `IAuditLogService.LogAsync` (`AuditAction.IssueStatusChanged`, `AuditAction.IssueAssigneeChanged`, `AuditAction.IssueSectionChanged`, `AuditAction.IssueGitHubLinked`). Audit writes happen **after** the business save, never before — see `coding-rules.md` "audit-after-save".
 - API-initiated changes are audit-logged with actor `null` (the API-key path has no user identity); the audit row's metadata records that the change came from the API.
 
@@ -143,7 +143,7 @@ Two controllers serve this section:
 
 ## Triggers
 
-- When an issue is submitted, an in-app `NotificationSource.IssueSubmitted` notification fans out to every viewer for whom the issue is in-queue: Admin plus any user holding a role mapped to the issue's `Section`.
+- When an issue is submitted, the nav-badge actionable count refreshes for every handler whose role maps to the issue's `Section` (no in-app notification — handlers see the new item in their queue).
 - When a comment is posted (by reporter or handler), a notification fan-out + email targets the **other party** — handlers when the reporter comments, the reporter when a handler comments — using `IUserEmailService.GetNotificationTargetEmailsAsync` to resolve the effective notification email and queueing a localized email through `IEmailService` (the production binding is `OutboxEmailService`, so emails go through the email outbox).
 - When status changes, the reporter and current assignee are notified.
 - When an issue is assigned, the new assignee is notified.
@@ -157,7 +157,7 @@ Two controllers serve this section:
 - **Profiles:** `IUserEmailService.GetNotificationTargetEmailsAsync` — resolves the effective notification email for the reporter when a handler comments, and for the assignee on status/assignment changes.
 - **Auth:** `IRoleAssignmentService` — used by the section-routing logic to fan out notifications to the set of users who currently hold a role mapped to the issue's `Section`.
 - **Email:** `IEmailService.SendIssueCommentAsync` — comment-thread emails (queued through the outbox in production).
-- **Notifications:** `INotificationService.SendAsync` — `NotificationSource.IssueSubmitted`, `NotificationSource.IssueComment`, `NotificationSource.IssueStatusChanged`, `NotificationSource.IssueAssigned` in-app notifications.
+- **Notifications:** `INotificationService.SendAsync` — `NotificationSource.IssueComment`, `NotificationSource.IssueStatusChanged`, `NotificationSource.IssueAssigned` in-app notifications.
 - **Audit Log:** `IAuditLogService.LogAsync` — every mutation (`AuditAction.IssueStatusChanged`, `AuditAction.IssueAssigneeChanged`, `AuditAction.IssueSectionChanged`, `AuditAction.IssueGitHubLinked`).
 - **Caching:** `INavBadgeCacheInvalidator` — invalidated whenever the actionable count for a viewer could have changed.
 - **GDPR:** implements `IUserDataContributor` to export the user's reported issues and their comments under `GdprExportSections.Issues`.

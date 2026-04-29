@@ -33,18 +33,18 @@ public static class IssueSectionRouting
     /// </summary>
     public static IReadOnlyList<string> RolesFor(string? section) => section switch
     {
-        Tickets       => [RoleNames.TicketAdmin],
-        Camps         => [RoleNames.CampAdmin],
-        Teams         => [RoleNames.TeamsAdmin],
-        Shifts        => [RoleNames.NoInfoAdmin],
-        Onboarding    => [RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator, RoleNames.HumanAdmin],
-        Profiles      => [RoleNames.HumanAdmin],
-        Users         => [RoleNames.HumanAdmin],
-        Budget        => [RoleNames.FinanceAdmin],
-        Governance    => [RoleNames.Board],
-        Legal         => [RoleNames.ConsentCoordinator],
-        CityPlanning  => [RoleNames.CampAdmin],
-        _             => []
+        Tickets => [RoleNames.TicketAdmin],
+        Camps => [RoleNames.CampAdmin],
+        Teams => [RoleNames.TeamsAdmin],
+        Shifts => [RoleNames.NoInfoAdmin],
+        Onboarding => [RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator, RoleNames.HumanAdmin],
+        Profiles => [RoleNames.HumanAdmin],
+        Users => [RoleNames.HumanAdmin],
+        Budget => [RoleNames.FinanceAdmin],
+        Governance => [RoleNames.Board],
+        Legal => [RoleNames.ConsentCoordinator],
+        CityPlanning => [RoleNames.CampAdmin],
+        _ => []
     };
 
     /// <summary>

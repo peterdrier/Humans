@@ -53,11 +53,11 @@ public sealed class IssuesRepository : IIssuesRepository
         await using var db = await _factory.CreateDbContextAsync(ct);
         IQueryable<Issue> q = db.Issues.AsNoTracking().Include(i => i.Comments);
 
-        if (f.Statuses is { Length: > 0 })   q = q.Where(i => f.Statuses.Contains(i.Status));
+        if (f.Statuses is { Length: > 0 }) q = q.Where(i => f.Statuses.Contains(i.Status));
         if (f.Categories is { Length: > 0 }) q = q.Where(i => f.Categories.Contains(i.Category));
-        if (f.Sections is { Length: > 0 })   q = q.Where(i => f.Sections.Contains(i.Section));
-        if (f.ReporterUserId is { } rid)     q = q.Where(i => i.ReporterUserId == rid);
-        if (f.AssigneeUserId is { } aid)     q = q.Where(i => i.AssigneeUserId == aid);
+        if (f.Sections is { Length: > 0 }) q = q.Where(i => f.Sections.Contains(i.Section));
+        if (f.ReporterUserId is { } rid) q = q.Where(i => i.ReporterUserId == rid);
+        if (f.AssigneeUserId is { } aid) q = q.Where(i => i.AssigneeUserId == aid);
         if (!string.IsNullOrWhiteSpace(f.SearchText))
             q = q.Where(i => i.Title.Contains(f.SearchText) || i.Description.Contains(f.SearchText));
 
