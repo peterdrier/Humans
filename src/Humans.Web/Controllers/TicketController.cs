@@ -120,6 +120,7 @@ public class TicketController : HumansControllerBase
                 Currency = o.Currency,
                 PurchasedAt = o.PurchasedAt,
                 IsMatched = o.IsMatched,
+                PaymentStatus = o.PaymentStatus,
             }).ToList(),
             IsConfigured = true,
             TotalActiveVolunteers = stats.TotalActiveVolunteers,

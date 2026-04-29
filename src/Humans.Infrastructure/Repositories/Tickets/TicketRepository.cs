@@ -476,7 +476,7 @@ public sealed class TicketRepository : ITicketRepository
         var totalAppFees = await paidOrders.SumAsync(o => o.ApplicationFee ?? 0m, ct);
         var unmatchedCount = await ctx.TicketOrders
             .AsNoTracking()
-            .CountAsync(o => o.MatchedUserId == null, ct);
+            .CountAsync(o => o.MatchedUserId == null && o.PaymentStatus == TicketPaymentStatus.Paid, ct);
 
         return new TicketDashboardTotals
         {
@@ -512,10 +512,12 @@ public sealed class TicketRepository : ITicketRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.TicketOrders
             .AsNoTracking()
+            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
             .Select(o => new OrderDateAndCount
             {
                 PurchasedAt = o.PurchasedAt,
-                AttendeeCount = o.Attendees.Count,
+                AttendeeCount = o.Attendees.Count(a =>
+                    a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn),
             })
             .ToListAsync(ct);
     }
@@ -537,6 +539,7 @@ public sealed class TicketRepository : ITicketRepository
                 Currency = o.Currency,
                 PurchasedAt = o.PurchasedAt,
                 IsMatched = o.MatchedUserId != null,
+                PaymentStatus = o.PaymentStatus,
             })
             .ToListAsync(ct);
     }

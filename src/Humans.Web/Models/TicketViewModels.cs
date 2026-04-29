@@ -76,6 +76,7 @@ public class TicketOrderSummary
     public string Currency { get; set; } = "EUR";
     public Instant PurchasedAt { get; set; }
     public bool IsMatched { get; set; }
+    public TicketPaymentStatus PaymentStatus { get; set; }
 }
 
 public class TicketOrdersViewModel : PagedListViewModel
