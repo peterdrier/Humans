@@ -416,6 +416,29 @@ public class IssuesServiceTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task UpdateAssigneeAsync_self_assign_does_not_notify_actor()
+    {
+        var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
+        var actorId = Guid.NewGuid();
+        _dbContext.Users.Add(new User { Id = actorId, Email = "self@x.com", DisplayName = "Self" });
+        await _dbContext.SaveChangesAsync();
+
+        await _service.UpdateAssigneeAsync(issueId, actorId, actorId);
+
+        await _notificationService.DidNotReceive().SendAsync(
+            NotificationSource.IssueAssigned,
+            Arg.Any<NotificationClass>(),
+            Arg.Any<NotificationPriority>(),
+            Arg.Any<string>(),
+            Arg.Any<IReadOnlyList<Guid>>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
     // ==========================================================================
     // UpdateSectionAsync
     // ==========================================================================
