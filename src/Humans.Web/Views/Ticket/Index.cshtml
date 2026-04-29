@@ -228,7 +228,7 @@
                         @if (Model.UnmatchedOrderCount > 0)
                         {
                             <li class="mb-2">
-                                <a asp-action="Orders" asp-route-filterMatched="false">
+                                <a asp-action="Orders" asp-route-filterMatched="false" asp-route-filterPaymentStatus="Paid">
                                     <span class="badge bg-warning text-dark">@Model.UnmatchedOrderCount</span>
                                     orders from non-humans
                                 </a>

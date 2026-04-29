@@ -462,21 +462,20 @@ public sealed class TicketRepository : ITicketRepository
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
-        var ticketsSold = await ctx.TicketAttendees
-            .AsNoTracking()
-            .CountAsync(a =>
-                a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn, ct);
-
         var paidOrders = ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid);
 
+        var ticketsSold = await ctx.TicketAttendees
+            .AsNoTracking()
+            .CountAsync(a =>
+                (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn)
+                && a.TicketOrder.PaymentStatus == TicketPaymentStatus.Paid, ct);
+
         var revenue = await paidOrders.SumAsync(o => o.TotalAmount, ct);
         var totalStripeFees = await paidOrders.SumAsync(o => o.StripeFee ?? 0m, ct);
         var totalAppFees = await paidOrders.SumAsync(o => o.ApplicationFee ?? 0m, ct);
-        var unmatchedCount = await ctx.TicketOrders
-            .AsNoTracking()
-            .CountAsync(o => o.MatchedUserId == null && o.PaymentStatus == TicketPaymentStatus.Paid, ct);
+        var unmatchedCount = await paidOrders.CountAsync(o => o.MatchedUserId == null, ct);
 
         return new TicketDashboardTotals
         {
