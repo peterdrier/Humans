@@ -57,6 +57,7 @@ internal static class ProfileSectionExtensions
         services.AddScoped<IDuplicateAccountService, ProfilesDuplicateAccountService>();
         services.AddScoped<IAccountProvisioningService, UsersAccountProvisioningService>();
         services.AddScoped<IUserEmailBackfillService, UsersUserEmailBackfillService>();
+        services.AddScoped<IUserEmailProviderBackfillService, Humans.Application.Services.Users.UserEmailProviderBackfillService>();
 
         // ProfileService (inner): Scoped — has many Scoped cross-section deps.
         // Registered under the keyed "profile-inner" key so CachingProfileService can

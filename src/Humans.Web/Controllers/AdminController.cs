@@ -29,6 +29,7 @@ public class AdminController : HumansControllerBase
     private readonly QueryStatistics _queryStatistics;
     private readonly ICacheStatsProvider _cacheStatsProvider;
     private readonly IUserEmailBackfillService _userEmailBackfillService;
+    private readonly IUserEmailProviderBackfillService _userEmailProviderBackfillService;
 
     public AdminController(
         HumansDbContext dbContext,
@@ -39,7 +40,8 @@ public class AdminController : HumansControllerBase
         ConfigurationRegistry configRegistry,
         QueryStatistics queryStatistics,
         ICacheStatsProvider cacheStatsProvider,
-        IUserEmailBackfillService userEmailBackfillService)
+        IUserEmailBackfillService userEmailBackfillService,
+        IUserEmailProviderBackfillService userEmailProviderBackfillService)
         : base(userManager)
     {
         _dbContext = dbContext;
@@ -51,6 +53,7 @@ public class AdminController : HumansControllerBase
         _queryStatistics = queryStatistics;
         _cacheStatsProvider = cacheStatsProvider;
         _userEmailBackfillService = userEmailBackfillService;
+        _userEmailProviderBackfillService = userEmailProviderBackfillService;
     }
 
     // Dashboard is reachable by any admin-shaped role (FinanceAdmin etc.) so the
@@ -321,6 +324,56 @@ public class AdminController : HumansControllerBase
             OrphansFound: result.OrphansFound,
             RowsInserted: result.RowsInserted,
             SkippedUserIds: result.SkippedUserIds));
+    }
+
+    /// <summary>
+    /// One-shot backfill of <c>UserEmail.Provider</c> / <c>UserEmail.ProviderKey</c>
+    /// / <c>UserEmail.IsGoogle</c> from existing <c>AspNetUserLogins</c> rows and
+    /// the legacy <c>User.GoogleEmail</c> field. PR 3 of the
+    /// email-identity-decoupling spec. Idempotent — safe to re-run. Operator
+    /// runs once on QA (verifies the result counters), once on production
+    /// (verifies again), then PR 7 ships the legacy column drops.
+    /// </summary>
+    [HttpGet("BackfillUserEmailProviders")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    public IActionResult BackfillUserEmailProviders()
+    {
+        return View(new BackfillUserEmailProvidersViewModel(
+            HasRun: false,
+            UsersProcessed: 0,
+            ProviderRowsUpdated: 0,
+            IsGoogleRowsUpdated: 0,
+            AmbiguousMatchesWarned: 0,
+            Warnings: Array.Empty<string>()));
+    }
+
+    [HttpPost("BackfillUserEmailProviders")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BackfillUserEmailProvidersRun(CancellationToken ct)
+    {
+        var currentUser = await GetCurrentUserAsync();
+        _logger.LogInformation(
+            "Admin {AdminId} running UserEmail Provider/IsGoogle backfill",
+            currentUser?.Id);
+
+        var result = await _userEmailProviderBackfillService.RunAsync(ct);
+
+        var msg =
+            $"Provider/IsGoogle backfill complete. Users processed: {result.UsersProcessed}. " +
+            $"Provider rows updated: {result.ProviderRowsUpdated}. " +
+            $"IsGoogle rows updated: {result.IsGoogleRowsUpdated}.";
+        if (result.AmbiguousMatchesWarned > 0)
+            msg += $" {result.AmbiguousMatchesWarned} user(s) with ambiguous AspNetUserLogins matches — see view for details.";
+        SetSuccess(msg);
+
+        return View(nameof(BackfillUserEmailProviders), new BackfillUserEmailProvidersViewModel(
+            HasRun: true,
+            UsersProcessed: result.UsersProcessed,
+            ProviderRowsUpdated: result.ProviderRowsUpdated,
+            IsGoogleRowsUpdated: result.IsGoogleRowsUpdated,
+            AmbiguousMatchesWarned: result.AmbiguousMatchesWarned,
+            Warnings: result.Warnings));
     }
 
     [HttpGet("CacheStats")]
