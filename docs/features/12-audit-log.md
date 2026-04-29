@@ -207,11 +207,7 @@ Displays the 50 most recent audit entries affecting a user, queried by:
 - `EntityType = 'User' AND EntityId = @userId` (direct entries)
 - `RelatedEntityId = @userId` (related entries, e.g., team membership changes)
 
-Each entry shows:
-- Description (bold)
-- Badge: "System" (info) for job-generated entries, "Admin" (secondary) for human-initiated entries
-- Actor name: resolved at render time from ActorUserId via batch lookup
-- Timestamp (right-aligned)
+Each entry renders structurally as: `[timestamp] — [actor] [verb] [subject] in [team] — [description]`. Verbs are mapped per `AuditAction` in `AuditLogViewComponent.GetActionVerb`; a self-form (`GetActionSelfVerb`) is used when actor == subject to avoid dangling prepositions. Actor and subject are resolved as clickable `<human-link>` from `UserDisplayNames` (batch-loaded). Unmapped actions fall back to a rough `[actor] · [ActionName] · [subject] — [description]` form so attribution is never lost.
 
 ## Authorization
 
