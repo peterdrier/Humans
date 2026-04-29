@@ -10,19 +10,19 @@
   src/Humans.Web/Controllers/AdminLegalDocumentsController.cs
 -->
 <!-- freshness:flag-on-change
-  ConsentRecord append-only DB-trigger invariant, document sync from GitHub, and consent-coordinator review gate — review when Legal/Consent services/entities/controllers change.
+  ConsentRecord append-only DB-trigger invariant, document sync from GitHub, and the Consent Coordinator review queue (audit-only, NOT a gate for Volunteers admission) — review when Legal/Consent services/entities/controllers change.
 -->
 
 # Legal & Consent — Section Invariants
 
-Legal documents synced from GitHub, per-version consent records (append-only), the Consent Coordinator review gate.
+Legal documents synced from GitHub, per-version consent records (append-only), the Consent Coordinator audit/review queue.
 
 ## Concepts
 
 - A **Legal Document** is a named, team-scoped document (e.g., "Privacy Policy", "Volunteer Agreement"). Documents on the Volunteers system team apply to every active human. Each document points at a folder in the configured GitHub repository and is synced from there by `LegalDocumentSyncService` / `SyncLegalDocumentsJob`.
 - A **Document Version** is a specific revision of a legal document with an `EffectiveFrom` instant and a multi-language `Content` dictionary keyed by language code (Spanish `"es"` is canonical/legally binding). When the GitHub commit SHA for the canonical file changes, the sync produces a new version; if `RequiresReConsent` is true, affected users are re-notified.
 - A **Consent Record** is an append-only audit entry linking a user to a specific document version with timestamp, IP, user-agent, content hash, and an `ExplicitConsent` flag. Consent records can never be updated or deleted — only new records can be inserted.
-- **Consent Check** is the safety gate in the onboarding pipeline. After a human signs all required documents, a Consent Coordinator reviews and either clears or flags the check.
+- **Consent Check** is an audit/annotation track maintained on the profile (`Profile.ConsentCheckStatus`). After a human signs all required documents, the status flips to `Pending` and the human appears in the Consent Coordinator review queue. CC actions (Clear / Flag / Reject) maintain the annotation but do NOT gate admission to the Volunteers team — admission is automatic once profile + consents are complete.
 - The **Statutes** page (`/Legal`) is a separate, anonymous read of the association's statutes pulled directly from GitHub by `LegalDocumentService` (with in-memory caching) — it does not go through the `legal_documents` table.
 
 ## Data Model
@@ -76,9 +76,9 @@ Cross-aggregate nav `ConsentRecord.DocumentVersion` — still declared and walke
 
 ## Triggers
 
-- When a human signs all required global documents: their consent check status transitions to Pending.
-- When a Consent Coordinator clears a consent check: the human is auto-approved as a Volunteer and added to the Volunteers system team.
-- When a Consent Coordinator flags a consent check: the human's Volunteer activation is blocked until Board or Admin review.
+- When a human signs all required global documents: their consent check status transitions to Pending AND `ISystemTeamSync.SyncVolunteersMembershipForUserAsync` admits them to the Volunteers system team. Admission does not depend on Consent Coordinator review.
+- When a Consent Coordinator clears a consent check: `Profile.IsApproved` is set to true and `ConsentCheckStatus = Cleared`. This is an audit annotation; the human is already a Volunteer.
+- When a Consent Coordinator flags a consent check: `Profile.IsApproved` is set to false, `ConsentCheckStatus = Flagged`, and `DeprovisionApprovalGatedSystemTeamsAsync` removes the user from Volunteers / Colaborador / Asociado teams. The Volunteers admission criteria explicitly exclude `ConsentCheckStatus == Flagged`, so the user stays out until Board or Admin resolves via `ProfileController.ApproveVolunteer`.
 - When a new document version is published: affected humans are notified to re-consent. A background job sends re-consent reminders.
 - A background job suspends humans who no longer have valid consents for required documents.
 

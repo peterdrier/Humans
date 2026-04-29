@@ -295,11 +295,11 @@ Teams are either **departments** (top-level, no parent) or **sub-teams** (have a
 
 | Team | Auto-Add Trigger | Auto-Remove Trigger |
 |------|------------------|---------------------|
-| **Volunteers** | Approved + all required consents signed | Missing consent, suspended, or approval revoked |
+| **Volunteers** | Profile + all required consents signed (no CC approval required) | Missing consent, suspended, CC-flagged, or rejected |
 | **Coordinators** | Become Coordinator of any team + team consents | No longer Coordinator anywhere |
 | **Board** | Active "Board" RoleAssignment + team consents | RoleAssignment expires |
 
-Volunteers team membership is the source of truth for "active volunteer" status. Both approval (`AdminController.ApproveVolunteer`) and consent completion (`ConsentController.Submit`) trigger an immediate single-user sync via `SyncVolunteersMembershipForUserAsync` -- the user doesn't wait for the scheduled job.
+Volunteers team membership is the source of truth for "active volunteer" status. Consent completion (`ConsentController.Submit`) triggers an immediate single-user sync via `SyncVolunteersMembershipForUserAsync` so the user doesn't wait for the scheduled job. CC approval (`ProfileController.ApproveVolunteer`) also fires a single-user sync as an audit-track no-op for users already admitted.
 
 ### System Team Properties
 - `RequiresApproval = false` (auto-managed)
@@ -314,9 +314,10 @@ Volunteers team membership is the source of truth for "active volunteer" status.
 SystemTeamSyncJob (scheduled hourly, currently disabled; also triggered inline):
 
   1. SyncVolunteersTeamAsync()
-     - Get all users where IsApproved = true AND !IsSuspended
+     - Get all users with a profile where !IsSuspended, ConsentCheckStatus != Flagged, RejectedAt is null
      - Filter to those with all required Volunteers-team consents
      - Add missing members, remove ineligible
+     - (Profile.IsApproved is the CC's audit annotation; not consulted here)
 
   2. SyncCoordinatorsTeamAsync()
      - Get all users with TeamMember.Role = Coordinator (non-system teams)
