@@ -239,6 +239,18 @@ public class EmailRenderer : IEmailRenderer
                 Lf("Email_FeedbackResponse_Body", HtmlEncode(userName), HtmlEncode(originalDescription), responseHtml, HtmlEncode(reportLink)));
         });
 
+    public EmailContent RenderIssueComment(string displayName, string issueTitle, string commentContent, string issueLink, string? culture = null)
+        => RenderLocalized(culture, () =>
+        {
+            var commentHtml = Markdig.Markdown.ToHtml(commentContent);
+            var fullLink = issueLink.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                ? issueLink
+                : $"{_settings.BaseUrl.TrimEnd('/')}{(issueLink.StartsWith('/') ? "" : "/")}{issueLink}";
+            return new EmailContent(
+                Lf("Email_IssueComment_Subject", HtmlEncode(issueTitle)),
+                Lf("Email_IssueComment_Body", HtmlEncode(displayName), HtmlEncode(issueTitle), commentHtml, HtmlEncode(fullLink)));
+        });
+
     public EmailContent RenderFacilitatedMessage(
         string recipientName,
         string senderName,
