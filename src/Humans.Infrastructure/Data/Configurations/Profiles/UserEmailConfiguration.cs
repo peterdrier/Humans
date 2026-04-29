@@ -44,7 +44,6 @@ public class UserEmailConfiguration : IEntityTypeConfiguration<UserEmail>
             .HasMaxLength(256);
 
         builder.Property(e => e.IsGoogle)
-            .HasDefaultValue(false)
             .IsRequired();
 
         // PR 3: IsOAuth / DisplayOrder columns are kept on disk; their C#
@@ -55,11 +54,9 @@ public class UserEmailConfiguration : IEntityTypeConfiguration<UserEmail>
         // DropColumn. Column drops happen in PR 7 after end-to-end prod
         // verification per architecture_no_drops_until_prod_verified.
         builder.Property(e => e.IsOAuth)
-            .HasDefaultValue(false)
             .IsRequired();
 
         builder.Property(e => e.DisplayOrder)
-            .HasDefaultValue(0)
             .IsRequired();
 
         builder.HasOne<User>()
