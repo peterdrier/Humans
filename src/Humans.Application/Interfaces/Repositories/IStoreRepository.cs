@@ -25,7 +25,7 @@ public interface IStoreRepository
     Task<IReadOnlyList<StoreOrder>> GetOrdersForCampSeasonAsync(Guid campSeasonId, CancellationToken ct = default);
     Task<StoreOrder?> GetOrderByIdAsync(Guid orderId, CancellationToken ct = default);
     Task<StoreOrder?> GetOrderWithLinesAndPaymentsAsync(Guid orderId, CancellationToken ct = default);
-    Task<IReadOnlyList<StoreOrder>> GetAllOrdersWithAggregatesAsync(int year, CancellationToken ct = default);
+    Task<IReadOnlyList<StoreOrder>> GetAllOrdersAsync(CancellationToken ct = default);
     Task AddOrderAsync(StoreOrder order, CancellationToken ct = default);
     Task UpdateOrderAsync(StoreOrder order, CancellationToken ct = default);
 

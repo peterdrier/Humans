@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Humans.Domain.Tests.Entities;
 
-public class StoreOrderTests
+public class StoreEntityDefaultsTests
 {
     [HumansFact]
     public void New_order_defaults_to_open_state()
@@ -31,6 +31,6 @@ public class StoreOrderTests
         var s = new StoreTreasurySyncState();
 
         s.Id.Should().Be(1);
-        s.SyncStatus.Should().Be("Idle");
+        s.SyncStatus.Should().Be(StoreTreasurySyncStatus.Idle);
     }
 }

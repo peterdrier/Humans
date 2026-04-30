@@ -3071,10 +3071,8 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<Instant?>("LastSyncAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("SyncStatus")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
+                    b.Property<int>("SyncStatus")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 

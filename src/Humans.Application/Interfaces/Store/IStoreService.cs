@@ -32,10 +32,3 @@ public interface IStoreService
     // Summary
     Task<IReadOnlyList<OrderSummaryDto>> GetAllOrderSummariesAsync(int year, CancellationToken ct = default);
 }
-
-public record OrderCounterpartyInput(
-    string? Name,
-    string? VatId,
-    string? Address,
-    string? CountryCode,
-    string? Email);

@@ -88,11 +88,9 @@ public sealed class StoreRepository : IStoreRepository
             .FirstOrDefaultAsync(o => o.Id == orderId, ct);
     }
 
-    public async Task<IReadOnlyList<StoreOrder>> GetAllOrdersWithAggregatesAsync(int year, CancellationToken ct = default)
+    public async Task<IReadOnlyList<StoreOrder>> GetAllOrdersAsync(CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        // Year filter hop: Order has no Year directly; caller filters via product
-        // Year on lines. At ~500-user scale, returning all orders is fine.
         return await ctx.StoreOrders.AsNoTracking()
             .Include(o => o.Lines)
             .Include(o => o.Payments)
