@@ -210,10 +210,16 @@ public class StoreService : IStoreService
     private static OrderDto MapOrder(StoreOrder o, IReadOnlyDictionary<Guid, string> productNames)
     {
         var balance = BalanceCalculator.Compute(o);
-        var lines = o.Lines.Select(l => new OrderLineDto(
-            l.Id, l.OrderId, l.ProductId,
-            productNames.GetValueOrDefault(l.ProductId, "(unknown product)"),
-            l.Qty, l.UnitPriceSnapshot, l.VatRateSnapshot, l.DepositAmountSnapshot, l.AddedAt)).ToList();
+        var totalsByLine = balance.Lines.ToDictionary(t => t.LineId);
+        var lines = o.Lines.Select(l =>
+        {
+            var t = totalsByLine[l.Id];
+            return new OrderLineDto(
+                l.Id, l.OrderId, l.ProductId,
+                productNames.GetValueOrDefault(l.ProductId, "(unknown product)"),
+                l.Qty, l.UnitPriceSnapshot, l.VatRateSnapshot, l.DepositAmountSnapshot, l.AddedAt,
+                t.SubtotalEur, t.VatEur, t.DepositEur, t.TotalEur);
+        }).ToList();
 
         return new OrderDto(
             o.Id, o.CampSeasonId, o.Label, o.State,
