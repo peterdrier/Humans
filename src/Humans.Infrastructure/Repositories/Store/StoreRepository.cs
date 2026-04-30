@@ -39,6 +39,16 @@ public sealed class StoreRepository : IStoreRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<StoreProduct>> GetAllProductsForYearAsync(int year, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.StoreProducts.AsNoTracking()
+            .Where(p => p.Year == year)
+            .OrderBy(p => p.IsActive == false)
+            .ThenBy(p => p.Name)
+            .ToListAsync(ct);
+    }
+
     public async Task<StoreProduct?> GetProductByIdAsync(Guid productId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

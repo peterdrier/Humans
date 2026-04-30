@@ -7,6 +7,8 @@ public interface IStoreService
 {
     // Catalog (read)
     Task<IReadOnlyList<ProductDto>> GetActiveCatalogAsync(int year, CancellationToken ct = default);
+    Task<IReadOnlyList<ProductDto>> GetAllProductsForYearAsync(int year, CancellationToken ct = default);
+    Task<ProductDto?> GetProductAsync(Guid productId, CancellationToken ct = default);
 
     // Catalog (write — StoreAdmin)
     Task<Guid> CreateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default);

@@ -28,7 +28,8 @@ public static class AdminNavTree
         }),
         new("Money", new AdminNavItem[]
         {
-            new("Finance", "Finance", "Index", null, null, "fa-solid fa-coins", PolicyNames.FinanceAdminOrAdmin),
+            new("Finance",        "Finance",      "Index",   null, null, "fa-solid fa-coins",     PolicyNames.FinanceAdminOrAdmin),
+            new("Store catalog",  "StoreAdmin",   "Catalog", null, null, "fa-solid fa-tags",      PolicyNames.StoreCatalogAdmin),
         }),
         new("Governance", new AdminNavItem[]
         {

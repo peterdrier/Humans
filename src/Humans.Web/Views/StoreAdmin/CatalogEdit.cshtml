@@ -1,0 +1,80 @@
+@model ProductInputModel
+@{
+    var isCreate = Model.Id is null;
+    ViewData["Title"] = isCreate ? "Create product" : "Edit product";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">@(isCreate ? "Create product" : "Edit product")</h1>
+    <a asp-action="Catalog" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>Back to catalog
+    </a>
+</div>
+
+<vc:temp-data-alerts />
+
+<div class="card">
+    <div class="card-body">
+        <form asp-action="Save" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Id" />
+
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="row g-3">
+                <div class="col-md-2">
+                    <label asp-for="Year" class="form-label">Year</label>
+                    <input asp-for="Year" class="form-control" />
+                    <span asp-validation-for="Year" class="text-danger small"></span>
+                </div>
+                <div class="col-md-10">
+                    <label asp-for="Name" class="form-label">Name</label>
+                    <input asp-for="Name" class="form-control" autofocus />
+                    <span asp-validation-for="Name" class="text-danger small"></span>
+                </div>
+                <div class="col-12">
+                    <label asp-for="Description" class="form-label">Description</label>
+                    <textarea asp-for="Description" class="form-control" rows="2"></textarea>
+                    <span asp-validation-for="Description" class="text-danger small"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="UnitPriceEur" class="form-label">Unit price (€)</label>
+                    <input asp-for="UnitPriceEur" type="number" step="0.01" min="0" class="form-control" />
+                    <span asp-validation-for="UnitPriceEur" class="text-danger small"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="VatRatePercent" class="form-label">VAT %</label>
+                    <input asp-for="VatRatePercent" type="number" step="0.01" min="0" class="form-control" />
+                    <span asp-validation-for="VatRatePercent" class="text-danger small"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="DepositAmountEur" class="form-label">Deposit (€, optional)</label>
+                    <input asp-for="DepositAmountEur" type="number" step="0.01" min="0" class="form-control" />
+                    <span asp-validation-for="DepositAmountEur" class="text-danger small"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="OrderableUntil" class="form-label">Orderable until</label>
+                    <input asp-for="OrderableUntil" type="date" class="form-control" />
+                    <span asp-validation-for="OrderableUntil" class="text-danger small"></span>
+                </div>
+                <div class="col-12">
+                    <div class="form-check">
+                        <input asp-for="IsActive" class="form-check-input" />
+                        <label asp-for="IsActive" class="form-check-label">Active (visible to camp leads)</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-floppy-disk me-1"></i>Save
+                </button>
+                <a asp-action="Catalog" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

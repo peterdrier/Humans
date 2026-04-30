@@ -1,0 +1,159 @@
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Store;
+using Humans.Application.Services.Store.Dtos;
+using Humans.Domain.Entities;
+using Humans.Web.Authorization;
+using Humans.Web.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using NodaTime.Text;
+
+namespace Humans.Web.Controllers;
+
+[Authorize(Policy = PolicyNames.StoreCatalogAdmin)]
+[Route("Store/Admin")]
+public class StoreAdminController : HumansControllerBase
+{
+    private readonly IStoreService _storeService;
+    private readonly IShiftManagementService _shifts;
+    private readonly ILogger<StoreAdminController> _logger;
+
+    public StoreAdminController(
+        IStoreService storeService,
+        IShiftManagementService shifts,
+        UserManager<User> userManager,
+        ILogger<StoreAdminController> logger)
+        : base(userManager)
+    {
+        _storeService = storeService;
+        _shifts = shifts;
+        _logger = logger;
+    }
+
+    [HttpGet("Catalog")]
+    public async Task<IActionResult> Catalog(CancellationToken ct)
+    {
+        var year = await ResolveActiveYearAsync();
+        var products = await _storeService.GetAllProductsForYearAsync(year, ct);
+        return View(new StoreCatalogAdminViewModel { Year = year, Products = products });
+    }
+
+    [HttpGet("Catalog/Edit")]
+    public async Task<IActionResult> Edit(CancellationToken ct)
+    {
+        var year = await ResolveActiveYearAsync();
+        var model = new ProductInputModel
+        {
+            Year = year,
+            VatRatePercent = 21m,
+            OrderableUntil = $"{year}-12-31",
+            IsActive = true
+        };
+        return View("CatalogEdit", model);
+    }
+
+    [HttpGet("Catalog/Edit/{id:guid}")]
+    public async Task<IActionResult> Edit(Guid id, CancellationToken ct)
+    {
+        var p = await _storeService.GetProductAsync(id, ct);
+        if (p is null) return NotFound();
+
+        var model = new ProductInputModel
+        {
+            Id = p.Id,
+            Year = p.Year,
+            Name = p.Name,
+            Description = p.Description,
+            UnitPriceEur = p.UnitPriceEur,
+            VatRatePercent = p.VatRatePercent,
+            DepositAmountEur = p.DepositAmountEur,
+            OrderableUntil = LocalDatePattern.Iso.Format(p.OrderableUntil),
+            IsActive = p.IsActive
+        };
+        return View("CatalogEdit", model);
+    }
+
+    [HttpPost("Catalog/Save")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Save(ProductInputModel input, CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        if (!ModelState.IsValid)
+            return View("CatalogEdit", input);
+
+        var parseResult = LocalDatePattern.Iso.Parse(input.OrderableUntil);
+        if (!parseResult.Success)
+        {
+            ModelState.AddModelError(nameof(input.OrderableUntil), "Invalid date — use YYYY-MM-DD.");
+            return View("CatalogEdit", input);
+        }
+
+        var dto = new ProductDto(
+            input.Id ?? Guid.Empty,
+            input.Year,
+            input.Name?.Trim() ?? string.Empty,
+            input.Description ?? string.Empty,
+            input.UnitPriceEur,
+            input.VatRatePercent,
+            input.DepositAmountEur,
+            parseResult.Value,
+            input.IsActive);
+
+        try
+        {
+            if (input.Id is null)
+            {
+                await _storeService.CreateProductAsync(dto, user.Id, ct);
+                SetSuccess("Product created.");
+            }
+            else
+            {
+                await _storeService.UpdateProductAsync(dto, user.Id, ct);
+                SetSuccess("Product updated.");
+            }
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogInformation(ex, "Store catalog Save validation failed");
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return View("CatalogEdit", input);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogInformation(ex, "Store catalog Save rejected");
+            SetError(ex.Message);
+            return View("CatalogEdit", input);
+        }
+
+        return RedirectToAction(nameof(Catalog));
+    }
+
+    [HttpPost("Catalog/Deactivate/{id:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Deactivate(Guid id, CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            await _storeService.DeactivateProductAsync(id, user.Id, ct);
+            SetSuccess("Product deactivated.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogInformation(ex, "Store catalog deactivate rejected");
+            SetError(ex.Message);
+        }
+        return RedirectToAction(nameof(Catalog));
+    }
+
+    private async Task<int> ResolveActiveYearAsync()
+    {
+        var activeEvent = await _shifts.GetActiveAsync();
+        return activeEvent?.Year > 0 ? activeEvent.Year : DateTime.UtcNow.Year;
+    }
+}

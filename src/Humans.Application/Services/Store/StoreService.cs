@@ -38,6 +38,18 @@ public class StoreService : IStoreService
         return products.Select(MapProduct).ToList();
     }
 
+    public async Task<IReadOnlyList<ProductDto>> GetAllProductsForYearAsync(int year, CancellationToken ct = default)
+    {
+        var products = await _repo.GetAllProductsForYearAsync(year, ct);
+        return products.Select(MapProduct).ToList();
+    }
+
+    public async Task<ProductDto?> GetProductAsync(Guid productId, CancellationToken ct = default)
+    {
+        var p = await _repo.GetProductByIdAsync(productId, ct);
+        return p is null ? null : MapProduct(p);
+    }
+
     // ==========================================================================
     // Catalog (write — Phase 3)
     // ==========================================================================

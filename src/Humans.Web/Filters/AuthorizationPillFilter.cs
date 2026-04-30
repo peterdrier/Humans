@@ -36,7 +36,8 @@ public class AuthorizationPillFilter : IActionFilter
         [RoleNames.FeedbackAdmin] = "Feedback Admin",
         [RoleNames.HumanAdmin] = "Human Admin",
         [RoleNames.FinanceAdmin] = "Finance Admin",
-        [TeamCoordinatorPillLabel] = "Team Coordinator"
+        [TeamCoordinatorPillLabel] = "Team Coordinator",
+        [RoleNames.StoreAdmin] = "Store Admin"
     };
 
     // Map policy names to their constituent roles for pill display
@@ -53,6 +54,7 @@ public class AuthorizationPillFilter : IActionFilter
         [PolicyNames.TicketAdminOrAdmin] = [RoleNames.TicketAdmin, RoleNames.Admin],
         [PolicyNames.FeedbackAdminOrAdmin] = [RoleNames.FeedbackAdmin, RoleNames.Admin],
         [PolicyNames.FinanceAdminOrAdmin] = [RoleNames.FinanceAdmin, RoleNames.Admin],
+        [PolicyNames.StoreCatalogAdmin] = [RoleNames.StoreAdmin, RoleNames.FinanceAdmin, RoleNames.Admin],
         [PolicyNames.ReviewQueueAccess] = [RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator, RoleNames.Board, RoleNames.Admin],
         [PolicyNames.ConsentCoordinatorBoardOrAdmin] = [RoleNames.ConsentCoordinator, RoleNames.Board, RoleNames.Admin],
         [PolicyNames.ShiftDashboardAccess] = [RoleNames.Admin, RoleNames.NoInfoAdmin, RoleNames.VolunteerCoordinator],
