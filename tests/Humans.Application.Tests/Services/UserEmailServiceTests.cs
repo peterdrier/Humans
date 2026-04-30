@@ -428,6 +428,78 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
+    public async Task UnlinkAsync_RemovesAspNetUserLoginsAndEmailRow()
+    {
+        // Provider-attached row is removed from both the AspNetUserLogins table
+        // (via UserManager.RemoveLoginAsync) and user_emails (via _repo.RemoveAsync).
+        // FullProfile cache is invalidated and an audit log entry is written.
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        var row = new UserEmail
+        {
+            Id = rowId,
+            UserId = userId,
+            Email = "linked@example.com",
+            Provider = "Google",
+            ProviderKey = "sub-Z",
+            IsVerified = true,
+        };
+        var user = new User { Id = userId };
+        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+            .Returns(row);
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        _userManager.RemoveLoginAsync(user, "Google", "sub-Z")
+            .Returns(IdentityResult.Success);
+
+        var result = await _service.UnlinkAsync(userId, rowId, actorId);
+
+        result.Should().BeTrue();
+        await _userManager.Received(1).RemoveLoginAsync(user, "Google", "sub-Z");
+        await _repository.Received(1).RemoveAsync(row, Arg.Any<CancellationToken>());
+        await _fullProfileInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>());
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.UserEmailUnlinked,
+            Arg.Any<string>(), userId,
+            Arg.Any<string>(), actorId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task UnlinkAsync_RejectsRowWithoutProvider()
+    {
+        // A row with no Provider/ProviderKey isn't OAuth-linked, so Unlink is a
+        // no-op (returns false). Nothing is removed and no audit entry is written.
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        var row = new UserEmail
+        {
+            Id = rowId,
+            UserId = userId,
+            Email = "plain@example.com",
+            Provider = null,
+            ProviderKey = null,
+            IsVerified = true,
+        };
+        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+            .Returns(row);
+
+        var result = await _service.UnlinkAsync(userId, rowId, actorId);
+
+        result.Should().BeFalse();
+        await _userManager.DidNotReceive().RemoveLoginAsync(
+            Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
+        await _repository.DidNotReceive().RemoveAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _fullProfileInvalidator.DidNotReceive().InvalidateAsync(
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _auditLogService.DidNotReceive().LogAsync(
+            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
     public async Task SetGoogleAsync_InvalidatesFullProfileCache()
     {
         var userId = Guid.NewGuid();

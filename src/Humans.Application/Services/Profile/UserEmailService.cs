@@ -649,6 +649,57 @@ public sealed class UserEmailService : IUserEmailService
     }
 
     /// <inheritdoc />
+    public async Task<bool> UnlinkAsync(
+        Guid userId, Guid userEmailId, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var row = await _repository.GetByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
+        if (row is null) return false;
+        if (string.IsNullOrEmpty(row.Provider) || string.IsNullOrEmpty(row.ProviderKey))
+            return false;
+
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user is null) return false;
+
+        // Capture provider/key/email before mutation — RemoveAsync may detach
+        // the entity and the audit description needs them.
+        var provider = row.Provider;
+        var providerKey = row.ProviderKey;
+        var email = row.Email;
+
+        var removeLogin = await _userManager.RemoveLoginAsync(user, provider, providerKey);
+        if (!removeLogin.Succeeded)
+        {
+            // Don't abort — the AspNetUserLogins row may already be gone (e.g.,
+            // hand-cleaned). The UserEmail row deletion is the authoritative
+            // step for the user-visible state. Log so admins can investigate.
+            _logger.LogWarning(
+                "UnlinkAsync: UserManager.RemoveLoginAsync did not succeed for user {UserId} provider {Provider}; continuing with UserEmail removal. Errors: {Errors}",
+                userId, provider,
+                string.Join("; ", removeLogin.Errors.Select(e => $"{e.Code}:{e.Description}")));
+        }
+
+        await _repository.RemoveAsync(row, cancellationToken);
+        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+
+        await _auditLogService.LogAsync(
+            AuditAction.UserEmailUnlinked,
+            nameof(User), userId,
+            $"Unlinked {provider} (key {ShortHash(providerKey)}) from {email}",
+            actorUserId,
+            relatedEntityId: row.Id, relatedEntityType: nameof(UserEmail));
+
+        return true;
+    }
+
+    private static string ShortHash(string s)
+    {
+        var bytes = System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(s));
+        return Convert.ToHexString(bytes.AsSpan(0, 8));
+    }
+
+    /// <inheritdoc />
     public async Task<UserEmailProviderMatch?> FindByProviderKeyAsync(
         string provider, string providerKey,
         CancellationToken cancellationToken = default)
