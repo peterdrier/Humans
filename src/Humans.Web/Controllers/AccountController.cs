@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
 
@@ -16,6 +18,7 @@ public class AccountController : Controller
     private readonly ILogger<AccountController> _logger;
     private readonly IUserEmailService _userEmailService;
     private readonly IMagicLinkService _magicLinkService;
+    private readonly IAuditLogService _auditLogService;
 
     public AccountController(
         SignInManager<User> signInManager,
@@ -23,7 +26,8 @@ public class AccountController : Controller
         IClock clock,
         ILogger<AccountController> logger,
         IUserEmailService userEmailService,
-        IMagicLinkService magicLinkService)
+        IMagicLinkService magicLinkService,
+        IAuditLogService auditLogService)
     {
         _signInManager = signInManager;
         _userManager = userManager;
@@ -31,6 +35,7 @@ public class AccountController : Controller
         _logger = logger;
         _userEmailService = userEmailService;
         _magicLinkService = magicLinkService;
+        _auditLogService = auditLogService;
     }
 
     [HttpGet]
@@ -96,6 +101,8 @@ public class AccountController : Controller
                 existingUser.LastLoginAt = _clock.GetCurrentInstant();
                 await _userManager.UpdateAsync(existingUser);
             }
+
+            await DetectAndApplyRenameAsync(info);
 
             _logger.LogInformation("User logged in with {Provider}", info.LoginProvider);
             return RedirectToLocal(returnUrl);
@@ -192,6 +199,8 @@ public class AccountController : Controller
                     }
                     await _userManager.UpdateAsync(existingByEmail);
 
+                    await TrySetProviderForUserEmailAsync(existingByEmail.Id, email, info);
+
                     await _signInManager.SignInAsync(existingByEmail, isPersistent: false);
                     _logger.LogInformation(
                         "Linked {Provider} login to existing user {UserId} via email match",
@@ -287,9 +296,79 @@ public class AccountController : Controller
             return View(nameof(Login));
         }
 
+        await TrySetProviderForUserEmailAsync(user.Id, email, info);
+
         await _signInManager.SignInAsync(user, isPersistent: false);
         _logger.LogInformation("User created an account using {Provider}", info.LoginProvider);
         return RedirectToLocal(returnUrl);
+    }
+
+    private async Task DetectAndApplyRenameAsync(ExternalLoginInfo info)
+    {
+        try
+        {
+            var row = await _userEmailService.FindByProviderKeyAsync(
+                info.LoginProvider, info.ProviderKey);
+            if (row is null)
+                return;
+
+            var claimEmail = info.Principal.FindFirstValue(ClaimTypes.Email);
+            if (string.IsNullOrEmpty(claimEmail))
+                return;
+
+            if (string.Equals(row.Email, claimEmail, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            var oldEmail = row.Email;
+            await _userEmailService.RewriteEmailAddressAsync(row.UserId, oldEmail, claimEmail);
+
+            try
+            {
+                await _auditLogService.LogAsync(
+                    AuditAction.GoogleEmailRenamed,
+                    nameof(User), row.UserId,
+                    $"email rename detected: {oldEmail} -> {claimEmail}, sub={info.ProviderKey}",
+                    nameof(AccountController),
+                    relatedEntityId: row.Id, relatedEntityType: nameof(UserEmail));
+            }
+            catch (Exception auditEx)
+            {
+                _logger.LogError(auditEx,
+                    "OAuth rename: audit log failed for user {UserId} ({OldEmail} -> {NewEmail})",
+                    row.UserId, oldEmail, claimEmail);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "OAuth rename detection failed for {Provider} sub={Sub}",
+                info.LoginProvider, info.ProviderKey);
+        }
+    }
+
+    private async Task TrySetProviderForUserEmailAsync(Guid userId, string email, ExternalLoginInfo info)
+    {
+        try
+        {
+            var rows = await _userEmailService.GetUserEmailsAsync(userId);
+            var match = rows.FirstOrDefault(r =>
+                string.Equals(r.Email, email, StringComparison.OrdinalIgnoreCase));
+            if (match is null)
+            {
+                _logger.LogWarning(
+                    "OAuth provider tag: no UserEmail row matching {Email} found for user {UserId}",
+                    email, userId);
+                return;
+            }
+
+            await _userEmailService.SetProviderAsync(match.Id, info.LoginProvider, info.ProviderKey);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "OAuth provider tag failed for user {UserId} {Provider} sub={Sub}",
+                userId, info.LoginProvider, info.ProviderKey);
+        }
     }
 
     // --- Magic Link Auth ---
