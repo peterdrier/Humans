@@ -94,4 +94,8 @@ public enum AuditAction
     CampRoleAssigned,
     CampRoleUnassigned,
     AccountPurged,
+    StoreOrderCreated,
+    StoreLineAdded,
+    StoreLineRemoved,
+    StoreCounterpartyEdited,
 }

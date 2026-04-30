@@ -131,6 +131,22 @@ public sealed class StoreRepository : IStoreRepository
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task<StoreLineContext?> GetLineWithOrderAndProductAsync(Guid lineId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var row = await ctx.StoreOrderLines.AsNoTracking()
+            .Where(l => l.Id == lineId)
+            .Join(ctx.StoreOrders.AsNoTracking(),
+                l => l.OrderId, o => o.Id,
+                (l, o) => new { Line = l, Order = o })
+            .Join(ctx.StoreProducts.AsNoTracking(),
+                lo => lo.Line.ProductId, p => p.Id,
+                (lo, p) => new StoreLineContext(
+                    lo.Line.Id, lo.Order.Id, lo.Order.CampSeasonId, lo.Order.State, p.OrderableUntil))
+            .FirstOrDefaultAsync(ct);
+        return row;
+    }
+
     // ==========================================================================
     // Payments
     // ==========================================================================

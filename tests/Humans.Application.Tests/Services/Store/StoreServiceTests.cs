@@ -132,6 +132,189 @@ public class StoreServiceTests
     }
 
     // ==========================================================================
+    // Write paths (Task 2.4)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task CreateOrderAsync_persists_open_order_with_now_timestamps_and_audits()
+    {
+        var campSeasonId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        StoreOrder? captured = null;
+        await _repo.AddOrderAsync(Arg.Do<StoreOrder>(o => captured = o), Arg.Any<CancellationToken>());
+
+        var orderId = await _service.CreateOrderAsync(campSeasonId, "First order", actor);
+
+        captured.Should().NotBeNull();
+        captured!.Id.Should().Be(orderId);
+        captured.CampSeasonId.Should().Be(campSeasonId);
+        captured.Label.Should().Be("First order");
+        captured.State.Should().Be(StoreOrderState.Open);
+        captured.CreatedAt.Should().Be(_clock.GetCurrentInstant());
+        captured.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
+
+        await _audit.Received(1).LogAsync(
+            AuditAction.StoreOrderCreated, nameof(StoreOrder), orderId,
+            Arg.Any<string>(), actor,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task AddLineAsync_rejects_non_positive_qty()
+    {
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => _service.AddLineAsync(Guid.NewGuid(), Guid.NewGuid(), 0, Guid.NewGuid()));
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => _service.AddLineAsync(Guid.NewGuid(), Guid.NewGuid(), -3, Guid.NewGuid()));
+    }
+
+    [HumansFact]
+    public async Task AddLineAsync_rejects_when_order_not_open()
+    {
+        var orderId = Guid.NewGuid();
+        var productId = Guid.NewGuid();
+        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
+            .Returns(new StoreOrder { Id = orderId, State = StoreOrderState.InvoiceIssued });
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.AddLineAsync(orderId, productId, 1, Guid.NewGuid()));
+    }
+
+    [HumansFact]
+    public async Task AddLineAsync_rejects_after_orderable_until()
+    {
+        var orderId = Guid.NewGuid();
+        var product = MakeProduct(orderableUntil: new LocalDate(2026, 1, 1));
+        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
+            .Returns(new StoreOrder { Id = orderId, State = StoreOrderState.Open });
+        _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
+        // _clock = 2026-03-14, so 2026-01-01 is past.
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.AddLineAsync(orderId, product.Id, 1, Guid.NewGuid()));
+        ex.Message.Should().Contain("deadline");
+    }
+
+    [HumansFact]
+    public async Task AddLineAsync_snapshots_product_price_vat_deposit_and_audits()
+    {
+        var orderId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        var product = MakeProduct(price: 75m, vat: 10m, deposit: 50m,
+            orderableUntil: new LocalDate(2026, 12, 31));
+        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
+            .Returns(new StoreOrder { Id = orderId, State = StoreOrderState.Open });
+        _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
+
+        StoreOrderLine? captured = null;
+        await _repo.AddLineAsync(Arg.Do<StoreOrderLine>(l => captured = l), Arg.Any<CancellationToken>());
+
+        await _service.AddLineAsync(orderId, product.Id, 3, actor);
+
+        captured.Should().NotBeNull();
+        captured!.OrderId.Should().Be(orderId);
+        captured.ProductId.Should().Be(product.Id);
+        captured.Qty.Should().Be(3);
+        captured.UnitPriceSnapshot.Should().Be(75m);
+        captured.VatRateSnapshot.Should().Be(10m);
+        captured.DepositAmountSnapshot.Should().Be(50m);
+        captured.AddedByUserId.Should().Be(actor);
+        captured.AddedAt.Should().Be(_clock.GetCurrentInstant());
+
+        await _audit.Received(1).LogAsync(
+            AuditAction.StoreLineAdded, nameof(StoreOrderLine), captured.Id,
+            Arg.Any<string>(), actor,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task RemoveLineAsync_rejects_when_order_not_open()
+    {
+        var lineId = Guid.NewGuid();
+        _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
+            .Returns(new StoreLineContext(
+                lineId, Guid.NewGuid(), Guid.NewGuid(),
+                StoreOrderState.InvoiceIssued, new LocalDate(2026, 12, 31)));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.RemoveLineAsync(lineId, Guid.NewGuid()));
+    }
+
+    [HumansFact]
+    public async Task RemoveLineAsync_rejects_after_orderable_until()
+    {
+        var lineId = Guid.NewGuid();
+        _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
+            .Returns(new StoreLineContext(
+                lineId, Guid.NewGuid(), Guid.NewGuid(),
+                StoreOrderState.Open, new LocalDate(2026, 1, 1)));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.RemoveLineAsync(lineId, Guid.NewGuid()));
+    }
+
+    [HumansFact]
+    public async Task RemoveLineAsync_removes_and_audits()
+    {
+        var lineId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
+            .Returns(new StoreLineContext(
+                lineId, orderId, Guid.NewGuid(),
+                StoreOrderState.Open, new LocalDate(2026, 12, 31)));
+
+        await _service.RemoveLineAsync(lineId, actor);
+
+        await _repo.Received(1).RemoveLineAsync(lineId, Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.StoreLineRemoved, nameof(StoreOrderLine), lineId,
+            Arg.Any<string>(), actor,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task UpdateCounterpartyAsync_rejects_when_order_not_open()
+    {
+        var orderId = Guid.NewGuid();
+        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
+            .Returns(new StoreOrder { Id = orderId, State = StoreOrderState.InvoiceIssued });
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.UpdateCounterpartyAsync(
+                orderId,
+                new OrderCounterpartyInput("X", null, null, null, null),
+                Guid.NewGuid()));
+    }
+
+    [HumansFact]
+    public async Task UpdateCounterpartyAsync_updates_fields_and_audits()
+    {
+        var orderId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        var order = new StoreOrder { Id = orderId, State = StoreOrderState.Open };
+        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
+
+        await _service.UpdateCounterpartyAsync(
+            orderId,
+            new OrderCounterpartyInput("Acme", "ESB12345678", "1 St", "ES", "ops@acme.test"),
+            actor);
+
+        order.CounterpartyName.Should().Be("Acme");
+        order.CounterpartyVatId.Should().Be("ESB12345678");
+        order.CounterpartyAddress.Should().Be("1 St");
+        order.CounterpartyCountryCode.Should().Be("ES");
+        order.CounterpartyEmail.Should().Be("ops@acme.test");
+        order.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
+
+        await _repo.Received(1).UpdateOrderAsync(order, Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            AuditAction.StoreCounterpartyEdited, nameof(StoreOrder), orderId,
+            Arg.Any<string>(), actor,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    // ==========================================================================
     // Helpers
     // ==========================================================================
 

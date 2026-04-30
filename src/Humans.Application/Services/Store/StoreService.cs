@@ -73,20 +73,118 @@ public class StoreService : IStoreService
     }
 
     // ==========================================================================
-    // Orders (write — Phase 2.4)
+    // Orders (write)
     // ==========================================================================
 
-    public Task<Guid> CreateOrderAsync(Guid campSeasonId, string? label, Guid actorUserId, CancellationToken ct = default)
-        => throw new NotSupportedException("Phase 2.4");
+    public async Task<Guid> CreateOrderAsync(Guid campSeasonId, string? label, Guid actorUserId, CancellationToken ct = default)
+    {
+        var now = _clock.GetCurrentInstant();
+        var order = new StoreOrder
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = campSeasonId,
+            Label = label,
+            State = StoreOrderState.Open,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        await _repo.AddOrderAsync(order, ct);
+        await _audit.LogAsync(
+            AuditAction.StoreOrderCreated, nameof(StoreOrder), order.Id,
+            $"Created store order for camp season {campSeasonId}" +
+            (string.IsNullOrWhiteSpace(label) ? string.Empty : $" — '{label}'"),
+            actorUserId);
+        return order.Id;
+    }
 
-    public Task AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default)
-        => throw new NotSupportedException("Phase 2.4");
+    public async Task AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default)
+    {
+        if (qty <= 0)
+            throw new ArgumentException("Qty must be positive", nameof(qty));
 
-    public Task RemoveLineAsync(Guid lineId, Guid actorUserId, CancellationToken ct = default)
-        => throw new NotSupportedException("Phase 2.4");
+        var order = await _repo.GetOrderByIdAsync(orderId, ct)
+            ?? throw new InvalidOperationException($"Order {orderId} not found");
 
-    public Task UpdateCounterpartyAsync(Guid orderId, OrderCounterpartyInput input, Guid actorUserId, CancellationToken ct = default)
-        => throw new NotSupportedException("Phase 2.4");
+        if (order.State != StoreOrderState.Open)
+            throw new InvalidOperationException("Cannot add lines to an issued order");
+
+        var product = await _repo.GetProductByIdAsync(productId, ct)
+            ?? throw new InvalidOperationException($"Product {productId} not found");
+
+        var today = await TodayInEventZoneAsync();
+        if (today > product.OrderableUntil)
+            throw new InvalidOperationException(
+                $"Product '{product.Name}' order deadline ({product.OrderableUntil}) has passed");
+
+        var line = new StoreOrderLine
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            ProductId = product.Id,
+            Qty = qty,
+            UnitPriceSnapshot = product.UnitPriceEur,
+            VatRateSnapshot = product.VatRatePercent,
+            DepositAmountSnapshot = product.DepositAmountEur,
+            AddedAt = _clock.GetCurrentInstant(),
+            AddedByUserId = actorUserId
+        };
+        await _repo.AddLineAsync(line, ct);
+        await _audit.LogAsync(
+            AuditAction.StoreLineAdded, nameof(StoreOrderLine), line.Id,
+            $"Added {qty} × '{product.Name}' to order {order.Id}",
+            actorUserId, order.Id, nameof(StoreOrder));
+    }
+
+    public async Task RemoveLineAsync(Guid lineId, Guid actorUserId, CancellationToken ct = default)
+    {
+        var ctx = await _repo.GetLineWithOrderAndProductAsync(lineId, ct)
+            ?? throw new InvalidOperationException($"Line {lineId} not found");
+
+        if (ctx.OrderState != StoreOrderState.Open)
+            throw new InvalidOperationException("Cannot remove lines from an issued order");
+
+        var today = await TodayInEventZoneAsync();
+        if (today > ctx.ProductOrderableUntil)
+            throw new InvalidOperationException(
+                $"Line's product order deadline ({ctx.ProductOrderableUntil}) has passed");
+
+        await _repo.RemoveLineAsync(lineId, ct);
+        await _audit.LogAsync(
+            AuditAction.StoreLineRemoved, nameof(StoreOrderLine), lineId,
+            $"Removed line {lineId} from order {ctx.OrderId}",
+            actorUserId, ctx.OrderId, nameof(StoreOrder));
+    }
+
+    public async Task UpdateCounterpartyAsync(Guid orderId, OrderCounterpartyInput input, Guid actorUserId, CancellationToken ct = default)
+    {
+        var order = await _repo.GetOrderByIdAsync(orderId, ct)
+            ?? throw new InvalidOperationException($"Order {orderId} not found");
+
+        if (order.State != StoreOrderState.Open)
+            throw new InvalidOperationException("Cannot edit counterparty on an issued order");
+
+        order.CounterpartyName = input.Name;
+        order.CounterpartyVatId = input.VatId;
+        order.CounterpartyAddress = input.Address;
+        order.CounterpartyCountryCode = input.CountryCode;
+        order.CounterpartyEmail = input.Email;
+        order.UpdatedAt = _clock.GetCurrentInstant();
+
+        await _repo.UpdateOrderAsync(order, ct);
+        await _audit.LogAsync(
+            AuditAction.StoreCounterpartyEdited, nameof(StoreOrder), orderId,
+            $"Updated counterparty on order {orderId}",
+            actorUserId);
+    }
+
+    private async Task<LocalDate> TodayInEventZoneAsync()
+    {
+        var activeEvent = await _shifts.GetActiveAsync();
+        var tz = activeEvent is null
+            ? DateTimeZone.Utc
+            : DateTimeZoneProviders.Tzdb.GetZoneOrNull(activeEvent.TimeZoneId) ?? DateTimeZone.Utc;
+        return _clock.GetCurrentInstant().InZone(tz).Date;
+    }
 
     // ==========================================================================
     // Payments / invoices / summary (Phase 5+)

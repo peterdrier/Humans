@@ -1,6 +1,20 @@
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Repositories;
+
+/// <summary>
+/// Materialized view of a <see cref="StoreOrderLine"/> together with the parent
+/// order's state and camp season and the product's order deadline. Returned by
+/// <see cref="IStoreRepository.GetLineWithOrderAndProductAsync"/>.
+/// </summary>
+public record StoreLineContext(
+    Guid LineId,
+    Guid OrderId,
+    Guid CampSeasonId,
+    StoreOrderState OrderState,
+    LocalDate ProductOrderableUntil);
 
 /// <summary>
 /// Repository for the Store section's tables: <c>store_products</c>,
@@ -32,6 +46,13 @@ public interface IStoreRepository
     // Lines
     Task AddLineAsync(StoreOrderLine line, CancellationToken ct = default);
     Task RemoveLineAsync(Guid lineId, CancellationToken ct = default);
+    /// <summary>
+    /// Returns the line plus its parent order's <see cref="StoreOrder.State"/> and
+    /// <see cref="StoreOrder.CampSeasonId"/> and the product's
+    /// <see cref="StoreProduct.OrderableUntil"/> deadline. Used by RemoveLineAsync
+    /// to enforce the same gate as AddLine without three round trips.
+    /// </summary>
+    Task<StoreLineContext?> GetLineWithOrderAndProductAsync(Guid lineId, CancellationToken ct = default);
 
     // Payments
     Task AddPaymentAsync(StorePayment payment, CancellationToken ct = default);
