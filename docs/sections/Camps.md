@@ -155,7 +155,7 @@ All stored as strings via `HasConversion<string>()`. `Vibes` stored as jsonb arr
 
 ## Routing
 
-Three controllers serve this section, and the URL surface is dual-routed: every path is reachable under `/Camps/*` (English) and `/Barrios/*` (Spanish). This is the only sanctioned URL alias in the codebase — no other section may add aliases.
+Three controllers serve this section. The MVC URL surface is dual-routed under `/Camps/*` (English) and `/Barrios/*` (Spanish); the API surface is dual-routed under `/api/camps/*` and `/api/barrios/*`. The dual-route alias is governed by an invariant below — no other section may add aliases.
 
 | Route | Controller | Purpose |
 |-------|------------|---------|
@@ -179,7 +179,7 @@ Three controllers serve this section, and the URL surface is dual-routed: every 
 | `/api/camps/{year}` | `CampApiController` | Year directory JSON |
 | `/api/camps/{year}/placement` | `CampApiController` | Placement-data JSON |
 
-Admin pages live under `/Camps/Admin/*` (per `architecture_no_admin_url_section` — never `/Admin/Camps/*`).
+Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/architecture/design-rules.md` § "Admin is not a section": `/Admin/*` is a nav holder for actions whose services live in their owning sections).
 
 ## Actors & Roles
 
@@ -208,6 +208,7 @@ Admin pages live under `/Camps/Admin/*` (per `architecture_no_admin_url_section`
 - All role-assignment data is private (no anonymous render). The public Camp Details page does not expose role assignments.
 - Leave/Withdraw/Remove cascades clear role assignments via `ICampRoleService.RemoveAllForMemberAsync` before the soft-delete. Hard-delete of a `CampMember` row cascades through the FK directly.
 - Camp Lead authz remains on the `CampLead` entity until the follow-up issue retires it. The "Camp Lead" role is **not** a `CampRoleDefinition` row in this PR.
+- The `/Camps ↔ /Barrios` and `/api/camps ↔ /api/barrios` dual-route aliases are the **only sanctioned URL aliases in the codebase**. No other section may add URL aliases without explicit owner approval.
 
 ## Negative Access Rules
 
