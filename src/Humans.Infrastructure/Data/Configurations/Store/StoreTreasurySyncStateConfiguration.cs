@@ -10,7 +10,7 @@ public class StoreTreasurySyncStateConfiguration : IEntityTypeConfiguration<Stor
     {
         b.ToTable("store_treasury_sync_state");
         b.HasKey(x => x.Id);
-        b.Property(x => x.SyncStatus).HasMaxLength(20);
+        b.Property(x => x.SyncStatus).HasConversion<int>();
         b.Property(x => x.LastError).HasMaxLength(2000);
     }
 }

@@ -81,7 +81,7 @@ namespace Humans.Infrastructure.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     LastSyncAt = table.Column<Instant>(type: "timestamp with time zone", nullable: true),
-                    SyncStatus = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    SyncStatus = table.Column<int>(type: "integer", nullable: false),
                     LastError = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true)
                 },
                 constraints: table =>
