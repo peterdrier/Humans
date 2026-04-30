@@ -1,0 +1,74 @@
+@model Humans.Web.Models.ScheduleViewModel
+@{
+    ViewData["Title"] = "My Schedule";
+}
+
+<h2 class="mb-3">My Schedule</h2>
+
+<vc:temp-data-alerts />
+
+@if (Model.TimeZoneId != null)
+{
+    <p class="text-muted small">
+        <i class="fa-solid fa-clock me-1"></i>All times in <strong>@Model.TimeZoneId</strong>
+    </p>
+}
+
+@if (Model.DayGroups.Count == 0)
+{
+    <div class="alert alert-secondary">
+        You haven't favourited any events yet. Browse the <a href="/api/guide/events">event guide</a> to add events to your schedule.
+    </div>
+}
+else
+{
+    @foreach (var dayGroup in Model.DayGroups)
+    {
+        <h4 class="mt-4 mb-3">@dayGroup.DayLabel</h4>
+        <div class="list-group mb-3">
+            @foreach (var item in dayGroup.Items)
+            {
+                <div class="list-group-item @(item.HasConflict ? "border-warning" : "")">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            @if (item.HasConflict)
+                            {
+                                <span class="badge bg-warning text-dark me-1" title="Time conflict with another favourited event">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                </span>
+                            }
+                            <strong>@item.Title</strong>
+                            <span class="badge bg-secondary ms-1">@item.CategoryName</span>
+                        </div>
+                        <form method="post" asp-action="Unfavourite" asp-route-eventId="@item.EventId" class="d-inline" data-confirm="Remove this event from your schedule?">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove from schedule">
+                                <i class="fa-solid fa-heart-crack"></i>
+                            </button>
+                        </form>
+                    </div>
+                    <div class="mt-1 small text-muted">
+                        <i class="fa-solid fa-clock me-1"></i>@item.StartAt.ToString("HH:mm") — @item.StartAt.AddMinutes(item.DurationMinutes).ToString("HH:mm")
+                        (@item.DurationMinutes min)
+                        @if (item.CampName != null)
+                        {
+                            <text> &middot; <i class="fa-solid fa-campground me-1"></i>@item.CampName</text>
+                        }
+                        @if (item.VenueName != null)
+                        {
+                            <text> &middot; <i class="fa-solid fa-location-dot me-1"></i>@item.VenueName</text>
+                        }
+                        @if (!string.IsNullOrEmpty(item.LocationNote))
+                        {
+                            <text> &middot; @item.LocationNote</text>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+
+<a asp-action="MySubmissions" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i>My Submissions
+</a>

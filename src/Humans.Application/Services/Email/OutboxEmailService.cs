@@ -434,4 +434,16 @@ public sealed class OutboxEmailService : IEmailService
             _logger.LogInformation("Triggered immediate outbox processing for {TemplateName}", templateName);
         }
     }
+
+    public Task SendEventSubmittedAsync(string userEmail, string userName, string eventTitle, string viewUrl, string? culture = null, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("Event guide emails are sent directly, not via outbox.");
+
+    public Task SendEventApprovedAsync(string userEmail, string userName, string eventTitle, string? culture = null, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("Event guide emails are sent directly, not via outbox.");
+
+    public Task SendEventRejectedAsync(string userEmail, string userName, string eventTitle, string reason, string editUrl, string? culture = null, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("Event guide emails are sent directly, not via outbox.");
+
+    public Task SendEventResubmitRequestedAsync(string userEmail, string userName, string eventTitle, string reason, string editUrl, string? culture = null, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("Event guide emails are sent directly, not via outbox.");
 }

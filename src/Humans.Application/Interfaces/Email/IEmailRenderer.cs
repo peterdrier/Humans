@@ -128,4 +128,24 @@ public interface IEmailRenderer
     /// injection, and converting the resulting markdown body to HTML.
     /// </summary>
     EmailContent RenderCampaignCode(string subject, string markdownBody, string code, string recipientName);
+
+    /// <summary>
+    /// Event submission received notification.
+    /// </summary>
+    EmailContent RenderEventSubmitted(string userName, string eventTitle, string viewUrl, string? culture = null);
+
+    /// <summary>
+    /// Event approved notification.
+    /// </summary>
+    EmailContent RenderEventApproved(string userName, string eventTitle, string? culture = null);
+
+    /// <summary>
+    /// Event rejected notification.
+    /// </summary>
+    EmailContent RenderEventRejected(string userName, string eventTitle, string reason, string editUrl, string? culture = null);
+
+    /// <summary>
+    /// Event resubmit-requested notification.
+    /// </summary>
+    EmailContent RenderEventResubmitRequested(string userName, string eventTitle, string reason, string editUrl, string? culture = null);
 }

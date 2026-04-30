@@ -1,3 +1,4 @@
+@inject IConfiguration Configuration
 <!DOCTYPE html>
 <html lang="@System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
 <head>
@@ -101,6 +102,23 @@
                         <li class="nav-item" authorize-policy="IsActiveMember">
                             <a class="nav-link" asp-area="" asp-controller="CityPlanning" asp-action="Index">@Localizer["Nav_City"]</a>
                         </li>
+                        @if (Configuration.GetValue<bool>("Features:EventGuide"))
+                        {
+                            <li class="nav-item dropdown" authorize-policy="IsActiveMember">
+                                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Events</a>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="EventGuide" asp-action="Browse">Browse Events</a></li>
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="EventGuide" asp-action="MySubmissions">My Submissions</a></li>
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="EventGuide" asp-action="Schedule">My Schedule</a></li>
+                                    @if (User.IsInRole(Humans.Domain.Constants.RoleNames.GuideModerator) || User.IsInRole("Admin"))
+                                    {
+                                        <li><hr class="dropdown-divider" /></li>
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="EventGuideDashboard" asp-action="Index">Guide Dashboard</a></li>
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="Moderation" asp-action="Index">Moderate Events</a></li>
+                                    }
+                                </ul>
+                            </li>
+                        }
                         @if (!isAuthenticated || !hasProfile)
                         {
                             <li class="nav-item">

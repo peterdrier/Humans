@@ -1,0 +1,52 @@
+@model Humans.Web.Models.GuideVenueFormViewModel
+@{
+    var isEdit = Model.Id.HasValue;
+    ViewData["Title"] = isEdit ? "Edit Venue" : "New Venue";
+}
+
+<h2>@ViewData["Title"]</h2>
+
+<div class="card" style="max-width: 600px;">
+    <div class="card-body">
+        <form method="post"
+              asp-controller="GuideAdmin"
+              asp-action="@(isEdit ? "EditVenue" : "CreateVenue")"
+              asp-route-id="@Model.Id">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="Name" class="form-label"></label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label"></label>
+                <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="LocationDescription" class="form-label"></label>
+                <input asp-for="LocationDescription" class="form-control" placeholder="Grid address or description" />
+                <span asp-validation-for="LocationDescription" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="DisplayOrder" class="form-label"></label>
+                <input asp-for="DisplayOrder" type="number" class="form-control" style="max-width: 120px;" />
+                <span asp-validation-for="DisplayOrder" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3 form-check">
+                <input asp-for="IsActive" class="form-check-input" />
+                <label asp-for="IsActive" class="form-check-label">Active</label>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk me-1"></i>@(isEdit ? "Save Changes" : "Create Venue")
+            </button>
+            <a asp-controller="GuideAdmin" asp-action="GuideVenues" class="btn btn-outline-secondary ms-2">Cancel</a>
+        </form>
+    </div>
+</div>

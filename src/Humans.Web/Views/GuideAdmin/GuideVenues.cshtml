@@ -1,0 +1,95 @@
+@model Humans.Web.Models.GuideVenueListViewModel
+@{
+    ViewData["Title"] = "Communal Venues";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Communal Venues</h2>
+    <a asp-controller="GuideAdmin" asp-action="CreateVenue" class="btn btn-primary">
+        <i class="fa-solid fa-plus me-1"></i>Add Venue
+    </a>
+</div>
+
+<vc:temp-data-alerts />
+
+@if (Model.Venues.Count == 0)
+{
+    <div class="alert alert-info">
+        No venues yet. Add one to get started.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th style="width: 60px;">Order</th>
+                    <th>Name</th>
+                    <th>Location</th>
+                    <th>Active</th>
+                    <th>Events</th>
+                    <th style="width: 200px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (var i = 0; i < Model.Venues.Count; i++)
+                {
+                    var venue = Model.Venues[i];
+                    <tr class="@(!venue.IsActive ? "table-secondary" : "")">
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                @if (i > 0)
+                                {
+                                    <form method="post" asp-controller="GuideAdmin" asp-action="MoveVenueUp" asp-route-id="@venue.Id" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-outline-secondary btn-sm" title="Move up">
+                                            <i class="fa-solid fa-arrow-up"></i>
+                                        </button>
+                                    </form>
+                                }
+                                @if (i < Model.Venues.Count - 1)
+                                {
+                                    <form method="post" asp-controller="GuideAdmin" asp-action="MoveVenueDown" asp-route-id="@venue.Id" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-outline-secondary btn-sm" title="Move down">
+                                            <i class="fa-solid fa-arrow-down"></i>
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                        <td>@venue.Name</td>
+                        <td>@(venue.LocationDescription ?? "—")</td>
+                        <td>
+                            @if (venue.IsActive)
+                            {
+                                <span class="badge bg-success">Active</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Inactive</span>
+                            }
+                        </td>
+                        <td>@venue.EventCount</td>
+                        <td>
+                            <a asp-controller="GuideAdmin" asp-action="EditVenue" asp-route-id="@venue.Id" class="btn btn-sm btn-outline-primary me-1">
+                                <i class="fa-solid fa-pen me-1"></i>Edit
+                            </a>
+                            <form method="post" asp-controller="GuideAdmin" asp-action="DeleteVenue" asp-route-id="@venue.Id" class="d-inline" data-confirm="Delete this venue?">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="fa-solid fa-trash me-1"></i>Delete
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i>Back to Admin
+</a>

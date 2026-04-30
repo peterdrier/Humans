@@ -1,0 +1,158 @@
+@model Humans.Web.Models.BrowseViewModel
+@{
+    ViewData["Title"] = "Browse Events";
+    var hasFilters = Model.FilterDays.Count > 0 || Model.FilterCategoryId.HasValue || Model.FilterVenueId.HasValue
+                     || !string.IsNullOrEmpty(Model.SearchQuery) || Model.FavouritesOnly;
+}
+
+<h2 class="mb-3">Browse Events</h2>
+
+@if (Model.TimeZoneId != null)
+{
+    <p class="text-muted small">
+        <i class="fa-solid fa-clock me-1"></i>All times in <strong>@Model.TimeZoneId</strong>. Playa Time may apply!
+    </p>
+}
+
+<form method="get" asp-action="Browse" class="card mb-4">
+    <div class="card-body">
+        @if (Model.Days.Count > 0)
+        {
+            <div class="mb-3">
+                <label class="form-label small mb-1 d-block">Day</label>
+                <div class="d-flex flex-wrap gap-1">
+                    @foreach (var d in Model.Days)
+                    {
+                        var isSelected = Model.FilterDays.Contains(d.DayOffset);
+                        <div>
+                            <input type="checkbox" class="btn-check" name="days" value="@d.DayOffset"
+                                   id="day-@d.DayOffset" autocomplete="off" @(isSelected ? "checked" : "") />
+                            <label class="btn btn-sm @(isSelected ? "btn-primary" : "btn-outline-secondary")" for="day-@d.DayOffset">
+                                @d.Label
+                            </label>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+        <div class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small mb-1">Category</label>
+                <select name="categoryId" class="form-select form-select-sm js-auto-submit">
+                    <option value="">All categories</option>
+                    @foreach (var c in Model.Categories)
+                    {
+                        <option value="@c.Id" selected="@(Model.FilterCategoryId == c.Id)">@c.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small mb-1">Venue</label>
+                <select name="venueId" class="form-select form-select-sm js-auto-submit">
+                    <option value="">All venues</option>
+                    @foreach (var v in Model.Venues)
+                    {
+                        <option value="@v.Id" selected="@(Model.FilterVenueId == v.Id)">@v.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small mb-1">Search</label>
+                <input type="text" name="q" value="@Model.SearchQuery" class="form-control form-control-sm"
+                       placeholder="Search title or description..." />
+            </div>
+            <div class="col-md-2 d-flex align-items-end gap-2">
+                <div class="form-check">
+                    <input type="checkbox" name="favouritesOnly" value="true" class="form-check-input js-auto-submit"
+                           id="favouritesOnly" checked="@(Model.FavouritesOnly ? "checked" : null)" />
+                    <label class="form-check-label small" for="favouritesOnly">
+                        <i class="fa-solid fa-heart text-danger"></i> Only
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fa-solid fa-search"></i>
+                </button>
+            </div>
+            @if (hasFilters)
+            {
+                <div class="col-md-1 d-flex align-items-end">
+                    <a asp-action="Browse" class="btn btn-sm btn-outline-secondary">Clear</a>
+                </div>
+            }
+        </div>
+    </div>
+</form>
+
+@if (Model.DayGroups.Count == 0)
+{
+    <div class="alert alert-secondary">
+        No events found. Try adjusting your filters.
+    </div>
+}
+else
+{
+    @foreach (var dayGroup in Model.DayGroups)
+    {
+        <h4 class="mt-4 mb-3">@dayGroup.DayLabel</h4>
+        <div class="list-group mb-3">
+            @foreach (var item in dayGroup.Items)
+            {
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <strong>@item.Title</strong>
+                            <span class="badge bg-secondary ms-1">@item.CategoryName</span>
+                        </div>
+                        <form method="post" asp-action="ToggleFavourite" asp-route-eventId="@item.EventId"
+                              asp-route-categoryId="@Model.FilterCategoryId"
+                              asp-route-venueId="@Model.FilterVenueId" asp-route-q="@Model.SearchQuery"
+                              asp-route-favouritesOnly="@Model.FavouritesOnly" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            @foreach (var d in Model.FilterDays)
+                            {
+                                <input type="hidden" name="days" value="@d" />
+                            }
+                            <button type="submit" class="btn btn-sm @(item.IsFavourited ? "btn-danger" : "btn-outline-danger")"
+                                    title="@(item.IsFavourited ? "Remove from favourites" : "Add to favourites")">
+                                <i class="fa-solid fa-heart"></i>
+                            </button>
+                        </form>
+                    </div>
+                    <div class="mt-1 small text-muted">
+                        <i class="fa-solid fa-clock me-1"></i>@item.StartAt.ToString("HH:mm") — @item.StartAt.AddMinutes(item.DurationMinutes).ToString("HH:mm")
+                        (@item.DurationMinutes min)
+                        @if (item.CampName != null)
+                        {
+                            <text> &middot; <i class="fa-solid fa-campground me-1"></i>@item.CampName</text>
+                        }
+                        @if (item.VenueName != null)
+                        {
+                            <text> &middot; <i class="fa-solid fa-location-dot me-1"></i>@item.VenueName</text>
+                        }
+                        @if (!string.IsNullOrEmpty(item.LocationNote))
+                        {
+                            <text> &middot; @item.LocationNote</text>
+                        }
+                        @if (item.SubmitterName != null)
+                        {
+                            <text> &middot; <i class="fa-solid fa-user me-1"></i>@item.SubmitterName</text>
+                        }
+                    </div>
+                    @if (!string.IsNullOrEmpty(item.Description))
+                    {
+                        <p class="mt-2 mb-0 small">@item.Description</p>
+                    }
+                </div>
+            }
+        </div>
+    }
+}
+
+<div class="mt-3 d-flex gap-2">
+    <a asp-action="Schedule" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-calendar me-1"></i>My Schedule
+    </a>
+    <a asp-action="MySubmissions" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-list me-1"></i>My Submissions
+    </a>
+</div>

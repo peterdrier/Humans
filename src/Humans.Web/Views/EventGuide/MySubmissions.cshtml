@@ -1,0 +1,123 @@
+@model Humans.Web.Models.MySubmissionsViewModel
+@{
+    ViewData["Title"] = "My Event Submissions";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item active" aria-current="page">My Event Submissions</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">My Event Submissions</h2>
+    @if (Model.IsSubmissionOpen)
+    {
+        <a asp-action="Submit" class="btn btn-primary">
+            <i class="fa-solid fa-plus me-1"></i>Submit New Event
+        </a>
+    }
+</div>
+
+<vc:temp-data-alerts />
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body py-2">
+                <div class="fs-4 fw-bold">@Model.SubmittedCount</div>
+                <small class="text-muted">Submitted</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body py-2">
+                <div class="fs-4 fw-bold text-warning">@Model.PendingCount</div>
+                <small class="text-muted">Pending</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body py-2">
+                <div class="fs-4 fw-bold text-success">@Model.ApprovedCount</div>
+                <small class="text-muted">Approved</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (!Model.IsSubmissionOpen)
+{
+    <div class="alert alert-info">
+        <i class="fa-solid fa-clock me-1"></i>
+        @if (Model.SubmissionOpenAt.HasValue && Model.SubmissionCloseAt.HasValue)
+        {
+            <text>Submission window: @Model.SubmissionOpenAt.Value.ToString("d MMM yyyy HH:mm") — @Model.SubmissionCloseAt.Value.ToString("d MMM yyyy HH:mm")</text>
+            if (Model.TimeZoneId != null)
+            {
+                <text> (@Model.TimeZoneId)</text>
+            }
+        }
+        else
+        {
+            <text>Submission window is not currently open. Contact an admin to configure guide settings.</text>
+        }
+    </div>
+}
+
+@if (Model.Events.Count == 0)
+{
+    <div class="alert alert-secondary">
+        You haven't submitted any events yet.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Venue</th>
+                    <th>Category</th>
+                    <th>Date / Time</th>
+                    <th>Duration</th>
+                    <th>Status</th>
+                    <th style="width: 160px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var evt in Model.Events)
+                {
+                    <tr>
+                        <td>@evt.Title</td>
+                        <td>@evt.VenueName</td>
+                        <td>@evt.CategoryName</td>
+                        <td>@evt.StartAt.ToString("d MMM HH:mm")</td>
+                        <td>@evt.DurationMinutes min</td>
+                        <td><span class="badge @evt.StatusBadgeClass">@evt.Status</span></td>
+                        <td>
+                            @if (evt.CanEdit)
+                            {
+                                <a asp-action="Edit" asp-route-eventId="@evt.Id" class="btn btn-sm btn-outline-primary me-1">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                            }
+                            @if (evt.CanWithdraw)
+                            {
+                                <form method="post" asp-action="Withdraw" asp-route-eventId="@evt.Id" class="d-inline" data-confirm="Withdraw this event?">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

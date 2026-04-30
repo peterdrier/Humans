@@ -31,4 +31,6 @@ public static class RoleGroups
     public const string HumanAdminOrAdmin = RoleNames.HumanAdmin + "," + RoleNames.Admin;
 
     public const string FinanceAdminOrAdmin = RoleNames.FinanceAdmin + "," + RoleNames.Admin;
+
+    public const string GuideModeratorOrAdmin = RoleNames.GuideModerator + "," + RoleNames.Admin;
 }

@@ -1,0 +1,79 @@
+@model Humans.Web.Models.EventCategoryFormViewModel
+@{
+    var isEdit = Model.Id.HasValue;
+    ViewData["Title"] = isEdit ? "Edit Category" : "New Category";
+}
+
+<h2>@ViewData["Title"]</h2>
+
+<div class="card" style="max-width: 600px;">
+    <div class="card-body">
+        <form method="post"
+              asp-controller="GuideAdmin"
+              asp-action="@(isEdit ? "EditCategory" : "CreateCategory")"
+              asp-route-id="@Model.Id">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="Name" class="form-label"></label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Slug" class="form-label"></label>
+                <input asp-for="Slug" class="form-control" placeholder="auto-generated-from-name" />
+                <div class="form-text">URL-safe identifier. Lowercase letters, numbers, and hyphens only.</div>
+                <span asp-validation-for="Slug" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="DisplayOrder" class="form-label"></label>
+                <input asp-for="DisplayOrder" type="number" class="form-control" style="max-width: 120px;" />
+                <span asp-validation-for="DisplayOrder" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3 form-check">
+                <input asp-for="IsSensitive" class="form-check-input" />
+                <label asp-for="IsSensitive" class="form-check-label">
+                    Sensitive category (Adult, Spiritual, etc.)
+                </label>
+            </div>
+
+            <div class="mb-3 form-check">
+                <input asp-for="IsActive" class="form-check-input" />
+                <label asp-for="IsActive" class="form-check-label">Active</label>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk me-1"></i>@(isEdit ? "Save Changes" : "Create Category")
+            </button>
+            <a asp-controller="GuideAdmin" asp-action="GuideCategories" class="btn btn-outline-secondary ms-2">Cancel</a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Auto-generate slug from name if slug is empty
+        (function () {
+            const nameInput = document.getElementById('Name');
+            const slugInput = document.getElementById('Slug');
+            if (!nameInput || !slugInput) return;
+
+            let slugManuallyEdited = slugInput.value.length > 0 && @(isEdit ? "true" : "false");
+
+            slugInput.addEventListener('input', function () {
+                slugManuallyEdited = true;
+            });
+
+            nameInput.addEventListener('input', function () {
+                if (slugManuallyEdited) return;
+                slugInput.value = nameInput.value
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-+|-+$/g, '');
+            });
+        })();
+    </script>
+}

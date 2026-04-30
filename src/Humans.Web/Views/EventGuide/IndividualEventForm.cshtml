@@ -1,0 +1,233 @@
+@model Humans.Web.Models.IndividualEventFormViewModel
+@{
+    var isEdit = Model.Id.HasValue;
+    ViewData["Title"] = isEdit ? "Edit Event" : "Submit an Event";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="EventGuide" asp-action="MySubmissions">My Event Submissions</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@(isEdit ? "Edit" : "New")</li>
+    </ol>
+</nav>
+
+<h2>@(isEdit ? "Edit Event" : "Submit an Event")</h2>
+
+@if (Model.IsResubmit)
+{
+    <div class="alert alert-info">
+        <i class="fa-solid fa-info-circle me-1"></i>This event was returned for edits. Update the details and resubmit.
+    </div>
+}
+
+@if (Model.TimeZoneId != null)
+{
+    <p class="text-muted small">
+        <i class="fa-solid fa-clock me-1"></i>All times in <strong>@Model.TimeZoneId</strong>. Playa Time may apply!
+    </p>
+}
+
+<div class="card" style="max-width: 700px;">
+    <div class="card-body">
+        <form method="post"
+              asp-controller="EventGuide"
+              asp-action="@(isEdit ? "Update" : "Create")"
+              asp-route-eventId="@Model.Id">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="Title" class="form-label"></label>
+                <input asp-for="Title" class="form-control" maxlength="80" id="titleInput" />
+                <div class="form-text"><span id="titleCounter">@(80 - (Model.Title?.Length ?? 0))</span> characters remaining</div>
+                <span asp-validation-for="Title" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label"></label>
+                <textarea asp-for="Description" class="form-control" rows="3" maxlength="450" id="descriptionInput"></textarea>
+                <div class="form-text"><span id="descriptionCounter">@(450 - (Model.Description?.Length ?? 0))</span> characters remaining</div>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="CategoryId" class="form-label"></label>
+                <select asp-for="CategoryId" class="form-select">
+                    <option value="">— Select category —</option>
+                    @foreach (var cat in Model.Categories)
+                    {
+                        <option value="@cat.Id" selected="@(cat.Id == Model.CategoryId)">@cat.Name</option>
+                    }
+                </select>
+                <span asp-validation-for="CategoryId" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="VenueId" class="form-label"></label>
+                <select asp-for="VenueId" class="form-select">
+                    <option value="">— Select venue —</option>
+                    @foreach (var venue in Model.Venues)
+                    {
+                        <option value="@venue.Id" selected="@(venue.Id == Model.VenueId)">@venue.Name</option>
+                    }
+                </select>
+                <span asp-validation-for="VenueId" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3 form-check">
+                <input asp-for="IsAllDay" class="form-check-input" id="IsAllDay" />
+                <label asp-for="IsAllDay" class="form-check-label">All day event</label>
+            </div>
+
+            <div class="row" id="timeFields">
+                <div class="col-md-4 mb-3">
+                    <label asp-for="StartDate" class="form-label"></label>
+                    <select asp-for="StartDate" class="form-select">
+                        <option value="">— Select day —</option>
+                        @foreach (var day in Model.EventDays)
+                        {
+                            <option value="@day.Date.ToString("yyyy-MM-dd")" selected="@(day.Date.Date == Model.StartDate.Date)">@day.Label</option>
+                        }
+                    </select>
+                    <span asp-validation-for="StartDate" class="text-danger"></span>
+                </div>
+                <div class="col-md-4 mb-3" id="startTimeField">
+                    <label asp-for="StartTime" class="form-label"></label>
+                    <input asp-for="StartTime" type="time" class="form-control" step="900" />
+                    <span asp-validation-for="StartTime" class="text-danger"></span>
+                </div>
+                <div class="col-md-4 mb-3" id="durationField">
+                    <label asp-for="DurationMinutes" class="form-label"></label>
+                    <select asp-for="DurationMinutes" class="form-select" id="durationSelect">
+                        @for (var mins = 15; mins <= 480; mins += 15)
+                        {
+                            var hours = mins / 60;
+                            var rem = mins % 60;
+                            var label = hours > 0
+                                ? (rem > 0 ? $"{hours}h {rem}m" : $"{hours}h")
+                                : $"{mins}m";
+                            <option value="@mins" selected="@(mins == Model.DurationMinutes)">@label</option>
+                        }
+                    </select>
+                    <span asp-validation-for="DurationMinutes" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="LocationNote" class="form-label"></label>
+                <input asp-for="LocationNote" class="form-control" maxlength="120" placeholder="e.g. near the fire pit" />
+                <span asp-validation-for="LocationNote" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3 form-check">
+                <input asp-for="IsRecurring" class="form-check-input" id="IsRecurring" />
+                <label asp-for="IsRecurring" class="form-check-label">This event repeats on multiple days</label>
+            </div>
+
+            <div class="mb-3" id="recurrence-days-section" style="display: none;">
+                <label class="form-label">Recurrence days</label>
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach (var day in Model.EventDays)
+                    {
+                        var checkedDays = Model.RecurrenceDays?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                            .Select(s => int.TryParse(s, out var n) ? n : -1).ToHashSet() ?? [];
+                        var isChecked = checkedDays.Contains(day.DayOffset);
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input recurrence-day-check" type="checkbox"
+                                   id="recDay@(day.DayOffset)" value="@day.DayOffset" @(isChecked ? "checked" : "") />
+                            <label class="form-check-label" for="recDay@(day.DayOffset)">@day.Label</label>
+                        </div>
+                    }
+                </div>
+                <input type="hidden" asp-for="RecurrenceDays" id="RecurrenceDaysHidden" />
+                <span asp-validation-for="RecurrenceDays" class="text-danger"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-paper-plane me-1"></i>@(isEdit ? "Resubmit" : "Submit for Review")
+            </button>
+            <a asp-controller="EventGuide" asp-action="MySubmissions" class="btn btn-outline-secondary ms-2">Cancel</a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            // Live character counters
+            var titleInput = document.getElementById('titleInput');
+            var titleCounter = document.getElementById('titleCounter');
+            var descInput = document.getElementById('descriptionInput');
+            var descCounter = document.getElementById('descriptionCounter');
+
+            if (titleInput && titleCounter) {
+                titleInput.addEventListener('input', function () {
+                    titleCounter.textContent = 80 - titleInput.value.length;
+                });
+            }
+            if (descInput && descCounter) {
+                descInput.addEventListener('input', function () {
+                    descCounter.textContent = 450 - descInput.value.length;
+                });
+            }
+
+            // All-day toggle
+            var allDayCheck = document.getElementById('IsAllDay');
+            var startTimeField = document.getElementById('startTimeField');
+            var durationField = document.getElementById('durationField');
+            var durationSelect = document.getElementById('durationSelect');
+            var startTimeInput = startTimeField ? startTimeField.querySelector('input') : null;
+
+            function applyAllDay() {
+                if (!allDayCheck) return;
+                var allDay = allDayCheck.checked;
+                if (startTimeField) startTimeField.style.display = allDay ? 'none' : '';
+                if (durationField) durationField.style.display = allDay ? 'none' : '';
+                if (allDay && durationSelect) {
+                    durationSelect.value = '1440';
+                }
+            }
+
+            if (allDayCheck) {
+                allDayCheck.addEventListener('change', applyAllDay);
+                applyAllDay();
+            }
+
+            // Recurrence days toggle
+            var recurringCheck = document.getElementById('IsRecurring');
+            var recSection = document.getElementById('recurrence-days-section');
+            var recHidden = document.getElementById('RecurrenceDaysHidden');
+            var dayCheckboxes = document.querySelectorAll('.recurrence-day-check');
+
+            function syncRecurrenceDays() {
+                var selected = [];
+                dayCheckboxes.forEach(function (cb) {
+                    if (cb.checked) selected.push(cb.value);
+                });
+                if (recHidden) recHidden.value = selected.join(',');
+            }
+
+            function toggleRecurrence() {
+                if (!recurringCheck || !recSection) return;
+                recSection.style.display = recurringCheck.checked ? 'block' : 'none';
+            }
+
+            if (recurringCheck) {
+                toggleRecurrence();
+                recurringCheck.addEventListener('change', toggleRecurrence);
+            }
+
+            dayCheckboxes.forEach(function (cb) {
+                cb.addEventListener('change', syncRecurrenceDays);
+            });
+
+            // Sync hidden field before form submit
+            var form = document.querySelector('form[method="post"]');
+            if (form) {
+                form.addEventListener('submit', syncRecurrenceDays);
+            }
+
+            // Initialize from model value
+            syncRecurrenceDays();
+        })();
+    </script>
+}

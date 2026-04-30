@@ -1,0 +1,68 @@
+@model Humans.Web.Models.GuideSettingsViewModel
+@{
+    ViewData["Title"] = "Guide Settings";
+    var isEdit = Model.Id.HasValue;
+}
+
+<h2>Guide Settings</h2>
+
+<vc:temp-data-alerts />
+
+<div class="card">
+    <div class="card-header">
+        @(isEdit ? "Edit Guide Settings" : "Create Guide Settings")
+    </div>
+    <div class="card-body">
+        <form method="post" asp-controller="GuideAdmin" asp-action="SaveGuideSettings">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="EventSettingsId" class="form-label"></label>
+                <select asp-for="EventSettingsId" class="form-select">
+                    <option value="">— Select event edition —</option>
+                    @foreach (var es in Model.AvailableEventSettings)
+                    {
+                        <option value="@es.Id" selected="@(es.Id == Model.EventSettingsId)">@es.EventName</option>
+                    }
+                </select>
+                <span asp-validation-for="EventSettingsId" class="text-danger"></span>
+            </div>
+
+            @if (Model.TimeZoneId != null)
+            {
+                <p class="text-muted small mb-3">
+                    <i class="fa-solid fa-clock me-1"></i>All times in <strong>@Model.TimeZoneId</strong>
+                </p>
+            }
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label asp-for="SubmissionOpenAt" class="form-label"></label>
+                    <input asp-for="SubmissionOpenAt" type="datetime-local" class="form-control" />
+                    <span asp-validation-for="SubmissionOpenAt" class="text-danger"></span>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label asp-for="SubmissionCloseAt" class="form-label"></label>
+                    <input asp-for="SubmissionCloseAt" type="datetime-local" class="form-control" />
+                    <span asp-validation-for="SubmissionCloseAt" class="text-danger"></span>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label asp-for="GuidePublishAt" class="form-label"></label>
+                    <input asp-for="GuidePublishAt" type="datetime-local" class="form-control" />
+                    <span asp-validation-for="GuidePublishAt" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="MaxPrintSlots" class="form-label"></label>
+                <input asp-for="MaxPrintSlots" type="number" class="form-control" style="max-width: 200px;" />
+                <span asp-validation-for="MaxPrintSlots" class="text-danger"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk me-1"></i>@(isEdit ? "Save Changes" : "Create")
+            </button>
+            <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary ms-2">Back to Admin</a>
+        </form>
+    </div>
+</div>
