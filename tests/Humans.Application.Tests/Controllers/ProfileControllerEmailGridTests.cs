@@ -99,7 +99,8 @@ public class ProfileControllerEmailGridTests
             Substitute.For<IUserService>(),
             Substitute.For<IHttpClientFactory>(),
             _signInManager,
-            Substitute.For<IAccountMergeService>());
+            Substitute.For<IAccountMergeService>(),
+            Options.Create(new GoogleWorkspaceOptions()));
 
         var identity = new ClaimsIdentity(new[]
         {

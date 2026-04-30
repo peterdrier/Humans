@@ -61,6 +61,14 @@
                 <h5 class="mb-0">@Localizer["Emails_YourEmails"]</h5>
             </div>
             <div class="card-body p-0">
+                @if (Model.WorkspaceLockedEmailId.HasValue)
+                {
+                    <div class="px-3 pt-3">
+                        <small class="text-muted">
+                            <i class="fa-solid fa-lock me-1"></i>@Localizer["EmailGrid_WorkspaceLockedHelp"]
+                        </small>
+                    </div>
+                }
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
                         <thead>
@@ -79,10 +87,6 @@
                             <tr>
                                 <td>
                                     <code>@row.Email</code>
-                                    @if (!string.IsNullOrEmpty(row.Provider))
-                                    {
-                                        <span class="badge bg-info text-dark ms-1">@row.Provider</span>
-                                    }
                                 </td>
                                 <td>
                                     @if (Model.MergePendingEmailIds.Contains(row.Id))
@@ -109,6 +113,12 @@
                                     }
                                 </td>
                                 <td>
+                                    @{
+                                        var workspaceLocked = Model.WorkspaceLockedEmailId.HasValue;
+                                        var isLockedRow = workspaceLocked && Model.WorkspaceLockedEmailId == row.Id;
+                                        var primaryChecked = isLockedRow ? true : row.IsPrimary;
+                                        var primaryDisabled = workspaceLocked || !row.IsVerified;
+                                    }
                                     <form asp-action="@(Model.IsAdminContext ? "AdminSetPrimary" : "SetPrimary")"
                                           asp-route-userId="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
                                           method="post" class="d-inline">
@@ -119,9 +129,9 @@
                                                    class="form-check-input me-1 js-auto-submit"
                                                    name="isPrimary"
                                                    value="true"
-                                                   @(row.IsPrimary ? "checked" : "")
-                                                   @(row.IsVerified ? "" : "disabled") />
-                                            @if (!row.IsPrimary && !row.IsVerified)
+                                                   @(primaryChecked ? "checked" : "")
+                                                   @(primaryDisabled ? "disabled" : "") />
+                                            @if (!primaryChecked && !row.IsVerified)
                                             {
                                                 <span class="text-muted small">@Localizer["Emails_VerifyFirst"]</span>
                                             }
@@ -129,6 +139,10 @@
                                     </form>
                                 </td>
                                 <td>
+                                    @{
+                                        var googleChecked = isLockedRow ? true : row.IsGoogleServiceEmail;
+                                        var googleDisabled = workspaceLocked || !row.IsVerified;
+                                    }
                                     <form asp-action="@(Model.IsAdminContext ? "AdminSetGoogle" : "SetGoogle")"
                                           asp-route-userId="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
                                           method="post" class="d-inline">
@@ -139,13 +153,9 @@
                                                    class="form-check-input me-1 js-auto-submit"
                                                    name="isGoogle"
                                                    value="true"
-                                                   @(row.IsGoogleServiceEmail ? "checked" : "")
-                                                   @(row.IsVerified ? "" : "disabled") />
-                                            @if (row.IsNobodiesTeamDomain && row.IsGoogleServiceEmail)
-                                            {
-                                                <span class="badge bg-info text-dark">@Localizer["Emails_AutoSelected"]</span>
-                                            }
-                                            else if (!row.IsVerified)
+                                                   @(googleChecked ? "checked" : "")
+                                                   @(googleDisabled ? "disabled" : "") />
+                                            @if (!googleChecked && !row.IsVerified)
                                             {
                                                 <span class="text-muted small">@Localizer["Emails_VerifyFirst"]</span>
                                             }
@@ -175,46 +185,52 @@
                                     }
                                 </td>
                                 <td class="text-end">
-                                    @if (!string.IsNullOrEmpty(row.Provider))
+                                    @* Never offer a destructive action on the only remaining email — *@
+                                    @* removing the last row would leave the user with no email at all, *@
+                                    @* regardless of whether the row is provider-linked. *@
+                                    @if (Model.Emails.Count > 1)
                                     {
-                                        @if (Model.IsAdminContext)
+                                        @if (!string.IsNullOrEmpty(row.Provider))
                                         {
-                                            <form asp-action="AdminUnlink"
-                                                  asp-route-userId="@Model.TargetUserId"
-                                                  asp-route-emailId="@row.Id"
-                                                  method="post" class="d-inline"
-                                                  onsubmit="return confirm('@Localizer["EmailGrid_ConfirmUnlink"].Value');">
-                                                @Html.AntiForgeryToken()
-                                                <button type="submit" class="btn btn-outline-warning btn-sm">
-                                                    <i class="fa-solid fa-link-slash me-1"></i>@Localizer["EmailGrid_Unlink"]
-                                                </button>
-                                            </form>
+                                            @if (Model.IsAdminContext)
+                                            {
+                                                <form asp-action="AdminUnlink"
+                                                      asp-route-userId="@Model.TargetUserId"
+                                                      asp-route-emailId="@row.Id"
+                                                      method="post" class="d-inline"
+                                                      onsubmit="return confirm('@Localizer["EmailGrid_ConfirmUnlink"].Value');">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-outline-warning btn-sm">
+                                                        <i class="fa-solid fa-link-slash me-1"></i>@Localizer["EmailGrid_Unlink"]
+                                                    </button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                <form asp-action="Unlink"
+                                                      asp-route-id="@row.Id"
+                                                      method="post" class="d-inline"
+                                                      onsubmit="return confirm('@Localizer["EmailGrid_ConfirmUnlink"].Value');">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-outline-warning btn-sm">
+                                                        <i class="fa-solid fa-link-slash me-1"></i>@Localizer["EmailGrid_Unlink"]
+                                                    </button>
+                                                </form>
+                                            }
                                         }
                                         else
                                         {
-                                            <form asp-action="Unlink"
-                                                  asp-route-id="@row.Id"
+                                            <form asp-action="@(Model.IsAdminContext ? "AdminDeleteEmail" : "DeleteEmail")"
+                                                  asp-route-userId="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
                                                   method="post" class="d-inline"
-                                                  onsubmit="return confirm('@Localizer["EmailGrid_ConfirmUnlink"].Value');">
+                                                  onsubmit="return confirm('@Localizer["Emails_ConfirmRemove"].Value');">
                                                 @Html.AntiForgeryToken()
-                                                <button type="submit" class="btn btn-outline-warning btn-sm">
-                                                    <i class="fa-solid fa-link-slash me-1"></i>@Localizer["EmailGrid_Unlink"]
+                                                <input type="hidden" name="emailId" value="@row.Id" />
+                                                <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                    <i class="fa-solid fa-trash"></i>
                                                 </button>
                                             </form>
                                         }
-                                    }
-                                    else if (Model.Emails.Count > 1)
-                                    {
-                                        <form asp-action="@(Model.IsAdminContext ? "AdminDeleteEmail" : "DeleteEmail")"
-                                              asp-route-userId="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
-                                              method="post" class="d-inline"
-                                              onsubmit="return confirm('@Localizer["Emails_ConfirmRemove"].Value');">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="emailId" value="@row.Id" />
-                                            <button type="submit" class="btn btn-outline-danger btn-sm">
-                                                <i class="fa-solid fa-trash"></i>
-                                            </button>
-                                        </form>
                                     }
                                 </td>
                             </tr>

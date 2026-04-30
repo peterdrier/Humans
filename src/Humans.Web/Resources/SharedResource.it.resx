@@ -1860,6 +1860,7 @@
   <data name="EmailGrid_Primary" xml:space="preserve"><value>Principale</value></data>
   <data name="EmailGrid_Google" xml:space="preserve"><value>Google</value></data>
   <data name="EmailGrid_GoogleColumnTooltip" xml:space="preserve"><value>Email usata per la sincronizzazione con Google Workspace.</value></data>
+  <data name="EmailGrid_WorkspaceLockedHelp" xml:space="preserve"><value>Principale e Google sono gestiti da Google Workspace finché il tuo indirizzo @nobodies.team è presente.</value></data>
   <data name="EmailGrid_Visibility" xml:space="preserve"><value>Visibilità</value></data>
   <data name="EmailGrid_Actions" xml:space="preserve"><value>Azioni</value></data>
   <data name="EmailGrid_StatusMergePending" xml:space="preserve"><value>Unione in sospeso</value></data>

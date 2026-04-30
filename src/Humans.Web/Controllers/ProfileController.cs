@@ -22,6 +22,7 @@ using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Campaigns;
@@ -73,6 +74,7 @@ public class ProfileController : HumansControllerBase
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly SignInManager<User> _signInManager;
     private readonly IAccountMergeService _accountMergeService;
+    private readonly GoogleWorkspaceOptions _googleWorkspaceOptions;
 
     private const int MaxProfilePictureUploadBytes = 20 * 1024 * 1024; // 20MB upload limit
     private const int MaxGooglePhotoDownloadBytes = 20 * 1024 * 1024; // 20MB hard ceiling for Google avatar fetch
@@ -126,7 +128,8 @@ public class ProfileController : HumansControllerBase
         IUserService userService,
         IHttpClientFactory httpClientFactory,
         SignInManager<User> signInManager,
-        IAccountMergeService accountMergeService)
+        IAccountMergeService accountMergeService,
+        IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions)
         : base(userManager)
     {
         _userManager = userManager;
@@ -156,6 +159,7 @@ public class ProfileController : HumansControllerBase
         _httpClientFactory = httpClientFactory;
         _signInManager = signInManager;
         _accountMergeService = accountMergeService;
+        _googleWorkspaceOptions = googleWorkspaceOptions.Value;
     }
 
     // ─── Own Profile (Me) ────────────────────────────────────────────
@@ -1994,6 +1998,18 @@ public class ProfileController : HumansControllerBase
             ? $"/Profile/{user.Id}/Admin/Emails"
             : "/Profile/Me/Emails";
 
+        // Workspace canonical identity: Provider=Google AND email on the configured
+        // Workspace domain. While present, Primary + Google radios lock to that row.
+        // If multiple match (shouldn't happen), prefer IsPrimary, else first.
+        var workspaceDomainSuffix = "@" + _googleWorkspaceOptions.Domain;
+        var workspaceCandidates = emails
+            .Where(e => !string.IsNullOrEmpty(e.Provider)
+                && string.Equals(e.Provider, "Google", StringComparison.OrdinalIgnoreCase)
+                && e.Email.EndsWith(workspaceDomainSuffix, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var workspaceLockedEmail = workspaceCandidates.FirstOrDefault(e => e.IsPrimary)
+            ?? workspaceCandidates.FirstOrDefault();
+
         return new EmailsViewModel
         {
             Emails = emails.Select(e => new EmailRowViewModel
@@ -2020,7 +2036,8 @@ public class ProfileController : HumansControllerBase
             TargetDisplayName = user.DisplayName,
             RoutePrefix = routePrefix,
             IsAdminContext = isAdminContext,
-            MergePendingEmailIds = mergePendingIds
+            MergePendingEmailIds = mergePendingIds,
+            WorkspaceLockedEmailId = workspaceLockedEmail?.Id
         };
     }
 

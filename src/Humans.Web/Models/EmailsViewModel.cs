@@ -74,6 +74,16 @@ public class EmailsViewModel
     /// Subset of email row ids that have a pending account-merge request.
     /// </summary>
     public IReadOnlySet<Guid> MergePendingEmailIds { get; set; } = new HashSet<Guid>();
+
+    /// <summary>
+    /// When non-null, identifies the email row that is the user's Workspace
+    /// canonical identity (Provider=Google + email on the configured Workspace
+    /// domain). While set, the view locks Primary and Google radios across the
+    /// entire grid: that row's radios stay checked; all other rows' radios are
+    /// disabled. The lock releases once the row is removed (which itself
+    /// requires unlinking, gated by the more-than-one-email rule).
+    /// </summary>
+    public Guid? WorkspaceLockedEmailId { get; init; }
 }
 
 /// <summary>

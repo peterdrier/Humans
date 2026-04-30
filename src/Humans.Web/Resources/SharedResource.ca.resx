@@ -1862,6 +1862,7 @@
   <data name="EmailGrid_Primary" xml:space="preserve"><value>Principal</value></data>
   <data name="EmailGrid_Google" xml:space="preserve"><value>Google</value></data>
   <data name="EmailGrid_GoogleColumnTooltip" xml:space="preserve"><value>Correu usat per a la sincronització amb Google Workspace.</value></data>
+  <data name="EmailGrid_WorkspaceLockedHelp" xml:space="preserve"><value>Principal i Google els gestiona Google Workspace mentre la teva adreça @nobodies.team hi sigui present.</value></data>
   <data name="EmailGrid_Visibility" xml:space="preserve"><value>Visibilitat</value></data>
   <data name="EmailGrid_Actions" xml:space="preserve"><value>Accions</value></data>
   <data name="EmailGrid_StatusMergePending" xml:space="preserve"><value>Fusió pendent</value></data>
