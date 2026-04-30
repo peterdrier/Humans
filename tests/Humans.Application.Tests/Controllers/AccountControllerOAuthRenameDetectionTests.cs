@@ -67,6 +67,14 @@ public class AccountControllerOAuthRenameDetectionTests
         _controller.Url = Substitute.For<IUrlHelper>();
         _controller.Url.IsLocalUrl(Arg.Any<string?>()).Returns(false);
         _controller.Url.Content(Arg.Any<string>()).Returns(ci => ci.Arg<string>());
+
+        // Default to an unauthenticated HttpContext so the link-while-signed-in
+        // branch in ExternalLoginCallback skips. Tests that exercise the
+        // already-authenticated path override ControllerContext explicitly.
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
     }
 
     private static ExternalLoginInfo MakeInfo(string email, string name = "Test User")
@@ -204,7 +212,6 @@ public class AccountControllerOAuthRenameDetectionTests
     public async Task NewUserBranch_TagsCreatedRowWithProviderAndProviderKey()
     {
         var newEmail = "fresh@example.com";
-        var newRowId = Guid.NewGuid();
         var info = MakeInfo(newEmail);
 
         _signInManager.GetExternalLoginInfoAsync().Returns(info);
@@ -222,34 +229,21 @@ public class AccountControllerOAuthRenameDetectionTests
             newEmail,
             Arg.Any<CancellationToken>());
 
-        _userEmailService.GetUserEmailsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(ci => new List<UserEmailEditDto>
-            {
-                new(
-                    Id: newRowId,
-                    Email: newEmail,
-                    IsVerified: true,
-                    IsGoogle: false,
-                    Provider: null,
-                    ProviderKey: null,
-                    IsPrimary: true,
-                    Visibility: ContactFieldVisibility.BoardOnly,
-                    IsPendingVerification: false,
-                    IsMergePending: false)
-            });
-
         await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
-        await _userEmailService.Received(1).SetProviderAsync(
+        await _userEmailService.Received(1).LinkAsync(
             Arg.Is<Guid>(id => id == createdUserId),
-            newRowId, Provider, ProviderKey, Arg.Any<CancellationToken>());
+            Provider,
+            ProviderKey,
+            newEmail,
+            Arg.Is<Guid>(id => id == createdUserId),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
     public async Task LinkByEmailBranch_TagsMatchingRowWithProviderAndProviderKey()
     {
         var existingUserId = Guid.NewGuid();
-        var existingRowId = Guid.NewGuid();
         var email = "linked@example.com";
         var info = MakeInfo(email);
 
@@ -265,25 +259,66 @@ public class AccountControllerOAuthRenameDetectionTests
             .Returns(IdentityResult.Success);
         _userManager.UpdateAsync(existingUser).Returns(IdentityResult.Success);
 
-        _userEmailService.GetUserEmailsAsync(existingUserId, Arg.Any<CancellationToken>())
-            .Returns(new List<UserEmailEditDto>
-            {
-                new(
-                    Id: existingRowId,
-                    Email: email,
-                    IsVerified: true,
-                    IsGoogle: false,
-                    Provider: null,
-                    ProviderKey: null,
-                    IsPrimary: true,
-                    Visibility: ContactFieldVisibility.BoardOnly,
-                    IsPendingVerification: false,
-                    IsMergePending: false)
-            });
+        await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
+
+        await _userEmailService.Received(1).LinkAsync(
+            existingUserId,
+            Provider,
+            ProviderKey,
+            email,
+            existingUserId,
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ExternalLoginCallback_AlreadyAuthenticated_AttachesGoogleIdentityToCurrentUser()
+    {
+        // User A is signed in via magic link with one verified UserEmail
+        // (no Provider). They click "Link Google account" on /Profile/Me/Emails
+        // and complete OAuth with a NEW email not yet on User A.
+        //
+        // Expected: the new email is added to User A as a verified row tagged
+        // with Provider=Google, ProviderKey=sub-NEW. No second User is created.
+        var currentUserId = Guid.NewGuid();
+        var newEmail = "secondary@google.test";
+        var info = MakeInfo(newEmail);
+
+        _signInManager.GetExternalLoginInfoAsync().Returns(info);
+        // No existing OAuth login for this provider key — sign-in fails so the
+        // callback proceeds past the success branch.
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, false, true)
+            .Returns(SignInResult.Failed);
+
+        // Stand up an authenticated User principal on the controller.
+        var identity = new ClaimsIdentity(new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, currentUserId.ToString()),
+        }, authenticationType: "TestAuth");
+        var principal = new ClaimsPrincipal(identity);
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = principal }
+        };
+
+        var currentUser = new User { Id = currentUserId };
+        _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(currentUser);
+        _userManager.AddLoginAsync(currentUser, Arg.Any<UserLoginInfo>())
+            .Returns(IdentityResult.Success);
+        _userManager.UpdateAsync(currentUser).Returns(IdentityResult.Success);
 
         await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
-        await _userEmailService.Received(1).SetProviderAsync(
-            existingUserId, existingRowId, Provider, ProviderKey, Arg.Any<CancellationToken>());
+        // No new user created via the create-new-account branch.
+        await _userManager.DidNotReceive().CreateAsync(Arg.Any<User>());
+
+        // OAuth identity attached to the currently-signed-in user via LinkAsync,
+        // with actorUserId == userId (self-acting via authentication).
+        await _userEmailService.Received(1).LinkAsync(
+            currentUserId,
+            Provider,
+            ProviderKey,
+            newEmail,
+            currentUserId,
+            Arg.Any<CancellationToken>());
     }
 }

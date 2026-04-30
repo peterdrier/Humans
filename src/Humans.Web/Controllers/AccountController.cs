@@ -113,6 +113,45 @@ public class AccountController : Controller
         var name = info.Principal.FindFirstValue(ClaimTypes.Name);
         var pictureUrl = info.Principal.FindFirstValue("urn:google:picture");
 
+        // Link-while-signed-in branch: the user is already authenticated
+        // (e.g. via magic link) and just clicked "Link Google account" on
+        // /Profile/Me/Emails. Attach the OAuth identity to the current user
+        // rather than searching by email or creating a new user. This must
+        // run before the lockout, email-match, and create-new-user branches
+        // so a fresh OAuth email never spawns a duplicate account.
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser is not null)
+            {
+                var addLinkResult = await _userManager.AddLoginAsync(currentUser, info);
+                if (addLinkResult.Succeeded)
+                {
+                    currentUser.LastLoginAt = _clock.GetCurrentInstant();
+                    if (string.IsNullOrEmpty(currentUser.ProfilePictureUrl) && pictureUrl is not null)
+                    {
+                        currentUser.ProfilePictureUrl = pictureUrl;
+                    }
+                    await _userManager.UpdateAsync(currentUser);
+
+                    if (!string.IsNullOrEmpty(email))
+                    {
+                        await TryLinkProviderForUserEmailAsync(currentUser.Id, email, info);
+                    }
+
+                    _logger.LogInformation(
+                        "Linked {Provider} login to currently-authenticated user {UserId}",
+                        info.LoginProvider, currentUser.Id);
+                    return RedirectToLocal(returnUrl);
+                }
+
+                _logger.LogWarning(
+                    "Failed to link {Provider} to authenticated user {UserId}: {Errors}",
+                    info.LoginProvider, currentUser.Id,
+                    string.Join(", ", addLinkResult.Errors.Select(e => e.Description)));
+            }
+        }
+
         if (result.IsLockedOut)
         {
             // Lockout-relink: a merge or deletion locked out the source User
@@ -199,7 +238,7 @@ public class AccountController : Controller
                     }
                     await _userManager.UpdateAsync(existingByEmail);
 
-                    await TrySetProviderForUserEmailAsync(existingByEmail.Id, email, info);
+                    await TryLinkProviderForUserEmailAsync(existingByEmail.Id, email, info);
 
                     await _signInManager.SignInAsync(existingByEmail, isPersistent: false);
                     _logger.LogInformation(
@@ -296,7 +335,7 @@ public class AccountController : Controller
             return View(nameof(Login));
         }
 
-        await TrySetProviderForUserEmailAsync(user.Id, email, info);
+        await TryLinkProviderForUserEmailAsync(user.Id, email, info);
 
         await _signInManager.SignInAsync(user, isPersistent: false);
         _logger.LogInformation("User created an account using {Provider}", info.LoginProvider);
@@ -337,27 +376,26 @@ public class AccountController : Controller
         }
     }
 
-    private async Task TrySetProviderForUserEmailAsync(Guid userId, string email, ExternalLoginInfo info)
+    private async Task TryLinkProviderForUserEmailAsync(Guid userId, string email, ExternalLoginInfo info)
     {
         try
         {
-            var rows = await _userEmailService.GetUserEmailsAsync(userId);
-            var match = rows.FirstOrDefault(r =>
-                string.Equals(r.Email, email, StringComparison.OrdinalIgnoreCase));
-            if (match is null)
-            {
-                _logger.LogWarning(
-                    "OAuth provider tag: no UserEmail row matching {Email} found for user {UserId}",
-                    email, userId);
-                return;
-            }
-
-            await _userEmailService.SetProviderAsync(userId, match.Id, info.LoginProvider, info.ProviderKey);
+            // The actor for the OAuth callback is the user being authenticated
+            // (themselves) — there is no separate admin/system invoker on this
+            // path. UserEmailService.LinkAsync is find-or-create, so passing the
+            // claim email handles both the "row already exists" and "fresh row"
+            // cases without a separate lookup in the controller.
+            await _userEmailService.LinkAsync(
+                userId,
+                info.LoginProvider,
+                info.ProviderKey,
+                email,
+                actorUserId: userId);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex,
-                "OAuth provider tag failed for user {UserId} {Provider} sub={Sub}",
+                "OAuth provider link failed for user {UserId} {Provider} sub={Sub}",
                 userId, info.LoginProvider, info.ProviderKey);
         }
     }
