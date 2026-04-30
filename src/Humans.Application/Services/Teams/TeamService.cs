@@ -2031,9 +2031,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor
             return;
 
         var userIds = list.Select(m => m.UserId).Distinct().ToList();
-        // Use GetByIdsWithEmailsAsync so the stitched User exposes its
-        // UserEmails collection — required by Google-sync readers that
-        // resolve the canonical IsGoogle Workspace identity (PR 3 Task 8).
         var users = await UserService.GetByIdsWithEmailsAsync(userIds, ct);
 
         foreach (var member in list)

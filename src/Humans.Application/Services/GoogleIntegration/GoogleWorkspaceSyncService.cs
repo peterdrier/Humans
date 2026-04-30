@@ -545,8 +545,6 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         var usersById = await _userService.GetByIdsWithEmailsAsync([userId], cancellationToken);
         usersById.TryGetValue(userId, out var user);
 
-        // Resolve the canonical Workspace identity for this user.
-        // Was: user.GetGoogleServiceEmail()
         var googleEmail = user?.UserEmails
             .Where(e => e.IsVerified && e.IsGoogle)
             .Select(e => e.Email)
@@ -2135,8 +2133,6 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         if (user.GoogleEmailStatus == GoogleEmailStatus.Rejected)
             return null;
 
-        // Resolve the canonical Workspace identity for this user.
-        // Was: user.GetGoogleServiceEmail()
         return user.UserEmails
             .Where(e => e.IsVerified && e.IsGoogle)
             .Select(e => e.Email)

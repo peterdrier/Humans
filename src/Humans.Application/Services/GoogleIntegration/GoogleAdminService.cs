@@ -511,8 +511,6 @@ public sealed class GoogleAdminService : IGoogleAdminService
                 {
                     u.Id,
                     u.DisplayName,
-                    // Resolve the canonical Workspace identity for this user.
-                    // Was: u.GoogleEmail
                     GoogleEmail = u.UserEmails
                         .Where(e => e.IsVerified && e.IsGoogle)
                         .Select(e => e.Email)
@@ -614,8 +612,6 @@ public sealed class GoogleAdminService : IGoogleAdminService
                 return new EmailRenameFixResult(false, ErrorMessage: "Human not found.");
             }
 
-            // Resolve the canonical Workspace identity for this user.
-            // Was: user.GoogleEmail
             var oldEmail = user.UserEmails
                 .Where(e => e.IsVerified && e.IsGoogle)
                 .Select(e => e.Email)
