@@ -305,14 +305,19 @@ public class AccountController : Controller
             return View(nameof(Login));
         }
 
-        // Create OAuth UserEmail record for the login email. If this fails
-        // after CreateAsync + AddLoginAsync both succeeded, we still have an
-        // orphan: the User + AspNetUserLogins row persist, but no UserEmail
-        // row exists, so GetEffectiveEmail() returns null and the user
-        // becomes un-notifiable. Symmetric to CompleteSignup's cleanup.
+        // Create the OAuth-linked UserEmail row via LinkAsync (find-or-create
+        // with Provider/ProviderKey tagged). If this fails after CreateAsync +
+        // AddLoginAsync both succeeded, we still have an orphan: the User +
+        // AspNetUserLogins row persist, but no UserEmail row exists, so the
+        // user becomes un-notifiable. Symmetric to CompleteSignup's cleanup.
         try
         {
-            await _userEmailService.AddOAuthEmailAsync(user.Id, email);
+            await _userEmailService.LinkAsync(
+                user.Id,
+                info.LoginProvider,
+                info.ProviderKey,
+                email,
+                actorUserId: user.Id);
         }
         catch (Exception ex)
         {
@@ -326,7 +331,7 @@ public class AccountController : Controller
             catch (Exception deleteEx)
             {
                 _logger.LogError(deleteEx,
-                    "Failed to clean up orphan user {UserId} after AddOAuthEmailAsync failure",
+                    "Failed to clean up orphan user {UserId} after LinkAsync failure",
                     user.Id);
             }
             ModelState.AddModelError(string.Empty,
@@ -334,8 +339,6 @@ public class AccountController : Controller
             ViewData["ReturnUrl"] = returnUrl;
             return View(nameof(Login));
         }
-
-        await TryLinkProviderForUserEmailAsync(user.Id, email, info);
 
         await _signInManager.SignInAsync(user, isPersistent: false);
         _logger.LogInformation("User created an account using {Provider}", info.LoginProvider);
@@ -524,10 +527,10 @@ public class AccountController : Controller
             return View("MagicLinkError");
         }
 
-        // Create the verified UserEmail row. Misnomer alert: AddOAuthEmailAsync
-        // sets IsOAuth=true even though this is a magic-link signup, not OAuth.
-        // The IsOAuth flag is repurposed in PR 3 (becomes Provider/ProviderKey)
-        // and this call site will be revisited then.
+        // Create the verified UserEmail row. Magic-link signup is not an OAuth
+        // flow — there is no Provider/ProviderKey to attach — so this uses
+        // AddVerifiedEmailAsync (verified, no OAuth tagging) rather than
+        // LinkAsync (which is the OAuth-callback path).
         //
         // If creating the UserEmail row fails (race condition, DB error, etc.)
         // delete the just-created User. RequireUniqueEmail = false means
@@ -536,7 +539,7 @@ public class AccountController : Controller
         // magic link. Same pattern as the OAuth callback new-user branch.
         try
         {
-            await _userEmailService.AddOAuthEmailAsync(user.Id, email);
+            await _userEmailService.AddVerifiedEmailAsync(user.Id, email);
         }
         catch (Exception ex)
         {
@@ -550,7 +553,7 @@ public class AccountController : Controller
             catch (Exception deleteEx)
             {
                 _logger.LogError(deleteEx,
-                    "Failed to clean up orphan user {UserId} after AddOAuthEmailAsync failure",
+                    "Failed to clean up orphan user {UserId} after AddVerifiedEmailAsync failure",
                     user.Id);
             }
             return View("MagicLinkError");

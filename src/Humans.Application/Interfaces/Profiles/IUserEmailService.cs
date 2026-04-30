@@ -89,15 +89,6 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Adds an OAuth-sourced email (already verified, no token needed).
-    /// Used during first-time OAuth login to record the provider email.
-    /// </summary>
-    Task AddOAuthEmailAsync(
-        Guid userId,
-        string email,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Adds a verified email directly (admin provisioning/linking — no verification flow needed).
     /// If the email is @nobodies.team, it's automatically set as the notification target.
     /// Skips if the email already exists for this user.
@@ -277,27 +268,13 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Sets <see cref="UserEmail.Provider"/> / <see cref="UserEmail.ProviderKey"/>
-    /// on the given row. Clears the same pair from any sibling row in the same
-    /// write batch (service-enforced single-row-per-pair invariant per
-    /// <c>feedback_db_enforcement_minimal</c>). Used by the OAuth callback when
-    /// linking a UserEmail to its OAuth identity (PR 3 of the
-    /// email-identity-decoupling spec). Throws
-    /// <see cref="System.ComponentModel.DataAnnotations.ValidationException"/>
-    /// when the target row does not exist or does not belong to the given
-    /// <paramref name="userId"/>.
-    /// </summary>
-    Task SetProviderAsync(
-        Guid userId, Guid userEmailId, string provider, string providerKey,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Find-or-create. Attaches the OAuth identity (<paramref name="provider"/>,
     /// <paramref name="providerKey"/>) to the user's email row matching
     /// <paramref name="email"/> (Ordinal/case-insensitive); creates a new
     /// verified row when none matches. <paramref name="userId"/> is the
     /// <b>target</b> user; <paramref name="actorUserId"/> is the actor.
-    /// Replaces both AddOAuthEmailAsync and SetProviderAsync (PR 4 consolidation).
+    /// Replaces the legacy AddOAuthEmailAsync + SetProviderAsync pair (PR 4
+    /// consolidation).
     /// </summary>
     Task<bool> LinkAsync(
         Guid userId,

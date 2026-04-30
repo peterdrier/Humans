@@ -224,10 +224,14 @@ public class AccountControllerOAuthRenameDetectionTests
         _userManager.AddLoginAsync(Arg.Any<User>(), Arg.Any<UserLoginInfo>()).Returns(IdentityResult.Success);
 
         Guid createdUserId = Guid.Empty;
-        await _userEmailService.AddOAuthEmailAsync(
+        _userEmailService.LinkAsync(
             Arg.Do<Guid>(id => createdUserId = id),
+            Provider,
+            ProviderKey,
             newEmail,
-            Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>())
+            .Returns(true);
 
         await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 

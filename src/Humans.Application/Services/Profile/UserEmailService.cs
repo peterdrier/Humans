@@ -316,26 +316,6 @@ public sealed class UserEmailService : IUserEmailService
         Guid userId, CancellationToken cancellationToken = default) =>
         _repository.RemoveAllForUserAsync(userId, cancellationToken);
 
-    public async Task AddOAuthEmailAsync(
-        Guid userId, string email, CancellationToken cancellationToken = default)
-    {
-        var now = _clock.GetCurrentInstant();
-
-        var userEmail = new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Email = email,
-            IsVerified = true,
-            IsPrimary = true,
-            Visibility = ContactFieldVisibility.BoardOnly,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
-
-        await _repository.AddAsync(userEmail, cancellationToken);
-    }
-
     public async Task AddVerifiedEmailAsync(
         Guid userId, string email, CancellationToken cancellationToken = default)
     {
@@ -573,46 +553,6 @@ public sealed class UserEmailService : IUserEmailService
             return $"{normalizedEmail[..^"@googlemail.com".Length]}@gmail.com";
 
         return null;
-    }
-
-    /// <inheritdoc />
-    public async Task SetProviderAsync(
-        Guid userId, Guid userEmailId, string provider, string providerKey,
-        CancellationToken cancellationToken = default)
-    {
-        var target = await _repository.GetByIdAndUserIdAsync(userEmailId, userId, cancellationToken)
-            ?? throw new ValidationException(
-                $"UserEmail row {userEmailId} not found for user {userId}.");
-
-        var existing = await _repository.FindAllByProviderKeyAsync(
-            provider, providerKey, cancellationToken);
-
-        var now = _clock.GetCurrentInstant();
-        var updates = new List<UserEmail>();
-
-        foreach (var conflict in existing.Where(e => e.Id != userEmailId))
-        {
-            conflict.Provider = null;
-            conflict.ProviderKey = null;
-            conflict.UpdatedAt = now;
-            updates.Add(conflict);
-        }
-
-        target.Provider = provider;
-        target.ProviderKey = providerKey;
-        target.UpdatedAt = now;
-        updates.Add(target);
-
-        await _repository.UpdateBatchAsync(updates, cancellationToken);
-
-        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
-        foreach (var conflictUserId in updates
-                     .Where(u => u.UserId != userId)
-                     .Select(u => u.UserId)
-                     .Distinct())
-        {
-            await _fullProfileInvalidator.InvalidateAsync(conflictUserId, cancellationToken);
-        }
     }
 
     /// <inheritdoc />
