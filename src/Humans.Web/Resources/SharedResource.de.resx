@@ -1585,7 +1585,6 @@
   <data name="Emails_Header_Status" xml:space="preserve"><value>Status</value></data>
   <data name="Emails_Header_Notifications" xml:space="preserve"><value>Benachrichtigungen</value></data>
   <data name="Emails_Header_Visibility" xml:space="preserve"><value>Profil-Sichtbarkeit</value></data>
-  <data name="Emails_SignIn" xml:space="preserve"><value>Anmeldung</value></data>
   <data name="Emails_MergePending" xml:space="preserve"><value>Zusammenführung ausstehend</value></data>
   <data name="Emails_Verified" xml:space="preserve"><value>Verifiziert</value></data>
   <data name="Emails_StatusPending" xml:space="preserve"><value>Ausstehend</value></data>

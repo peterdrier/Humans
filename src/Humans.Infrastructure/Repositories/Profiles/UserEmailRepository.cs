@@ -421,6 +421,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         ctx.Attach(email);
         ctx.Entry(email).State = EntityState.Modified;
+        ExcludeLegacyShadowsFromUpdate(ctx.Entry(email));
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -431,8 +432,20 @@ public sealed class UserEmailRepository : IUserEmailRepository
         {
             ctx.Attach(email);
             ctx.Entry(email).State = EntityState.Modified;
+            ExcludeLegacyShadowsFromUpdate(ctx.Entry(email));
         }
         await ctx.SaveChangesAsync(ct);
+    }
+
+    // The legacy IsOAuth / DisplayOrder columns are mapped as EF shadow
+    // properties; detached UpdateAsync would write the CLR default (false / 0)
+    // and silently erase legacy values that the provider backfill still depends
+    // on. Drop the columns from the UPDATE until PR 7 removes them entirely.
+    private static void ExcludeLegacyShadowsFromUpdate(
+        Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<UserEmail> entry)
+    {
+        entry.Property("IsOAuth").IsModified = false;
+        entry.Property("DisplayOrder").IsModified = false;
     }
 
     public async Task<IReadOnlyList<UserEmail>> FindAllByProviderKeyAsync(

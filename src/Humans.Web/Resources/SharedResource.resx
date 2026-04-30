@@ -1605,7 +1605,6 @@
   <data name="Emails_Header_Status" xml:space="preserve"><value>Status</value></data>
   <data name="Emails_Header_Notifications" xml:space="preserve"><value>Notifications</value></data>
   <data name="Emails_Header_Visibility" xml:space="preserve"><value>Profile Visibility</value></data>
-  <data name="Emails_SignIn" xml:space="preserve"><value>Sign-in</value></data>
   <data name="Emails_MergePending" xml:space="preserve"><value>Merge pending</value></data>
   <data name="Emails_Verified" xml:space="preserve"><value>Verified</value></data>
   <data name="Emails_StatusPending" xml:space="preserve"><value>Pending</value></data>

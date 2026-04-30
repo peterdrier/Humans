@@ -88,6 +88,7 @@ public sealed class UserEmailProviderBackfillService : IUserEmailProviderBackfil
             var emails = (await _userEmailRepository.GetByUserIdForMutationAsync(user.Id, cancellationToken))
                 .ToList();
             var updates = new List<UserEmail>();
+            var taggedRowIds = new HashSet<Guid>();
 
             foreach (var login in logins)
             {
@@ -104,12 +105,22 @@ public sealed class UserEmailProviderBackfillService : IUserEmailProviderBackfil
                 if (string.Equals(match.Provider, login.LoginProvider, StringComparison.Ordinal)
                     && string.Equals(match.ProviderKey, login.ProviderKey, StringComparison.Ordinal))
                 {
+                    taggedRowIds.Add(match.Id);
+                    continue;
+                }
+
+                if (taggedRowIds.Contains(match.Id))
+                {
+                    warnings.Add(
+                        $"User {user.Id} login {login.LoginProvider}/{login.ProviderKey} mapped to UserEmail {match.Id} which is already tagged this run; skipped to avoid overwriting earlier login.");
+                    ambiguousMatchesWarned++;
                     continue;
                 }
 
                 match.Provider = login.LoginProvider;
                 match.ProviderKey = login.ProviderKey;
                 match.UpdatedAt = now;
+                taggedRowIds.Add(match.Id);
                 if (!updates.Contains(match)) updates.Add(match);
                 providerRowsUpdated++;
 
