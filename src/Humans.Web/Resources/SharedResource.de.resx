@@ -1851,5 +1851,26 @@
   <data name="ShiftDash_Status_AtRisk" xml:space="preserve"><value>Gefährdet</value></data>
   <data name="ShiftDash_Status_BelowTarget" xml:space="preserve"><value>Unter Ziel</value></data>
   <data name="ShiftDash_Coordinators_StaleLabel" xml:space="preserve"><value>Über 7 Tage inaktiv</value></data>
+  <data name="EmailGrid_AdminContextBanner" xml:space="preserve"><value>E-Mails eines anderen Benutzers verwalten</value></data>
+  <data name="EmailGrid_AdminContextBannerNamed" xml:space="preserve"><value>E-Mails von {0} verwalten</value><comment>{0} = target user display name</comment></data>
+  <data name="EmailGrid_AdminUnknownTarget" xml:space="preserve"><value>einem anderen Benutzer</value></data>
+  <data name="Emails_AdminUnknownTarget" xml:space="preserve"><value>einem anderen Benutzer</value></data>
+  <data name="EmailGrid_Email" xml:space="preserve"><value>E-Mail</value></data>
+  <data name="EmailGrid_Status" xml:space="preserve"><value>Status</value></data>
+  <data name="EmailGrid_Primary" xml:space="preserve"><value>Primär</value></data>
+  <data name="EmailGrid_Google" xml:space="preserve"><value>Google</value></data>
+  <data name="EmailGrid_GoogleColumnTooltip" xml:space="preserve"><value>E-Mail für die Google-Workspace-Synchronisierung.</value></data>
+  <data name="EmailGrid_Visibility" xml:space="preserve"><value>Sichtbarkeit</value></data>
+  <data name="EmailGrid_Actions" xml:space="preserve"><value>Aktionen</value></data>
+  <data name="EmailGrid_StatusMergePending" xml:space="preserve"><value>Zusammenführung ausstehend</value></data>
+  <data name="EmailGrid_StatusVerified" xml:space="preserve"><value>Verifiziert</value></data>
+  <data name="EmailGrid_StatusPending" xml:space="preserve"><value>Ausstehend</value></data>
+  <data name="EmailGrid_PrimarySelected" xml:space="preserve"><value>Primär</value></data>
+  <data name="EmailGrid_LinkGoogleAccount" xml:space="preserve"><value>Google-Konto verknüpfen</value></data>
+  <data name="EmailGrid_LinkGoogleHelp" xml:space="preserve"><value>Mit Google anmelden, um ein weiteres Google-Konto mit deinem Profil zu verknüpfen.</value></data>
+  <data name="EmailGrid_BackToAdminDetail" xml:space="preserve"><value>Zurück zur Benutzerübersicht</value></data>
+  <data name="EmailGrid_Unlink" xml:space="preserve"><value>Trennen</value></data>
+  <data name="EmailGrid_ConfirmUnlink" xml:space="preserve"><value>Dieses Google-Konto trennen?</value></data>
+  <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>E-Mails verwalten</value></data>
 
 </root>

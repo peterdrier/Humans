@@ -1853,5 +1853,26 @@
   <data name="ShiftDash_Status_AtRisk" xml:space="preserve"><value>En risc</value></data>
   <data name="ShiftDash_Status_BelowTarget" xml:space="preserve"><value>Per sota de l'objectiu</value></data>
   <data name="ShiftDash_Coordinators_StaleLabel" xml:space="preserve"><value>Inactiu més de 7 dies</value></data>
+  <data name="EmailGrid_AdminContextBanner" xml:space="preserve"><value>Gestionant correus d'un altre usuari</value></data>
+  <data name="EmailGrid_AdminContextBannerNamed" xml:space="preserve"><value>Gestionant correus de {0}</value><comment>{0} = target user display name</comment></data>
+  <data name="EmailGrid_AdminUnknownTarget" xml:space="preserve"><value>un altre usuari</value></data>
+  <data name="Emails_AdminUnknownTarget" xml:space="preserve"><value>un altre usuari</value></data>
+  <data name="EmailGrid_Email" xml:space="preserve"><value>Correu</value></data>
+  <data name="EmailGrid_Status" xml:space="preserve"><value>Estat</value></data>
+  <data name="EmailGrid_Primary" xml:space="preserve"><value>Principal</value></data>
+  <data name="EmailGrid_Google" xml:space="preserve"><value>Google</value></data>
+  <data name="EmailGrid_GoogleColumnTooltip" xml:space="preserve"><value>Correu usat per a la sincronització amb Google Workspace.</value></data>
+  <data name="EmailGrid_Visibility" xml:space="preserve"><value>Visibilitat</value></data>
+  <data name="EmailGrid_Actions" xml:space="preserve"><value>Accions</value></data>
+  <data name="EmailGrid_StatusMergePending" xml:space="preserve"><value>Fusió pendent</value></data>
+  <data name="EmailGrid_StatusVerified" xml:space="preserve"><value>Verificat</value></data>
+  <data name="EmailGrid_StatusPending" xml:space="preserve"><value>Pendent</value></data>
+  <data name="EmailGrid_PrimarySelected" xml:space="preserve"><value>Principal</value></data>
+  <data name="EmailGrid_LinkGoogleAccount" xml:space="preserve"><value>Vincular compte de Google</value></data>
+  <data name="EmailGrid_LinkGoogleHelp" xml:space="preserve"><value>Inicia sessió amb Google per vincular un compte de Google addicional al teu perfil.</value></data>
+  <data name="EmailGrid_BackToAdminDetail" xml:space="preserve"><value>Torna al detall de l'usuari</value></data>
+  <data name="EmailGrid_Unlink" xml:space="preserve"><value>Desvincular</value></data>
+  <data name="EmailGrid_ConfirmUnlink" xml:space="preserve"><value>Desvincular aquest compte de Google?</value></data>
+  <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>Gestiona correus</value></data>
 
 </root>
