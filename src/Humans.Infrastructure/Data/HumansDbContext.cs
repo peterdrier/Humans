@@ -89,6 +89,12 @@ public class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<NotificationRecipient> NotificationRecipients => Set<NotificationRecipient>();
     public DbSet<ProfileLanguage> ProfileLanguages => Set<ProfileLanguage>();
     public DbSet<EventParticipation> EventParticipations => Set<EventParticipation>();
+    public DbSet<StoreProduct> StoreProducts => Set<StoreProduct>();
+    public DbSet<StoreOrder> StoreOrders => Set<StoreOrder>();
+    public DbSet<StoreOrderLine> StoreOrderLines => Set<StoreOrderLine>();
+    public DbSet<StorePayment> StorePayments => Set<StorePayment>();
+    public DbSet<StoreInvoice> StoreInvoices => Set<StoreInvoice>();
+    public DbSet<StoreTreasurySyncState> StoreTreasurySyncStates => Set<StoreTreasurySyncState>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
