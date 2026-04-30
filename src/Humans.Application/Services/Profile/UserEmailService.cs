@@ -61,7 +61,7 @@ public sealed class UserEmailService : IUserEmailService
             e.Id,
             e.Email,
             e.IsVerified,
-            e.IsOAuth,
+            IsOAuth: e.Provider != null,
             e.IsNotificationTarget,
             e.Visibility,
             IsPendingVerification: !e.IsVerified && e.VerificationSentAt.HasValue,
@@ -84,7 +84,7 @@ public sealed class UserEmailService : IUserEmailService
             e.Id,
             e.Email,
             e.IsVerified,
-            e.IsOAuth,
+            IsOAuth: e.Provider != null,
             e.IsNotificationTarget,
             e.Visibility,
             e.DisplayOrder
@@ -130,7 +130,6 @@ public sealed class UserEmailService : IUserEmailService
             UserId = userId,
             Email = email,
             IsVerified = false,
-            IsOAuth = false,
             IsNotificationTarget = false,
             DisplayOrder = maxOrder + 1,
             VerificationSentAt = now,
@@ -156,7 +155,7 @@ public sealed class UserEmailService : IUserEmailService
             ?? throw new InvalidOperationException("User not found.");
 
         var userEmails = await _repository.GetByUserIdForMutationAsync(userId, cancellationToken);
-        var pendingEmail = userEmails.FirstOrDefault(e => !e.IsVerified && !e.IsOAuth)
+        var pendingEmail = userEmails.FirstOrDefault(e => !e.IsVerified && e.Provider == null)
             ?? throw new ValidationException("No email pending verification.");
 
         var isValid = await _userManager.VerifyUserTokenAsync(
@@ -321,7 +320,6 @@ public sealed class UserEmailService : IUserEmailService
             Id = Guid.NewGuid(),
             UserId = userId,
             Email = email,
-            IsOAuth = true,
             IsVerified = true,
             IsNotificationTarget = true,
             Visibility = ContactFieldVisibility.BoardOnly,
@@ -363,7 +361,6 @@ public sealed class UserEmailService : IUserEmailService
             Id = Guid.NewGuid(),
             UserId = userId,
             Email = email,
-            IsOAuth = false,
             IsVerified = true,
             IsNotificationTarget = isNobodiesTeam,
             Visibility = ContactFieldVisibility.BoardOnly,

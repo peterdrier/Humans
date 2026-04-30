@@ -866,7 +866,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         {
             e.Email,
             e.IsVerified,
-            e.IsOAuth,
+            IsOAuth = e.Provider != null,
             e.IsNotificationTarget,
             e.Visibility
         }).ToList());

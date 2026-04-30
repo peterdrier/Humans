@@ -291,7 +291,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var oauth = await ctx.UserEmails
-            .FirstOrDefaultAsync(e => e.UserId == userId && e.IsOAuth, ct);
+            .FirstOrDefaultAsync(e => e.UserId == userId && e.Provider != null, ct);
         if (oauth is null)
             return false;
 

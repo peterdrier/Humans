@@ -91,8 +91,8 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
                 emailToUsers[normalized] = list;
             }
             var verifiedTag = ue.IsVerified ? "verified" : "unverified";
-            var oauthTag = ue.IsOAuth ? ", OAuth" : "";
-            list.Add((ue.UserId, $"UserEmail ({ue.Email}, {verifiedTag}{oauthTag})"));
+            var googleTag = ue.IsGoogle ? ", Google" : "";
+            list.Add((ue.UserId, $"UserEmail ({ue.Email}, {verifiedTag}{googleTag})"));
         }
 
         // Find emails that appear on more than one distinct user
