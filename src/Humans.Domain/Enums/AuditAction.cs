@@ -101,4 +101,5 @@ public enum AuditAction
     UserEmailPrimarySet,
     UserEmailDeleted,
     UserEmailVisibilityChanged,
+    UserEmailAdded,
 }

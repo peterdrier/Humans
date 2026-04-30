@@ -120,7 +120,7 @@
                                         var primaryDisabled = workspaceLocked || !row.IsVerified;
                                     }
                                     <form asp-action="@(Model.IsAdminContext ? "AdminSetPrimary" : "SetPrimary")"
-                                          asp-route-userId="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
+                                          asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
                                           method="post" class="d-inline">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="emailId" value="@row.Id" />
@@ -144,7 +144,7 @@
                                         var googleDisabled = workspaceLocked || !row.IsVerified;
                                     }
                                     <form asp-action="@(Model.IsAdminContext ? "AdminSetGoogle" : "SetGoogle")"
-                                          asp-route-userId="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
+                                          asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
                                           method="post" class="d-inline">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="emailId" value="@row.Id" />
@@ -166,7 +166,7 @@
                                     @if (row.IsVerified)
                                     {
                                         <form asp-action="@(Model.IsAdminContext ? "AdminSetVisibility" : "SetEmailVisibility")"
-                                              asp-route-userId="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
+                                              asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
                                               method="post" class="d-inline">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="emailId" value="@row.Id" />
@@ -195,7 +195,7 @@
                                             @if (Model.IsAdminContext)
                                             {
                                                 <form asp-action="AdminUnlink"
-                                                      asp-route-userId="@Model.TargetUserId"
+                                                      asp-route-id="@Model.TargetUserId"
                                                       asp-route-emailId="@row.Id"
                                                       method="post" class="d-inline"
                                                       data-confirm="@Localizer["EmailGrid_ConfirmUnlink"].Value">
@@ -221,7 +221,7 @@
                                         else
                                         {
                                             <form asp-action="@(Model.IsAdminContext ? "AdminDeleteEmail" : "DeleteEmail")"
-                                                  asp-route-userId="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
+                                                  asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
                                                   method="post" class="d-inline"
                                                   data-confirm="@Localizer["Emails_ConfirmRemove"].Value">
                                                 @Html.AntiForgeryToken()
@@ -247,7 +247,7 @@
             </div>
             <div class="card-body">
                 <form asp-action="@(Model.IsAdminContext ? "AdminAddEmail" : "AddEmail")"
-                      asp-route-userId="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
+                      asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
                       method="post">
                     <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
@@ -326,14 +326,7 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-    @* No local js-confirm-submit listener — site.js has a global *@
-    @* form[data-confirm] submit handler that already covers these forms. *@
-    @* The js-auto-submit class is also handled globally by site.js but   *@
-    @* this view keeps the local copy for parity with the rest of the    *@
-    @* /Profile/Me/Emails JS that may be added in followups.              *@
-    <script>
-        document.querySelectorAll('.js-auto-submit').forEach(function (el) {
-            el.addEventListener('change', function () { this.form.submit(); });
-        });
-    </script>
+    @* site.js has a global form[data-confirm] submit handler and a global *@
+    @* js-auto-submit change handler that already cover these forms. No    *@
+    @* local listeners — duplicating the handler causes double-submit.     *@
 }

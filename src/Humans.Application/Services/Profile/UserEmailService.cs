@@ -168,9 +168,13 @@ public sealed class UserEmailService : IUserEmailService
         var userEmails = await _repository.GetByUserIdForMutationAsync(userId, cancellationToken);
         // TODO(nobodies-collective#611): VerifyEmailAsync uses FirstOrDefault on
         // (!IsVerified && Provider == null), which is ambiguous when multiple pending
-        // plain rows exist for the same user. Token validation could pass against the
-        // wrong row. Surfaced during PR 4 review (peterdrier/Humans#376) — AdminAddEmail
-        // amplifies the multi-pending-row scenario but the fix lives in row-selection here.
+        // plain rows exist for the same user. The token IS bound to a specific row Id
+        // (purpose = "{EmailVerificationTokenPurpose}:{pendingEmail.Id}"), so a row
+        // mismatch causes token validation to fail against the wrong row, surfacing as
+        // a confusing user error even when the token is valid for ANOTHER pending row.
+        // Surfaced during PR 4 review (peterdrier/Humans#376) — AdminAddEmail amplifies
+        // the multi-pending-row scenario. Fix: load the row by the Id embedded in the
+        // token's purpose suffix, not via FirstOrDefault.
         var pendingEmail = userEmails.FirstOrDefault(e => !e.IsVerified && e.Provider == null)
             ?? throw new ValidationException("No email pending verification.");
 

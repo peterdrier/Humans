@@ -303,7 +303,7 @@
                    HumanAdmin too, so gate the link to avoid a visible 403. *@
                 @if (User.IsInRole(Humans.Domain.Constants.RoleNames.Admin))
                 {
-                    <a asp-action="AdminEmails" asp-route-userId="@Model.UserId"
+                    <a asp-action="AdminEmails" asp-route-id="@Model.UserId"
                        class="btn btn-sm btn-outline-secondary">
                         @Localizer["AdminDetail_ManageEmails"]
                     </a>

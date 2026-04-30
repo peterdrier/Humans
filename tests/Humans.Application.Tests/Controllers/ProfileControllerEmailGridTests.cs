@@ -308,7 +308,7 @@ public class ProfileControllerEmailGridTests
         // actor is the signed-in admin (_userId), entity is the target user.
         // AddEmailAsync doesn't return the new row's Id, so no relatedEntityId.
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.UserEmailLinked,
+            AuditAction.UserEmailAdded,
             nameof(User), targetUserId,
             Arg.Any<string>(),
             _userId,

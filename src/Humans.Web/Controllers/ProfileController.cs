@@ -893,14 +893,14 @@ public class ProfileController : HumansControllerBase
     // decoupling design (PR 4, Task 16).
     // -------------------------------------------------------------------------
 
-    [HttpGet("{userId:guid}/Admin/Emails")]
-    public async Task<IActionResult> AdminEmails(Guid userId, CancellationToken ct)
+    [HttpGet("{id:guid}/Admin/Emails")]
+    public async Task<IActionResult> AdminEmails(Guid id, CancellationToken ct)
     {
-        var authz = await _authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit);
+        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
-        var targetUser = await FindUserByIdAsync(userId);
+        var targetUser = await FindUserByIdAsync(id);
         if (targetUser is null)
             return NotFound();
 
@@ -908,11 +908,11 @@ public class ProfileController : HumansControllerBase
         return View("Emails", viewModel);
     }
 
-    [HttpPost("{userId:guid}/Admin/Emails/SetGoogle")]
+    [HttpPost("{id:guid}/Admin/Emails/SetGoogle")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AdminSetGoogle(Guid userId, Guid emailId, CancellationToken ct)
+    public async Task<IActionResult> AdminSetGoogle(Guid id, Guid emailId, CancellationToken ct)
     {
-        var authz = await _authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit);
+        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
@@ -922,7 +922,7 @@ public class ProfileController : HumansControllerBase
 
         try
         {
-            var ok = await _userEmailService.SetGoogleAsync(userId, emailId, actor.Id, ct);
+            var ok = await _userEmailService.SetGoogleAsync(id, emailId, actor.Id, ct);
             if (ok)
             {
                 _cache.InvalidateNobodiesTeamEmails();
@@ -935,18 +935,18 @@ public class ProfileController : HumansControllerBase
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Admin failed to set Google service email {EmailId} for user {UserId}", emailId, userId);
+            _logger.LogWarning(ex, "Admin failed to set Google service email {EmailId} for user {UserId}", emailId, id);
             SetError(ex.Message);
         }
 
-        return RedirectToAction(nameof(AdminEmails), new { userId });
+        return RedirectToAction(nameof(AdminEmails), new { id });
     }
 
-    [HttpPost("{userId:guid}/Admin/Emails/SetPrimary")]
+    [HttpPost("{id:guid}/Admin/Emails/SetPrimary")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AdminSetPrimary(Guid userId, Guid emailId, CancellationToken ct)
+    public async Task<IActionResult> AdminSetPrimary(Guid id, Guid emailId, CancellationToken ct)
     {
-        var authz = await _authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit);
+        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
@@ -956,14 +956,12 @@ public class ProfileController : HumansControllerBase
 
         try
         {
-            await _userEmailService.SetPrimaryAsync(userId, emailId, ct);
+            await _userEmailService.SetPrimaryAsync(id, emailId, ct);
             _cache.InvalidateNobodiesTeamEmails();
-            // Audit at the controller for admin paths — UserEmailService.SetPrimaryAsync
-            // does not currently take actorUserId (PR 4 left those signatures alone).
-            // Self path is not audited yet; service-level audit is scoped to PR 5.
+            // Audit at the controller — SetPrimaryAsync does not take actorUserId.
             await _auditLogService.LogAsync(
                 AuditAction.UserEmailPrimarySet,
-                nameof(User), userId,
+                nameof(User), id,
                 $"Admin set primary email row {emailId}",
                 actor.Id,
                 relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
@@ -971,46 +969,47 @@ public class ProfileController : HumansControllerBase
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Admin failed to set primary email {EmailId} for user {UserId}", emailId, userId);
+            _logger.LogWarning(ex, "Admin failed to set primary email {EmailId} for user {UserId}", emailId, id);
             SetError(ex.Message);
         }
 
-        return RedirectToAction(nameof(AdminEmails), new { userId });
+        return RedirectToAction(nameof(AdminEmails), new { id });
     }
 
-    [HttpPost("{userId:guid}/Admin/Emails/Add")]
+    [HttpPost("{id:guid}/Admin/Emails/Add")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AdminAddEmail(Guid userId, string email, CancellationToken ct)
+    public async Task<IActionResult> AdminAddEmail(Guid id, string email, CancellationToken ct)
     {
-        var authz = await _authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit);
+        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
         if (string.IsNullOrWhiteSpace(email))
         {
             SetError(_localizer["Profile_EnterEmail"].Value);
-            return RedirectToAction(nameof(AdminEmails), new { userId });
+            return RedirectToAction(nameof(AdminEmails), new { id });
         }
 
         var actor = await GetCurrentUserAsync();
         if (actor is null)
             return Forbid();
 
-        var targetUser = await FindUserByIdAsync(userId);
+        var targetUser = await FindUserByIdAsync(id);
         if (targetUser is null)
             return NotFound();
 
         try
         {
-            var result = await _userEmailService.AddEmailAsync(userId, email, ct);
+            var result = await _userEmailService.AddEmailAsync(id, email, ct);
 
             // Verification email goes to the target user (the human whose row this is),
             // not to the admin. The admin can't verify on the user's behalf — that
             // defeats the purpose of verification. Mirrors the self AddEmail path.
+            // VerifyEmail still binds by query-string userId, so pass it explicitly.
             var verificationUrl = Url.Action(
                 nameof(VerifyEmail),
                 "Profile",
-                new { userId, token = HttpUtility.UrlEncode(result.Token) },
+                new { userId = id, token = HttpUtility.UrlEncode(result.Token) },
                 Request.Scheme);
 
             await _emailService.SendEmailVerificationAsync(
@@ -1023,33 +1022,35 @@ public class ProfileController : HumansControllerBase
 
             _logger.LogInformation(
                 "Admin sent email verification to {Email} for user {UserId} (conflict: {IsConflict})",
-                email, userId, result.IsConflict);
+                email, id, result.IsConflict);
 
             // Controller-level audit for admin path — symmetric with AdminSetPrimary /
             // AdminDeleteEmail. AddEmailAsync does not return the new row's Id and does
             // not take actorUserId, so audit at the controller without relatedEntityId.
+            // UserEmailAdded (admin added a plain unverified email) is distinct from
+            // UserEmailLinked (OAuth provider attached to a UserEmail row).
             await _auditLogService.LogAsync(
-                AuditAction.UserEmailLinked,
-                nameof(User), userId,
-                $"Admin added pending email {email.Trim()} for user {userId} (conflict: {result.IsConflict})",
+                AuditAction.UserEmailAdded,
+                nameof(User), id,
+                $"Admin added pending email {email.Trim()} for user {id} (conflict: {result.IsConflict})",
                 actor.Id);
 
             SetSuccess(_localizer["EmailGrid_AdminAddSentVerification"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Admin failed to add email for user {UserId}: {Reason}", userId, ex.Message);
+            _logger.LogWarning(ex, "Admin failed to add email for user {UserId}: {Reason}", id, ex.Message);
             SetError(ex.Message);
         }
 
-        return RedirectToAction(nameof(AdminEmails), new { userId });
+        return RedirectToAction(nameof(AdminEmails), new { id });
     }
 
-    [HttpPost("{userId:guid}/Admin/Emails/Unlink/{emailId:guid}")]
+    [HttpPost("{id:guid}/Admin/Emails/Unlink/{emailId:guid}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AdminUnlink(Guid userId, Guid emailId, CancellationToken ct)
+    public async Task<IActionResult> AdminUnlink(Guid id, Guid emailId, CancellationToken ct)
     {
-        var authz = await _authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit);
+        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
@@ -1059,7 +1060,7 @@ public class ProfileController : HumansControllerBase
 
         try
         {
-            var ok = await _userEmailService.UnlinkAsync(userId, emailId, actor.Id, ct);
+            var ok = await _userEmailService.UnlinkAsync(id, emailId, actor.Id, ct);
             if (ok)
             {
                 _cache.InvalidateNobodiesTeamEmails();
@@ -1072,18 +1073,18 @@ public class ProfileController : HumansControllerBase
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Admin failed to unlink email {EmailId} for user {UserId}", emailId, userId);
+            _logger.LogWarning(ex, "Admin failed to unlink email {EmailId} for user {UserId}", emailId, id);
             SetError(ex.Message);
         }
 
-        return RedirectToAction(nameof(AdminEmails), new { userId });
+        return RedirectToAction(nameof(AdminEmails), new { id });
     }
 
-    [HttpPost("{userId:guid}/Admin/Emails/Delete")]
+    [HttpPost("{id:guid}/Admin/Emails/Delete")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AdminDeleteEmail(Guid userId, Guid emailId, CancellationToken ct)
+    public async Task<IActionResult> AdminDeleteEmail(Guid id, Guid emailId, CancellationToken ct)
     {
-        var authz = await _authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit);
+        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
@@ -1093,15 +1094,14 @@ public class ProfileController : HumansControllerBase
 
         try
         {
-            var deleted = await _userEmailService.DeleteEmailAsync(userId, emailId, ct);
+            var deleted = await _userEmailService.DeleteEmailAsync(id, emailId, ct);
             if (deleted)
             {
                 _cache.InvalidateNobodiesTeamEmails();
-                // Controller-level audit for admin path — DeleteEmailAsync doesn't
-                // take actorUserId. Self path audit deferred to PR 5.
+                // Audit at the controller — DeleteEmailAsync does not take actorUserId.
                 await _auditLogService.LogAsync(
                     AuditAction.UserEmailDeleted,
-                    nameof(User), userId,
+                    nameof(User), id,
                     $"Admin deleted email row {emailId}",
                     actor.Id,
                     relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
@@ -1114,19 +1114,19 @@ public class ProfileController : HumansControllerBase
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Admin failed to delete email {EmailId} for user {UserId}", emailId, userId);
+            _logger.LogWarning(ex, "Admin failed to delete email {EmailId} for user {UserId}", emailId, id);
             SetError(ex.Message);
         }
 
-        return RedirectToAction(nameof(AdminEmails), new { userId });
+        return RedirectToAction(nameof(AdminEmails), new { id });
     }
 
-    [HttpPost("{userId:guid}/Admin/Emails/SetVisibility")]
+    [HttpPost("{id:guid}/Admin/Emails/SetVisibility")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AdminSetVisibility(
-        Guid userId, Guid emailId, ContactFieldVisibility? visibility, CancellationToken ct)
+        Guid id, Guid emailId, ContactFieldVisibility? visibility, CancellationToken ct)
     {
-        var authz = await _authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit);
+        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
 
@@ -1136,12 +1136,11 @@ public class ProfileController : HumansControllerBase
 
         try
         {
-            await _userEmailService.SetVisibilityAsync(userId, emailId, visibility, ct);
-            // Controller-level audit for admin path — SetVisibilityAsync doesn't
-            // take actorUserId. Self path audit deferred to PR 5.
+            await _userEmailService.SetVisibilityAsync(id, emailId, visibility, ct);
+            // Audit at the controller — SetVisibilityAsync does not take actorUserId.
             await _auditLogService.LogAsync(
                 AuditAction.UserEmailVisibilityChanged,
-                nameof(User), userId,
+                nameof(User), id,
                 $"Admin changed visibility on email row {emailId} to {(visibility?.ToString() ?? "hidden")}",
                 actor.Id,
                 relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
@@ -1149,11 +1148,11 @@ public class ProfileController : HumansControllerBase
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Admin failed to set email visibility for email {EmailId} and user {UserId}", emailId, userId);
+            _logger.LogWarning(ex, "Admin failed to set email visibility for email {EmailId} and user {UserId}", emailId, id);
             SetError(ex.Message);
         }
 
-        return RedirectToAction(nameof(AdminEmails), new { userId });
+        return RedirectToAction(nameof(AdminEmails), new { id });
     }
 
     [HttpGet("Me/Outbox")]
