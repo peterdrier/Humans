@@ -263,13 +263,19 @@ public class UserEmailServiceTests
         var rowBId = Guid.NewGuid();
         var rowA = new UserEmail
         {
-            Id = rowAId, UserId = userId, Email = "a@x.test",
-            IsVerified = true, IsGoogle = true,
+            Id = rowAId,
+            UserId = userId,
+            Email = "a@x.test",
+            IsVerified = true,
+            IsGoogle = true,
         };
         var rowB = new UserEmail
         {
-            Id = rowBId, UserId = userId, Email = "b@x.test",
-            IsVerified = true, IsGoogle = false,
+            Id = rowBId,
+            UserId = userId,
+            Email = "b@x.test",
+            IsVerified = true,
+            IsGoogle = false,
         };
         _repository.GetByIdAndUserIdAsync(rowBId, userId, Arg.Any<CancellationToken>())
             .Returns(rowB);
@@ -320,8 +326,11 @@ public class UserEmailServiceTests
         var rowId = Guid.NewGuid();
         var row = new UserEmail
         {
-            Id = rowId, UserId = userId, Email = "a@x.test",
-            IsVerified = false, IsGoogle = false,
+            Id = rowId,
+            UserId = userId,
+            Email = "a@x.test",
+            IsVerified = false,
+            IsGoogle = false,
         };
         _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
@@ -489,8 +498,11 @@ public class UserEmailServiceTests
         var rowId = Guid.NewGuid();
         var row = new UserEmail
         {
-            Id = rowId, UserId = userId, Email = "a@x.test",
-            IsVerified = true, IsGoogle = false,
+            Id = rowId,
+            UserId = userId,
+            Email = "a@x.test",
+            IsVerified = true,
+            IsGoogle = false,
         };
         _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
