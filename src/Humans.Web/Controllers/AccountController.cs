@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Humans.Web.Constants;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
@@ -12,7 +11,7 @@ using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Web.Controllers;
 
-public class AccountController : Controller
+public class AccountController : HumansControllerBase
 {
     private readonly SignInManager<User> _signInManager;
     private readonly UserManager<User> _userManager;
@@ -32,6 +31,7 @@ public class AccountController : Controller
         IMagicLinkService magicLinkService,
         IAuditLogService auditLogService,
         IStringLocalizer<SharedResource> localizer)
+        : base(userManager)
     {
         _signInManager = signInManager;
         _userManager = userManager;
@@ -161,7 +161,7 @@ public class AccountController : Controller
                 // can produce a duplicate User row when the caller is already
                 // signed in. Surface the failure as an error toast on the emails
                 // page instead.
-                TempData[TempDataKeys.ErrorMessage] = _localizer["EmailGrid_LinkFailed"].Value;
+                SetError(_localizer["EmailGrid_LinkFailed"].Value);
                 return LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl! : "/Profile/Me/Emails");
             }
         }

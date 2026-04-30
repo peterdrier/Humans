@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using SignInResult = Microsoft.AspNetCore.Identity.SignInResult;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -364,8 +365,21 @@ public class AccountControllerOAuthRenameDetectionTests
             new Claim(ClaimTypes.NameIdentifier, currentUserId.ToString()),
         }, authenticationType: "TestAuth");
         var principal = new ClaimsPrincipal(identity);
-        var httpContext = new DefaultHttpContext { User = principal };
-        _controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+        var services = new ServiceCollection();
+        services.AddLogging();
+        var httpContext = new DefaultHttpContext
+        {
+            User = principal,
+            RequestServices = services.BuildServiceProvider()
+        };
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = httpContext,
+            ActionDescriptor = new Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor
+            {
+                ActionName = nameof(AccountController.ExternalLoginCallback)
+            }
+        };
 
         // Re-attach TempData to the new ControllerContext.
         var tempDataProvider = Substitute.For<ITempDataProvider>();
