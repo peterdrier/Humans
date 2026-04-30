@@ -322,21 +322,12 @@ public class AccountController : Controller
             var oldEmail = match.Email;
             await _userEmailService.RewriteEmailAddressAsync(match.UserId, oldEmail, claimEmail);
 
-            try
-            {
-                await _auditLogService.LogAsync(
-                    AuditAction.GoogleEmailRenamed,
-                    nameof(User), match.UserId,
-                    $"email rename detected: {oldEmail} -> {claimEmail}, sub={info.ProviderKey}",
-                    nameof(AccountController),
-                    relatedEntityId: match.Id, relatedEntityType: nameof(UserEmail));
-            }
-            catch (Exception auditEx)
-            {
-                _logger.LogError(auditEx,
-                    "OAuth rename: audit log failed for user {UserId} ({OldEmail} -> {NewEmail})",
-                    match.UserId, oldEmail, claimEmail);
-            }
+            await _auditLogService.LogAsync(
+                AuditAction.GoogleEmailRenamed,
+                nameof(User), match.UserId,
+                $"email rename detected: {oldEmail} -> {claimEmail}, sub={info.ProviderKey}",
+                nameof(AccountController),
+                relatedEntityId: match.Id, relatedEntityType: nameof(UserEmail));
         }
         catch (Exception ex)
         {

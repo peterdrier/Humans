@@ -90,11 +90,17 @@ public sealed class UserEmailProviderBackfillService : IUserEmailProviderBackfil
             var updates = new List<UserEmail>();
             var taggedRowIds = new HashSet<Guid>();
 
+            if (logins.Count > 1 && snapshots.Count == 1)
+            {
+                warnings.Add(
+                    $"User {user.Id} has multiple AspNetUserLogins rows but only one UserEmail; first login wins.");
+                ambiguousMatchesWarned++;
+            }
+
             foreach (var login in logins)
             {
                 var matchSnapshot = ResolveProviderTargetRow(
-                    user, snapshots, login, legacyGoogleEmail,
-                    logins.Count > 1, warnings, ref ambiguousMatchesWarned);
+                    user, snapshots, login, legacyGoogleEmail);
                 if (matchSnapshot is null)
                     continue;
 
@@ -171,18 +177,8 @@ public sealed class UserEmailProviderBackfillService : IUserEmailProviderBackfil
         User user,
         IReadOnlyList<UserEmailLegacyBackfillSnapshot> emails,
         UserLoginInfo login,
-        string? legacyGoogleEmail,
-        bool ambiguous,
-        List<string> warnings,
-        ref int ambiguousMatchesWarned)
+        string? legacyGoogleEmail)
     {
-        if (ambiguous && emails.Count == 1)
-        {
-            warnings.Add(
-                $"User {user.Id} has multiple AspNetUserLogins rows but only one UserEmail; first-match wins (login={login.LoginProvider}/{login.ProviderKey}).");
-            ambiguousMatchesWarned++;
-        }
-
         // 1. Legacy IsOAuth=true row whose Email matches the legacy GoogleEmail (most precise).
         if (!string.IsNullOrWhiteSpace(legacyGoogleEmail))
         {

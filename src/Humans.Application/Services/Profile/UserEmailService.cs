@@ -600,6 +600,15 @@ public sealed class UserEmailService : IUserEmailService
         updates.Add(target);
 
         await _repository.UpdateBatchAsync(updates, cancellationToken);
+
+        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+        foreach (var conflictUserId in updates
+                     .Where(u => u.UserId != userId)
+                     .Select(u => u.UserId)
+                     .Distinct())
+        {
+            await _fullProfileInvalidator.InvalidateAsync(conflictUserId, cancellationToken);
+        }
     }
 
     /// <inheritdoc />
