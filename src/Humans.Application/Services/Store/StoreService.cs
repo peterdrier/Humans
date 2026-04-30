@@ -42,14 +42,83 @@ public class StoreService : IStoreService
     // Catalog (write — Phase 3)
     // ==========================================================================
 
-    public Task<Guid> CreateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)
-        => throw new NotSupportedException("Phase 3");
+    public async Task<Guid> CreateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)
+    {
+        ValidateProductDraft(draft);
 
-    public Task UpdateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)
-        => throw new NotSupportedException("Phase 3");
+        var now = _clock.GetCurrentInstant();
+        var product = new StoreProduct
+        {
+            Id = Guid.NewGuid(),
+            Year = draft.Year,
+            Name = draft.Name.Trim(),
+            Description = draft.Description ?? string.Empty,
+            UnitPriceEur = draft.UnitPriceEur,
+            VatRatePercent = draft.VatRatePercent,
+            DepositAmountEur = draft.DepositAmountEur,
+            OrderableUntil = draft.OrderableUntil,
+            IsActive = draft.IsActive,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        await _repo.AddProductAsync(product, ct);
+        await _audit.LogAsync(
+            AuditAction.StoreProductCreated, nameof(StoreProduct), product.Id,
+            $"Created store product '{product.Name}' for year {product.Year}",
+            actorUserId);
+        return product.Id;
+    }
 
-    public Task DeactivateProductAsync(Guid productId, Guid actorUserId, CancellationToken ct = default)
-        => throw new NotSupportedException("Phase 3");
+    public async Task UpdateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)
+    {
+        ValidateProductDraft(draft);
+
+        var product = await _repo.GetProductByIdAsync(draft.Id, ct)
+            ?? throw new InvalidOperationException($"Product {draft.Id} not found");
+
+        product.Year = draft.Year;
+        product.Name = draft.Name.Trim();
+        product.Description = draft.Description ?? string.Empty;
+        product.UnitPriceEur = draft.UnitPriceEur;
+        product.VatRatePercent = draft.VatRatePercent;
+        product.DepositAmountEur = draft.DepositAmountEur;
+        product.OrderableUntil = draft.OrderableUntil;
+        product.IsActive = draft.IsActive;
+        product.UpdatedAt = _clock.GetCurrentInstant();
+
+        await _repo.UpdateProductAsync(product, ct);
+        await _audit.LogAsync(
+            AuditAction.StoreProductUpdated, nameof(StoreProduct), product.Id,
+            $"Updated store product '{product.Name}'",
+            actorUserId);
+    }
+
+    public async Task DeactivateProductAsync(Guid productId, Guid actorUserId, CancellationToken ct = default)
+    {
+        var product = await _repo.GetProductByIdAsync(productId, ct)
+            ?? throw new InvalidOperationException($"Product {productId} not found");
+
+        product.IsActive = false;
+        product.UpdatedAt = _clock.GetCurrentInstant();
+        await _repo.UpdateProductAsync(product, ct);
+
+        await _audit.LogAsync(
+            AuditAction.StoreProductDeactivated, nameof(StoreProduct), productId,
+            $"Deactivated store product '{product.Name}'",
+            actorUserId);
+    }
+
+    private static void ValidateProductDraft(ProductDto draft)
+    {
+        if (string.IsNullOrWhiteSpace(draft.Name))
+            throw new ArgumentException("Product name is required", nameof(draft));
+        if (draft.UnitPriceEur < 0m)
+            throw new ArgumentException("Unit price cannot be negative", nameof(draft));
+        if (draft.VatRatePercent < 0m)
+            throw new ArgumentException("VAT rate cannot be negative", nameof(draft));
+        if (draft.DepositAmountEur is < 0m)
+            throw new ArgumentException("Deposit cannot be negative", nameof(draft));
+    }
 
     // ==========================================================================
     // Orders (read)

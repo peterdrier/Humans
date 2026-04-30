@@ -112,4 +112,7 @@ public enum AuditAction
     StoreLineAdded,
     StoreLineRemoved,
     StoreCounterpartyEdited,
+    StoreProductCreated,
+    StoreProductUpdated,
+    StoreProductDeactivated,
 }

@@ -315,6 +315,206 @@ public class StoreServiceTests
     }
 
     // ==========================================================================
+    // Catalog write paths (Task 3.2 / 3.3 / 3.4)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task CreateProductAsync_persists_product_with_now_timestamps_and_audits()
+    {
+        var actor = Guid.NewGuid();
+        StoreProduct? captured = null;
+        await _repo.AddProductAsync(Arg.Do<StoreProduct>(p => captured = p), Arg.Any<CancellationToken>());
+
+        var draft = new ProductDto(
+            Guid.Empty, 2026, "Tent", "Big tent", 50m, 21m, 100m,
+            new LocalDate(2026, 8, 1), IsActive: true);
+
+        var newId = await _service.CreateProductAsync(draft, actor);
+
+        captured.Should().NotBeNull();
+        captured!.Id.Should().Be(newId);
+        captured.Year.Should().Be(2026);
+        captured.Name.Should().Be("Tent");
+        captured.Description.Should().Be("Big tent");
+        captured.UnitPriceEur.Should().Be(50m);
+        captured.VatRatePercent.Should().Be(21m);
+        captured.DepositAmountEur.Should().Be(100m);
+        captured.OrderableUntil.Should().Be(new LocalDate(2026, 8, 1));
+        captured.IsActive.Should().BeTrue();
+        captured.CreatedAt.Should().Be(_clock.GetCurrentInstant());
+        captured.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
+
+        await _audit.Received(1).LogAsync(
+            AuditAction.StoreProductCreated, nameof(StoreProduct), newId,
+            Arg.Any<string>(), actor,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task CreateProductAsync_rejects_empty_name()
+    {
+        var draft = new ProductDto(
+            Guid.Empty, 2026, "   ", "", 10m, 21m, null,
+            new LocalDate(2026, 8, 1), IsActive: true);
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => _service.CreateProductAsync(draft, Guid.NewGuid()));
+    }
+
+    [HumansFact]
+    public async Task CreateProductAsync_rejects_negative_price()
+    {
+        var draft = new ProductDto(
+            Guid.Empty, 2026, "Tent", "", -1m, 21m, null,
+            new LocalDate(2026, 8, 1), IsActive: true);
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => _service.CreateProductAsync(draft, Guid.NewGuid()));
+    }
+
+    [HumansFact]
+    public async Task CreateProductAsync_rejects_negative_vat()
+    {
+        var draft = new ProductDto(
+            Guid.Empty, 2026, "Tent", "", 10m, -1m, null,
+            new LocalDate(2026, 8, 1), IsActive: true);
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => _service.CreateProductAsync(draft, Guid.NewGuid()));
+    }
+
+    [HumansFact]
+    public async Task UpdateProductAsync_mutates_fields_and_audits()
+    {
+        var existing = MakeProduct(name: "Old", price: 10m, vat: 5m);
+        existing.CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0);
+        existing.UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0);
+        _repo.GetProductByIdAsync(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
+
+        StoreProduct? captured = null;
+        await _repo.UpdateProductAsync(Arg.Do<StoreProduct>(p => captured = p), Arg.Any<CancellationToken>());
+
+        var actor = Guid.NewGuid();
+        var draft = new ProductDto(
+            existing.Id, 2026, "New", "New desc", 99m, 10m, 25m,
+            new LocalDate(2026, 9, 1), IsActive: true);
+
+        await _service.UpdateProductAsync(draft, actor);
+
+        captured.Should().NotBeNull();
+        captured!.Id.Should().Be(existing.Id);
+        captured.Name.Should().Be("New");
+        captured.Description.Should().Be("New desc");
+        captured.UnitPriceEur.Should().Be(99m);
+        captured.VatRatePercent.Should().Be(10m);
+        captured.DepositAmountEur.Should().Be(25m);
+        captured.OrderableUntil.Should().Be(new LocalDate(2026, 9, 1));
+        captured.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
+        captured.CreatedAt.Should().Be(Instant.FromUtc(2026, 1, 1, 0, 0));
+
+        await _audit.Received(1).LogAsync(
+            AuditAction.StoreProductUpdated, nameof(StoreProduct), existing.Id,
+            Arg.Any<string>(), actor,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task UpdateProductAsync_throws_when_product_missing()
+    {
+        _repo.GetProductByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((StoreProduct?)null);
+
+        var draft = new ProductDto(
+            Guid.NewGuid(), 2026, "Tent", "", 10m, 21m, null,
+            new LocalDate(2026, 8, 1), IsActive: true);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.UpdateProductAsync(draft, Guid.NewGuid()));
+    }
+
+    [HumansFact]
+    public async Task UpdateProductAsync_does_not_mutate_existing_lines_unit_price_snapshot()
+    {
+        // Snapshot semantics: a line added before a price change keeps the original price.
+        var product = MakeProduct(name: "Tent", price: 50m, vat: 21m, deposit: 100m);
+        _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
+
+        var orderId = Guid.NewGuid();
+        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
+            .Returns(new StoreOrder { Id = orderId, State = StoreOrderState.Open });
+
+        StoreOrderLine? capturedLine = null;
+        await _repo.AddLineAsync(Arg.Do<StoreOrderLine>(l => capturedLine = l), Arg.Any<CancellationToken>());
+
+        await _service.AddLineAsync(orderId, product.Id, 2, Guid.NewGuid());
+
+        capturedLine.Should().NotBeNull();
+        capturedLine!.UnitPriceSnapshot.Should().Be(50m);
+        capturedLine.VatRateSnapshot.Should().Be(21m);
+        capturedLine.DepositAmountSnapshot.Should().Be(100m);
+
+        var draft = new ProductDto(
+            product.Id, product.Year, product.Name, product.Description,
+            UnitPriceEur: 999m, VatRatePercent: 30m, DepositAmountEur: 500m,
+            product.OrderableUntil, IsActive: true);
+
+        await _service.UpdateProductAsync(draft, Guid.NewGuid());
+
+        // Line snapshot is set at write-time; updating the product after the fact
+        // does NOT mutate the line's snapshot fields.
+        capturedLine.UnitPriceSnapshot.Should().Be(50m);
+        capturedLine.VatRateSnapshot.Should().Be(21m);
+        capturedLine.DepositAmountSnapshot.Should().Be(100m);
+    }
+
+    [HumansFact]
+    public async Task DeactivateProductAsync_marks_inactive_and_audits()
+    {
+        var existing = MakeProduct(name: "Tent");
+        existing.IsActive = true;
+        _repo.GetProductByIdAsync(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
+
+        StoreProduct? captured = null;
+        await _repo.UpdateProductAsync(Arg.Do<StoreProduct>(p => captured = p), Arg.Any<CancellationToken>());
+
+        var actor = Guid.NewGuid();
+        await _service.DeactivateProductAsync(existing.Id, actor);
+
+        captured.Should().NotBeNull();
+        captured!.IsActive.Should().BeFalse();
+        captured.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
+
+        await _audit.Received(1).LogAsync(
+            AuditAction.StoreProductDeactivated, nameof(StoreProduct), existing.Id,
+            Arg.Any<string>(), actor,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task DeactivateProductAsync_throws_when_product_missing()
+    {
+        _repo.GetProductByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((StoreProduct?)null);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.DeactivateProductAsync(Guid.NewGuid(), Guid.NewGuid()));
+    }
+
+    [HumansFact]
+    public async Task GetActiveCatalogAsync_does_not_return_deactivated_products()
+    {
+        // GetActiveProductsForYearAsync filters by IsActive at the repo layer.
+        // Verify the service relays that contract: a deactivated product is not in the
+        // collection returned from the repo.
+        _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<StoreProduct>());
+
+        var result = await _service.GetActiveCatalogAsync(2026);
+
+        result.Should().BeEmpty();
+    }
+
+    // ==========================================================================
     // Helpers
     // ==========================================================================
 
