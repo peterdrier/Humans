@@ -1872,6 +1872,8 @@
   <data name="EmailGrid_BackToAdminDetail" xml:space="preserve"><value>Zurück zur Benutzerübersicht</value></data>
   <data name="EmailGrid_Unlink" xml:space="preserve"><value>Trennen</value></data>
   <data name="EmailGrid_ConfirmUnlink" xml:space="preserve"><value>Dieses Google-Konto trennen?</value></data>
+  <data name="EmailGrid_SetGoogleRejected" xml:space="preserve"><value>Google-Service-E-Mail konnte nicht gesetzt werden — Zeile unbekannt oder nicht verifiziert.</value></data>
+  <data name="EmailGrid_UnlinkRejected" xml:space="preserve"><value>Trennen nicht möglich — Zeile unbekannt oder ohne Anmeldeanbieter.</value></data>
   <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>E-Mails verwalten</value></data>
 
 </root>

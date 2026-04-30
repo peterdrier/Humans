@@ -197,7 +197,7 @@
                                                 <form asp-action="AdminUnlink"
                                                       asp-route-userId="@Model.TargetUserId"
                                                       asp-route-emailId="@row.Id"
-                                                      method="post" class="d-inline js-confirm-submit"
+                                                      method="post" class="d-inline"
                                                       data-confirm="@Localizer["EmailGrid_ConfirmUnlink"].Value">
                                                     @Html.AntiForgeryToken()
                                                     <button type="submit" class="btn btn-outline-warning btn-sm">
@@ -209,7 +209,7 @@
                                             {
                                                 <form asp-action="Unlink"
                                                       asp-route-id="@row.Id"
-                                                      method="post" class="d-inline js-confirm-submit"
+                                                      method="post" class="d-inline"
                                                       data-confirm="@Localizer["EmailGrid_ConfirmUnlink"].Value">
                                                     @Html.AntiForgeryToken()
                                                     <button type="submit" class="btn btn-outline-warning btn-sm">
@@ -222,7 +222,7 @@
                                         {
                                             <form asp-action="@(Model.IsAdminContext ? "AdminDeleteEmail" : "DeleteEmail")"
                                                   asp-route-userId="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
-                                                  method="post" class="d-inline js-confirm-submit"
+                                                  method="post" class="d-inline"
                                                   data-confirm="@Localizer["Emails_ConfirmRemove"].Value">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="emailId" value="@row.Id" />
@@ -326,17 +326,14 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    @* No local js-confirm-submit listener — site.js has a global *@
+    @* form[data-confirm] submit handler that already covers these forms. *@
+    @* The js-auto-submit class is also handled globally by site.js but   *@
+    @* this view keeps the local copy for parity with the rest of the    *@
+    @* /Profile/Me/Emails JS that may be added in followups.              *@
     <script>
         document.querySelectorAll('.js-auto-submit').forEach(function (el) {
             el.addEventListener('change', function () { this.form.submit(); });
-        });
-        document.querySelectorAll('form.js-confirm-submit').forEach(function (form) {
-            form.addEventListener('submit', function (e) {
-                var msg = form.getAttribute('data-confirm');
-                if (msg && !window.confirm(msg)) {
-                    e.preventDefault();
-                }
-            });
         });
     </script>
 }

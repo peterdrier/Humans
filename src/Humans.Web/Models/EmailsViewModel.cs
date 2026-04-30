@@ -98,7 +98,6 @@ public class EmailRowViewModel
     public bool IsPrimary { get; set; }
     public ContactFieldVisibility? Visibility { get; set; }
     public bool IsPendingVerification { get; set; }
-    public bool IsMergePending { get; set; }
     public bool IsGoogleServiceEmail { get; set; }
     public bool IsNobodiesTeamDomain { get; set; }
 

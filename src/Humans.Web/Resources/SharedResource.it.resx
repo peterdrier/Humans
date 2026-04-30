@@ -1872,6 +1872,8 @@
   <data name="EmailGrid_BackToAdminDetail" xml:space="preserve"><value>Torna al dettaglio utente</value></data>
   <data name="EmailGrid_Unlink" xml:space="preserve"><value>Scollega</value></data>
   <data name="EmailGrid_ConfirmUnlink" xml:space="preserve"><value>Scollegare questo account Google?</value></data>
+  <data name="EmailGrid_SetGoogleRejected" xml:space="preserve"><value>Impossibile impostare l'email di servizio Google — riga sconosciuta o non verificata.</value></data>
+  <data name="EmailGrid_UnlinkRejected" xml:space="preserve"><value>Impossibile scollegare — riga sconosciuta o senza provider di accesso.</value></data>
   <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>Gestisci email</value></data>
 
 </root>

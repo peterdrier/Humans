@@ -1916,6 +1916,8 @@
   <data name="EmailGrid_BackToAdminDetail" xml:space="preserve"><value>Back to user detail</value></data>
   <data name="EmailGrid_Unlink" xml:space="preserve"><value>Unlink</value></data>
   <data name="EmailGrid_ConfirmUnlink" xml:space="preserve"><value>Unlink this Google account?</value></data>
+  <data name="EmailGrid_SetGoogleRejected" xml:space="preserve"><value>Could not set Google service email — the row is unknown or not verified.</value></data>
+  <data name="EmailGrid_UnlinkRejected" xml:space="preserve"><value>Could not unlink — the row is unknown or has no sign-in provider.</value></data>
   <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>Manage emails</value></data>
 
 </root>

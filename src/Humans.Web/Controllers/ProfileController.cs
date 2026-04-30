@@ -73,7 +73,6 @@ public class ProfileController : HumansControllerBase
     private readonly IUserService _userService;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly SignInManager<User> _signInManager;
-    private readonly IAccountMergeService _accountMergeService;
     private readonly GoogleWorkspaceOptions _googleWorkspaceOptions;
 
     private const int MaxProfilePictureUploadBytes = 20 * 1024 * 1024; // 20MB upload limit
@@ -128,7 +127,6 @@ public class ProfileController : HumansControllerBase
         IUserService userService,
         IHttpClientFactory httpClientFactory,
         SignInManager<User> signInManager,
-        IAccountMergeService accountMergeService,
         IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions)
         : base(userManager)
     {
@@ -158,7 +156,6 @@ public class ProfileController : HumansControllerBase
         _userService = userService;
         _httpClientFactory = httpClientFactory;
         _signInManager = signInManager;
-        _accountMergeService = accountMergeService;
         _googleWorkspaceOptions = googleWorkspaceOptions.Value;
     }
 
@@ -776,9 +773,16 @@ public class ProfileController : HumansControllerBase
 
         try
         {
-            await _userEmailService.SetGoogleAsync(user.Id, emailId, user.Id, ct);
-            _cache.InvalidateNobodiesTeamEmails();
-            SetSuccess("Google service email updated. Sync will be retried with the new email.");
+            var ok = await _userEmailService.SetGoogleAsync(user.Id, emailId, user.Id, ct);
+            if (ok)
+            {
+                _cache.InvalidateNobodiesTeamEmails();
+                SetSuccess("Google service email updated. Sync will be retried with the new email.");
+            }
+            else
+            {
+                SetError(_localizer["EmailGrid_SetGoogleRejected"].Value);
+            }
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
@@ -801,7 +805,14 @@ public class ProfileController : HumansControllerBase
         if (!authz.Succeeded)
             return Forbid();
 
-        var redirectUrl = Url.Action(nameof(Emails)) ?? "/Profile/Me/Emails";
+        // Route the OAuth round-trip through AccountController.ExternalLoginCallback
+        // so the link-while-signed-in branch (UserManager.AddLoginAsync +
+        // TryLinkProviderForUserEmailAsync) actually fires after the provider
+        // returns. Redirecting straight back to /Profile/Me/Emails would skip
+        // that branch and the linkage would never persist.
+        var resolvedReturnUrl = returnUrl ?? Url.Action(nameof(Emails)) ?? "/Profile/Me/Emails";
+        var redirectUrl = Url.Action("ExternalLoginCallback", "Account", new { returnUrl = resolvedReturnUrl })
+            ?? "/Account/ExternalLoginCallback";
         var props = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
         return Challenge(props, provider);
     }
@@ -820,9 +831,16 @@ public class ProfileController : HumansControllerBase
 
         try
         {
-            await _userEmailService.UnlinkAsync(user.Id, id, user.Id, ct);
-            _cache.InvalidateNobodiesTeamEmails();
-            SetSuccess("Sign-in provider unlinked.");
+            var ok = await _userEmailService.UnlinkAsync(user.Id, id, user.Id, ct);
+            if (ok)
+            {
+                _cache.InvalidateNobodiesTeamEmails();
+                SetSuccess("Sign-in provider unlinked.");
+            }
+            else
+            {
+                SetError(_localizer["EmailGrid_UnlinkRejected"].Value);
+            }
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
@@ -872,9 +890,16 @@ public class ProfileController : HumansControllerBase
 
         try
         {
-            await _userEmailService.SetGoogleAsync(userId, emailId, actor.Id, ct);
-            _cache.InvalidateNobodiesTeamEmails();
-            SetSuccess("Google service email updated. Sync will be retried with the new email.");
+            var ok = await _userEmailService.SetGoogleAsync(userId, emailId, actor.Id, ct);
+            if (ok)
+            {
+                _cache.InvalidateNobodiesTeamEmails();
+                SetSuccess("Google service email updated. Sync will be retried with the new email.");
+            }
+            else
+            {
+                SetError(_localizer["EmailGrid_SetGoogleRejected"].Value);
+            }
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
@@ -950,9 +975,16 @@ public class ProfileController : HumansControllerBase
 
         try
         {
-            await _userEmailService.UnlinkAsync(userId, emailId, actor.Id, ct);
-            _cache.InvalidateNobodiesTeamEmails();
-            SetSuccess("Sign-in provider unlinked.");
+            var ok = await _userEmailService.UnlinkAsync(userId, emailId, actor.Id, ct);
+            if (ok)
+            {
+                _cache.InvalidateNobodiesTeamEmails();
+                SetSuccess("Sign-in provider unlinked.");
+            }
+            else
+            {
+                SetError(_localizer["EmailGrid_UnlinkRejected"].Value);
+            }
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
@@ -1989,10 +2021,13 @@ public class ProfileController : HumansControllerBase
             .Select(e => e.Email)
             .FirstOrDefault();
 
-        var emailIds = emails.Select(e => e.Id).ToList();
-        var mergePendingIds = emailIds.Count > 0
-            ? await _accountMergeService.GetPendingEmailIdsAsync(emailIds, ct)
-            : new HashSet<Guid>();
+        // UserEmailService.GetUserEmailsAsync already populates IsMergePending on
+        // each row via IAccountMergeService.GetPendingEmailIdsAsync; reuse that
+        // rather than making a second roundtrip here.
+        var mergePendingIds = (IReadOnlySet<Guid>)emails
+            .Where(e => e.IsMergePending)
+            .Select(e => e.Id)
+            .ToHashSet();
 
         var routePrefix = isAdminContext
             ? $"/Profile/{user.Id}/Admin/Emails"
@@ -2021,7 +2056,6 @@ public class ProfileController : HumansControllerBase
                 IsPrimary = e.IsPrimary,
                 Visibility = e.Visibility,
                 IsPendingVerification = e.IsPendingVerification,
-                IsMergePending = e.IsMergePending,
                 IsGoogleServiceEmail = e.IsGoogle
                     || (googleServiceEmail is null && e.Provider != null),
                 IsNobodiesTeamDomain = e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase),

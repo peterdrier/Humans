@@ -99,7 +99,6 @@ public class ProfileControllerEmailGridTests
             Substitute.For<IUserService>(),
             Substitute.For<IHttpClientFactory>(),
             _signInManager,
-            Substitute.For<IAccountMergeService>(),
             Options.Create(new GoogleWorkspaceOptions()));
 
         var identity = new ClaimsIdentity(new[]
@@ -159,13 +158,32 @@ public class ProfileControllerEmailGridTests
     [HumansFact]
     public async Task Link_AsSelf_ReturnsChallengeResult_WithProvider()
     {
+        // Url.Action returns the callback URL (with returnUrl appended) when
+        // invoked with the ExternalLoginCallback target; the constructor's
+        // generic Url.Action stub already returns "/Profile/Me/Emails", but
+        // we override the callback-specific call so the props.RedirectUri
+        // assertion below is meaningful.
+        _controller.Url.Action(Arg.Is<UrlActionContext>(ctx =>
+                ctx.Action == "ExternalLoginCallback" && ctx.Controller == "Account"))
+            .Returns("/Account/ExternalLoginCallback?returnUrl=%2FProfile%2FMe%2FEmails");
+
+        AuthenticationProperties? capturedProps = null;
         _signInManager.ConfigureExternalAuthenticationProperties("Google", Arg.Any<string>())
-            .Returns(new AuthenticationProperties());
+            .Returns(ci =>
+            {
+                capturedProps = new AuthenticationProperties { RedirectUri = ci.ArgAt<string>(1) };
+                return capturedProps;
+            });
 
         var result = await _controller.Link("Google", returnUrl: "/Profile/Me/Emails");
 
         result.Should().BeOfType<ChallengeResult>()
             .Which.AuthenticationSchemes.Should().Contain("Google");
+        // The Link flow MUST route through AccountController.ExternalLoginCallback
+        // so the link-while-signed-in branch (UserManager.AddLoginAsync) fires.
+        // Going straight to /Profile/Me/Emails would skip that branch.
+        capturedProps.Should().NotBeNull();
+        capturedProps!.RedirectUri.Should().Contain("ExternalLoginCallback");
     }
 
     [HumansFact]

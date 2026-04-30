@@ -1872,6 +1872,8 @@
   <data name="EmailGrid_BackToAdminDetail" xml:space="preserve"><value>Retour au détail de l'utilisateur</value></data>
   <data name="EmailGrid_Unlink" xml:space="preserve"><value>Dissocier</value></data>
   <data name="EmailGrid_ConfirmUnlink" xml:space="preserve"><value>Dissocier ce compte Google ?</value></data>
+  <data name="EmailGrid_SetGoogleRejected" xml:space="preserve"><value>Impossible de définir l'e-mail de service Google — ligne inconnue ou non vérifiée.</value></data>
+  <data name="EmailGrid_UnlinkRejected" xml:space="preserve"><value>Impossible de dissocier — ligne inconnue ou sans fournisseur de connexion.</value></data>
   <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>Gérer les e-mails</value></data>
 
 </root>
