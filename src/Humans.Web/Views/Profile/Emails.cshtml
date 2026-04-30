@@ -121,11 +121,7 @@
                                                    value="true"
                                                    @(row.IsPrimary ? "checked" : "")
                                                    @(row.IsVerified ? "" : "disabled") />
-                                            @if (row.IsPrimary)
-                                            {
-                                                <span class="text-muted small">@Localizer["EmailGrid_PrimarySelected"]</span>
-                                            }
-                                            else if (!row.IsVerified)
+                                            @if (!row.IsPrimary && !row.IsVerified)
                                             {
                                                 <span class="text-muted small">@Localizer["Emails_VerifyFirst"]</span>
                                             }
@@ -207,7 +203,7 @@
                                             </form>
                                         }
                                     }
-                                    else
+                                    else if (Model.Emails.Count > 1)
                                     {
                                         <form asp-action="@(Model.IsAdminContext ? "AdminDeleteEmail" : "DeleteEmail")"
                                               asp-route-userId="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
@@ -229,42 +225,52 @@
             </div>
         </div>
 
-        @if (!Model.IsAdminContext)
-        {
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">@Localizer["Emails_AddNew"]</h5>
-                </div>
-                <div class="card-body">
-                    <form asp-action="AddEmail" method="post">
-                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">@Localizer["Emails_AddNew"]</h5>
+            </div>
+            <div class="card-body">
+                <form asp-action="@(Model.IsAdminContext ? "AdminAddEmail" : "AddEmail")"
+                      asp-route-userId="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
+                      method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-                        <div class="mb-3">
-                            <label asp-for="NewEmail" class="form-label"></label>
+                    <div class="mb-3">
+                        <label asp-for="NewEmail" class="form-label"></label>
+                        @if (Model.IsAdminContext)
+                        {
+                            <input class="form-control" type="email" name="email"
+                                   placeholder="you@example.com" required />
+                        }
+                        else
+                        {
                             <input asp-for="NewEmail" class="form-control" type="email"
                                    placeholder="you@example.com" />
                             <span asp-validation-for="NewEmail" class="text-danger"></span>
-                            <div class="form-text">
-                                @Localizer["Emails_VerificationWillBeSent"]
-                            </div>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary"
-                                @(Model.CanAddEmail ? "" : "disabled")>
-                            <i class="fa-solid fa-paper-plane me-1"></i>
-                            @Localizer["Emails_SendVerification"]
-                        </button>
-
-                        @if (!Model.CanAddEmail)
-                        {
-                            <small class="text-muted ms-2">
-                                @string.Format(Localizer["Emails_ResendCooldown"].Value, Model.MinutesUntilResend)
-                            </small>
                         }
-                    </form>
-                </div>
-            </div>
+                        <div class="form-text">
+                            @Localizer["Emails_VerificationWillBeSent"]
+                        </div>
+                    </div>
 
+                    <button type="submit" class="btn btn-primary"
+                            @((Model.IsAdminContext || Model.CanAddEmail) ? "" : "disabled")>
+                        <i class="fa-solid fa-paper-plane me-1"></i>
+                        @Localizer["Emails_SendVerification"]
+                    </button>
+
+                    @if (!Model.IsAdminContext && !Model.CanAddEmail)
+                    {
+                        <small class="text-muted ms-2">
+                            @string.Format(Localizer["Emails_ResendCooldown"].Value, Model.MinutesUntilResend)
+                        </small>
+                    }
+                </form>
+            </div>
+        </div>
+
+        @if (!Model.IsAdminContext)
+        {
             <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="mb-0"><i class="fa-brands fa-google me-2"></i>@Localizer["EmailGrid_LinkGoogleAccount"]</h5>
