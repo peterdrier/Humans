@@ -85,7 +85,9 @@ Service signatures stay auth-free per the project's design rules — no `isPrivi
 
 Use `DeleteEmailAsync`. The row goes; the `AspNetUserLogins` row goes with it.
 
-### `DeleteEmailAsync` extension
+### `DeleteEmailAsync` — added behavior
+
+Modifying the existing service method body (no new method, no C# extension method — the method on `UserEmailService` itself is updated):
 
 - Pre-delete: read the row. If `Provider != null && ProviderKey != null`, call `UserManager.RemoveLoginAsync(user, provider, providerKey)` before removing the email row.
 - Existing cache-invalidation pattern stays.
