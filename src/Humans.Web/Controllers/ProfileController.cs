@@ -992,6 +992,10 @@ public class ProfileController : HumansControllerBase
             return RedirectToAction(nameof(AdminEmails), new { userId });
         }
 
+        var actor = await GetCurrentUserAsync();
+        if (actor is null)
+            return Forbid();
+
         var targetUser = await FindUserByIdAsync(userId);
         if (targetUser is null)
             return NotFound();
@@ -1020,6 +1024,15 @@ public class ProfileController : HumansControllerBase
             _logger.LogInformation(
                 "Admin sent email verification to {Email} for user {UserId} (conflict: {IsConflict})",
                 email, userId, result.IsConflict);
+
+            // Controller-level audit for admin path — symmetric with AdminSetPrimary /
+            // AdminDeleteEmail. AddEmailAsync does not return the new row's Id and does
+            // not take actorUserId, so audit at the controller without relatedEntityId.
+            await _auditLogService.LogAsync(
+                AuditAction.UserEmailLinked,
+                nameof(User), userId,
+                $"Admin added pending email {email.Trim()} for user {userId} (conflict: {result.IsConflict})",
+                actor.Id);
 
             SetSuccess(_localizer["EmailGrid_AdminAddSentVerification"].Value);
         }
@@ -2150,8 +2163,11 @@ public class ProfileController : HumansControllerBase
                 IsPrimary = e.IsPrimary,
                 Visibility = e.Visibility,
                 IsPendingVerification = e.IsPendingVerification,
-                IsGoogleServiceEmail = e.IsGoogle
-                    || (googleServiceEmail is null && e.Provider != null),
+                // Reflect the canonical Google identity strictly — the row's IsGoogle
+                // flag. No implicit fallback to "any Provider-attached row" when no
+                // row has IsGoogle=true: the canonical resolver above only counts
+                // IsVerified && IsGoogle, so the display must match.
+                IsGoogleServiceEmail = e.IsGoogle,
                 IsNobodiesTeamDomain = e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase),
                 Provider = e.Provider
             }).ToList(),

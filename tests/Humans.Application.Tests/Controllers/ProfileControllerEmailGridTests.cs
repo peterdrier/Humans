@@ -293,6 +293,32 @@ public class ProfileControllerEmailGridTests
     }
 
     [HumansFact]
+    public async Task AdminAddEmail_AuditsWithAdminAsActor()
+    {
+        var targetUserId = Guid.NewGuid();
+        const string newEmail = "added@example.com";
+        _userManager.FindByIdAsync(targetUserId.ToString())
+            .Returns(new User { Id = targetUserId, DisplayName = "Target User", PreferredLanguage = "en" });
+        _userEmailService.AddEmailAsync(targetUserId, newEmail, Arg.Any<CancellationToken>())
+            .Returns(new Humans.Application.DTOs.AddEmailResult("token", IsConflict: false));
+
+        var result = await _controller.AdminAddEmail(targetUserId, newEmail, CancellationToken.None);
+
+        // Admin-path audit symmetric with AdminSetPrimary / AdminDeleteEmail —
+        // actor is the signed-in admin (_userId), entity is the target user.
+        // AddEmailAsync doesn't return the new row's Id, so no relatedEntityId.
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.UserEmailLinked,
+            nameof(User), targetUserId,
+            Arg.Any<string>(),
+            _userId,
+            relatedEntityId: null,
+            relatedEntityType: null);
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be("AdminEmails");
+    }
+
+    [HumansFact]
     public async Task AdminAddEmail_SendsVerificationEmail_ToTargetUser_WithReturnedToken()
     {
         var targetUserId = Guid.NewGuid();

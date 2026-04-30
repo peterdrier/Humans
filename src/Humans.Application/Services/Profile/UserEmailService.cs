@@ -166,6 +166,11 @@ public sealed class UserEmailService : IUserEmailService
             ?? throw new InvalidOperationException("User not found.");
 
         var userEmails = await _repository.GetByUserIdForMutationAsync(userId, cancellationToken);
+        // TODO(nobodies-collective#611): VerifyEmailAsync uses FirstOrDefault on
+        // (!IsVerified && Provider == null), which is ambiguous when multiple pending
+        // plain rows exist for the same user. Token validation could pass against the
+        // wrong row. Surfaced during PR 4 review (peterdrier/Humans#376) — AdminAddEmail
+        // amplifies the multi-pending-row scenario but the fix lives in row-selection here.
         var pendingEmail = userEmails.FirstOrDefault(e => !e.IsVerified && e.Provider == null)
             ?? throw new ValidationException("No email pending verification.");
 
