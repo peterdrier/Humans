@@ -150,6 +150,12 @@ public sealed class UserEmailService : IUserEmailService
 
         await _repository.AddAsync(userEmail, cancellationToken);
 
+        // Maintain the IsPrimary invariant. AddEmailAsync inserts an unverified
+        // row, so this is normally a no-op (unverified rows can't be primary),
+        // but the helper is cheap and protects against latent bugs in any
+        // existing rows.
+        await EnsurePrimaryInvariantAsync(userId, cancellationToken);
+
         // Generate verification token via Identity
         var token = await _userManager.GenerateUserTokenAsync(
             user,
@@ -304,26 +310,15 @@ public sealed class UserEmailService : IUserEmailService
                     "Cannot remove your last verified email. Add another verified email first " +
                     "so you can still receive system notifications.");
             }
-
-            // If this row is the notification target, hand off to the next
-            // verified row alphabetically so the user keeps a usable
-            // notification address.
-            if (email.IsPrimary)
-            {
-                var successor = allEmails
-                    .Where(e => e.Id != emailId && e.IsVerified)
-                    .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
-                    .FirstOrDefault();
-                if (successor is not null)
-                {
-                    successor.IsPrimary = true;
-                    successor.UpdatedAt = _clock.GetCurrentInstant();
-                    await _repository.UpdateAsync(successor, cancellationToken);
-                }
-            }
         }
 
         await _repository.RemoveAsync(email, cancellationToken);
+
+        // Centralized IsPrimary invariant. If the removed row was the primary,
+        // the helper promotes the highest-priority remaining verified row
+        // (Workspace > most-recently-updated). Replaces the prior inline
+        // alphabetical successor pick.
+        await EnsurePrimaryInvariantAsync(userId, cancellationToken);
 
         // FullProfile.NotificationEmail derives from user_emails; drop the stale entry so
         // admin/search/profile surfaces stop showing the removed address.
@@ -348,32 +343,30 @@ public sealed class UserEmailService : IUserEmailService
         var now = _clock.GetCurrentInstant();
         var isNobodiesTeam = email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase);
 
-        // If @nobodies.team, clear existing notification target
-        if (isNobodiesTeam)
-        {
-            var emails = await _repository.GetByUserIdForMutationAsync(userId, cancellationToken);
-            var currentTarget = emails.FirstOrDefault(e => e.IsPrimary);
-            if (currentTarget is not null)
-            {
-                currentTarget.IsPrimary = false;
-                currentTarget.UpdatedAt = now;
-                await _repository.UpdateAsync(currentTarget, cancellationToken);
-            }
-        }
-
         var userEmail = new UserEmail
         {
             Id = Guid.NewGuid(),
             UserId = userId,
             Email = email,
             IsVerified = true,
-            IsPrimary = isNobodiesTeam,
+            // IsPrimary is set by EnsurePrimaryInvariantAsync below — the helper
+            // promotes the @nobodies.team row when present, otherwise picks the
+            // most-recently-updated verified row. This restores the pre-PR-4
+            // invariant: every user with at least one verified email has exactly
+            // one IsPrimary row (Profiles.md Data Model — UserEmail.IsNotificationTarget).
+            IsPrimary = false,
             Visibility = ContactFieldVisibility.BoardOnly,
             CreatedAt = now,
             UpdatedAt = now
         };
 
         await _repository.AddAsync(userEmail, cancellationToken);
+
+        // Centralized IsPrimary invariant. For a brand-new user, this promotes
+        // the just-added row to primary. For an existing user adding a
+        // @nobodies.team row, this demotes the prior primary and promotes the
+        // Workspace row.
+        await EnsurePrimaryInvariantAsync(userId, cancellationToken);
 
         // Auto-set GoogleEmail when @nobodies.team email is added (cross-section → IUserService)
         if (isNobodiesTeam)
@@ -575,6 +568,69 @@ public sealed class UserEmailService : IUserEmailService
         return null;
     }
 
+    /// <summary>
+    /// Maintains the "exactly one IsPrimary=true verified row per user" invariant
+    /// (Profiles.md Data Model — UserEmail.IsNotificationTarget). Centralizes the
+    /// rule in one place so any code path that adds or removes a UserEmail row
+    /// can call it as a safety step.
+    ///
+    /// Rules:
+    /// - 0 verified rows → no-op (no candidate to promote; unverified rows are
+    ///   never the notification target).
+    /// - 1+ verified rows but 0 IsPrimary → pick a successor and promote it.
+    /// - 2+ IsPrimary rows → demote all but the winner.
+    ///
+    /// Successor priority (highest to lowest):
+    /// 1. Verified @nobodies.team row (Workspace identity wins per Peter's
+    ///    feedback — the Workspace row IS the canonical Primary).
+    /// 2. Most recently updated verified row.
+    /// 3. Any verified row.
+    /// </summary>
+    private async Task EnsurePrimaryInvariantAsync(
+        Guid userId, CancellationToken cancellationToken)
+    {
+        var emails = (await _repository.GetByUserIdForMutationAsync(userId, cancellationToken)).ToList();
+        var verified = emails.Where(e => e.IsVerified).ToList();
+        if (verified.Count == 0)
+            return;
+
+        var currentPrimaries = verified.Where(e => e.IsPrimary).ToList();
+
+        // Pick the canonical winner from the verified set.
+        // 1. Workspace (@nobodies.team) row wins per Peter's feedback — that row IS
+        //    the canonical Primary when present.
+        // 2. Otherwise prefer an existing IsPrimary row if any (stable — don't
+        //    flip the primary just because a row was added/removed elsewhere).
+        // 3. Otherwise most-recently-updated, with Id as the stable tiebreaker.
+        var winner =
+            verified.FirstOrDefault(e => e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
+            ?? currentPrimaries.OrderBy(e => e.Id).FirstOrDefault()
+            ?? verified.OrderByDescending(e => e.UpdatedAt).ThenBy(e => e.Id).First();
+
+        // Already correct: exactly one primary, and it's the winner.
+        if (currentPrimaries.Count == 1 && currentPrimaries[0].Id == winner.Id)
+            return;
+
+        var now = _clock.GetCurrentInstant();
+        var changed = new List<UserEmail>();
+        foreach (var row in verified)
+        {
+            var shouldBePrimary = row.Id == winner.Id;
+            if (row.IsPrimary != shouldBePrimary)
+            {
+                row.IsPrimary = shouldBePrimary;
+                row.UpdatedAt = now;
+                changed.Add(row);
+            }
+        }
+
+        if (changed.Count == 0)
+            return;
+
+        await _repository.UpdateBatchAsync(changed, cancellationToken);
+        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+    }
+
     /// <inheritdoc />
     public async Task<bool> SetGoogleAsync(
         Guid userId, Guid userEmailId, Guid actorUserId,
@@ -656,6 +712,12 @@ public sealed class UserEmailService : IUserEmailService
             description = $"Linked {provider} `{fresh.Email}` to user (new row)";
         }
 
+        // Centralized IsPrimary invariant. For a brand-new user (first OAuth
+        // sign-in), the row just added is verified and the helper promotes it
+        // to primary. Without this, the user would have zero IsPrimary rows
+        // and GetEffectiveEmail() / NotificationEmail derivation would fail.
+        await EnsurePrimaryInvariantAsync(userId, cancellationToken);
+
         await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
 
         await _auditLogService.LogAsync(
@@ -690,16 +752,25 @@ public sealed class UserEmailService : IUserEmailService
         var removeLogin = await _userManager.RemoveLoginAsync(user, provider, providerKey);
         if (!removeLogin.Succeeded)
         {
-            // Don't abort — the AspNetUserLogins row may already be gone (e.g.,
-            // hand-cleaned). The UserEmail row deletion is the authoritative
-            // step for the user-visible state. Log so admins can investigate.
-            _logger.LogWarning(
-                "UnlinkAsync: UserManager.RemoveLoginAsync did not succeed for user {UserId} provider {Provider}; continuing with UserEmail removal. Errors: {Errors}",
+            // Hard-fail: don't delete the UserEmail row if Identity refused to
+            // remove the AspNetUserLogins row. Otherwise the user would believe
+            // they unlinked their Google account (UserEmail row is gone) but
+            // they could still sign in via Google (AspNetUserLogins row
+            // persists). Hard-failing keeps the two stores in sync — the caller
+            // can retry, and an admin can investigate the logged failure.
+            _logger.LogError(
+                "UnlinkAsync: UserManager.RemoveLoginAsync failed for user {UserId} provider {Provider}; aborting unlink to preserve consistency between AspNetUserLogins and user_emails. Errors: {Errors}",
                 userId, provider,
                 string.Join("; ", removeLogin.Errors.Select(e => $"{e.Code}:{e.Description}")));
+            return false;
         }
 
         await _repository.RemoveAsync(row, cancellationToken);
+
+        // Centralized IsPrimary invariant. If the unlinked row was the primary,
+        // the helper promotes the highest-priority remaining verified row.
+        await EnsurePrimaryInvariantAsync(userId, cancellationToken);
+
         await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
 
         await _auditLogService.LogAsync(

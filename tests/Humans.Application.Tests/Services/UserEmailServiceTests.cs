@@ -513,4 +513,265 @@ public class UserEmailServiceTests
 
         await _fullProfileInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>());
     }
+
+    // -------------------------------------------------------------------------
+    // IsPrimary invariant tests (round-10 review on PR peterdrier#376).
+    // EnsurePrimaryInvariantAsync is called from LinkAsync, AddVerifiedEmailAsync,
+    // AddEmailAsync, UnlinkAsync, and DeleteEmailAsync. These tests pin the
+    // "exactly one IsPrimary=true verified row per user" invariant — broken
+    // by the PR 4 service surface changes (Findings II, JJ, KK).
+    // -------------------------------------------------------------------------
+
+    [HumansFact]
+    public async Task LinkAsync_FirstRow_SetsIsPrimaryTrue()
+    {
+        // New OAuth user: no existing rows. LinkAsync inserts a verified row;
+        // the helper promotes it to primary so the user has a notification target.
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmail>());
+
+        UserEmail? added = null;
+        await _repository.AddAsync(
+            Arg.Do<UserEmail>(e => added = e),
+            Arg.Any<CancellationToken>());
+
+        // The helper re-reads via GetByUserIdForMutationAsync — return the row
+        // that was just added (the test's mock can't observe the AddAsync).
+        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(_ => new List<UserEmail> { added! });
+
+        var result = await _service.LinkAsync(
+            userId, "Google", "sub-xyz", "new@example.com", actorId);
+
+        result.Should().BeTrue();
+        added.Should().NotBeNull();
+        added!.IsPrimary.Should().BeTrue();
+        await _repository.Received().UpdateBatchAsync(
+            Arg.Is<IReadOnlyList<UserEmail>>(rows => rows.Any(r => r.Id == added.Id && r.IsPrimary)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task LinkAsync_AdditionalRow_PreservesExistingPrimary()
+    {
+        // Existing user has a verified primary; LinkAsync adds another OAuth row.
+        // The helper must NOT flip the primary to the new row.
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var existingPrimary = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "primary@example.com",
+            IsVerified = true,
+            IsPrimary = true,
+        };
+        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmail> { existingPrimary });
+
+        UserEmail? added = null;
+        await _repository.AddAsync(
+            Arg.Do<UserEmail>(e => added = e),
+            Arg.Any<CancellationToken>());
+
+        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(_ => new List<UserEmail> { existingPrimary, added! });
+
+        var result = await _service.LinkAsync(
+            userId, "Google", "sub-zzz", "secondary@example.com", actorId);
+
+        result.Should().BeTrue();
+        existingPrimary.IsPrimary.Should().BeTrue();
+        added.Should().NotBeNull();
+        added!.IsPrimary.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task AddVerifiedEmailAsync_FirstRow_SetsIsPrimaryTrueEvenForGmail()
+    {
+        // Magic-link signup: a non-Workspace email (gmail) goes through
+        // AddVerifiedEmailAsync. Pre-fix this set IsPrimary=isNobodiesTeam=false,
+        // leaving the user with NO primary row. The helper promotes the first
+        // verified row regardless of domain.
+        var userId = Guid.NewGuid();
+        _repository.ExistsForUserAsync(
+            userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        UserEmail? added = null;
+        await _repository.AddAsync(
+            Arg.Do<UserEmail>(e => added = e),
+            Arg.Any<CancellationToken>());
+
+        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(_ => added is null ? new List<UserEmail>() : new List<UserEmail> { added });
+
+        await _service.AddVerifiedEmailAsync(userId, "alice@gmail.com");
+
+        added.Should().NotBeNull();
+        added!.IsPrimary.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task AddVerifiedEmailAsync_NobodiesTeamRow_BecomesPrimaryOverExisting()
+    {
+        // Adding a @nobodies.team email when the user already has a primary
+        // gmail row: the Workspace row wins per the priority rule in the helper.
+        var userId = Guid.NewGuid();
+        var existingPrimary = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "alice@gmail.com",
+            IsVerified = true,
+            IsPrimary = true,
+        };
+        _repository.ExistsForUserAsync(
+            userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        UserEmail? added = null;
+        await _repository.AddAsync(
+            Arg.Do<UserEmail>(e => added = e),
+            Arg.Any<CancellationToken>());
+
+        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(_ => added is null
+                ? new List<UserEmail> { existingPrimary }
+                : new List<UserEmail> { existingPrimary, added });
+
+        await _service.AddVerifiedEmailAsync(userId, "alice@nobodies.team");
+
+        added.Should().NotBeNull();
+        added!.IsPrimary.Should().BeTrue();
+        existingPrimary.IsPrimary.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task UnlinkAsync_RemovesIsPrimary_AssignsSuccessor()
+    {
+        // User has the primary on the Google row + a secondary verified row.
+        // Unlinking the Google row removes its primary status; the helper
+        // promotes the remaining verified row.
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var googleRowId = Guid.NewGuid();
+        var googleRow = new UserEmail
+        {
+            Id = googleRowId,
+            UserId = userId,
+            Email = "google@example.com",
+            Provider = "Google",
+            ProviderKey = "sub-Z",
+            IsVerified = true,
+            IsPrimary = true,
+        };
+        var secondary = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "secondary@example.com",
+            IsVerified = true,
+            IsPrimary = false,
+        };
+        var user = new User { Id = userId };
+        _repository.GetByIdAndUserIdAsync(googleRowId, userId, Arg.Any<CancellationToken>())
+            .Returns(googleRow);
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        _userManager.RemoveLoginAsync(user, "Google", "sub-Z")
+            .Returns(IdentityResult.Success);
+
+        // After RemoveAsync, the helper sees only the secondary (mock simulates
+        // the post-removal state).
+        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmail> { secondary });
+
+        var result = await _service.UnlinkAsync(userId, googleRowId, actorId);
+
+        result.Should().BeTrue();
+        secondary.IsPrimary.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task UnlinkAsync_RemovesNonPrimary_DoesNotChangePrimary()
+    {
+        // Primary is on row A; user unlinks row B (Google, non-primary). The
+        // helper sees A still primary and the verified set is consistent — no
+        // change.
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var googleRowId = Guid.NewGuid();
+        var googleRow = new UserEmail
+        {
+            Id = googleRowId,
+            UserId = userId,
+            Email = "google@example.com",
+            Provider = "Google",
+            ProviderKey = "sub-Z",
+            IsVerified = true,
+            IsPrimary = false,
+        };
+        var primary = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "primary@example.com",
+            IsVerified = true,
+            IsPrimary = true,
+        };
+        var user = new User { Id = userId };
+        _repository.GetByIdAndUserIdAsync(googleRowId, userId, Arg.Any<CancellationToken>())
+            .Returns(googleRow);
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        _userManager.RemoveLoginAsync(user, "Google", "sub-Z")
+            .Returns(IdentityResult.Success);
+
+        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmail> { primary });
+
+        var result = await _service.UnlinkAsync(userId, googleRowId, actorId);
+
+        result.Should().BeTrue();
+        primary.IsPrimary.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task UnlinkAsync_RemoveLoginAsyncFails_DoesNotDeleteUserEmailRow_ReturnsFalse()
+    {
+        // Hard-fail: when RemoveLoginAsync fails, the UserEmail row MUST NOT be
+        // removed. Otherwise AspNetUserLogins persists with a stale Google login
+        // while the user thinks the unlink succeeded — they can still sign in.
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        var row = new UserEmail
+        {
+            Id = rowId,
+            UserId = userId,
+            Email = "linked@example.com",
+            Provider = "Google",
+            ProviderKey = "sub-Z",
+            IsVerified = true,
+        };
+        var user = new User { Id = userId };
+        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+            .Returns(row);
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        _userManager.RemoveLoginAsync(user, "Google", "sub-Z")
+            .Returns(IdentityResult.Failed(
+                new IdentityError { Code = "SomeFailure", Description = "Identity refused" }));
+
+        var result = await _service.UnlinkAsync(userId, rowId, actorId);
+
+        result.Should().BeFalse();
+        await _repository.DidNotReceive().RemoveAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _fullProfileInvalidator.DidNotReceive().InvalidateAsync(
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _auditLogService.DidNotReceive().LogAsync(
+            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
 }

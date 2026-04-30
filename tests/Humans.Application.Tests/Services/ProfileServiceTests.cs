@@ -1669,14 +1669,18 @@ public class ProfileServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ContributeForUserAsync_EmitsIsOAuthKey_SourcedFromIsGoogleColumn()
+    public async Task ContributeForUserAsync_EmitsIsOAuthKey_SourcedFromProviderColumn()
     {
         // The JSON key stays "IsOAuth" per coding-rules.md (never rename serialized
         // fields — exports are JSON files users download). The value sources from
-        // the IsGoogle column rather than (Provider != null): Provider is intentionally
-        // null here, so under the old (Provider != null) projection this row would
-        // emit IsOAuth=false; under the corrected projection it must emit IsOAuth=true
-        // because IsGoogle=true.
+        // (Provider != null) — pre-PR-4 semantics meaning "this row has an OAuth
+        // login attached". The PR 4 spec's Task 17 swapped both the JSON key and
+        // the value source (e.IsGoogle); both have been reverted so the export
+        // emits identical bytes for the same row data as before PR 4.
+        //
+        // This row has Provider="Google" and IsGoogle=false to pin the source:
+        // under the reverted (Provider != null) projection it emits IsOAuth=true,
+        // which proves the source is Provider, not IsGoogle.
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
         _dbContext.UserEmails.Add(new UserEmail
@@ -1686,9 +1690,9 @@ public class ProfileServiceTests : IDisposable
             Email = "g@example.com",
             IsVerified = true,
             IsPrimary = true,
-            Provider = null,
-            ProviderKey = null,
-            IsGoogle = true,
+            Provider = "Google",
+            ProviderKey = "sub-1",
+            IsGoogle = false,
         });
         await _dbContext.SaveChangesAsync();
 

@@ -868,12 +868,14 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
             e.IsVerified,
             // JSON keys stay "IsOAuth" and "IsNotificationTarget" per coding-rules.md
             // "Never Rename Fields in Serialized Objects" — the GDPR export is a JSON
-            // file users download. IsOAuth sources from the IsGoogle column (the
-            // canonical Workspace-identity flag) rather than (Provider != null),
-            // which would conflate Workspace identity with the OAuth-attachment
-            // state. IsNotificationTarget is the legacy JSON key for the renamed
-            // C# property IsPrimary (mirrors the EF HasColumnName pin).
-            IsOAuth = e.IsGoogle,
+            // file users download. IsOAuth sources from (Provider != null) — the
+            // pre-PR-4 semantics meaning "this row has an OAuth login attached".
+            // The PR 4 spec's Task 17 swapped both the JSON key (rename) and the
+            // value source (e.IsGoogle); both have been reverted so the export
+            // emits identical bytes for the same row data as before PR 4.
+            // IsNotificationTarget is the legacy JSON key for the renamed C#
+            // property IsPrimary (mirrors the EF HasColumnName pin).
+            IsOAuth = e.Provider != null,
             IsNotificationTarget = e.IsPrimary,
             e.Visibility
         }).ToList());

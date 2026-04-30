@@ -41,6 +41,34 @@ public sealed class UserEmailAuthorizationHandlerTests
     }
 
     [HumansFact]
+    public async Task SucceedsWhenActorIsHumanAdmin()
+    {
+        // Profiles section invariants list HumanAdmin, Board, Admin as the actors
+        // who manage humans via admin pages — admin email management is part of
+        // that surface, so the handler grants HumanAdmin on a different target.
+        var actorId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
+        var user = CreateUser(actorId, RoleNames.HumanAdmin);
+
+        var result = await EvaluateAsync(user, targetId);
+
+        result.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task SucceedsWhenActorIsBoard()
+    {
+        // Board is in the same actor list as HumanAdmin/Admin per Profiles.md.
+        var actorId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
+        var user = CreateUser(actorId, RoleNames.Board);
+
+        var result = await EvaluateAsync(user, targetId);
+
+        result.Should().BeTrue();
+    }
+
+    [HumansFact]
     public async Task FailsWhenActorIsNeitherTargetNorAdmin()
     {
         var actorId = Guid.NewGuid();
