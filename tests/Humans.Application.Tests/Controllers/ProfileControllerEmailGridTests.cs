@@ -2,6 +2,7 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application.Authorization.UserEmail;
 using Humans.Application.Configuration;
+using Humans.Domain.Enums;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Campaigns;
@@ -208,6 +209,127 @@ public class ProfileControllerEmailGridTests
 
         result.Should().BeOfType<ForbidResult>();
         await _userEmailService.DidNotReceive().UnlinkAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    // -------------------------------------------------------------------------
+    // Task 16 — admin grid actions parameterized by {userId}.
+    // Actor user is _userId (current user). Target user is a separate guid passed
+    // via the route. AuthorizeAsync is set up to succeed in the constructor; the
+    // Edit + Edit-equivalent UserEmailOperations.Edit handler will succeed for
+    // self-or-admin via the resource-based authorization path. These tests assert
+    // the controller passes the route userId (target) to the service and the
+    // current user's id as actorUserId.
+    // -------------------------------------------------------------------------
+
+    [HumansFact]
+    public async Task AdminSetGoogle_AsAdmin_CallsServiceWithRouteUserId()
+    {
+        var targetUserId = Guid.NewGuid();
+        var emailId = Guid.NewGuid();
+        _userEmailService.SetGoogleAsync(targetUserId, emailId, _userId, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await _controller.AdminSetGoogle(targetUserId, emailId, CancellationToken.None);
+
+        await _userEmailService.Received(1).SetGoogleAsync(
+            targetUserId, emailId, _userId, Arg.Any<CancellationToken>());
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be("AdminEmails");
+    }
+
+    [HumansFact]
+    public async Task AdminSetPrimary_AsAdmin_CallsServiceWithRouteUserId()
+    {
+        var targetUserId = Guid.NewGuid();
+        var emailId = Guid.NewGuid();
+
+        var result = await _controller.AdminSetPrimary(targetUserId, emailId, CancellationToken.None);
+
+        await _userEmailService.Received(1).SetPrimaryAsync(
+            targetUserId, emailId, Arg.Any<CancellationToken>());
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be("AdminEmails");
+    }
+
+    [HumansFact]
+    public async Task AdminAddEmail_AsAdmin_CallsServiceWithRouteUserId()
+    {
+        var targetUserId = Guid.NewGuid();
+        const string newEmail = "added@example.com";
+        _userEmailService.AddEmailAsync(targetUserId, newEmail, Arg.Any<CancellationToken>())
+            .Returns(new Humans.Application.DTOs.AddEmailResult("token", IsConflict: false));
+
+        var result = await _controller.AdminAddEmail(targetUserId, newEmail, CancellationToken.None);
+
+        await _userEmailService.Received(1).AddEmailAsync(
+            targetUserId, newEmail, Arg.Any<CancellationToken>());
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be("AdminEmails");
+    }
+
+    [HumansFact]
+    public async Task AdminUnlink_AsAdmin_CallsServiceWithRouteUserId()
+    {
+        var targetUserId = Guid.NewGuid();
+        var emailId = Guid.NewGuid();
+        _userEmailService.UnlinkAsync(targetUserId, emailId, _userId, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await _controller.AdminUnlink(targetUserId, emailId, CancellationToken.None);
+
+        await _userEmailService.Received(1).UnlinkAsync(
+            targetUserId, emailId, _userId, Arg.Any<CancellationToken>());
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be("AdminEmails");
+    }
+
+    [HumansFact]
+    public async Task AdminDeleteEmail_AsAdmin_CallsServiceWithRouteUserId()
+    {
+        var targetUserId = Guid.NewGuid();
+        var emailId = Guid.NewGuid();
+        _userEmailService.DeleteEmailAsync(targetUserId, emailId, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await _controller.AdminDeleteEmail(targetUserId, emailId, CancellationToken.None);
+
+        await _userEmailService.Received(1).DeleteEmailAsync(
+            targetUserId, emailId, Arg.Any<CancellationToken>());
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be("AdminEmails");
+    }
+
+    [HumansFact]
+    public async Task AdminSetVisibility_AsAdmin_CallsServiceWithRouteUserId()
+    {
+        var targetUserId = Guid.NewGuid();
+        var emailId = Guid.NewGuid();
+
+        var result = await _controller.AdminSetVisibility(
+            targetUserId, emailId, ContactFieldVisibility.BoardOnly, CancellationToken.None);
+
+        await _userEmailService.Received(1).SetVisibilityAsync(
+            targetUserId, emailId, ContactFieldVisibility.BoardOnly, Arg.Any<CancellationToken>());
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be("AdminEmails");
+    }
+
+    [HumansFact]
+    public async Task AdminSetGoogle_AuthorizationFails_ReturnsForbid()
+    {
+        var targetUserId = Guid.NewGuid();
+        var emailId = Guid.NewGuid();
+        _authorizationService.AuthorizeAsync(
+            Arg.Any<ClaimsPrincipal>(),
+            Arg.Any<object?>(),
+            Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Failed());
+
+        var result = await _controller.AdminSetGoogle(targetUserId, emailId, CancellationToken.None);
+
+        result.Should().BeOfType<ForbidResult>();
+        await _userEmailService.DidNotReceive().SetGoogleAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 }

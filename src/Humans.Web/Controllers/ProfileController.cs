@@ -826,6 +826,189 @@ public class ProfileController : HumansControllerBase
         return RedirectToAction(nameof(Emails));
     }
 
+    // -------------------------------------------------------------------------
+    // Admin grid actions — parameterized by {userId}. Mirror six of the seven
+    // self-grid actions against a target user. Authorize via
+    // UserEmailOperations.Edit (succeeds for self-or-admin via the resource-based
+    // authorization handler). No AdminLink: Link is self-only by spec — admins
+    // cannot link OAuth identities on a user's behalf, since the OAuth flow
+    // requires the target user to authenticate with the provider. Email/OAuth
+    // decoupling design (PR 4, Task 16).
+    // -------------------------------------------------------------------------
+
+    [HttpGet("{userId:guid}/Admin/Emails")]
+    public async Task<IActionResult> AdminEmails(Guid userId, CancellationToken ct)
+    {
+        var authz = await _authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        var targetUser = await FindUserByIdAsync(userId);
+        if (targetUser is null)
+            return NotFound();
+
+        var viewModel = await BuildEmailsViewModelAsync(targetUser);
+        return View("Emails", viewModel);
+    }
+
+    [HttpPost("{userId:guid}/Admin/Emails/SetGoogle")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AdminSetGoogle(Guid userId, Guid emailId, CancellationToken ct)
+    {
+        var authz = await _authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        var actor = await GetCurrentUserAsync();
+        if (actor is null)
+            return Forbid();
+
+        try
+        {
+            await _userEmailService.SetGoogleAsync(userId, emailId, actor.Id, ct);
+            _cache.InvalidateNobodiesTeamEmails();
+            SetSuccess("Google service email updated. Sync will be retried with the new email.");
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Admin failed to set Google service email {EmailId} for user {UserId}", emailId, userId);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(AdminEmails), new { userId });
+    }
+
+    [HttpPost("{userId:guid}/Admin/Emails/SetPrimary")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AdminSetPrimary(Guid userId, Guid emailId, CancellationToken ct)
+    {
+        var authz = await _authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        try
+        {
+            await _userEmailService.SetPrimaryAsync(userId, emailId, ct);
+            _cache.InvalidateNobodiesTeamEmails();
+            SetSuccess(_localizer["Profile_NotificationTargetUpdated"].Value);
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Admin failed to set primary email {EmailId} for user {UserId}", emailId, userId);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(AdminEmails), new { userId });
+    }
+
+    [HttpPost("{userId:guid}/Admin/Emails/Add")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AdminAddEmail(Guid userId, string email, CancellationToken ct)
+    {
+        var authz = await _authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            SetError(_localizer["Profile_EnterEmail"].Value);
+            return RedirectToAction(nameof(AdminEmails), new { userId });
+        }
+
+        try
+        {
+            await _userEmailService.AddEmailAsync(userId, email, ct);
+            SetSuccess(string.Format(CultureInfo.CurrentCulture, _localizer["Profile_VerificationSent"].Value, email.Trim()));
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Admin failed to add email for user {UserId}: {Reason}", userId, ex.Message);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(AdminEmails), new { userId });
+    }
+
+    [HttpPost("{userId:guid}/Admin/Emails/Unlink/{emailId:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AdminUnlink(Guid userId, Guid emailId, CancellationToken ct)
+    {
+        var authz = await _authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        var actor = await GetCurrentUserAsync();
+        if (actor is null)
+            return Forbid();
+
+        try
+        {
+            await _userEmailService.UnlinkAsync(userId, emailId, actor.Id, ct);
+            _cache.InvalidateNobodiesTeamEmails();
+            SetSuccess("Sign-in provider unlinked.");
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Admin failed to unlink email {EmailId} for user {UserId}", emailId, userId);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(AdminEmails), new { userId });
+    }
+
+    [HttpPost("{userId:guid}/Admin/Emails/Delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AdminDeleteEmail(Guid userId, Guid emailId, CancellationToken ct)
+    {
+        var authz = await _authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        try
+        {
+            var deleted = await _userEmailService.DeleteEmailAsync(userId, emailId, ct);
+            if (deleted)
+            {
+                _cache.InvalidateNobodiesTeamEmails();
+                SetSuccess(_localizer["Profile_EmailDeleted"].Value);
+            }
+            else
+            {
+                SetError("This email is linked to a sign-in provider. Use Unlink instead.");
+            }
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Admin failed to delete email {EmailId} for user {UserId}", emailId, userId);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(AdminEmails), new { userId });
+    }
+
+    [HttpPost("{userId:guid}/Admin/Emails/SetVisibility")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AdminSetVisibility(
+        Guid userId, Guid emailId, ContactFieldVisibility? visibility, CancellationToken ct)
+    {
+        var authz = await _authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        try
+        {
+            await _userEmailService.SetVisibilityAsync(userId, emailId, visibility, ct);
+            SetSuccess(_localizer["Profile_EmailVisibilityUpdated"].Value);
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Admin failed to set email visibility for email {EmailId} and user {UserId}", emailId, userId);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(AdminEmails), new { userId });
+    }
+
     [HttpGet("Me/Outbox")]
     public async Task<IActionResult> MyOutbox()
     {
