@@ -1698,5 +1698,10 @@ public class ProfileServiceTests : IDisposable
             string.Equals(s.SectionName, Humans.Application.Interfaces.Gdpr.GdprExportSections.UserEmails, StringComparison.Ordinal));
         var json = System.Text.Json.JsonSerializer.Serialize(userEmailsSlice.Data);
         json.Should().Contain("\"IsOAuth\":true");
+        // Legacy JSON key preserved for the C# IsPrimary rename (coding-rules.md
+        // never-rename-serialized-fields). Mirrors EF's HasColumnName pin on the
+        // renamed property — the GDPR export must keep emitting "IsNotificationTarget".
+        json.Should().Contain("\"IsNotificationTarget\":true");
+        json.Should().NotContain("\"IsPrimary\":");
     }
 }

@@ -1878,6 +1878,7 @@
   <data name="EmailGrid_UnlinkSuccess" xml:space="preserve"><value>Fournisseur de connexion dissocié.</value></data>
   <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve"><value>Cet e-mail est lié à un fournisseur de connexion. Utilisez Dissocier à la place.</value></data>
   <data name="EmailGrid_AdminAddSentVerification" xml:space="preserve"><value>E-mail de vérification envoyé à l'utilisateur.</value></data>
+  <data name="EmailGrid_LinkFailed" xml:space="preserve"><value>Nous n'avons pas pu associer ce compte Google. Veuillez réessayer.</value></data>
   <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>Gérer les e-mails</value></data>
 
 </root>

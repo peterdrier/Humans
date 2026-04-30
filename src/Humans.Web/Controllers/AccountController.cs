@@ -1,6 +1,8 @@
 using System.Security.Claims;
+using Humans.Web.Constants;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -19,6 +21,7 @@ public class AccountController : Controller
     private readonly IUserEmailService _userEmailService;
     private readonly IMagicLinkService _magicLinkService;
     private readonly IAuditLogService _auditLogService;
+    private readonly IStringLocalizer<SharedResource> _localizer;
 
     public AccountController(
         SignInManager<User> signInManager,
@@ -27,7 +30,8 @@ public class AccountController : Controller
         ILogger<AccountController> logger,
         IUserEmailService userEmailService,
         IMagicLinkService magicLinkService,
-        IAuditLogService auditLogService)
+        IAuditLogService auditLogService,
+        IStringLocalizer<SharedResource> localizer)
     {
         _signInManager = signInManager;
         _userManager = userManager;
@@ -36,6 +40,7 @@ public class AccountController : Controller
         _userEmailService = userEmailService;
         _magicLinkService = magicLinkService;
         _auditLogService = auditLogService;
+        _localizer = localizer;
     }
 
     [HttpGet]
@@ -149,6 +154,15 @@ public class AccountController : Controller
                     "Failed to link {Provider} to authenticated user {UserId}: {Errors}",
                     info.LoginProvider, currentUser.Id,
                     string.Join(", ", addLinkResult.Errors.Select(e => e.Description)));
+
+                // AddLoginAsync failed for an already-authenticated user. Do NOT
+                // fall through to the lockedout / email-match / create-new-user
+                // branches below — those exist for the unauthenticated flow and
+                // can produce a duplicate User row when the caller is already
+                // signed in. Surface the failure as an error toast on the emails
+                // page instead.
+                TempData[TempDataKeys.ErrorMessage] = _localizer["EmailGrid_LinkFailed"].Value;
+                return LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl! : "/Profile/Me/Emails");
             }
         }
 

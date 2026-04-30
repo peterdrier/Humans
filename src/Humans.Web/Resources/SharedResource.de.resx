@@ -1878,6 +1878,7 @@
   <data name="EmailGrid_UnlinkSuccess" xml:space="preserve"><value>Anmeldeanbieter getrennt.</value></data>
   <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve"><value>Diese E-Mail ist mit einem Anmeldeanbieter verknüpft. Verwende stattdessen Trennen.</value></data>
   <data name="EmailGrid_AdminAddSentVerification" xml:space="preserve"><value>Bestätigungs-E-Mail an den Benutzer gesendet.</value></data>
+  <data name="EmailGrid_LinkFailed" xml:space="preserve"><value>Dieses Google-Konto konnte nicht verknüpft werden. Bitte versuche es erneut.</value></data>
   <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>E-Mails verwalten</value></data>
 
 </root>

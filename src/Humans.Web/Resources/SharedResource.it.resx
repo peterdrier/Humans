@@ -1878,6 +1878,7 @@
   <data name="EmailGrid_UnlinkSuccess" xml:space="preserve"><value>Provider di accesso scollegato.</value></data>
   <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve"><value>Questa email è collegata a un provider di accesso. Usa Scollega invece.</value></data>
   <data name="EmailGrid_AdminAddSentVerification" xml:space="preserve"><value>Email di verifica inviata all'utente.</value></data>
+  <data name="EmailGrid_LinkFailed" xml:space="preserve"><value>Non siamo riusciti a collegare questo account Google. Riprova.</value></data>
   <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>Gestisci email</value></data>
 
 </root>

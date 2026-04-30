@@ -1904,6 +1904,7 @@
   <data name="EmailGrid_UnlinkSuccess" xml:space="preserve"><value>Proveedor de inicio de sesión desvinculado.</value></data>
   <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve"><value>Este correo está vinculado a un proveedor de inicio de sesión. Usa Desvincular en su lugar.</value></data>
   <data name="EmailGrid_AdminAddSentVerification" xml:space="preserve"><value>Correo de verificación enviado al usuario.</value></data>
+  <data name="EmailGrid_LinkFailed" xml:space="preserve"><value>No hemos podido vincular esta cuenta de Google. Inténtalo de nuevo.</value></data>
   <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>Gestionar correos</value></data>
 
 </root>

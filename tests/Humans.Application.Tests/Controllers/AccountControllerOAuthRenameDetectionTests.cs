@@ -13,6 +13,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using SignInResult = Microsoft.AspNetCore.Identity.SignInResult;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -31,6 +33,8 @@ public class AccountControllerOAuthRenameDetectionTests
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IMagicLinkService _magicLinkService = Substitute.For<IMagicLinkService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
+    private readonly IStringLocalizer<Humans.Web.SharedResource> _localizer =
+        Substitute.For<IStringLocalizer<Humans.Web.SharedResource>>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 30, 12, 0));
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
@@ -56,6 +60,11 @@ public class AccountControllerOAuthRenameDetectionTests
             _userManager, contextAccessor, claimsFactory, identityOptions,
             NullLogger<SignInManager<User>>.Instance, schemeProvider, userConfirmation);
 
+        // Localizer returns the key as the value so tests can match without
+        // pulling in the resx (consistent with other controller unit tests).
+        _localizer[Arg.Any<string>()].Returns(ci =>
+            new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
+
         _controller = new AccountController(
             _signInManager,
             _userManager,
@@ -63,10 +72,18 @@ public class AccountControllerOAuthRenameDetectionTests
             NullLogger<AccountController>.Instance,
             _userEmailService,
             _magicLinkService,
-            _auditLogService);
+            _auditLogService,
+            _localizer);
         _controller.Url = Substitute.For<IUrlHelper>();
         _controller.Url.IsLocalUrl(Arg.Any<string?>()).Returns(false);
         _controller.Url.Content(Arg.Any<string>()).Returns(ci => ci.Arg<string>());
+
+        // TempData backing store for the controller — needed by tests that
+        // assert TempData[ErrorMessage] is set on the link-failed branch.
+        var tempDataProvider = Substitute.For<ITempDataProvider>();
+        var tempDataDictionaryFactory = new TempDataDictionaryFactory(tempDataProvider);
+        _controller.TempData = tempDataDictionaryFactory.GetTempData(
+            new DefaultHttpContext());
 
         // Default to an unauthenticated HttpContext so the link-while-signed-in
         // branch in ExternalLoginCallback skips. Tests that exercise the
@@ -324,5 +341,64 @@ public class AccountControllerOAuthRenameDetectionTests
             newEmail,
             currentUserId,
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ExternalLoginCallback_AlreadyAuthenticated_AddLoginFails_DoesNotFallthrough()
+    {
+        // User is signed in. AddLoginAsync fails (e.g. the OAuth login is already
+        // attached to a different user, or transient EF error). The callback must
+        // NOT fall through to the lockedout / email-match / create-new-user
+        // branches that exist for the unauthenticated flow — that path can mint
+        // a duplicate User row when the caller is already authenticated.
+        var currentUserId = Guid.NewGuid();
+        var newEmail = "secondary@google.test";
+        var info = MakeInfo(newEmail);
+
+        _signInManager.GetExternalLoginInfoAsync().Returns(info);
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, false, true)
+            .Returns(SignInResult.Failed);
+
+        var identity = new ClaimsIdentity(new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, currentUserId.ToString()),
+        }, authenticationType: "TestAuth");
+        var principal = new ClaimsPrincipal(identity);
+        var httpContext = new DefaultHttpContext { User = principal };
+        _controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+
+        // Re-attach TempData to the new ControllerContext.
+        var tempDataProvider = Substitute.For<ITempDataProvider>();
+        _controller.TempData = new TempDataDictionaryFactory(tempDataProvider)
+            .GetTempData(httpContext);
+
+        var currentUser = new User { Id = currentUserId };
+        _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(currentUser);
+        _userManager.AddLoginAsync(currentUser, Arg.Any<UserLoginInfo>())
+            .Returns(IdentityResult.Failed(new IdentityError { Code = "LoginAlreadyAssociated", Description = "x" }));
+
+        // Url helper for redirect target.
+        _controller.Url.IsLocalUrl(Arg.Any<string?>()).Returns(false);
+
+        var result = await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
+
+        // Did not fall through to create-new-user.
+        await _userManager.DidNotReceive().CreateAsync(Arg.Any<User>());
+        // Did not fall through to email-match link branch on the unauthenticated path.
+        await _magicLinkService.DidNotReceive().FindUserByVerifiedEmailAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+        // Did not invoke LinkAsync since AddLoginAsync failed.
+        await _userEmailService.DidNotReceive().LinkAsync(
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+
+        // Surfaced the failure as an error redirect to the emails page with the
+        // localized error toast in TempData.
+        result.Should().BeOfType<LocalRedirectResult>();
+        var redirect = (LocalRedirectResult)result;
+        redirect.Url.Should().Be("/Profile/Me/Emails");
+        _controller.TempData.Should().ContainKey(Humans.Web.Constants.TempDataKeys.ErrorMessage);
+        _controller.TempData[Humans.Web.Constants.TempDataKeys.ErrorMessage]
+            .Should().Be("EmailGrid_LinkFailed");
     }
 }

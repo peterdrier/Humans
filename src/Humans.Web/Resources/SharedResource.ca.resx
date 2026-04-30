@@ -1880,6 +1880,7 @@
   <data name="EmailGrid_UnlinkSuccess" xml:space="preserve"><value>Proveïdor d'inici de sessió desvinculat.</value></data>
   <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve"><value>Aquest correu està vinculat a un proveïdor d'inici de sessió. Fes servir Desvincula en lloc seu.</value></data>
   <data name="EmailGrid_AdminAddSentVerification" xml:space="preserve"><value>Correu de verificació enviat a l'usuari.</value></data>
+  <data name="EmailGrid_LinkFailed" xml:space="preserve"><value>No hem pogut vincular aquest compte de Google. Torna-ho a provar.</value></data>
   <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>Gestiona correus</value></data>
 
 </root>
