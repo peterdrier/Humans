@@ -51,7 +51,7 @@ namespace Humans.Infrastructure.Migrations
                         column: x => x.ReporterUserId,
                         principalTable: "users",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_issues_users_ResolvedByUserId",
                         column: x => x.ResolvedByUserId,

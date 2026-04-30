@@ -149,7 +149,7 @@ Two controllers serve this section:
 - When an issue is assigned, the new assignee is notified.
 - When a reporter comments on a terminal issue, the issue is auto-reopened to `Open` and an audit row records the implicit status change with actor = the reporter.
 - When the actionable count for a viewer could have changed (issue created, status changed, comment posted, section changed, assignee changed), the nav-badge cache is invalidated via `INavBadgeCacheInvalidator`.
-- When a user is purged via `IAccountDeletionService.PurgeAsync`, their reported issues cascade-delete (FK Cascade), and their assignee/resolved-by FKs on remaining issues set to null. Their comments set the `SenderUserId` to null but keep the row.
+- When a user is purged via `IAccountDeletionService.PurgeAsync`, the User row is **anonymized in place** (display name + email replaced with sentinels) — the row itself stays, so issues they reported persist with their FKs intact and continue to render under the anonymized name. The `Reporter` FK uses `Restrict` (not `Cascade`) so a stray `db.Users.Remove(user)` would be rejected by the DB rather than silently wiping every issue. Assignee / resolved-by FKs on issues where the deleted-user was acting in those roles set to null. Their comments set `SenderUserId` to null but keep the row.
 
 ## Cross-Section Dependencies
 

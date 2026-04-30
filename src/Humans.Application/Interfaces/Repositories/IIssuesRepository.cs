@@ -19,8 +19,6 @@ public interface IIssuesRepository
         Guid? reporterFallback,
         CancellationToken ct = default);
 
-    Task<IReadOnlyList<IssueComment>> GetCommentsAsync(Guid issueId, CancellationToken ct = default);
-
     Task SaveTrackedIssueAsync(Issue issue, CancellationToken ct = default);
 
     Task AddCommentAndSaveIssueAsync(IssueComment comment, Issue issue, CancellationToken ct = default);

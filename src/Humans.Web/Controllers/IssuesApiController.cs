@@ -198,9 +198,14 @@ public class IssuesApiController : ControllerBase
             await _issues.UpdateSectionAsync(id, model.Section, actorUserId: null);
             return Ok(new { success = true });
         }
-        catch (InvalidOperationException)
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
         {
             return NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            // State-machine violation (e.g. issue is terminal) — surface as 422.
+            return UnprocessableEntity(new { error = ex.Message });
         }
         catch (Exception ex)
         {
