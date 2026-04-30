@@ -297,7 +297,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<bool> RewriteOAuthEmailAsync(
+    public async Task<bool> RewriteLinkedEmailAsync(
         Guid userId, string newEmail, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

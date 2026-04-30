@@ -191,7 +191,7 @@ public interface IUserEmailRepository
     /// email-backfill workflow. Returns true when a row was updated. No-op if the
     /// user has no OAuth email row.
     /// </summary>
-    Task<bool> RewriteOAuthEmailAsync(Guid userId, string newEmail, CancellationToken ct = default);
+    Task<bool> RewriteLinkedEmailAsync(Guid userId, string newEmail, CancellationToken ct = default);
 
     /// <summary>
     /// Rewrites the <c>Email</c> of the user's existing <see cref="UserEmail"/> row

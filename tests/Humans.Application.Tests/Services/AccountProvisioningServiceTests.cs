@@ -298,7 +298,7 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<bool> AnyWithEmailAsync(string email, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<bool> RewriteOAuthEmailAsync(Guid userId, string newEmail, CancellationToken ct = default) =>
+        public Task<bool> RewriteLinkedEmailAsync(Guid userId, string newEmail, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<bool> RewriteEmailAddressAsync(
             Guid userId, string oldEmail, string newEmail, Instant now, CancellationToken ct = default) =>

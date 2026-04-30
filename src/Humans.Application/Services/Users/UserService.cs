@@ -191,7 +191,7 @@ public sealed class UserService : IUserService, IUserDataContributor
 
         // Keep the OAuth UserEmail row in lock-step so login against the new
         // provider email continues to succeed (no-op if none exists).
-        await _userEmailRepo.RewriteOAuthEmailAsync(userId, newEmail, ct);
+        await _userEmailRepo.RewriteLinkedEmailAsync(userId, newEmail, ct);
         await _fullProfileInvalidator.InvalidateAsync(userId, ct);
         return (true, oldEmail);
     }
