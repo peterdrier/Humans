@@ -114,9 +114,11 @@ public class StoreController : HumansControllerBase
         var season = await _campService.GetCampSeasonByIdAsync(campSeasonId, ct);
         if (season is null) return NotFound();
 
-        var isPrivileged = User.IsInRole(RoleNames.Admin) || User.IsInRole(RoleNames.FinanceAdmin);
-        if (!isPrivileged && !await _campService.IsUserCampLeadAsync(user.Id, season.CampId, ct))
-            return Forbid();
+        var auth = await _authService.AuthorizeAsync(
+            User,
+            new StoreOrderCreateContext(campSeasonId),
+            StoreOrderOperationRequirement.Create);
+        if (!auth.Succeeded) return Forbid();
 
         var newId = await _storeService.CreateOrderAsync(campSeasonId, label, user.Id, ct);
         SetSuccess("Order created.");
