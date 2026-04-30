@@ -9,9 +9,8 @@ using Xunit;
 
 namespace Humans.Application.Tests.Repositories;
 
-public sealed class StoreRepositoryTests : IDisposable
+public sealed class StoreRepositoryTests
 {
-    private readonly HumansDbContext _dbContext;
     private readonly StoreRepository _repo;
 
     public StoreRepositoryTests()
@@ -19,14 +18,7 @@ public sealed class StoreRepositoryTests : IDisposable
         var options = new DbContextOptionsBuilder<HumansDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _dbContext = new HumansDbContext(options);
         _repo = new StoreRepository(new TestDbContextFactory(options));
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact]
