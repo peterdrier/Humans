@@ -267,23 +267,31 @@ public interface IUserEmailService
     /// linking a UserEmail to its OAuth identity (PR 3 of the
     /// email-identity-decoupling spec). Throws
     /// <see cref="System.ComponentModel.DataAnnotations.ValidationException"/>
-    /// when the target row does not exist.
+    /// when the target row does not exist or does not belong to the given
+    /// <paramref name="userId"/>.
     /// </summary>
     Task SetProviderAsync(
-        Guid userEmailId, string provider, string providerKey,
+        Guid userId, Guid userEmailId, string provider, string providerKey,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Looks up the <see cref="UserEmail"/> row tagged with
+    /// Looks up the UserEmail row tagged with
     /// <paramref name="provider"/> / <paramref name="providerKey"/>. Returns
     /// <c>null</c> when no row matches. Used by the OAuth callback's rename
-    /// detection to compare the row's <see cref="UserEmail.Email"/> against the
-    /// incoming claim email and update the row when they diverge.
+    /// detection to compare the row's email against the incoming claim email
+    /// and update the row when they diverge.
     /// </summary>
-    Task<UserEmail?> FindByProviderKeyAsync(
+    Task<UserEmailProviderMatch?> FindByProviderKeyAsync(
         string provider, string providerKey,
         CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// Narrow projection of a UserEmail row matched by (Provider, ProviderKey).
+/// Returned from <see cref="IUserEmailService.FindByProviderKeyAsync"/> so the
+/// service interface does not leak the Domain entity into Web-layer callers.
+/// </summary>
+public record UserEmailProviderMatch(Guid Id, Guid UserId, string Email);
 
 /// <summary>
 /// Narrow projection describing a <see cref="Domain.Entities.UserEmail"/>

@@ -307,35 +307,35 @@ public class AccountController : Controller
     {
         try
         {
-            var row = await _userEmailService.FindByProviderKeyAsync(
+            var match = await _userEmailService.FindByProviderKeyAsync(
                 info.LoginProvider, info.ProviderKey);
-            if (row is null)
+            if (match is null)
                 return;
 
             var claimEmail = info.Principal.FindFirstValue(ClaimTypes.Email);
             if (string.IsNullOrEmpty(claimEmail))
                 return;
 
-            if (string.Equals(row.Email, claimEmail, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(match.Email, claimEmail, StringComparison.OrdinalIgnoreCase))
                 return;
 
-            var oldEmail = row.Email;
-            await _userEmailService.RewriteEmailAddressAsync(row.UserId, oldEmail, claimEmail);
+            var oldEmail = match.Email;
+            await _userEmailService.RewriteEmailAddressAsync(match.UserId, oldEmail, claimEmail);
 
             try
             {
                 await _auditLogService.LogAsync(
                     AuditAction.GoogleEmailRenamed,
-                    nameof(User), row.UserId,
+                    nameof(User), match.UserId,
                     $"email rename detected: {oldEmail} -> {claimEmail}, sub={info.ProviderKey}",
                     nameof(AccountController),
-                    relatedEntityId: row.Id, relatedEntityType: nameof(UserEmail));
+                    relatedEntityId: match.Id, relatedEntityType: nameof(UserEmail));
             }
             catch (Exception auditEx)
             {
                 _logger.LogError(auditEx,
                     "OAuth rename: audit log failed for user {UserId} ({OldEmail} -> {NewEmail})",
-                    row.UserId, oldEmail, claimEmail);
+                    match.UserId, oldEmail, claimEmail);
             }
         }
         catch (Exception ex)
@@ -361,7 +361,7 @@ public class AccountController : Controller
                 return;
             }
 
-            await _userEmailService.SetProviderAsync(match.Id, info.LoginProvider, info.ProviderKey);
+            await _userEmailService.SetProviderAsync(userId, match.Id, info.LoginProvider, info.ProviderKey);
         }
         catch (Exception ex)
         {

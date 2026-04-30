@@ -573,11 +573,12 @@ public sealed class UserEmailService : IUserEmailService
 
     /// <inheritdoc />
     public async Task SetProviderAsync(
-        Guid userEmailId, string provider, string providerKey,
+        Guid userId, Guid userEmailId, string provider, string providerKey,
         CancellationToken cancellationToken = default)
     {
-        var target = await _repository.GetByIdReadOnlyAsync(userEmailId, cancellationToken)
-            ?? throw new ValidationException($"UserEmail row {userEmailId} not found.");
+        var target = await _repository.GetByIdAndUserIdAsync(userEmailId, userId, cancellationToken)
+            ?? throw new ValidationException(
+                $"UserEmail row {userEmailId} not found for user {userId}.");
 
         var existing = await _repository.FindAllByProviderKeyAsync(
             provider, providerKey, cancellationToken);
@@ -602,7 +603,7 @@ public sealed class UserEmailService : IUserEmailService
     }
 
     /// <inheritdoc />
-    public async Task<UserEmail?> FindByProviderKeyAsync(
+    public async Task<UserEmailProviderMatch?> FindByProviderKeyAsync(
         string provider, string providerKey,
         CancellationToken cancellationToken = default)
     {
@@ -614,6 +615,8 @@ public sealed class UserEmailService : IUserEmailService
                 "FindByProviderKeyAsync: multiple rows matched provider={Provider} providerKey={ProviderKey} — single-row-per-pair invariant violated; returning first match {EmailId}.",
                 provider, providerKey, matches[0].Id);
         }
-        return matches.Count == 0 ? null : matches[0];
+        if (matches.Count == 0) return null;
+        var first = matches[0];
+        return new UserEmailProviderMatch(first.Id, first.UserId, first.Email);
     }
 }

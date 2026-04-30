@@ -766,18 +766,14 @@ public class ProfileController : HumansControllerBase
                 return RedirectToAction(nameof(Emails));
             }
 
-            // The PR 4 rewrite moves Google-identity selection onto the
-            // IsGoogle UserEmail flag. For now, route through the existing
-            // SetGoogleEmailAsync write so the legacy shadow column stays in
-            // sync until that rewrite ships.
-            var previousGoogleEmail = user.UserEmails
+            var existingEmails = await _userEmailService.GetUserEmailsAsync(user.Id);
+            var previousGoogleEmail = existingEmails
                 .Where(e => e.IsVerified && e.IsGoogle)
                 .Select(e => e.Email)
                 .FirstOrDefault();
 
             await _userService.SetGoogleEmailAsync(user.Id, emailAddress);
 
-            // If email changed, enqueue fresh sync events for all current team memberships
             if (!string.Equals(previousGoogleEmail ?? user.Email, emailAddress, StringComparison.OrdinalIgnoreCase))
             {
                 await _teamService.EnqueueGoogleResyncForUserTeamsAsync(user.Id);

@@ -110,7 +110,7 @@ public class AccountControllerOAuthRenameDetectionTests
             UpdatedAt = _clock.GetCurrentInstant()
         };
         _userEmailService.FindByProviderKeyAsync(Provider, ProviderKey, Arg.Any<CancellationToken>())
-            .Returns(existingRow);
+            .Returns(new UserEmailProviderMatch(existingRow.Id, existingRow.UserId, existingRow.Email));
 
         var result = await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
@@ -153,7 +153,7 @@ public class AccountControllerOAuthRenameDetectionTests
             UpdatedAt = _clock.GetCurrentInstant()
         };
         _userEmailService.FindByProviderKeyAsync(Provider, ProviderKey, Arg.Any<CancellationToken>())
-            .Returns(existingRow);
+            .Returns(new UserEmailProviderMatch(existingRow.Id, existingRow.UserId, existingRow.Email));
 
         await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
@@ -192,7 +192,7 @@ public class AccountControllerOAuthRenameDetectionTests
             UpdatedAt = _clock.GetCurrentInstant()
         };
         _userEmailService.FindByProviderKeyAsync(Provider, ProviderKey, Arg.Any<CancellationToken>())
-            .Returns(existingRow);
+            .Returns(new UserEmailProviderMatch(existingRow.Id, existingRow.UserId, existingRow.Email));
 
         await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
@@ -241,6 +241,7 @@ public class AccountControllerOAuthRenameDetectionTests
         await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
         await _userEmailService.Received(1).SetProviderAsync(
+            Arg.Is<Guid>(id => id == createdUserId),
             newRowId, Provider, ProviderKey, Arg.Any<CancellationToken>());
     }
 
@@ -283,6 +284,6 @@ public class AccountControllerOAuthRenameDetectionTests
         await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
         await _userEmailService.Received(1).SetProviderAsync(
-            existingRowId, Provider, ProviderKey, Arg.Any<CancellationToken>());
+            existingUserId, existingRowId, Provider, ProviderKey, Arg.Any<CancellationToken>());
     }
 }

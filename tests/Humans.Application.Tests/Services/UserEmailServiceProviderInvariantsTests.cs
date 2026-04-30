@@ -54,20 +54,21 @@ public class UserEmailServiceProviderInvariantsTests
     [HumansFact]
     public async Task SetProviderAsync_SetsPairOnTargetRow()
     {
+        var userId = Guid.NewGuid();
         var rowId = Guid.NewGuid();
         var row = new UserEmail
         {
             Id = rowId,
-            UserId = Guid.NewGuid(),
+            UserId = userId,
             Email = "user@example.com",
             IsVerified = true,
         };
-        _repository.GetByIdReadOnlyAsync(rowId, Arg.Any<CancellationToken>())
+        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
         _repository.FindAllByProviderKeyAsync("Google", "sub-A", Arg.Any<CancellationToken>())
             .Returns(Array.Empty<UserEmail>());
 
-        await _service.SetProviderAsync(rowId, "Google", "sub-A");
+        await _service.SetProviderAsync(userId, rowId, "Google", "sub-A");
 
         row.Provider.Should().Be("Google");
         row.ProviderKey.Should().Be("sub-A");
@@ -80,12 +81,13 @@ public class UserEmailServiceProviderInvariantsTests
     [HumansFact]
     public async Task SetProviderAsync_ClearsProviderOnConflictingRow()
     {
+        var userId = Guid.NewGuid();
         var rowAId = Guid.NewGuid();
         var rowBId = Guid.NewGuid();
         var rowA = new UserEmail
         {
             Id = rowAId,
-            UserId = Guid.NewGuid(),
+            UserId = userId,
             Email = "old@example.com",
             IsVerified = true,
             Provider = "Google",
@@ -94,16 +96,16 @@ public class UserEmailServiceProviderInvariantsTests
         var rowB = new UserEmail
         {
             Id = rowBId,
-            UserId = Guid.NewGuid(),
+            UserId = userId,
             Email = "new@example.com",
             IsVerified = true,
         };
-        _repository.GetByIdReadOnlyAsync(rowBId, Arg.Any<CancellationToken>())
+        _repository.GetByIdAndUserIdAsync(rowBId, userId, Arg.Any<CancellationToken>())
             .Returns(rowB);
         _repository.FindAllByProviderKeyAsync("Google", "sub-A", Arg.Any<CancellationToken>())
             .Returns(new[] { rowA });
 
-        await _service.SetProviderAsync(rowBId, "Google", "sub-A");
+        await _service.SetProviderAsync(userId, rowBId, "Google", "sub-A");
 
         rowA.Provider.Should().BeNull();
         rowA.ProviderKey.Should().BeNull();
@@ -120,11 +122,12 @@ public class UserEmailServiceProviderInvariantsTests
     [HumansFact]
     public async Task SetProviderAsync_OnNonexistentRow_Throws()
     {
+        var userId = Guid.NewGuid();
         var missingId = Guid.NewGuid();
-        _repository.GetByIdReadOnlyAsync(missingId, Arg.Any<CancellationToken>())
+        _repository.GetByIdAndUserIdAsync(missingId, userId, Arg.Any<CancellationToken>())
             .Returns((UserEmail?)null);
 
-        var act = async () => await _service.SetProviderAsync(missingId, "Google", "sub-X");
+        var act = async () => await _service.SetProviderAsync(userId, missingId, "Google", "sub-X");
 
         await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
         await _repository.DidNotReceive().UpdateBatchAsync(
@@ -148,7 +151,10 @@ public class UserEmailServiceProviderInvariantsTests
 
         var result = await _service.FindByProviderKeyAsync("Google", "sub-X");
 
-        result.Should().BeSameAs(row);
+        result.Should().NotBeNull();
+        result!.Id.Should().Be(row.Id);
+        result.UserId.Should().Be(row.UserId);
+        result.Email.Should().Be(row.Email);
     }
 
     [HumansFact]
