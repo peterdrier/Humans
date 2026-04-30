@@ -65,18 +65,19 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Deletes a UserEmail row. Blocks the delete only if removing it would
-    /// leave the user with zero verified UserEmail rows AND zero AspNetUserLogins
-    /// rows (the "preserve at least one auth method" invariant). The OAuth-tied
-    /// row (rows with non-null <see cref="UserEmail.Provider"/>) is now
-    /// deletable as long as another auth method remains — the
-    /// <c>AspNetUserLogins</c> row is independent of the UserEmail row, so
-    /// OAuth sign-in continues to work after the delete. Unverified rows are
-    /// always deletable since they can't be used for sign-in. See
+    /// Deletes a UserEmail row. Returns <c>true</c> when the row was removed,
+    /// <c>false</c> when the precondition rejected the delete (currently:
+    /// rows with a non-empty <see cref="UserEmail.Provider"/> must go through
+    /// <see cref="UnlinkAsync"/>, which removes the AspNetUserLogins row and
+    /// the UserEmail row in one step). Blocks the delete (throws
+    /// <see cref="System.ComponentModel.DataAnnotations.ValidationException"/>)
+    /// when removing a verified row would leave the user with zero verified
+    /// UserEmail rows. Unverified rows are always deletable since they can't
+    /// be used for sign-in. See
     /// <c>docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md</c>
-    /// PR 1 for the design rationale.
+    /// PRs 1 and 4 for the design rationale.
     /// </summary>
-    Task DeleteEmailAsync(
+    Task<bool> DeleteEmailAsync(
         Guid userId,
         Guid emailId,
         CancellationToken cancellationToken = default);

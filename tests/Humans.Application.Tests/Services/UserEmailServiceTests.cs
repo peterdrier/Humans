@@ -139,49 +139,32 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task DeleteEmailAsync_OAuthFlaggedRowWithOtherAuthMethods_DeletesSuccessfully()
+    public async Task DeleteEmailAsync_RejectsProviderAttachedRow()
     {
-        // Replaces the old "IsOAuth blocks delete" rule. Under PR 1's
-        // preserve-auth-method invariant, the OAuth-flagged UserEmail row IS
-        // deletable as long as another auth method remains (here: a second
-        // verified UserEmail). The AspNetUserLogins row is independent of the
-        // UserEmail row so OAuth sign-in still works after the delete.
+        // PR 4 service-level guard: Provider-attached rows MUST go through
+        // UnlinkAsync (which removes both the AspNetUserLogins row and the
+        // UserEmail row). The per-row UI never routes a Provider-attached row
+        // to Delete; this test pins the service-level guard for non-UI callers.
         var userId = Guid.NewGuid();
-        var oauthRowId = Guid.NewGuid();
-        var secondaryId = Guid.NewGuid();
-        var oauthRow = new UserEmail
+        var providerRowId = Guid.NewGuid();
+        var providerRow = new UserEmail
         {
-            Id = oauthRowId,
+            Id = providerRowId,
             UserId = userId,
             Email = "google@example.com",
             Provider = "Google",
-            ProviderKey = "test-oauth",
-            IsVerified = true,
-            IsPrimary = true,
-        };
-        var secondary = new UserEmail
-        {
-            Id = secondaryId,
-            UserId = userId,
-            Email = "personal@example.com",
+            ProviderKey = "sub-Z",
             IsVerified = true,
             IsPrimary = false,
         };
-        _repository.GetByIdAndUserIdAsync(oauthRowId, userId, Arg.Any<CancellationToken>())
-            .Returns(oauthRow);
-        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<UserEmail> { oauthRow, secondary });
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = userId });
-        _userManager.GetLoginsAsync(Arg.Any<User>())
-            .Returns(new List<UserLoginInfo>());
+        _repository.GetByIdAndUserIdAsync(providerRowId, userId, Arg.Any<CancellationToken>())
+            .Returns(providerRow);
 
-        await _service.DeleteEmailAsync(userId, oauthRowId);
+        var result = await _service.DeleteEmailAsync(userId, providerRowId);
 
-        await _repository.Received(1).RemoveAsync(oauthRow, Arg.Any<CancellationToken>());
-        // Notification-target hand-off — successor should now be flagged.
-        secondary.IsPrimary.Should().BeTrue();
-        await _fullProfileInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>());
+        result.Should().BeFalse();
+        await _repository.DidNotReceive().RemoveAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _fullProfileInvalidator.DidNotReceive().InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

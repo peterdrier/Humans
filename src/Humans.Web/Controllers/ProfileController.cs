@@ -726,9 +726,17 @@ public class ProfileController : HumansControllerBase
 
         try
         {
-            await _userEmailService.DeleteEmailAsync(user.Id, emailId);
-            _cache.InvalidateNobodiesTeamEmails();
-            SetSuccess(_localizer["Profile_EmailDeleted"].Value);
+            var deleted = await _userEmailService.DeleteEmailAsync(user.Id, emailId);
+            if (deleted)
+            {
+                _cache.InvalidateNobodiesTeamEmails();
+                SetSuccess(_localizer["Profile_EmailDeleted"].Value);
+            }
+            else
+            {
+                // Provider-attached rows must go through Unlink, not Delete.
+                SetError("This email is linked to a sign-in provider. Use Unlink instead.");
+            }
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {

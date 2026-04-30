@@ -252,11 +252,20 @@ public sealed class UserEmailService : IUserEmailService
         await _repository.UpdateAsync(email, cancellationToken);
     }
 
-    public async Task DeleteEmailAsync(
+    public async Task<bool> DeleteEmailAsync(
         Guid userId, Guid emailId, CancellationToken cancellationToken = default)
     {
         var email = await _repository.GetByIdAndUserIdAsync(emailId, userId, cancellationToken)
             ?? throw new InvalidOperationException("Email not found.");
+
+        if (!string.IsNullOrEmpty(email.Provider))
+        {
+            // Provider-attached rows go through UnlinkAsync (which removes the
+            // AspNetUserLogins row and the email row). The per-row UI never
+            // routes a Provider-attached row to Delete; this is the service-level
+            // guard for non-UI callers.
+            return false;
+        }
 
         // Preserve-at-least-one-verified-email invariant — replaces the old
         // IsOAuth-based block per email-identity-decoupling spec PR 1
@@ -310,6 +319,8 @@ public sealed class UserEmailService : IUserEmailService
         // FullProfile.NotificationEmail derives from user_emails; drop the stale entry so
         // admin/search/profile surfaces stop showing the removed address.
         await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+
+        return true;
     }
 
     public Task RemoveAllEmailsAsync(
