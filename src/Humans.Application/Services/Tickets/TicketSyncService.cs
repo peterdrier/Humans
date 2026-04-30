@@ -226,9 +226,10 @@ public sealed class TicketSyncService : ITicketSyncService
 
     private async Task<Dictionary<string, Guid>> BuildEmailLookupAsync(CancellationToken ct)
     {
-        // Match against ALL user emails (OAuth, verified, unverified).
+        // Match against ALL user emails (Google, verified, unverified).
         // Normalize for comparison so gmail/googlemail aliases resolve to the same human.
-        // If multiple users share same email, prefer the one where it's the OAuth email.
+        // If multiple users share same email, prefer the canonical Workspace
+        // (IsGoogle) row so ticket-checkout matches the Google identity.
         var entries = await _ticketRepository.GetAllUserEmailLookupEntriesAsync(ct);
 
         var lookup = new Dictionary<string, Guid>(NormalizingEmailComparer.Instance);
@@ -244,16 +245,16 @@ public sealed class TicketSyncService : ITicketSyncService
             }
             else
             {
-                // Multiple users share this email — prefer OAuth.
-                var oauthEntry = groupEntries.FirstOrDefault(e => e.IsOAuth);
-                if (oauthEntry is not null)
+                // Multiple users share this email — prefer the IsGoogle row.
+                var googleEntry = groupEntries.FirstOrDefault(e => e.IsGoogle);
+                if (googleEntry is not null)
                 {
-                    lookup[group.Key] = oauthEntry.UserId;
+                    lookup[group.Key] = googleEntry.UserId;
                 }
                 else
                 {
                     _logger.LogWarning(
-                        "Email {Email} shared by {Count} users with no OAuth owner, leaving unmatched",
+                        "Email {Email} shared by {Count} users with no IsGoogle owner, leaving unmatched",
                         group.Key, distinctUserIds.Count);
                 }
             }

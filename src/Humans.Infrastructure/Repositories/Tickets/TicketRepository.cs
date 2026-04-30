@@ -73,7 +73,7 @@ public sealed class TicketRepository : ITicketRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Set<UserEmail>()
             .AsNoTracking()
-            .Select(ue => new UserEmailLookupEntry(ue.Email, ue.UserId, ue.IsOAuth))
+            .Select(ue => new UserEmailLookupEntry(ue.Email, ue.UserId, ue.IsGoogle))
             .ToListAsync(ct);
     }
 

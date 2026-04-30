@@ -501,13 +501,30 @@ public sealed class GoogleAdminService : IGoogleAdminService
     {
         try
         {
-            // Load all users, then filter to those with a @nobodies.team GoogleEmail.
+            // Load all users (UserEmails included by GetAllUsersAsync), then
+            // filter to those whose canonical IsGoogle Workspace identity is
+            // a @nobodies.team address.
             var allUsers = await _userService.GetAllUsersAsync(ct);
 
             var nobodiesUsers = allUsers
-                .Where(u => u.GoogleEmail is not null &&
-                    u.GoogleEmail.EndsWith($"@{NobodiesTeamDomain}", StringComparison.OrdinalIgnoreCase))
-                .Select(u => new { u.Id, u.DisplayName, u.GoogleEmail })
+                .Select(u => new
+                {
+                    u.Id,
+                    u.DisplayName,
+                    // Resolve the canonical Workspace identity for this user.
+                    // Was: u.GoogleEmail
+                    GoogleEmail = u.UserEmails
+                        .Where(e => e.IsVerified && e.IsGoogle)
+                        .Select(e => e.Email)
+                        .FirstOrDefault()
+                        ?? u.UserEmails
+                            .Where(e => e.IsVerified && e.Provider != null)
+                            .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
+                            .Select(e => e.Email)
+                            .FirstOrDefault()
+                })
+                .Where(x => x.GoogleEmail is not null &&
+                    x.GoogleEmail.EndsWith($"@{NobodiesTeamDomain}", StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
             // Load resource counts per team for affected resource calculation
@@ -589,13 +606,25 @@ public sealed class GoogleAdminService : IGoogleAdminService
     {
         try
         {
-            var user = await _userService.GetByIdAsync(userId, ct);
-            if (user is null)
+            // GetByIdsWithEmailsAsync so the canonical IsGoogle UserEmail row
+            // resolves below — singular GetByIdAsync does not load UserEmails.
+            var usersById = await _userService.GetByIdsWithEmailsAsync([userId], ct);
+            if (!usersById.TryGetValue(userId, out var user))
             {
                 return new EmailRenameFixResult(false, ErrorMessage: "Human not found.");
             }
 
-            var oldEmail = user.GoogleEmail;
+            // Resolve the canonical Workspace identity for this user.
+            // Was: user.GoogleEmail
+            var oldEmail = user.UserEmails
+                .Where(e => e.IsVerified && e.IsGoogle)
+                .Select(e => e.Email)
+                .FirstOrDefault()
+                ?? user.UserEmails
+                    .Where(e => e.IsVerified && e.Provider != null)
+                    .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
+                    .Select(e => e.Email)
+                    .FirstOrDefault();
             if (string.IsNullOrEmpty(oldEmail))
             {
                 return new EmailRenameFixResult(false,

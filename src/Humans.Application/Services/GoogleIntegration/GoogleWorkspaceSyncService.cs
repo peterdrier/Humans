@@ -540,8 +540,22 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var user = await _userService.GetByIdAsync(userId, cancellationToken);
-        var googleEmail = user?.GetGoogleServiceEmail();
+        // GetByIdsWithEmailsAsync so the canonical IsGoogle UserEmail row
+        // resolves below — singular GetByIdAsync does not load UserEmails.
+        var usersById = await _userService.GetByIdsWithEmailsAsync([userId], cancellationToken);
+        usersById.TryGetValue(userId, out var user);
+
+        // Resolve the canonical Workspace identity for this user.
+        // Was: user.GetGoogleServiceEmail()
+        var googleEmail = user?.UserEmails
+            .Where(e => e.IsVerified && e.IsGoogle)
+            .Select(e => e.Email)
+            .FirstOrDefault()
+            ?? user?.UserEmails
+                .Where(e => e.IsVerified && e.Provider != null)
+                .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
+                .Select(e => e.Email)
+                .FirstOrDefault();
         if (googleEmail is null)
         {
             _logger.LogWarning("User {UserId} not found or has no email", userId);
@@ -554,9 +568,9 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             return;
         }
 
-        // When GoogleEmail differs from the OAuth email, the old email should be
-        // removed from Groups to prevent duplicate delivery (e.g. user got a new
-        // @nobodies.team address).
+        // When the Workspace identity differs from the OAuth email, the old
+        // email should be removed from Groups to prevent duplicate delivery
+        // (e.g. user got a new @nobodies.team address).
         var previousEmail = !string.Equals(googleEmail, user.Email, StringComparison.OrdinalIgnoreCase)
             ? user.Email
             : null;
@@ -2102,10 +2116,14 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     }
 
     /// <summary>
-    /// Gets the Google service email (GoogleEmail ?? Email) for a team member,
-    /// returning null when the user's <c>GoogleEmailStatus</c> is Rejected or
-    /// when the user has no email at all. Pulls User data from the
-    /// cross-domain nav that the Teams service stitches in-memory.
+    /// Gets the canonical Google Workspace email for a team member, returning
+    /// null when the user's <c>GoogleEmailStatus</c> is Rejected or when the
+    /// user has no Workspace identity at all. Resolves through the
+    /// <see cref="User.UserEmails"/> collection (the IsGoogle row, falling
+    /// back to any provider-tagged verified row), which is hydrated by
+    /// <c>TeamService.StitchMemberUserSlicesAsync</c> via
+    /// <see cref="IUserService.GetByIdsWithEmailsAsync"/>. Pulls User data
+    /// from the cross-domain nav that the Teams service stitches in-memory.
     /// </summary>
     private static string? TryGetGoogleEmail(TeamMember tm)
     {
@@ -2116,7 +2134,18 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             return null;
         if (user.GoogleEmailStatus == GoogleEmailStatus.Rejected)
             return null;
-        return user.GetGoogleServiceEmail();
+
+        // Resolve the canonical Workspace identity for this user.
+        // Was: user.GetGoogleServiceEmail()
+        return user.UserEmails
+            .Where(e => e.IsVerified && e.IsGoogle)
+            .Select(e => e.Email)
+            .FirstOrDefault()
+            ?? user.UserEmails
+                .Where(e => e.IsVerified && e.Provider != null)
+                .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
+                .Select(e => e.Email)
+                .FirstOrDefault();
     }
 
     private static string GetDisplayName(TeamMember tm)

@@ -159,6 +159,7 @@ public sealed class TicketRepositoryTests : IDisposable
             UserId = user.Id,
             Email = "primary@example.com",
             IsOAuth = true,
+            IsGoogle = true,
             IsVerified = true,
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant(),
@@ -169,6 +170,7 @@ public sealed class TicketRepositoryTests : IDisposable
             UserId = user.Id,
             Email = "alt@example.com",
             IsOAuth = false,
+            IsGoogle = false,
             IsVerified = false,
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant(),
@@ -178,8 +180,8 @@ public sealed class TicketRepositoryTests : IDisposable
         var entries = await _repo.GetAllUserEmailLookupEntriesAsync();
 
         entries.Should().HaveCount(2);
-        entries.Should().Contain(e => e.Email == "primary@example.com" && e.IsOAuth);
-        entries.Should().Contain(e => e.Email == "alt@example.com" && !e.IsOAuth);
+        entries.Should().Contain(e => e.Email == "primary@example.com" && e.IsGoogle);
+        entries.Should().Contain(e => e.Email == "alt@example.com" && !e.IsGoogle);
     }
 
     // ── GetMatchedAttendeesForEventAsync ─────────────────────────────────────
