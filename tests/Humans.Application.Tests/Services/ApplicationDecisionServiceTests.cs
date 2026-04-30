@@ -41,6 +41,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     private readonly INotificationMeterCacheInvalidator _notificationMeter = Substitute.For<INotificationMeterCacheInvalidator>();
     private readonly IVotingBadgeCacheInvalidator _votingBadge = Substitute.For<IVotingBadgeCacheInvalidator>();
     private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
+    private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ApplicationDecisionService _service;
 
     public ApplicationDecisionServiceTests()
@@ -58,6 +59,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(new Dictionary<Guid, User>()));
         _userService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<User?>(null));
+        _userEmailService.GetNotificationTargetEmailsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(new Dictionary<Guid, string>()));
 
         _service = new ApplicationDecisionService(
             _repository,
@@ -66,6 +70,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             _roleAssignmentService,
             _auditLogService,
             _emailService,
+            _userEmailService,
             _notificationService,
             _syncJob,
             _metrics,
@@ -360,6 +365,11 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             PreferredLanguage = "en"
         };
         _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userEmailService.GetNotificationTargetEmailsAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(
+                new Dictionary<Guid, string> { [userId] = "alice@test.com" }));
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
@@ -368,6 +378,64 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             "Alice",
             MembershipTier.Colaborador,
             "en");
+    }
+
+    [HumansFact]
+    public async Task ApproveAsync_ResolvesRecipientFromUserEmailsWhenUserEmailColumnIsNull()
+    {
+        var userId = Guid.NewGuid();
+        var app = await SeedSubmittedApplicationAsync(userId, MembershipTier.Colaborador);
+        var user = new User
+        {
+            Id = userId,
+            DisplayName = "Bob",
+            UserName = "bob",
+            Email = null,
+            PreferredLanguage = "en"
+        };
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userEmailService.GetNotificationTargetEmailsAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(
+                new Dictionary<Guid, string> { [userId] = "bob.notify@test.com" }));
+
+        await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
+
+        await _emailService.Received().SendApplicationApprovedAsync(
+            "bob.notify@test.com",
+            "Bob",
+            MembershipTier.Colaborador,
+            "en");
+        await _emailService.DidNotReceive().SendApplicationApprovedAsync(
+            string.Empty,
+            Arg.Any<string>(),
+            Arg.Any<MembershipTier>(),
+            Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task ApproveAsync_SkipsEmailWhenNoNotificationTargetResolved()
+    {
+        var userId = Guid.NewGuid();
+        var app = await SeedSubmittedApplicationAsync(userId, MembershipTier.Colaborador);
+        var user = new User
+        {
+            Id = userId,
+            DisplayName = "Carol",
+            UserName = "carol",
+            Email = null,
+            PreferredLanguage = "en"
+        };
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+
+        await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
+
+        await _emailService.DidNotReceive().SendApplicationApprovedAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<MembershipTier>(),
+            Arg.Any<string>());
     }
 
     // --- Reject flow ---

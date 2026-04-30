@@ -42,6 +42,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IAuditLogService _auditLogService;
     private readonly IEmailService _emailService;
+    private readonly IUserEmailService _userEmailService;
     private readonly INotificationService _notificationService;
     private readonly ISystemTeamSync _syncJob;
     private readonly IHumansMetrics _metrics;
@@ -58,6 +59,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         IRoleAssignmentService roleAssignmentService,
         IAuditLogService auditLogService,
         IEmailService emailService,
+        IUserEmailService userEmailService,
         INotificationService notificationService,
         ISystemTeamSync syncJob,
         IHumansMetrics metrics,
@@ -73,6 +75,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         _roleAssignmentService = roleAssignmentService;
         _auditLogService = auditLogService;
         _emailService = emailService;
+        _userEmailService = userEmailService;
         _notificationService = notificationService;
         _syncJob = syncJob;
         _metrics = metrics;
@@ -156,21 +159,36 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
             await _syncJob.SyncAsociadosMembershipForUserAsync(application.UserId, cancellationToken);
 
         // Email + in-app notification — best-effort. User info fetched
-        // via IUserService now that Application.User is stripped.
+        // via IUserService now that Application.User is stripped. The
+        // recipient address is resolved through IUserEmailService so the
+        // notification target reflects the user's verified email rows
+        // rather than the (now-virtual) User.Email column.
         var user = await _userService.GetByIdAsync(application.UserId, cancellationToken);
         if (user is not null)
         {
-            try
+            var notificationEmails = await _userEmailService.GetNotificationTargetEmailsAsync(
+                [application.UserId], cancellationToken);
+            if (notificationEmails.TryGetValue(application.UserId, out var recipientEmail)
+                && !string.IsNullOrWhiteSpace(recipientEmail))
             {
-                await _emailService.SendApplicationApprovedAsync(
-                    user.Email ?? string.Empty,
-                    user.DisplayName,
-                    application.MembershipTier,
-                    user.PreferredLanguage);
+                try
+                {
+                    await _emailService.SendApplicationApprovedAsync(
+                        recipientEmail,
+                        user.DisplayName,
+                        application.MembershipTier,
+                        user.PreferredLanguage);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send approval email for {ApplicationId}", application.Id);
+                }
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogError(ex, "Failed to send approval email for {ApplicationId}", application.Id);
+                _logger.LogWarning(
+                    "Skipping approval email for application {ApplicationId} because user {UserId} has no notification-target email",
+                    application.Id, application.UserId);
             }
         }
 
@@ -241,18 +259,30 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         var user = await _userService.GetByIdAsync(application.UserId, cancellationToken);
         if (user is not null)
         {
-            try
+            var notificationEmails = await _userEmailService.GetNotificationTargetEmailsAsync(
+                [application.UserId], cancellationToken);
+            if (notificationEmails.TryGetValue(application.UserId, out var recipientEmail)
+                && !string.IsNullOrWhiteSpace(recipientEmail))
             {
-                await _emailService.SendApplicationRejectedAsync(
-                    user.Email ?? string.Empty,
-                    user.DisplayName,
-                    application.MembershipTier,
-                    reason,
-                    user.PreferredLanguage);
+                try
+                {
+                    await _emailService.SendApplicationRejectedAsync(
+                        recipientEmail,
+                        user.DisplayName,
+                        application.MembershipTier,
+                        reason,
+                        user.PreferredLanguage);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send rejection email for {ApplicationId}", application.Id);
+                }
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogError(ex, "Failed to send rejection email for {ApplicationId}", application.Id);
+                _logger.LogWarning(
+                    "Skipping rejection email for application {ApplicationId} because user {UserId} has no notification-target email",
+                    application.Id, application.UserId);
             }
         }
 
