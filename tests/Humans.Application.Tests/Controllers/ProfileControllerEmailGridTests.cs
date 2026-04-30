@@ -48,6 +48,7 @@ public class ProfileControllerEmailGridTests
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IAuthorizationService _authorizationService = Substitute.For<IAuthorizationService>();
+    private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
@@ -80,7 +81,7 @@ public class ProfileControllerEmailGridTests
             _emailService,
             _userEmailService,
             Substitute.For<ICommunicationPreferenceService>(),
-            Substitute.For<IAuditLogService>(),
+            _auditLogService,
             Substitute.For<IOnboardingService>(),
             Substitute.For<IRoleAssignmentService>(),
             Substitute.For<IShiftSignupService>(),
@@ -392,5 +393,102 @@ public class ProfileControllerEmailGridTests
         result.Should().BeOfType<ForbidResult>();
         await _userEmailService.DidNotReceive().SetGoogleAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    // -------------------------------------------------------------------------
+    // Findings O, P, Q — self-path auth gates and audit-log symmetry.
+    // O: DeleteEmail self-action must call AuthorizeAsync (UserEmailOperations.Edit).
+    // P: SetEmailVisibility self-action must call AuthorizeAsync.
+    // Q: SetPrimary, DeleteEmail, SetEmailVisibility self-actions must audit-log,
+    //    matching the admin path that already audits.
+    // -------------------------------------------------------------------------
+
+    [HumansFact]
+    public async Task DeleteEmail_AuthorizationFails_ReturnsForbid()
+    {
+        var emailId = Guid.NewGuid();
+        _authorizationService.AuthorizeAsync(
+            Arg.Any<ClaimsPrincipal>(),
+            Arg.Any<object?>(),
+            Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Failed());
+
+        var result = await _controller.DeleteEmail(emailId);
+
+        result.Should().BeOfType<ForbidResult>();
+        await _userEmailService.DidNotReceive().DeleteEmailAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>());
+    }
+
+    [HumansFact]
+    public async Task SetEmailVisibility_AuthorizationFails_ReturnsForbid()
+    {
+        var emailId = Guid.NewGuid();
+        _authorizationService.AuthorizeAsync(
+            Arg.Any<ClaimsPrincipal>(),
+            Arg.Any<object?>(),
+            Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Failed());
+
+        var result = await _controller.SetEmailVisibility(emailId, "BoardOnly");
+
+        result.Should().BeOfType<ForbidResult>();
+        await _userEmailService.DidNotReceive().SetVisibilityAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<ContactFieldVisibility?>());
+    }
+
+    [HumansFact]
+    public async Task SetPrimary_AsSelf_AuditsWithUserAsActor()
+    {
+        var emailId = Guid.NewGuid();
+
+        var result = await _controller.SetPrimary(emailId, CancellationToken.None);
+
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.UserEmailPrimarySet,
+            nameof(User), _userId,
+            Arg.Any<string>(),
+            _userId,
+            relatedEntityId: emailId,
+            relatedEntityType: nameof(UserEmail));
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be("Emails");
+    }
+
+    [HumansFact]
+    public async Task DeleteEmail_AsSelf_AuditsWithUserAsActor()
+    {
+        var emailId = Guid.NewGuid();
+        _userEmailService.DeleteEmailAsync(_userId, emailId).Returns(true);
+
+        var result = await _controller.DeleteEmail(emailId);
+
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.UserEmailDeleted,
+            nameof(User), _userId,
+            Arg.Any<string>(),
+            _userId,
+            relatedEntityId: emailId,
+            relatedEntityType: nameof(UserEmail));
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be("Emails");
+    }
+
+    [HumansFact]
+    public async Task SetEmailVisibility_AsSelf_AuditsWithUserAsActor()
+    {
+        var emailId = Guid.NewGuid();
+
+        var result = await _controller.SetEmailVisibility(emailId, "BoardOnly");
+
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.UserEmailVisibilityChanged,
+            nameof(User), _userId,
+            Arg.Any<string>(),
+            _userId,
+            relatedEntityId: emailId,
+            relatedEntityType: nameof(UserEmail));
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be("Emails");
     }
 }

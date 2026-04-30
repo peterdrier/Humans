@@ -689,6 +689,14 @@ public class ProfileController : HumansControllerBase
         {
             await _userEmailService.SetPrimaryAsync(user.Id, emailId, ct);
             _cache.InvalidateNobodiesTeamEmails();
+            // Self-path audit — symmetric with AdminSetPrimary. SetPrimaryAsync
+            // does not take actorUserId, so audit at the controller.
+            await _auditLogService.LogAsync(
+                AuditAction.UserEmailPrimarySet,
+                nameof(User), user.Id,
+                $"Set primary email row {emailId}",
+                user.Id,
+                relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
             SetSuccess(_localizer["Profile_NotificationTargetUpdated"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
@@ -708,6 +716,10 @@ public class ProfileController : HumansControllerBase
         if (user is null)
             return NotFound();
 
+        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
         ContactFieldVisibility? parsedVisibility = null;
         if (!string.IsNullOrEmpty(visibility) && Enum.TryParse<ContactFieldVisibility>(visibility, ignoreCase: true, out var v))
         {
@@ -717,6 +729,14 @@ public class ProfileController : HumansControllerBase
         try
         {
             await _userEmailService.SetVisibilityAsync(user.Id, emailId, parsedVisibility);
+            // Self-path audit — symmetric with AdminSetVisibility. SetVisibilityAsync
+            // does not take actorUserId, so audit at the controller.
+            await _auditLogService.LogAsync(
+                AuditAction.UserEmailVisibilityChanged,
+                nameof(User), user.Id,
+                $"Changed visibility on email row {emailId} to {(parsedVisibility?.ToString() ?? "hidden")}",
+                user.Id,
+                relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
             SetSuccess(_localizer["Profile_EmailVisibilityUpdated"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
@@ -736,12 +756,24 @@ public class ProfileController : HumansControllerBase
         if (user is null)
             return NotFound();
 
+        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
         try
         {
             var deleted = await _userEmailService.DeleteEmailAsync(user.Id, emailId);
             if (deleted)
             {
                 _cache.InvalidateNobodiesTeamEmails();
+                // Self-path audit — symmetric with AdminDeleteEmail. DeleteEmailAsync
+                // does not take actorUserId, so audit at the controller.
+                await _auditLogService.LogAsync(
+                    AuditAction.UserEmailDeleted,
+                    nameof(User), user.Id,
+                    $"Deleted email row {emailId}",
+                    user.Id,
+                    relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
                 SetSuccess(_localizer["Profile_EmailDeleted"].Value);
             }
             else
