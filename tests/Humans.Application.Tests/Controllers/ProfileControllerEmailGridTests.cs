@@ -178,4 +178,36 @@ public class ProfileControllerEmailGridTests
 
         result.Should().BeOfType<ForbidResult>();
     }
+
+    [HumansFact]
+    public async Task Unlink_AsSelf_CallsUnlinkAsync_AndRedirectsToGrid()
+    {
+        var emailId = Guid.NewGuid();
+        _userEmailService.UnlinkAsync(_userId, emailId, _userId, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await _controller.Unlink(emailId, CancellationToken.None);
+
+        await _userEmailService.Received(1).UnlinkAsync(
+            _userId, emailId, _userId, Arg.Any<CancellationToken>());
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be("Emails");
+    }
+
+    [HumansFact]
+    public async Task Unlink_AuthorizationFails_ReturnsForbid()
+    {
+        var emailId = Guid.NewGuid();
+        _authorizationService.AuthorizeAsync(
+            Arg.Any<ClaimsPrincipal>(),
+            Arg.Any<object?>(),
+            Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Failed());
+
+        var result = await _controller.Unlink(emailId, CancellationToken.None);
+
+        result.Should().BeOfType<ForbidResult>();
+        await _userEmailService.DidNotReceive().UnlinkAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
 }

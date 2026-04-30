@@ -799,6 +799,33 @@ public class ProfileController : HumansControllerBase
         return Challenge(props, provider);
     }
 
+    [HttpPost("Me/Emails/Unlink/{id:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Unlink(Guid id, CancellationToken ct)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return NotFound();
+
+        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        try
+        {
+            await _userEmailService.UnlinkAsync(user.Id, id, user.Id, ct);
+            _cache.InvalidateNobodiesTeamEmails();
+            SetSuccess("Sign-in provider unlinked.");
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Failed to unlink email {EmailId} for user {UserId}", id, user.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Emails));
+    }
+
     [HttpGet("Me/Outbox")]
     public async Task<IActionResult> MyOutbox()
     {
