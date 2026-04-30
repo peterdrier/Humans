@@ -225,7 +225,7 @@ public sealed class UserEmailProviderBackfillService : IUserEmailProviderBackfil
         try
         {
             await _auditLogService.LogAsync(
-                AuditAction.ContactCreated,
+                AuditAction.UserEmailProviderBackfilled,
                 nameof(User), userId,
                 description,
                 nameof(UserEmailProviderBackfillService));

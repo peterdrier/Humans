@@ -5,6 +5,7 @@ using Humans.Application.Services.Profile;
 using Humans.Domain.Entities;
 using Humans.Testing;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -38,7 +39,8 @@ public class UserEmailServiceTests
             _userManager,
             _clock,
             _fullProfileInvalidator,
-            _serviceProvider);
+            _serviceProvider,
+            NullLogger<UserEmailService>.Instance);
     }
 
     [HumansFact]

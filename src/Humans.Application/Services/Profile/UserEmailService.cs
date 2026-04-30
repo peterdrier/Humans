@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Repositories;
@@ -25,6 +26,7 @@ public sealed class UserEmailService : IUserEmailService
     private readonly IClock _clock;
     private readonly IFullProfileInvalidator _fullProfileInvalidator;
     private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<UserEmailService> _logger;
 
     private const string EmailVerificationTokenPurpose = "UserEmailVerification";
 
@@ -34,7 +36,8 @@ public sealed class UserEmailService : IUserEmailService
         UserManager<User> userManager,
         IClock clock,
         IFullProfileInvalidator fullProfileInvalidator,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        ILogger<UserEmailService> logger)
     {
         _repository = repository;
         _userService = userService;
@@ -42,6 +45,7 @@ public sealed class UserEmailService : IUserEmailService
         _clock = clock;
         _fullProfileInvalidator = fullProfileInvalidator;
         _serviceProvider = serviceProvider;
+        _logger = logger;
     }
 
     // Lazy to break the DI cycle:
@@ -604,6 +608,12 @@ public sealed class UserEmailService : IUserEmailService
     {
         var matches = await _repository.FindAllByProviderKeyAsync(
             provider, providerKey, cancellationToken);
+        if (matches.Count > 1)
+        {
+            _logger.LogWarning(
+                "FindByProviderKeyAsync: multiple rows matched provider={Provider} providerKey={ProviderKey} — single-row-per-pair invariant violated; returning first match {EmailId}.",
+                provider, providerKey, matches[0].Id);
+        }
         return matches.Count == 0 ? null : matches[0];
     }
 }
