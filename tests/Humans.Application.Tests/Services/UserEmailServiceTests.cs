@@ -255,7 +255,7 @@ public class UserEmailServiceTests
                 Id = emailId,
                 UserId = userId,
                 Email = "unverified@example.com",
-                    IsVerified = false,
+                IsVerified = false,
                 IsNotificationTarget = false,
             });
 

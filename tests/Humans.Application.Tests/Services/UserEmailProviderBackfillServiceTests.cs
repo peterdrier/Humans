@@ -50,7 +50,9 @@ public class UserEmailProviderBackfillServiceTests
         var user = new User { Id = userId, Email = "user@example.com" };
         var email = new UserEmail
         {
-            Id = emailId, UserId = userId, Email = "user@example.com",
+            Id = emailId,
+            UserId = userId,
+            Email = "user@example.com",
             IsVerified = true,
         };
         _userRepository.GetAllAsync(Arg.Any<CancellationToken>())
@@ -94,12 +96,16 @@ public class UserEmailProviderBackfillServiceTests
         };
         var googleRow = new UserEmail
         {
-            Id = googleRowId, UserId = userId, Email = "user@nobodies.team",
+            Id = googleRowId,
+            UserId = userId,
+            Email = "user@nobodies.team",
             IsVerified = true,
         };
         var otherRow = new UserEmail
         {
-            Id = otherRowId, UserId = userId, Email = "personal@example.com",
+            Id = otherRowId,
+            UserId = userId,
+            Email = "personal@example.com",
             IsVerified = true,
         };
         _userRepository.GetAllAsync(Arg.Any<CancellationToken>())
@@ -136,12 +142,16 @@ public class UserEmailProviderBackfillServiceTests
         var user = new User { Id = userId, Email = "old@example.com" };
         var oauthRow = new UserEmail
         {
-            Id = oauthRowId, UserId = userId, Email = "user@gmail.com",
+            Id = oauthRowId,
+            UserId = userId,
+            Email = "user@gmail.com",
             IsVerified = true,
         };
         var otherRow = new UserEmail
         {
-            Id = otherRowId, UserId = userId, Email = "secondary@example.com",
+            Id = otherRowId,
+            UserId = userId,
+            Email = "secondary@example.com",
             IsVerified = true,
         };
         _userRepository.GetAllAsync(Arg.Any<CancellationToken>())
@@ -177,9 +187,12 @@ public class UserEmailProviderBackfillServiceTests
         var user = new User { Id = userId, Email = "user@example.com" };
         var email = new UserEmail
         {
-            Id = emailId, UserId = userId, Email = "user@example.com",
+            Id = emailId,
+            UserId = userId,
+            Email = "user@example.com",
             IsVerified = true,
-            Provider = "Google", ProviderKey = "sub-A",
+            Provider = "Google",
+            ProviderKey = "sub-A",
             IsGoogle = false,
         };
         _userRepository.GetAllAsync(Arg.Any<CancellationToken>())
