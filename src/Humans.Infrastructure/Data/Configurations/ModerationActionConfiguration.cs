@@ -23,7 +23,7 @@ public class ModerationActionConfiguration : IEntityTypeConfiguration<Moderation
         builder.HasOne(m => m.GuideEvent)
             .WithMany(e => e.ModerationActions)
             .HasForeignKey(m => m.GuideEventId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(m => m.ActorUser)
             .WithMany()

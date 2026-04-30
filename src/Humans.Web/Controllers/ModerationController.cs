@@ -1,16 +1,15 @@
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.EventGuide;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
+using Humans.Web.Filters;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Humans.Web.Filters;
 
 namespace Humans.Web.Controllers;
 
@@ -19,21 +18,18 @@ namespace Humans.Web.Controllers;
 [ServiceFilter(typeof(EventGuideFeatureFilter))]
 public class ModerationController : HumansControllerBase
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly IClock _clock;
+    private readonly IEventGuideService _guide;
     private readonly IEmailService _emailService;
     private readonly ILogger<ModerationController> _logger;
 
     public ModerationController(
-        HumansDbContext dbContext,
+        IEventGuideService guide,
         UserManager<User> userManager,
-        IClock clock,
         IEmailService emailService,
         ILogger<ModerationController> logger)
         : base(userManager)
     {
-        _dbContext = dbContext;
-        _clock = clock;
+        _guide = guide;
         _emailService = emailService;
         _logger = logger;
     }
@@ -43,61 +39,30 @@ public class ModerationController : HumansControllerBase
     {
         var activeTab = tab ?? GuideEventStatus.Pending;
 
-        var guideSettings = await _dbContext.GuideSettings
-            .Include(g => g.EventSettings)
-            .FirstOrDefaultAsync();
-
+        var guideSettings = await _guide.GetGuideSettingsAsync();
         DateTimeZone? tz = guideSettings?.EventSettings != null
             ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(guideSettings.EventSettings.TimeZoneId)
             : null;
 
-        // Get counts for all tabs
-        var allEvents = await _dbContext.GuideEvents
-            .Where(e => e.Status == GuideEventStatus.Pending
-                     || e.Status == GuideEventStatus.Approved
-                     || e.Status == GuideEventStatus.Rejected
-                     || e.Status == GuideEventStatus.ResubmitRequested)
-            .GroupBy(e => e.Status)
-            .Select(g => new { Status = g.Key, Count = g.Count() })
-            .ToListAsync();
-
-        // Get events for the active tab
-        var query = _dbContext.GuideEvents
-            .Include(e => e.Category)
-            .Include(e => e.SubmitterUser).ThenInclude(u => u.Profile)
-            .Include(e => e.Camp).ThenInclude(c => c!.Seasons)
-            .Include(e => e.GuideSharedVenue)
-            .Include(e => e.ModerationActions).ThenInclude(a => a.ActorUser).ThenInclude(u => u.Profile)
-            .Where(e => e.Status == activeTab);
-
-        // Pending: oldest first; others: newest first
-        query = activeTab == GuideEventStatus.Pending
-            ? query.OrderBy(e => e.SubmittedAt)
-            : query.OrderByDescending(e => e.SubmittedAt);
-
-        var events = await query.ToListAsync();
+        var counts = await _guide.GetEventStatusCountsAsync();
+        var events = await _guide.GetEventsByStatusAsync(activeTab);
 
         var model = new ModerationQueueViewModel
         {
             ActiveTab = activeTab,
-            PendingCount = allEvents.FirstOrDefault(g => g.Status == GuideEventStatus.Pending)?.Count ?? 0,
-            ApprovedCount = allEvents.FirstOrDefault(g => g.Status == GuideEventStatus.Approved)?.Count ?? 0,
-            RejectedCount = allEvents.FirstOrDefault(g => g.Status == GuideEventStatus.Rejected)?.Count ?? 0,
-            ResubmitRequestedCount = allEvents.FirstOrDefault(g => g.Status == GuideEventStatus.ResubmitRequested)?.Count ?? 0,
+            PendingCount = counts.GetValueOrDefault(GuideEventStatus.Pending),
+            ApprovedCount = counts.GetValueOrDefault(GuideEventStatus.Approved),
+            RejectedCount = counts.GetValueOrDefault(GuideEventStatus.Rejected),
+            ResubmitRequestedCount = counts.GetValueOrDefault(GuideEventStatus.ResubmitRequested),
             TimeZoneId = guideSettings?.EventSettings?.TimeZoneId,
             Events = events.Select(e => BuildRow(e, tz)).ToList()
         };
 
-        // Duplicate detection: for camp events, find time-overlapping events from the same camp
+        // Duplicate detection for camp events
         var campEvents = events.Where(e => e.CampId.HasValue).ToList();
         if (campEvents.Count > 0)
         {
-            // Load all pending/approved camp events for overlap checking
-            var allCampEvents = await _dbContext.GuideEvents
-                .Where(e => e.CampId != null &&
-                            (e.Status == GuideEventStatus.Pending || e.Status == GuideEventStatus.Approved))
-                .Select(e => new { e.Id, e.CampId, e.Title, e.StartAt, e.DurationMinutes, e.Status })
-                .ToListAsync();
+            var allCampEvents = await _guide.GetCampEventsForOverlapAsync();
 
             foreach (var row in model.Events)
             {
@@ -105,7 +70,7 @@ public class ModerationController : HumansControllerBase
                 if (evt?.CampId == null) continue;
 
                 var endAt = evt.StartAt.Plus(Duration.FromMinutes(evt.DurationMinutes));
-                var overlaps = allCampEvents
+                row.DuplicateCandidates = allCampEvents
                     .Where(other => other.Id != evt.Id
                                  && other.CampId == evt.CampId
                                  && other.StartAt < endAt
@@ -119,8 +84,6 @@ public class ModerationController : HumansControllerBase
                         Status = other.Status
                     })
                     .ToList();
-
-                row.DuplicateCandidates = overlaps;
             }
         }
 
@@ -130,9 +93,7 @@ public class ModerationController : HumansControllerBase
     [HttpPost("Approve")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Approve(ModerationActionFormModel model)
-    {
-        return await ProcessActionAsync(model.EventId, ModerationActionType.Approved, null);
-    }
+        => await ProcessActionAsync(model.EventId, ModerationActionType.Approved, null);
 
     [HttpPost("Reject")]
     [ValidateAntiForgeryToken]
@@ -143,7 +104,6 @@ public class ModerationController : HumansControllerBase
             SetError("A reason is required when rejecting an event.");
             return RedirectToAction(nameof(Index));
         }
-
         return await ProcessActionAsync(model.EventId, ModerationActionType.Rejected, model.Reason);
     }
 
@@ -156,7 +116,6 @@ public class ModerationController : HumansControllerBase
             SetError("A reason is required when requesting edits.");
             return RedirectToAction(nameof(Index));
         }
-
         return await ProcessActionAsync(model.EventId, ModerationActionType.ResubmitRequested, model.Reason);
     }
 
@@ -164,14 +123,10 @@ public class ModerationController : HumansControllerBase
 
     private async Task<IActionResult> ProcessActionAsync(Guid eventId, ModerationActionType actionType, string? reason)
     {
-        var user = await GetCurrentUserAsync();
-        if (user == null) return Challenge();
+        var moderator = await GetCurrentUserAsync();
+        if (moderator == null) return Challenge();
 
-        var guideEvent = await _dbContext.GuideEvents
-            .Include(e => e.SubmitterUser).ThenInclude(u => u.Profile)
-            .Include(e => e.Camp)
-            .FirstOrDefaultAsync(e => e.Id == eventId);
-
+        var guideEvent = await _guide.GetEventForModerationAsync(eventId);
         if (guideEvent == null)
         {
             SetError("Event not found.");
@@ -184,20 +139,7 @@ public class ModerationController : HumansControllerBase
             return RedirectToAction(nameof(Index));
         }
 
-        guideEvent.ApplyModerationAction(actionType, _clock);
-
-        var moderationAction = new ModerationAction
-        {
-            Id = Guid.NewGuid(),
-            GuideEventId = eventId,
-            ActorUserId = user.Id,
-            Action = actionType,
-            Reason = reason,
-            CreatedAt = _clock.GetCurrentInstant()
-        };
-
-        _dbContext.ModerationActions.Add(moderationAction);
-        await _dbContext.SaveChangesAsync();
+        await _guide.ApplyModerationAsync(eventId, moderator.Id, actionType, reason);
 
         var actionLabel = actionType switch
         {
@@ -208,14 +150,15 @@ public class ModerationController : HumansControllerBase
         };
 
         _logger.LogInformation("Moderator {UserId} {Action} event '{Title}' ({EventId})",
-            user.Id, actionLabel, guideEvent.Title, eventId);
+            moderator.Id, actionLabel, guideEvent.Title, eventId);
 
-        // Queue email notification to submitter
-        var submitterEmail = guideEvent.SubmitterUser.Email;
-        var submitterName = guideEvent.SubmitterUser.Profile?.BurnerName ?? submitterEmail ?? "Unknown";
+        var submitterEmail = guideEvent.SubmitterUser.GetEffectiveEmail();
+        var submitterName = guideEvent.SubmitterUser.Profile?.BurnerName
+            ?? guideEvent.SubmitterUser.GetEffectiveEmail()
+            ?? "Unknown";
+
         if (submitterEmail != null)
         {
-            // Build edit URL based on whether this is a camp or individual event
             var editUrl = guideEvent.CampId.HasValue
                 ? Url.Action("Edit", "CampEvents", new { slug = guideEvent.Camp?.Slug, eventId }, Request.Scheme)!
                 : Url.Action("Edit", "EventGuide", new { eventId }, Request.Scheme)!;
@@ -240,7 +183,9 @@ public class ModerationController : HumansControllerBase
 
     private static ModerationEventRowViewModel BuildRow(GuideEvent e, DateTimeZone? tz)
     {
-        var submitterName = e.SubmitterUser.Profile?.BurnerName ?? e.SubmitterUser.Email ?? "Unknown";
+        var submitterName = e.SubmitterUser.Profile?.BurnerName
+            ?? e.SubmitterUser.GetEffectiveEmail()
+            ?? "Unknown";
         var campSeason = e.Camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
         var campName = campSeason?.Name ?? e.Camp?.Slug;
 
@@ -267,7 +212,7 @@ public class ModerationController : HumansControllerBase
                 .OrderByDescending(a => a.CreatedAt)
                 .Select(a => new ModerationHistoryItemViewModel
                 {
-                    ActorName = a.ActorUser.Profile?.BurnerName ?? a.ActorUser.Email ?? "Unknown",
+                    ActorName = a.ActorUser.Profile?.BurnerName ?? a.ActorUser.GetEffectiveEmail() ?? "Unknown",
                     Action = a.Action,
                     Reason = a.Reason,
                     CreatedAt = ToLocalDateTime(a.CreatedAt, tz)
@@ -276,9 +221,5 @@ public class ModerationController : HumansControllerBase
     }
 
     private static DateTime ToLocalDateTime(Instant instant, DateTimeZone? tz)
-    {
-        if (tz == null)
-            return instant.ToDateTimeUtc();
-        return instant.InZone(tz).ToDateTimeUnspecified();
-    }
+        => tz == null ? instant.ToDateTimeUtc() : instant.InZone(tz).ToDateTimeUnspecified();
 }

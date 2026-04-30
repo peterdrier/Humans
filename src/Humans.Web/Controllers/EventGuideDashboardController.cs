@@ -1,15 +1,14 @@
 using System.Globalization;
+using Humans.Application.Interfaces.EventGuide;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
+using Humans.Web.Filters;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Humans.Web.Filters;
 
 namespace Humans.Web.Controllers;
 
@@ -18,31 +17,24 @@ namespace Humans.Web.Controllers;
 [ServiceFilter(typeof(EventGuideFeatureFilter))]
 public class EventGuideDashboardController : HumansControllerBase
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly IEventGuideService _guide;
 
-    public EventGuideDashboardController(HumansDbContext dbContext, UserManager<User> userManager)
+    public EventGuideDashboardController(IEventGuideService guide, UserManager<User> userManager)
         : base(userManager)
     {
-        _dbContext = dbContext;
+        _guide = guide;
     }
 
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        var guideSettings = await _dbContext.GuideSettings
-            .Include(g => g.EventSettings)
-            .FirstOrDefaultAsync();
-
+        var guideSettings = await _guide.GetGuideSettingsAsync();
         DateTimeZone? tz = guideSettings?.EventSettings != null
             ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(guideSettings.EventSettings.TimeZoneId)
             : null;
 
-        var allEvents = await _dbContext.GuideEvents
-            .Include(e => e.Category)
-            .Include(e => e.Camp!).ThenInclude(c => c.Seasons)
-            .ToListAsync();
+        var allEvents = await _guide.GetAllEventsForDashboardAsync();
 
-        // Overview counts
         var model = new GuideDashboardViewModel
         {
             TotalCount = allEvents.Count,
@@ -53,7 +45,6 @@ public class EventGuideDashboardController : HumansControllerBase
             WithdrawnCount = allEvents.Count(e => e.Status == GuideEventStatus.Withdrawn)
         };
 
-        // Coverage by day (approved events only, expand recurring)
         var approvedEvents = allEvents.Where(e => e.Status == GuideEventStatus.Approved).ToList();
         var gateOpeningDate = guideSettings?.EventSettings?.GateOpeningDate;
         var eventEndOffset = guideSettings?.EventSettings?.EventEndOffset ?? 0;
@@ -66,8 +57,7 @@ public class EventGuideDashboardController : HumansControllerBase
 
             foreach (var e in approvedEvents)
             {
-                var occurrences = GetOccurrenceInstants(e);
-                foreach (var occ in occurrences)
+                foreach (var occ in GetOccurrenceInstants(e))
                 {
                     var dayOffset = ComputeDayOffset(occ, gateOpeningDate.Value, tz);
                     if (dayCounts.ContainsKey(dayOffset))
@@ -84,12 +74,7 @@ public class EventGuideDashboardController : HumansControllerBase
                 }).ToList();
         }
 
-        // Coverage by category
-        var categories = await _dbContext.EventCategories
-            .Where(c => c.IsActive)
-            .OrderBy(c => c.DisplayOrder)
-            .ToListAsync();
-
+        var categories = await _guide.GetActiveCategoriesAsync();
         model.CoverageByCategory = categories.Select(cat =>
         {
             var catEvents = allEvents.Where(e => e.CategoryId == cat.Id).ToList();
@@ -103,7 +88,6 @@ public class EventGuideDashboardController : HumansControllerBase
             };
         }).ToList();
 
-        // Top submitting camps
         var campEvents = allEvents.Where(e => e.CampId.HasValue).ToList();
         model.TopCamps = campEvents
             .GroupBy(e => e.CampId!.Value)
@@ -126,7 +110,7 @@ public class EventGuideDashboardController : HumansControllerBase
         return View(model);
     }
 
-    private static List<Instant> GetOccurrenceInstants(Domain.Entities.GuideEvent e)
+    private static List<Instant> GetOccurrenceInstants(GuideEvent e)
     {
         if (e.IsRecurring && !string.IsNullOrEmpty(e.RecurrenceDays))
         {
@@ -137,7 +121,6 @@ public class EventGuideDashboardController : HumansControllerBase
                 .Select(d => e.StartAt.Plus(Duration.FromDays(d!.Value)))
                 .ToList();
         }
-
         return [e.StartAt];
     }
 

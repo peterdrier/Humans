@@ -55,7 +55,7 @@
                     <option value="">— Select category —</option>
                     @foreach (var cat in Model.Categories)
                     {
-                        <option value="@cat.Id" selected="@(cat.Id == Model.CategoryId)">@cat.Name</option>
+                        <option value="@cat.Id" selected="@(cat.Id == Model.CategoryId ? "selected" : null)">@cat.Name</option>
                     }
                 </select>
                 <span asp-validation-for="CategoryId" class="text-danger"></span>
@@ -67,7 +67,7 @@
                     <option value="">— Select venue —</option>
                     @foreach (var venue in Model.Venues)
                     {
-                        <option value="@venue.Id" selected="@(venue.Id == Model.VenueId)">@venue.Name</option>
+                        <option value="@venue.Id" selected="@(venue.Id == Model.VenueId ? "selected" : null)">@venue.Name</option>
                     }
                 </select>
                 <span asp-validation-for="VenueId" class="text-danger"></span>
@@ -85,7 +85,7 @@
                         <option value="">— Select day —</option>
                         @foreach (var day in Model.EventDays)
                         {
-                            <option value="@day.Date.ToString("yyyy-MM-dd")" selected="@(day.Date.Date == Model.StartDate.Date)">@day.Label</option>
+                            <option value="@day.Date.ToString("yyyy-MM-dd")" selected="@(day.Date.Date == Model.StartDate.Date ? "selected" : null)">@day.Label</option>
                         }
                     </select>
                     <span asp-validation-for="StartDate" class="text-danger"></span>
@@ -105,7 +105,7 @@
                             var label = hours > 0
                                 ? (rem > 0 ? $"{hours}h {rem}m" : $"{hours}h")
                                 : $"{mins}m";
-                            <option value="@mins" selected="@(mins == Model.DurationMinutes)">@label</option>
+                            <option value="@mins" selected="@(mins == Model.DurationMinutes ? "selected" : null)">@label</option>
                         }
                     </select>
                     <span asp-validation-for="DurationMinutes" class="text-danger"></span>

@@ -1,15 +1,13 @@
 using System.Globalization;
 using System.Text;
+using Humans.Application.Interfaces.EventGuide;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
+using Humans.Web.Filters;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Humans.Web.Filters;
 
 namespace Humans.Web.Controllers;
 
@@ -18,28 +16,25 @@ namespace Humans.Web.Controllers;
 [ServiceFilter(typeof(EventGuideFeatureFilter))]
 public class EventGuideExportController : HumansControllerBase
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly IEventGuideService _guide;
 
-    public EventGuideExportController(HumansDbContext dbContext, UserManager<User> userManager)
+    public EventGuideExportController(IEventGuideService guide, UserManager<User> userManager)
         : base(userManager)
     {
-        _dbContext = dbContext;
+        _guide = guide;
     }
 
     [HttpGet("")]
-    public IActionResult Index()
-    {
-        return View();
-    }
+    public IActionResult Index() => View();
 
     [HttpGet("Csv")]
     public async Task<IActionResult> DownloadCsv()
     {
-        var (events, tz, _) = await LoadApprovedEventsAsync();
+        var (events, settings) = await _guide.GetApprovedEventsForExportAsync();
+        var tz = GetTz(settings);
 
         var sb = new StringBuilder();
-        // UTF-8 BOM for Excel
-        sb.Append('\uFEFF');
+        sb.Append('﻿');
         sb.AppendLine("Id,Title,Description,Category,CampName,VenueName,SubmitterName,LocationNote,Date,StartTime,DurationMinutes,IsRecurring,PriorityRank,Status,SubmittedAt");
 
         foreach (var e in events)
@@ -48,11 +43,10 @@ public class EventGuideExportController : HumansControllerBase
             var campName = campSeason?.Name ?? e.Camp?.Slug ?? "";
             var venueName = e.GuideSharedVenue?.Name ?? "";
             var submitterName = e.CampId == null
-                ? (e.SubmitterUser.Profile?.BurnerName ?? e.SubmitterUser.Email ?? "")
+                ? (e.SubmitterUser.Profile?.BurnerName ?? e.SubmitterUser.GetEffectiveEmail() ?? "")
                 : "";
 
-            var occurrences = GetOccurrences(e, tz);
-            foreach (var (date, time) in occurrences)
+            foreach (var (date, time) in GetOccurrences(e, tz))
             {
                 sb.AppendLine(string.Join(",",
                     CsvEscape(e.Id.ToString()),
@@ -69,24 +63,21 @@ public class EventGuideExportController : HumansControllerBase
                     e.IsRecurring ? "Yes" : "No",
                     e.PriorityRank.ToString(CultureInfo.InvariantCulture),
                     e.Status.ToString(),
-                    CsvEscape(ToLocalDateTime(e.SubmittedAt, tz).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture))
+                    CsvEscape(ToLocal(e.SubmittedAt, tz).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture))
                 ));
             }
         }
 
-        var bytes = Encoding.UTF8.GetBytes(sb.ToString());
-        return File(bytes, "text/csv", "event-guide-export.csv");
+        return File(Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", "event-guide-export.csv");
     }
 
     [HttpGet("PrintGuide")]
     public async Task<IActionResult> PrintGuide()
     {
-        var (events, tz, guideSettings) = await LoadApprovedEventsAsync();
+        var (events, settings) = await _guide.GetApprovedEventsForExportAsync();
+        var tz = GetTz(settings);
+        var maxSlots = settings?.MaxPrintSlots;
 
-        // Apply MaxPrintSlots limit by priority rank
-        var maxSlots = guideSettings?.MaxPrintSlots;
-
-        // Expand all occurrences
         var allOccurrences = new List<PrintGuideEntry>();
         foreach (var e in events)
         {
@@ -94,8 +85,7 @@ public class EventGuideExportController : HumansControllerBase
             var campName = campSeason?.Name ?? e.Camp?.Slug;
             var venueName = e.GuideSharedVenue?.Name;
 
-            var occurrences = GetOccurrenceInstants(e);
-            foreach (var occurrenceStart in occurrences)
+            foreach (var occ in GetOccurrenceInstants(e))
             {
                 allOccurrences.Add(new PrintGuideEntry
                 {
@@ -104,14 +94,13 @@ public class EventGuideExportController : HumansControllerBase
                     CategoryName = e.Category.Name,
                     CampOrVenueName = campName ?? venueName ?? "",
                     LocationNote = e.LocationNote,
-                    StartAt = ToLocalDateTime(occurrenceStart, tz),
+                    StartAt = ToLocal(occ, tz),
                     DurationMinutes = e.DurationMinutes,
                     PriorityRank = e.PriorityRank
                 });
             }
         }
 
-        // Sort by priority rank (lower = higher priority), then by submission order
         if (maxSlots.HasValue && maxSlots.Value > 0)
         {
             allOccurrences = allOccurrences
@@ -121,7 +110,6 @@ public class EventGuideExportController : HumansControllerBase
                 .ToList();
         }
 
-        // Group by day, sort by time within each day
         var dayGroups = allOccurrences
             .OrderBy(o => o.StartAt)
             .GroupBy(o => o.StartAt.Date)
@@ -133,12 +121,10 @@ public class EventGuideExportController : HumansControllerBase
             })
             .ToList();
 
-        var eventName = guideSettings?.EventSettings.EventName ?? "Event Guide";
-
         var model = new PrintGuideViewModel
         {
-            EventName = eventName,
-            TimeZoneId = guideSettings?.EventSettings.TimeZoneId,
+            EventName = settings?.EventSettings.EventName ?? "Event Guide",
+            TimeZoneId = settings?.EventSettings.TimeZoneId,
             DayGroups = dayGroups
         };
 
@@ -147,53 +133,35 @@ public class EventGuideExportController : HumansControllerBase
 
     // ─── Helpers ──────────────────────────────────────────────────
 
-    private async Task<(List<Domain.Entities.GuideEvent> Events, DateTimeZone? Tz, Domain.Entities.GuideSettings? Settings)> LoadApprovedEventsAsync()
-    {
-        var guideSettings = await _dbContext.GuideSettings
-            .Include(g => g.EventSettings)
-            .FirstOrDefaultAsync();
-
-        DateTimeZone? tz = guideSettings?.EventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(guideSettings.EventSettings.TimeZoneId)
+    private static DateTimeZone? GetTz(GuideSettings? settings)
+        => settings?.EventSettings != null
+            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(settings.EventSettings.TimeZoneId)
             : null;
 
-        var events = await _dbContext.GuideEvents
-            .Include(e => e.Category)
-            .Include(e => e.Camp!).ThenInclude(c => c.Seasons)
-            .Include(e => e.GuideSharedVenue)
-            .Include(e => e.SubmitterUser).ThenInclude(u => u.Profile)
-            .Where(e => e.Status == GuideEventStatus.Approved)
-            .OrderBy(e => e.StartAt)
-            .ToListAsync();
+    private static DateTime ToLocal(Instant instant, DateTimeZone? tz)
+        => tz == null ? instant.ToDateTimeUtc() : instant.InZone(tz).ToDateTimeUnspecified();
 
-        return (events, tz, guideSettings);
-    }
-
-    private static List<(string Date, string Time)> GetOccurrences(Domain.Entities.GuideEvent e, DateTimeZone? tz)
+    private static List<(string Date, string Time)> GetOccurrences(GuideEvent e, DateTimeZone? tz)
     {
-        var results = new List<(string Date, string Time)>();
-
+        var results = new List<(string, string)>();
         if (e.IsRecurring && !string.IsNullOrEmpty(e.RecurrenceDays))
         {
-            var offsets = e.RecurrenceDays.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            foreach (var offsetStr in offsets)
+            foreach (var offsetStr in e.RecurrenceDays.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
             {
-                if (!int.TryParse(offsetStr, CultureInfo.InvariantCulture, out var dayOffset)) continue;
-                var occurrenceStart = e.StartAt.Plus(Duration.FromDays(dayOffset));
-                var local = ToLocalDateTime(occurrenceStart, tz);
+                if (!int.TryParse(offsetStr, CultureInfo.InvariantCulture, out var d)) continue;
+                var local = ToLocal(e.StartAt.Plus(Duration.FromDays(d)), tz);
                 results.Add((local.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), local.ToString("HH:mm", CultureInfo.InvariantCulture)));
             }
         }
         else
         {
-            var local = ToLocalDateTime(e.StartAt, tz);
+            var local = ToLocal(e.StartAt, tz);
             results.Add((local.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), local.ToString("HH:mm", CultureInfo.InvariantCulture)));
         }
-
         return results;
     }
 
-    private static List<Instant> GetOccurrenceInstants(Domain.Entities.GuideEvent e)
+    private static List<Instant> GetOccurrenceInstants(GuideEvent e)
     {
         if (e.IsRecurring && !string.IsNullOrEmpty(e.RecurrenceDays))
         {
@@ -204,7 +172,6 @@ public class EventGuideExportController : HumansControllerBase
                 .Select(d => e.StartAt.Plus(Duration.FromDays(d!.Value)))
                 .ToList();
         }
-
         return [e.StartAt];
     }
 
@@ -215,14 +182,6 @@ public class EventGuideExportController : HumansControllerBase
         return value;
     }
 
-    private static DateTime ToLocalDateTime(Instant instant, DateTimeZone? tz)
-    {
-        if (tz == null)
-            return instant.ToDateTimeUtc();
-        return instant.InZone(tz).ToDateTimeUnspecified();
-    }
-
-    // View models (inner classes for this controller only)
     public sealed class PrintGuideViewModel
     {
         public string EventName { get; set; } = string.Empty;

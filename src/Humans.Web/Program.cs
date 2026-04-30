@@ -468,6 +468,8 @@ builder.Services.AddControllersWithViews(options =>
 builder.Services.AddRazorPages();
 builder.Services.AddSignalR();
 builder.Services.AddScoped<Humans.Web.Filters.EventGuideFeatureFilter>();
+builder.Services.AddScoped<Humans.Application.Interfaces.Repositories.IEventGuideRepository, Humans.Infrastructure.Repositories.EventGuide.EventGuideRepository>();
+builder.Services.AddScoped<Humans.Application.Interfaces.EventGuide.IEventGuideService, Humans.Application.Services.EventGuide.EventGuideService>();
 
 // IExceptionHandler pipeline. Order matters — handlers run in registration order
 // until one returns true. Cancellation handler goes FIRST so client-abort

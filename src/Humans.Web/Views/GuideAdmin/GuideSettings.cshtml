@@ -22,7 +22,7 @@
                     <option value="">— Select event edition —</option>
                     @foreach (var es in Model.AvailableEventSettings)
                     {
-                        <option value="@es.Id" selected="@(es.Id == Model.EventSettingsId)">@es.EventName</option>
+                        <option value="@es.Id" selected="@(es.Id == Model.EventSettingsId ? "selected" : null)">@es.EventName</option>
                     }
                 </select>
                 <span asp-validation-for="EventSettingsId" class="text-danger"></span>

@@ -115,6 +115,14 @@
                                         <li><hr class="dropdown-divider" /></li>
                                         <li><a class="dropdown-item" asp-area="" asp-controller="EventGuideDashboard" asp-action="Index">Guide Dashboard</a></li>
                                         <li><a class="dropdown-item" asp-area="" asp-controller="Moderation" asp-action="Index">Moderate Events</a></li>
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="EventGuideExport" asp-action="Index">Export Guide</a></li>
+                                    }
+                                    @if (User.IsInRole(Humans.Domain.Constants.RoleNames.Admin))
+                                    {
+                                        <li><hr class="dropdown-divider" /></li>
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="GuideAdmin" asp-action="GuideSettings">Guide Settings</a></li>
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="GuideAdmin" asp-action="GuideCategories">Guide Categories</a></li>
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="GuideAdmin" asp-action="GuideVenues">Guide Venues</a></li>
                                     }
                                 </ul>
                             </li>

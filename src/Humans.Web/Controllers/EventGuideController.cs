@@ -1,15 +1,13 @@
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.EventGuide;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
+using Humans.Web.Filters;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Humans.Web.Filters;
 
 namespace Humans.Web.Controllers;
 
@@ -18,20 +16,20 @@ namespace Humans.Web.Controllers;
 [ServiceFilter(typeof(EventGuideFeatureFilter))]
 public class EventGuideController : HumansControllerBase
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly IEventGuideService _guide;
     private readonly IClock _clock;
     private readonly IEmailService _emailService;
     private readonly ILogger<EventGuideController> _logger;
 
     public EventGuideController(
-        HumansDbContext dbContext,
+        IEventGuideService guide,
         UserManager<User> userManager,
         IClock clock,
         IEmailService emailService,
         ILogger<EventGuideController> logger)
         : base(userManager)
     {
-        _dbContext = dbContext;
+        _guide = guide;
         _clock = clock;
         _emailService = emailService;
         _logger = logger;
@@ -43,10 +41,7 @@ public class EventGuideController : HumansControllerBase
         var user = await GetCurrentUserAsync();
         if (user == null) return Challenge();
 
-        var guideSettings = await _dbContext.GuideSettings
-            .Include(g => g.EventSettings)
-            .FirstOrDefaultAsync();
-
+        var guideSettings = await _guide.GetGuideSettingsAsync();
         var now = _clock.GetCurrentInstant();
         var isSubmissionOpen = guideSettings != null &&
                                now >= guideSettings.SubmissionOpenAt &&
@@ -56,13 +51,7 @@ public class EventGuideController : HumansControllerBase
             ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(guideSettings.EventSettings.TimeZoneId)
             : null;
 
-        // Individual submissions = CampId is null, submitted by this user
-        var events = await _dbContext.GuideEvents
-            .Include(e => e.Category)
-            .Include(e => e.GuideSharedVenue)
-            .Where(e => e.CampId == null && e.SubmitterUserId == user.Id)
-            .OrderByDescending(e => e.SubmittedAt)
-            .ToListAsync();
+        var events = await _guide.GetUserSubmissionsAsync(user.Id);
 
         var model = new MySubmissionsViewModel
         {
@@ -93,8 +82,8 @@ public class EventGuideController : HumansControllerBase
     [HttpGet("Submit")]
     public async Task<IActionResult> Submit()
     {
-        var (open, guideSettings) = await CheckSubmissionWindowAsync();
-        if (!open)
+        var guideSettings = await _guide.GetGuideSettingsAsync();
+        if (!IsSubmissionOpen(guideSettings))
         {
             SetError("The submission window is not currently open.");
             return RedirectToAction(nameof(MySubmissions));
@@ -111,8 +100,8 @@ public class EventGuideController : HumansControllerBase
         var user = await GetCurrentUserAsync();
         if (user == null) return Challenge();
 
-        var (open, guideSettings) = await CheckSubmissionWindowAsync();
-        if (!open)
+        var guideSettings = await _guide.GetGuideSettingsAsync();
+        if (!IsSubmissionOpen(guideSettings))
         {
             SetError("The submission window is not currently open.");
             return RedirectToAction(nameof(MySubmissions));
@@ -149,18 +138,15 @@ public class EventGuideController : HumansControllerBase
             LastUpdatedAt = now
         };
 
-        _dbContext.GuideEvents.Add(guideEvent);
-        await _dbContext.SaveChangesAsync();
+        await _guide.SubmitEventAsync(guideEvent);
 
-        _logger.LogInformation("User {UserId} submitted individual event '{Title}' at venue {VenueId}",
-            user.Id, model.Title, model.VenueId);
+        _logger.LogInformation("User {UserId} submitted individual event '{Title}'", user.Id, model.Title);
 
-        // Queue submission-received email
-        if (user.Email != null)
+        var userEmail = user.GetEffectiveEmail();
+        if (userEmail != null)
         {
-            var profile = await _dbContext.Users.Include(u => u.Profile).Where(u => u.Id == user.Id).Select(u => u.Profile).FirstOrDefaultAsync();
             var viewUrl = Url.Action(nameof(MySubmissions), "EventGuide", null, Request.Scheme)!;
-            await _emailService.SendEventSubmittedAsync(user.Email, profile?.BurnerName ?? user.Email, model.Title, viewUrl);
+            await _emailService.SendEventSubmittedAsync(userEmail, user.UserName ?? userEmail, model.Title, viewUrl);
         }
 
         SetSuccess($"Event \"{model.Title}\" submitted for review.");
@@ -173,8 +159,7 @@ public class EventGuideController : HumansControllerBase
         var user = await GetCurrentUserAsync();
         if (user == null) return Challenge();
 
-        var guideEvent = await _dbContext.GuideEvents
-            .FirstOrDefaultAsync(e => e.Id == eventId && e.CampId == null && e.SubmitterUserId == user.Id);
+        var guideEvent = await _guide.GetUserEventAsync(eventId, user.Id);
         if (guideEvent == null) return NotFound();
 
         if (guideEvent.Status is not (GuideEventStatus.Draft or GuideEventStatus.Rejected or GuideEventStatus.ResubmitRequested))
@@ -183,9 +168,7 @@ public class EventGuideController : HumansControllerBase
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var guideSettings = await _dbContext.GuideSettings
-            .Include(g => g.EventSettings)
-            .FirstOrDefaultAsync();
+        var guideSettings = await _guide.GetGuideSettingsAsync();
         if (guideSettings == null)
         {
             SetError("Guide settings not configured.");
@@ -220,8 +203,7 @@ public class EventGuideController : HumansControllerBase
         var user = await GetCurrentUserAsync();
         if (user == null) return Challenge();
 
-        var guideEvent = await _dbContext.GuideEvents
-            .FirstOrDefaultAsync(e => e.Id == eventId && e.CampId == null && e.SubmitterUserId == user.Id);
+        var guideEvent = await _guide.GetUserEventAsync(eventId, user.Id);
         if (guideEvent == null) return NotFound();
 
         if (guideEvent.Status is not (GuideEventStatus.Draft or GuideEventStatus.Rejected or GuideEventStatus.ResubmitRequested))
@@ -230,9 +212,7 @@ public class EventGuideController : HumansControllerBase
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var guideSettings = await _dbContext.GuideSettings
-            .Include(g => g.EventSettings)
-            .FirstOrDefaultAsync();
+        var guideSettings = await _guide.GetGuideSettingsAsync();
         if (guideSettings == null)
         {
             SetError("Guide settings not configured.");
@@ -260,11 +240,9 @@ public class EventGuideController : HumansControllerBase
         guideEvent.IsRecurring = model.IsRecurring;
         guideEvent.RecurrenceDays = model.IsRecurring ? model.RecurrenceDays : null;
 
-        guideEvent.Submit(_clock);
-        await _dbContext.SaveChangesAsync();
+        await _guide.UpdateAndResubmitAsync(guideEvent);
 
-        _logger.LogInformation("User {UserId} updated individual event '{Title}' ({EventId})",
-            user.Id, model.Title, eventId);
+        _logger.LogInformation("User {UserId} updated event '{Title}' ({EventId})", user.Id, model.Title, eventId);
 
         SetSuccess($"Event \"{model.Title}\" resubmitted for review.");
         return RedirectToAction(nameof(MySubmissions));
@@ -277,8 +255,7 @@ public class EventGuideController : HumansControllerBase
         var user = await GetCurrentUserAsync();
         if (user == null) return Challenge();
 
-        var guideEvent = await _dbContext.GuideEvents
-            .FirstOrDefaultAsync(e => e.Id == eventId && e.CampId == null && e.SubmitterUserId == user.Id);
+        var guideEvent = await _guide.GetUserEventAsync(eventId, user.Id);
         if (guideEvent == null) return NotFound();
 
         if (guideEvent.Status is not (GuideEventStatus.Draft or GuideEventStatus.Pending))
@@ -287,12 +264,9 @@ public class EventGuideController : HumansControllerBase
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        guideEvent.Withdraw(_clock);
-        await _dbContext.SaveChangesAsync();
+        await _guide.WithdrawEventAsync(guideEvent);
 
-        _logger.LogInformation("User {UserId} withdrew individual event '{Title}' ({EventId})",
-            user.Id, guideEvent.Title, eventId);
-
+        _logger.LogInformation("User {UserId} withdrew event '{Title}' ({EventId})", user.Id, guideEvent.Title, eventId);
         SetSuccess($"Event \"{guideEvent.Title}\" withdrawn.");
         return RedirectToAction(nameof(MySubmissions));
     }
@@ -303,23 +277,13 @@ public class EventGuideController : HumansControllerBase
         var user = await GetCurrentUserAsync();
         if (user == null) return Challenge();
 
-        var guideSettings = await _dbContext.GuideSettings
-            .Include(g => g.EventSettings)
-            .FirstOrDefaultAsync();
-
+        var guideSettings = await _guide.GetGuideSettingsAsync();
         DateTimeZone? tz = guideSettings?.EventSettings != null
             ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(guideSettings.EventSettings.TimeZoneId)
             : null;
 
-        var gateOpeningDate = guideSettings?.EventSettings.GateOpeningDate;
-
-        var favourites = await _dbContext.UserEventFavourites
-            .Include(f => f.GuideEvent).ThenInclude(e => e.Category)
-            .Include(f => f.GuideEvent).ThenInclude(e => e.Camp!).ThenInclude(c => c.Seasons)
-            .Include(f => f.GuideEvent).ThenInclude(e => e.GuideSharedVenue)
-            .Where(f => f.UserId == user.Id && f.GuideEvent.Status == GuideEventStatus.Approved)
-            .OrderBy(f => f.GuideEvent.StartAt)
-            .ToListAsync();
+        var gateOpeningDate = guideSettings?.EventSettings?.GateOpeningDate;
+        var favourites = await _guide.GetFavouritesWithEventsAsync(user.Id);
 
         var scheduleItems = favourites.Select(f =>
         {
@@ -356,7 +320,7 @@ public class EventGuideController : HumansControllerBase
             };
         }).ToList();
 
-        // Detect time conflicts between favourited events
+        // Detect time conflicts
         for (var i = 0; i < scheduleItems.Count; i++)
         {
             for (var j = i + 1; j < scheduleItems.Count; j++)
@@ -365,7 +329,6 @@ public class EventGuideController : HumansControllerBase
                 var b = scheduleItems[j];
                 var aEnd = a.StartInstant.Plus(Duration.FromMinutes(a.DurationMinutes));
                 var bEnd = b.StartInstant.Plus(Duration.FromMinutes(b.DurationMinutes));
-
                 if (a.StartInstant < bEnd && b.StartInstant < aEnd)
                 {
                     a.HasConflict = true;
@@ -397,10 +360,7 @@ public class EventGuideController : HumansControllerBase
         var user = await GetCurrentUserAsync();
         if (user == null) return Challenge();
 
-        var guideSettings = await _dbContext.GuideSettings
-            .Include(g => g.EventSettings)
-            .FirstOrDefaultAsync();
-
+        var guideSettings = await _guide.GetGuideSettingsAsync();
         DateTimeZone? tz = guideSettings?.EventSettings != null
             ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(guideSettings.EventSettings.TimeZoneId)
             : null;
@@ -408,51 +368,17 @@ public class EventGuideController : HumansControllerBase
         var gateOpeningDate = guideSettings?.EventSettings?.GateOpeningDate;
         var filterDays = days != null && days.Length > 0 ? days.ToHashSet() : null;
 
-        // Load user's excluded categories
-        var userPref = await _dbContext.UserGuidePreferences
-            .FirstOrDefaultAsync(p => p.UserId == user.Id);
-        var excludedSlugs = userPref != null
-            ? System.Text.Json.JsonSerializer.Deserialize<List<string>>(userPref.ExcludedCategorySlugs) ?? []
-            : new List<string>();
+        var excludedSlugs = await _guide.GetExcludedCategorySlugsAsync(user.Id);
+        var favouriteEventIds = await _guide.GetFavouriteEventIdsAsync(user.Id);
+        var events = await _guide.GetApprovedEventsAsync(null, venueId, categoryId, q, excludedSlugs);
 
-        // Load user's favourites
-        var favouriteEventIds = await _dbContext.UserEventFavourites
-            .Where(f => f.UserId == user.Id)
-            .Select(f => f.GuideEventId)
-            .ToHashSetAsync();
-
-        // Query approved events
-        var query = _dbContext.GuideEvents
-            .Include(e => e.Category)
-            .Include(e => e.Camp!).ThenInclude(c => c.Seasons)
-            .Include(e => e.GuideSharedVenue)
-            .Include(e => e.SubmitterUser).ThenInclude(u => u.Profile)
-            .Where(e => e.Status == GuideEventStatus.Approved);
-
-        // Apply category opt-out
-        if (excludedSlugs.Count > 0)
-            query = query.Where(e => !excludedSlugs.Contains(e.Category.Slug));
-
-        if (categoryId.HasValue)
-            query = query.Where(e => e.CategoryId == categoryId.Value);
-
-        if (venueId.HasValue)
-            query = query.Where(e => e.GuideSharedVenueId == venueId.Value);
-
-        if (!string.IsNullOrWhiteSpace(q))
-            query = query.Where(e => EF.Functions.ILike(e.Title, $"%{q}%") ||
-                                     EF.Functions.ILike(e.Description, $"%{q}%"));
-
-        var events = await query.OrderBy(e => e.StartAt).ToListAsync();
-
-        // Build browse items, expanding recurring events
         var items = new List<BrowseEventItem>();
         foreach (var e in events)
         {
             var campSeason = e.Camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
             var campName = campSeason?.Name ?? e.Camp?.Slug;
             var submitterName = e.CampId == null
-                ? (e.SubmitterUser?.Profile?.BurnerName ?? e.SubmitterUser?.Email)
+                ? (e.SubmitterUser?.Profile?.BurnerName ?? e.SubmitterUser?.GetEffectiveEmail())
                 : null;
 
             var occurrences = new List<Instant> { e.StartAt };
@@ -477,8 +403,7 @@ public class EventGuideController : HumansControllerBase
                     eventDayOffset = Period.Between(gateOpeningDate.Value, eventDate, PeriodUnits.Days).Days;
                 }
 
-                if (filterDays != null && !filterDays.Contains(eventDayOffset))
-                    continue;
+                if (filterDays != null && !filterDays.Contains(eventDayOffset)) continue;
 
                 items.Add(new BrowseEventItem
                 {
@@ -501,18 +426,8 @@ public class EventGuideController : HumansControllerBase
         if (favouritesOnly)
             items = items.Where(i => i.IsFavourited).ToList();
 
-        // Build filter options
-        var categories = await _dbContext.EventCategories
-            .Where(c => c.IsActive)
-            .OrderBy(c => c.DisplayOrder)
-            .Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name })
-            .ToListAsync();
-
-        var venues = await _dbContext.GuideSharedVenues
-            .Where(v => v.IsActive)
-            .OrderBy(v => v.DisplayOrder)
-            .Select(v => new VenueOptionViewModel { Id = v.Id, Name = v.Name })
-            .ToListAsync();
+        var categories = await _guide.GetActiveCategoriesAsync();
+        var venues = await _guide.GetActiveVenuesAsync();
 
         var eventDays = new List<EventDayOptionViewModel>();
         if (guideSettings?.EventSettings != null)
@@ -533,8 +448,8 @@ public class EventGuideController : HumansControllerBase
         {
             TimeZoneId = guideSettings?.EventSettings?.TimeZoneId,
             FavouritedEventIds = favouriteEventIds,
-            Categories = categories,
-            Venues = venues,
+            Categories = categories.Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList(),
+            Venues = venues.Select(v => new VenueOptionViewModel { Id = v.Id, Name = v.Name }).ToList(),
             Days = eventDays,
             FilterDays = filterDays ?? [],
             FilterCategoryId = categoryId,
@@ -564,26 +479,7 @@ public class EventGuideController : HumansControllerBase
         var user = await GetCurrentUserAsync();
         if (user == null) return Challenge();
 
-        var existing = await _dbContext.UserEventFavourites
-            .FirstOrDefaultAsync(f => f.UserId == user.Id && f.GuideEventId == eventId);
-
-        if (existing != null)
-        {
-            _dbContext.UserEventFavourites.Remove(existing);
-        }
-        else
-        {
-            _dbContext.UserEventFavourites.Add(new UserEventFavourite
-            {
-                Id = Guid.NewGuid(),
-                UserId = user.Id,
-                GuideEventId = eventId,
-                CreatedAt = _clock.GetCurrentInstant()
-            });
-        }
-
-        await _dbContext.SaveChangesAsync();
-
+        await _guide.ToggleFavouriteAsync(user.Id, eventId);
         return RedirectToAction(nameof(Browse), new { days, categoryId, venueId, q, favouritesOnly });
     }
 
@@ -594,32 +490,19 @@ public class EventGuideController : HumansControllerBase
         var user = await GetCurrentUserAsync();
         if (user == null) return Challenge();
 
-        var favourite = await _dbContext.UserEventFavourites
-            .FirstOrDefaultAsync(f => f.UserId == user.Id && f.GuideEventId == eventId);
-
-        if (favourite != null)
-        {
-            _dbContext.UserEventFavourites.Remove(favourite);
-            await _dbContext.SaveChangesAsync();
+        if (await _guide.RemoveFavouriteAsync(user.Id, eventId))
             SetSuccess("Event removed from your schedule.");
-        }
 
         return RedirectToAction(nameof(Schedule));
     }
 
     // ─── Helpers ──────────────────────────────────────────────────
 
-    private async Task<(bool IsOpen, GuideSettings? Settings)> CheckSubmissionWindowAsync()
+    private bool IsSubmissionOpen(GuideSettings? settings)
     {
-        var guideSettings = await _dbContext.GuideSettings
-            .Include(g => g.EventSettings)
-            .FirstOrDefaultAsync();
-
-        if (guideSettings == null) return (false, null);
-
+        if (settings == null) return false;
         var now = _clock.GetCurrentInstant();
-        var isOpen = now >= guideSettings.SubmissionOpenAt && now <= guideSettings.SubmissionCloseAt;
-        return (isOpen, guideSettings);
+        return now >= settings.SubmissionOpenAt && now <= settings.SubmissionCloseAt;
     }
 
     private async Task<IndividualEventFormViewModel> BuildFormAsync(GuideSettings guideSettings)
@@ -628,25 +511,17 @@ public class EventGuideController : HumansControllerBase
         {
             TimeZoneId = guideSettings.EventSettings.TimeZoneId
         };
-
         await PopulateDropdownsAsync(model, guideSettings);
         return model;
     }
 
     private async Task PopulateDropdownsAsync(IndividualEventFormViewModel model, GuideSettings guideSettings)
     {
-        model.Categories = await _dbContext.EventCategories
-            .Where(c => c.IsActive)
-            .OrderBy(c => c.DisplayOrder)
-            .Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name })
-            .ToListAsync();
+        var categories = await _guide.GetActiveCategoriesAsync();
+        var venues = await _guide.GetActiveVenuesAsync();
 
-        model.Venues = await _dbContext.GuideSharedVenues
-            .Where(v => v.IsActive)
-            .OrderBy(v => v.DisplayOrder)
-            .Select(v => new VenueOptionViewModel { Id = v.Id, Name = v.Name })
-            .ToListAsync();
-
+        model.Categories = categories.Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();
+        model.Venues = venues.Select(v => new VenueOptionViewModel { Id = v.Id, Name = v.Name }).ToList();
         model.TimeZoneId = guideSettings.EventSettings.TimeZoneId;
 
         var es = guideSettings.EventSettings;
@@ -670,22 +545,15 @@ public class EventGuideController : HumansControllerBase
     }
 
     private static DateTimeZone? GetTimeZone(GuideSettings guideSettings)
-    {
-        return DateTimeZoneProviders.Tzdb.GetZoneOrNull(guideSettings.EventSettings.TimeZoneId);
-    }
+        => DateTimeZoneProviders.Tzdb.GetZoneOrNull(guideSettings.EventSettings.TimeZoneId);
 
     private static DateTime ToLocalDateTime(Instant instant, DateTimeZone? tz)
-    {
-        if (tz == null)
-            return instant.ToDateTimeUtc();
-        return instant.InZone(tz).ToDateTimeUnspecified();
-    }
+        => tz == null ? instant.ToDateTimeUtc() : instant.InZone(tz).ToDateTimeUnspecified();
 
     private static Instant ToInstant(DateTime dateTime, DateTimeZone? tz)
     {
         if (tz == null)
             return Instant.FromDateTimeUtc(DateTime.SpecifyKind(dateTime, DateTimeKind.Utc));
-        var local = LocalDateTime.FromDateTime(dateTime);
-        return local.InZoneLeniently(tz).ToInstant();
+        return LocalDateTime.FromDateTime(dateTime).InZoneLeniently(tz).ToInstant();
     }
 }

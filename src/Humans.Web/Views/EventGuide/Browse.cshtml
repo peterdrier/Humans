@@ -42,7 +42,7 @@
                     <option value="">All categories</option>
                     @foreach (var c in Model.Categories)
                     {
-                        <option value="@c.Id" selected="@(Model.FilterCategoryId == c.Id)">@c.Name</option>
+                        <option value="@c.Id" selected="@(Model.FilterCategoryId == c.Id ? "selected" : null)">@c.Name</option>
                     }
                 </select>
             </div>
@@ -52,7 +52,7 @@
                     <option value="">All venues</option>
                     @foreach (var v in Model.Venues)
                     {
-                        <option value="@v.Id" selected="@(Model.FilterVenueId == v.Id)">@v.Name</option>
+                        <option value="@v.Id" selected="@(Model.FilterVenueId == v.Id ? "selected" : null)">@v.Name</option>
                     }
                 </select>
             </div>

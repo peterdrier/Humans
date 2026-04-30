@@ -260,6 +260,7 @@ Each section's service owns these tables. Cross-service access goes through the 
 | **Feedback** | `FeedbackService` | `feedback_reports`, `feedback_messages` |
 | **Notifications** | `NotificationService`, `NotificationInboxService`, `NotificationMeterProvider` | `notifications`, `notification_recipients` |
 | **Audit Log** | `AuditLogService` | `audit_log_entries` |
+| **Event Guide** | `EventGuideService` | `guide_events`, `guide_settings`, `event_categories`, `guide_shared_venues`, `moderation_actions`, `user_event_favourites`, `user_guide_preferences` |
 
 **`system_settings` is per-key ownership.** Each key belongs to its consuming section's repository — there is no single cross-cutting owner. Currently-tracked keys: `email_outbox_paused` (Email), `DriveActivityMonitor:LastRunAt` (Google Integration).
 

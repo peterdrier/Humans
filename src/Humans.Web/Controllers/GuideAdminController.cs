@@ -1,13 +1,12 @@
+using Humans.Application.Interfaces.EventGuide;
 using Humans.Domain.Constants;
+using Humans.Domain.Entities;
+using Humans.Web.Filters;
+using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Humans.Infrastructure.Data;
-using Humans.Domain.Entities;
-using Humans.Web.Models;
 using NodaTime;
-using Humans.Web.Filters;
 
 namespace Humans.Web.Controllers;
 
@@ -16,19 +15,16 @@ namespace Humans.Web.Controllers;
 [ServiceFilter(typeof(EventGuideFeatureFilter))]
 public class GuideAdminController : HumansControllerBase
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly IClock _clock;
+    private readonly IEventGuideService _guide;
     private readonly ILogger<GuideAdminController> _logger;
 
     public GuideAdminController(
-        HumansDbContext dbContext,
-        IClock clock,
+        IEventGuideService guide,
         ILogger<GuideAdminController> logger,
         UserManager<User> userManager)
         : base(userManager)
     {
-        _dbContext = dbContext;
-        _clock = clock;
+        _guide = guide;
         _logger = logger;
     }
 
@@ -37,15 +33,8 @@ public class GuideAdminController : HumansControllerBase
     [HttpGet("GuideSettings")]
     public async Task<IActionResult> GuideSettings()
     {
-        var existing = await _dbContext.GuideSettings
-            .Include(g => g.EventSettings)
-            .FirstOrDefaultAsync();
-
-        var eventSettingsOptions = await _dbContext.EventSettings
-            .Where(e => e.IsActive)
-            .OrderByDescending(e => e.GateOpeningDate)
-            .Select(e => new EventSettingsOptionViewModel { Id = e.Id, EventName = e.EventName })
-            .ToListAsync();
+        var existing = await _guide.GetGuideSettingsAsync();
+        var eventSettingsOptions = await BuildEventSettingsOptionsAsync();
 
         if (existing == null)
         {
@@ -57,7 +46,6 @@ public class GuideAdminController : HumansControllerBase
         }
 
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(existing.EventSettings.TimeZoneId);
-
         return View(new GuideSettingsViewModel
         {
             Id = existing.Id,
@@ -77,53 +65,38 @@ public class GuideAdminController : HumansControllerBase
     {
         if (!ModelState.IsValid)
         {
-            model.AvailableEventSettings = await GetEventSettingsOptions();
+            model.AvailableEventSettings = await BuildEventSettingsOptionsAsync();
             return View(nameof(GuideSettings), model);
         }
 
-        var eventSettings = await _dbContext.EventSettings.FindAsync(model.EventSettingsId);
+        var eventSettings = await _guide.GetEventSettingsByIdAsync(model.EventSettingsId);
         if (eventSettings == null)
         {
             ModelState.AddModelError(nameof(model.EventSettingsId), "Selected event edition not found.");
-            model.AvailableEventSettings = await GetEventSettingsOptions();
+            model.AvailableEventSettings = await BuildEventSettingsOptionsAsync();
             return View(nameof(GuideSettings), model);
         }
 
-        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId);
-        var now = _clock.GetCurrentInstant();
-
-        var existing = await _dbContext.GuideSettings.FirstOrDefaultAsync();
-
-        if (existing == null)
+        try
         {
-            var settings = new GuideSettings
-            {
-                Id = Guid.NewGuid(),
-                EventSettingsId = model.EventSettingsId,
-                SubmissionOpenAt = ToInstant(model.SubmissionOpenAt, tz),
-                SubmissionCloseAt = ToInstant(model.SubmissionCloseAt, tz),
-                GuidePublishAt = ToInstant(model.GuidePublishAt, tz),
-                MaxPrintSlots = model.MaxPrintSlots,
-                CreatedAt = now,
-                UpdatedAt = now
-            };
-            _dbContext.GuideSettings.Add(settings);
-            _logger.LogInformation("Guide settings created for event {EventSettingsId}", model.EventSettingsId);
-        }
-        else
-        {
-            existing.EventSettingsId = model.EventSettingsId;
-            existing.SubmissionOpenAt = ToInstant(model.SubmissionOpenAt, tz);
-            existing.SubmissionCloseAt = ToInstant(model.SubmissionCloseAt, tz);
-            existing.GuidePublishAt = ToInstant(model.GuidePublishAt, tz);
-            existing.MaxPrintSlots = model.MaxPrintSlots;
-            existing.UpdatedAt = now;
-            _logger.LogInformation("Guide settings updated for event {EventSettingsId}", model.EventSettingsId);
-        }
+            await _guide.SaveGuideSettingsAsync(
+                model.Id == Guid.Empty ? null : model.Id,
+                model.EventSettingsId,
+                model.SubmissionOpenAt,
+                model.SubmissionCloseAt,
+                model.GuidePublishAt,
+                model.MaxPrintSlots);
 
-        await _dbContext.SaveChangesAsync();
-        SetSuccess("Guide settings saved.");
-        return RedirectToAction(nameof(GuideSettings));
+            _logger.LogInformation("Guide settings saved for event {EventSettingsId}", model.EventSettingsId);
+            SetSuccess("Guide settings saved.");
+            return RedirectToAction(nameof(GuideSettings));
+        }
+        catch (InvalidOperationException ex)
+        {
+            ModelState.AddModelError("", ex.Message);
+            model.AvailableEventSettings = await BuildEventSettingsOptionsAsync();
+            return View(nameof(GuideSettings), model);
+        }
     }
 
     // ─── Event Categories ─────────────────────────────────────────
@@ -131,34 +104,27 @@ public class GuideAdminController : HumansControllerBase
     [HttpGet("GuideCategories")]
     public async Task<IActionResult> GuideCategories()
     {
-        var categories = await _dbContext.EventCategories
-            .OrderBy(c => c.DisplayOrder)
-            .ThenBy(c => c.Name)
-            .Select(c => new EventCategoryRowViewModel
-            {
-                Id = c.Id,
-                Name = c.Name,
-                Slug = c.Slug,
-                IsSensitive = c.IsSensitive,
-                IsActive = c.IsActive,
-                DisplayOrder = c.DisplayOrder,
-                EventCount = c.GuideEvents.Count
-            })
-            .ToListAsync();
+        var categories = await _guide.GetAllCategoriesAsync();
+        var rows = categories.Select(c => new EventCategoryRowViewModel
+        {
+            Id = c.Id,
+            Name = c.Name,
+            Slug = c.Slug,
+            IsSensitive = c.IsSensitive,
+            IsActive = c.IsActive,
+            DisplayOrder = c.DisplayOrder,
+            EventCount = c.GuideEvents.Count
+        }).ToList();
 
-        return View(new EventCategoryListViewModel { Categories = categories });
+        return View(new EventCategoryListViewModel { Categories = rows });
     }
 
     [HttpGet("GuideCategories/Create")]
     public async Task<IActionResult> CreateCategory()
     {
-        var maxOrder = await _dbContext.EventCategories
-            .Select(c => (int?)c.DisplayOrder)
-            .MaxAsync() ?? 0;
-
         return View("GuideCategoryForm", new EventCategoryFormViewModel
         {
-            DisplayOrder = maxOrder + 1
+            DisplayOrder = await _guide.GetNextCategoryOrderAsync()
         });
     }
 
@@ -169,7 +135,7 @@ public class GuideAdminController : HumansControllerBase
         if (!ModelState.IsValid)
             return View("GuideCategoryForm", model);
 
-        if (await SlugExistsAsync(model.Slug, null))
+        if (await _guide.CategorySlugExistsAsync(model.Slug))
         {
             ModelState.AddModelError(nameof(model.Slug), "A category with this slug already exists.");
             return View("GuideCategoryForm", model);
@@ -185,9 +151,7 @@ public class GuideAdminController : HumansControllerBase
             DisplayOrder = model.DisplayOrder
         };
 
-        _dbContext.EventCategories.Add(category);
-        await _dbContext.SaveChangesAsync();
-
+        await _guide.CreateCategoryAsync(category);
         _logger.LogInformation("Category '{Name}' created with slug '{Slug}'", model.Name, model.Slug);
         SetSuccess($"Category \"{model.Name}\" created.");
         return RedirectToAction(nameof(GuideCategories));
@@ -196,7 +160,7 @@ public class GuideAdminController : HumansControllerBase
     [HttpGet("GuideCategories/{id:guid}/Edit")]
     public async Task<IActionResult> EditCategory(Guid id)
     {
-        var category = await _dbContext.EventCategories.FindAsync(id);
+        var category = await _guide.GetCategoryAsync(id);
         if (category == null) return NotFound();
 
         return View("GuideCategoryForm", new EventCategoryFormViewModel
@@ -220,10 +184,10 @@ public class GuideAdminController : HumansControllerBase
             return View("GuideCategoryForm", model);
         }
 
-        var category = await _dbContext.EventCategories.FindAsync(id);
+        var category = await _guide.GetCategoryAsync(id);
         if (category == null) return NotFound();
 
-        if (await SlugExistsAsync(model.Slug, id))
+        if (await _guide.CategorySlugExistsAsync(model.Slug, id))
         {
             ModelState.AddModelError(nameof(model.Slug), "A category with this slug already exists.");
             model.Id = id;
@@ -236,8 +200,7 @@ public class GuideAdminController : HumansControllerBase
         category.IsActive = model.IsActive;
         category.DisplayOrder = model.DisplayOrder;
 
-        await _dbContext.SaveChangesAsync();
-
+        await _guide.UpdateCategoryAsync(category);
         _logger.LogInformation("Category '{Name}' ({Id}) updated", model.Name, id);
         SetSuccess($"Category \"{model.Name}\" updated.");
         return RedirectToAction(nameof(GuideCategories));
@@ -247,23 +210,16 @@ public class GuideAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteCategory(Guid id)
     {
-        var category = await _dbContext.EventCategories
-            .Include(c => c.GuideEvents)
-            .FirstOrDefaultAsync(c => c.Id == id);
-
-        if (category == null) return NotFound();
-
-        if (category.GuideEvents.Count > 0)
+        var (deleted, linkedCount) = await _guide.DeleteCategoryAsync(id);
+        if (linkedCount > 0)
         {
-            SetError($"Cannot delete \"{category.Name}\" — it has {category.GuideEvents.Count} associated event(s).");
+            SetError($"Cannot delete this category — it has {linkedCount} associated event(s).");
             return RedirectToAction(nameof(GuideCategories));
         }
+        if (!deleted) return NotFound();
 
-        _dbContext.EventCategories.Remove(category);
-        await _dbContext.SaveChangesAsync();
-
-        _logger.LogInformation("Category '{Name}' ({Id}) deleted", category.Name, id);
-        SetSuccess($"Category \"{category.Name}\" deleted.");
+        _logger.LogInformation("Category ({Id}) deleted", id);
+        SetSuccess("Category deleted.");
         return RedirectToAction(nameof(GuideCategories));
     }
 
@@ -271,7 +227,7 @@ public class GuideAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> MoveCategoryUp(Guid id)
     {
-        await SwapCategoryOrder(id, -1);
+        await _guide.MoveCategoryAsync(id, -1);
         return RedirectToAction(nameof(GuideCategories));
     }
 
@@ -279,7 +235,7 @@ public class GuideAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> MoveCategoryDown(Guid id)
     {
-        await SwapCategoryOrder(id, +1);
+        await _guide.MoveCategoryAsync(id, +1);
         return RedirectToAction(nameof(GuideCategories));
     }
 
@@ -288,33 +244,26 @@ public class GuideAdminController : HumansControllerBase
     [HttpGet("GuideVenues")]
     public async Task<IActionResult> GuideVenues()
     {
-        var venues = await _dbContext.GuideSharedVenues
-            .OrderBy(v => v.DisplayOrder)
-            .ThenBy(v => v.Name)
-            .Select(v => new GuideVenueRowViewModel
-            {
-                Id = v.Id,
-                Name = v.Name,
-                LocationDescription = v.LocationDescription,
-                IsActive = v.IsActive,
-                DisplayOrder = v.DisplayOrder,
-                EventCount = v.GuideEvents.Count
-            })
-            .ToListAsync();
+        var venues = await _guide.GetAllVenuesAsync();
+        var rows = venues.Select(v => new GuideVenueRowViewModel
+        {
+            Id = v.Id,
+            Name = v.Name,
+            LocationDescription = v.LocationDescription,
+            IsActive = v.IsActive,
+            DisplayOrder = v.DisplayOrder,
+            EventCount = v.GuideEvents.Count
+        }).ToList();
 
-        return View(new GuideVenueListViewModel { Venues = venues });
+        return View(new GuideVenueListViewModel { Venues = rows });
     }
 
     [HttpGet("GuideVenues/Create")]
     public async Task<IActionResult> CreateVenue()
     {
-        var maxOrder = await _dbContext.GuideSharedVenues
-            .Select(v => (int?)v.DisplayOrder)
-            .MaxAsync() ?? 0;
-
         return View("GuideVenueForm", new GuideVenueFormViewModel
         {
-            DisplayOrder = maxOrder + 1
+            DisplayOrder = await _guide.GetNextVenueOrderAsync()
         });
     }
 
@@ -335,9 +284,7 @@ public class GuideAdminController : HumansControllerBase
             DisplayOrder = model.DisplayOrder
         };
 
-        _dbContext.GuideSharedVenues.Add(venue);
-        await _dbContext.SaveChangesAsync();
-
+        await _guide.CreateVenueAsync(venue);
         _logger.LogInformation("Venue '{Name}' created", model.Name);
         SetSuccess($"Venue \"{model.Name}\" created.");
         return RedirectToAction(nameof(GuideVenues));
@@ -346,7 +293,7 @@ public class GuideAdminController : HumansControllerBase
     [HttpGet("GuideVenues/{id:guid}/Edit")]
     public async Task<IActionResult> EditVenue(Guid id)
     {
-        var venue = await _dbContext.GuideSharedVenues.FindAsync(id);
+        var venue = await _guide.GetVenueAsync(id);
         if (venue == null) return NotFound();
 
         return View("GuideVenueForm", new GuideVenueFormViewModel
@@ -370,7 +317,7 @@ public class GuideAdminController : HumansControllerBase
             return View("GuideVenueForm", model);
         }
 
-        var venue = await _dbContext.GuideSharedVenues.FindAsync(id);
+        var venue = await _guide.GetVenueAsync(id);
         if (venue == null) return NotFound();
 
         venue.Name = model.Name;
@@ -379,8 +326,7 @@ public class GuideAdminController : HumansControllerBase
         venue.IsActive = model.IsActive;
         venue.DisplayOrder = model.DisplayOrder;
 
-        await _dbContext.SaveChangesAsync();
-
+        await _guide.UpdateVenueAsync(venue);
         _logger.LogInformation("Venue '{Name}' ({Id}) updated", model.Name, id);
         SetSuccess($"Venue \"{model.Name}\" updated.");
         return RedirectToAction(nameof(GuideVenues));
@@ -390,23 +336,16 @@ public class GuideAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteVenue(Guid id)
     {
-        var venue = await _dbContext.GuideSharedVenues
-            .Include(v => v.GuideEvents)
-            .FirstOrDefaultAsync(v => v.Id == id);
-
-        if (venue == null) return NotFound();
-
-        if (venue.GuideEvents.Count > 0)
+        var (deleted, linkedCount) = await _guide.DeleteVenueAsync(id);
+        if (linkedCount > 0)
         {
-            SetError($"Cannot delete \"{venue.Name}\" — it has {venue.GuideEvents.Count} associated event(s).");
+            SetError($"Cannot delete this venue — it has {linkedCount} associated event(s).");
             return RedirectToAction(nameof(GuideVenues));
         }
+        if (!deleted) return NotFound();
 
-        _dbContext.GuideSharedVenues.Remove(venue);
-        await _dbContext.SaveChangesAsync();
-
-        _logger.LogInformation("Venue '{Name}' ({Id}) deleted", venue.Name, id);
-        SetSuccess($"Venue \"{venue.Name}\" deleted.");
+        _logger.LogInformation("Venue ({Id}) deleted", id);
+        SetSuccess("Venue deleted.");
         return RedirectToAction(nameof(GuideVenues));
     }
 
@@ -414,7 +353,7 @@ public class GuideAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> MoveVenueUp(Guid id)
     {
-        await SwapVenueOrder(id, -1);
+        await _guide.MoveVenueAsync(id, -1);
         return RedirectToAction(nameof(GuideVenues));
     }
 
@@ -422,81 +361,18 @@ public class GuideAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> MoveVenueDown(Guid id)
     {
-        await SwapVenueOrder(id, +1);
+        await _guide.MoveVenueAsync(id, +1);
         return RedirectToAction(nameof(GuideVenues));
     }
 
     // ─── Helpers ──────────────────────────────────────────────────
 
-    private async Task<List<EventSettingsOptionViewModel>> GetEventSettingsOptions()
+    private async Task<List<EventSettingsOptionViewModel>> BuildEventSettingsOptionsAsync()
     {
-        return await _dbContext.EventSettings
-            .Where(e => e.IsActive)
-            .OrderByDescending(e => e.GateOpeningDate)
-            .Select(e => new EventSettingsOptionViewModel { Id = e.Id, EventName = e.EventName })
-            .ToListAsync();
-    }
-
-    private async Task<bool> SlugExistsAsync(string slug, Guid? excludeId)
-    {
-        var query = _dbContext.EventCategories.Where(c => c.Slug == slug);
-        if (excludeId.HasValue)
-            query = query.Where(c => c.Id != excludeId.Value);
-        return await query.AnyAsync();
-    }
-
-    private async Task SwapCategoryOrder(Guid id, int direction)
-    {
-        var categories = await _dbContext.EventCategories
-            .OrderBy(c => c.DisplayOrder)
-            .ThenBy(c => c.Name)
-            .ToListAsync();
-
-        var index = categories.FindIndex(c => c.Id == id);
-        if (index < 0) return;
-
-        var targetIndex = index + direction;
-        if (targetIndex < 0 || targetIndex >= categories.Count) return;
-
-        (categories[index].DisplayOrder, categories[targetIndex].DisplayOrder) =
-            (categories[targetIndex].DisplayOrder, categories[index].DisplayOrder);
-
-        await _dbContext.SaveChangesAsync();
-    }
-
-    private async Task SwapVenueOrder(Guid id, int direction)
-    {
-        var venues = await _dbContext.GuideSharedVenues
-            .OrderBy(v => v.DisplayOrder)
-            .ThenBy(v => v.Name)
-            .ToListAsync();
-
-        var index = venues.FindIndex(v => v.Id == id);
-        if (index < 0) return;
-
-        var targetIndex = index + direction;
-        if (targetIndex < 0 || targetIndex >= venues.Count) return;
-
-        (venues[index].DisplayOrder, venues[targetIndex].DisplayOrder) =
-            (venues[targetIndex].DisplayOrder, venues[index].DisplayOrder);
-
-        await _dbContext.SaveChangesAsync();
+        var options = await _guide.GetEventSettingsOptionsAsync();
+        return options.Select(e => new EventSettingsOptionViewModel { Id = e.Id, EventName = e.EventName }).ToList();
     }
 
     private static DateTime ToLocalDateTime(Instant instant, DateTimeZone? tz)
-    {
-        if (tz == null)
-            return instant.ToDateTimeUtc();
-
-        return instant.InZone(tz).ToDateTimeUnspecified();
-    }
-
-    private static Instant ToInstant(DateTime dateTime, DateTimeZone? tz)
-    {
-        if (tz == null)
-            return Instant.FromDateTimeUtc(DateTime.SpecifyKind(dateTime, DateTimeKind.Utc));
-
-        var local = LocalDateTime.FromDateTime(dateTime);
-        return local.InZoneLeniently(tz).ToInstant();
-    }
+        => tz == null ? instant.ToDateTimeUtc() : instant.InZone(tz).ToDateTimeUnspecified();
 }
