@@ -48,6 +48,7 @@ public class ProfileControllerEmailGridTests
     private readonly IAuthorizationService _authorizationService = Substitute.For<IAuthorizationService>();
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
     private readonly UserManager<User> _userManager;
+    private readonly SignInManager<User> _signInManager;
     private readonly ProfileController _controller;
     private readonly Guid _userId = Guid.NewGuid();
 
@@ -56,6 +57,16 @@ public class ProfileControllerEmailGridTests
         var userStore = Substitute.For<IUserStore<User>>();
         _userManager = Substitute.For<UserManager<User>>(
             userStore, null, null, null, null, null, null, null, null);
+
+        var contextAccessor = Substitute.For<IHttpContextAccessor>();
+        var claimsFactory = Substitute.For<IUserClaimsPrincipalFactory<User>>();
+        var identityOptions = Substitute.For<IOptions<IdentityOptions>>();
+        identityOptions.Value.Returns(new IdentityOptions());
+        var schemeProvider = Substitute.For<IAuthenticationSchemeProvider>();
+        var userConfirmation = Substitute.For<IUserConfirmation<User>>();
+        _signInManager = Substitute.For<SignInManager<User>>(
+            _userManager, contextAccessor, claimsFactory, identityOptions,
+            NullLogger<SignInManager<User>>.Instance, schemeProvider, userConfirmation);
 
         var localizer = Substitute.For<IStringLocalizer<SharedResource>>();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
@@ -85,7 +96,8 @@ public class ProfileControllerEmailGridTests
             new FakeClock(Instant.FromUtc(2026, 4, 30, 12, 0)),
             _authorizationService,
             Substitute.For<IUserService>(),
-            Substitute.For<IHttpClientFactory>());
+            Substitute.For<IHttpClientFactory>(),
+            _signInManager);
 
         var identity = new ClaimsIdentity(new[]
         {
@@ -139,5 +151,31 @@ public class ProfileControllerEmailGridTests
         result.Should().BeOfType<ForbidResult>();
         await _userEmailService.DidNotReceive().SetGoogleAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Link_AsSelf_ReturnsChallengeResult_WithProvider()
+    {
+        _signInManager.ConfigureExternalAuthenticationProperties("Google", Arg.Any<string>())
+            .Returns(new AuthenticationProperties());
+
+        var result = await _controller.Link("Google", returnUrl: "/Profile/Me/Emails");
+
+        result.Should().BeOfType<ChallengeResult>()
+            .Which.AuthenticationSchemes.Should().Contain("Google");
+    }
+
+    [HumansFact]
+    public async Task Link_AuthorizationFails_ReturnsForbid()
+    {
+        _authorizationService.AuthorizeAsync(
+            Arg.Any<ClaimsPrincipal>(),
+            Arg.Any<object?>(),
+            Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Failed());
+
+        var result = await _controller.Link("Google", returnUrl: null);
+
+        result.Should().BeOfType<ForbidResult>();
     }
 }

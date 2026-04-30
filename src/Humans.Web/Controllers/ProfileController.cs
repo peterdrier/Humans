@@ -71,6 +71,7 @@ public class ProfileController : HumansControllerBase
     private readonly IAuthorizationService _authorizationService;
     private readonly IUserService _userService;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly SignInManager<User> _signInManager;
 
     private const int MaxProfilePictureUploadBytes = 20 * 1024 * 1024; // 20MB upload limit
     private const int MaxGooglePhotoDownloadBytes = 20 * 1024 * 1024; // 20MB hard ceiling for Google avatar fetch
@@ -122,7 +123,8 @@ public class ProfileController : HumansControllerBase
         IClock clock,
         IAuthorizationService authorizationService,
         IUserService userService,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        SignInManager<User> signInManager)
         : base(userManager)
     {
         _userManager = userManager;
@@ -150,6 +152,7 @@ public class ProfileController : HumansControllerBase
         _authorizationService = authorizationService;
         _userService = userService;
         _httpClientFactory = httpClientFactory;
+        _signInManager = signInManager;
     }
 
     // ─── Own Profile (Me) ────────────────────────────────────────────
@@ -777,6 +780,23 @@ public class ProfileController : HumansControllerBase
         }
 
         return RedirectToAction(nameof(Emails));
+    }
+
+    [HttpPost("Me/Emails/Link/{provider}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Link(string provider, string? returnUrl = null)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return NotFound();
+
+        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        var redirectUrl = Url.Action(nameof(Emails)) ?? "/Profile/Me/Emails";
+        var props = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
+        return Challenge(props, provider);
     }
 
     [HttpGet("Me/Outbox")]
