@@ -1,8 +1,6 @@
 <!-- freshness:triggers
-  src/Humans.Application/Services/Profile/ContactService.cs
   src/Humans.Application/Services/Profile/UserEmailService.cs
   src/Humans.Application/Services/Users/UserService.cs
-  src/Humans.Web/Controllers/ContactsController.cs
   src/Humans.Web/Controllers/AccountController.cs
   src/Humans.Domain/Entities/User.cs
   src/Humans.Infrastructure/Data/Configurations/Users/UserConfiguration.cs
@@ -26,42 +24,6 @@ With magic link authentication (Feature 30) in place, contacts are **pre-provisi
 3. **No merge needed.** When a contact authenticates, they claim their existing row. Account linking (Feature 30) handles the case where they use Google OAuth.
 
 ## User Stories
-
-### US-1: Admin creates a contact manually
-
-**As** a Board member or Admin,
-**I want** to add an external contact with an email and display name,
-**So that** the org can track communication preferences before they sign up.
-
-**Acceptance criteria:**
-- Admin navigates to Humans > Contacts > Add Contact
-- Enters email, display name, and source (Manual, MailerLite, TicketTailor)
-- Contact is created as a pre-provisioned user with `EmailConfirmed = true`
-- Contact appears in the contacts list
-- Duplicate emails are rejected with a clear message
-
-### US-2: Admin views contacts list
-
-**As** a Board member or Admin,
-**I want** to see all external contacts with their source and preferences status,
-**So that** I can manage the org's contact database.
-
-**Acceptance criteria:**
-- Contacts list shows name, email, source, created date, and preference status
-- Search filters by name or email
-- Link to each contact's detail page
-- "Back to Humans" link returns to the main humans list
-
-### US-3: Admin views contact detail
-
-**As** a Board member or Admin,
-**I want** to see a contact's full information including communication preferences and audit history,
-**So that** I can understand their engagement.
-
-**Acceptance criteria:**
-- Shows contact info (email, source, external ID, created date)
-- Shows communication preferences (opted in/out per category)
-- Shows audit log entries for the contact
 
 ### US-4: Contact claims account on first login
 
@@ -102,19 +64,6 @@ TicketTailor = 2 // Ticket purchase import
 ### Index
 
 Composite index on `(ContactSource, ExternalSourceId)` with filter `external_source_id IS NOT NULL` for external system lookups.
-
-## Authorization
-
-All contact management actions require **Board or Admin** role.
-
-## Routes
-
-| Method | Route | Action |
-|--------|-------|--------|
-| GET | `/Human/Admin/Contacts` | Contacts list |
-| GET | `/Human/Admin/Contacts/{id}` | Contact detail |
-| GET | `/Human/Admin/Contacts/Create` | Create contact form |
-| POST | `/Human/Admin/Contacts/Create` | Create contact submit |
 
 ## Related Features
 

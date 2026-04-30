@@ -241,15 +241,6 @@ Living document. Last updated: 2026-04-25 (freshness sweep).
 | Review | /Consent/Review | GET | Review a document before consenting | OK |
 | Submit | /Consent/Submit | POST | Submit consent | OK |
 
-## ContactsController
-
-| Method | Route | Verb | Purpose | Suggestion |
-|--------|-------|------|---------|------------|
-| Index | /Contacts | GET | Admin contacts list (search) | OK |
-| Detail | /Contacts/{id} | GET | Contact detail | OK |
-| Create | /Contacts/Create | GET | Create contact form | OK |
-| Create | /Contacts/Create | POST | Submit new contact | OK |
-
 ## DevLoginController
 
 | Method | Route | Verb | Purpose | Suggestion |
@@ -676,7 +667,6 @@ All other actions have names that adequately describe what the user sees or what
 Several of the splits proposed in the original audit have since shipped:
 
 - **HumanController has been merged into `ProfileController`** — `View`/`Popover`/`SendMessage`, the admin actions (`AdminList`, `AdminDetail`, `AdminOutbox`, `SuspendHuman`, `UnsuspendHuman`, `ApproveVolunteer`, `RejectSignup`, `AddRole`, `EndRole`), and even the `Search` page now live on `/Profile`. The `View` → `HumanProfile` rename was implemented as `ViewProfile`. The `HumanGoogleSyncAudit` action moved to `GoogleController` (still carries the redundant `Human`/`Google` prefixes — see Part 1).
-- **ContactsController** is now its own controller (`/Contacts`), extracted from the old `HumanController`.
 - **GoogleController** absorbed all sync, workspace-account, and email-rename actions previously spread across `AdminController`, `BoardController`, `AdminEmailController`, and the team-controller `Sync*` actions.
 - **EmailController** is now its own controller (`/Email`) holding the email outbox + preview that previously lived on `AdminController`.
 - **AdminDuplicateAccountsController** is new and handles the duplicate-account workflow.

@@ -5,7 +5,6 @@
   src/Humans.Web/Controllers/BoardController.cs
   src/Humans.Web/Controllers/ProfileController.cs
   src/Humans.Web/Controllers/GoogleController.cs
-  src/Humans.Web/Controllers/ContactsController.cs
   src/Humans.Web/Authorization/PolicyNames.cs
   src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
   src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
@@ -164,16 +163,6 @@ Human management (previously on `BoardController`) is now on `ProfileController`
 | `/Profile/{id}/Admin/Reject` | Reject | POST: HumanAdmin, Board, Admin |
 | `/Profile/{id}/Admin/Roles/Add` | AddRole | GET/POST: HumanAdmin, Board, Admin |
 | `/Profile/{id}/Admin/Roles/{roleId}/End` | EndRole | POST: HumanAdmin, Board, Admin |
-
-### ContactsController (`/Contacts/`) — HumanAdmin, Board, Admin
-
-External contacts (not yet registered users) are managed at `/Contacts/`, NOT `/Human/Admin/Contacts/` as the spec may suggest.
-
-| Route | Action | Description |
-|-------|--------|-------------|
-| `/Contacts` | Index | Contacts list |
-| `/Contacts/{id}` | Detail | Contact detail |
-| `/Contacts/Create` | Create | GET/POST: Create contact |
 
 ### GoogleController (`/Google/`) — Admin (mostly)
 

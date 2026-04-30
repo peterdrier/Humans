@@ -9,7 +9,6 @@
   src/Humans.Infrastructure/Data/Configurations/Profiles/**
   src/Humans.Web/Controllers/ProfileController.cs
   src/Humans.Web/Controllers/ProfileApiController.cs
-  src/Humans.Web/Controllers/ContactsController.cs
   src/Humans.Web/Controllers/AdminDuplicateAccountsController.cs
   src/Humans.Web/Controllers/AdminMergeController.cs
   src/Humans.Web/Views/Profile/**
@@ -323,8 +322,6 @@ All profile-related functionality lives under `/Profile`:
 | `/Profile/Picture` | Profile picture endpoint |
 | `/api/profiles/search` | API search endpoint |
 
-External contacts (pre-provisioned Identity users imported from MailerLite/TicketTailor/etc.) are managed separately at `/Contacts` (`ContactsController`, `PolicyNames.HumanAdminBoardOrAdmin`).
-
 Admin-only flows for the section's cross-account hygiene:
 
 | Route | Purpose |
@@ -391,7 +388,7 @@ Admin-only flows for the section's cross-account hygiene:
 
 ## Architecture
 
-**Owning services:** `ProfileService`, `ContactFieldService`, `ContactService`, `UserEmailService`, `CommunicationPreferenceService`, `AccountMergeService`, `DuplicateAccountService`
+**Owning services:** `ProfileService`, `ContactFieldService`, `UserEmailService`, `CommunicationPreferenceService`, `AccountMergeService`, `DuplicateAccountService`
 **Owned tables:** `profiles`, `contact_fields`, `user_emails`, `communication_preferences`, `volunteer_history_entries`, `profile_languages`, `account_merge_requests`
 **Status:** (A) Migrated — canonical §15 reference implementation (peterdrier/Humans PR #235, 2026-04-20). `AccountMergeService` / `DuplicateAccountService` moved into `Humans.Application/Services/Profile/` after the original migration (they now live alongside the other Profile-section services in the code tree; design-rules §8 ownership updated accordingly).
 

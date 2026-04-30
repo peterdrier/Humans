@@ -2,7 +2,6 @@
   src/Humans.Web/Views/Profile/**
   src/Humans.Web/Controllers/ProfileController.cs
   src/Humans.Web/Controllers/ProfileApiController.cs
-  src/Humans.Web/Controllers/ContactsController.cs
   src/Humans.Web/ViewComponents/ProfileCardViewComponent.cs
   src/Humans.Web/ViewComponents/UserAvatarViewComponent.cs
   src/Humans.Application/Services/Profile/**
