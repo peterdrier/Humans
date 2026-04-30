@@ -46,6 +46,7 @@ namespace Humans.Application.Tests.Controllers;
 public class ProfileControllerEmailGridTests
 {
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
+    private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IAuthorizationService _authorizationService = Substitute.For<IAuthorizationService>();
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
     private readonly UserManager<User> _userManager;
@@ -76,7 +77,7 @@ public class ProfileControllerEmailGridTests
             _userManager,
             Substitute.For<IProfileService>(),
             Substitute.For<IContactFieldService>(),
-            Substitute.For<IEmailService>(),
+            _emailService,
             _userEmailService,
             Substitute.For<ICommunicationPreferenceService>(),
             Substitute.For<IAuditLogService>(),
@@ -277,6 +278,8 @@ public class ProfileControllerEmailGridTests
     {
         var targetUserId = Guid.NewGuid();
         const string newEmail = "added@example.com";
+        _userManager.FindByIdAsync(targetUserId.ToString())
+            .Returns(new User { Id = targetUserId, DisplayName = "Target User", PreferredLanguage = "en" });
         _userEmailService.AddEmailAsync(targetUserId, newEmail, Arg.Any<CancellationToken>())
             .Returns(new Humans.Application.DTOs.AddEmailResult("token", IsConflict: false));
 
@@ -284,6 +287,44 @@ public class ProfileControllerEmailGridTests
 
         await _userEmailService.Received(1).AddEmailAsync(
             targetUserId, newEmail, Arg.Any<CancellationToken>());
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be("AdminEmails");
+    }
+
+    [HumansFact]
+    public async Task AdminAddEmail_SendsVerificationEmail_ToTargetUser_WithReturnedToken()
+    {
+        var targetUserId = Guid.NewGuid();
+        const string newEmail = "added@example.com";
+        const string token = "verification-token-abc";
+
+        // Stub Url.Action to embed the encoded token in the returned URL so the
+        // test can verify the verification URL is built from the AddEmailAsync token.
+        _controller.Url.Action(Arg.Is<UrlActionContext>(ctx => ctx.Action == "VerifyEmail"))
+            .Returns(ci =>
+            {
+                var ctx = ci.Arg<UrlActionContext>();
+                var routeValues = new Microsoft.AspNetCore.Routing.RouteValueDictionary(ctx.Values);
+                return $"/Profile/Me/Emails/Verify?userId={routeValues["userId"]}&token={routeValues["token"]}";
+            });
+
+        _userManager.FindByIdAsync(targetUserId.ToString())
+            .Returns(new User { Id = targetUserId, DisplayName = "Target User", PreferredLanguage = "es" });
+        _userEmailService.AddEmailAsync(targetUserId, newEmail, Arg.Any<CancellationToken>())
+            .Returns(new Humans.Application.DTOs.AddEmailResult(token, IsConflict: false));
+
+        var result = await _controller.AdminAddEmail(targetUserId, newEmail, CancellationToken.None);
+
+        // Verification email goes to the target email being added, with the token
+        // returned by AddEmailAsync — NOT discarded. Recipient name and culture
+        // come from the target user, not the admin.
+        await _emailService.Received(1).SendEmailVerificationAsync(
+            newEmail,
+            "Target User",
+            Arg.Is<string>(url => url.Contains(token, StringComparison.Ordinal)),
+            false,
+            "es",
+            Arg.Any<CancellationToken>());
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be("AdminEmails");
     }

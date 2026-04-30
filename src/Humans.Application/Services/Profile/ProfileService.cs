@@ -866,10 +866,12 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         {
             e.Email,
             e.IsVerified,
-            // Sourced from the IsGoogle column (the canonical Workspace-identity flag)
-            // rather than (Provider != null), which would conflate Workspace identity
-            // with the OAuth-attachment state.
-            IsGoogle = e.IsGoogle,
+            // JSON key stays "IsOAuth" per coding-rules.md "Never Rename Fields in
+            // Serialized Objects" — the GDPR export is a JSON file users download.
+            // The value sources from the IsGoogle column (the canonical
+            // Workspace-identity flag) rather than (Provider != null), which would
+            // conflate Workspace identity with the OAuth-attachment state.
+            IsOAuth = e.IsGoogle,
             e.IsPrimary,
             e.Visibility
         }).ToList());

@@ -960,10 +960,36 @@ public class ProfileController : HumansControllerBase
             return RedirectToAction(nameof(AdminEmails), new { userId });
         }
 
+        var targetUser = await FindUserByIdAsync(userId);
+        if (targetUser is null)
+            return NotFound();
+
         try
         {
-            await _userEmailService.AddEmailAsync(userId, email, ct);
-            SetSuccess(string.Format(CultureInfo.CurrentCulture, _localizer["Profile_VerificationSent"].Value, email.Trim()));
+            var result = await _userEmailService.AddEmailAsync(userId, email, ct);
+
+            // Verification email goes to the target user (the human whose row this is),
+            // not to the admin. The admin can't verify on the user's behalf — that
+            // defeats the purpose of verification. Mirrors the self AddEmail path.
+            var verificationUrl = Url.Action(
+                nameof(VerifyEmail),
+                "Profile",
+                new { userId, token = HttpUtility.UrlEncode(result.Token) },
+                Request.Scheme);
+
+            await _emailService.SendEmailVerificationAsync(
+                email.Trim(),
+                targetUser.DisplayName,
+                verificationUrl!,
+                result.IsConflict,
+                targetUser.PreferredLanguage,
+                ct);
+
+            _logger.LogInformation(
+                "Admin sent email verification to {Email} for user {UserId} (conflict: {IsConflict})",
+                email, userId, result.IsConflict);
+
+            SetSuccess(_localizer["EmailGrid_AdminAddSentVerification"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {

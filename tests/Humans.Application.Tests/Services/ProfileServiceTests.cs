@@ -1669,11 +1669,14 @@ public class ProfileServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ContributeForUserAsync_EmitsIsGoogleKey_FromIsGoogleColumn()
+    public async Task ContributeForUserAsync_EmitsIsOAuthKey_SourcedFromIsGoogleColumn()
     {
-        // Provider intentionally null to verify the export key sources from the
-        // IsGoogle column rather than (Provider != null) — under the old projection
-        // this row would emit IsOAuth=false; under the new one it must emit IsGoogle=true.
+        // The JSON key stays "IsOAuth" per coding-rules.md (never rename serialized
+        // fields — exports are JSON files users download). The value sources from
+        // the IsGoogle column rather than (Provider != null): Provider is intentionally
+        // null here, so under the old (Provider != null) projection this row would
+        // emit IsOAuth=false; under the corrected projection it must emit IsOAuth=true
+        // because IsGoogle=true.
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
         _dbContext.UserEmails.Add(new UserEmail
@@ -1694,7 +1697,6 @@ public class ProfileServiceTests : IDisposable
         var userEmailsSlice = slices.Single(s =>
             string.Equals(s.SectionName, Humans.Application.Interfaces.Gdpr.GdprExportSections.UserEmails, StringComparison.Ordinal));
         var json = System.Text.Json.JsonSerializer.Serialize(userEmailsSlice.Data);
-        json.Should().Contain("\"IsGoogle\":true");
-        json.Should().NotContain("IsOAuth");
+        json.Should().Contain("\"IsOAuth\":true");
     }
 }

@@ -1921,6 +1921,7 @@
   <data name="EmailGrid_GoogleServiceUpdated" xml:space="preserve"><value>Google service email updated. Sync will be retried with the new email.</value></data>
   <data name="EmailGrid_UnlinkSuccess" xml:space="preserve"><value>Sign-in provider unlinked.</value></data>
   <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve"><value>This email is linked to a sign-in provider. Use Unlink instead.</value></data>
+  <data name="EmailGrid_AdminAddSentVerification" xml:space="preserve"><value>Verification email sent to the user.</value></data>
   <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>Manage emails</value></data>
 
 </root>

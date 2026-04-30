@@ -44,7 +44,7 @@ Cross-cutting cleanups absorbed into PR 4 (no follow-ups):
 - `UserEmailRepository.SetNotificationTargetExclusiveAsync` → `SetPrimaryExclusiveAsync`.
 - `UserEmailRepository.RewriteOAuthEmailAsync` → `RewriteLinkedEmailAsync` (predicate stays `Provider != null`).
 - `AccountMergeService.AcceptAsync` — verify the five conflict-resolution rules at parent spec §184–190 are implemented; add any missing.
-- `ProfileService` GDPR export key `IsOAuth` → `IsGoogle`, sourced from the new flag (not `Provider != null`).
+- `ProfileService` GDPR export — value source corrected to `e.IsGoogle` (not `Provider != null`). **JSON key stays `IsOAuth`** per `coding-rules.md` "Never Rename Fields in Serialized Objects" (the export is a JSON file users download). Earlier draft of this task called for renaming the key to `IsGoogle`; that was wrong and is reverted.
 
 **Hard naming rule that drove the design.** No "OAuth" token in any method or route name. `Provider` (column name) is fine. Provider-specific operations are parameterized — `Link(provider, providerKey)` not `LinkGoogle`. An architecture test extension enforces this on `IUserEmailService` and `UserEmailRepository`.
 
@@ -260,7 +260,7 @@ The admin grid is reached from `Views/Profile/AdminDetail.cshtml` via a "Manage 
 
 ### `ProfileService` GDPR export test
 
-- Assert exported JSON contains `"IsGoogle"` key (not `"IsOAuth"`); value tracks the row's `IsGoogle` column.
+- Assert exported JSON `"IsOAuth"` value sources from the row's `IsGoogle` column (not `Provider != null`). Seed `Provider = null` + `IsGoogle = true` and assert `"IsOAuth":true`.
 
 ### Architecture test extension
 
