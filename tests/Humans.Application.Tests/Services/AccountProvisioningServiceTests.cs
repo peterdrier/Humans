@@ -277,6 +277,8 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task UpdateBatchAsync(IReadOnlyList<UserEmail> emails, CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task SetGoogleExclusiveAsync(Guid userId, Guid userEmailId, Instant updatedAt, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
         public Task<Guid?> GetUserIdByVerifiedEmailAsync(string email, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlyList<UserEmail>> GetAllAsync(CancellationToken ct = default) =>

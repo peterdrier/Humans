@@ -216,6 +216,15 @@ public interface IUserEmailRepository
     Task<IReadOnlyList<UserEmail>> FindAllByProviderKeyAsync(
         string provider, string providerKey, CancellationToken ct = default);
 
+    /// <summary>
+    /// Single-transaction flip: sets <see cref="UserEmail.IsGoogle"/> = true
+    /// on the target row, and IsGoogle = false on every sibling row for the
+    /// same user. Stamps <c>UpdatedAt</c> with <paramref name="updatedAt"/>
+    /// on every row whose <c>IsGoogle</c> value changes. Owner-gate
+    /// (userId match) is performed by the caller.
+    /// </summary>
+    Task SetGoogleExclusiveAsync(Guid userId, Guid userEmailId, Instant updatedAt, CancellationToken cancellationToken = default);
+
     Task AddAsync(UserEmail email, CancellationToken ct = default);
     Task RemoveAsync(UserEmail email, CancellationToken ct = default);
     Task RemoveAllForUserAsync(Guid userId, CancellationToken ct = default);
