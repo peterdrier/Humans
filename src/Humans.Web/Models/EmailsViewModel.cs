@@ -46,6 +46,28 @@ public class EmailsViewModel
     /// Status of the Google email for sync operations.
     /// </summary>
     public GoogleEmailStatus GoogleEmailStatus { get; set; }
+
+    /// <summary>
+    /// The user this grid is acting on. For self contexts this is the current user;
+    /// for admin contexts this is the target user (route param), not the actor.
+    /// </summary>
+    public Guid TargetUserId { get; set; }
+
+    /// <summary>
+    /// Route prefix used by grid action forms/links. Defaults to "/Profile/Me/Emails"
+    /// for the self grid; admin context overrides to "/Profile/{userId}/Admin/Emails".
+    /// </summary>
+    public string RoutePrefix { get; set; } = "/Profile/Me/Emails";
+
+    /// <summary>
+    /// True when this view is being rendered against another user's grid by an admin.
+    /// </summary>
+    public bool IsAdminContext { get; set; }
+
+    /// <summary>
+    /// Subset of email row ids that have a pending account-merge request.
+    /// </summary>
+    public IReadOnlySet<Guid> MergePendingEmailIds { get; set; } = new HashSet<Guid>();
 }
 
 /// <summary>

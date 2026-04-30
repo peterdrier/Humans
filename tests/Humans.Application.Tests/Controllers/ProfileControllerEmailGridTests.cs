@@ -98,7 +98,8 @@ public class ProfileControllerEmailGridTests
             _authorizationService,
             Substitute.For<IUserService>(),
             Substitute.For<IHttpClientFactory>(),
-            _signInManager);
+            _signInManager,
+            Substitute.For<IAccountMergeService>());
 
         var identity = new ClaimsIdentity(new[]
         {

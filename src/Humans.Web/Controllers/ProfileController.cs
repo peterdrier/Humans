@@ -72,6 +72,7 @@ public class ProfileController : HumansControllerBase
     private readonly IUserService _userService;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly SignInManager<User> _signInManager;
+    private readonly IAccountMergeService _accountMergeService;
 
     private const int MaxProfilePictureUploadBytes = 20 * 1024 * 1024; // 20MB upload limit
     private const int MaxGooglePhotoDownloadBytes = 20 * 1024 * 1024; // 20MB hard ceiling for Google avatar fetch
@@ -124,7 +125,8 @@ public class ProfileController : HumansControllerBase
         IAuthorizationService authorizationService,
         IUserService userService,
         IHttpClientFactory httpClientFactory,
-        SignInManager<User> signInManager)
+        SignInManager<User> signInManager,
+        IAccountMergeService accountMergeService)
         : base(userManager)
     {
         _userManager = userManager;
@@ -153,6 +155,7 @@ public class ProfileController : HumansControllerBase
         _userService = userService;
         _httpClientFactory = httpClientFactory;
         _signInManager = signInManager;
+        _accountMergeService = accountMergeService;
     }
 
     // ─── Own Profile (Me) ────────────────────────────────────────────
@@ -847,7 +850,7 @@ public class ProfileController : HumansControllerBase
         if (targetUser is null)
             return NotFound();
 
-        var viewModel = await BuildEmailsViewModelAsync(targetUser);
+        var viewModel = await BuildEmailsViewModelAsync(targetUser, isAdminContext: true, ct);
         return View("Emails", viewModel);
     }
 
@@ -1955,7 +1958,7 @@ public class ProfileController : HumansControllerBase
     private (byte[] Data, string ContentType)? ResizeProfilePicture(byte[] imageData, string contentType) =>
         Helpers.ProfilePictureProcessor.ResizeProfilePicture(imageData, _logger);
 
-    private async Task<EmailsViewModel> BuildEmailsViewModelAsync(User user)
+    private async Task<EmailsViewModel> BuildEmailsViewModelAsync(User user, bool isAdminContext = false, CancellationToken ct = default)
     {
         var emails = await _userEmailService.GetUserEmailsAsync(user.Id);
 
@@ -1982,6 +1985,15 @@ public class ProfileController : HumansControllerBase
             .Select(e => e.Email)
             .FirstOrDefault();
 
+        var emailIds = emails.Select(e => e.Id).ToList();
+        var mergePendingIds = emailIds.Count > 0
+            ? await _accountMergeService.GetPendingEmailIdsAsync(emailIds, ct)
+            : new HashSet<Guid>();
+
+        var routePrefix = isAdminContext
+            ? $"/Profile/{user.Id}/Admin/Emails"
+            : "/Profile/Me/Emails";
+
         return new EmailsViewModel
         {
             Emails = emails.Select(e => new EmailRowViewModel
@@ -2002,7 +2014,11 @@ public class ProfileController : HumansControllerBase
             MinutesUntilResend = minutesUntilResend,
             GoogleServiceEmail = googleServiceEmail,
             HasNobodiesTeamEmail = hasNobodiesTeam,
-            GoogleEmailStatus = user.GoogleEmailStatus
+            GoogleEmailStatus = user.GoogleEmailStatus,
+            TargetUserId = user.Id,
+            RoutePrefix = routePrefix,
+            IsAdminContext = isAdminContext,
+            MergePendingEmailIds = mergePendingIds
         };
     }
 
