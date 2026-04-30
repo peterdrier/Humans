@@ -86,7 +86,7 @@
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="lineId" value="@line.Id" />
                                 <button type="submit" class="btn btn-sm btn-outline-danger"
-                                        onclick="return confirm('Remove this line?');">Remove</button>
+                                        data-confirm="Remove this line?">Remove</button>
                             </form>
                         }
                     </td>
@@ -166,3 +166,15 @@ else
 
 <h2 class="h4 mb-3">Payments</h2>
 <p class="text-muted">Payments are recorded by the finance team. None are visible on this order yet.</p>
+
+@section Scripts {
+    <script nonce="@Context.Items["CspNonce"]">
+        document.querySelectorAll('[data-confirm]').forEach(function (button) {
+            button.addEventListener('click', function (e) {
+                if (!confirm(this.getAttribute('data-confirm'))) {
+                    e.preventDefault();
+                }
+            });
+        });
+    </script>
+}

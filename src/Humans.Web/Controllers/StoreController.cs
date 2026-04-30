@@ -10,6 +10,7 @@ using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using NodaTime;
 
 namespace Humans.Web.Controllers;
 
@@ -21,6 +22,7 @@ public class StoreController : HumansControllerBase
     private readonly ICampService _campService;
     private readonly IShiftManagementService _shifts;
     private readonly IAuthorizationService _authService;
+    private readonly IClock _clock;
     private readonly ILogger<StoreController> _logger;
 
     public StoreController(
@@ -28,6 +30,7 @@ public class StoreController : HumansControllerBase
         ICampService campService,
         IShiftManagementService shifts,
         IAuthorizationService authService,
+        IClock clock,
         UserManager<User> userManager,
         ILogger<StoreController> logger)
         : base(userManager)
@@ -36,6 +39,7 @@ public class StoreController : HumansControllerBase
         _campService = campService;
         _shifts = shifts;
         _authService = authService;
+        _clock = clock;
         _logger = logger;
     }
 
@@ -172,7 +176,7 @@ public class StoreController : HumansControllerBase
 
         try
         {
-            await _storeService.RemoveLineAsync(lineId, user.Id, ct);
+            await _storeService.RemoveLineAsync(id, lineId, user.Id, ct);
             SetSuccess("Line removed.");
         }
         catch (InvalidOperationException ex)
@@ -215,6 +219,6 @@ public class StoreController : HumansControllerBase
     private async Task<int> ResolveActiveYearAsync()
     {
         var activeEvent = await _shifts.GetActiveAsync();
-        return activeEvent?.Year > 0 ? activeEvent.Year : DateTime.UtcNow.Year;
+        return activeEvent?.Year > 0 ? activeEvent.Year : _clock.GetCurrentInstant().InUtc().Year;
     }
 }

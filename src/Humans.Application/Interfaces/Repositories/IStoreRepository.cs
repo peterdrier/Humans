@@ -33,7 +33,6 @@ public interface IStoreRepository
     Task<IReadOnlyList<StoreProduct>> GetActiveProductsForYearAsync(int year, CancellationToken ct = default);
     /// <summary>
     /// Returns all products for the given year regardless of <see cref="StoreProduct.IsActive"/>.
-    /// Used by the catalog admin view.
     /// </summary>
     Task<IReadOnlyList<StoreProduct>> GetAllProductsForYearAsync(int year, CancellationToken ct = default);
     Task<StoreProduct?> GetProductByIdAsync(Guid productId, CancellationToken ct = default);

@@ -69,10 +69,10 @@ else
                                 </a>
                                 @if (p.IsActive)
                                 {
-                                    <form asp-action="Deactivate" asp-route-id="@p.Id" method="post" class="d-inline"
-                                          onsubmit="return confirm('Deactivate &quot;@p.Name&quot;? It will no longer be orderable but historical lines remain.');">
+                                    <form asp-action="Deactivate" asp-route-id="@p.Id" method="post" class="d-inline">
                                         @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                data-confirm="Deactivate &quot;@p.Name&quot;? It will no longer be orderable but historical lines remain.">
                                             <i class="fa-solid fa-eye-slash me-1"></i>Deactivate
                                         </button>
                                     </form>
@@ -84,4 +84,16 @@ else
             </table>
         </div>
     </div>
+}
+
+@section Scripts {
+    <script nonce="@Context.Items["CspNonce"]">
+        document.querySelectorAll('[data-confirm]').forEach(function (button) {
+            button.addEventListener('click', function (e) {
+                if (!confirm(this.getAttribute('data-confirm'))) {
+                    e.preventDefault();
+                }
+            });
+        });
+    </script>
 }

@@ -192,6 +192,10 @@ public class StoreService : IStoreService
         var product = await _repo.GetProductByIdAsync(productId, ct)
             ?? throw new InvalidOperationException($"Product {productId} not found");
 
+        if (!product.IsActive)
+            throw new InvalidOperationException(
+                $"Product '{product.Name}' has been deactivated and is no longer orderable");
+
         var today = await TodayInEventZoneAsync();
         if (today > product.OrderableUntil)
             throw new InvalidOperationException(
@@ -216,10 +220,13 @@ public class StoreService : IStoreService
             actorUserId, order.Id, nameof(StoreOrder));
     }
 
-    public async Task RemoveLineAsync(Guid lineId, Guid actorUserId, CancellationToken ct = default)
+    public async Task RemoveLineAsync(Guid orderId, Guid lineId, Guid actorUserId, CancellationToken ct = default)
     {
         var ctx = await _repo.GetLineWithOrderAndProductAsync(lineId, ct)
             ?? throw new InvalidOperationException($"Line {lineId} not found");
+
+        if (ctx.OrderId != orderId)
+            throw new InvalidOperationException($"Line {lineId} does not belong to order {orderId}");
 
         if (ctx.OrderState != StoreOrderState.Open)
             throw new InvalidOperationException("Cannot remove lines from an issued order");
@@ -240,9 +247,6 @@ public class StoreService : IStoreService
     {
         var order = await _repo.GetOrderByIdAsync(orderId, ct)
             ?? throw new InvalidOperationException($"Order {orderId} not found");
-
-        if (order.State != StoreOrderState.Open)
-            throw new InvalidOperationException("Cannot edit counterparty on an issued order");
 
         order.CounterpartyName = input.Name;
         order.CounterpartyVatId = input.VatId;

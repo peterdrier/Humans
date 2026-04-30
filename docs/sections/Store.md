@@ -208,6 +208,7 @@ Stored as int via `HasConversion<int>()`.
 ## Cross-Section Dependencies
 
 - **Camps:** `ICampService` for `CampSeason` lookups (camp name, lead resolution for resource-based auth).
+- **Shifts:** `IShiftManagementService.GetActiveAsync()` for the active event's `Year` and `TimeZoneId` — used to (a) resolve the active catalog year on `/Store` and `/Store/Admin/Catalog` and (b) compute "today in event time zone" for the `OrderableUntil` deadline gate.
 - **Auth/Roles:** `RoleNames.StoreAdmin` (this section), `RoleNames.FinanceAdmin`, `RoleNames.Admin`.
 - **Holded connector** (Infrastructure): `IHoldedClient` extended with `UpsertContactAsync`, `CreateInvoiceAsync`, `ListTreasuryEntriesAsync` in Phase 4.
 - **Stripe connector** (Infrastructure): `IStripeService.CreateCheckoutSessionAsync` added in Phase 6.
@@ -223,6 +224,6 @@ Stored as int via `HasConversion<int>()`.
 - `StoreRepository` (impl `Humans.Infrastructure/Repositories/Store/StoreRepository.cs`, §15b Singleton + `IDbContextFactory`) is the only file that touches Store tables via `DbContext`.
 - **Decorator decision — no caching decorator.** Store is admin / camp-lead only, low-traffic; same rationale as Budget / Governance.
 - **Cross-domain navs:** none. `CampSeasonId`, `ProductId`, `AddedByUserId`, `RecordedByUserId`, `IssuedByUserId` are all FK-only with no navigation property.
-- **Cross-section calls** route through `ICampService` (camp / camp-season lookups), `IAuditLogService`, `IHoldedClient`, `IStripeService`.
+- **Cross-section calls** route through `ICampService` (camp / camp-season lookups), `IShiftManagementService` (active event year + time-zone), `IAuditLogService`, `IHoldedClient`, `IStripeService`.
 
 Phase 1 ships entities, migration, role, service skeleton (methods throw `NotSupportedException` until later phases). Phases 2–7 progressively fill the surface; see `docs/superpowers/specs/2026-04-30-store-section-design.md` and `docs/superpowers/plans/2026-04-30-store-section.md`.

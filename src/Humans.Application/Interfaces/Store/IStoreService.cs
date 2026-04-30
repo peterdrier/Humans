@@ -20,7 +20,7 @@ public interface IStoreService
     Task<OrderDto?> GetOrderAsync(Guid orderId, CancellationToken ct = default);
     Task<Guid> CreateOrderAsync(Guid campSeasonId, string? label, Guid actorUserId, CancellationToken ct = default);
     Task AddLineAsync(Guid orderId, Guid productId, int qty, Guid actorUserId, CancellationToken ct = default);
-    Task RemoveLineAsync(Guid lineId, Guid actorUserId, CancellationToken ct = default);
+    Task RemoveLineAsync(Guid orderId, Guid lineId, Guid actorUserId, CancellationToken ct = default);
 
     // Counterparty (camp lead pre-issuance, FinanceAdmin always)
     Task UpdateCounterpartyAsync(Guid orderId, OrderCounterpartyInput input, Guid actorUserId, CancellationToken ct = default);

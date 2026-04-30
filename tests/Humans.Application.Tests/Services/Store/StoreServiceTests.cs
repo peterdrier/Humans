@@ -228,29 +228,47 @@ public class StoreServiceTests
     }
 
     [HumansFact]
+    public async Task RemoveLineAsync_rejects_when_line_not_in_order()
+    {
+        var lineId = Guid.NewGuid();
+        var actualOrderId = Guid.NewGuid();
+        var routeOrderId = Guid.NewGuid();
+        _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
+            .Returns(new StoreLineContext(
+                lineId, actualOrderId, Guid.NewGuid(),
+                StoreOrderState.Open, new LocalDate(2026, 12, 31)));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.RemoveLineAsync(routeOrderId, lineId, Guid.NewGuid()));
+        await _repo.DidNotReceive().RemoveLineAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task RemoveLineAsync_rejects_when_order_not_open()
     {
         var lineId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
         _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
             .Returns(new StoreLineContext(
-                lineId, Guid.NewGuid(), Guid.NewGuid(),
+                lineId, orderId, Guid.NewGuid(),
                 StoreOrderState.InvoiceIssued, new LocalDate(2026, 12, 31)));
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.RemoveLineAsync(lineId, Guid.NewGuid()));
+            () => _service.RemoveLineAsync(orderId, lineId, Guid.NewGuid()));
     }
 
     [HumansFact]
     public async Task RemoveLineAsync_rejects_after_orderable_until()
     {
         var lineId = Guid.NewGuid();
+        var orderId = Guid.NewGuid();
         _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
             .Returns(new StoreLineContext(
-                lineId, Guid.NewGuid(), Guid.NewGuid(),
+                lineId, orderId, Guid.NewGuid(),
                 StoreOrderState.Open, new LocalDate(2026, 1, 1)));
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.RemoveLineAsync(lineId, Guid.NewGuid()));
+            () => _service.RemoveLineAsync(orderId, lineId, Guid.NewGuid()));
     }
 
     [HumansFact]
@@ -264,7 +282,7 @@ public class StoreServiceTests
                 lineId, orderId, Guid.NewGuid(),
                 StoreOrderState.Open, new LocalDate(2026, 12, 31)));
 
-        await _service.RemoveLineAsync(lineId, actor);
+        await _service.RemoveLineAsync(orderId, lineId, actor);
 
         await _repo.Received(1).RemoveLineAsync(lineId, Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
@@ -274,17 +292,23 @@ public class StoreServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateCounterpartyAsync_rejects_when_order_not_open()
+    public async Task UpdateCounterpartyAsync_updates_even_when_order_issued()
     {
+        // Per Store invariant: counterparty edits while issued are gated by the
+        // auth handler (camp-lead denied, FinanceAdmin allowed). The service
+        // itself is auth-free and must not state-gate this path.
         var orderId = Guid.NewGuid();
-        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
-            .Returns(new StoreOrder { Id = orderId, State = StoreOrderState.InvoiceIssued });
+        var actor = Guid.NewGuid();
+        var order = new StoreOrder { Id = orderId, State = StoreOrderState.InvoiceIssued };
+        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _service.UpdateCounterpartyAsync(
-                orderId,
-                new OrderCounterpartyInput("X", null, null, null, null),
-                Guid.NewGuid()));
+        await _service.UpdateCounterpartyAsync(
+            orderId,
+            new OrderCounterpartyInput("Acme", null, null, null, null),
+            actor);
+
+        order.CounterpartyName.Should().Be("Acme");
+        await _repo.Received(1).UpdateOrderAsync(order, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
