@@ -28,7 +28,6 @@ public class AdminController : HumansControllerBase
     private readonly ConfigurationRegistry _configRegistry;
     private readonly QueryStatistics _queryStatistics;
     private readonly ICacheStatsProvider _cacheStatsProvider;
-    private readonly IUserEmailBackfillService _userEmailBackfillService;
     private readonly IUserEmailProviderBackfillService _userEmailProviderBackfillService;
 
     public AdminController(
@@ -40,7 +39,6 @@ public class AdminController : HumansControllerBase
         ConfigurationRegistry configRegistry,
         QueryStatistics queryStatistics,
         ICacheStatsProvider cacheStatsProvider,
-        IUserEmailBackfillService userEmailBackfillService,
         IUserEmailProviderBackfillService userEmailProviderBackfillService)
         : base(userManager)
     {
@@ -52,7 +50,6 @@ public class AdminController : HumansControllerBase
         _configRegistry = configRegistry;
         _queryStatistics = queryStatistics;
         _cacheStatsProvider = cacheStatsProvider;
-        _userEmailBackfillService = userEmailBackfillService;
         _userEmailProviderBackfillService = userEmailProviderBackfillService;
     }
 
@@ -279,51 +276,6 @@ public class AdminController : HumansControllerBase
         _logger.LogWarning("Admin cleared {Count} stale Hangfire locks", deleted);
         SetSuccess($"Cleared {deleted} Hangfire lock(s). Restart the app to re-register recurring jobs.");
         return RedirectToAction(nameof(Maintenance));
-    }
-
-    /// <summary>
-    /// One-shot backfill of <c>UserEmail</c> rows for any orphan Users (Users
-    /// with no <c>user_emails</c> row). Idempotent — safe to re-run. Recommended
-    /// before PR 2 of the email-identity-decoupling spec deploys so any humans
-    /// needing manual triage (no <c>User.Email</c> to backfill from) are flagged
-    /// ahead of the column-drop migration. The PR 2 migration also runs an
-    /// idempotent defensive backfill before the drop. See
-    /// <c>docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md</c>.
-    /// </summary>
-    [HttpGet("BackfillUserEmails")]
-    [Authorize(Policy = PolicyNames.AdminOnly)]
-    public IActionResult BackfillUserEmails()
-    {
-        return View(new BackfillUserEmailsViewModel(
-            HasRun: false,
-            OrphansFound: 0,
-            RowsInserted: 0,
-            SkippedUserIds: Array.Empty<Guid>()));
-    }
-
-    [HttpPost("BackfillUserEmails")]
-    [Authorize(Policy = PolicyNames.AdminOnly)]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> BackfillUserEmailsRun(CancellationToken ct)
-    {
-        var currentUser = await GetCurrentUserAsync();
-        _logger.LogInformation(
-            "Admin {AdminId} running UserEmail backfill",
-            currentUser?.Id);
-
-        var result = await _userEmailBackfillService.BackfillAsync(ct);
-
-        var msg = result.SkippedUserIds.Count == 0
-            ? $"Backfill complete. Orphans found: {result.OrphansFound}. Rows inserted: {result.RowsInserted}."
-            : $"Backfill complete. Orphans found: {result.OrphansFound}. Rows inserted: {result.RowsInserted}. " +
-              $"{result.SkippedUserIds.Count} user(s) skipped (no User.Email to backfill from) — see view for IDs.";
-        SetSuccess(msg);
-
-        return View(nameof(BackfillUserEmails), new BackfillUserEmailsViewModel(
-            HasRun: true,
-            OrphansFound: result.OrphansFound,
-            RowsInserted: result.RowsInserted,
-            SkippedUserIds: result.SkippedUserIds));
     }
 
     /// <summary>

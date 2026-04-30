@@ -13,7 +13,6 @@ using ProfilesAccountMergeService = Humans.Application.Services.Profile.AccountM
 using ProfilesDuplicateAccountService = Humans.Application.Services.Profile.DuplicateAccountService;
 using UsersAccountProvisioningService = Humans.Application.Services.Users.AccountProvisioningService;
 using UsersUnsubscribeService = Humans.Application.Services.Users.UnsubscribeService;
-using UsersUserEmailBackfillService = Humans.Application.Services.Users.UserEmailBackfillService;
 using GoogleEmailProvisioningService = Humans.Application.Services.GoogleIntegration.EmailProvisioningService;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Users;
@@ -56,7 +55,6 @@ internal static class ProfileSectionExtensions
 
         services.AddScoped<IDuplicateAccountService, ProfilesDuplicateAccountService>();
         services.AddScoped<IAccountProvisioningService, UsersAccountProvisioningService>();
-        services.AddScoped<IUserEmailBackfillService, UsersUserEmailBackfillService>();
         services.AddScoped<IUserEmailProviderBackfillService, Humans.Application.Services.Users.UserEmailProviderBackfillService>();
 
         // ProfileService (inner): Scoped — has many Scoped cross-section deps.
