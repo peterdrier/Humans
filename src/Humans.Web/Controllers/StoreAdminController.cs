@@ -7,6 +7,7 @@ using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using NodaTime;
 using NodaTime.Text;
 
 namespace Humans.Web.Controllers;
@@ -17,24 +18,27 @@ public class StoreAdminController : HumansControllerBase
 {
     private readonly IStoreService _storeService;
     private readonly IShiftManagementService _shifts;
+    private readonly IClock _clock;
     private readonly ILogger<StoreAdminController> _logger;
 
     public StoreAdminController(
         IStoreService storeService,
         IShiftManagementService shifts,
+        IClock clock,
         UserManager<User> userManager,
         ILogger<StoreAdminController> logger)
         : base(userManager)
     {
         _storeService = storeService;
         _shifts = shifts;
+        _clock = clock;
         _logger = logger;
     }
 
     [HttpGet("Catalog")]
     public async Task<IActionResult> Catalog(CancellationToken ct)
     {
-        var year = await ResolveActiveYearAsync();
+        var year = await ResolveActiveYearAsync(ct);
         var products = await _storeService.GetAllProductsForYearAsync(year, ct);
         return View(new StoreCatalogAdminViewModel { Year = year, Products = products });
     }
@@ -42,7 +46,7 @@ public class StoreAdminController : HumansControllerBase
     [HttpGet("Catalog/Edit")]
     public async Task<IActionResult> Edit(CancellationToken ct)
     {
-        var year = await ResolveActiveYearAsync();
+        var year = await ResolveActiveYearAsync(ct);
         var model = new ProductInputModel
         {
             Year = year,
@@ -151,9 +155,9 @@ public class StoreAdminController : HumansControllerBase
         return RedirectToAction(nameof(Catalog));
     }
 
-    private async Task<int> ResolveActiveYearAsync()
+    private async Task<int> ResolveActiveYearAsync(CancellationToken ct)
     {
         var activeEvent = await _shifts.GetActiveAsync();
-        return activeEvent?.Year > 0 ? activeEvent.Year : DateTime.UtcNow.Year;
+        return activeEvent?.Year > 0 ? activeEvent.Year : _clock.GetCurrentInstant().InUtc().Year;
     }
 }
