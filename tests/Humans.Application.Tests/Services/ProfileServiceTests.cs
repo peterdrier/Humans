@@ -1085,7 +1085,6 @@ public class ProfileServiceTests : IDisposable
             UserId = userId,
             Email = "test@test.com",
             VerificationSentAt = _clock.GetCurrentInstant() - Duration.FromMinutes(2),
-            DisplayOrder = 0
         });
         await _dbContext.SaveChangesAsync();
 
@@ -1108,7 +1107,6 @@ public class ProfileServiceTests : IDisposable
             UserId = userId,
             Email = "test@test.com",
             VerificationSentAt = _clock.GetCurrentInstant() - Duration.FromMinutes(6),
-            DisplayOrder = 0
         });
         await _dbContext.SaveChangesAsync();
 
@@ -1131,7 +1129,6 @@ public class ProfileServiceTests : IDisposable
             UserId = userId,
             Email = "test@test.com",
             VerificationSentAt = null,
-            DisplayOrder = 0
         });
         await _dbContext.SaveChangesAsync();
 
@@ -1479,7 +1476,6 @@ public class ProfileServiceTests : IDisposable
             Email = "notify@example.com",
             IsVerified = true,
             IsNotificationTarget = true,
-            DisplayOrder = 0
         });
         await _dbContext.SaveChangesAsync();
 

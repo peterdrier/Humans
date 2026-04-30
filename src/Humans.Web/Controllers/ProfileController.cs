@@ -766,16 +766,19 @@ public class ProfileController : HumansControllerBase
                 return RedirectToAction(nameof(Emails));
             }
 
-            // null = use OAuth email (default behavior)
-            var isOAuthEmail = string.Equals(emailAddress, user.Email, StringComparison.OrdinalIgnoreCase);
-            var previousEmail = user.GoogleEmail;
-            user.GoogleEmail = isOAuthEmail ? null : emailAddress;
-            user.GoogleEmailStatus = GoogleEmailStatus.Unknown;
-            await _userManager.UpdateAsync(user);
+            // The PR 4 rewrite moves Google-identity selection onto the
+            // IsGoogle UserEmail flag. For now, route through the existing
+            // SetGoogleEmailAsync write so the legacy shadow column stays in
+            // sync until that rewrite ships.
+            var previousGoogleEmail = user.UserEmails
+                .Where(e => e.IsVerified && e.IsGoogle)
+                .Select(e => e.Email)
+                .FirstOrDefault();
+
+            await _userService.SetGoogleEmailAsync(user.Id, emailAddress);
 
             // If email changed, enqueue fresh sync events for all current team memberships
-            var newEmail = user.GetGoogleServiceEmail();
-            if (!string.Equals(previousEmail ?? user.Email, newEmail, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(previousGoogleEmail ?? user.Email, emailAddress, StringComparison.OrdinalIgnoreCase))
             {
                 await _teamService.EnqueueGoogleResyncForUserTeamsAsync(user.Id);
             }
@@ -1514,14 +1517,18 @@ public class ProfileController : HumansControllerBase
                 Proficiency = pl.Proficiency
             }).ToList(),
             OAuthEmail = data.User.Email,
-            GoogleServiceEmail = data.User.GetGoogleServiceEmail(),
+            GoogleServiceEmail = data.UserEmails
+                .Where(e => e.IsVerified && e.IsGoogle)
+                .Select(e => e.Email)
+                .FirstOrDefault()
+                ?? data.User.Email,
             GoogleEmailStatus = data.User.GoogleEmailStatus,
             UserEmails = data.UserEmails
-                .OrderBy(e => e.DisplayOrder)
+                .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
                 .Select(e => new AdminUserEmailViewModel
                 {
                     Email = e.Email,
-                    IsOAuth = e.IsOAuth,
+                    IsGoogle = e.IsGoogle,
                     IsVerified = e.IsVerified,
                     IsNotificationTarget = e.IsNotificationTarget,
                     Visibility = e.Visibility,
@@ -1752,8 +1759,13 @@ public class ProfileController : HumansControllerBase
         var hasNobodiesTeam = emails.Any(e => e.IsVerified &&
             e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase));
 
-        if (hasNobodiesTeam && user.GoogleEmail is null)
+        if (hasNobodiesTeam)
             await _userEmailService.TryBackfillGoogleEmailAsync(user.Id);
+
+        var googleServiceEmail = user.UserEmails
+            .Where(e => e.IsVerified && e.IsGoogle)
+            .Select(e => e.Email)
+            .FirstOrDefault();
 
         return new EmailsViewModel
         {
@@ -1762,19 +1774,18 @@ public class ProfileController : HumansControllerBase
                 Id = e.Id,
                 Email = e.Email,
                 IsVerified = e.IsVerified,
-                IsOAuth = e.IsOAuth,
+                IsGoogle = e.IsGoogle,
                 IsNotificationTarget = e.IsNotificationTarget,
                 Visibility = e.Visibility,
                 IsPendingVerification = e.IsPendingVerification,
                 IsMergePending = e.IsMergePending,
-                IsGoogleServiceEmail = user.GoogleEmail is not null
-                    ? string.Equals(e.Email, user.GoogleEmail, StringComparison.OrdinalIgnoreCase)
-                    : e.IsOAuth,
+                IsGoogleServiceEmail = e.IsGoogle
+                    || (googleServiceEmail is null && e.Provider != null),
                 IsNobodiesTeamDomain = e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase)
             }).ToList(),
             CanAddEmail = canAdd,
             MinutesUntilResend = minutesUntilResend,
-            GoogleServiceEmail = user.GoogleEmail,
+            GoogleServiceEmail = googleServiceEmail,
             HasNobodiesTeamEmail = hasNobodiesTeam,
             GoogleEmailStatus = user.GoogleEmailStatus
         };

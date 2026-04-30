@@ -61,7 +61,9 @@ public sealed class UserEmailService : IUserEmailService
             e.Id,
             e.Email,
             e.IsVerified,
-            IsOAuth: e.Provider != null,
+            IsGoogle: e.IsGoogle,
+            e.Provider,
+            e.ProviderKey,
             e.IsNotificationTarget,
             e.Visibility,
             IsPendingVerification: !e.IsVerified && e.VerificationSentAt.HasValue,
@@ -80,15 +82,18 @@ public sealed class UserEmailService : IUserEmailService
             .Where(e => e.IsVerified && e.Visibility != null && allowed.Contains(e.Visibility!.Value))
             .ToList();
 
-        return visible.Select(e => new UserEmailDto(
-            e.Id,
-            e.Email,
-            e.IsVerified,
-            IsOAuth: e.Provider != null,
-            e.IsNotificationTarget,
-            e.Visibility,
-            e.DisplayOrder
-        )).ToList();
+        return visible
+            .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
+            .Select(e => new UserEmailDto(
+                e.Id,
+                e.Email,
+                e.IsVerified,
+                IsGoogle: e.IsGoogle,
+                e.Provider,
+                e.ProviderKey,
+                e.IsNotificationTarget,
+                e.Visibility))
+            .ToList();
     }
 
     public async Task<AddEmailResult> AddEmailAsync(
@@ -122,7 +127,6 @@ public sealed class UserEmailService : IUserEmailService
             throw new ValidationException("This is already your sign-in email.");
 
         var now = _clock.GetCurrentInstant();
-        var maxOrder = await _repository.GetMaxDisplayOrderAsync(userId, cancellationToken);
 
         var userEmail = new UserEmail
         {
@@ -131,7 +135,6 @@ public sealed class UserEmailService : IUserEmailService
             Email = email,
             IsVerified = false,
             IsNotificationTarget = false,
-            DisplayOrder = maxOrder + 1,
             VerificationSentAt = now,
             CreatedAt = now,
             UpdatedAt = now
@@ -277,18 +280,13 @@ public sealed class UserEmailService : IUserEmailService
             }
 
             // If this row is the notification target, hand off to the next
-            // verified row by display order so the user keeps a usable
-            // notification address. The earlier "prefer IsOAuth" successor
-            // ranking is intentionally dropped: AddOAuthEmailAsync sets
-            // IsOAuth=true for magic-link signups too (pre-existing misnomer
-            // tracked for PR 3 when the flag becomes Provider/ProviderKey),
-            // so leaning on it here would mis-pick successors for users
-            // who never signed up via OAuth.
+            // verified row alphabetically so the user keeps a usable
+            // notification address.
             if (email.IsNotificationTarget)
             {
                 var successor = allEmails
                     .Where(e => e.Id != emailId && e.IsVerified)
-                    .OrderBy(e => e.DisplayOrder)
+                    .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
                     .FirstOrDefault();
                 if (successor is not null)
                 {
@@ -323,7 +321,6 @@ public sealed class UserEmailService : IUserEmailService
             IsVerified = true,
             IsNotificationTarget = true,
             Visibility = ContactFieldVisibility.BoardOnly,
-            DisplayOrder = 0,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -364,7 +361,6 @@ public sealed class UserEmailService : IUserEmailService
             IsVerified = true,
             IsNotificationTarget = isNobodiesTeam,
             Visibility = ContactFieldVisibility.BoardOnly,
-            DisplayOrder = 0,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -381,11 +377,9 @@ public sealed class UserEmailService : IUserEmailService
     public async Task<bool> TryBackfillGoogleEmailAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        // Check if user already has a GoogleEmail (cross-section → IUserService)
-        var user = await _userService.GetByIdAsync(userId, cancellationToken);
-        if (user?.GoogleEmail is not null)
-            return false;
-
+        // The legacy User.GoogleEmail column is checked by
+        // IUserService.TrySetGoogleEmailAsync (which is a no-op when the
+        // column is non-null), so no read-then-set race exists here.
         var allNobodies = await _repository.GetAllVerifiedNobodiesTeamEmailsAsync(cancellationToken);
         var nobodiesEmail = allNobodies.FirstOrDefault(e => e.UserId == userId)?.Email;
         if (nobodiesEmail is null)

@@ -46,17 +46,17 @@ public class UserEmailConfiguration : IEntityTypeConfiguration<UserEmail>
         builder.Property(e => e.IsGoogle)
             .IsRequired();
 
-        // PR 3: IsOAuth / DisplayOrder columns are kept on disk; their C#
-        // properties are deleted in Task 10 of the plan, at which point these
-        // mappings switch to shadow-property declarations
-        // (Property<T>("Name").HasColumnName(...)) so the EF model still sees
-        // the columns and the migration scaffolder doesn't generate a
-        // DropColumn. Column drops happen in PR 7 after end-to-end prod
+        // The IsOAuth / DisplayOrder columns survive on disk as EF shadow
+        // properties: the C# surface on UserEmail is gone, but the migration
+        // scaffolder still sees the columns so no DropColumn is generated.
+        // Column drops happen in a deferred PR after end-to-end prod
         // verification per architecture_no_drops_until_prod_verified.
-        builder.Property(e => e.IsOAuth)
+        builder.Property<bool>("IsOAuth")
+            .HasColumnName("IsOAuth")
             .IsRequired();
 
-        builder.Property(e => e.DisplayOrder)
+        builder.Property<int>("DisplayOrder")
+            .HasColumnName("DisplayOrder")
             .IsRequired();
 
         builder.HasOne<User>()

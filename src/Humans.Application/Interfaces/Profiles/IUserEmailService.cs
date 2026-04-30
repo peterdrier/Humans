@@ -68,7 +68,7 @@ public interface IUserEmailService
     /// Deletes a UserEmail row. Blocks the delete only if removing it would
     /// leave the user with zero verified UserEmail rows AND zero AspNetUserLogins
     /// rows (the "preserve at least one auth method" invariant). The OAuth-tied
-    /// row (currently flagged via <see cref="UserEmail.IsOAuth"/>) is now
+    /// row (rows with non-null <see cref="UserEmail.Provider"/>) is now
     /// deletable as long as another auth method remains — the
     /// <c>AspNetUserLogins</c> row is independent of the UserEmail row, so
     /// OAuth sign-in continues to work after the delete. Unverified rows are

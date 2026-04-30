@@ -245,7 +245,6 @@ public class GoogleAdminServiceTests
                 Id = ownerId,
                 Email = "x@example.com",
                 DisplayName = "X",
-                GoogleEmail = "test@nobodies.team",
             });
 
         var result = await _service.ProvisionStandaloneAccountAsync(

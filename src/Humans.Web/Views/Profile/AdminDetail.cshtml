@@ -307,9 +307,9 @@
                                 <div class="d-flex justify-content-between align-items-start">
                                     <code class="text-break">@email.Email</code>
                                     <div class="d-flex gap-1 flex-shrink-0 ms-2">
-                                        @if (email.IsOAuth)
+                                        @if (email.IsGoogle)
                                         {
-                                            <span class="badge bg-info" title="OAuth login email">OAuth</span>
+                                            <span class="badge bg-info" title="Canonical Google Workspace identity">Google</span>
                                         }
                                         @if (email.IsVerified)
                                         {

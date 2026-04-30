@@ -104,6 +104,15 @@ public interface IUserRepository
     Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
         string email, Guid excludeUserId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns the legacy <c>GoogleEmail</c> shadow-column value for the given
+    /// users (only entries where the column is non-null are present in the
+    /// result). The CLR property is gone — this is the only way to observe the
+    /// legacy column for the deferred backfill admin button. Read-only.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, string>> GetLegacyGoogleEmailsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
+
     // ==========================================================================
     // Writes — User (atomic field updates)
     // ==========================================================================
@@ -324,7 +333,7 @@ public interface IUserRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// For each user whose <see cref="User.GoogleEmail"/> is currently null
+    /// For each user whose <c>User.GoogleEmail</c> is currently null
     /// but who has a verified <see cref="UserEmail"/> row whose address ends
     /// in <c>@nobodies.team</c>, set <c>User.GoogleEmail</c> to that verified
     /// address. Persists in a single save. Returns one descriptor per

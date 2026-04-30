@@ -272,9 +272,9 @@ public interface IUserService
         Instant now, CancellationToken ct = default);
 
     /// <summary>
-    /// For every user whose <see cref="User.GoogleEmail"/> is null but who has
+    /// For every user whose <c>User.GoogleEmail</c> is null but who has
     /// a verified <c>@nobodies.team</c> <see cref="UserEmail"/> row, sets
-    /// <see cref="User.GoogleEmail"/> to that verified address. Persists all
+    /// <c>User.GoogleEmail</c> to that verified address. Persists all
     /// changes in a single save and returns the list of backfill descriptors
     /// (UserId, DisplayName, NewGoogleEmail) so the caller can emit audit
     /// entries. Used by <c>SystemTeamSyncJob.BackfillGoogleEmailsAsync</c>.

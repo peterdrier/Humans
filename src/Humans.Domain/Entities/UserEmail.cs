@@ -30,11 +30,6 @@ public class UserEmail
     public bool IsVerified { get; set; }
 
     /// <summary>
-    /// Whether this is the OAuth login email (cannot be deleted).
-    /// </summary>
-    public bool IsOAuth { get; set; }
-
-    /// <summary>
     /// OAuth provider that owns this email row, when the user is signed in via OIDC.
     /// "Google" today; future "Apple", "Microsoft". Null when no OAuth identity is
     /// linked to this row. Single-row-per-(Provider, ProviderKey) is service-enforced
@@ -73,11 +68,6 @@ public class UserEmail
     /// When the last verification email was sent (for rate limiting).
     /// </summary>
     public Instant? VerificationSentAt { get; set; }
-
-    /// <summary>
-    /// Display order for sorting emails in the UI.
-    /// </summary>
-    public int DisplayOrder { get; set; }
 
     /// <summary>
     /// When this email record was created.

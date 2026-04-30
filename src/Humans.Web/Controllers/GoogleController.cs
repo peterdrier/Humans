@@ -744,9 +744,15 @@ public class GoogleController : HumansControllerBase
         // design-rules §2a — controllers go through service interfaces, not repos).
         var userIds = events.Select(e => e.UserId).Distinct().ToList();
         var teamIds = events.Select(e => e.TeamId).Distinct().ToList();
-        var users = await userService.GetByIdsAsync(userIds);
+        var users = await userService.GetByIdsWithEmailsAsync(userIds);
         var googleEmailLookup = users.ToDictionary(
-            kvp => kvp.Key, kvp => kvp.Value.GetGoogleServiceEmail() ?? "unknown");
+            kvp => kvp.Key,
+            kvp => kvp.Value.UserEmails
+                .Where(e => e.IsVerified && e.IsGoogle)
+                .Select(e => e.Email)
+                .FirstOrDefault()
+                ?? kvp.Value.Email
+                ?? "unknown");
         var displayNameLookup = users.ToDictionary(
             kvp => kvp.Key, kvp => kvp.Value.DisplayName);
         var teamLookup = (await teamService.GetTeamNamesByIdsAsync(teamIds))

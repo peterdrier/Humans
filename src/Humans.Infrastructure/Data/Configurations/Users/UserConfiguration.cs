@@ -20,7 +20,12 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.ProfilePictureUrl)
             .HasMaxLength(2048);
 
-        builder.Property(u => u.GoogleEmail)
+        // GoogleEmail column is kept on disk as an EF shadow property; the C#
+        // property has been deleted. Column drop happens in a deferred PR
+        // after end-to-end prod verification per
+        // architecture_no_drops_until_prod_verified.
+        builder.Property<string?>("GoogleEmail")
+            .HasColumnName("GoogleEmail")
             .HasMaxLength(256);
 
         builder.Property(u => u.GoogleEmailStatus)

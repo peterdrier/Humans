@@ -169,7 +169,7 @@ public class UserEmailBackfillServiceTests
                 ue.Email == "x@example.com" &&
                 ue.IsVerified == true &&
                 ue.IsNotificationTarget == true &&
-                ue.IsOAuth == false),
+                ue.Provider == null),
             Arg.Any<CancellationToken>());
 
         await _auditLogService.Received(1).LogAsync(
@@ -181,7 +181,7 @@ public class UserEmailBackfillServiceTests
     }
 
     [HumansFact]
-    public async Task OrphanWithEmailAndOAuthLogin_SetsIsOAuthTrue()
+    public async Task OrphanWithEmailAndOAuthLogin_TagsRowWithProviderAndProviderKey()
     {
         var user = new User
         {
@@ -197,7 +197,9 @@ public class UserEmailBackfillServiceTests
         await _sut.BackfillAsync();
 
         await _userEmailRepository.Received(1).AddAsync(
-            Arg.Is<UserEmail>(ue => ue.IsOAuth == true),
+            Arg.Is<UserEmail>(ue =>
+                string.Equals(ue.Provider, "Google", StringComparison.Ordinal)
+                && string.Equals(ue.ProviderKey, "sub-123", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
     }
 

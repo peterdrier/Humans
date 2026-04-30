@@ -313,13 +313,16 @@ public sealed class UserService : IUserService, IUserDataContributor
             return [new UserDataSlice(GdprExportSections.Account, null)];
         }
 
+        var legacyGoogleEmails = await _repo.GetLegacyGoogleEmailsAsync([userId], ct);
+        legacyGoogleEmails.TryGetValue(userId, out var legacyGoogleEmail);
+
         var shaped = new
         {
             user.Id,
             user.Email,
             user.DisplayName,
             user.PreferredLanguage,
-            user.GoogleEmail,
+            GoogleEmail = legacyGoogleEmail,
             user.UnsubscribedFromCampaigns,
             user.SuppressScheduleChangeEmails,
             ContactSource = user.ContactSource?.ToString(),

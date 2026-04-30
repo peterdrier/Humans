@@ -31,7 +31,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
         return await ctx.UserEmails
             .AsNoTracking()
             .Where(e => e.UserId == userId)
-            .OrderBy(e => e.DisplayOrder)
+            .OrderBy(e => e.Email)
             .ThenBy(e => e.CreatedAt)
             .ToListAsync(ct);
     }
@@ -109,12 +109,23 @@ public sealed class UserEmailRepository : IUserEmailRepository
                      EF.Functions.ILike(e.Email, alternateEmail)), ct);
     }
 
-    public async Task<int> GetMaxDisplayOrderAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<UserEmailLegacyBackfillSnapshot>>
+        GetLegacyBackfillSnapshotsByUserIdAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.UserEmails
+            .AsNoTracking()
             .Where(e => e.UserId == userId)
-            .MaxAsync(e => (int?)e.DisplayOrder, ct) ?? -1;
+            .Select(e => new UserEmailLegacyBackfillSnapshot(
+                e.Id,
+                e.UserId,
+                e.Email,
+                e.IsVerified,
+                e.Provider,
+                e.ProviderKey,
+                e.IsGoogle,
+                EF.Property<bool>(e, "IsOAuth")))
+            .ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<UserEmail>> GetAllVerifiedNobodiesTeamEmailsAsync(

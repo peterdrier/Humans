@@ -56,7 +56,7 @@ public class EmailRowViewModel
     public Guid Id { get; set; }
     public string Email { get; set; } = string.Empty;
     public bool IsVerified { get; set; }
-    public bool IsOAuth { get; set; }
+    public bool IsGoogle { get; set; }
     public bool IsNotificationTarget { get; set; }
     public ContactFieldVisibility? Visibility { get; set; }
     public bool IsPendingVerification { get; set; }

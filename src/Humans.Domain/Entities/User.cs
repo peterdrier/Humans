@@ -212,25 +212,10 @@ public class User : IdentityUser<Guid>
     public Instant? MagicLinkSentAt { get; set; }
 
     /// <summary>
-    /// Preferred email for Google services (Groups, Drive).
-    /// When set, this email is used instead of the OAuth email for Google resource sync.
-    /// Automatically set to @nobodies.team email when provisioned or linked.
-    /// </summary>
-    [PersonalData]
-    public string? GoogleEmail { get; set; }
-
-    /// <summary>
     /// Status of the user's Google email for sync operations.
     /// Set to Rejected when a permanent Google API error occurs; reset to Unknown on email change.
     /// </summary>
     public GoogleEmailStatus GoogleEmailStatus { get; set; } = GoogleEmailStatus.Unknown;
-
-    /// <summary>
-    /// Gets the email address used for Google services (Groups, Drive permissions).
-    /// Returns GoogleEmail if set, otherwise falls back to the OAuth email.
-    /// Does NOT require UserEmails to be loaded.
-    /// </summary>
-    public string? GetGoogleServiceEmail() => GoogleEmail ?? Email;
 
     /// <summary>
     /// Where this user was imported from (null for self-registered users).

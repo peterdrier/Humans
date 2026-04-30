@@ -251,11 +251,11 @@ public class DevLoginController : Controller
             Id = Guid.NewGuid(),
             UserId = id,
             Email = email,
-            IsOAuth = true,
+            Provider = "Google",
+            ProviderKey = $"dev-{id}",
             IsVerified = true,
             IsNotificationTarget = true,
             Visibility = ContactFieldVisibility.BoardOnly,
-            DisplayOrder = 0,
             CreatedAt = now,
             UpdatedAt = now
         });
@@ -603,11 +603,11 @@ public class DevLoginController : Controller
             Id = Guid.NewGuid(),
             UserId = id,
             Email = email,
-            IsOAuth = true,
+            Provider = "Google",
+            ProviderKey = $"dev-{id}",
             IsVerified = true,
             IsNotificationTarget = true,
             Visibility = ContactFieldVisibility.BoardOnly,
-            DisplayOrder = 0,
             CreatedAt = now,
             UpdatedAt = now
         });

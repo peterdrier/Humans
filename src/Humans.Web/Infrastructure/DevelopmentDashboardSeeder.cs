@@ -290,9 +290,7 @@ public sealed class DevelopmentDashboardSeeder
                 Email = email,
                 IsVerified = true,
                 IsNotificationTarget = true,
-                IsOAuth = false,
                 Visibility = ContactFieldVisibility.BoardOnly,
-                DisplayOrder = 0,
                 CreatedAt = createdAt,
                 UpdatedAt = createdAt,
             });

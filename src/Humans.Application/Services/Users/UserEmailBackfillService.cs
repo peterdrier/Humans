@@ -63,7 +63,7 @@ public sealed class UserEmailBackfillService : IUserEmailBackfillService
                 continue;
             }
 
-            var hasOAuthLogin = (await _userManager.GetLoginsAsync(user)).Count > 0;
+            var firstLogin = (await _userManager.GetLoginsAsync(user)).FirstOrDefault();
 
             var userEmail = new UserEmail
             {
@@ -71,10 +71,10 @@ public sealed class UserEmailBackfillService : IUserEmailBackfillService
                 UserId = user.Id,
                 Email = user.Email,
                 IsVerified = user.EmailConfirmed,
-                IsOAuth = hasOAuthLogin,
+                Provider = firstLogin?.LoginProvider,
+                ProviderKey = firstLogin?.ProviderKey,
                 IsNotificationTarget = user.EmailConfirmed,
                 Visibility = ContactFieldVisibility.BoardOnly,
-                DisplayOrder = 0,
                 CreatedAt = now,
                 UpdatedAt = now,
             };
@@ -115,7 +115,7 @@ public sealed class UserEmailBackfillService : IUserEmailBackfillService
                 await _auditLogService.LogAsync(
                     AuditAction.ContactCreated,
                     nameof(User), user.Id,
-                    $"Backfilled missing UserEmail row from User.Email = {user.Email} (verified={user.EmailConfirmed}, oauth={hasOAuthLogin})",
+                    $"Backfilled missing UserEmail row from User.Email = {user.Email} (verified={user.EmailConfirmed}, oauth={firstLogin is not null})",
                     nameof(UserEmailBackfillService));
             }
             catch (Exception ex)

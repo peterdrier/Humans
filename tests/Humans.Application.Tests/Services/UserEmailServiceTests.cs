@@ -106,7 +106,6 @@ public class UserEmailServiceTests
             Id = deletingId,
             UserId = userId,
             Email = "secondary@example.com",
-            IsOAuth = false,
             IsVerified = true,
             IsNotificationTarget = false,
         };
@@ -115,7 +114,6 @@ public class UserEmailServiceTests
             Id = keepingId,
             UserId = userId,
             Email = "primary@example.com",
-            IsOAuth = false,
             IsVerified = true,
             IsNotificationTarget = true,
         };
@@ -150,7 +148,8 @@ public class UserEmailServiceTests
             Id = oauthRowId,
             UserId = userId,
             Email = "google@example.com",
-            IsOAuth = true,
+            Provider = "Google",
+            ProviderKey = "test-oauth",
             IsVerified = true,
             IsNotificationTarget = true,
         };
@@ -159,7 +158,6 @@ public class UserEmailServiceTests
             Id = secondaryId,
             UserId = userId,
             Email = "personal@example.com",
-            IsOAuth = false,
             IsVerified = true,
             IsNotificationTarget = false,
         };
@@ -192,7 +190,6 @@ public class UserEmailServiceTests
             Id = emailId,
             UserId = userId,
             Email = "only@example.com",
-            IsOAuth = false,
             IsVerified = true,
             IsNotificationTarget = true,
         };
@@ -229,7 +226,6 @@ public class UserEmailServiceTests
             Id = emailId,
             UserId = userId,
             Email = "only@example.com",
-            IsOAuth = false,
             IsVerified = true,
             IsNotificationTarget = true,
         };
@@ -259,8 +255,7 @@ public class UserEmailServiceTests
                 Id = emailId,
                 UserId = userId,
                 Email = "unverified@example.com",
-                IsOAuth = false,
-                IsVerified = false,
+                    IsVerified = false,
                 IsNotificationTarget = false,
             });
 

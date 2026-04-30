@@ -118,11 +118,9 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
             Id = Guid.NewGuid(),
             UserId = newUser.Id,
             Email = email,
-            IsOAuth = false,
             IsVerified = true,
             IsNotificationTarget = true,
             Visibility = null,
-            DisplayOrder = 0,
             CreatedAt = now,
             UpdatedAt = now,
         };

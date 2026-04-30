@@ -51,7 +51,7 @@
                                 <tr>
                                     <td>
                                         <code>@email.Email</code>
-                                        @if (email.IsOAuth)
+                                        @if (email.IsGoogle)
                                         {
                                             <span class="badge bg-secondary ms-1">@Localizer["Emails_SignIn"]</span>
                                         }
@@ -123,7 +123,7 @@
                                         }
                                     </td>
                                     <td class="text-end">
-                                        @if (!email.IsOAuth)
+                                        @if (!email.IsGoogle)
                                         {
                                             <form asp-action="DeleteEmail" method="post" class="d-inline"
                                                   data-confirm="@Localizer["Emails_ConfirmRemove"].Value">

@@ -119,12 +119,12 @@ public sealed class UserRepository : IUserRepository
     public async Task<User?> GetByEmailOrAlternateAsync(
         string normalizedEmail, string? alternateEmail, CancellationToken ct = default)
     {
-        // PR 2 of the email-identity-decoupling spec drops the User.Email
-        // column; verified email lookups now route through user_emails. The
-        // User.GoogleEmail field stays through PR 2 (PR 3 deletes it), so we
-        // still match against it here. ILIKE without escape treats '_' / '%'
-        // in the input as wildcards, so alex_smith@example.com would also
-        // match alexXsmith@example.com — escape the pattern with '\'.
+        // Verified email lookups route through user_emails; the legacy
+        // GoogleEmail shadow column survives on disk and is matched as a
+        // fallback via EF.Property until the column is dropped. ILIKE without
+        // escape treats '_' / '%' in the input as wildcards, so
+        // alex_smith@example.com would also match alexXsmith@example.com —
+        // escape the pattern with '\'.
         var escapedEmail = EscapeLikePattern(normalizedEmail);
         var escapedAlternate = alternateEmail is null ? null : EscapeLikePattern(alternateEmail);
 
@@ -151,14 +151,15 @@ public sealed class UserRepository : IUserRepository
                 .FirstOrDefaultAsync(u => u.Id == userIdByEmail.Value, ct);
         }
 
-        // Step 2: fall back to User.GoogleEmail (until PR 3 removes that field).
+        // Step 2: fall back to the legacy GoogleEmail shadow column.
         if (escapedAlternate is null)
         {
             return await ctx.Users
                 .AsNoTracking()
                 .Include(u => u.UserEmails)
                 .FirstOrDefaultAsync(u =>
-                    u.GoogleEmail != null && EF.Functions.ILike(u.GoogleEmail, escapedEmail, "\\"),
+                    EF.Property<string?>(u, "GoogleEmail") != null
+                    && EF.Functions.ILike(EF.Property<string?>(u, "GoogleEmail")!, escapedEmail, "\\"),
                     ct);
         }
 
@@ -166,9 +167,9 @@ public sealed class UserRepository : IUserRepository
             .AsNoTracking()
             .Include(u => u.UserEmails)
             .FirstOrDefaultAsync(u =>
-                u.GoogleEmail != null && (
-                    EF.Functions.ILike(u.GoogleEmail, escapedEmail, "\\") ||
-                    EF.Functions.ILike(u.GoogleEmail, escapedAlternate, "\\")),
+                EF.Property<string?>(u, "GoogleEmail") != null && (
+                    EF.Functions.ILike(EF.Property<string?>(u, "GoogleEmail")!, escapedEmail, "\\") ||
+                    EF.Functions.ILike(EF.Property<string?>(u, "GoogleEmail")!, escapedAlternate, "\\")),
                 ct);
     }
 
@@ -197,11 +198,28 @@ public sealed class UserRepository : IUserRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Users
             .AsNoTracking()
-            .Where(u => u.GoogleEmail != null
-                        && EF.Functions.ILike(u.GoogleEmail, email)
+            .Where(u => EF.Property<string?>(u, "GoogleEmail") != null
+                        && EF.Functions.ILike(EF.Property<string?>(u, "GoogleEmail")!, email)
                         && u.Id != excludeUserId)
             .Select(u => (Guid?)u.Id)
             .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, string>> GetLegacyGoogleEmailsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<Guid, string>();
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var rows = await ctx.Users
+            .AsNoTracking()
+            .Where(u => userIds.Contains(u.Id))
+            .Select(u => new { u.Id, GoogleEmail = EF.Property<string?>(u, "GoogleEmail") })
+            .Where(x => x.GoogleEmail != null)
+            .ToListAsync(ct);
+
+        return rows.ToDictionary(x => x.Id, x => x.GoogleEmail!);
     }
 
     // ==========================================================================
@@ -226,10 +244,14 @@ public sealed class UserRepository : IUserRepository
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([userId], ct);
-        if (user is null || user.GoogleEmail is not null)
+        if (user is null)
             return false;
 
-        user.GoogleEmail = email;
+        var entry = ctx.Entry(user).Property<string?>("GoogleEmail");
+        if (entry.CurrentValue is not null)
+            return false;
+
+        entry.CurrentValue = email;
         await ctx.SaveChangesAsync(ct);
         return true;
     }
@@ -242,7 +264,7 @@ public sealed class UserRepository : IUserRepository
         if (user is null)
             return false;
 
-        user.GoogleEmail = email;
+        ctx.Entry(user).Property<string?>("GoogleEmail").CurrentValue = email;
         user.GoogleEmailStatus = GoogleEmailStatus.Unknown;
         await ctx.SaveChangesAsync(ct);
         return true;
@@ -663,7 +685,7 @@ public sealed class UserRepository : IUserRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
         var usersToFix = await ctx.Users
-            .Where(u => u.GoogleEmail == null
+            .Where(u => EF.Property<string?>(u, "GoogleEmail") == null
                 && ctx.UserEmails.Any(ue =>
                     ue.UserId == u.Id
                     && ue.IsVerified
@@ -683,7 +705,7 @@ public sealed class UserRepository : IUserRepository
 
             if (nobodiesEmail is not null)
             {
-                user.GoogleEmail = nobodiesEmail;
+                ctx.Entry(user).Property<string?>("GoogleEmail").CurrentValue = nobodiesEmail;
                 result.Add((user.Id, user.DisplayName, nobodiesEmail));
             }
         }

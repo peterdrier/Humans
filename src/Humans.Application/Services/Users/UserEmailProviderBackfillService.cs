@@ -1,3 +1,4 @@
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
@@ -22,17 +23,16 @@ namespace Humans.Application.Services.Users;
 /// (a) tags the matching <see cref="UserEmail"/> row with
 /// <c>Provider</c>/<c>ProviderKey</c> for each <c>AspNetUserLogins</c> entry
 /// and (b) flips <c>IsGoogle = true</c> on the row matching the legacy
-/// <see cref="User.GoogleEmail"/> address (or the legacy
-/// <see cref="UserEmail.IsOAuth"/> row when <c>GoogleEmail</c> is null).
+/// Google-email shadow column (or the legacy <c>IsOAuth=true</c> row when the
+/// shadow value is null).
 /// </para>
 ///
 /// <para>
-/// Reads of the legacy properties (<c>User.GoogleEmail</c>,
-/// <c>UserEmail.IsOAuth</c>) are intentional here — the C# surface still
-/// exists in this PR and is deleted in Task 10 of the plan. After that
-/// deletion this service switches to <c>EF.Property&lt;&gt;(...)</c> reads
-/// against the EF shadow-property declarations introduced in
-/// <see cref="Humans.Infrastructure.Data.Configurations.Profiles"/>.
+/// The legacy CLR properties (<c>User.GoogleEmail</c>, <c>UserEmail.IsOAuth</c>)
+/// are gone; the columns survive on disk as EF shadow properties and are read
+/// here through narrow repository projections
+/// (<see cref="IUserRepository.GetLegacyGoogleEmailsAsync"/> and
+/// <see cref="IUserEmailRepository.GetLegacyBackfillSnapshotsByUserIdAsync"/>).
 /// </para>
 /// </summary>
 public sealed class UserEmailProviderBackfillService : IUserEmailProviderBackfillService
@@ -69,22 +69,35 @@ public sealed class UserEmailProviderBackfillService : IUserEmailProviderBackfil
         var ambiguousMatchesWarned = 0;
         var now = _clock.GetCurrentInstant();
 
+        var legacyGoogleEmails = await _userRepository.GetLegacyGoogleEmailsAsync(
+            users.Select(u => u.Id).ToArray(), cancellationToken);
+
         foreach (var user in users)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var emails = (await _userEmailRepository.GetByUserIdForMutationAsync(user.Id, cancellationToken))
+            legacyGoogleEmails.TryGetValue(user.Id, out var legacyGoogleEmail);
+
+            var snapshots = (await _userEmailRepository
+                .GetLegacyBackfillSnapshotsByUserIdAsync(user.Id, cancellationToken))
                 .ToList();
-            if (emails.Count == 0)
+            if (snapshots.Count == 0)
                 continue;
 
             var logins = await _userManager.GetLoginsAsync(user);
+            var emails = (await _userEmailRepository.GetByUserIdForMutationAsync(user.Id, cancellationToken))
+                .ToList();
             var updates = new List<UserEmail>();
 
             foreach (var login in logins)
             {
-                var match = ResolveProviderTargetRow(
-                    user, emails, login, logins.Count > 1, warnings, ref ambiguousMatchesWarned);
+                var matchSnapshot = ResolveProviderTargetRow(
+                    user, snapshots, login, legacyGoogleEmail,
+                    logins.Count > 1, warnings, ref ambiguousMatchesWarned);
+                if (matchSnapshot is null)
+                    continue;
+
+                var match = emails.FirstOrDefault(e => e.Id == matchSnapshot.Id);
                 if (match is null)
                     continue;
 
@@ -105,26 +118,30 @@ public sealed class UserEmailProviderBackfillService : IUserEmailProviderBackfil
                     $"Backfilled UserEmail.Provider/ProviderKey from AspNetUserLogins ({login.LoginProvider}) for {match.Email}");
             }
 
-            var googleTarget = ResolveIsGoogleTargetRow(user, emails);
-            if (googleTarget is not null && !googleTarget.IsGoogle)
+            var googleTargetSnapshot = ResolveIsGoogleTargetRow(snapshots, legacyGoogleEmail);
+            if (googleTargetSnapshot is not null && !googleTargetSnapshot.IsGoogle)
             {
-                foreach (var sibling in emails)
+                var googleTarget = emails.FirstOrDefault(e => e.Id == googleTargetSnapshot.Id);
+                if (googleTarget is not null)
                 {
-                    if (sibling.Id == googleTarget.Id) continue;
-                    if (!sibling.IsGoogle) continue;
-                    sibling.IsGoogle = false;
-                    sibling.UpdatedAt = now;
-                    if (!updates.Contains(sibling)) updates.Add(sibling);
+                    foreach (var sibling in emails)
+                    {
+                        if (sibling.Id == googleTarget.Id) continue;
+                        if (!sibling.IsGoogle) continue;
+                        sibling.IsGoogle = false;
+                        sibling.UpdatedAt = now;
+                        if (!updates.Contains(sibling)) updates.Add(sibling);
+                    }
+
+                    googleTarget.IsGoogle = true;
+                    googleTarget.UpdatedAt = now;
+                    if (!updates.Contains(googleTarget)) updates.Add(googleTarget);
+                    isGoogleRowsUpdated++;
+
+                    await SafeAuditAsync(
+                        user.Id,
+                        $"Backfilled UserEmail.IsGoogle on {googleTarget.Email}");
                 }
-
-                googleTarget.IsGoogle = true;
-                googleTarget.UpdatedAt = now;
-                if (!updates.Contains(googleTarget)) updates.Add(googleTarget);
-                isGoogleRowsUpdated++;
-
-                await SafeAuditAsync(
-                    user.Id,
-                    $"Backfilled UserEmail.IsGoogle on {googleTarget.Email}");
             }
 
             if (updates.Count > 0)
@@ -139,10 +156,11 @@ public sealed class UserEmailProviderBackfillService : IUserEmailProviderBackfil
             users.Count, providerRowsUpdated, isGoogleRowsUpdated, ambiguousMatchesWarned, warnings);
     }
 
-    private static UserEmail? ResolveProviderTargetRow(
+    private static UserEmailLegacyBackfillSnapshot? ResolveProviderTargetRow(
         User user,
-        IReadOnlyList<UserEmail> emails,
+        IReadOnlyList<UserEmailLegacyBackfillSnapshot> emails,
         UserLoginInfo login,
+        string? legacyGoogleEmail,
         bool ambiguous,
         List<string> warnings,
         ref int ambiguousMatchesWarned)
@@ -154,12 +172,12 @@ public sealed class UserEmailProviderBackfillService : IUserEmailProviderBackfil
             ambiguousMatchesWarned++;
         }
 
-        // 1. Legacy IsOAuth=true row whose Email matches User.GoogleEmail (most precise).
-        if (!string.IsNullOrWhiteSpace(user.GoogleEmail))
+        // 1. Legacy IsOAuth=true row whose Email matches the legacy GoogleEmail (most precise).
+        if (!string.IsNullOrWhiteSpace(legacyGoogleEmail))
         {
             var byOAuthAndEmail = emails.FirstOrDefault(e =>
-                e.IsOAuth
-                && string.Equals(e.Email, user.GoogleEmail, StringComparison.OrdinalIgnoreCase));
+                e.LegacyIsOAuth
+                && string.Equals(e.Email, legacyGoogleEmail, StringComparison.OrdinalIgnoreCase));
             if (byOAuthAndEmail is not null) return byOAuthAndEmail;
         }
 
@@ -175,18 +193,20 @@ public sealed class UserEmailProviderBackfillService : IUserEmailProviderBackfil
         return emails.OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
     }
 
-    private static UserEmail? ResolveIsGoogleTargetRow(User user, IReadOnlyList<UserEmail> emails)
+    private static UserEmailLegacyBackfillSnapshot? ResolveIsGoogleTargetRow(
+        IReadOnlyList<UserEmailLegacyBackfillSnapshot> emails,
+        string? legacyGoogleEmail)
     {
-        // 1. Row matching the legacy User.GoogleEmail address.
-        if (!string.IsNullOrWhiteSpace(user.GoogleEmail))
+        // 1. Row matching the legacy GoogleEmail address.
+        if (!string.IsNullOrWhiteSpace(legacyGoogleEmail))
         {
             var byGoogleEmail = emails.FirstOrDefault(e =>
-                string.Equals(e.Email, user.GoogleEmail, StringComparison.OrdinalIgnoreCase));
+                string.Equals(e.Email, legacyGoogleEmail, StringComparison.OrdinalIgnoreCase));
             if (byGoogleEmail is not null) return byGoogleEmail;
         }
 
         // 2. Legacy IsOAuth=true row (any user with an OAuth login pre-PR3 had this set).
-        return emails.FirstOrDefault(e => e.IsOAuth);
+        return emails.FirstOrDefault(e => e.LegacyIsOAuth);
     }
 
     private async Task SafeAuditAsync(Guid userId, string description)

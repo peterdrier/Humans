@@ -42,11 +42,20 @@ public sealed class UserRepositoryTests : IDisposable
             Email = $"user-{Guid.NewGuid():N}@example.com",
             DisplayName = "Seeded User",
             CreatedAt = _clock.GetCurrentInstant(),
-            GoogleEmail = googleEmail,
         };
         _dbContext.Users.Add(user);
+        if (googleEmail is not null)
+        {
+            _dbContext.Entry(user).Property<string?>("GoogleEmail").CurrentValue = googleEmail;
+        }
         await _dbContext.SaveChangesAsync();
         return user;
+    }
+
+    private async Task<string?> ReadLegacyGoogleEmailAsync(Guid userId)
+    {
+        var lookup = await _repo.GetLegacyGoogleEmailsAsync([userId], default);
+        return lookup.TryGetValue(userId, out var v) ? v : null;
     }
 
     // ==========================================================================
@@ -70,8 +79,7 @@ public sealed class UserRepositoryTests : IDisposable
         var result = await _repo.TrySetGoogleEmailAsync(user.Id, "new@nobodies.team", default);
 
         result.Should().BeTrue();
-        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id);
-        reloaded.GoogleEmail.Should().Be("new@nobodies.team");
+        (await ReadLegacyGoogleEmailAsync(user.Id)).Should().Be("new@nobodies.team");
     }
 
     [HumansFact]
@@ -82,8 +90,7 @@ public sealed class UserRepositoryTests : IDisposable
         var result = await _repo.TrySetGoogleEmailAsync(user.Id, "new@nobodies.team", default);
 
         result.Should().BeFalse();
-        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id);
-        reloaded.GoogleEmail.Should().Be("existing@nobodies.team");
+        (await ReadLegacyGoogleEmailAsync(user.Id)).Should().Be("existing@nobodies.team");
     }
 
     // ==========================================================================

@@ -63,16 +63,22 @@ public interface IUserEmailRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the maximum display order for a user's emails.
-    /// </summary>
-    Task<int> GetMaxDisplayOrderAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns all verified @nobodies.team emails across all users.
     /// Used as a bulk load to support in-memory filtering by callers.
     /// </summary>
     Task<IReadOnlyList<UserEmail>> GetAllVerifiedNobodiesTeamEmailsAsync(
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns a snapshot of every <see cref="UserEmail"/> row for the user that
+    /// also carries the legacy <c>IsOAuth</c> shadow-column value. Used by
+    /// <c>UserEmailProviderBackfillService</c> to read the legacy flag via
+    /// <c>EF.Property&lt;bool&gt;(...)</c> without reaching back into the
+    /// deleted CLR property.
+    /// </summary>
+    Task<IReadOnlyList<UserEmailLegacyBackfillSnapshot>>
+        GetLegacyBackfillSnapshotsByUserIdAsync(
+            Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns every user email, read-only. Used by the duplicate-account
