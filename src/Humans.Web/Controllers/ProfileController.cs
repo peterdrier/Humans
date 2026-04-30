@@ -2008,7 +2008,8 @@ public class ProfileController : HumansControllerBase
                 IsMergePending = e.IsMergePending,
                 IsGoogleServiceEmail = e.IsGoogle
                     || (googleServiceEmail is null && e.Provider != null),
-                IsNobodiesTeamDomain = e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase)
+                IsNobodiesTeamDomain = e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase),
+                Provider = e.Provider
             }).ToList(),
             CanAddEmail = canAdd,
             MinutesUntilResend = minutesUntilResend,
@@ -2016,6 +2017,7 @@ public class ProfileController : HumansControllerBase
             HasNobodiesTeamEmail = hasNobodiesTeam,
             GoogleEmailStatus = user.GoogleEmailStatus,
             TargetUserId = user.Id,
+            TargetDisplayName = user.DisplayName,
             RoutePrefix = routePrefix,
             IsAdminContext = isAdminContext,
             MergePendingEmailIds = mergePendingIds

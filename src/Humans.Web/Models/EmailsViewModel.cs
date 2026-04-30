@@ -54,6 +54,12 @@ public class EmailsViewModel
     public Guid TargetUserId { get; set; }
 
     /// <summary>
+    /// Display name of the target user. Used in the admin context banner so
+    /// it reads "Managing emails for {name}" rather than a guid fragment.
+    /// </summary>
+    public string? TargetDisplayName { get; set; }
+
+    /// <summary>
     /// Route prefix used by grid action forms/links. Defaults to "/Profile/Me/Emails"
     /// for the self grid; admin context overrides to "/Profile/{userId}/Admin/Emails".
     /// </summary>
@@ -85,4 +91,11 @@ public class EmailRowViewModel
     public bool IsMergePending { get; set; }
     public bool IsGoogleServiceEmail { get; set; }
     public bool IsNobodiesTeamDomain { get; set; }
+
+    /// <summary>
+    /// Sign-in provider attached to this email row, e.g. "Google". Null when
+    /// the row is a plain (provider-free) email. Drives the contextual action
+    /// button: provider-attached rows show Unlink; plain rows show Delete.
+    /// </summary>
+    public string? Provider { get; set; }
 }
