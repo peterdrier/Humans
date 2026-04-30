@@ -96,4 +96,5 @@ public enum AuditAction
     AccountPurged,
     UserEmailProviderBackfilled,
     UserEmailGoogleSet,
+    UserEmailLinked,
 }

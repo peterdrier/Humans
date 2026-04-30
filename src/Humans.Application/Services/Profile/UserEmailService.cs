@@ -647,6 +647,68 @@ public sealed class UserEmailService : IUserEmailService
     }
 
     /// <inheritdoc />
+    public async Task<bool> LinkAsync(
+        Guid userId, string provider, string providerKey, string email, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var now = _clock.GetCurrentInstant();
+        var existing = await _repository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
+        var match = existing.FirstOrDefault(
+            e => string.Equals(e.Email, email, StringComparison.OrdinalIgnoreCase));
+
+        Guid rowId;
+        string description;
+
+        if (match is not null)
+        {
+            // Re-fetch tracked entity for mutation. GetByIdAndUserIdAsync returns
+            // a tracked row (per repo XML: "tracked for modification").
+            var tracked = await _repository.GetByIdAndUserIdAsync(match.Id, userId, cancellationToken)
+                ?? throw new InvalidOperationException(
+                    $"UserEmail row {match.Id} disappeared between read and mutate.");
+
+            tracked.Provider = provider;
+            tracked.ProviderKey = providerKey;
+            tracked.UpdatedAt = now;
+            await _repository.UpdateAsync(tracked, cancellationToken);
+
+            rowId = tracked.Id;
+            description = $"Linked {provider} `{tracked.Email}` to user";
+        }
+        else
+        {
+            var fresh = new UserEmail
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Email = email,
+                IsVerified = true,
+                IsPrimary = false,
+                IsGoogle = false,
+                Provider = provider,
+                ProviderKey = providerKey,
+                CreatedAt = now,
+                UpdatedAt = now,
+            };
+            await _repository.AddAsync(fresh, cancellationToken);
+
+            rowId = fresh.Id;
+            description = $"Linked {provider} `{fresh.Email}` to user (new row)";
+        }
+
+        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+
+        await _auditLogService.LogAsync(
+            AuditAction.UserEmailLinked,
+            nameof(User), userId,
+            description,
+            actorUserId,
+            relatedEntityId: rowId, relatedEntityType: nameof(UserEmail));
+
+        return true;
+    }
+
+    /// <inheritdoc />
     public async Task<UserEmailProviderMatch?> FindByProviderKeyAsync(
         string provider, string providerKey,
         CancellationToken cancellationToken = default)

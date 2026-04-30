@@ -354,6 +354,80 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
+    public async Task LinkAsync_AttachesToExistingEmail()
+    {
+        // A row matching the email already exists for the user → attach
+        // Provider/ProviderKey to that row instead of creating a new one.
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        var existing = new UserEmail
+        {
+            Id = rowId,
+            UserId = userId,
+            Email = "match@example.com",
+            IsVerified = true,
+            IsPrimary = false,
+        };
+        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmail> { existing });
+        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+            .Returns(existing);
+
+        var result = await _service.LinkAsync(
+            userId, "Google", "sub-abc", "Match@Example.com", actorId);
+
+        result.Should().BeTrue();
+        existing.Provider.Should().Be("Google");
+        existing.ProviderKey.Should().Be("sub-abc");
+        await _repository.Received(1).UpdateAsync(existing, Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().AddAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _fullProfileInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>());
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.UserEmailLinked,
+            Arg.Any<string>(), userId,
+            Arg.Any<string>(), actorId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task LinkAsync_CreatesRowWhenMissing()
+    {
+        // No row matches the email → create a new verified, non-primary
+        // UserEmail row with Provider/ProviderKey set.
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmail>());
+
+        UserEmail? added = null;
+        await _repository.AddAsync(
+            Arg.Do<UserEmail>(e => added = e),
+            Arg.Any<CancellationToken>());
+
+        var result = await _service.LinkAsync(
+            userId, "Google", "sub-xyz", "new@example.com", actorId);
+
+        result.Should().BeTrue();
+        added.Should().NotBeNull();
+        added!.UserId.Should().Be(userId);
+        added.Email.Should().Be("new@example.com");
+        added.Provider.Should().Be("Google");
+        added.ProviderKey.Should().Be("sub-xyz");
+        added.IsVerified.Should().BeTrue();
+        added.IsPrimary.Should().BeFalse();
+        added.IsGoogle.Should().BeFalse();
+        await _repository.Received(1).AddAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _fullProfileInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>());
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.UserEmailLinked,
+            Arg.Any<string>(), userId,
+            Arg.Any<string>(), actorId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
     public async Task SetGoogleAsync_InvalidatesFullProfileCache()
     {
         var userId = Guid.NewGuid();

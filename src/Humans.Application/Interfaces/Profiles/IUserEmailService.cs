@@ -292,6 +292,22 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Find-or-create. Attaches the OAuth identity (<paramref name="provider"/>,
+    /// <paramref name="providerKey"/>) to the user's email row matching
+    /// <paramref name="email"/> (Ordinal/case-insensitive); creates a new
+    /// verified row when none matches. <paramref name="userId"/> is the
+    /// <b>target</b> user; <paramref name="actorUserId"/> is the actor.
+    /// Replaces both AddOAuthEmailAsync and SetProviderAsync (PR 4 consolidation).
+    /// </summary>
+    Task<bool> LinkAsync(
+        Guid userId,
+        string provider,
+        string providerKey,
+        string email,
+        Guid actorUserId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Looks up the UserEmail row tagged with
     /// <paramref name="provider"/> / <paramref name="providerKey"/>. Returns
     /// <c>null</c> when no row matches. Used by the OAuth callback's rename
