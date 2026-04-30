@@ -50,7 +50,7 @@ public interface IUserEmailService
     /// Sets which email is the notification target.
     /// The email must be verified.
     /// </summary>
-    Task SetNotificationTargetAsync(
+    Task SetPrimaryAsync(
         Guid userId,
         Guid emailId,
         CancellationToken cancellationToken = default);

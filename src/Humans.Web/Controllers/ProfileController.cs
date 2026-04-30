@@ -675,7 +675,7 @@ public class ProfileController : HumansControllerBase
 
         try
         {
-            await _userEmailService.SetNotificationTargetAsync(user.Id, emailId);
+            await _userEmailService.SetPrimaryAsync(user.Id, emailId);
             _cache.InvalidateNobodiesTeamEmails();
             SetSuccess(_localizer["Profile_NotificationTargetUpdated"].Value);
         }

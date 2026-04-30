@@ -44,7 +44,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task SetNotificationTargetAsync_VerifiedTarget_InvalidatesFullProfile()
+    public async Task SetPrimaryAsync_VerifiedTarget_InvalidatesFullProfile()
     {
         var userId = Guid.NewGuid();
         var targetId = Guid.NewGuid();
@@ -65,7 +65,7 @@ public class UserEmailServiceTests
         _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(emails);
 
-        await _service.SetNotificationTargetAsync(userId, targetId);
+        await _service.SetPrimaryAsync(userId, targetId);
 
         await _fullProfileInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>());
         emails.Single(e => e.Id == targetId).IsPrimary.Should().BeTrue();
@@ -73,7 +73,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task SetNotificationTargetAsync_UnverifiedTarget_DoesNotInvalidate()
+    public async Task SetPrimaryAsync_UnverifiedTarget_DoesNotInvalidate()
     {
         var userId = Guid.NewGuid();
         var targetId = Guid.NewGuid();
@@ -88,7 +88,7 @@ public class UserEmailServiceTests
         _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(emails);
 
-        var act = async () => await _service.SetNotificationTargetAsync(userId, targetId);
+        var act = async () => await _service.SetPrimaryAsync(userId, targetId);
 
         await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
         await _fullProfileInvalidator.DidNotReceive().InvalidateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());

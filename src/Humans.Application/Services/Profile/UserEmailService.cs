@@ -212,7 +212,7 @@ public sealed class UserEmailService : IUserEmailService
         return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: false);
     }
 
-    public async Task SetNotificationTargetAsync(
+    public async Task SetPrimaryAsync(
         Guid userId, Guid emailId, CancellationToken cancellationToken = default)
     {
         var emails = await _repository.GetByUserIdForMutationAsync(userId, cancellationToken);
