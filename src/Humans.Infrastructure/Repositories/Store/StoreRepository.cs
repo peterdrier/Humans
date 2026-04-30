@@ -44,7 +44,7 @@ public sealed class StoreRepository : IStoreRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.StoreProducts.AsNoTracking()
             .Where(p => p.Year == year)
-            .OrderBy(p => p.IsActive == false)
+            .OrderByDescending(p => p.IsActive)
             .ThenBy(p => p.Name)
             .ToListAsync(ct);
     }

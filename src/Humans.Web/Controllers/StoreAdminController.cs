@@ -16,6 +16,8 @@ namespace Humans.Web.Controllers;
 [Route("Store/Admin")]
 public class StoreAdminController : HumansControllerBase
 {
+    private const decimal SpanishStandardVatRatePercent = 21m;
+
     private readonly IStoreService _storeService;
     private readonly IShiftManagementService _shifts;
     private readonly IClock _clock;
@@ -50,7 +52,7 @@ public class StoreAdminController : HumansControllerBase
         var model = new ProductInputModel
         {
             Year = year,
-            VatRatePercent = 21m,
+            VatRatePercent = SpanishStandardVatRatePercent,
             OrderableUntil = $"{year}-12-31",
             IsActive = true
         };
@@ -128,7 +130,7 @@ public class StoreAdminController : HumansControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogInformation(ex, "Store catalog Save rejected");
-            SetError(ex.Message);
+            ModelState.AddModelError(string.Empty, ex.Message);
             return View("CatalogEdit", input);
         }
 
