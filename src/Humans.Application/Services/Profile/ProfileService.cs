@@ -866,6 +866,8 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         {
             e.Email,
             e.IsVerified,
+            // GDPR-export schema is observable by data subjects; key stays "IsOAuth"
+            // even though the source column moved to Provider/ProviderKey.
             IsOAuth = e.Provider != null,
             e.IsNotificationTarget,
             e.Visibility
