@@ -1667,4 +1667,34 @@ public class ProfileServiceTests : IDisposable
             UpdatedAt = _clock.GetCurrentInstant()
         };
     }
+
+    [HumansFact]
+    public async Task ContributeForUserAsync_EmitsIsGoogleKey_FromIsGoogleColumn()
+    {
+        // Provider intentionally null to verify the export key sources from the
+        // IsGoogle column rather than (Provider != null) — under the old projection
+        // this row would emit IsOAuth=false; under the new one it must emit IsGoogle=true.
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId);
+        _dbContext.UserEmails.Add(new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "g@example.com",
+            IsVerified = true,
+            IsPrimary = true,
+            Provider = null,
+            ProviderKey = null,
+            IsGoogle = true,
+        });
+        await _dbContext.SaveChangesAsync();
+
+        var slices = await _service.ContributeForUserAsync(userId, CancellationToken.None);
+
+        var userEmailsSlice = slices.Single(s =>
+            string.Equals(s.SectionName, Humans.Application.Interfaces.Gdpr.GdprExportSections.UserEmails, StringComparison.Ordinal));
+        var json = System.Text.Json.JsonSerializer.Serialize(userEmailsSlice.Data);
+        json.Should().Contain("\"IsGoogle\":true");
+        json.Should().NotContain("IsOAuth");
+    }
 }

@@ -866,9 +866,10 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         {
             e.Email,
             e.IsVerified,
-            // GDPR-export schema is observable by data subjects; key stays "IsOAuth"
-            // even though the source column moved to Provider/ProviderKey.
-            IsOAuth = e.Provider != null,
+            // Sourced from the IsGoogle column (the canonical Workspace-identity flag)
+            // rather than (Provider != null), which would conflate Workspace identity
+            // with the OAuth-attachment state.
+            IsGoogle = e.IsGoogle,
             e.IsPrimary,
             e.Visibility
         }).ToList());
