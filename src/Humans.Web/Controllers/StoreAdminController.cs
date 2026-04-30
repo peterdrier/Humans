@@ -99,7 +99,7 @@ public class StoreAdminController : HumansControllerBase
             input.Id ?? Guid.Empty,
             input.Year,
             input.Name?.Trim() ?? string.Empty,
-            input.Description ?? string.Empty,
+            input.Description,
             input.UnitPriceEur,
             input.VatRatePercent,
             input.DepositAmountEur,

@@ -64,7 +64,7 @@ public class StoreService : IStoreService
             Id = Guid.NewGuid(),
             Year = draft.Year,
             Name = draft.Name.Trim(),
-            Description = draft.Description ?? string.Empty,
+            Description = draft.Description,
             UnitPriceEur = draft.UnitPriceEur,
             VatRatePercent = draft.VatRatePercent,
             DepositAmountEur = draft.DepositAmountEur,
@@ -90,7 +90,7 @@ public class StoreService : IStoreService
 
         product.Year = draft.Year;
         product.Name = draft.Name.Trim();
-        product.Description = draft.Description ?? string.Empty;
+        product.Description = draft.Description;
         product.UnitPriceEur = draft.UnitPriceEur;
         product.VatRatePercent = draft.VatRatePercent;
         product.DepositAmountEur = draft.DepositAmountEur;
