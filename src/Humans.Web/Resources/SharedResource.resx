@@ -1905,6 +1905,8 @@
   <data name="EmailGrid_Google" xml:space="preserve"><value>Google</value></data>
   <data name="EmailGrid_GoogleColumnTooltip" xml:space="preserve"><value>Email used for Google Workspace sync.</value></data>
   <data name="EmailGrid_WorkspaceLockedHelp" xml:space="preserve"><value>Primary and Google are managed by Google Workspace while your @nobodies.team address is present.</value></data>
+  <data name="EmailGrid_VerificationPendingTitle" xml:space="preserve"><value>Email verification pending</value></data>
+  <data name="EmailGrid_VerificationPendingBody" xml:space="preserve"><value>Check your inbox for the verification email and click the link to confirm your address.</value></data>
   <data name="EmailGrid_Visibility" xml:space="preserve"><value>Visibility</value></data>
   <data name="EmailGrid_Actions" xml:space="preserve"><value>Actions</value></data>
   <data name="EmailGrid_StatusMergePending" xml:space="preserve"><value>Merge pending</value></data>

@@ -1887,6 +1887,8 @@
   <data name="EmailGrid_Google" xml:space="preserve"><value>Google</value></data>
   <data name="EmailGrid_GoogleColumnTooltip" xml:space="preserve"><value>Correo usado para la sincronización con Google Workspace.</value></data>
   <data name="EmailGrid_WorkspaceLockedHelp" xml:space="preserve"><value>Principal y Google los gestiona Google Workspace mientras tu dirección @nobodies.team esté presente.</value></data>
+  <data name="EmailGrid_VerificationPendingTitle" xml:space="preserve"><value>Verificación de correo pendiente</value></data>
+  <data name="EmailGrid_VerificationPendingBody" xml:space="preserve"><value>Revisa tu bandeja de entrada y haz clic en el enlace del correo de verificación para confirmar tu dirección.</value></data>
   <data name="EmailGrid_Visibility" xml:space="preserve"><value>Visibilidad</value></data>
   <data name="EmailGrid_Actions" xml:space="preserve"><value>Acciones</value></data>
   <data name="EmailGrid_StatusMergePending" xml:space="preserve"><value>Fusión pendiente</value></data>

@@ -126,7 +126,7 @@ public class AccountController : HumansControllerBase
         // so a fresh OAuth email never spawns a duplicate account.
         if (User.Identity?.IsAuthenticated == true)
         {
-            var currentUser = await _userManager.GetUserAsync(User);
+            var currentUser = await GetCurrentUserAsync();
             if (currentUser is not null)
             {
                 var addLinkResult = await _userManager.AddLoginAsync(currentUser, info);
