@@ -330,9 +330,13 @@ public class IssuesController : HumansControllerBase
             await _issues.UpdateSectionAsync(id, model.Section, user.Id);
             SetSuccess("Section updated.");
         }
-        catch (InvalidOperationException)
+        catch (InvalidOperationException ex)
         {
-            return NotFound();
+            // UpdateSectionAsync throws for both "not found" and "section is
+            // not editable on a terminal issue" — surface the message so a
+            // handler trying to re-route a closed issue sees the actual reason
+            // rather than a silent 404.
+            SetError(ex.Message);
         }
         catch (Exception ex)
         {

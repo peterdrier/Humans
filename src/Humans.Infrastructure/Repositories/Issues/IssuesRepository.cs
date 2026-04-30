@@ -76,16 +76,6 @@ public sealed class IssuesRepository : IIssuesRepository
         return await q.OrderByDescending(i => i.UpdatedAt).Take(f.Limit).ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<IssueComment>> GetCommentsAsync(Guid issueId, CancellationToken ct = default)
-    {
-        await using var db = await _factory.CreateDbContextAsync(ct);
-        return await db.IssueComments
-            .AsNoTracking()
-            .Where(c => c.IssueId == issueId)
-            .OrderBy(c => c.CreatedAt)
-            .ToListAsync(ct);
-    }
-
     public async Task SaveTrackedIssueAsync(Issue issue, CancellationToken ct = default)
     {
         await using var db = await _factory.CreateDbContextAsync(ct);

@@ -31,11 +31,18 @@ public class IssueConfiguration : IEntityTypeConfiguration<Issue>
 
         // EF needs the nav refs to configure the cross-section FK relationships.
         // The nav properties themselves are [Obsolete] for the Application layer,
-        // but the DB-level FK + cascade behavior is still owned here — suppress
-        // the obsolete warning only for this wiring block.
+        // but the DB-level FK behavior is still owned here — suppress the
+        // obsolete warning only for this wiring block.
+        //
+        // Reporter FK uses Restrict: account deletion in this codebase
+        // anonymizes the User row in place (see IAccountDeletionService) — the
+        // row is never physically removed, so the FK should never trip. If
+        // anyone ever bypasses the deletion service and tries to Remove() a
+        // user, Restrict makes the DB reject it instead of silently wiping
+        // every issue the user reported.
 #pragma warning disable CS0618
         b.HasOne(x => x.Reporter).WithMany().HasForeignKey(x => x.ReporterUserId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         b.HasOne(x => x.Assignee).WithMany().HasForeignKey(x => x.AssigneeUserId)
             .OnDelete(DeleteBehavior.SetNull);

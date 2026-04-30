@@ -4469,7 +4469,7 @@ namespace Humans.Infrastructure.Migrations
                     b.HasOne("Humans.Domain.Entities.User", "Reporter")
                         .WithMany()
                         .HasForeignKey("ReporterUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Humans.Domain.Entities.User", "ResolvedByUser")
