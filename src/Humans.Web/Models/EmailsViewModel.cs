@@ -60,12 +60,6 @@ public class EmailsViewModel
     public string? TargetDisplayName { get; set; }
 
     /// <summary>
-    /// Route prefix used by grid action forms/links. Defaults to "/Profile/Me/Emails"
-    /// for the self grid; admin context overrides to "/Profile/{userId}/Admin/Emails".
-    /// </summary>
-    public string RoutePrefix { get; set; } = "/Profile/Me/Emails";
-
-    /// <summary>
     /// True when this view is being rendered against another user's grid by an admin.
     /// </summary>
     public bool IsAdminContext { get; set; }

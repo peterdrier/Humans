@@ -1874,6 +1874,9 @@
   <data name="EmailGrid_ConfirmUnlink" xml:space="preserve"><value>Dissocier ce compte Google ?</value></data>
   <data name="EmailGrid_SetGoogleRejected" xml:space="preserve"><value>Impossible de définir l'e-mail de service Google — ligne inconnue ou non vérifiée.</value></data>
   <data name="EmailGrid_UnlinkRejected" xml:space="preserve"><value>Impossible de dissocier — ligne inconnue ou sans fournisseur de connexion.</value></data>
+  <data name="EmailGrid_GoogleServiceUpdated" xml:space="preserve"><value>E-mail de service Google mis à jour. La synchronisation sera relancée avec le nouvel e-mail.</value></data>
+  <data name="EmailGrid_UnlinkSuccess" xml:space="preserve"><value>Fournisseur de connexion dissocié.</value></data>
+  <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve"><value>Cet e-mail est lié à un fournisseur de connexion. Utilisez Dissocier à la place.</value></data>
   <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>Gérer les e-mails</value></data>
 
 </root>

@@ -223,16 +223,19 @@ public class UserArchitectureTests
     {
         var offenders = new List<string>();
 
+        // Tests project already references Humans.Infrastructure (csproj), so use
+        // typeof(...) for compile-time checking. A future rename of UserEmailRepository
+        // breaks the test build loudly instead of silently passing.
         var typesToScan = new[]
         {
             typeof(Humans.Application.Interfaces.Profiles.IUserEmailService),
-            Type.GetType("Humans.Infrastructure.Repositories.Profiles.UserEmailRepository, Humans.Infrastructure"),
+            typeof(Humans.Infrastructure.Repositories.Profiles.UserEmailRepository),
             typeof(Humans.Application.Interfaces.Repositories.IUserEmailRepository),
-        }.Where(t => t is not null);
+        };
 
         foreach (var t in typesToScan)
         {
-            foreach (var m in t!.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            foreach (var m in t.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
             {
                 if (m.Name.Contains("OAuth", StringComparison.OrdinalIgnoreCase))
                     offenders.Add($"{t.Name}.{m.Name} (method)");

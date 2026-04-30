@@ -1900,6 +1900,9 @@
   <data name="EmailGrid_ConfirmUnlink" xml:space="preserve"><value>¿Desvincular esta cuenta de Google?</value></data>
   <data name="EmailGrid_SetGoogleRejected" xml:space="preserve"><value>No se pudo establecer el correo de servicio de Google: la fila es desconocida o no está verificada.</value></data>
   <data name="EmailGrid_UnlinkRejected" xml:space="preserve"><value>No se pudo desvincular: la fila es desconocida o no tiene proveedor de inicio de sesión.</value></data>
+  <data name="EmailGrid_GoogleServiceUpdated" xml:space="preserve"><value>Correo de servicio de Google actualizado. La sincronización se reintentará con el nuevo correo.</value></data>
+  <data name="EmailGrid_UnlinkSuccess" xml:space="preserve"><value>Proveedor de inicio de sesión desvinculado.</value></data>
+  <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve"><value>Este correo está vinculado a un proveedor de inicio de sesión. Usa Desvincular en su lugar.</value></data>
   <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>Gestionar correos</value></data>
 
 </root>

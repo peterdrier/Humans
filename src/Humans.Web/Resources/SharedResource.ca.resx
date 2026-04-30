@@ -1876,6 +1876,9 @@
   <data name="EmailGrid_ConfirmUnlink" xml:space="preserve"><value>Desvincular aquest compte de Google?</value></data>
   <data name="EmailGrid_SetGoogleRejected" xml:space="preserve"><value>No s'ha pogut establir el correu de servei de Google: fila desconeguda o no verificada.</value></data>
   <data name="EmailGrid_UnlinkRejected" xml:space="preserve"><value>No s'ha pogut desvincular: fila desconeguda o sense proveïdor d'inici de sessió.</value></data>
+  <data name="EmailGrid_GoogleServiceUpdated" xml:space="preserve"><value>Correu de servei de Google actualitzat. La sincronització es reintentarà amb el correu nou.</value></data>
+  <data name="EmailGrid_UnlinkSuccess" xml:space="preserve"><value>Proveïdor d'inici de sessió desvinculat.</value></data>
+  <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve"><value>Aquest correu està vinculat a un proveïdor d'inici de sessió. Fes servir Desvincula en lloc seu.</value></data>
   <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>Gestiona correus</value></data>
 
 </root>

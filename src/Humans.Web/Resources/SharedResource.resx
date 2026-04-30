@@ -1918,6 +1918,9 @@
   <data name="EmailGrid_ConfirmUnlink" xml:space="preserve"><value>Unlink this Google account?</value></data>
   <data name="EmailGrid_SetGoogleRejected" xml:space="preserve"><value>Could not set Google service email — the row is unknown or not verified.</value></data>
   <data name="EmailGrid_UnlinkRejected" xml:space="preserve"><value>Could not unlink — the row is unknown or has no sign-in provider.</value></data>
+  <data name="EmailGrid_GoogleServiceUpdated" xml:space="preserve"><value>Google service email updated. Sync will be retried with the new email.</value></data>
+  <data name="EmailGrid_UnlinkSuccess" xml:space="preserve"><value>Sign-in provider unlinked.</value></data>
+  <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve"><value>This email is linked to a sign-in provider. Use Unlink instead.</value></data>
   <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>Manage emails</value></data>
 
 </root>

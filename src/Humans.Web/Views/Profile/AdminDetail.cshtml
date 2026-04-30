@@ -298,10 +298,16 @@
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="fa-solid fa-at me-1"></i> Emails</span>
-                <a asp-action="AdminEmails" asp-route-userId="@Model.UserId"
-                   class="btn btn-sm btn-outline-secondary">
-                    @Localizer["AdminDetail_ManageEmails"]
-                </a>
+                @* AdminEmails authorizes via UserEmailOperations.Edit which only
+                   succeeds for self-or-Admin. AdminDetail is reachable by Board /
+                   HumanAdmin too, so gate the link to avoid a visible 403. *@
+                @if (User.IsInRole(Humans.Domain.Constants.RoleNames.Admin))
+                {
+                    <a asp-action="AdminEmails" asp-route-userId="@Model.UserId"
+                       class="btn btn-sm btn-outline-secondary">
+                        @Localizer["AdminDetail_ManageEmails"]
+                    </a>
+                }
             </div>
             <div class="card-body p-0">
                 @if (Model.UserEmails.Count > 0)

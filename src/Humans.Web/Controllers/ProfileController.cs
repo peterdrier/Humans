@@ -747,7 +747,7 @@ public class ProfileController : HumansControllerBase
             else
             {
                 // Provider-attached rows must go through Unlink, not Delete.
-                SetError("This email is linked to a sign-in provider. Use Unlink instead.");
+                SetError(_localizer["EmailGrid_DeleteRejectedHasProvider"].Value);
             }
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
@@ -777,7 +777,7 @@ public class ProfileController : HumansControllerBase
             if (ok)
             {
                 _cache.InvalidateNobodiesTeamEmails();
-                SetSuccess("Google service email updated. Sync will be retried with the new email.");
+                SetSuccess(_localizer["EmailGrid_GoogleServiceUpdated"].Value);
             }
             else
             {
@@ -835,7 +835,7 @@ public class ProfileController : HumansControllerBase
             if (ok)
             {
                 _cache.InvalidateNobodiesTeamEmails();
-                SetSuccess("Sign-in provider unlinked.");
+                SetSuccess(_localizer["EmailGrid_UnlinkSuccess"].Value);
             }
             else
             {
@@ -894,7 +894,7 @@ public class ProfileController : HumansControllerBase
             if (ok)
             {
                 _cache.InvalidateNobodiesTeamEmails();
-                SetSuccess("Google service email updated. Sync will be retried with the new email.");
+                SetSuccess(_localizer["EmailGrid_GoogleServiceUpdated"].Value);
             }
             else
             {
@@ -918,10 +918,23 @@ public class ProfileController : HumansControllerBase
         if (!authz.Succeeded)
             return Forbid();
 
+        var actor = await GetCurrentUserAsync();
+        if (actor is null)
+            return Forbid();
+
         try
         {
             await _userEmailService.SetPrimaryAsync(userId, emailId, ct);
             _cache.InvalidateNobodiesTeamEmails();
+            // Audit at the controller for admin paths — UserEmailService.SetPrimaryAsync
+            // does not currently take actorUserId (PR 4 left those signatures alone).
+            // Self path is not audited yet; service-level audit is scoped to PR 5.
+            await _auditLogService.LogAsync(
+                AuditAction.UserEmailPrimarySet,
+                nameof(User), userId,
+                $"Admin set primary email row {emailId}",
+                actor.Id,
+                relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
             SetSuccess(_localizer["Profile_NotificationTargetUpdated"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
@@ -979,7 +992,7 @@ public class ProfileController : HumansControllerBase
             if (ok)
             {
                 _cache.InvalidateNobodiesTeamEmails();
-                SetSuccess("Sign-in provider unlinked.");
+                SetSuccess(_localizer["EmailGrid_UnlinkSuccess"].Value);
             }
             else
             {
@@ -1003,17 +1016,29 @@ public class ProfileController : HumansControllerBase
         if (!authz.Succeeded)
             return Forbid();
 
+        var actor = await GetCurrentUserAsync();
+        if (actor is null)
+            return Forbid();
+
         try
         {
             var deleted = await _userEmailService.DeleteEmailAsync(userId, emailId, ct);
             if (deleted)
             {
                 _cache.InvalidateNobodiesTeamEmails();
+                // Controller-level audit for admin path — DeleteEmailAsync doesn't
+                // take actorUserId. Self path audit deferred to PR 5.
+                await _auditLogService.LogAsync(
+                    AuditAction.UserEmailDeleted,
+                    nameof(User), userId,
+                    $"Admin deleted email row {emailId}",
+                    actor.Id,
+                    relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
                 SetSuccess(_localizer["Profile_EmailDeleted"].Value);
             }
             else
             {
-                SetError("This email is linked to a sign-in provider. Use Unlink instead.");
+                SetError(_localizer["EmailGrid_DeleteRejectedHasProvider"].Value);
             }
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
@@ -1034,9 +1059,21 @@ public class ProfileController : HumansControllerBase
         if (!authz.Succeeded)
             return Forbid();
 
+        var actor = await GetCurrentUserAsync();
+        if (actor is null)
+            return Forbid();
+
         try
         {
             await _userEmailService.SetVisibilityAsync(userId, emailId, visibility, ct);
+            // Controller-level audit for admin path — SetVisibilityAsync doesn't
+            // take actorUserId. Self path audit deferred to PR 5.
+            await _auditLogService.LogAsync(
+                AuditAction.UserEmailVisibilityChanged,
+                nameof(User), userId,
+                $"Admin changed visibility on email row {emailId} to {(visibility?.ToString() ?? "hidden")}",
+                actor.Id,
+                relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
             SetSuccess(_localizer["Profile_EmailVisibilityUpdated"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
@@ -1996,7 +2033,7 @@ public class ProfileController : HumansControllerBase
 
     private async Task<EmailsViewModel> BuildEmailsViewModelAsync(User user, bool isAdminContext = false, CancellationToken ct = default)
     {
-        var emails = await _userEmailService.GetUserEmailsAsync(user.Id);
+        var emails = await _userEmailService.GetUserEmailsAsync(user.Id, ct);
 
         var canAdd = true;
         var minutesUntilResend = 0;
@@ -2005,7 +2042,7 @@ public class ProfileController : HumansControllerBase
         if (pendingEmail is not null)
         {
             var (cooldownCanAdd, cooldownMinutes, _) =
-                await _profileService.GetEmailCooldownInfoAsync(pendingEmail.Id);
+                await _profileService.GetEmailCooldownInfoAsync(pendingEmail.Id, ct);
             canAdd = cooldownCanAdd;
             minutesUntilResend = cooldownMinutes;
         }
@@ -2014,9 +2051,12 @@ public class ProfileController : HumansControllerBase
             e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase));
 
         if (hasNobodiesTeam)
-            await _userEmailService.TryBackfillGoogleEmailAsync(user.Id);
+            await _userEmailService.TryBackfillGoogleEmailAsync(user.Id, ct);
 
-        var googleServiceEmail = user.UserEmails
+        // Use the already-loaded `emails` list (from GetUserEmailsAsync above) rather
+        // than user.UserEmails — UserManager.GetUserAsync / FindByIdAsync don't
+        // .Include(UserEmails), so the navigation would lazily reload (or be empty).
+        var googleServiceEmail = emails
             .Where(e => e.IsVerified && e.IsGoogle)
             .Select(e => e.Email)
             .FirstOrDefault();
@@ -2028,10 +2068,6 @@ public class ProfileController : HumansControllerBase
             .Where(e => e.IsMergePending)
             .Select(e => e.Id)
             .ToHashSet();
-
-        var routePrefix = isAdminContext
-            ? $"/Profile/{user.Id}/Admin/Emails"
-            : "/Profile/Me/Emails";
 
         // Workspace canonical identity: Provider=Google AND email on the configured
         // Workspace domain. While present, Primary + Google radios lock to that row.
@@ -2068,7 +2104,6 @@ public class ProfileController : HumansControllerBase
             GoogleEmailStatus = user.GoogleEmailStatus,
             TargetUserId = user.Id,
             TargetDisplayName = user.DisplayName,
-            RoutePrefix = routePrefix,
             IsAdminContext = isAdminContext,
             MergePendingEmailIds = mergePendingIds,
             WorkspaceLockedEmailId = workspaceLockedEmail?.Id

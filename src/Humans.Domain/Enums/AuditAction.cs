@@ -98,4 +98,7 @@ public enum AuditAction
     UserEmailGoogleSet,
     UserEmailLinked,
     UserEmailUnlinked,
+    UserEmailPrimarySet,
+    UserEmailDeleted,
+    UserEmailVisibilityChanged,
 }

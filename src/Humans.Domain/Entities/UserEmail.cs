@@ -58,9 +58,7 @@ public class UserEmail
     /// True when this row is the canonical recipient for system notifications
     /// to this user. Exactly-one-true-per-UserId is service-enforced inside
     /// UserEmailService — no DB partial unique index per
-    /// feedback_db_enforcement_minimal. Renamed from IsNotificationTarget in
-    /// PR 4; the DB column keeps the legacy name "IsNotificationTarget" per
-    /// architecture_dont_drop_columns_for_decoupling.
+    /// feedback_db_enforcement_minimal.
     /// </summary>
     public bool IsPrimary { get; set; }
 
