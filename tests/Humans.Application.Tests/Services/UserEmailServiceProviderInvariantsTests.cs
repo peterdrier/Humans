@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
@@ -31,6 +32,7 @@ public class UserEmailServiceProviderInvariantsTests
     private readonly UserManager<User> _userManager;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 30, 12, 0));
     private readonly IFullProfileInvalidator _fullProfileInvalidator = Substitute.For<IFullProfileInvalidator>();
+    private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IServiceProvider _serviceProvider = Substitute.For<IServiceProvider>();
     private readonly UserEmailService _service;
 
@@ -47,6 +49,7 @@ public class UserEmailServiceProviderInvariantsTests
             _userManager,
             _clock,
             _fullProfileInvalidator,
+            _auditLogService,
             _serviceProvider,
             NullLogger<UserEmailService>.Instance);
     }

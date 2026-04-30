@@ -95,4 +95,5 @@ public enum AuditAction
     CampRoleUnassigned,
     AccountPurged,
     UserEmailProviderBackfilled,
+    UserEmailGoogleSet,
 }

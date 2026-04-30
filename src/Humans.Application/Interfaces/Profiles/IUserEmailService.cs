@@ -260,6 +260,23 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Sets the user's canonical Google Workspace identity to the given verified
+    /// email row. Single-transaction exclusive flip via
+    /// <see cref="IUserEmailRepository.SetGoogleExclusiveAsync"/>: the target row's
+    /// <see cref="UserEmail.IsGoogle"/> goes to true, every sibling row for the
+    /// same user is cleared. Owner-gated via
+    /// <see cref="IUserEmailRepository.GetByIdAndUserIdAsync"/>; returns
+    /// <c>false</c> if the row is not found for this user or is not verified.
+    /// Service-auth-free per the design rules: the controller authorizes against
+    /// <paramref name="userId"/>, which is the <b>target</b> user (not the actor).
+    /// <paramref name="actorUserId"/> is captured on the audit log entry so the
+    /// admin self/admin grid distinguishes who flipped the flag.
+    /// </summary>
+    Task<bool> SetGoogleAsync(
+        Guid userId, Guid userEmailId, Guid actorUserId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Sets <see cref="UserEmail.Provider"/> / <see cref="UserEmail.ProviderKey"/>
     /// on the given row. Clears the same pair from any sibling row in the same
     /// write batch (service-enforced single-row-per-pair invariant per

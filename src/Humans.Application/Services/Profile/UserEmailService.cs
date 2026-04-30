@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.DTOs;
+using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -25,6 +26,7 @@ public sealed class UserEmailService : IUserEmailService
     private readonly UserManager<User> _userManager;
     private readonly IClock _clock;
     private readonly IFullProfileInvalidator _fullProfileInvalidator;
+    private readonly IAuditLogService _auditLogService;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<UserEmailService> _logger;
 
@@ -36,6 +38,7 @@ public sealed class UserEmailService : IUserEmailService
         UserManager<User> userManager,
         IClock clock,
         IFullProfileInvalidator fullProfileInvalidator,
+        IAuditLogService auditLogService,
         IServiceProvider serviceProvider,
         ILogger<UserEmailService> logger)
     {
@@ -44,6 +47,7 @@ public sealed class UserEmailService : IUserEmailService
         _userManager = userManager;
         _clock = clock;
         _fullProfileInvalidator = fullProfileInvalidator;
+        _auditLogService = auditLogService;
         _serviceProvider = serviceProvider;
         _logger = logger;
     }
@@ -609,6 +613,37 @@ public sealed class UserEmailService : IUserEmailService
         {
             await _fullProfileInvalidator.InvalidateAsync(conflictUserId, cancellationToken);
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> SetGoogleAsync(
+        Guid userId, Guid userEmailId, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var row = await _repository.GetByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
+        if (row is null || !row.IsVerified) return false;
+
+        // Capture the previous Google email (if any) for the audit description.
+        // ReadOnly is fine — SetGoogleExclusiveAsync is the canonical mutation.
+        var allEmails = await _repository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
+        var previousGoogle = allEmails.FirstOrDefault(e => e.IsGoogle && e.Id != row.Id);
+
+        var now = _clock.GetCurrentInstant();
+        await _repository.SetGoogleExclusiveAsync(userId, row.Id, now, cancellationToken);
+        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+
+        var description = previousGoogle is null
+            ? $"Set Google identity to {row.Email}"
+            : $"Set Google identity to {row.Email} (was {previousGoogle.Email})";
+
+        await _auditLogService.LogAsync(
+            AuditAction.UserEmailGoogleSet,
+            nameof(User), userId,
+            description,
+            actorUserId,
+            relatedEntityId: row.Id, relatedEntityType: nameof(UserEmail));
+
+        return true;
     }
 
     /// <inheritdoc />

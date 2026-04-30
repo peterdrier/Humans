@@ -1,8 +1,10 @@
 using AwesomeAssertions;
 using System;
+using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Profile;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Testing;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -23,6 +25,7 @@ public class UserEmailServiceTests
     private readonly UserManager<User> _userManager;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 21, 12, 0));
     private readonly IFullProfileInvalidator _fullProfileInvalidator = Substitute.For<IFullProfileInvalidator>();
+    private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IServiceProvider _serviceProvider = Substitute.For<IServiceProvider>();
     private readonly UserEmailService _service;
 
@@ -39,6 +42,7 @@ public class UserEmailServiceTests
             _userManager,
             _clock,
             _fullProfileInvalidator,
+            _auditLogService,
             _serviceProvider,
             NullLogger<UserEmailService>.Instance);
     }
@@ -266,5 +270,106 @@ public class UserEmailServiceTests
         await _repository.Received(1).RemoveAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         // GetLoginsAsync should not even be called since the verified branch is skipped.
         await _userManager.DidNotReceive().GetLoginsAsync(Arg.Any<User>());
+    }
+
+    [HumansFact]
+    public async Task SetGoogleAsync_FlipsExclusively()
+    {
+        var userId = Guid.NewGuid();
+        var rowAId = Guid.NewGuid();
+        var rowBId = Guid.NewGuid();
+        var rowA = new UserEmail
+        {
+            Id = rowAId, UserId = userId, Email = "a@x.test",
+            IsVerified = true, IsGoogle = true,
+        };
+        var rowB = new UserEmail
+        {
+            Id = rowBId, UserId = userId, Email = "b@x.test",
+            IsVerified = true, IsGoogle = false,
+        };
+        _repository.GetByIdAndUserIdAsync(rowBId, userId, Arg.Any<CancellationToken>())
+            .Returns(rowB);
+        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmail> { rowA, rowB });
+        _repository.SetGoogleExclusiveAsync(
+            userId, rowBId, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask)
+            .AndDoes(_ =>
+            {
+                rowA.IsGoogle = false;
+                rowB.IsGoogle = true;
+            });
+
+        var result = await _service.SetGoogleAsync(userId, rowBId, userId);
+
+        result.Should().BeTrue();
+        rowA.IsGoogle.Should().BeFalse();
+        rowB.IsGoogle.Should().BeTrue();
+        await _repository.Received(1).SetGoogleExclusiveAsync(
+            userId, rowBId, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SetGoogleAsync_RejectsOtherUser()
+    {
+        var ownerId = Guid.NewGuid();
+        var otherId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        // Owner-gate: GetByIdAndUserIdAsync(rowId, otherId) returns null because
+        // the row is owned by ownerId, not otherId.
+        _repository.GetByIdAndUserIdAsync(rowId, otherId, Arg.Any<CancellationToken>())
+            .Returns((UserEmail?)null);
+
+        var result = await _service.SetGoogleAsync(otherId, rowId, otherId);
+
+        result.Should().BeFalse();
+        await _repository.DidNotReceive().SetGoogleExclusiveAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        await _fullProfileInvalidator.DidNotReceive().InvalidateAsync(
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SetGoogleAsync_RejectsUnverified()
+    {
+        var userId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        var row = new UserEmail
+        {
+            Id = rowId, UserId = userId, Email = "a@x.test",
+            IsVerified = false, IsGoogle = false,
+        };
+        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+            .Returns(row);
+
+        var result = await _service.SetGoogleAsync(userId, rowId, userId);
+
+        result.Should().BeFalse();
+        row.IsGoogle.Should().BeFalse();
+        await _repository.DidNotReceive().SetGoogleExclusiveAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        await _fullProfileInvalidator.DidNotReceive().InvalidateAsync(
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SetGoogleAsync_InvalidatesFullProfileCache()
+    {
+        var userId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        var row = new UserEmail
+        {
+            Id = rowId, UserId = userId, Email = "a@x.test",
+            IsVerified = true, IsGoogle = false,
+        };
+        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+            .Returns(row);
+        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmail> { row });
+
+        await _service.SetGoogleAsync(userId, rowId, userId);
+
+        await _fullProfileInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>());
     }
 }
