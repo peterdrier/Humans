@@ -5,17 +5,17 @@
 **Parent spec:** [`2026-04-27-email-and-oauth-decoupling-design.md`](2026-04-27-email-and-oauth-decoupling-design.md) §"PR 4" (lines 320–333)
 **Branch:** `email-oauth-pr4-grid-ui`
 
-PR 4 is the user-facing surface for the email-identity decoupling: the Profile email grid gains a Google service-email radio, a contextual Unlink/Delete button, a "Link Google account" affordance, and cross-User merge visibility. Five of the six actions (`SetPrimary`, `SetGoogle`, `AddEmail`, `DeleteEmail`, `SetVisibility`) are also reachable by a site admin against any user's grid via a parallel `/Profile/Admin/{userId}/Emails/...` route family. The sixth — `Link` — is **self-only**: only the target user can complete an interactive Google OAuth challenge, so the admin grid hides the Link button. Admins fix things on accounts that already have linked emails; they don't establish new linkages on a user's behalf. No schema changes — the rename absorbed in this PR (`IsNotificationTarget` → `IsPrimary`) is C#-only with the EF column mapping pinned to the legacy column name. No follow-ups split off; full PR 4 lands in one shot.
+PR 4 is the user-facing surface for the email-identity decoupling: the Profile email grid gains a Google service-email radio, contextual Unlink/Delete row removal, a "Link Google account" affordance, and cross-User merge visibility. Link/Unlink and Add/Delete are dimensional pairs operating on disjoint row sets — Link/Unlink handles Provider-attached rows, Add/Delete handles plain rows. Both Unlink and Delete remove the row; the distinction is which row state each operates on. There are **seven self actions** (`SetPrimary`, `SetGoogle`, `AddEmail`, `Link`, `Unlink`, `DeleteEmail`, `SetVisibility`) and **six admin actions** (everything except `Link`) reachable via a parallel `/Profile/Admin/{userId}/Emails/...` route family. `Link` is **self-only**: only the target user can complete an interactive Google OAuth challenge, so the admin grid hides that single button. Admins fix existing linkages (including unlinking); they don't establish new linkages on a user's behalf. No schema changes — the rename absorbed in this PR (`IsNotificationTarget` → `IsPrimary`) is C#-only with the EF column mapping pinned to the legacy column name. No follow-ups split off; full PR 4 lands in one shot.
 
 ## Goals
 
 1. A verified email row can be flagged as the Google service email; exactly-one-per-User is service-enforced via single-batch flip.
 2. A signed-in user can link an additional Google account from the grid (POST → `ChallengeResult` → existing OAuth callback wiring).
-3. A linked email row can be unlinked by deleting the row — `AspNetUserLogins` is cleaned up in the same call. No separate Unlink method.
+3. **Unlink** and **Delete** are dimensional inverses operating on disjoint row sets: Unlink runs on Provider-attached rows (removes `AspNetUserLogins` and the email row); Delete runs on plain rows (just removes the email row). Both end with the row gone — the distinction is which row type each operates on. Link↔Unlink is the provider-attachment pair; Add↔Delete is the row-lifecycle pair for plain rows.
 4. Cross-User email collisions surface in the grid as a `MergePending` status pill, driven by the existing `AccountMergeRequest` flow.
 5. Per-row badge displays the actual `Provider` value ("Google" today, future providers data-driven).
 6. The token "OAuth" no longer appears in any service or repo method name. Provider-specific operations are parameterized.
-7. A site admin (`User.IsInRole("Admin")`) can perform five grid actions (`SetPrimary`, `SetGoogle`, `AddEmail`, `DeleteEmail`, `SetVisibility`) against any user's emails via the `/Profile/Admin/{userId}/Emails/...` route family. `Link` is excluded — Google OAuth requires the target user's own browser session, so admins cannot link on a user's behalf. Authorization is enforced via the existing resource-based handler pattern; service signatures stay auth-free (no `isPrivileged` boolean).
+7. A site admin (`User.IsInRole("Admin")`) can perform six grid actions (`SetPrimary`, `SetGoogle`, `AddEmail`, `Unlink`, `DeleteEmail`, `SetVisibility`) against any user's emails via the `/Profile/Admin/{userId}/Emails/...` route family. `Link` is excluded — Google OAuth requires the target user's own browser session, so admins cannot link on a user's behalf. Authorization is enforced via the existing resource-based handler pattern; service signatures stay auth-free (no `isPrivileged` boolean).
 
 ## Non-goals
 
@@ -24,7 +24,7 @@ PR 4 is the user-facing surface for the email-identity decoupling: the Profile e
 - Admin UI for the `AccountMergeRequest` review queue. The request is created and visible to existing admin tooling; the queue UI itself is out of scope.
 - A separate `IUserEmailService.SetProviderAsync` for non-OAuth provider attachment — folded into `LinkAsync`.
 - A "revert to default Google service email" affordance — explicitly dropped from the brainstorm. Switching means picking a different row; there is no "let the system pick" state worth restoring to.
-- Adding `IUserEmailService` to `InterfaceMethodBudgetTests`. Net method count is unchanged (28 → 28: `LinkAsync` replaces 2 methods → −1; `SetGoogleAsync` adds 1 → +1; renames neutral). No budget collision; not a budget gate this PR.
+- Adding `IUserEmailService` to `InterfaceMethodBudgetTests`. Net method count: 28 → 29 (`LinkAsync` replaces `AddOAuthEmailAsync` + `SetProviderAsync` → −1; `SetGoogleAsync`, `UnlinkAsync` add → +2; renames neutral). The interface is not currently in the budget list and we're not adding it as part of PR 4. No budget collision.
 - **Admin override of cross-User merge.** When an admin adds an email on a target user's grid that collides with a verified row on a different User, the existing merge-request flow runs unchanged — an `AccountMergeRequest` is created in `Submitted` state. The admin does not "force-add" past the collision; admins resolve it via the existing merge admin queue. No admin-only bypass semantics in `AddEmailAsync`.
 - **Admin-driven OAuth link.** Only the target user can complete a Google OAuth challenge — Google's IdP authenticates whoever is sitting at the keyboard, and admins should never hold user credentials. The admin grid hides the "Link Google account" button entirely. Admins fix existing linked emails (set as Google service email, change visibility, delete, etc.); establishing new linkages requires the user themselves.
 
@@ -33,9 +33,9 @@ PR 4 is the user-facing surface for the email-identity decoupling: the Profile e
 Four concrete additions:
 
 1. **Service-layer surface.** `IUserEmailService` gains `SetGoogleAsync(userId, emailId, ct)` (single-batch exclusive flip) and `LinkAsync(userId, provider, providerKey, email, ct)` (find-or-create email row with provider attached). `LinkAsync` replaces both `AddOAuthEmailAsync` and `SetProviderAsync` — 2 methods consolidate to 1. Service is auth-free; the `userId` is the **target** user (not the actor) and the controller authorizes the actor against the target before calling.
-2. **Profile email grid rewrite** (`Views/Profile/Emails.cshtml`). Per-row Primary radio, Google service-email radio, Visibility dropdown, single contextual button (Unlink Google account if `Provider != null`, Delete otherwise). Bottom-of-grid: existing magic-link "Add email" + new "Link Google account" button. The view is parameterized by target user and form-action prefix so the same cshtml renders both the self-edit grid and the admin-edit grid.
-3. **Controller surface — self.** `ProfileController.SetGoogleServiceEmail` (legacy) replaced by `SetGoogle(emailId)` on the existing `/Profile/Me/Emails/...` route family. New `Link(provider, returnUrl)` kicks an OAuth challenge for the named provider. Existing `DeleteEmail` extended to clean up `AspNetUserLogins` for `Provider`-attached rows. No `Unlink` action — Delete handles both cases; the view picks the button label.
-4. **Controller surface — admin.** New `/Profile/Admin/{userId}/Emails/...` route family on `ProfileController` mirrors **five of the six** self actions against a target user (`Link` is excluded — admins cannot complete the target's OAuth challenge). Authorization on each admin action is `IAuthorizationService.AuthorizeAsync(User, targetUserId, UserEmailOperations.Edit)` — the same handler also gates the self routes (returning success when `User.Id == targetUserId`). Per the project's `architecture_no_admin_url_section` convention, admin pages live under `<Section>/Admin/*`, so `/Profile/Admin/{userId}/Emails/...` is the correct shape.
+2. **Profile email grid rewrite** (`Views/Profile/Emails.cshtml`). Per-row Primary radio, Google service-email radio, Visibility dropdown. Per-row actions: a single contextual button — "Unlink" on Provider-attached rows (POSTs to `/Unlink/{id}`), "Delete" on plain rows (POSTs to `/{id}`). Bottom-of-grid: existing magic-link "Add email" + new "Link Google account" button. The view is parameterized by target user and form-action prefix so the same cshtml renders both the self-edit grid and the admin-edit grid.
+3. **Controller surface — self.** `ProfileController.SetGoogleServiceEmail` (legacy) replaced by `SetGoogle(emailId)` on the existing `/Profile/Me/Emails/...` route family. New `Link(provider, returnUrl)` kicks an OAuth challenge for the named provider. New `Unlink(emailId)` removes the `AspNetUserLogins` row and the email row in one call (operates only on Provider-attached rows). Existing `DeleteEmail` operates only on plain rows (precondition: `Provider == null`).
+4. **Controller surface — admin.** New `/Profile/Admin/{userId}/Emails/...` route family on `ProfileController` mirrors **six of the seven** self actions against a target user (`Link` is excluded — admins cannot complete the target's OAuth challenge; `Unlink` is included because it operates on already-stored data and needs no OAuth flow). Authorization on each admin action is `IAuthorizationService.AuthorizeAsync(User, targetUserId, UserEmailOperations.Edit)` — the same handler also gates the self routes (returning success when `User.Id == targetUserId`). Per the project's `architecture_no_admin_url_section` convention, admin pages live under `<Section>/Admin/*`, so `/Profile/Admin/{userId}/Emails/...` is the correct shape.
 
 Cross-cutting cleanups absorbed into PR 4 (no follow-ups):
 
@@ -52,7 +52,7 @@ Cross-cutting cleanups absorbed into PR 4 (no follow-ups):
 
 New resource-based handler matching the existing `*OperationRequirement` + `*AuthorizationHandler` pattern (see `TeamOperationRequirement` / `TeamAuthorizationHandler`, `CampOperationRequirement` / `CampAuthorizationHandler`):
 
-- **`UserEmailOperationRequirement` (Application layer)** — single `Edit` operation. (One requirement is sufficient; all six grid actions are gated identically.)
+- **`UserEmailOperationRequirement` (Application layer)** — single `Edit` operation. (One requirement is sufficient; all seven grid actions are gated identically.)
 - **`UserEmailAuthorizationHandler` (Web layer)** — resource is `Guid targetUserId`. Returns success when:
   - `context.User.GetUserId() == targetUserId` (self), or
   - `context.User.IsInRole("Admin")` (site admin).
@@ -77,21 +77,29 @@ Service signatures stay auth-free per the project's design rules — no `isPrivi
 ### `IUserEmailService.LinkAsync(Guid userId, string provider, string providerKey, string email, CancellationToken ct)`
 
 - Find-or-create. Looks for an existing `UserEmail` row matching `email` (normalized) for `userId`; if found, sets `Provider`/`ProviderKey` on it; if not, creates a new row with `IsVerified = true`, `IsPrimary = false`, `Provider`/`ProviderKey` set.
-- Replaces both `AddOAuthEmailAsync` and `SetProviderAsync`. Existing call site at `AccountController.cs:355` (`SetProviderAsync`) rewrites to `LinkAsync` (drops `userEmailId` arg, adds `email` arg).
+- Replaces both `AddOAuthEmailAsync` and `SetProviderAsync` — net −1 method on the interface (2 removed, 1 added). Existing call site at `AccountController.cs:355` (`SetProviderAsync`) rewrites to `LinkAsync` (drops `userEmailId` arg, adds `email` arg).
 - Invalidates `FullProfile` cache.
 - Audit log: `AuditAction.UserEmailLinked`. Subject = target user; actor = current `HttpContext.User`. Payload = provider, email.
 
-### `IUserEmailService.UnlinkAsync` does not exist
+### `IUserEmailService.UnlinkAsync(Guid userId, Guid userEmailId, CancellationToken ct)`
 
-Use `DeleteEmailAsync`. The row goes; the `AspNetUserLogins` row goes with it.
-
-### `DeleteEmailAsync` — added behavior
-
-Modifying the existing service method body (no new method, no C# extension method — the method on `UserEmailService` itself is updated):
-
-- Pre-delete: read the row. If `Provider != null && ProviderKey != null`, call `UserManager.RemoveLoginAsync(user, provider, providerKey)` before removing the email row.
-- Existing cache-invalidation pattern stays.
+- Owner-gated read via `_repo.GetByIdAndUserIdAsync` — returns `false` if not found.
+- Pre-condition: `Provider != null && ProviderKey != null` on the row. If not, returns `false` (Unlink only operates on Provider-attached rows; the per-row UI never routes a plain row here).
+- Calls `UserManager.RemoveLoginAsync(user, email.Provider, email.ProviderKey)` to remove the `AspNetUserLogins` row.
+- Removes the email row entirely (same row removal as `DeleteEmailAsync`).
+- Invalidates `_fullProfileInvalidator.InvalidateAsync(userId)`.
+- Audit log: `AuditAction.UserEmailUnlinked`. Subject = target user; actor = current `HttpContext.User`. Payload = provider, providerKey hash (do not log the full key), email.
 - No "you'd be locking yourself out" guard — magic link is always available as a fallback.
+
+### `DeleteEmailAsync` — preserved behavior + precondition
+
+The method on `UserEmailService` is unchanged in body. PR 4 adds one precondition:
+
+- Pre-delete read: if `Provider != null` on the row, return `false`. Provider-attached rows go through `UnlinkAsync`, not `DeleteEmailAsync`. The per-row UI ensures this never happens at runtime; the service guards anyway.
+- Existing cache-invalidation pattern stays.
+- No `RemoveLoginAsync` cascade is needed — by the time `DeleteEmailAsync` executes, the row is already plain.
+
+Unlink and Delete are mutually exclusive paths over disjoint row sets. Both end with the row gone; only Unlink also tears down `AspNetUserLogins`. The dimensional split (Link/Unlink = provider attachment, Add/Delete = plain-row lifecycle) keeps each method's contract narrow.
 
 ### `UserEmail.IsPrimary` rename
 
@@ -117,7 +125,7 @@ Any gap → add. The audit-surface explore reported the merge service looks comp
 
 ### Interface budget
 
-`IUserEmailService` is not currently in `InterfaceMethodBudgetTests`. Net change in PR 4: `LinkAsync` replaces `AddOAuthEmailAsync` + `SetProviderAsync` (−1); `SetGoogleAsync` adds (+1); renames neutral. 28 → 28. No budget collision. Not adding the service to the budget list as part of PR 4.
+`IUserEmailService` is not currently in `InterfaceMethodBudgetTests`. Net change in PR 4: `LinkAsync` replaces `AddOAuthEmailAsync` + `SetProviderAsync` (−1); `SetGoogleAsync` adds (+1); `UnlinkAsync` adds (+1); renames neutral. **28 → 29.** No budget collision. Not adding the service to the budget list as part of PR 4.
 
 ## Controller actions & data flows
 
@@ -128,7 +136,8 @@ Every action authorizes via `_authz.AuthorizeAsync(User, targetUserId, UserEmail
 | Action | Route | Calls |
 |---|---|---|
 | `Link(string provider, string returnUrl)` | `POST /Profile/Me/Emails/Link/{provider}` | `SignInManager.ConfigureExternalAuthenticationProperties(provider, returnUrl)` → `ChallengeResult` |
-| `DeleteEmail(Guid emailId)` | `POST /Profile/Me/Emails/{id}` | `_userEmailService.DeleteEmailAsync` (handles plain + linked rows) |
+| `Unlink(Guid emailId)` | `POST /Profile/Me/Emails/Unlink/{id}` | `_userEmailService.UnlinkAsync` (Provider-attached rows only) |
+| `DeleteEmail(Guid emailId)` | `POST /Profile/Me/Emails/{id}` | `_userEmailService.DeleteEmailAsync` (plain rows only — Provider attached returns false) |
 | `SetGoogle(Guid emailId)` | `POST /Profile/Me/Emails/SetGoogle` | `_userEmailService.SetGoogleAsync` |
 | `SetPrimary(Guid emailId)` | `POST /Profile/Me/Emails/SetPrimary` | `_userEmailService.SetPrimaryAsync` |
 | `AddEmail(string email)` | existing magic-link add | unchanged |
@@ -138,6 +147,7 @@ Every action authorizes via `_authz.AuthorizeAsync(User, targetUserId, UserEmail
 
 | Action | Route | Calls |
 |---|---|---|
+| `AdminUnlink(Guid userId, Guid emailId)` | `POST /Profile/Admin/{userId}/Emails/Unlink/{emailId}` | `_userEmailService.UnlinkAsync(userId, emailId)` |
 | `AdminDeleteEmail(Guid userId, Guid emailId)` | `POST /Profile/Admin/{userId}/Emails/{emailId}` | `_userEmailService.DeleteEmailAsync(userId, emailId)` |
 | `AdminSetGoogle(Guid userId, Guid emailId)` | `POST /Profile/Admin/{userId}/Emails/SetGoogle` | `_userEmailService.SetGoogleAsync(userId, emailId)` |
 | `AdminSetPrimary(Guid userId, Guid emailId)` | `POST /Profile/Admin/{userId}/Emails/SetPrimary` | `_userEmailService.SetPrimaryAsync(userId, emailId)` |
@@ -164,15 +174,21 @@ Already-authenticated user clicks "Link Google account" → `POST /Profile/Me/Em
 
 `ExternalLoginCallback` may need a small branch for "user is already authenticated" (the link-while-signed-in case). Verify the current code path during impl. Outcome is either a no-op confirmation or the addition of that branch.
 
-### Flow 4 — Delete (linked or plain)
+### Flow 4 — Delete email (plain row)
 
-User clicks per-row button (label "Unlink Google account" if linked, "Delete" if plain) → `POST /Profile/Me/Emails/{id}` → `DeleteEmailAsync` reads row, removes `AspNetUserLogins` if `Provider` attached, removes email row → cache invalidated → audit row → redirect.
+User clicks "Delete" on a plain row (no Provider) → `POST /Profile/Me/Emails/{id}` → `DeleteEmailAsync` precondition passes (Provider is null) → removes the email row → cache invalidated → audit row → redirect.
 
-### Flow 5 — Admin edits another user's grid
+### Flow 5 — Unlink Google account (Provider-attached row)
 
-Admin navigates to the target user's profile admin detail → clicks "Manage emails" link → arrives at `/Profile/Admin/{userId}/Emails` (admin grid view) → performs any of the **five** admin actions → form posts to the matching `/Profile/Admin/{userId}/Emails/...` route → controller authorizes via `UserEmailOperations.Edit` (handler grants because actor is in `Admin` role) → service called with `userId` as the target → cache invalidated → audit row written with actor=admin, subject=target → redirect back to admin grid.
+User clicks "Unlink" on a Provider-attached row → `POST /Profile/Me/Emails/Unlink/{id}` → `UnlinkAsync` precondition passes (Provider non-null) → calls `RemoveLoginAsync` to drop `AspNetUserLogins` → removes the email row → cache invalidated → audit row (`UserEmailUnlinked`) → redirect.
 
-The admin grid renders without the "Link Google account" button. Establishing an OAuth link requires the target user's own browser session — Google authenticates whoever is at the keyboard, and admins should never hold user credentials. If a user needs help linking, the admin walks them to the user's own Profile page; admins fix existing linkages, they don't create them.
+Flows 4 and 5 are mutually exclusive over disjoint row sets — the per-row UI exposes exactly one of the two buttons based on whether the row has a Provider attached. A given row never qualifies for both paths simultaneously.
+
+### Flow 6 — Admin edits another user's grid
+
+Admin navigates to the target user's profile admin detail → clicks "Manage emails" link → arrives at `/Profile/Admin/{userId}/Emails` (admin grid view) → performs any of the **six** admin actions (`SetPrimary`, `SetGoogle`, `AddEmail`, `Unlink`, `DeleteEmail`, `SetVisibility`) → form posts to the matching `/Profile/Admin/{userId}/Emails/...` route → controller authorizes via `UserEmailOperations.Edit` (handler grants because actor is in `Admin` role) → service called with `userId` as the target → cache invalidated → audit row written with actor=admin, subject=target → redirect back to admin grid.
+
+The admin grid renders without the "Link Google account" button. Establishing an OAuth link requires the target user's own browser session — Google authenticates whoever is at the keyboard, and admins should never hold user credentials. If a user needs help linking, the admin walks them to the user's own Profile page; admins fix existing linkages (Unlink included), they don't create them.
 
 ## View structure
 
@@ -180,7 +196,7 @@ The admin grid renders without the "Link Google account" button. Establishing an
 
 `Views/Profile/Emails.cshtml` is parameterized by a view-model that carries `TargetUserId`, a `RoutePrefix` ("/Profile/Me/Emails" for self, "/Profile/Admin/{userId}/Emails" for admin), and an `IsAdminContext` flag. Form actions are built from the prefix; column rendering is identical between self and admin. The admin route returns the same view with the admin prefix, no separate cshtml. A small admin-only banner at the top of the grid ("Editing emails for {target.DisplayName}") makes the actor/target distinction explicit when `IsAdminContext` is true.
 
-When `IsAdminContext` is true, the "Link Google account" button (and the help line beneath it) are hidden — admins cannot drive a target user's OAuth flow. The five remaining admin actions render normally.
+When `IsAdminContext` is true, the "Link Google account" button (and the help line beneath it) are hidden — admins cannot drive a target user's OAuth flow. The six remaining admin actions (including `Unlink`) render normally.
 
 The admin grid is reached from `Views/Profile/AdminDetail.cshtml` via a "Manage emails" contextual link — satisfies the "no orphan pages" rule.
 
@@ -191,7 +207,10 @@ The admin grid is reached from `Views/Profile/AdminDetail.cshtml` via a "Manage 
 3. **Primary** — radio per row, exactly-one. Submits `SetPrimary` form on change. Copy: "Primary" (renamed from "Notification target").
 4. **Google** — radio per row, exactly-one. Enabled on **any verified row** (not gated on `Provider`). Workspace APIs accept any address — `IsGoogle` just picks which address we hand to Workspace. Disabled on unverified rows. Tooltip on column header: "Email used for Google Workspace sync."
 5. **Visibility** — existing dropdown.
-6. **Actions** — single form-POST button per row. Label "Unlink Google account" if `Provider` attached, "Delete" otherwise. Confirm dialog on click.
+6. **Actions** — single form-POST button per row, contextual on row state:
+   - Provider-attached row → button labeled "Unlink Google account", form action `/Unlink/{id}`.
+   - Plain row → button labeled "Delete", form action `/{id}`.
+   Confirm dialog on click in both cases. Both end with the row gone; only Unlink also removes `AspNetUserLogins`.
 
 ### Below the grid
 
@@ -219,13 +238,16 @@ The admin grid is reached from `Views/Profile/AdminDetail.cshtml` via a "Manage 
 - `SetGoogleAsync_InvalidatesFullProfileCache`
 - `LinkAsync_AttachesToExistingEmail`
 - `LinkAsync_CreatesRowWhenMissing`
-- `DeleteEmailAsync_RemovesAspNetUserLoginsForLinkedRow`
+- `UnlinkAsync_RemovesAspNetUserLoginsAndEmailRow`
+- `UnlinkAsync_RejectsRowWithoutProvider`
+- `UnlinkAsync_AdminCanUnlinkAnyUser`
+- `DeleteEmailAsync_RejectsProviderAttachedRow` — precondition guard; the row must be plain.
 - `SetGoogleAsync_AdminCanEditAnyUser` — actor is in `Admin` role, target is a different user; assert success and that audit-log actor != subject.
 
 ### Cross-User merge integration test (new `tests/Humans.Web.Tests/Profile/EmailGridFlowTests.cs`)
 
 - User A magic-link adds an email already verified on User B → assert `AccountMergeRequest` created in `Submitted` state, email row visible to A with status `MergePending`.
-- **Authorization gate test** — unprivileged User C posts to `/Profile/Admin/{User-A-id}/Emails/SetGoogle` → assert HTTP 403 (handler-driven), no service call, no DB mutation. Confirms the gate fails closed when actor is neither the target nor an admin.
+- **Authorization gate test** — unprivileged User C posts to `/Profile/Admin/{User-A-id}/Emails/SetGoogle` and `/Profile/Admin/{User-A-id}/Emails/Unlink/{emailId}` → both assert HTTP 403 (handler-driven), no service call, no DB mutation. Confirms the gate fails closed when actor is neither the target nor an admin, on both the SetGoogle and Unlink admin routes.
 - **Admin-driven cross-User merge test** — admin posts `AddEmail` on target user A's admin grid with an email already verified on user B → assert `AccountMergeRequest` is created (not bypassed); admin does not get force-add semantics.
 
 ### `AccountMergeService` rule tests (one per parent-spec §184–190)
@@ -246,13 +268,14 @@ The admin grid is reached from `Views/Profile/AdminDetail.cshtml` via a "Manage 
 
 ### Manual smoke (post-deploy to PR preview env)
 
-- Add email via magic link → verify → flag Primary/Google → delete.
+- Add email via magic link → verify → flag Primary/Google → delete (plain row → "Delete" button).
 - Link Google account → callback returns to grid → "Google" badge on row.
-- Unlink (button on `Provider`-attached row) → row gone, `AspNetUserLogins` gone, can re-Link.
+- Unlink a Provider-attached row → row gone, `AspNetUserLogins` gone, can re-Link the same email afterward.
+- Confirm the per-row button is "Unlink" on Provider-attached rows and "Delete" on plain rows — never both, never the wrong one.
 - Cross-User collision → `MergePending` pill shows.
 - Admin `AcceptAsync` of merge request → emails fold correctly.
 - Set `IsGoogle` on a `proton.me` magic-link row → Workspace sync uses that address (verify on next sync run, or unit-test the sync's email picker).
-- Sign in as admin, navigate to a target user's profile admin detail → "Manage emails" → run all five admin actions (add, set primary, set Google, set visibility, delete) → confirm changes apply to the target user, audit-log entries record actor=admin / subject=target. Confirm the "Link Google account" button is **not** rendered on the admin grid.
+- Sign in as admin, navigate to a target user's profile admin detail → "Manage emails" → run all six admin actions (add, set primary, set Google, set visibility, unlink a Provider-attached row, delete a plain row) → confirm changes apply to the target user, audit-log entries record actor=admin / subject=target. Confirm the "Link Google account" button is **not** rendered on the admin grid.
 - Sign in as non-admin user, attempt direct GET/POST to `/Profile/Admin/{other-user-id}/Emails/...` → expect 403.
 - Sign in as admin, attempt direct POST to `/Profile/Admin/{other-user-id}/Emails/Link/Google` → expect 404 (route does not exist) or 405; confirm there's no admin-link backdoor.
 
@@ -265,10 +288,11 @@ Low-medium. UI rework + repo/service surface changes; no schema changes. Mitigat
 - Service-method renames are mechanical; ReSharper-led at impl time.
 - The `ExternalLoginCallback` "user is already authenticated" branch is the only logic addition — covered by manual smoke.
 - Admin-edit path mirrors self-edit; authorization gates each action via the existing handler pattern. Audit-log actor/subject split keeps admin actions traceable. Risk that an admin-driven cross-User collision is "force-resolved" is mitigated by routing through the same `AddEmailAsync` flow — no admin-only bypass exists in the service layer.
+- Unlink and Delete are mutually exclusive paths — one for Provider-attached rows, one for plain rows. Per-row UI picks the correct route based on row state; service-level preconditions on both methods guard against misuse if a request arrives via a non-UI path. Both end with the row gone; only Unlink also tears down `AspNetUserLogins`.
 
 ## Why this over alternatives
 
-- **vs. a separate `UnlinkAsync` method.** Collapses to `DeleteAsync` with contextual button label. One call path, clearer semantics, smaller interface surface.
+- **vs. collapsing Unlink into Delete (the previous draft of this spec).** Link/Unlink and Add/Delete are dimensional pairs — each pair handles its own row state. Unlink and Delete both remove the row; the distinction is which row state each operates on (Provider-attached vs plain). Symmetric inverses, disjoint row sets. Collapsing them folds the OAuth-tear-down branch into `DeleteEmailAsync`'s body and obscures the symmetry on the service surface; keeping them separate aligns the method names with the user's mental model ("the link came off" vs "the email came off") and keeps each method's contract narrow.
 - **vs. Google radio gated on `Provider == "Google"`.** Workspace APIs accept any email; the gate was overzealous. A magic-link-added `proton.me` address is a valid `IsGoogle` target — the user authenticates with Google's identity provider out-of-band.
 - **vs. a separate "revert to default" affordance.** Dropped from PR 4 entirely. Once a user explicitly picks a Google service email, switching means picking a different row. There is no scenario where reverting to "let the system pick" is the right action — that surface was inertia from the parent spec's PR 3 known-limitations note.
 - **vs. `LinkGoogle` / `UnlinkOAuth` provider-baked methods.** Parameterized `Link(provider, providerKey)` extends to Facebook/Microsoft/Apple without new methods, and keeps the no-"OAuth"-in-method-names rule clean.
