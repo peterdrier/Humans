@@ -1475,7 +1475,7 @@ public class ProfileServiceTests : IDisposable
             UserId = userId,
             Email = "notify@example.com",
             IsVerified = true,
-            IsNotificationTarget = true,
+            IsPrimary = true,
         });
         await _dbContext.SaveChangesAsync();
 

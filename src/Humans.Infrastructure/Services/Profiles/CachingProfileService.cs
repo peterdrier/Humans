@@ -154,7 +154,7 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         }
 
         var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
-        var notificationEmail = userEmails.FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified)?.Email
+        var notificationEmail = userEmails.FirstOrDefault(e => e.IsPrimary && e.IsVerified)?.Email
                                 ?? user.Email;
 
         _byUserId[userId] = FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), notificationEmail);

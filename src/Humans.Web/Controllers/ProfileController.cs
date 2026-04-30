@@ -1462,7 +1462,7 @@ public class ProfileController : HumansControllerBase
         var now = _clock.GetCurrentInstant();
 
         var effectiveEmail = data.UserEmails
-            .FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified)?.Email
+            .FirstOrDefault(e => e.IsPrimary && e.IsVerified)?.Email
             ?? data.User.Email;
 
         var viewModel = new AdminHumanDetailViewModel
@@ -1526,7 +1526,7 @@ public class ProfileController : HumansControllerBase
                     Email = e.Email,
                     IsGoogle = e.IsGoogle,
                     IsVerified = e.IsVerified,
-                    IsNotificationTarget = e.IsNotificationTarget,
+                    IsPrimary = e.IsPrimary,
                     Visibility = e.Visibility,
                 }).ToList(),
         };
@@ -1771,7 +1771,7 @@ public class ProfileController : HumansControllerBase
                 Email = e.Email,
                 IsVerified = e.IsVerified,
                 IsGoogle = e.IsGoogle,
-                IsNotificationTarget = e.IsNotificationTarget,
+                IsPrimary = e.IsPrimary,
                 Visibility = e.Visibility,
                 IsPendingVerification = e.IsPendingVerification,
                 IsMergePending = e.IsMergePending,

@@ -70,7 +70,7 @@ public class User : IdentityUser<Guid>
 
     /// <summary>
     /// First verified <see cref="UserEmail"/>, ordered by
-    /// <see cref="UserEmail.IsNotificationTarget"/> desc; falls back to
+    /// <see cref="UserEmail.IsPrimary"/> desc; falls back to
     /// <c>base.Email</c> when no UserEmails are loaded (test fixtures,
     /// post-anonymization reads). Requires <see cref="UserEmails"/> to be
     /// loaded for production reads.
@@ -98,7 +98,7 @@ public class User : IdentityUser<Guid>
 
             return UserEmails
                 .Where(e => e.IsVerified)
-                .OrderByDescending(e => e.IsNotificationTarget)
+                .OrderByDescending(e => e.IsPrimary)
                 .Select(e => e.Email)
                 .FirstOrDefault() ?? base.Email;
         }

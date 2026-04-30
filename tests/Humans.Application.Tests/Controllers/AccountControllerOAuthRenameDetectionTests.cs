@@ -232,7 +232,7 @@ public class AccountControllerOAuthRenameDetectionTests
                     IsGoogle: false,
                     Provider: null,
                     ProviderKey: null,
-                    IsNotificationTarget: true,
+                    IsPrimary: true,
                     Visibility: ContactFieldVisibility.BoardOnly,
                     IsPendingVerification: false,
                     IsMergePending: false)
@@ -275,7 +275,7 @@ public class AccountControllerOAuthRenameDetectionTests
                     IsGoogle: false,
                     Provider: null,
                     ProviderKey: null,
-                    IsNotificationTarget: true,
+                    IsPrimary: true,
                     Visibility: ContactFieldVisibility.BoardOnly,
                     IsPendingVerification: false,
                     IsMergePending: false)

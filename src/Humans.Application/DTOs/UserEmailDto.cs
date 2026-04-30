@@ -12,7 +12,7 @@ public record UserEmailDto(
     bool IsGoogle,
     string? Provider,
     string? ProviderKey,
-    bool IsNotificationTarget,
+    bool IsPrimary,
     ContactFieldVisibility? Visibility);
 
 /// <summary>
@@ -25,7 +25,7 @@ public record UserEmailEditDto(
     bool IsGoogle,
     string? Provider,
     string? ProviderKey,
-    bool IsNotificationTarget,
+    bool IsPrimary,
     ContactFieldVisibility? Visibility,
     bool IsPendingVerification,
     bool IsMergePending = false);

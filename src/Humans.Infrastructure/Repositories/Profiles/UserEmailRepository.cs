@@ -229,7 +229,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.UserEmails
             .AsNoTracking()
-            .Where(e => e.IsVerified && e.IsNotificationTarget)
+            .Where(e => e.IsVerified && e.IsPrimary)
             .GroupBy(e => e.UserId)
             .Select(g => new
             {

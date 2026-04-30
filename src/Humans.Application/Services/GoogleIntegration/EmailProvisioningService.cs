@@ -234,7 +234,7 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
     private async Task<string?> ResolveRecoveryEmailAsync(Guid userId, string? oauthEmail)
     {
         var emails = await _userEmailService.GetUserEmailsAsync(userId);
-        var target = emails.FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified);
+        var target = emails.FirstOrDefault(e => e.IsPrimary && e.IsVerified);
         var candidate = target?.Email ?? oauthEmail;
 
         if (candidate?.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase) == true)

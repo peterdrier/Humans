@@ -362,7 +362,7 @@ public class AccountProvisioningServiceTests
         var userEmail = _userEmailRepo.All.FirstOrDefault(ue => ue.UserId == result.User.Id);
         userEmail.Should().NotBeNull();
         userEmail!.Email.Should().Be("alice@example.com");
-        userEmail.IsNotificationTarget.Should().BeTrue();
+        userEmail.IsPrimary.Should().BeTrue();
         userEmail.IsVerified.Should().BeTrue();
     }
 
@@ -388,7 +388,7 @@ public class AccountProvisioningServiceTests
             UserId = existingUser.Id,
             Email = "bob@example.com",
             IsVerified = true,
-            IsNotificationTarget = true,
+            IsPrimary = true,
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant(),
         });
@@ -421,7 +421,7 @@ public class AccountProvisioningServiceTests
             UserId = existingUser.Id,
             Email = "carol@primary.com",
             IsVerified = true,
-            IsNotificationTarget = true,
+            IsPrimary = true,
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant(),
         });
@@ -431,7 +431,7 @@ public class AccountProvisioningServiceTests
             UserId = existingUser.Id,
             Email = "carol@secondary.com",
             IsVerified = true,
-            IsNotificationTarget = false,
+            IsPrimary = false,
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant(),
         });
@@ -503,7 +503,7 @@ public class AccountProvisioningServiceTests
             UserId = existingUser.Id,
             Email = "frank@example.com",
             IsVerified = true,
-            IsNotificationTarget = true,
+            IsPrimary = true,
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant(),
         });

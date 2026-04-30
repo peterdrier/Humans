@@ -289,7 +289,7 @@ public sealed class DevelopmentDashboardSeeder
                 UserId = user.Id,
                 Email = email,
                 IsVerified = true,
-                IsNotificationTarget = true,
+                IsPrimary = true,
                 Visibility = ContactFieldVisibility.BoardOnly,
                 CreatedAt = createdAt,
                 UpdatedAt = createdAt,

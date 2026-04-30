@@ -254,7 +254,7 @@ public class DevLoginController : Controller
             Provider = "Google",
             ProviderKey = $"dev-{id}",
             IsVerified = true,
-            IsNotificationTarget = true,
+            IsPrimary = true,
             Visibility = ContactFieldVisibility.BoardOnly,
             CreatedAt = now,
             UpdatedAt = now
@@ -606,7 +606,7 @@ public class DevLoginController : Controller
             Provider = "Google",
             ProviderKey = $"dev-{id}",
             IsVerified = true,
-            IsNotificationTarget = true,
+            IsPrimary = true,
             Visibility = ContactFieldVisibility.BoardOnly,
             CreatedAt = now,
             UpdatedAt = now

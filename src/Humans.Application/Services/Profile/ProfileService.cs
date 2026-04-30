@@ -101,7 +101,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         if (user is null) return null;
 
         var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
-        var notificationEmail = userEmails.FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified)?.Email ?? user.Email;
+        var notificationEmail = userEmails.FirstOrDefault(e => e.IsPrimary && e.IsVerified)?.Email ?? user.Email;
 
         return FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), notificationEmail);
     }
@@ -869,7 +869,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
             // GDPR-export schema is observable by data subjects; key stays "IsOAuth"
             // even though the source column moved to Provider/ProviderKey.
             IsOAuth = e.Provider != null,
-            e.IsNotificationTarget,
+            e.IsPrimary,
             e.Visibility
         }).ToList());
 

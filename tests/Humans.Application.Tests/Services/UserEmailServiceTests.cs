@@ -54,12 +54,12 @@ public class UserEmailServiceTests
             new()
             {
                 Id = targetId, UserId = userId, Email = "target@example.com",
-                IsVerified = true, IsNotificationTarget = false
+                IsVerified = true, IsPrimary = false
             },
             new()
             {
                 Id = otherId, UserId = userId, Email = "other@example.com",
-                IsVerified = true, IsNotificationTarget = true
+                IsVerified = true, IsPrimary = true
             }
         };
         _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
@@ -68,8 +68,8 @@ public class UserEmailServiceTests
         await _service.SetNotificationTargetAsync(userId, targetId);
 
         await _fullProfileInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>());
-        emails.Single(e => e.Id == targetId).IsNotificationTarget.Should().BeTrue();
-        emails.Single(e => e.Id == otherId).IsNotificationTarget.Should().BeFalse();
+        emails.Single(e => e.Id == targetId).IsPrimary.Should().BeTrue();
+        emails.Single(e => e.Id == otherId).IsPrimary.Should().BeFalse();
     }
 
     [HumansFact]
@@ -82,7 +82,7 @@ public class UserEmailServiceTests
             new()
             {
                 Id = targetId, UserId = userId, Email = "unverified@example.com",
-                IsVerified = false, IsNotificationTarget = false
+                IsVerified = false, IsPrimary = false
             }
         };
         _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
@@ -109,7 +109,7 @@ public class UserEmailServiceTests
             UserId = userId,
             Email = "secondary@example.com",
             IsVerified = true,
-            IsNotificationTarget = false,
+            IsPrimary = false,
         };
         var keeping = new UserEmail
         {
@@ -117,7 +117,7 @@ public class UserEmailServiceTests
             UserId = userId,
             Email = "primary@example.com",
             IsVerified = true,
-            IsNotificationTarget = true,
+            IsPrimary = true,
         };
         _repository.GetByIdAndUserIdAsync(deletingId, userId, Arg.Any<CancellationToken>())
             .Returns(deleting);
@@ -153,7 +153,7 @@ public class UserEmailServiceTests
             Provider = "Google",
             ProviderKey = "test-oauth",
             IsVerified = true,
-            IsNotificationTarget = true,
+            IsPrimary = true,
         };
         var secondary = new UserEmail
         {
@@ -161,7 +161,7 @@ public class UserEmailServiceTests
             UserId = userId,
             Email = "personal@example.com",
             IsVerified = true,
-            IsNotificationTarget = false,
+            IsPrimary = false,
         };
         _repository.GetByIdAndUserIdAsync(oauthRowId, userId, Arg.Any<CancellationToken>())
             .Returns(oauthRow);
@@ -176,7 +176,7 @@ public class UserEmailServiceTests
 
         await _repository.Received(1).RemoveAsync(oauthRow, Arg.Any<CancellationToken>());
         // Notification-target hand-off — successor should now be flagged.
-        secondary.IsNotificationTarget.Should().BeTrue();
+        secondary.IsPrimary.Should().BeTrue();
         await _fullProfileInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>());
     }
 
@@ -193,7 +193,7 @@ public class UserEmailServiceTests
             UserId = userId,
             Email = "only@example.com",
             IsVerified = true,
-            IsNotificationTarget = true,
+            IsPrimary = true,
         };
         _repository.GetByIdAndUserIdAsync(emailId, userId, Arg.Any<CancellationToken>())
             .Returns(only);
@@ -229,7 +229,7 @@ public class UserEmailServiceTests
             UserId = userId,
             Email = "only@example.com",
             IsVerified = true,
-            IsNotificationTarget = true,
+            IsPrimary = true,
         };
         _repository.GetByIdAndUserIdAsync(emailId, userId, Arg.Any<CancellationToken>())
             .Returns(only);
@@ -258,7 +258,7 @@ public class UserEmailServiceTests
                 UserId = userId,
                 Email = "unverified@example.com",
                 IsVerified = false,
-                IsNotificationTarget = false,
+                IsPrimary = false,
             });
 
         await _service.DeleteEmailAsync(userId, emailId);

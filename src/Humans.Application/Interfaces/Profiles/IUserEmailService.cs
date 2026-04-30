@@ -165,7 +165,7 @@ public interface IUserEmailService
 
     /// <summary>
     /// Resolves the notification-target email for each requested user. The
-    /// result is <c>UserEmail.Email</c> where <c>IsNotificationTarget</c> is
+    /// result is <c>UserEmail.Email</c> where <c>IsPrimary</c> is
     /// true and the email is verified, falling back to <c>User.Email</c> when
     /// no notification-target email exists. Users for whom no email can be
     /// resolved are omitted from the result. Used by cross-section callers
@@ -301,6 +301,6 @@ public record UserEmailProviderMatch(Guid Id, Guid UserId, string Email);
 public record UserEmailMatch(
     string Email,
     Guid UserId,
-    bool IsNotificationTarget,
+    bool IsPrimary,
     bool IsVerified,
     Instant UpdatedAt);

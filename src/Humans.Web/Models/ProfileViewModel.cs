@@ -530,7 +530,7 @@ public class VolunteerHistoryEntryEditViewModel
 public class UserEmailDisplayViewModel
 {
     public string Email { get; set; } = string.Empty;
-    public bool IsNotificationTarget { get; set; }
+    public bool IsPrimary { get; set; }
     public ContactFieldVisibility? Visibility { get; set; }
 
     /// <summary>

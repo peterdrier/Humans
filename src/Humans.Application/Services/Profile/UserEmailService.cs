@@ -68,7 +68,7 @@ public sealed class UserEmailService : IUserEmailService
             IsGoogle: e.IsGoogle,
             e.Provider,
             e.ProviderKey,
-            e.IsNotificationTarget,
+            e.IsPrimary,
             e.Visibility,
             IsPendingVerification: !e.IsVerified && e.VerificationSentAt.HasValue,
             IsMergePending: mergePendingSet.Contains(e.Id)
@@ -95,7 +95,7 @@ public sealed class UserEmailService : IUserEmailService
                 IsGoogle: e.IsGoogle,
                 e.Provider,
                 e.ProviderKey,
-                e.IsNotificationTarget,
+                e.IsPrimary,
                 e.Visibility))
             .ToList();
     }
@@ -138,7 +138,7 @@ public sealed class UserEmailService : IUserEmailService
             UserId = userId,
             Email = email,
             IsVerified = false,
-            IsNotificationTarget = false,
+            IsPrimary = false,
             VerificationSentAt = now,
             CreatedAt = now,
             UpdatedAt = now
@@ -226,13 +226,13 @@ public sealed class UserEmailService : IUserEmailService
         var now = _clock.GetCurrentInstant();
         foreach (var email in emails)
         {
-            email.IsNotificationTarget = email.Id == emailId;
+            email.IsPrimary = email.Id == emailId;
             email.UpdatedAt = now;
         }
 
         await _repository.UpdateBatchAsync(emails.ToList(), cancellationToken);
 
-        // FullProfile.NotificationEmail derives from the row with IsNotificationTarget=true.
+        // FullProfile.NotificationEmail derives from the row with IsPrimary=true.
         await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
     }
 
@@ -286,7 +286,7 @@ public sealed class UserEmailService : IUserEmailService
             // If this row is the notification target, hand off to the next
             // verified row alphabetically so the user keeps a usable
             // notification address.
-            if (email.IsNotificationTarget)
+            if (email.IsPrimary)
             {
                 var successor = allEmails
                     .Where(e => e.Id != emailId && e.IsVerified)
@@ -294,7 +294,7 @@ public sealed class UserEmailService : IUserEmailService
                     .FirstOrDefault();
                 if (successor is not null)
                 {
-                    successor.IsNotificationTarget = true;
+                    successor.IsPrimary = true;
                     successor.UpdatedAt = _clock.GetCurrentInstant();
                     await _repository.UpdateAsync(successor, cancellationToken);
                 }
@@ -323,7 +323,7 @@ public sealed class UserEmailService : IUserEmailService
             UserId = userId,
             Email = email,
             IsVerified = true,
-            IsNotificationTarget = true,
+            IsPrimary = true,
             Visibility = ContactFieldVisibility.BoardOnly,
             CreatedAt = now,
             UpdatedAt = now
@@ -348,10 +348,10 @@ public sealed class UserEmailService : IUserEmailService
         if (isNobodiesTeam)
         {
             var emails = await _repository.GetByUserIdForMutationAsync(userId, cancellationToken);
-            var currentTarget = emails.FirstOrDefault(e => e.IsNotificationTarget);
+            var currentTarget = emails.FirstOrDefault(e => e.IsPrimary);
             if (currentTarget is not null)
             {
-                currentTarget.IsNotificationTarget = false;
+                currentTarget.IsPrimary = false;
                 currentTarget.UpdatedAt = now;
                 await _repository.UpdateAsync(currentTarget, cancellationToken);
             }
@@ -363,7 +363,7 @@ public sealed class UserEmailService : IUserEmailService
             UserId = userId,
             Email = email,
             IsVerified = true,
-            IsNotificationTarget = isNobodiesTeam,
+            IsPrimary = isNobodiesTeam,
             Visibility = ContactFieldVisibility.BoardOnly,
             CreatedAt = now,
             UpdatedAt = now
@@ -418,7 +418,7 @@ public sealed class UserEmailService : IUserEmailService
             .GroupBy(e => e.UserId)
             .ToDictionary(
                 g => g.Key,
-                g => g.Any(e => e.IsNotificationTarget));
+                g => g.Any(e => e.IsPrimary));
     }
 
     public async Task<Dictionary<Guid, string>> GetNobodiesTeamEmailsByUserIdsAsync(
@@ -434,7 +434,7 @@ public sealed class UserEmailService : IUserEmailService
             .GroupBy(e => e.UserId)
             .ToDictionary(
                 g => g.Key,
-                g => g.OrderByDescending(e => e.IsNotificationTarget)
+                g => g.OrderByDescending(e => e.IsPrimary)
                     .ThenBy(e => e.CreatedAt)
                     .First().Email);
     }
@@ -445,7 +445,7 @@ public sealed class UserEmailService : IUserEmailService
         if (userIds.Count == 0)
             return new Dictionary<Guid, string>();
 
-        // Start with users who have a verified IsNotificationTarget row.
+        // Start with users who have a verified IsPrimary row.
         var allNotificationTargets = await _repository.GetAllNotificationTargetEmailsAsync(cancellationToken);
 
         var result = new Dictionary<Guid, string>(userIds.Count);
@@ -531,7 +531,7 @@ public sealed class UserEmailService : IUserEmailService
         var rows = await _repository.GetByEmailsAsync(emails, cancellationToken);
         return rows
             .Select(r => new UserEmailMatch(
-                r.Email, r.UserId, r.IsNotificationTarget, r.IsVerified, r.UpdatedAt))
+                r.Email, r.UserId, r.IsPrimary, r.IsVerified, r.UpdatedAt))
             .ToList();
     }
 

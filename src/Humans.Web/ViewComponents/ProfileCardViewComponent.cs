@@ -164,7 +164,7 @@ public class ProfileCardViewComponent : ViewComponent
             UserEmails = visibleEmails.Select(e => new UserEmailDisplayViewModel
             {
                 Email = e.Email,
-                IsNotificationTarget = e.IsNotificationTarget,
+                IsPrimary = e.IsPrimary,
                 Visibility = e.Visibility
             }).ToList(),
             ContactFields = contactFields.Select(cf => new ContactFieldViewModel

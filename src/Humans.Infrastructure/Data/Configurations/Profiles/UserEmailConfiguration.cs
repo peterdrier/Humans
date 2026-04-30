@@ -19,7 +19,10 @@ public class UserEmailConfiguration : IEntityTypeConfiguration<UserEmail>
         builder.Property(e => e.IsVerified)
             .IsRequired();
 
-        builder.Property(e => e.IsNotificationTarget)
+        // PR 4: C# property renamed IsNotificationTarget → IsPrimary; DB column
+        // keeps the legacy name per architecture_dont_drop_columns_for_decoupling.
+        builder.Property(e => e.IsPrimary)
+            .HasColumnName("IsNotificationTarget")
             .IsRequired();
 
         builder.Property(e => e.Visibility)

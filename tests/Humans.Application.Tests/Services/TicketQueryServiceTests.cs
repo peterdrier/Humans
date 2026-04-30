@@ -523,7 +523,7 @@ public sealed class TicketQueryServiceTests : IDisposable
             UserId = userId,
             Email = email,
             IsVerified = true,
-            IsNotificationTarget = true,
+            IsPrimary = true,
         });
         return user;
     }

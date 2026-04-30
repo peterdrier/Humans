@@ -119,7 +119,7 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
             UserId = newUser.Id,
             Email = email,
             IsVerified = true,
-            IsNotificationTarget = true,
+            IsPrimary = true,
             Visibility = null,
             CreatedAt = now,
             UpdatedAt = now,

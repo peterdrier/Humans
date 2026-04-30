@@ -96,7 +96,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
             foreach (var account in accounts)
             {
                 matchByEmail.TryGetValue(account.PrimaryEmail, out var matched);
-                var isUsedAsPrimary = matched is { IsNotificationTarget: true };
+                var isUsedAsPrimary = matched is { IsPrimary: true };
 
                 // Count accounts that exist in the system but are not used as primary
                 if (matched is not null && !isUsedAsPrimary)
