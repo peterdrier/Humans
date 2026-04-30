@@ -72,17 +72,13 @@
         <tbody>
             @foreach (var line in order.Lines)
             {
-                var lineSubtotal = line.Qty * line.UnitPriceSnapshot;
-                var lineVat = Math.Round(lineSubtotal * line.VatRateSnapshot / 100m, 2, MidpointRounding.AwayFromZero);
-                var lineDeposit = (line.DepositAmountSnapshot ?? 0m) * line.Qty;
-                var lineTotal = lineSubtotal + lineVat + lineDeposit;
                 <tr>
                     <td>@line.ProductName</td>
                     <td class="text-end">@line.Qty</td>
                     <td class="text-end">&euro;@line.UnitPriceSnapshot.ToString("N2")</td>
                     <td class="text-end">@line.VatRateSnapshot.ToString("0.##")%</td>
-                    <td class="text-end">@(line.DepositAmountSnapshot.HasValue ? $"€{(line.DepositAmountSnapshot.Value * line.Qty):N2}" : "—")</td>
-                    <td class="text-end">&euro;@lineTotal.ToString("N2")</td>
+                    <td class="text-end">@(line.DepositAmountSnapshot.HasValue ? $"€{line.DepositEur:N2}" : "—")</td>
+                    <td class="text-end">&euro;@line.TotalEur.ToString("N2")</td>
                     <td class="text-end">
                         @if (Model.CanEdit)
                         {
@@ -169,4 +165,4 @@ else
 }
 
 <h2 class="h4 mb-3">Payments</h2>
-<p class="text-muted">Payments are recorded by Finance Admin. None are visible on this order yet.</p>
+<p class="text-muted">Payments are recorded by the finance team. None are visible on this order yet.</p>

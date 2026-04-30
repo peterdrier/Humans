@@ -11,4 +11,8 @@ public record OrderLineDto(
     decimal UnitPriceSnapshot,
     decimal VatRateSnapshot,
     decimal? DepositAmountSnapshot,
-    Instant AddedAt);
+    Instant AddedAt,
+    decimal SubtotalEur,
+    decimal VatEur,
+    decimal DepositEur,
+    decimal TotalEur);

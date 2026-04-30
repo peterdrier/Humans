@@ -93,7 +93,7 @@ public sealed class StoreRepository : IStoreRepository
     public async Task<StoreOrder?> GetOrderWithLinesAndPaymentsAsync(Guid orderId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.StoreOrders
+        return await ctx.StoreOrders.AsNoTracking()
             .Include(o => o.Lines)
             .Include(o => o.Payments)
             .FirstOrDefaultAsync(o => o.Id == orderId, ct);
