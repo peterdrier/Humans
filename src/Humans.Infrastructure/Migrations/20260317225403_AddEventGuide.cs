@@ -158,7 +158,7 @@ namespace Humans.Infrastructure.Migrations
                         column: x => x.GuideEventId,
                         principalTable: "guide_events",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_moderation_actions_users_ActorUserId",
                         column: x => x.ActorUserId,
