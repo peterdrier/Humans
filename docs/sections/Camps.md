@@ -153,6 +153,34 @@ Aggregate-local navs: `CampRoleAssignment.CampSeason`, `CampRoleAssignment.Defin
 
 All stored as strings via `HasConversion<string>()`. `Vibes` stored as jsonb array.
 
+## Routing
+
+Three controllers serve this section, and the URL surface is dual-routed: every path is reachable under `/Camps/*` (English) and `/Barrios/*` (Spanish). This is the only sanctioned URL alias in the codebase — no other section may add aliases.
+
+| Route | Controller | Purpose |
+|-------|------------|---------|
+| `/Camps` | `CampController` | Public directory |
+| `/Camps/{slug}` | `CampController` | Camp detail (current season, leads, images, history) |
+| `/Camps/{slug}/Season/{year}` | `CampController` | Past-season detail |
+| `/Camps/{slug}/Contact` | `CampController` | Facilitated message to camp leads |
+| `/Camps/{slug}/Edit` | `CampController` | Lead-only edit of season copy / images / leads |
+| `/Camps/Register` | `CampController` | New camp registration |
+| `/Camps/{slug}/OptIn/{year}`, `.../Withdraw/{seasonId}`, `.../Rejoin/{seasonId}` | `CampController` | Per-season participation toggles |
+| `/Camps/{slug}/Leads/*` | `CampController` | Lead add/remove |
+| `/Camps/{slug}/Members/*` | `CampController` | Member request/approve/reject/remove/leave |
+| `/Camps/{slug}/Roles/*` | `CampController` | Per-camp role assignment/unassignment |
+| `/Camps/{slug}/Images/*` | `CampController` | Image upload/delete/reorder |
+| `/Camps/{slug}/HistoricalNames/*` | `CampController` | Historical-name add/remove |
+| `/Camps/Admin` | `CampAdminController` | CampAdmin-only directory + season management |
+| `/Camps/Admin/Roles/*` | `CampAdminController` | `CampRoleDefinition` CRUD |
+| `/Camps/Admin/Compliance` | `CampAdminController` | Per-season role compliance report |
+| `/Camps/Admin/Export` | `CampAdminController` | CSV export |
+| `/Camps/Admin/{Approve,Reject,OpenSeason,CloseSeason,SetPublicYear,SetNameLockDate,Reactivate,UpdateRegistrationInfo,Delete}/...` | `CampAdminController` | Season lifecycle actions |
+| `/api/camps/{year}` | `CampApiController` | Year directory JSON |
+| `/api/camps/{year}/placement` | `CampApiController` | Placement-data JSON |
+
+Admin pages live under `/Camps/Admin/*` (per `architecture_no_admin_url_section` — never `/Admin/Camps/*`).
+
 ## Actors & Roles
 
 | Actor | Capabilities |
