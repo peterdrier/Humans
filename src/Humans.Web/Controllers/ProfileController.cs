@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Web;
 using Humans.Application.Authorization;
+using Humans.Application.Authorization.UserEmail;
 using Humans.Application.Configuration;
 using Humans.Application.Extensions;
 using Microsoft.AspNetCore.Authorization;
@@ -665,23 +666,27 @@ public class ProfileController : HumansControllerBase
         return View("VerifyEmailResult");
     }
 
-    [HttpPost("Me/Emails/SetNotificationTarget")]
+    [HttpPost("Me/Emails/SetPrimary")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetNotificationTarget(Guid emailId)
+    public async Task<IActionResult> SetPrimary(Guid emailId, CancellationToken ct)
     {
         var user = await GetCurrentUserAsync();
         if (user is null)
             return NotFound();
 
+        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
         try
         {
-            await _userEmailService.SetPrimaryAsync(user.Id, emailId);
+            await _userEmailService.SetPrimaryAsync(user.Id, emailId, ct);
             _cache.InvalidateNobodiesTeamEmails();
             SetSuccess(_localizer["Profile_NotificationTargetUpdated"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Failed to set notification target {EmailId} for user {UserId}", emailId, user.Id);
+            _logger.LogWarning(ex, "Failed to set primary email {EmailId} for user {UserId}", emailId, user.Id);
             SetError(ex.Message);
         }
 
@@ -747,52 +752,28 @@ public class ProfileController : HumansControllerBase
         return RedirectToAction(nameof(Emails));
     }
 
-    [HttpPost("Me/Emails/SetGoogleService")]
+    [HttpPost("Me/Emails/SetGoogle")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetGoogleServiceEmail(Guid emailId)
+    public async Task<IActionResult> SetGoogle(Guid emailId, CancellationToken ct)
     {
         var user = await GetCurrentUserAsync();
         if (user is null)
             return NotFound();
 
+        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
         try
         {
-            var emailAddress = await _userEmailService.GetVerifiedEmailAddressAsync(user.Id, emailId);
-
-            if (emailAddress is null)
-            {
-                SetError("Email not found or not verified.");
-                return RedirectToAction(nameof(Emails));
-            }
-
-            // If they have a @nobodies.team email, it must be used
-            var hasNobodiesTeam = await _userEmailService.HasNobodiesTeamEmailAsync(user.Id);
-
-            if (hasNobodiesTeam && !emailAddress.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
-            {
-                SetError("Your @nobodies.team email must be used for Google services.");
-                return RedirectToAction(nameof(Emails));
-            }
-
-            var existingEmails = await _userEmailService.GetUserEmailsAsync(user.Id);
-            var previousGoogleEmail = existingEmails
-                .Where(e => e.IsVerified && e.IsGoogle)
-                .Select(e => e.Email)
-                .FirstOrDefault();
-
-            await _userService.SetGoogleEmailAsync(user.Id, emailAddress);
-
-            if (!string.Equals(previousGoogleEmail ?? user.Email, emailAddress, StringComparison.OrdinalIgnoreCase))
-            {
-                await _teamService.EnqueueGoogleResyncForUserTeamsAsync(user.Id);
-            }
-
+            await _userEmailService.SetGoogleAsync(user.Id, emailId, user.Id, ct);
+            _cache.InvalidateNobodiesTeamEmails();
             SetSuccess("Google service email updated. Sync will be retried with the new email.");
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogError(ex, "Failed to set Google service email for user {UserId}", user.Id);
-            SetError("Failed to update Google service email.");
+            _logger.LogWarning(ex, "Failed to set Google service email {EmailId} for user {UserId}", emailId, user.Id);
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Emails));

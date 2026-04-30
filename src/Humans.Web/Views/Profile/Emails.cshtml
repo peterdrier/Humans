@@ -85,7 +85,7 @@
                                         }
                                         else if (email.IsVerified)
                                         {
-                                            <form asp-action="SetNotificationTarget" method="post" class="d-inline">
+                                            <form asp-action="SetPrimary" method="post" class="d-inline">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="emailId" value="@email.Id" />
                                                 <button type="submit" class="btn btn-outline-primary btn-sm">
@@ -185,7 +185,7 @@
                         }
                         else if (!Model.HasNobodiesTeamEmail)
                         {
-                            <form asp-action="SetGoogleServiceEmail" method="post" class="d-inline me-2">
+                            <form asp-action="SetGoogle" method="post" class="d-inline me-2">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="emailId" value="@email.Id" />
                                 <button type="submit" class="btn btn-outline-primary btn-sm">@Localizer["Emails_UseThis"]</button>
