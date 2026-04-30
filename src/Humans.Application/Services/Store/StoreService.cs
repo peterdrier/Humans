@@ -58,8 +58,8 @@ public class StoreService : IStoreService
     public async Task<IReadOnlyList<OrderDto>> GetOrdersForCampSeasonAsync(Guid campSeasonId, CancellationToken ct = default)
     {
         var orders = await _repo.GetOrdersForCampSeasonAsync(campSeasonId, ct);
-        var products = await _repo.GetActiveProductsForYearAsync(DateTime.UtcNow.Year, ct);
-        var productNames = products.ToDictionary(p => p.Id, p => p.Name);
+        var productIds = orders.SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct().ToList();
+        var productNames = await _repo.GetProductNamesByIdsAsync(productIds, ct);
         return orders.Select(o => MapOrder(o, productNames)).ToList();
     }
 
@@ -67,8 +67,8 @@ public class StoreService : IStoreService
     {
         var o = await _repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
         if (o is null) return null;
-        var products = await _repo.GetActiveProductsForYearAsync(DateTime.UtcNow.Year, ct);
-        var productNames = products.ToDictionary(p => p.Id, p => p.Name);
+        var productIds = o.Lines.Select(l => l.ProductId).Distinct().ToList();
+        var productNames = await _repo.GetProductNamesByIdsAsync(productIds, ct);
         return MapOrder(o, productNames);
     }
 

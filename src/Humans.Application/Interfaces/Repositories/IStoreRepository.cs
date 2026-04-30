@@ -32,6 +32,13 @@ public interface IStoreRepository
     // Products
     Task<IReadOnlyList<StoreProduct>> GetActiveProductsForYearAsync(int year, CancellationToken ct = default);
     Task<StoreProduct?> GetProductByIdAsync(Guid productId, CancellationToken ct = default);
+    /// <summary>
+    /// Resolves product display names for the given ids regardless of whether
+    /// the product is currently active or belongs to the active year. Used by
+    /// order-mapping code so issued/historical lines render with their actual
+    /// product name even after the product has been deactivated.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, string>> GetProductNamesByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default);
     Task AddProductAsync(StoreProduct product, CancellationToken ct = default);
     Task UpdateProductAsync(StoreProduct product, CancellationToken ct = default);
 

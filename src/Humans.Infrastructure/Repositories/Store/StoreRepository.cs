@@ -45,6 +45,17 @@ public sealed class StoreRepository : IStoreRepository
         return await ctx.StoreProducts.FirstOrDefaultAsync(p => p.Id == productId, ct);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, string>> GetProductNamesByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default)
+    {
+        if (ids.Count == 0) return new Dictionary<Guid, string>();
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var rows = await ctx.StoreProducts.AsNoTracking()
+            .Where(p => ids.Contains(p.Id))
+            .Select(p => new { p.Id, p.Name })
+            .ToListAsync(ct);
+        return rows.ToDictionary(r => r.Id, r => r.Name);
+    }
+
     public async Task AddProductAsync(StoreProduct product, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

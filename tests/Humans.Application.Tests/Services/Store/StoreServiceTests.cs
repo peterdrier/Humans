@@ -81,8 +81,8 @@ public class StoreServiceTests
         };
         _repo.GetOrdersForCampSeasonAsync(campSeasonId, Arg.Any<CancellationToken>())
             .Returns(new[] { order });
-        _repo.GetActiveProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { product });
+        _repo.GetProductNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [product.Id] = product.Name });
 
         var result = await _service.GetOrdersForCampSeasonAsync(campSeasonId);
 
@@ -121,8 +121,8 @@ public class StoreServiceTests
             }
         };
         _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
-        _repo.GetActiveProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { product });
+        _repo.GetProductNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string> { [product.Id] = product.Name });
 
         var result = await _service.GetOrderAsync(orderId);
 
