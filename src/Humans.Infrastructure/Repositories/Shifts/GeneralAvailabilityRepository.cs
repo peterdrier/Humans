@@ -93,4 +93,44 @@ public sealed class GeneralAvailabilityRepository : IGeneralAvailabilityReposito
         ctx.GeneralAvailability.Remove(existing);
         await ctx.SaveChangesAsync(ct);
     }
+
+    // ============================================================
+    // Account-merge fold
+    // ============================================================
+
+    public async Task<int> ReassignToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        var sourceRows = await ctx.GeneralAvailability
+            .Where(g => g.UserId == sourceUserId)
+            .ToListAsync(ct);
+
+        var targetEventIds = await ctx.GeneralAvailability
+            .Where(g => g.UserId == targetUserId)
+            .Select(g => g.EventSettingsId)
+            .ToListAsync(ct);
+        var targetEventIdSet = new HashSet<Guid>(targetEventIds);
+
+        foreach (var src in sourceRows)
+        {
+            if (targetEventIdSet.Contains(src.EventSettingsId))
+            {
+                // Target already has availability for this event — target wins.
+                ctx.GeneralAvailability.Remove(src);
+            }
+            else
+            {
+                src.UserId = targetUserId;
+                src.UpdatedAt = updatedAt;
+            }
+        }
+
+        await ctx.SaveChangesAsync(ct);
+
+        return await ctx.GeneralAvailability
+            .CountAsync(g => g.UserId == targetUserId, ct);
+    }
 }

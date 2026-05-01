@@ -60,4 +60,11 @@ public sealed class GeneralAvailabilityService : IGeneralAvailabilityService
 
     public Task DeleteAsync(Guid userId, Guid eventSettingsId) =>
         _repo.DeleteAsync(userId, eventSettingsId);
+
+    public Task<int> ReassignToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default) =>
+        // No service-level cache — see class remarks (§15 Option A, no
+        // caching decorator). Plain delegate to the repo.
+        _repo.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 }
