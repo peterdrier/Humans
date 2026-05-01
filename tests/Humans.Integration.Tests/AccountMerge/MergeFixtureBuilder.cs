@@ -626,6 +626,73 @@ public sealed class MergeFixtureBuilder
     }
 
     // ==================================================================
+    // ConsentRecord (Legal & Consent section)
+    //
+    // Append-only with DB triggers blocking UPDATE/DELETE; INSERT is the
+    // only legal mutation. Chain-follow read mirrors the audit-log pattern.
+    // Seeding requires a Team -> LegalDocument -> DocumentVersion chain;
+    // <see cref="SeedDocumentVersionNow"/> builds that minimal chain in one
+    // shot and returns the version id callers pass into
+    // <see cref="WithSourceConsentRecord"/>.
+    // ==================================================================
+
+    public Guid SeedDocumentVersionNow(string documentName = "TestDoc")
+    {
+        var teamId = Guid.NewGuid();
+        var docId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+
+        _db.Teams.Add(new Team
+        {
+            Id = teamId,
+            Name = $"ConsentTeam-{teamId:N}".Substring(0, 16),
+            Slug = $"team-{teamId:N}".Substring(0, 12),
+            IsActive = true,
+            CreatedAt = _now,
+            UpdatedAt = _now,
+        });
+        _db.LegalDocuments.Add(new LegalDocument
+        {
+            Id = docId,
+            Name = documentName,
+            TeamId = teamId,
+            IsActive = true,
+            IsRequired = true,
+            CurrentCommitSha = "abc",
+            CreatedAt = _now,
+            LastSyncedAt = _now,
+        });
+        _db.DocumentVersions.Add(new DocumentVersion
+        {
+            Id = versionId,
+            LegalDocumentId = docId,
+            VersionNumber = "v1",
+            CommitSha = "abc",
+            Content = new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" },
+            EffectiveFrom = _now,
+            CreatedAt = _now,
+        });
+        _db.SaveChanges();
+        return versionId;
+    }
+
+    public MergeFixtureBuilder WithSourceConsentRecord(Guid documentVersionId, bool explicitConsent = true)
+    {
+        _pending.Add(db => db.ConsentRecords.Add(new ConsentRecord
+        {
+            Id = Guid.NewGuid(),
+            UserId = SourceUserId,
+            DocumentVersionId = documentVersionId,
+            ConsentedAt = _now,
+            IpAddress = "127.0.0.1",
+            UserAgent = "TestFixture",
+            ContentHash = "hash",
+            ExplicitConsent = explicitConsent,
+        }));
+        return this;
+    }
+
+    // ==================================================================
     // Deferred — heavier chains; phase 6.2 author can pull these in as
     // needed.
     // ==================================================================
@@ -649,10 +716,6 @@ public sealed class MergeFixtureBuilder
 
     // TODO(phase 6.x): seed CampRoleAssignment — needs Camp + CampSeason
     //   + CampRoleDefinition.
-
-    // TODO(phase 6.x): seed ConsentRecord — append-only; needs a published
-    //   DocumentVersion -> LegalDocument -> Team chain. Insert via
-    //   db.ConsentRecords.Add (DB triggers block update/delete).
 
     // ------------------------------------------------------------------
 
