@@ -20,4 +20,4 @@ description: After completing a fix or feature, review the relevant `docs/featur
 - Update inline. If the change intentionally alters an invariant, update the doc to reflect the new state — don't leave stale rules.
 - If the change has no doc-level effect, no update needed (don't manufacture doc churn).
 
-**Related:** [`docs/sections/SECTION-TEMPLATE.md`](../../sections/SECTION-TEMPLATE.md) for section invariant doc structure.
+**Related:** [`docs/sections/SECTION-TEMPLATE.md`](../../docs/sections/SECTION-TEMPLATE.md) for section invariant doc structure.

@@ -14,4 +14,4 @@ The `consent_records` table has database triggers that prevent UPDATE and DELETE
 - Don't add `IsConcurrencyToken()` or audit fields that imply mutability — they make no sense for an append-only table.
 - Don't try to "soft-delete" by toggling a field — same reason.
 
-**Related:** [`design-rules.md §12`](../../architecture/design-rules.md#12-immutable-entity-rules) — full immutable-entity inventory.
+**Related:** [`design-rules.md §12`](../../docs/architecture/design-rules.md#12-immutable-entity-rules) — full immutable-entity inventory.

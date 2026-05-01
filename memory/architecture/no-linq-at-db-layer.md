@@ -20,4 +20,4 @@ At 500-user scale this is doubly correct because (a) materializing the dataset i
 - Don't conflate this with EF's primary-key lookups (`db.Find(id)`) or simple read-by-key — those are fine in services. The smell is composing predicates against entity properties.
 - When refactoring a column-coupled query, ask "what does this caller actually want to know?" then write the repo query for that — not "give me the user's primary email and let me filter on it." (Example: `DuplicateAccountService` should join across **verified** `UserEmails`, not filter on primary email alone.)
 
-**Related:** [design-rules.md §3](../../architecture/design-rules.md#3-repository-layer) — repository entity-in/entity-out doctrine.
+**Related:** [design-rules.md §3](../../docs/architecture/design-rules.md#3-repository-layer) — repository entity-in/entity-out doctrine.

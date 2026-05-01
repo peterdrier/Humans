@@ -12,6 +12,6 @@ Don't pitch designs by saying "DB-enforced uniqueness eliminates the race window
 - When weighing storage shape, judge it on data-model clarity (what's the entity, what's the relationship), not on which DB constraints fire.
 - If a service-layer pre-check is sufficient at this scale, the DB index isn't a design argument — it's an implementation detail.
 - Don't confuse display concerns (slot 1, slot 2, slot 3) with storage concerns (a row per assignment, ordering done at render time).
-- The one exception is `consent_records` immutability — that IS doctrinally enforced at the DB level (and listed in [design-rules.md §12](../../architecture/design-rules.md#12-immutable-entity-rules)).
+- The one exception is `consent_records` immutability — that IS doctrinally enforced at the DB level (and listed in [design-rules.md §12](../../docs/architecture/design-rules.md#12-immutable-entity-rules)).
 
-**Related:** [`audit-log-as-concurrency-safety-net`](audit-log-as-concurrency-safety-net.md), [design-rules.md §12](../../architecture/design-rules.md#12-immutable-entity-rules).
+**Related:** [`audit-log-as-concurrency-safety-net`](audit-log-as-concurrency-safety-net.md), [design-rules.md §12](../../docs/architecture/design-rules.md#12-immutable-entity-rules).

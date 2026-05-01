@@ -16,7 +16,7 @@ Prefer centralized authorization declarations and shared role-check helpers over
 
 ### Resource-Based Handlers
 
-**Target pattern:** ASP.NET Core resource-based authorization via `IAuthorizationService.AuthorizeAsync(User, resource, requirement)`. See [`design-rules.md §11`](../../architecture/design-rules.md#11-authorization-pattern) for the full rule and handler inventory.
+**Target pattern:** ASP.NET Core resource-based authorization via `IAuthorizationService.AuthorizeAsync(User, resource, requirement)`. See [`design-rules.md §11`](../../docs/architecture/design-rules.md#11-authorization-pattern) for the full rule and handler inventory.
 
 **Current state (migrating):** Some controllers still use inline `IsInRole` checks or `RoleChecks`/`ShiftRoleChecks` helpers. These work but should migrate to authorization handlers over time. `[Authorize(Roles = ...)]` is still fine for simple route-level role gates.
 

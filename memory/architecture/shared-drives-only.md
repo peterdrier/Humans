@@ -21,4 +21,4 @@ description: All Google Drive resources live on Shared Drives. API calls must us
 
 **Operational gates:** Google sync jobs (`SystemTeamSyncJob` hourly, `GoogleResourceReconciliationJob` daily at 03:00) are controlled by per-service mode at `/Admin/SyncSettings` (None/AddOnly/AddAndRemove). Set a service to "None" to disable without redeploying.
 
-**Related:** [`design-rules.md §13`](../../architecture/design-rules.md#13-google-resource-ownership) — Google resource ownership.
+**Related:** [`design-rules.md §13`](../../docs/architecture/design-rules.md#13-google-resource-ownership) — Google resource ownership.

@@ -14,4 +14,4 @@ When adding a caching layer (decorator, dict cache, projection DTO), the public-
 - **Never introduce a type named `Cached*` for domain data.** Cross-section invalidator interfaces (`IFullProfileInvalidator`) are fine because they name the concept, not the cache.
 - Caching decorators themselves (`CachingProfileService`) are an exception — they live in Infrastructure and consumers never reference them; the `Caching` prefix is the implementation class name, not exposed through DI.
 
-**Related:** [design-rules.md §15f](../../architecture/design-rules.md#15f-projection-dto-naming) — projection DTO naming convention.
+**Related:** [design-rules.md §15f](../../docs/architecture/design-rules.md#15f-projection-dto-naming) — projection DTO naming convention.

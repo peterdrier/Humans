@@ -13,11 +13,19 @@ Clean Architecture with 4 layers (strict dependency direction inward):
 
 See [`docs/architecture/design-rules.md`](docs/architecture/design-rules.md) for the full architecture story (the constitution): layer responsibilities, table ownership map, caching pattern (§15), authorization pattern, cross-domain rules. Read it once cover-to-cover.
 
-## Project Rules — `docs/rules/INDEX.md`
+## Project Rules — `memory/INDEX.md`
 
-Atomic, task-fires rules (URL conventions, GitHub workflow, EF migration discipline, PR review process, terminology restrictions, etc.) live as one-rule-per-file under [`docs/rules/`](docs/rules/). The catalog is at [`docs/rules/INDEX.md`](docs/rules/INDEX.md) — that's the file to scan when you need to know if a rule applies.
+Atomic, task-fires rules (URL conventions, GitHub workflow, EF migration discipline, PR review process, terminology restrictions, etc.) live as one-rule-per-file under [`memory/`](memory/). The catalog is at [`memory/INDEX.md`](memory/INDEX.md) — that's the file to scan when you need to know if a rule applies.
 
-See [`docs/rules/META.md`](docs/rules/META.md) for: when to add an atom vs prose doc, file format, bucket conventions, and how to maintain the catalog.
+See [`memory/META.md`](memory/META.md) for: when to add an atom vs prose doc, file format, bucket conventions, and how to maintain the catalog.
+
+### NEW PROJECT RULES GO HERE — NOT IN EXTERNAL CLAUDE MEMORY
+
+When a new project rule surfaces during a conversation (Peter corrects a pattern, an incident produces a rule, a "from now on X" emerges), capture it as a `memory/<bucket>/<name>.md` atom **in the same commit as the work that discovered it**. Add a one-line entry to `memory/INDEX.md`. Do **NOT** rely on the auto-memory system at `~/.claude/projects/H--source-Humans/memory/` — that storage is per-machine and does not sync across Peter's Windows / NUC / laptop, which is the exact problem this `memory/` directory solves.
+
+The auto-memory system can still capture session-ephemeral context (current task state, in-flight investigation notes). Anything that's a **project rule** — durable, applies across sessions, would matter on any machine — goes in this repo's `memory/`.
+
+Pattern + format spec: [`memory/META.md`](memory/META.md). Maintenance loop: [`memory/process/rules-maintenance.md`](memory/process/rules-maintenance.md).
 
 ## Concepts — Volunteer vs Tier Applications
 
@@ -52,7 +60,7 @@ Each major section of the app has a terse invariant doc in [`docs/sections/`](do
 - **Single-server deployment** — no distributed coordination, no multi-instance concerns.
 - **Prefer in-memory caching over query optimization.** At this scale, loading entire datasets into RAM is cheaper and simpler than per-query optimization.
 - **Don't over-engineer for scale.** Pagination, batching, and query optimization matter less when the dataset fits in memory.
-- See [`docs/rules/architecture/no-concurrency-tokens.md`](docs/rules/architecture/no-concurrency-tokens.md) — no `IsConcurrencyToken` or row versioning.
+- See [`memory/architecture/no-concurrency-tokens.md`](memory/architecture/no-concurrency-tokens.md) — no `IsConcurrencyToken` or row versioning.
 
 ## Build Commands
 
@@ -62,7 +70,7 @@ dotnet test Humans.slnx -v quiet
 dotnet run --project src/Humans.Web
 ```
 
-(`-v quiet` is required — see [`docs/rules/process/dotnet-verbosity-quiet.md`](docs/rules/process/dotnet-verbosity-quiet.md).)
+(`-v quiet` is required — see [`memory/process/dotnet-verbosity-quiet.md`](memory/process/dotnet-verbosity-quiet.md).)
 
 ## Git Workflow — Two-Remote
 
@@ -84,22 +92,22 @@ dotnet run --project src/Humans.Web
 **QA deployment:** Coolify auto-deploys on push to `main` on peter's fork. Coolify UI at `https://coolify.n.burn.camp`.
 
 For workflow rules, see:
-- [`docs/rules/process/no-direct-to-main.md`](docs/rules/process/no-direct-to-main.md)
-- [`docs/rules/process/issue-refs-qualified.md`](docs/rules/process/issue-refs-qualified.md)
-- [`docs/rules/process/after-prod-merge-reset.md`](docs/rules/process/after-prod-merge-reset.md)
+- [`memory/process/no-direct-to-main.md`](memory/process/no-direct-to-main.md)
+- [`memory/process/issue-refs-qualified.md`](memory/process/issue-refs-qualified.md)
+- [`memory/process/after-prod-merge-reset.md`](memory/process/after-prod-merge-reset.md)
 
 ## Doc Freshness
 
 `/freshness-sweep` regenerates drift-prone docs against `upstream/main` diffs. Catalog at [`docs/architecture/freshness-catalog.yml`](docs/architecture/freshness-catalog.yml). Spec at `docs/superpowers/specs/2026-04-25-freshness-sweep-design.md`.
 
-After running any recurring maintenance process, update [`docs/architecture/maintenance-log.md`](docs/architecture/maintenance-log.md) — see [`docs/rules/process/maintenance-log-update.md`](docs/rules/process/maintenance-log-update.md).
+After running any recurring maintenance process, update [`docs/architecture/maintenance-log.md`](docs/architecture/maintenance-log.md) — see [`memory/process/maintenance-log-update.md`](memory/process/maintenance-log-update.md).
 
 ## Extended Docs
 
 | Topic | File |
 |-------|------|
-| **Atomic project rules (catalog)** | **[`docs/rules/INDEX.md`](docs/rules/INDEX.md)** |
-| **Atomic project rules (how to maintain)** | **[`docs/rules/META.md`](docs/rules/META.md)** |
+| **Atomic project rules (catalog)** | **[`memory/INDEX.md`](memory/INDEX.md)** |
+| **Atomic project rules (how to maintain)** | **[`memory/META.md`](memory/META.md)** |
 | **Design rules (architecture story)** | **[`docs/architecture/design-rules.md`](docs/architecture/design-rules.md)** |
 | **Code review rules (reviewer handoff)** | **[`docs/architecture/code-review-rules.md`](docs/architecture/code-review-rules.md)** |
 | **Section invariants** | **[`docs/sections/`](docs/sections/)** |

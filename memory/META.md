@@ -1,4 +1,4 @@
-# How `docs/rules/` Works
+# How `memory/` Works
 
 A flat-ish catalog of atomic project rules. Each rule lives in its own file with frontmatter + a `Why:` / `How to apply:` body. `INDEX.md` is the table of contents — it's the file that gets pulled into Claude's always-loaded context via `CLAUDE.md`.
 
@@ -11,13 +11,13 @@ This pattern replaces three earlier mechanisms:
 
 | Where | What goes there |
 |---|---|
-| **`docs/rules/<bucket>/<rule>.md`** (this directory) | Atomic, task-fires rules: "when doing X, do Y". One rule per file (or one cluster of tightly related sub-rules per file). |
+| **`memory/<bucket>/<rule>.md`** (this directory) | Atomic, task-fires rules: "when doing X, do Y". One rule per file (or one cluster of tightly related sub-rules per file). |
 | **`docs/architecture/design-rules.md`** | Architectural narrative. The "constitution." Read sequentially by new contributors and reviewers. Layer responsibilities, table ownership, the §15 caching story. Don't atomize — atomization destroys the story. |
 | **`docs/architecture/code-review-rules.md`** | Reviewer handoff. Passed verbatim to Codex / Gemini / Claude as one block. Don't split. |
 | **`docs/sections/*.md`** | Per-section invariants. One file per section is already the right granularity. |
-| **`CLAUDE.md`** | Orientation only — purpose, layer overview, terminology, build commands, Git basics, pointer to `docs/rules/INDEX.md`. The rules-of-thumb that fire **every turn** in **every conversation**. ~80 lines max. Anything that fires only when touching a specific area belongs in an atom, not here. |
+| **`CLAUDE.md`** | Orientation only — purpose, layer overview, terminology, build commands, Git basics, pointer to `memory/INDEX.md`. The rules-of-thumb that fire **every turn** in **every conversation**. ~80 lines max. Anything that fires only when touching a specific area belongs in an atom, not here. |
 
-**The mental model:** `design-rules.md` is the constitution. `docs/rules/*.md` are the case law. `CLAUDE.md` is the table of contents.
+**The mental model:** `design-rules.md` is the constitution. `memory/*.md` are the case law. `CLAUDE.md` is the table of contents.
 
 ## Buckets
 
@@ -73,4 +73,4 @@ Edit the atom file. Update the `description` in INDEX.md if the trigger changed.
 
 ## Why not just a flat folder
 
-The bucket subfolders are a convenience for human navigation, nothing more. Atoms are retrieved by `Glob "docs/rules/**/*<keyword>*.md"` or by reading the INDEX. The subfolders don't carry semantic meaning beyond "primary lens to search by."
+The bucket subfolders are a convenience for human navigation, nothing more. Atoms are retrieved by `Glob "memory/**/*<keyword>*.md"` or by reading the INDEX. The subfolders don't carry semantic meaning beyond "primary lens to search by."

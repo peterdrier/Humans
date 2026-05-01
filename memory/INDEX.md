@@ -6,7 +6,7 @@ Atomic project rules. Each link is a single rule with `Why:` and `How to apply:`
 
 See [`META.md`](META.md) for: bucket conventions, file format, and how to add new rules.
 
-For narrative architecture (layer responsibilities, table ownership, §15 caching story), see [`../architecture/design-rules.md`](../architecture/design-rules.md) — that's the constitution; this index is the case law.
+For narrative architecture (layer responsibilities, table ownership, §15 caching story), see [`docs/architecture/design-rules.md`](../docs/architecture/design-rules.md) — that's the constitution; this index is the case law.
 
 ---
 
@@ -82,7 +82,7 @@ Git, PRs, issues, releases, triage, build commands.
 - [`pr-done-means-codex-clean`](process/pr-done-means-codex-clean.md) — a PR isn't "done" until Codex returns no findings; pushed+green is mid-state
 - [`pr-no-ping-reviewers`](process/pr-no-ping-reviewers.md) — don't `@codex review` after pushes; Codex quota limited, Claude reviews on push automatically
 - [`pr-review-both-repos`](process/pr-review-both-repos.md) — pull comments from BOTH `peterdrier/Humans` AND `nobodies-collective/Humans`; use `/pulls/{n}/comments` for inline (not just `gh pr view`)
-- [`rules-maintenance`](process/rules-maintenance.md) — when a new project rule surfaces, capture as `docs/rules/<bucket>/<name>.md` + INDEX entry in the same commit. Don't leave it in per-machine external memory.
+- [`rules-maintenance`](process/rules-maintenance.md) — when a new project rule surfaces, capture as `memory/<bucket>/<name>.md` + INDEX entry in the same commit. Don't leave it in per-machine external memory.
 - [`simplify-scope-to-section-size`](process/simplify-scope-to-section-size.md) — scale `/simplify` fix counts to section LOC, not to a smaller prior PR's count
 - [`todos-and-issue-tracking`](process/todos-and-issue-tracking.md) — after commits resolving items, update `todos.md` Completed section + close GitHub issues with summary + SHA
 - [`triage-fetch-full-history`](process/triage-fetch-full-history.md) — `/triage` must `GET /api/feedback/{id}/messages` for every report; list endpoint counts can be stale
