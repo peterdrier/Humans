@@ -845,6 +845,45 @@ public sealed class TicketRepository : ITicketRepository
     }
 
     // ==========================================================================
+    // Account-merge fold
+    // ==========================================================================
+
+    public async Task<int> ReassignToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default)
+    {
+        // updatedAt is part of the standard fold signature but unused here:
+        // neither TicketOrder nor TicketAttendee carries a generic UpdatedAt
+        // column (only SyncedAt, owned by the vendor-sync pipeline). Tickets
+        // are unique per purchase, so the conflict rule is plain re-FK — no
+        // dedup needed.
+        _ = updatedAt;
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        var orders = await ctx.TicketOrders
+            .Where(o => o.MatchedUserId == sourceUserId)
+            .ToListAsync(ct);
+        foreach (var order in orders)
+        {
+            order.MatchedUserId = targetUserId;
+        }
+
+        var attendees = await ctx.TicketAttendees
+            .Where(a => a.MatchedUserId == sourceUserId)
+            .ToListAsync(ct);
+        foreach (var attendee in attendees)
+        {
+            attendee.MatchedUserId = targetUserId;
+        }
+
+        await ctx.SaveChangesAsync(ct);
+
+        return await ctx.TicketAttendees
+            .CountAsync(a => a.MatchedUserId == targetUserId, ct);
+    }
+
+    // ==========================================================================
     // Helpers
     // ==========================================================================
 

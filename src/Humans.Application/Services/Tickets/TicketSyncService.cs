@@ -222,6 +222,21 @@ public sealed class TicketSyncService : ITicketSyncService
         await _ticketRepository.ResetSyncStateLastSyncAsync();
     }
 
+    public async Task<int> ReassignToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default)
+    {
+        var count = await _ticketRepository.ReassignToUserAsync(
+            sourceUserId, targetUserId, updatedAt, ct);
+
+        // Per-user ticket coverage / dashboard / who-hasn't-bought derive from
+        // MatchedUserId on orders + attendees, so all of them must refresh.
+        // Use the established InvalidateTicketCaches seam (see Tickets.md
+        // touch-and-clean guidance).
+        _cache.InvalidateTicketCaches();
+
+        return count;
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private async Task<Dictionary<string, Guid>> BuildEmailLookupAsync(CancellationToken ct)
