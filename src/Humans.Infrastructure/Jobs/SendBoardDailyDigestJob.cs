@@ -154,7 +154,8 @@ public class SendBoardDailyDigestJob : IRecurringJob
                 !usersWithAllConsents.Contains(id) ||
                 (leadSet.Contains(id) && !leadsWithAllConsents.Contains(id)));
 
-            var pendingDeletionsCount = await _userService.GetPendingDeletionCountAsync(cancellationToken);
+            // Pending deletions count derived from already-loaded user list.
+            var pendingDeletionsCount = allUsers.Count(u => u.DeletionRequestedAt != null);
 
             // Only skip if both no approvals AND all counts are zero.
             var hasOutstandingItems = onboardingReviewCount > 0 || stillOnboardingCount > 0

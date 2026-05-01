@@ -219,14 +219,6 @@ public interface IUserService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the count of users with a non-null <c>DeletionRequestedAt</c>.
-    /// Used by the notification meter to surface pending account deletions
-    /// to Admin without letting the Notifications section read the users
-    /// table directly (design-rules §2c).
-    /// </summary>
-    Task<int> GetPendingDeletionCountAsync(CancellationToken ct = default);
-
-    /// <summary>
     /// Sets <c>User.LastConsentReminderSentAt</c> to <paramref name="sentAt"/>.
     /// No-op if the user does not exist. Used by the re-consent reminder job
     /// so it does not write to the Users table directly (design-rules §2c).
@@ -297,6 +289,16 @@ public interface IUserService
     Task<int> ReassignEventParticipationToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the set of source-tombstone ids whose <c>MergedToUserId</c>
+    /// equals <paramref name="targetUserId"/>. Single canonical chain-follow
+    /// primitive: AuditLog, Consent, BudgetAuditLog reads call this rather
+    /// than each section reinventing the lookup. Set is small (typically
+    /// zero, usually one).
+    /// </summary>
+    Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(
+        Guid targetUserId, CancellationToken ct = default);
 }
 
 /// <summary>

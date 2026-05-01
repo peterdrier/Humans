@@ -94,6 +94,19 @@ public class InterfaceMethodBudgetTests
         // already exists). GetAllUserIdsAsync (4 callers replaced with
         // (await GetAllUsersAsync(ct)).Select(u => u.Id) — at ~500-user
         // scale the extra User-entity hydration is cheap per design rules).
+        // 31→31: account-merge fold redesign Phase 4.1. Added
+        // GetMergedSourceIdsAsync (the chain-follow service primitive that
+        // AuditLog/Consent/BudgetAuditLog reads call to surface rows still
+        // attributed to merged source tombstones); removed 1 to match.
+        // Removed: GetPendingDeletionCountAsync. Three callers (admin daily
+        // digest, board daily digest, NotificationMeterProvider) each
+        // already load — or can cheaply load — the full user list and
+        // derive the count in-memory as
+        // allUsers.Count(u => u.DeletionRequestedAt != null). The two
+        // digest jobs already had `allUsers` in scope; the meter provider
+        // is itself cached for ~2 minutes (CacheKeys.NotificationMeters)
+        // so loading the user list per cache window is acceptable at
+        // ~500-user scale per design rules.
         [typeof(IUserService)] = 31,
     };
 

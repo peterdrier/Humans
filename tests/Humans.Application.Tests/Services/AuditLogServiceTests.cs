@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -8,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
+using NSubstitute;
 using Xunit;
 using AuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
 
@@ -18,6 +20,7 @@ public class AuditLogServiceTests : IDisposable
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly AuditLogRepository _repo;
+    private readonly IUserService _userService;
     private readonly AuditLogService _service;
 
     public AuditLogServiceTests()
@@ -29,7 +32,12 @@ public class AuditLogServiceTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         _repo = new AuditLogRepository(new TestDbContextFactory(options));
-        _service = new AuditLogService(_repo, _clock, NullLogger<AuditLogService>.Instance);
+        _userService = Substitute.For<IUserService>();
+        // Default: no merge tombstones — chain-follow short-circuits to the
+        // single-id repo path.
+        _userService.GetMergedSourceIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlySet<Guid>)new HashSet<Guid>());
+        _service = new AuditLogService(_repo, _userService, _clock, NullLogger<AuditLogService>.Instance);
     }
 
     public void Dispose()

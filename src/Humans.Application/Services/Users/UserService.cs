@@ -127,9 +127,6 @@ public sealed class UserService : IUserService, IUserDataContributor
         string email, Guid excludeUserId, CancellationToken ct = default) =>
         _repo.GetOtherUserIdHavingGoogleEmailAsync(email, excludeUserId, ct);
 
-    public Task<int> GetPendingDeletionCountAsync(CancellationToken ct = default) =>
-        _repo.GetPendingDeletionCountAsync(ct);
-
     public Task<int> GetRejectedGoogleEmailCountAsync(CancellationToken ct = default) =>
         _repo.GetRejectedGoogleEmailCountAsync(ct);
 
@@ -381,5 +378,12 @@ public sealed class UserService : IUserService, IUserDataContributor
         // primitives across the merge fold.
         _ = updatedAt;
         return _repo.ReassignEventParticipationToUserAsync(sourceUserId, targetUserId, ct);
+    }
+
+    public async Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(
+        Guid targetUserId, CancellationToken ct = default)
+    {
+        var ids = await _repo.GetMergedSourceIdsAsync(targetUserId, ct);
+        return ids.ToHashSet();
     }
 }

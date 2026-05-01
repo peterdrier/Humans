@@ -240,11 +240,6 @@ public interface IUserRepository
     Task<string?> PurgeAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the count of users with a non-null <c>DeletionRequestedAt</c>.
-    /// </summary>
-    Task<int> GetPendingDeletionCountAsync(CancellationToken ct = default);
-
-    /// <summary>
     /// Sets <c>User.LastConsentReminderSentAt</c> to <paramref name="sentAt"/>.
     /// No-op if the user does not exist.
     /// </summary>
