@@ -1,5 +1,6 @@
 using Humans.Application.DTOs;
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Profiles;
 
@@ -51,5 +52,23 @@ public interface IContactFieldService
     Task<ContactFieldVisibility> GetViewerAccessLevelAsync(
         Guid ownerUserId,
         Guid viewerUserId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Account-merge fold: bulk-moves <c>ContactField</c> rows from
+    /// <paramref name="sourceUserId"/>'s profile to <paramref name="targetUserId"/>'s
+    /// profile. Same-<c>(FieldType, Value)</c> rows collapse — source's row is
+    /// dropped when target already has a row with the same field type and
+    /// (case-insensitive) value; surviving source rows are re-FK'd to the
+    /// target's profile. Stamps <c>UpdatedAt</c> on every row touched.
+    /// Invalidates the FullProfile cache for both users so admin/search/profile
+    /// surfaces reflect the move. Returns the count of <c>ContactField</c> rows
+    /// attributed to <paramref name="targetUserId"/>'s profile after dedup.
+    /// Called only by <c>AccountMergeService.AcceptAsync</c>.
+    /// </summary>
+    Task<int> ReassignToUserAsync(
+        Guid sourceUserId,
+        Guid targetUserId,
+        Instant updatedAt,
         CancellationToken cancellationToken = default);
 }

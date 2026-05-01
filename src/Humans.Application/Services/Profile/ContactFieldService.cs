@@ -18,6 +18,7 @@ public sealed class ContactFieldService : IContactFieldService
     private readonly IProfileRepository _profileRepository;
     private readonly ITeamService _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly IFullProfileInvalidator _fullProfileInvalidator;
     private readonly IClock _clock;
 
     // Request-scoped cache for viewer permissions to avoid N+1 queries during listing
@@ -30,12 +31,14 @@ public sealed class ContactFieldService : IContactFieldService
         IProfileRepository profileRepository,
         ITeamService teamService,
         IRoleAssignmentService roleAssignmentService,
+        IFullProfileInvalidator fullProfileInvalidator,
         IClock clock)
     {
         _repository = repository;
         _profileRepository = profileRepository;
         _teamService = teamService;
         _roleAssignmentService = roleAssignmentService;
+        _fullProfileInvalidator = fullProfileInvalidator;
         _clock = clock;
     }
 
@@ -175,6 +178,19 @@ public sealed class ContactFieldService : IContactFieldService
             return ContactFieldVisibility.MyTeams;
 
         return ContactFieldVisibility.AllActiveProfiles;
+    }
+
+    public async Task<int> ReassignToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken cancellationToken = default)
+    {
+        var count = await _repository.ReassignToUserAsync(
+            sourceUserId, targetUserId, updatedAt, cancellationToken);
+
+        await _fullProfileInvalidator.InvalidateAsync(sourceUserId, cancellationToken);
+        await _fullProfileInvalidator.InvalidateAsync(targetUserId, cancellationToken);
+
+        return count;
     }
 
     private static List<ContactFieldVisibility> GetAllowedVisibilities(ContactFieldVisibility accessLevel) =>
