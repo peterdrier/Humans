@@ -51,8 +51,13 @@ public static class MergeFixtureExtensions
         this HumansWebApplicationFactory fx,
         Guid sourceUserId,
         Guid targetUserId,
-        string email = "merge-target@example.com")
+        string? email = null)
     {
+        // Generate a unique pending email per call so multiple tests in the
+        // same fixture (shared Postgres container, shared DB) don't trip the
+        // user_emails Email-uniqueness index.
+        email ??= $"merge-target-{Guid.NewGuid():N}@example.com";
+
         ArgumentNullException.ThrowIfNull(fx);
 
         await using var scope = fx.Services.CreateAsyncScope();
