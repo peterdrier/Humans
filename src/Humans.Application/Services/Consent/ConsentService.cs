@@ -285,6 +285,11 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
             return new Dictionary<Guid, IReadOnlySet<Guid>>();
 
         // Fetch source-id mappings once per input id.
+        // TODO(perf): a future batch primitive
+        // IUserService.GetAllMergedSourceIdsByTargetsAsync(IReadOnlyCollection<Guid>)
+        // doing a single `WHERE MergedToUserId IN (...)` query would reduce
+        // this loop's N round-trips to 1. Negligible at 500-user scale per
+        // CLAUDE.md "Scale and Deployment Context" — deferred.
         var sourcesByTarget = new Dictionary<Guid, IReadOnlySet<Guid>>(userIds.Count);
         foreach (var userId in userIds)
         {
@@ -295,24 +300,34 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         if (!hasAnySources)
         {
             // Common case: no merged sources — single repo call, no remap.
-            return await _repo.GetExplicitlyConsentedVersionIdsForUsersAsync(userIds, ct);
+            // Dedup defensively: callers (e.g., admin/all-user partition
+            // paths) may pass overlapping ids.
+            var distinctInputs = userIds.Distinct().ToList();
+            return await _repo.GetExplicitlyConsentedVersionIdsForUsersAsync(distinctInputs, ct);
         }
 
-        // Build a flattened list of {target ∪ all source ids} for the repo
+        // Build a flattened set of {target ∪ all source ids} for the repo
         // batch, plus a reverse map source-id → target-id so we can re-key
-        // source-attributed rows under their target.
-        var allIds = new List<Guid>(userIds);
+        // source-attributed rows under their target. Dedup is required:
+        // callers may pass both a source tombstone id and its target in the
+        // same input list, and the source is also appended below — without
+        // dedup the repo's ToDictionary call throws ArgumentException on
+        // duplicate keys.
+        var allIdsSet = new HashSet<Guid>(userIds);
         var sourceToTarget = new Dictionary<Guid, Guid>();
         foreach (var userId in userIds)
         {
             foreach (var sourceId in sourcesByTarget[userId])
             {
-                allIds.Add(sourceId);
+                allIdsSet.Add(sourceId);
+                // If a source already maps to a target, keep the first
+                // mapping; chain-follow is a 1:N target→sources fan-out, so
+                // each source has exactly one target.
                 sourceToTarget[sourceId] = userId;
             }
         }
 
-        var raw = await _repo.GetExplicitlyConsentedVersionIdsForUsersAsync(allIds, ct);
+        var raw = await _repo.GetExplicitlyConsentedVersionIdsForUsersAsync(allIdsSet.ToList(), ct);
 
         // Re-key: every input id gets a HashSet seeded from its own row, then
         // unioned with each source row that maps back to it.

@@ -279,6 +279,15 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
                 // 6. Anonymize the source account (set MergedToUserId/MergedAt
                 //    + identity tombstone fields). Routed through IUserService
                 //    so the FullProfile cache for the source is invalidated.
+                //
+                // NOTE: this path does NOT migrate VolunteerHistory/Languages
+                // from source to target. AccountMergeService.AcceptAsync (the
+                // merge-fold flow) does, via
+                // IProfileService.ReassignSubAggregatesToUserAsync. Pre-existing
+                // asymmetry — duplicate-resolve is a different flow with
+                // different completeness guarantees, called from a different
+                // admin surface. Track separately if it becomes a problem;
+                // not in scope for the account-merge fold redesign PR.
                 await _profileRepository.AnonymizeForMergeByUserIdAsync(sourceUserId, ct);
                 await _userService.AnonymizeForMergeAsync(sourceUserId, targetUserId, now, ct);
 

@@ -277,7 +277,12 @@ public interface IProfileService
     /// profile, anonymizes the source profile's identifying scalar fields in
     /// place (rolling in today's
     /// <see cref="Humans.Application.Interfaces.Repositories.IProfileRepository.AnonymizeForMergeByUserIdAsync"/>
-    /// behaviour), and removes the source profile's <c>ContactField</c> rows.
+    /// behaviour), and stamps <c>UpdatedAt</c> on the source profile.
+    /// <c>ContactField</c> rows are owned by the ContactFields section
+    /// (<see cref="Humans.Application.Interfaces.Profiles.IContactFieldService"/>)
+    /// and are re-FK'd separately by <c>AccountMergeService.AcceptAsync</c>
+    /// via <c>IContactFieldService.ReassignToUserAsync</c> — this method
+    /// does not touch them.
     /// </summary>
     /// <remarks>
     /// Conflict rules per the fold spec:

@@ -45,6 +45,12 @@ public interface ITicketSyncService
     /// <c>ticket_attendees.MatchedUserId</c> — tickets are unique per
     /// purchase, so no dedup is needed (plain re-FK). Invalidates ticket
     /// caches so dashboard / coverage / who-hasn't-bought reflect the move.
+    /// The <paramref name="updatedAt"/> parameter is accepted for signature
+    /// parity with other <c>Reassign…ToUserAsync</c> methods across the
+    /// merge fold but is <b>unused</b> — neither <c>TicketOrder</c> nor
+    /// <c>TicketAttendee</c> carries a generic <c>UpdatedAt</c> column
+    /// (only <c>SyncedAt</c>, owned by the vendor-sync pipeline).
+    /// Implementations explicitly discard the value.
     /// Returns the count of <c>ticket_attendees</c> rows ultimately
     /// attributed to <paramref name="targetUserId"/>. Called only by
     /// <c>AccountMergeService.AcceptAsync</c>.

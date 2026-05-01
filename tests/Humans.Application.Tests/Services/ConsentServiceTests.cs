@@ -497,6 +497,40 @@ public class ConsentServiceTests : IDisposable
         fullName.Should().BeNull();
     }
 
+    [HumansFact]
+    public async Task GetConsentMapForUsersAsync_InputContainsBothSourceAndTarget_DoesNotThrow()
+    {
+        // Regression for peterdrier#382 finding 3175264064 (Codex P1):
+        // when input list contains both a source tombstone id and its merge
+        // target, the chain-follow path used to append the source id again
+        // without dedup. The downstream repo's `userIds.ToDictionary(id =>
+        // id, ...)` then threw ArgumentException on the duplicate key.
+        var sourceId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
+        var unrelatedId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
+        SeedConsentRecord(sourceId, versionId);
+        await _dbContext.SaveChangesAsync();
+
+        // Target's chain-follow set includes the source.
+        _userService.GetMergedSourceIdsAsync(targetId, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlySet<Guid>)new HashSet<Guid> { sourceId });
+        // Source tombstone has no further sources.
+        _userService.GetMergedSourceIdsAsync(sourceId, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlySet<Guid>)new HashSet<Guid>());
+        _userService.GetMergedSourceIdsAsync(unrelatedId, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlySet<Guid>)new HashSet<Guid>());
+
+        // Input contains both source and target — duplicate-id risk path.
+        var result = await _service.GetConsentMapForUsersAsync(new[] { sourceId, targetId, unrelatedId });
+
+        result.Should().ContainKey(targetId);
+        result[targetId].Should().Contain(versionId, "target's chain-follow includes the source's explicit consent");
+        result.Should().ContainKey(sourceId);
+        result.Should().ContainKey(unrelatedId);
+    }
+
     // --- Helpers ---
 
     private Team SeedTeam(Guid teamId, string name)

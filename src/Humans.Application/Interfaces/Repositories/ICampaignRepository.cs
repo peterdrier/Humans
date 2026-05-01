@@ -164,9 +164,12 @@ public interface ICampaignRepository
     /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
     /// Per-<c>CampaignId</c> collision: if target already has a grant on the
     /// same campaign, the source's grant is dropped (target wins). The
-    /// <paramref name="updatedAt"/> arg is accepted for cross-fold signature
-    /// parity; <c>CampaignGrant</c> has no <c>UpdatedAt</c> column so it is
-    /// not stamped. Returns the count of grants attributed to
+    /// <paramref name="updatedAt"/> parameter is accepted for signature
+    /// parity with other <c>Reassign…ToUserAsync</c> methods across the
+    /// merge fold but is <b>unused</b> — <c>CampaignGrant</c> has no
+    /// <c>UpdatedAt</c> column. Implementations explicitly discard the
+    /// value (do not "fix" the discard — there is nothing to stamp).
+    /// Returns the count of grants attributed to
     /// <paramref name="targetUserId"/> after the move.
     /// </summary>
     Task<int> ReassignGrantsToUserAsync(
