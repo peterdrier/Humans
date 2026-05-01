@@ -343,4 +343,32 @@ public sealed class ApplicationRepository : IApplicationRepository
             .GroupBy(r => r.UserId)
             .ToDictionary(g => g.Key, g => g.First().MembershipTier);
     }
+
+    // ==========================================================================
+    // Account-merge fold
+    // ==========================================================================
+
+    public async Task<int> ReassignApplicationsToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default)
+    {
+        // Plain re-FK — applications are historical records (Colaborador /
+        // Asociado tier applications over multiple years). Both source and
+        // target may have applied independently; every row is preserved.
+        // No conflict rule, no dedup. UpdatedAt stamped on every moved row.
+        var sourceRows = await _dbContext.Applications
+            .Where(a => a.UserId == sourceUserId)
+            .ToListAsync(ct);
+
+        foreach (var src in sourceRows)
+        {
+            _dbContext.Entry(src).Property(nameof(MemberApplication.UserId)).CurrentValue = targetUserId;
+            src.UpdatedAt = updatedAt;
+        }
+
+        await _dbContext.SaveChangesAsync(ct);
+
+        return await _dbContext.Applications
+            .CountAsync(a => a.UserId == targetUserId, ct);
+    }
 }

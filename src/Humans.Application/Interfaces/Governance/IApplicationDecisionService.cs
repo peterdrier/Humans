@@ -253,6 +253,22 @@ public interface IApplicationDecisionService
     /// </summary>
     Task<IReadOnlyDictionary<Guid, MembershipTier>> GetOtherActiveTierAssignmentsAsync(
         MembershipTier excludeTier, LocalDate today, CancellationToken ct = default);
+
+    /// <summary>
+    /// Account-merge fold: bulk-moves <c>Application</c> rows from
+    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
+    /// Plain re-FK — applications are historical records, no dedup
+    /// (both source and target may have applied independently to
+    /// Colaborador/Asociado tiers across the years; every row is preserved).
+    /// Stamps <c>UpdatedAt</c> on every moved row. Returns the count of
+    /// <c>Application</c> rows attributed to <paramref name="targetUserId"/>
+    /// after the move. Called only by <c>AccountMergeService.AcceptAsync</c>.
+    /// </summary>
+    Task<int> ReassignApplicationsToUserAsync(
+        Guid sourceUserId,
+        Guid targetUserId,
+        Instant updatedAt,
+        CancellationToken ct = default);
 }
 
 public record ApplicationDecisionResult(bool Success, string? ErrorKey = null, Guid? ApplicationId = null);

@@ -702,6 +702,16 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         MembershipTier excludeTier, LocalDate today, CancellationToken ct = default) =>
         _repository.GetOtherActiveTierAssignmentsAsync(excludeTier, today, ct);
 
+    public Task<int> ReassignApplicationsToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default) =>
+        // No per-user applications cache (Governance is low-traffic enough
+        // that ApplicationDecisionService has no caching decorator). Nav /
+        // notification-meter / voting-badge invalidations are unaffected by
+        // a plain re-FK of historical rows — Submitted-count and per-voter
+        // badges depend on the application id, not on UserId. Plain delegate.
+        _repository.ReassignApplicationsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+
     public async Task UpdateDraftApplicationAsync(
         Guid applicationId, MembershipTier tier, string motivation,
         string? additionalInfo, string? significantContribution, string? roleUnderstanding,
