@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
+using NSubstitute;
 using Xunit;
 using CommunicationPreferenceService = Humans.Application.Services.Profile.CommunicationPreferenceService;
 
@@ -111,6 +112,7 @@ public class CommunicationPreferenceServiceTests : IDisposable
             tokenProvider,
             _clock,
             new StubAuditLogService(),
+            Substitute.For<IFullProfileInvalidator>(),
             NullLogger<CommunicationPreferenceService>.Instance);
     }
 

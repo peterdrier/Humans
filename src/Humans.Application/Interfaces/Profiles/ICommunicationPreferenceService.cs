@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Profiles;
 
@@ -105,4 +106,23 @@ public interface ICommunicationPreferenceService
     /// suitable for direct use in anchor tags.
     /// </summary>
     string GenerateBrowserUnsubscribeUrl(Guid userId, MessageCategory category);
+
+    /// <summary>
+    /// Account-merge fold: bulk-moves <c>CommunicationPreference</c> rows from
+    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
+    /// Same-category rows collapse — the row with the most-recent
+    /// <c>UpdatedAt</c> wins (source's values are copied onto target when source
+    /// is newer; otherwise the source row is dropped). Surviving source rows
+    /// are re-FK'd to target. Stamps <c>UpdatedAt</c> on every row touched.
+    /// Invalidates the FullProfile cache for both users so admin/search/profile
+    /// surfaces reflect the move. Returns the count of
+    /// <c>CommunicationPreference</c> rows attributed to
+    /// <paramref name="targetUserId"/>. Called only by
+    /// <c>AccountMergeService.AcceptAsync</c>.
+    /// </summary>
+    Task<int> ReassignToUserAsync(
+        Guid sourceUserId,
+        Guid targetUserId,
+        Instant updatedAt,
+        CancellationToken cancellationToken = default);
 }

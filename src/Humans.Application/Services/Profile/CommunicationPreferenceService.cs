@@ -32,6 +32,7 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
     private readonly IUnsubscribeTokenProvider _tokenProvider;
     private readonly IClock _clock;
     private readonly IAuditLogService _auditLog;
+    private readonly IFullProfileInvalidator _fullProfileInvalidator;
     private readonly ILogger<CommunicationPreferenceService> _logger;
 
     public CommunicationPreferenceService(
@@ -39,12 +40,14 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
         IUnsubscribeTokenProvider tokenProvider,
         IClock clock,
         IAuditLogService auditLog,
+        IFullProfileInvalidator fullProfileInvalidator,
         ILogger<CommunicationPreferenceService> logger)
     {
         _repository = repository;
         _tokenProvider = tokenProvider;
         _clock = clock;
         _auditLog = auditLog;
+        _fullProfileInvalidator = fullProfileInvalidator;
         _logger = logger;
     }
 
@@ -225,4 +228,17 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
 
     public string GenerateBrowserUnsubscribeUrl(Guid userId, MessageCategory category) =>
         _tokenProvider.GenerateBrowserUnsubscribeUrl(userId, category);
+
+    public async Task<int> ReassignToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken cancellationToken = default)
+    {
+        var count = await _repository.ReassignToUserAsync(
+            sourceUserId, targetUserId, updatedAt, cancellationToken);
+
+        await _fullProfileInvalidator.InvalidateAsync(sourceUserId, cancellationToken);
+        await _fullProfileInvalidator.InvalidateAsync(targetUserId, cancellationToken);
+
+        return count;
+    }
 }

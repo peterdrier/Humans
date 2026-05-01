@@ -1,5 +1,6 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -62,4 +63,23 @@ public interface ICommunicationPreferenceRepository
     /// The caller must have obtained the entity via a tracked query method in the same scope.
     /// </summary>
     Task UpdateAsync(CommunicationPreference preference, CancellationToken ct = default);
+
+    /// <summary>
+    /// Bulk-moves <c>communication_preferences</c> rows from
+    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/> for the
+    /// account-merge fold flow. Conflict rule per the fold spec: when source and
+    /// target both have a row for the same <see cref="MessageCategory"/>, the
+    /// rows collapse — the row with the most-recent <c>UpdatedAt</c> wins. If
+    /// the source row is newer, its <c>OptedOut</c>, <c>InboxEnabled</c>, and
+    /// <c>UpdateSource</c> values are copied onto the target row; the source
+    /// row is then deleted. If the target row is at least as recent, the source
+    /// row is simply deleted. Surviving source rows (no target row for the
+    /// category) are re-FK'd to target. <c>UpdatedAt</c> is stamped to
+    /// <paramref name="updatedAt"/> on every row touched. Returns the count of
+    /// <c>communication_preferences</c> rows ultimately attributed to
+    /// <paramref name="targetUserId"/>.
+    /// </summary>
+    Task<int> ReassignToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default);
 }
