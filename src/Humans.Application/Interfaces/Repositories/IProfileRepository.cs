@@ -216,6 +216,42 @@ public interface IProfileRepository
             CancellationToken ct = default);
 
     /// <summary>
+    /// Account-merge fold: bulk-moves the source profile's
+    /// <see cref="VolunteerHistoryEntry"/> and <see cref="ProfileLanguage"/>
+    /// rows onto the target profile, anonymizes the source profile's
+    /// identifying scalar fields in the same save (rolling in the work of
+    /// <see cref="AnonymizeForMergeByUserIdAsync"/>), and stamps
+    /// <see cref="Profile.UpdatedAt"/> on the source.
+    /// </summary>
+    /// <remarks>
+    /// Conflict rules per the fold spec:
+    /// <list type="bullet">
+    ///   <item><see cref="VolunteerHistoryEntry"/>: dedup on
+    ///   (<see cref="VolunteerHistoryEntry.Date"/> year,
+    ///   <see cref="VolunteerHistoryEntry.EventName"/>) — if target already
+    ///   has the same key, drop source's row. Surviving rows are re-FK'd to
+    ///   the target's <c>ProfileId</c>.</item>
+    ///   <item><see cref="ProfileLanguage"/>: dedup on
+    ///   <see cref="ProfileLanguage.LanguageCode"/> — keep highest
+    ///   <see cref="ProfileLanguage.Proficiency"/> (target wins on tie).
+    ///   Surviving source rows are re-FK'd to the target's <c>ProfileId</c>.</item>
+    /// </list>
+    /// The source <see cref="Profile"/> row is left in place (tombstone
+    /// counterpart to <c>User.MergedToUserId</c>) but its identifying scalars
+    /// (name → "Merged"/"User", picture, location, bio, emergency contact,
+    /// pronouns, birthday, admin notes, contribution interests, board notes)
+    /// are cleared. <see cref="ContactField"/> rows for the source profile
+    /// are also removed in the same save (matches today's
+    /// <see cref="AnonymizeForMergeByUserIdAsync"/> behaviour).
+    /// Returns the post-move count of (VolunteerHistory + Languages) rows
+    /// attributed to the target profile, for caller diagnostics.
+    /// No-op (returns 0) if the source has no profile.
+    /// </remarks>
+    Task<int> ReassignSubAggregatesToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Reconciles the CV-entry collection for the given profile with the
     /// provided set, keyed by <see cref="CVEntry.Id"/>:
     /// <list type="bullet">

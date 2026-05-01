@@ -62,6 +62,12 @@ public class InterfaceMethodBudgetTests
         // narrow service write that owns its own cache invalidation; controllers can't reach
         // the FullProfile cache directly).
         // +1 for GetActiveApprovedCountAsync (admin dashboard active-humans tile, peterdrier#349).
+        // 41→41: account-merge fold redesign Phase 1.2. Added
+        // ReassignSubAggregatesToUserAsync; removed
+        // GetActiveOrCompletedCampaignGrantsAsync (pure passthrough to
+        // ICampaignService.GetActiveOrCompletedGrantsForUserAsync — sole
+        // caller ProfileController already injects ICampaignService and now
+        // calls it directly).
         [typeof(IProfileService)] = 41,
         // -1 for GetContactUsersAsync removal (/Contacts surface deleted in PR 2 of
         // email-identity-decoupling — only ContactService called it).

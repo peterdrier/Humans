@@ -217,14 +217,6 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         return await inner.GetProfileIndexDataAsync(userId, ct);
     }
 
-    public async Task<IReadOnlyList<CampaignGrant>> GetActiveOrCompletedCampaignGrantsAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-        return await inner.GetActiveOrCompletedCampaignGrantsAsync(userId, ct);
-    }
-
     public async Task<(Profile? Profile, bool IsTierLocked, MemberApplication? PendingApplication)>
         GetProfileEditDataAsync(Guid userId, CancellationToken ct = default)
     {
@@ -635,5 +627,23 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
             await RefreshEntryAsync(userId, ct);
         }
         return downgrades;
+    }
+
+    public async Task<int> ReassignSubAggregatesToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        var count = await inner.ReassignSubAggregatesToUserAsync(
+            sourceUserId, targetUserId, updatedAt, ct);
+
+        // Source profile is anonymized in place, target gains sub-aggregates
+        // — refresh both entries so the FullProfile projection reflects the
+        // post-merge state immediately.
+        await RefreshEntryAsync(sourceUserId, ct);
+        await RefreshEntryAsync(targetUserId, ct);
+
+        return count;
     }
 }

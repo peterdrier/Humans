@@ -173,7 +173,7 @@ public class ProfileController : HumansControllerBase
 
         var (profile, latestApplication, pendingConsentCount) =
             await _profileService.GetProfileIndexDataAsync(user.Id, ct);
-        var campaignGrants = await _profileService.GetActiveOrCompletedCampaignGrantsAsync(user.Id, ct);
+        var campaignGrants = await _campaignService.GetActiveOrCompletedGrantsForUserAsync(user.Id, ct);
 
         var viewModel = new ProfileViewModel
         {

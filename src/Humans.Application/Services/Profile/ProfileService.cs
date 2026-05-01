@@ -190,12 +190,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         return (profile, latestApplication, snapshot.PendingConsentCount);
     }
 
-    public async Task<IReadOnlyList<CampaignGrant>> GetActiveOrCompletedCampaignGrantsAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        return await _campaignService.GetActiveOrCompletedGrantsForUserAsync(userId, ct);
-    }
-
     public async Task<(Domain.Entities.Profile? Profile, bool IsTierLocked, MemberApplication? PendingApplication)>
         GetProfileEditDataAsync(Guid userId, CancellationToken ct = default)
     {
@@ -1171,6 +1165,15 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
             CancellationToken ct = default) =>
         _profileRepository.DowngradeTierForExpiredAsync(
             currentTier, userIdsToKeep, fallbackTierByUser, now, ct);
+
+    // Cache invalidation (FullProfile refresh for both source and target) is
+    // handled by the CachingProfileService decorator's wrapper for this
+    // method — ProfileService is the inner / non-cached implementation.
+    public Task<int> ReassignSubAggregatesToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default) =>
+        _profileRepository.ReassignSubAggregatesToUserAsync(
+            sourceUserId, targetUserId, updatedAt, ct);
 
     // ==========================================================================
     // Helpers

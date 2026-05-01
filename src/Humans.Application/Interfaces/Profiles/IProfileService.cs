@@ -113,9 +113,6 @@ public interface IProfileService
     Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
         GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default);
 
-    Task<IReadOnlyList<CampaignGrant>> GetActiveOrCompletedCampaignGrantsAsync(
-        Guid userId, CancellationToken ct = default);
-
     Task<IReadOnlyList<BirthdayProfileInfo>>
         GetBirthdayProfilesAsync(int month, CancellationToken ct = default);
 
@@ -273,4 +270,34 @@ public interface IProfileService
             IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
             Instant now,
             CancellationToken ct = default);
+
+    /// <summary>
+    /// Account-merge fold: bulk-moves the source profile's
+    /// <c>VolunteerHistory</c> and <c>Languages</c> rows onto the target
+    /// profile, anonymizes the source profile's identifying scalar fields in
+    /// place (rolling in today's
+    /// <see cref="Humans.Application.Interfaces.Repositories.IProfileRepository.AnonymizeForMergeByUserIdAsync"/>
+    /// behaviour), and removes the source profile's <c>ContactField</c> rows.
+    /// </summary>
+    /// <remarks>
+    /// Conflict rules per the fold spec:
+    /// <list type="bullet">
+    ///   <item>VolunteerHistory: dedup on (year, EventName) — drop source's
+    ///   row when target already has the same key.</item>
+    ///   <item>Languages: dedup on LanguageCode — keep highest Proficiency
+    ///   (target wins on tie).</item>
+    /// </list>
+    /// The source <c>Profile</c> row is kept as a tombstone counterpart to
+    /// <c>User.MergedToUserId</c>. Invalidates the FullProfile cache for both
+    /// users so admin / search / profile surfaces reflect the move
+    /// post-commit. Returns the post-move count of (VolunteerHistory +
+    /// Languages) rows attributed to the target profile, for caller
+    /// diagnostics. No-op (returns 0) if either user has no profile.
+    /// Called only by <c>AccountMergeService.AcceptAsync</c>.
+    /// </remarks>
+    Task<int> ReassignSubAggregatesToUserAsync(
+        Guid sourceUserId,
+        Guid targetUserId,
+        Instant updatedAt,
+        CancellationToken ct = default);
 }
