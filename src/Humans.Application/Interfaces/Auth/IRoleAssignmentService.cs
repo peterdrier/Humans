@@ -84,4 +84,24 @@ public interface IRoleAssignmentService
     /// </summary>
     Task<IReadOnlyList<Guid>> GetActiveUserIdsInRoleAsync(
         string roleName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Account-merge fold: bulk-moves <c>RoleAssignment</c> rows from
+    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
+    /// When source has an <em>active</em> assignment for a role that target
+    /// also has active at <paramref name="updatedAt"/>, the source row is
+    /// dropped (target's existing assignment wins — both lifetime and
+    /// <c>CreatedByUserId</c> are preserved). All other source rows
+    /// (inactive, historical, or active-without-target-conflict) are re-FK'd
+    /// to target so history is preserved. Invalidates the role-assignment
+    /// claims cache for both users and the global nav-badge cache. Returns
+    /// the count of <c>RoleAssignment</c> rows attributed to
+    /// <paramref name="targetUserId"/>. Called only by
+    /// <c>AccountMergeService.AcceptAsync</c>.
+    /// </summary>
+    Task<int> ReassignToUserAsync(
+        Guid sourceUserId,
+        Guid targetUserId,
+        Instant updatedAt,
+        CancellationToken cancellationToken = default);
 }

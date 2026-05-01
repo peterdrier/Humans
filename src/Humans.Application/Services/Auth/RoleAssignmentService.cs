@@ -275,6 +275,23 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
         string roleName, CancellationToken ct = default) =>
         _repository.GetActiveUserIdsForRoleAsync(roleName, _clock.GetCurrentInstant(), ct);
 
+    public async Task<int> ReassignToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken cancellationToken = default)
+    {
+        var count = await _repository.ReassignToUserAsync(
+            sourceUserId, targetUserId, updatedAt, cancellationToken);
+
+        // Both users may have had their effective role set change. Invalidate
+        // their claims caches so the next request re-derives roles, and bump
+        // the global nav-badge cache (governance role lists change).
+        _claimsInvalidator.Invalidate(sourceUserId);
+        _claimsInvalidator.Invalidate(targetUserId);
+        _navBadge.Invalidate();
+
+        return count;
+    }
+
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         var assignments = await _repository.GetByUserIdAsync(userId, ct);

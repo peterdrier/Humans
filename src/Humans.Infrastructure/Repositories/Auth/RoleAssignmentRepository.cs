@@ -235,4 +235,51 @@ public sealed class RoleAssignmentRepository : IRoleAssignmentRepository
         }
         await ctx.SaveChangesAsync(ct);
     }
+
+    public async Task<int> ReassignToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        var sourceRows = await ctx.RoleAssignments
+            .Where(ra => ra.UserId == sourceUserId)
+            .ToListAsync(ct);
+        var targetRows = await ctx.RoleAssignments
+            .Where(ra => ra.UserId == targetUserId)
+            .ToListAsync(ct);
+
+        // Bucket target's currently-active roles so we can detect conflicts.
+        // Active predicate matches RoleAssignment.IsActive(updatedAt):
+        // ValidFrom <= updatedAt && (ValidTo == null || ValidTo > updatedAt).
+        var targetActiveRoles = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var tgt in targetRows)
+        {
+            if (tgt.IsActive(updatedAt))
+            {
+                targetActiveRoles.Add(tgt.RoleName);
+            }
+        }
+
+        foreach (var src in sourceRows)
+        {
+            if (src.IsActive(updatedAt) && targetActiveRoles.Contains(src.RoleName))
+            {
+                // Active duplicate — target's row already covers this role.
+                // Drop the source row; target's lifetime / CreatedByUserId stand.
+                ctx.RoleAssignments.Remove(src);
+            }
+            else
+            {
+                // Re-FK to target. History (revoked / past / future) and
+                // active-without-conflict rows both flow through here.
+                ctx.Entry(src).Property(nameof(RoleAssignment.UserId)).CurrentValue = targetUserId;
+            }
+        }
+
+        await ctx.SaveChangesAsync(ct);
+
+        return await ctx.RoleAssignments
+            .CountAsync(ra => ra.UserId == targetUserId, ct);
+    }
 }
