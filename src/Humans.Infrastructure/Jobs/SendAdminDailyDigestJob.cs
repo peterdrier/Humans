@@ -93,8 +93,8 @@ public class SendAdminDailyDigestJob : IRecurringJob
 
             // Pending consents calculation — reuses the same inputs the Admin
             // dashboard does so the numbers match.
-            var allUserIds = await _userService.GetAllUserIdsAsync(cancellationToken);
-            var allUserIdsList = allUserIds.ToList();
+            var allUsers = await _userService.GetAllUsersAsync(cancellationToken);
+            var allUserIdsList = allUsers.Select(u => u.Id).ToList();
             var usersWithAllConsents = await _membershipCalculator
                 .GetUsersWithAllRequiredConsentsAsync(allUserIdsList, cancellationToken);
 

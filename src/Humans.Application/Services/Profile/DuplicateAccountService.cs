@@ -9,6 +9,7 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Profile;
 
@@ -26,6 +27,7 @@ namespace Humans.Application.Services.Profile;
 public sealed class DuplicateAccountService : IDuplicateAccountService
 {
     private readonly IUserRepository _userRepository;
+    private readonly IUserService _userService;
     private readonly IUserEmailRepository _userEmailRepository;
     private readonly IProfileRepository _profileRepository;
     private readonly IAuditLogService _auditLogService;
@@ -37,6 +39,7 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
 
     public DuplicateAccountService(
         IUserRepository userRepository,
+        IUserService userService,
         IUserEmailRepository userEmailRepository,
         IProfileRepository profileRepository,
         IAuditLogService auditLogService,
@@ -47,6 +50,7 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
         IClock clock)
     {
         _userRepository = userRepository;
+        _userService = userService;
         _userEmailRepository = userEmailRepository;
         _profileRepository = profileRepository;
         _auditLogService = auditLogService;
@@ -219,9 +223,10 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
                 new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
                 TransactionScopeAsyncFlowOption.Enabled))
             {
-                // 1. Re-link external logins from source to target (same-provider
-                //    dupes are dropped rather than duplicated).
-                await _userRepository.MigrateExternalLoginsAsync(sourceUserId, targetUserId, ct);
+                // 1. Re-link external logins from source to target. Same
+                //    composite-key (LoginProvider, ProviderKey) dupes are
+                //    dropped rather than duplicated.
+                await _userService.ReassignLoginsToUserAsync(sourceUserId, targetUserId, now, ct);
 
                 // 2. Add target to any non-system teams the source is in, preserving
                 //    coordinator role from the source membership.
@@ -271,9 +276,11 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
                 // 5. Delete source's email rows
                 await _userEmailRepository.RemoveAllForUserAndSaveAsync(sourceUserId, ct);
 
-                // 6. Anonymize the source account
+                // 6. Anonymize the source account (set MergedToUserId/MergedAt
+                //    + identity tombstone fields). Routed through IUserService
+                //    so the FullProfile cache for the source is invalidated.
                 await _profileRepository.AnonymizeForMergeByUserIdAsync(sourceUserId, ct);
-                await _userRepository.AnonymizeForMergeAsync(sourceUserId, ct);
+                await _userService.AnonymizeForMergeAsync(sourceUserId, targetUserId, now, ct);
 
                 // 7. Audit inside the same scope so a rolled-back merge doesn't
                 //    leave a ghost audit row.

@@ -41,6 +41,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
 {
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
+    private readonly IUserEmailService _userEmailService;
     private readonly ICampRepository _campRepository;
     // IApplicationDecisionService, IRoleAssignmentService, IProfileService,
     // ITeamResourceService, and IMembershipCalculator are resolved lazily via
@@ -63,6 +64,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
     public SystemTeamSyncJob(
         ITeamService teamService,
         IUserService userService,
+        IUserEmailService userEmailService,
         ICampRepository campRepository,
         IServiceProvider serviceProvider,
         IGoogleSyncService googleSyncService,
@@ -75,6 +77,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
     {
         _teamService = teamService;
         _userService = userService;
+        _userEmailService = userEmailService;
         _campRepository = campRepository;
         _serviceProvider = serviceProvider;
         _googleSyncService = googleSyncService;
@@ -241,7 +244,8 @@ public class SystemTeamSyncJob : ISystemTeamSync
         // Flagged + RejectedAt exclusions preserve the CC's existing kick-out
         // levers (FlagConsentCheckAsync and RejectSignupAsync set those fields
         // before calling DeprovisionApprovalGatedSystemTeamsAsync).
-        var allUserIds = await _userService.GetAllUserIdsAsync(cancellationToken);
+        var allUsers = await _userService.GetAllUsersAsync(cancellationToken);
+        var allUserIds = allUsers.Select(u => u.Id).ToList();
         var profiles = await ProfileService.GetByUserIdsAsync(allUserIds, cancellationToken);
         var candidateIds = allUserIds
             .Where(id => profiles.TryGetValue(id, out var p)
@@ -544,16 +548,32 @@ public class SystemTeamSyncJob : ISystemTeamSync
     /// Backfills User.GoogleEmail for users who have a verified @nobodies.team email
     /// but a null GoogleEmail. This ensures Google Group sync uses the correct address.
     /// </summary>
+    /// <remarks>
+    /// Iterates per-user through <see cref="IUserEmailService.TryBackfillGoogleEmailAsync"/>,
+    /// which is a no-op for users that already have <c>GoogleEmail</c> set or
+    /// no verified <c>@nobodies.team</c> row. At ~500-user scale the per-user
+    /// roundtrips are cheaper than the bulk service surface that previously
+    /// duplicated this logic on <c>IUserService</c> (removed in the
+    /// account-merge fold redesign budget gate).
+    /// </remarks>
     private async Task BackfillGoogleEmailsAsync(SyncReport? report = null, CancellationToken cancellationToken = default)
     {
         var step = new SyncStepResult("Google Email Backfill");
 
-        var backfilled = await _userService.BackfillNobodiesTeamGoogleEmailsAsync(cancellationToken);
-        foreach (var (userId, displayName, googleEmail) in backfilled)
+        var allUsers = await _userService.GetAllUsersAsync(cancellationToken);
+        foreach (var user in allUsers)
         {
-            step.Fixed(userId, displayName, $"Set GoogleEmail to {googleEmail}");
+            var backfilled = await _userEmailService.TryBackfillGoogleEmailAsync(user.Id, cancellationToken);
+            if (!backfilled)
+                continue;
+
+            var googleEmail = await _userEmailService.GetNobodiesTeamEmailAsync(user.Id, cancellationToken);
+            if (googleEmail is null)
+                continue;
+
+            step.Fixed(user.Id, user.DisplayName, $"Set GoogleEmail to {googleEmail}");
             _logger.LogInformation(
-                "Backfilled GoogleEmail for {User} to {Email}", displayName, googleEmail);
+                "Backfilled GoogleEmail for {User} to {Email}", user.DisplayName, googleEmail);
         }
 
         report?.Steps.Add(step);

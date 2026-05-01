@@ -81,6 +81,19 @@ public class InterfaceMethodBudgetTests
         [typeof(IProfileService)] = 41,
         // -1 for GetContactUsersAsync removal (/Contacts surface deleted in PR 2 of
         // email-identity-decoupling — only ContactService called it).
+        // 31→31: account-merge fold redesign Phase 3.4. Added 3 fold primitives
+        // (AnonymizeForMergeAsync, ReassignLoginsToUserAsync,
+        // ReassignEventParticipationToUserAsync); removed 3 to match.
+        // Removed: SetGoogleEmailStatusAsync (interface-surface-dead — sole
+        // external caller in GoogleWorkspaceSyncService is sync-driven and
+        // routes through TrySetGoogleEmailStatusFromSyncAsync, which the
+        // Rejected-is-terminal guard short-circuits identically; impl keeps
+        // a private helper). BackfillNobodiesTeamGoogleEmailsAsync (sole
+        // caller SystemTeamSyncJob.BackfillGoogleEmailsAsync now iterates
+        // per-user via IUserEmailService.TryBackfillGoogleEmailAsync, which
+        // already exists). GetAllUserIdsAsync (4 callers replaced with
+        // (await GetAllUsersAsync(ct)).Select(u => u.Id) — at ~500-user
+        // scale the extra User-entity hydration is cheap per design rules).
         [typeof(IUserService)] = 31,
     };
 

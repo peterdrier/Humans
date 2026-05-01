@@ -137,8 +137,8 @@ public class SendBoardDailyDigestJob : IRecurringJob
             var teamJoinRequestCount = await _teamService.GetTotalPendingJoinRequestCountAsync(cancellationToken);
 
             // Pending consents (same logic as Admin digest).
-            var allUserIds = await _userService.GetAllUserIdsAsync(cancellationToken);
-            var allUserIdsList = allUserIds.ToList();
+            var allUsers = await _userService.GetAllUsersAsync(cancellationToken);
+            var allUserIdsList = allUsers.Select(u => u.Id).ToList();
             var usersWithAllConsents = await _membershipCalculator
                 .GetUsersWithAllRequiredConsentsAsync(allUserIdsList, cancellationToken);
 

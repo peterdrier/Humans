@@ -386,7 +386,8 @@ public sealed class OnboardingService : IOnboardingService
 
     public async Task<AdminDashboardData> GetAdminDashboardAsync(CancellationToken ct = default)
     {
-        var allUserIds = await _userService.GetAllUserIdsAsync(ct);
+        var allUsers = await _userService.GetAllUsersAsync(ct);
+        var allUserIds = allUsers.Select(u => u.Id).ToList();
         var totalMembers = allUserIds.Count;
         var partition = await _membershipCalculator.PartitionUsersAsync(allUserIds, ct);
 

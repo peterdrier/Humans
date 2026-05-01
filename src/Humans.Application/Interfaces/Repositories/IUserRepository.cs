@@ -52,13 +52,6 @@ public interface IUserRepository
     Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the ids of every user in the system, read-only. Used by the
-    /// admin dashboard to partition all users into status buckets without
-    /// loading the full User graph.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetAllUserIdsAsync(CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the language distribution of the given user ids, grouped by
     /// <see cref="User.PreferredLanguage"/>. Used by the admin dashboard to
     /// render language stats for approved humans after the caller has
@@ -165,15 +158,17 @@ public interface IUserRepository
     Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Anonymizes the identity portion of a user record for the account-merge
-    /// / duplicate-resolve flow: display name, username, email fields, phone,
-    /// profile picture URL, deletion fields, security stamp, iCal token, and
-    /// lockout. The source account is set to <c>"Merged User"</c> with a
-    /// synthetic <c>@merged.local</c> email and a lockout end of
-    /// <see cref="DateTimeOffset.MaxValue"/> so it cannot be logged into.
-    /// Returns false if the user does not exist.
+    /// Tombstones <paramref name="sourceUserId"/> as merged into
+    /// <paramref name="targetUserId"/>. Sets <c>MergedToUserId</c> +
+    /// <c>MergedAt</c>, anonymizes the identity portion of the user row
+    /// (display name, profile picture URL, phone, security stamp, iCal
+    /// token, deletion fields), and locks the source out
+    /// (<c>LockoutEnd = DateTimeOffset.MaxValue</c>) so it cannot be
+    /// logged into. Returns false if the user does not exist.
     /// </summary>
-    Task<bool> AnonymizeForMergeAsync(Guid userId, CancellationToken ct = default);
+    Task<bool> AnonymizeForMergeAsync(
+        Guid sourceUserId, Guid targetUserId, Instant now,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Returns every user id whose <c>MergedToUserId</c> equals
@@ -194,13 +189,29 @@ public interface IUserRepository
     Task RemoveExternalLoginsAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Migrates every external-login row from <paramref name="sourceUserId"/>
-    /// to <paramref name="targetUserId"/>. If the target already has a login
-    /// with the same <c>LoginProvider</c>, the source's row is dropped rather
-    /// than duplicated. Used by <c>DuplicateAccountService.ResolveAsync</c>
-    /// to re-link sign-in credentials before archiving the source account.
+    /// Migrates every <c>AspNetUserLogins</c> row from
+    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
+    /// If the target already has a login with the same composite key
+    /// (<c>LoginProvider</c>, <c>ProviderKey</c>), the source's row is
+    /// dropped rather than duplicated. Returns the count of logins now
+    /// attributed to the target. Used by
+    /// <c>AccountMergeService.AcceptAsync</c> /
+    /// <c>DuplicateAccountService.ResolveAsync</c> to re-link sign-in
+    /// credentials before archiving the source account.
     /// </summary>
-    Task MigrateExternalLoginsAsync(
+    Task<int> ReassignLoginsToUserAsync(
+        Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Migrates every <c>event_participations</c> row from
+    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
+    /// On (Year, UserId) collision, keeps the row with the highest
+    /// <see cref="ParticipationStatus"/> per the precedence
+    /// <c>Attended &gt; Ticketed &gt; NoShow &gt; NotAttending</c>.
+    /// Returns the count of rows now attributed to the target. Used by
+    /// <c>AccountMergeService.AcceptAsync</c>.
+    /// </summary>
+    Task<int> ReassignEventParticipationToUserAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
 
     /// <summary>
@@ -333,16 +344,6 @@ public interface IUserRepository
         IReadOnlyList<(Guid UserId, ParticipationStatus Status)> entries,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// For each user whose <c>User.GoogleEmail</c> is currently null
-    /// but who has a verified <see cref="UserEmail"/> row whose address ends
-    /// in <c>@nobodies.team</c>, set <c>User.GoogleEmail</c> to that verified
-    /// address. Persists in a single save. Returns one descriptor per
-    /// mutated user so the caller can emit audit entries without reloading.
-    /// Used by the system team sync's backfill pass.
-    /// </summary>
-    Task<IReadOnlyList<(Guid UserId, string DisplayName, string GoogleEmail)>>
-        BackfillNobodiesTeamGoogleEmailsAsync(CancellationToken ct = default);
 }
 
 /// <summary>

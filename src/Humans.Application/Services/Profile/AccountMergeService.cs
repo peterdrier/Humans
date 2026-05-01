@@ -10,6 +10,7 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Profile;
 
@@ -33,6 +34,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
     private readonly IAccountMergeRepository _mergeRepository;
     private readonly IUserEmailRepository _userEmailRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IUserService _userService;
     private readonly IProfileRepository _profileRepository;
     private readonly IAuditLogService _auditLogService;
     private readonly IFullProfileInvalidator _fullProfileInvalidator;
@@ -45,6 +47,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
         IAccountMergeRepository mergeRepository,
         IUserEmailRepository userEmailRepository,
         IUserRepository userRepository,
+        IUserService userService,
         IProfileRepository profileRepository,
         IAuditLogService auditLogService,
         IFullProfileInvalidator fullProfileInvalidator,
@@ -56,6 +59,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
         _mergeRepository = mergeRepository;
         _userEmailRepository = userEmailRepository;
         _userRepository = userRepository;
+        _userService = userService;
         _profileRepository = profileRepository;
         _auditLogService = auditLogService;
         _fullProfileInvalidator = fullProfileInvalidator;
@@ -143,9 +147,12 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
                         $"Pending email {request.PendingEmailId} no longer exists. Cannot complete merge.");
                 }
 
-                // 7. Anonymize the source account (profile first, then user)
+                // 7. Anonymize the source account (profile first, then user).
+                //    The User-side write goes through IUserService so the
+                //    fold-tombstone fields (MergedToUserId / MergedAt) are set
+                //    and the FullProfile cache is invalidated for the source.
                 await _profileRepository.AnonymizeForMergeByUserIdAsync(sourceUserId, ct);
-                await _userRepository.AnonymizeForMergeAsync(sourceUserId, ct);
+                await _userService.AnonymizeForMergeAsync(sourceUserId, targetUserId, now, ct);
 
                 // 8. Mark the merge request as accepted
                 request.Status = AccountMergeRequestStatus.Accepted;

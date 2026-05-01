@@ -306,7 +306,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             var user = await _userService.GetByEmailOrAlternateAsync(userEmail, cancellationToken);
             if (user is not null && user.GoogleEmailStatus != GoogleEmailStatus.Rejected)
             {
-                await _userService.SetGoogleEmailStatusAsync(user.Id, GoogleEmailStatus.Rejected, cancellationToken);
+                await _userService.TrySetGoogleEmailStatusFromSyncAsync(user.Id, GoogleEmailStatus.Rejected, cancellationToken);
             }
 
             await _auditLogService.LogGoogleSyncAsync(
