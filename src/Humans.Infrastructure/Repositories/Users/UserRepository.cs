@@ -355,6 +355,17 @@ public sealed class UserRepository : IUserRepository
         return true;
     }
 
+    public async Task<IReadOnlyList<Guid>> GetMergedSourceIdsAsync(
+        Guid targetUserId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Users
+            .AsNoTracking()
+            .Where(u => u.MergedToUserId == targetUserId)
+            .Select(u => u.Id)
+            .ToListAsync(ct);
+    }
+
     public async Task<bool> SetContactSourceIfNullAsync(
         Guid userId, ContactSource source, CancellationToken ct = default)
     {

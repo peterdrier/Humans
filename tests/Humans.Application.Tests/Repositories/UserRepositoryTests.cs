@@ -363,4 +363,59 @@ public sealed class UserRepositoryTests : IDisposable
     // evaluate against the InMemory provider. Behavior is verified end-to-end
     // in preview/QA against Postgres. The alternate-email computation (gmail
     // ↔ googlemail) is in UserService and is tested there.
+
+    // ==========================================================================
+    // GetMergedSourceIdsAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task GetMergedSourceIdsAsync_ReturnsEmpty_WhenNoTombstones()
+    {
+        var target = await SeedUserAsync();
+
+        var result = await _repo.GetMergedSourceIdsAsync(target.Id, default);
+
+        result.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetMergedSourceIdsAsync_ReturnsAllSources_WhenMergedToTarget()
+    {
+        var target = await SeedUserAsync();
+        var source1 = await SeedUserAsync();
+        var source2 = await SeedUserAsync();
+        var unrelated = await SeedUserAsync();
+
+        source1.MergedToUserId = target.Id;
+        source1.MergedAt = _clock.GetCurrentInstant();
+        source2.MergedToUserId = target.Id;
+        source2.MergedAt = _clock.GetCurrentInstant();
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _repo.GetMergedSourceIdsAsync(target.Id, default);
+
+        result.Should().BeEquivalentTo(new[] { source1.Id, source2.Id });
+        result.Should().NotContain(unrelated.Id);
+    }
+
+    [HumansFact]
+    public async Task GetMergedSourceIdsAsync_ReturnsOnlyDirectSources_NotChainedAncestors()
+    {
+        // A → B → C: GetMergedSourceIdsAsync(C) returns [B], not [A, B].
+        // The chain-follow primitive is one hop — callers don't recurse, since
+        // tombstones cannot themselves be merge targets in practice.
+        var c = await SeedUserAsync();
+        var b = await SeedUserAsync();
+        var a = await SeedUserAsync();
+
+        b.MergedToUserId = c.Id;
+        b.MergedAt = _clock.GetCurrentInstant();
+        a.MergedToUserId = b.Id;
+        a.MergedAt = _clock.GetCurrentInstant();
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _repo.GetMergedSourceIdsAsync(c.Id, default);
+
+        result.Should().BeEquivalentTo(new[] { b.Id });
+    }
 }

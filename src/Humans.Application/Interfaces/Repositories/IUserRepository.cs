@@ -176,6 +176,17 @@ public interface IUserRepository
     Task<bool> AnonymizeForMergeAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns every user id whose <c>MergedToUserId</c> equals
+    /// <paramref name="targetUserId"/>. Powers
+    /// <c>IUserService.GetMergedSourceIdsAsync</c>, the canonical chain-follow
+    /// primitive for append-only sections (audit log, consent records, budget
+    /// audit log) so per-user reads can also surface rows attributed to merged
+    /// tombstones. Read-only (AsNoTracking).
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetMergedSourceIdsAsync(
+        Guid targetUserId, CancellationToken ct = default);
+
+    /// <summary>
     /// Removes every <c>AspNetUserLogins</c> row for the given user. Used by
     /// <c>AccountMergeService.AcceptAsync</c> to prevent the anonymized
     /// source account from being logged into via its OAuth providers.

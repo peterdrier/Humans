@@ -214,6 +214,9 @@ public class AccountProvisioningServiceTests
         public Task<IReadOnlyList<(Guid UserId, string DisplayName, string GoogleEmail)>>
             BackfillNobodiesTeamGoogleEmailsAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task<IReadOnlyList<Guid>> GetMergedSourceIdsAsync(
+            Guid targetUserId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
     }
 
     private sealed class FakeUserEmailRepository : IUserEmailRepository
