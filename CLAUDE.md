@@ -1,203 +1,115 @@
 # Nobodies Humans
 
-Membership management system for Nobodies Collective (Spanish nonprofit).
-
-## Purpose
-
-Manage the full membership lifecycle for Nobodies Collective: volunteer applications are reviewed and approved by the Board, accepted members are provisioned into the appropriate teams and Google Workspace resources (Drive folders, Groups), and governance roles (Board, Coordinators, Admin) are tracked with temporal assignments. The system provides a way to organize teams logically and visually, gives Board and Admin visibility into what happens automatically on members' behalf through audit trails, and maintains GDPR compliance through consent tracking, data export, and right-to-deletion support.
-
-## Critical: Design Rules
-
-**See [`docs/architecture/design-rules.md`](docs/architecture/design-rules.md) for architectural rules:**
-- **Services own their data** — controllers cannot talk to DB, only services can
-- **Table ownership is strict** — each service owns specific tables, no cross-service DB access
-- **Cache ownership follows data ownership** — only the owning service manages its cache
-- **Cross-service calls via interfaces** — need a profile? Call `IProfileService`, don't query the table
-- **Authorization via resource-based handlers** — services are auth-free, controllers call `IAuthorizationService.AuthorizeAsync`, no `isPrivileged` booleans
-
-## Critical: Coding Rules
-
-**See [`docs/architecture/coding-rules.md`](docs/architecture/coding-rules.md) for critical rules:**
-- Do not remove "unused" properties (reflection usage)
-- Never rename fields in serialized objects (breaks JSON deserialization)
-- JSON serialization requirements
-- String comparison rules
-- **NodaTime for all dates/times** (`Instant`, `LocalDate`, etc.)
-- **Every new page MUST have a nav link.** If you add a controller action that returns a view, add a link to it from the nav menu or a contextual link from a related page. No orphan pages.
+Membership management system for Nobodies Collective (Spanish nonprofit). Manages the full membership lifecycle: volunteer applications reviewed and approved by the Board, accepted members provisioned into teams + Google Workspace resources, governance roles tracked with temporal assignments. Provides Board/Admin visibility into automated actions through audit trails. GDPR-compliant via consent tracking, data export, and right-to-deletion.
 
 ## Architecture
 
-Clean Architecture with 4 layers:
-- **Domain**: Entities, enums, value objects
-- **Application**: Interfaces, DTOs, use cases
-- **Infrastructure**: EF Core, external services, jobs
-- **Web**: Controllers, views, API
+Clean Architecture with 4 layers (strict dependency direction inward):
 
-## Domain Entities
+- **Domain** — entities, enums, value objects. No external dependencies.
+- **Application** — service interfaces and implementations, repository/store interfaces, DTOs. No EF types.
+- **Infrastructure** — repository implementations, `HumansDbContext`, migrations, external API clients, jobs.
+- **Web** — controllers, views, view models, API endpoints, DI wiring.
 
-See [`docs/architecture/data-model.md`](docs/architecture/data-model.md) for full data model, relationships, and serialization notes. Key entities: `User`, `Profile`, `ContactField`, `Application` (Colaborador/Asociado tier applications), `BoardVote` (transient), `RoleAssignment`, `LegalDocument`/`DocumentVersion`, `ConsentRecord` (append-only), `Team`/`TeamMember`, `GoogleResource`, `BudgetYear`/`BudgetGroup`/`BudgetCategory`/`BudgetLineItem`, `BudgetAuditLog` (append-only), `CityPlanningSettings`, `CampPolygon`, `CampPolygonHistory`.
+See [`docs/architecture/design-rules.md`](docs/architecture/design-rules.md) for the full architecture story (the constitution): layer responsibilities, table ownership map, caching pattern (§15), authorization pattern, cross-domain rules. Read it once cover-to-cover.
 
-## Important: Shared Drives Only
+## Project Rules — `docs/rules/INDEX.md`
 
-**All Google Drive resources are on Shared Drives.** This system does NOT use regular (My Drive) folders. All Drive API calls must use `SupportsAllDrives = true`, and permission listing must include `permissionDetails` to distinguish inherited from direct permissions. Only direct permissions are managed by the system — inherited Shared Drive permissions are excluded from drift detection and sync.
+Atomic, task-fires rules (URL conventions, GitHub workflow, EF migration discipline, PR review process, terminology restrictions, etc.) live as one-rule-per-file under [`docs/rules/`](docs/rules/). The catalog is at [`docs/rules/INDEX.md`](docs/rules/INDEX.md) — that's the file to scan when you need to know if a rule applies.
 
-**Google sync jobs** (`SystemTeamSyncJob` hourly, `GoogleResourceReconciliationJob` daily at 03:00) are controlled by per-service mode at `/Admin/SyncSettings` (None/AddOnly/AddAndRemove). Set a service to "None" to disable without redeploying.
+See [`docs/rules/META.md`](docs/rules/META.md) for: when to add an atom vs prose doc, file format, bucket conventions, and how to maintain the catalog.
 
-## Important: ConsentRecord is Immutable
+## Concepts — Volunteer vs Tier Applications
 
-The `consent_records` table has database triggers that prevent UPDATE and DELETE operations. Only INSERT is allowed to maintain GDPR audit trail integrity.
+These are SEPARATE concepts; do not conflate them.
 
-## Important: Volunteer vs Tier Applications — Separate Concepts
-
-**Volunteer** = the standard member. ~100% of users. Onboarding: sign up, complete profile, consent to legal docs, Consent Coordinator clears → auto-approved → added to Volunteers team. This is NOT done through the Application entity.
+**Volunteer** = the standard member. ~100% of users. Onboarding: sign up → complete profile → consent to legal docs → Consent Coordinator clears → auto-approved → added to Volunteers team. **NOT done through the `Application` entity.**
 
 **Colaborador** = active contributor with project/event responsibilities. Requires application + Board vote. 2-year term.
 
 **Asociado** = voting member with governance rights (assemblies, elections). Requires application + Board vote. 2-year term.
 
-**NEVER conflate Volunteer access with tier applications.** The Application/Board Voting workflow is NOT part of volunteer onboarding. It is a separate, optional path for volunteers who want Colaborador or Asociado status. Volunteer access proceeds in parallel and is never blocked by tier applications.
+The `Application` entity is for **Colaborador and Asociado tier applications only**, NOT for becoming a volunteer. Volunteer access proceeds in parallel and is **never blocked** by tier applications.
 
-## Application Workflow State Machine
-
-The Application entity is for **Colaborador and Asociado tier applications only**, NOT for becoming a volunteer.
+Application workflow state machine:
 
 ```
 Submitted → Approved/Rejected
          ↘ Withdrawn ↙
 ```
 
-Triggers: `Approve`, `Reject`, `Withdraw`
+Triggers: `Approve`, `Reject`, `Withdraw`.
 
-## Important: UI Terminology — "Humans" Not "Members" or "Volunteers"
+## Section Invariants — `docs/sections/`
 
-In all user-facing text (views, localization strings, emails), use **"humans"** — not "members", "volunteers", or "users". This is the org's branded terminology. It applies across all locales (the word "humans" is kept in English even in es/de/fr/it translations). Internal code (entity names, variable names) is unaffected.
+Each major section of the app has a terse invariant doc in [`docs/sections/`](docs/sections/) defining: concepts, data model, actors/roles, invariants, negative access rules, triggers, cross-section dependencies, architecture status. Every section follows [`docs/sections/SECTION-TEMPLATE.md`](docs/sections/SECTION-TEMPLATE.md).
 
-Also: the system stores **birthday** (month + day only), not **date of birth** (which implies year). Use "birthday" in UI text.
+`/Admin/*` is a nav holder, not a section — its services belong to the sections they act on.
 
-## Important: Coolify Docker Build Constraints
+## Scale and Deployment
 
-Coolify strips `.git` from the Docker build context. Do NOT use `COPY .git` in the Dockerfile — it will fail on production deploys. Instead, Coolify passes `SOURCE_COMMIT` as a Docker build arg containing the full commit SHA. The `Directory.Build.props` MSBuild target for `SourceRevisionId` has a `Condition` to skip when the property is already set via `-p:`.
-
-## Scale and Deployment Context
-
-- **Target scale: ~500 users total.** This is a small nonprofit membership system, not a high-traffic service.
-- **Single server deployment** — no distributed coordination, no multi-instance concerns. Database concurrency conflicts (e.g., DbContext thread safety) are irrelevant for parallelization decisions since there's only one process.
-- **Prefer in-memory caching over query optimization.** At this scale, loading entire datasets into RAM (e.g., all teams, all members) is cheaper and simpler than optimizing individual DB queries. Use `IMemoryCache` freely.
-- **Don't over-engineer for scale.** Pagination, batching, and query optimization matter less when the total dataset fits comfortably in memory. Simple, correct code beats performant-but-complex code.
-- **No concurrency tokens.** Do NOT add `IsConcurrencyToken()`, `[ConcurrencyCheck]`, or row versioning to any entity. At single-server scale with ~500 users, concurrency conflicts don't happen and optimistic concurrency only causes bugs. Never add them without explicit user permission.
-
-## Git Workflow
-
-Two-remote workflow:
-
-- **`origin`** = `peterdrier/Humans` (peter's fork — QA deploys from `main`)
-- **`upstream`** = `nobodies-collective/Humans` (production)
-
-**Critical: Always qualify issue and PR references with the repo.** The two remotes have overlapping issue numbers, so bare `#N` is ambiguous and has caused real chaos (wrong issues closed, commits linked to the wrong tracker). Every reference — in commit messages, PR bodies, issue comments, release notes, todos, chat — must include the owner prefix:
-
-- Fork: `peterdrier#292` (or `peterdrier/Humans#292`)
-- Upstream: `nobodies-collective#586` (or `nobodies-collective/Humans#586`)
-
-When invoking `gh` for issues/PRs, always pass `--repo peterdrier/Humans` or `--repo nobodies-collective/Humans` explicitly — never rely on the ambient default. If you don't know which repo a number belongs to, ask before writing it down.
-
-**Development flow:**
-
-- **All changes go on a feature branch** → PR to `main` on peter's fork (squash merge if multiple commits). Preview environments deploy per-PR at `{pr_id}.n.burn.camp`. Use a worktree under `.worktrees/<name>`.
-- **Promote to production:** batch changes on peter's `main`, PR to nobodies' `main` (rebase merge, since individual efforts were already squashed going into peter's `main`).
-- **After production merge:** reset peter's `main` to nobodies' `main`:
-  ```bash
-  git fetch upstream main
-  git checkout main && git reset --hard upstream/main
-  git push origin main --force-with-lease
-  ```
-
-**QA deployment:** Coolify auto-deploys on push to `main` on peter's fork. Coolify UI at `https://coolify.n.burn.camp`.
-
-**Preview environment details:**
-- URL: `https://{pr_id}.n.burn.camp`
-- Database: cloned from QA via GitHub Action (`humans_pr_{N}`), dropped on PR close
-- Auth: dev login enabled (`DevAuth__Enabled=true`) since Google OAuth doesn't support wildcard redirect URIs
-- Connection string override: `docker-entrypoint.sh` extracts PR number from `COOLIFY_CONTAINER_NAME`
-**Version endpoint:** `GET /api/version` (unauthenticated) returns `{ version, commit, informationalVersion }`. Useful for checking which commit is deployed to a preview or QA environment.
+- **~500 users total.** Small nonprofit membership system, not a high-traffic service.
+- **Single-server deployment** — no distributed coordination, no multi-instance concerns.
+- **Prefer in-memory caching over query optimization.** At this scale, loading entire datasets into RAM is cheaper and simpler than per-query optimization.
+- **Don't over-engineer for scale.** Pagination, batching, and query optimization matter less when the dataset fits in memory.
+- See [`docs/rules/architecture/no-concurrency-tokens.md`](docs/rules/architecture/no-concurrency-tokens.md) — no `IsConcurrencyToken` or row versioning.
 
 ## Build Commands
 
 ```bash
-dotnet build Humans.slnx
-dotnet test Humans.slnx
+dotnet build Humans.slnx -v quiet
+dotnet test Humans.slnx -v quiet
 dotnet run --project src/Humans.Web
 ```
 
-## Maintenance Log
+(`-v quiet` is required — see [`docs/rules/process/dotnet-verbosity-quiet.md`](docs/rules/process/dotnet-verbosity-quiet.md).)
 
-**After running any recurring maintenance process** (context cleanup, feature spec sync, NuGet check, code simplification, etc.), update `docs/architecture/maintenance-log.md` with the current date and next-due date.
+## Git Workflow — Two-Remote
+
+- **`origin`** = `peterdrier/Humans` (peter's fork — QA deploys from `main`)
+- **`upstream`** = `nobodies-collective/Humans` (production)
+
+**All changes go on a feature branch** → PR to `main` on peter's fork (squash merge if multiple commits). Preview environments deploy per-PR at `{pr_id}.n.burn.camp`. Use a worktree under `.worktrees/<name>`.
+
+**Promote to production:** batch changes on peter's `main`, PR to nobodies' `main` (rebase merge — individual efforts already squashed).
+
+**Preview environment:**
+- URL: `https://{pr_id}.n.burn.camp`
+- Database: cloned from QA via GitHub Action (`humans_pr_{N}`), dropped on PR close
+- Auth: dev login enabled (`DevAuth__Enabled=true`)
+- Connection string override: `docker-entrypoint.sh` extracts PR number from `COOLIFY_CONTAINER_NAME`
+
+**Version endpoint:** `GET /api/version` (unauthenticated) returns `{ version, commit, informationalVersion }`.
+
+**QA deployment:** Coolify auto-deploys on push to `main` on peter's fork. Coolify UI at `https://coolify.n.burn.camp`.
+
+For workflow rules, see:
+- [`docs/rules/process/no-direct-to-main.md`](docs/rules/process/no-direct-to-main.md)
+- [`docs/rules/process/issue-refs-qualified.md`](docs/rules/process/issue-refs-qualified.md)
+- [`docs/rules/process/after-prod-merge-reset.md`](docs/rules/process/after-prod-merge-reset.md)
+
+## Doc Freshness
+
+`/freshness-sweep` regenerates drift-prone docs against `upstream/main` diffs. Catalog at [`docs/architecture/freshness-catalog.yml`](docs/architecture/freshness-catalog.yml). Spec at `docs/superpowers/specs/2026-04-25-freshness-sweep-design.md`.
+
+After running any recurring maintenance process, update [`docs/architecture/maintenance-log.md`](docs/architecture/maintenance-log.md) — see [`docs/rules/process/maintenance-log-update.md`](docs/rules/process/maintenance-log-update.md).
 
 ## Extended Docs
 
 | Topic | File |
 |-------|------|
-| **Design rules** | **`docs/architecture/design-rules.md`** |
-| Dependency graph | `docs/architecture/dependency-graph.md` |
-| **Coding rules** | **`docs/architecture/coding-rules.md`** |
-| **Code review rules** | **`docs/architecture/code-review-rules.md`** |
-| Data model | `docs/architecture/data-model.md` |
-| Analyzers/ReSharper | `docs/architecture/code-analysis.md` |
-| Maintenance log | `docs/architecture/maintenance-log.md` |
-| **Feature specs** | **`docs/features/`** |
-| **Section invariants** | **`docs/sections/`** |
-| **Section template** | **`docs/sections/SECTION-TEMPLATE.md`** |
-| **EF migration reviewer** | **`.claude/agents/ef-migration-reviewer.md`** |
-| **Freshness catalog** | **`docs/architecture/freshness-catalog.yml`** |
-
-## Doc freshness is automated
-
-`/freshness-sweep` regenerates drift-prone docs against `upstream/main` diffs.
-Catalog at `docs/architecture/freshness-catalog.yml`. Spec at
-`docs/superpowers/specs/2026-04-25-freshness-sweep-design.md`.
-
-## Critical: EF Migration Review Gate
-
-**Before committing any EF Core migration**, run the EF migration reviewer agent (`.claude/agents/ef-migration-reviewer.md`). Mandatory for all database changes — do not commit or create PRs until it passes with no CRITICAL issues.
-
-## Feature Documentation
-
-**Important:** When implementing new features, create or update the corresponding feature spec in `docs/features/`. Each feature doc should include:
-- Business context
-- User stories with acceptance criteria
-- Data model
-- Workflows/state machines (if applicable)
-- Related features
-
-## About Page / License Attribution
-
-The About page (`Views/About/Index.cshtml`) lists all production NuGet packages and frontend CDN dependencies with versions and licenses. **After any NuGet package update, add the new package versions to the About page.** This is tracked as a monthly maintenance task tied to the NuGet full update cycle.
+| **Atomic project rules (catalog)** | **[`docs/rules/INDEX.md`](docs/rules/INDEX.md)** |
+| **Atomic project rules (how to maintain)** | **[`docs/rules/META.md`](docs/rules/META.md)** |
+| **Design rules (architecture story)** | **[`docs/architecture/design-rules.md`](docs/architecture/design-rules.md)** |
+| **Code review rules (reviewer handoff)** | **[`docs/architecture/code-review-rules.md`](docs/architecture/code-review-rules.md)** |
+| **Section invariants** | **[`docs/sections/`](docs/sections/)** |
+| **Section template** | [`docs/sections/SECTION-TEMPLATE.md`](docs/sections/SECTION-TEMPLATE.md) |
+| **Feature specs** | [`docs/features/`](docs/features/) |
+| Data model | [`docs/architecture/data-model.md`](docs/architecture/data-model.md) |
+| Dependency graph | [`docs/architecture/dependency-graph.md`](docs/architecture/dependency-graph.md) |
+| Analyzers/ReSharper | [`docs/architecture/code-analysis.md`](docs/architecture/code-analysis.md) |
+| Maintenance log | [`docs/architecture/maintenance-log.md`](docs/architecture/maintenance-log.md) |
+| EF migration reviewer | [`.claude/agents/ef-migration-reviewer.md`](.claude/agents/ef-migration-reviewer.md) |
+| Freshness catalog | [`docs/architecture/freshness-catalog.yml`](docs/architecture/freshness-catalog.yml) |
 
 The project is licensed under **AGPL-3.0** (`LICENSE` at repo root).
-
-## Post-Fix Documentation Check
-
-**After completing a fix or feature but before committing**, check the relevant BRDs in `docs/features/` and update them if the change affects documented behavior, authorization rules, workflows, data model, or routes. This reduces churn from separate doc-only commits.
-
-## Section Invariants
-
-`docs/sections/` contains terse invariant documents for each major section of the app (Users, Profiles, Budget, Finance, Teams, Feedback, Camps, City Planning, Calendar, Governance, Legal & Consent, Onboarding, Google Integration, Shifts, Campaigns, Tickets, Auth, Email, Notifications, Audit Log). `/Admin/*` is a nav holder, not a section — its services belong to the sections they act on (Email, Profiles, Google Integration, Auth, Legal & Consent). Each doc defines:
-- **Concepts** — the domain vocabulary the section owns
-- **Data Model** — field-level detail for the entities this section owns (per-entity tables live here, not in `data-model.md`)
-- **Actors & Roles** — who interacts and in what capacity
-- **Invariants** — hard rules that must always be true (authorization, data integrity, workflow constraints)
-- **Negative Access Rules** — the explicit "cannot" list
-- **Triggers** — side effects and cascades ("when X happens, Y must happen")
-- **Cross-Section Dependencies** — which other sections this section calls, by interface name
-- **Architecture** — owning services, owned tables, migration status (A/B/C per `design-rules.md §15`)
-
-**Every section follows the shape defined by [`docs/sections/SECTION-TEMPLATE.md`](docs/sections/SECTION-TEMPLATE.md).** Copy it when creating a new section; keep existing sections aligned when editing.
-
-**When changing authorization attributes, role checks, or workflow logic in a section**, verify the change is consistent with the section's invariant doc. Update the doc if the change intentionally alters an invariant.
-
-**Data-model ownership:** each entity is owned by exactly one section. Per-entity field tables, indexes, constraints, and cross-domain FK strip status live in the owning section's `## Data Model` block. `docs/architecture/data-model.md` is an index + cross-cutting rule sheet (FK graph between sections, append-only list, serialization rules) — do not duplicate per-entity content there.
-
-## Todos and Issue Tracking
-
-**After committing work that resolves or partially resolves items in `todos.md`**, update the file: move completed items to the Completed section with a summary of what was done and the commit hash. This keeps the todo list accurate and avoids stale entries.
-
-**After committing work that resolves a GitHub issue**, close the issue with `gh issue close <number> -c "comment"` including a brief summary and the commit hash.
