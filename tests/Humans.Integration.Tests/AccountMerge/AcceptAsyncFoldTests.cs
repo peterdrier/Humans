@@ -146,14 +146,15 @@ public class AcceptAsyncFoldTests : IClassFixture<HumansWebApplicationFactory>
     // ==================================================================
 
     [HumansFact(Timeout = 30_000)]
-    public async Task AcceptAsync_AspNetUserLogins_ReFKs_DropsSameKey()
+    public async Task AcceptAsync_AspNetUserLogins_ReFK()
     {
         // user_logins PK is (LoginProvider, ProviderKey) — UserId is just an
         // FK — so two users can never share the same (provider, key) in the
-        // DB. The realistic merge scenario is: source has logins with keys
-        // that are NOT on target, and they re-FK over. The code path also
-        // hits the EF identity-map conflict (Remove+Add same composite PK
-        // in one DbContext) on every re-FK, which Bug 1 fixes.
+        // DB and no dedup is possible. The realistic merge scenario is:
+        // source has logins with keys that are NOT on target, and they
+        // re-FK over. The code path also hits the EF identity-map conflict
+        // (Remove+Add same composite PK in one DbContext) on every re-FK,
+        // which the two-pass Remove-SaveChanges-Add structure fixes.
         var sourceKey1 = $"source-sub-1-{Guid.NewGuid():N}";
         var sourceKey2 = $"source-sub-2-{Guid.NewGuid():N}";
         var targetKey = $"target-sub-{Guid.NewGuid():N}";

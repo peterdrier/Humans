@@ -180,8 +180,6 @@ public class AccountProvisioningServiceTests
         public Task<bool> AnonymizeForMergeAsync(
             Guid sourceUserId, Guid targetUserId, Instant now, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task RemoveExternalLoginsAsync(Guid userId, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<int> ReassignLoginsToUserAsync(
             Guid sourceUserId, Guid targetUserId, CancellationToken ct = default) =>
             throw new NotSupportedException();

@@ -376,20 +376,6 @@ public sealed class UserRepository : IUserRepository
         return true;
     }
 
-    public async Task RemoveExternalLoginsAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var logins = await ctx.Set<IdentityUserLogin<Guid>>()
-            .Where(l => l.UserId == userId)
-            .ToListAsync(ct);
-
-        if (logins.Count == 0)
-            return;
-
-        ctx.Set<IdentityUserLogin<Guid>>().RemoveRange(logins);
-        await ctx.SaveChangesAsync(ct);
-    }
-
     public async Task<int> ReassignLoginsToUserAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
     {
@@ -399,31 +385,18 @@ public sealed class UserRepository : IUserRepository
             .Where(l => l.UserId == sourceUserId)
             .ToListAsync(ct);
 
-        var targetLogins = await ctx.Set<IdentityUserLogin<Guid>>()
-            .Where(l => l.UserId == targetUserId)
-            .Select(l => new { l.LoginProvider, l.ProviderKey })
-            .ToListAsync(ct);
-
-        // Composite-key collision set: drop source's row when target already
-        // has the same (LoginProvider, ProviderKey) pair.
-        var targetKeySet = targetLogins
-            .Select(l => (l.LoginProvider, l.ProviderKey))
-            .ToHashSet();
-
-        // First pass: remove all source rows. A SaveChanges flushes the
-        // deletes before we add the re-FK'd replacements — IdentityUserLogin's
-        // composite PK (LoginProvider, ProviderKey) would otherwise collide
-        // in EF's identity map ("another instance with the same key value
-        // ... is already being tracked").
-        var toReFk = new List<IdentityUserLogin<Guid>>();
+        // No dedup needed: IdentityUserLogin<Guid>'s PK is
+        // (LoginProvider, ProviderKey), so two users cannot already share a
+        // row at the DB level. We re-FK every source row onto target.
+        //
+        // Two-pass Remove+Add is required because EF's identity map keys on
+        // the composite PK — Remove(source) and Add(target) with the same
+        // (LoginProvider, ProviderKey) in the same DbContext otherwise
+        // throws "another instance with the same key value is already being
+        // tracked". The intermediate SaveChanges flushes the deletes first.
         foreach (var login in sourceLogins)
         {
             ctx.Set<IdentityUserLogin<Guid>>().Remove(login);
-
-            if (!targetKeySet.Contains((login.LoginProvider, login.ProviderKey)))
-            {
-                toReFk.Add(login);
-            }
         }
 
         if (sourceLogins.Count > 0)
@@ -431,7 +404,7 @@ public sealed class UserRepository : IUserRepository
             await ctx.SaveChangesAsync(ct);
         }
 
-        foreach (var login in toReFk)
+        foreach (var login in sourceLogins)
         {
             ctx.Set<IdentityUserLogin<Guid>>().Add(new IdentityUserLogin<Guid>
             {
@@ -442,7 +415,7 @@ public sealed class UserRepository : IUserRepository
             });
         }
 
-        if (toReFk.Count > 0)
+        if (sourceLogins.Count > 0)
         {
             await ctx.SaveChangesAsync(ct);
         }

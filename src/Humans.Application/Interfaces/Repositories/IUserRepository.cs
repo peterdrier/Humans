@@ -182,19 +182,13 @@ public interface IUserRepository
         Guid targetUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Removes every <c>AspNetUserLogins</c> row for the given user. Used by
-    /// <c>AccountMergeService.AcceptAsync</c> to prevent the anonymized
-    /// source account from being logged into via its OAuth providers.
-    /// </summary>
-    Task RemoveExternalLoginsAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
     /// Migrates every <c>AspNetUserLogins</c> row from
     /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
-    /// If the target already has a login with the same composite key
-    /// (<c>LoginProvider</c>, <c>ProviderKey</c>), the source's row is
-    /// dropped rather than duplicated. Returns the count of logins now
-    /// attributed to the target. Used by
+    /// <c>IdentityUserLogin&lt;Guid&gt;</c>'s primary key is
+    /// (<c>LoginProvider</c>, <c>ProviderKey</c>) only — <c>UserId</c> is
+    /// just an FK column — so two users can never share a row at the DB
+    /// level, and no de-duplication is possible. Returns the count of
+    /// logins now attributed to the target. Used by
     /// <c>AccountMergeService.AcceptAsync</c> /
     /// <c>DuplicateAccountService.ResolveAsync</c> to re-link sign-in
     /// credentials before archiving the source account.

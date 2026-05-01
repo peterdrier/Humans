@@ -199,7 +199,7 @@ Repositories: `IUserRepository`, `IUserEmailRepository`.
 | Users | R/W |
 | UserEmails | R |
 | EventParticipations | R/W |
-| IdentityUserLogins | R/W (via `IUserRepository.RemoveExternalLoginsAsync` / `ReassignLoginsToUserAsync`) |
+| IdentityUserLogins | R/W (via `IUserRepository.ReassignLoginsToUserAsync`) |
 
 Cross-section calls via `IProfileService`, `IShiftManagementService`,
 `IShiftSignupService`, `IRoleAssignmentService`, `ITeamService`. Cache
@@ -1027,7 +1027,7 @@ boundaries directly. These are the remaining design-rule violations.
 | **Users** | Users | Profile (`AccountMergeService`, `DuplicateAccountService` via `IUserRepository`), GoogleIntegration (`GoogleAdminService` via `IUserRepository`), Auth (`MagicLinkService` via `IUserRepository`), AuditLog (display lookup), Google (`DriveActivityMonitorRepository`) |
 | **UserEmails** | Profile | GoogleIntegration (`GoogleAdminService` via `IUserEmailRepository`), Tickets (`TicketRepository` via `Set<UserEmail>` for attendee email lookup), Auth (`MagicLinkService` reads `UserEmail` via `IUserRepository`), Profile (`AccountMergeService`/`DuplicateAccountService` via `IUserEmailRepository`) |
 | **EventParticipations** | Users | Profile (`AccountMergeService`, `DuplicateAccountService` via `IUserRepository`) |
-| **IdentityUserLogins** | Auth/Identity | Profile (`AccountMergeService`, `DuplicateAccountService` via `IUserRepository.ReassignLoginsToUserAsync`/`RemoveExternalLoginsAsync`), GoogleIntegration (`DriveActivityMonitorRepository`) |
+| **IdentityUserLogins** | Auth/Identity | Profile (`AccountMergeService`, `DuplicateAccountService` via `IUserRepository.ReassignLoginsToUserAsync`), GoogleIntegration (`DriveActivityMonitorRepository`) |
 | **AuditLogEntries** | AuditLog | GoogleIntegration (`DriveActivityMonitorRepository`) |
 | **GoogleSyncOutboxEvents** | GoogleIntegration | Teams (`TeamRepository` writes outbox events on team mutations) |
 | **GeneralAvailability** | Shifts (GeneralAvailabilityService) | Shifts (`ShiftSignupRepository` reads it for conflict checks) |
