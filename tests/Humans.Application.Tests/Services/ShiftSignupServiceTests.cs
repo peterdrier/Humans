@@ -142,6 +142,29 @@ public class ShiftSignupServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task SignUp_AllDayShiftAfterPriorNightWatch_DoesNotFalselyConflict()
+    {
+        // Regression for the "bundled half-day" all-day shift bug: a night watch
+        // ending at 02:00 used to collide with the next day's all-day shift
+        // because all-day was modeled as 00:00-24:00. Now it's 08:00-18:00,
+        // so the overnight shift no longer overlaps.
+        var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
+        rota.Period = RotaPeriod.Strike;
+        // Night watch: day 0, 22:00-02:00 (next day) — 4h
+        var nightWatch = SeedShift(rota, dayOffset: 0, startHour: 22, durationHours: 4);
+        // All-day strike shift on the following day, using the new 08:00 / 10h defaults
+        var allDay = SeedAllDayShift(rota, dayOffset: 1);
+        var userId = Guid.NewGuid();
+        SeedSignup(userId, nightWatch.Id, SignupStatus.Confirmed);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.SignUpAsync(userId, allDay.Id);
+
+        result.Success.Should().BeTrue();
+        result.Error.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task SignUp_SystemClosed_RegularVolunteer_ReturnsError()
     {
         var (es, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
@@ -566,8 +589,8 @@ public class ShiftSignupServiceTests : IDisposable
             RotaId = rota.Id,
             DayOffset = dayOffset,
             IsAllDay = true,
-            StartTime = new LocalTime(0, 0),
-            Duration = Duration.FromHours(24),
+            StartTime = ShiftManagementService.AllDayShiftStartTime,
+            Duration = ShiftManagementService.AllDayShiftDuration,
             MinVolunteers = 2,
             MaxVolunteers = 5,
             CreatedAt = TestNow,

@@ -303,6 +303,18 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     // Bulk Shift Creation
     // ============================================================
 
+    /// <summary>
+    /// Default start time for build/strike all-day shifts (08:00 local).
+    /// </summary>
+    public static readonly LocalTime AllDayShiftStartTime = new(8, 0);
+
+    /// <summary>
+    /// Default duration for build/strike all-day shifts (10 hours, e.g. 08:00–18:00 with implicit siesta).
+    /// Modeling the real working window — not a 24h block — so that overnight shifts
+    /// from the previous day (e.g. night watch ending at 02:00) don't falsely conflict.
+    /// </summary>
+    public static readonly Duration AllDayShiftDuration = Duration.FromHours(10);
+
     public async Task CreateBuildStrikeShiftsAsync(Guid rotaId, Dictionary<int, (int Min, int Max)> dailyStaffing)
     {
         var rota = await _repo.GetRotaWithEventSettingsAsync(rotaId);
@@ -335,8 +347,8 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
                 RotaId = rotaId,
                 IsAllDay = true,
                 DayOffset = dayOffset,
-                StartTime = new LocalTime(0, 0),
-                Duration = Duration.FromHours(24),
+                StartTime = AllDayShiftStartTime,
+                Duration = AllDayShiftDuration,
                 MinVolunteers = staffing.Min,
                 MaxVolunteers = staffing.Max,
                 CreatedAt = now,

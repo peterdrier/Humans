@@ -118,8 +118,8 @@ public class ShiftManagementServiceTests : IDisposable
         shifts.Should().AllSatisfy(s =>
         {
             s.IsAllDay.Should().BeTrue();
-            s.StartTime.Should().Be(new LocalTime(0, 0));
-            s.Duration.Should().Be(Duration.FromHours(24));
+            s.StartTime.Should().Be(ShiftManagementService.AllDayShiftStartTime);
+            s.Duration.Should().Be(ShiftManagementService.AllDayShiftDuration);
         });
         shifts.Select(s => s.DayOffset).Should().BeEquivalentTo(new[] { -3, -2, -1 });
     }
