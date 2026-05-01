@@ -176,11 +176,6 @@ public interface ITeamService
     Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets all user-created (non-system) teams.
-    /// </summary>
-    Task<IReadOnlyList<Team>> GetUserCreatedTeamsAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Gets the summarized team directory for anonymous or authenticated viewers.
     /// </summary>
     Task<TeamDirectoryResult> GetTeamDirectoryAsync(Guid? userId, CancellationToken cancellationToken = default);
@@ -660,6 +655,38 @@ public interface ITeamService
     /// and returns the count of ended memberships. Used during account deletion.
     /// </summary>
     Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Account-merge fold: moves <paramref name="sourceUserId"/>'s
+    /// non-system team memberships and join requests onto
+    /// <paramref name="targetUserId"/>. System teams are skipped — they are
+    /// reconciled automatically by <c>SystemTeamSyncJob</c>.
+    /// <para>
+    /// <b>TeamMember:</b> for each non-system team source belongs to, if
+    /// target is also a member that team's source membership is simply
+    /// removed; otherwise target is added as a member and source is removed.
+    /// Composes <c>AddMemberToTeamAsync</c> / <c>RemoveMemberAsync</c> so
+    /// audit log entries, Google-sync outbox events, and the active-teams
+    /// cache mutations all fire in line with normal membership changes.
+    /// </para>
+    /// <para>
+    /// <b>TeamJoinRequest:</b> for each request authored by source, if
+    /// target already has a pending request to the same team source's row
+    /// is dropped; otherwise the request is re-FK'd to target so historic
+    /// rows survive on the merged-into account.
+    /// </para>
+    /// <para>
+    /// <paramref name="actorUserId"/> is the admin running the merge —
+    /// recorded as the actor on every audit / outbox entry. Called only by
+    /// <c>AccountMergeService.AcceptAsync</c>.
+    /// </para>
+    /// </summary>
+    Task ReassignToUserAsync(
+        Guid sourceUserId,
+        Guid targetUserId,
+        Guid actorUserId,
+        Instant updatedAt,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Returns the total number of pending team join requests across all teams.

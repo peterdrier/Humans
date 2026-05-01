@@ -673,49 +673,6 @@ public class TeamServiceTests : IDisposable
     }
 
     // ==========================================================================
-    // GetUserCreatedTeamsAsync
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task GetUserCreatedTeamsAsync_ExcludesSystemTeams()
-    {
-        SeedTeam("User Team");
-        SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetUserCreatedTeamsAsync();
-
-        result.Should().ContainSingle();
-        result[0].Name.Should().Be("User Team");
-    }
-
-    [HumansFact]
-    public async Task GetUserCreatedTeamsAsync_ExcludesInactiveTeams()
-    {
-        SeedTeam("Active");
-        SeedTeam("Inactive", isActive: false);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetUserCreatedTeamsAsync();
-
-        result.Should().ContainSingle();
-        result[0].Name.Should().Be("Active");
-    }
-
-    [HumansFact]
-    public async Task GetUserCreatedTeamsAsync_OrderedByName()
-    {
-        SeedTeam("Zebra");
-        SeedTeam("Apple");
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetUserCreatedTeamsAsync();
-
-        result[0].Name.Should().Be("Apple");
-        result[1].Name.Should().Be("Zebra");
-    }
-
-    // ==========================================================================
     // GetUserTeamsAsync
     // ==========================================================================
 

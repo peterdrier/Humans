@@ -67,9 +67,6 @@ public interface ITeamRepository
     /// </summary>
     Task<IReadOnlyList<Team>> GetAllActiveWithMembersAsync(CancellationToken ct = default);
 
-    /// <summary>All active non-system teams ordered by name, with active members.</summary>
-    Task<IReadOnlyList<Team>> GetAllActiveUserCreatedAsync(CancellationToken ct = default);
-
     /// <summary>Active teams projected to id/name for dropdowns.</summary>
     Task<IReadOnlyList<TeamOptionDto>> GetActiveOptionsAsync(CancellationToken ct = default);
 
@@ -415,6 +412,21 @@ public interface ITeamRepository
 
     /// <summary>Inserts a new join request.</summary>
     Task AddRequestAsync(TeamJoinRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Account-merge fold: re-FKs every <see cref="TeamJoinRequest"/> authored
+    /// by <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
+    /// When source has a request to a team where target <em>also</em> has an
+    /// active (<see cref="TeamJoinRequestStatus.Pending"/>) request, the
+    /// source row is dropped (target's pending request stands). All other
+    /// source rows (historical statuses, or pending-without-target-conflict)
+    /// are re-FK'd so request history is preserved on the surviving account.
+    /// Returns the count of <see cref="TeamJoinRequest"/> rows attributed to
+    /// <paramref name="targetUserId"/> after the move. Called only by
+    /// <c>TeamService.ReassignToUserAsync</c>.
+    /// </summary>
+    Task<int> ReassignActiveJoinRequestsAsync(
+        Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
 
     // ==========================================================================
     // TeamRoleDefinition reads / writes

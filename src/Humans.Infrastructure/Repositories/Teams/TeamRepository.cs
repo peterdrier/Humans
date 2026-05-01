@@ -98,17 +98,6 @@ public sealed class TeamRepository : ITeamRepository
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Team>> GetAllActiveUserCreatedAsync(CancellationToken ct = default)
-    {
-        await using var db = await _factory.CreateDbContextAsync(ct);
-        return await db.Teams
-            .AsNoTracking()
-            .Where(t => t.IsActive && t.SystemTeamType == SystemTeamType.None)
-            .OrderBy(t => t.Name)
-            .Include(t => t.Members.Where(m => m.LeftAt == null))
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<TeamOptionDto>> GetActiveOptionsAsync(CancellationToken ct = default)
     {
         await using var db = await _factory.CreateDbContextAsync(ct);
@@ -647,6 +636,45 @@ public sealed class TeamRepository : ITeamRepository
         await using var db = await _factory.CreateDbContextAsync(ct);
         db.TeamJoinRequests.Add(request);
         await db.SaveChangesAsync(ct);
+    }
+
+    public async Task<int> ReassignActiveJoinRequestsAsync(
+        Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct);
+
+        var sourceRows = await db.TeamJoinRequests
+            .Where(r => r.UserId == sourceUserId)
+            .ToListAsync(ct);
+        var targetPendingTeamIds = await db.TeamJoinRequests
+            .Where(r => r.UserId == targetUserId
+                && r.Status == TeamJoinRequestStatus.Pending)
+            .Select(r => r.TeamId)
+            .ToListAsync(ct);
+        var targetPendingTeamIdSet = targetPendingTeamIds.ToHashSet();
+
+        foreach (var src in sourceRows)
+        {
+            if (targetPendingTeamIdSet.Contains(src.TeamId))
+            {
+                // Target already has an active pending request to this team —
+                // drop source's row (target's stands).
+                db.TeamJoinRequests.Remove(src);
+            }
+            else
+            {
+                // Re-FK to target. History (rejected/withdrawn/approved) and
+                // pending-without-target-conflict rows both flow through here.
+                // UserId is init-only on the entity; mutate via the EF
+                // change-tracker so the column is updated.
+                db.Entry(src).Property(nameof(TeamJoinRequest.UserId)).CurrentValue = targetUserId;
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
+
+        return await db.TeamJoinRequests
+            .CountAsync(r => r.UserId == targetUserId, ct);
     }
 
     // ==========================================================================
