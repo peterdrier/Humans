@@ -70,6 +70,23 @@ public interface IUserEmailRepository
         CancellationToken ct = default);
 
     /// <summary>
+    /// Bulk-moves <c>user_emails</c> rows from <paramref name="sourceUserId"/>
+    /// to <paramref name="targetUserId"/> for the account-merge fold flow.
+    /// Conflict rule per the fold spec: when source and target both have a
+    /// row for the same address (case-insensitive), the rows collapse —
+    /// <c>IsVerified</c> is OR-combined onto the target's row and the
+    /// source's row is deleted. Surviving source rows are re-FK'd to target
+    /// with <c>IsPrimary</c> and <c>IsGoogle</c> cleared so the target's
+    /// existing primary / Google selections remain authoritative.
+    /// <c>UpdatedAt</c> is stamped to <paramref name="updatedAt"/> on every
+    /// row touched. Returns the count of <c>user_emails</c> rows ultimately
+    /// attributed to <paramref name="targetUserId"/>.
+    /// </summary>
+    Task<int> ReassignToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Returns a snapshot of every <see cref="UserEmail"/> row for the user that
     /// also carries the legacy <c>IsOAuth</c> shadow-column value. Used by
     /// <c>UserEmailProviderBackfillService</c> to read the legacy flag via

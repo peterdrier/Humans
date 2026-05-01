@@ -322,6 +322,19 @@ public sealed class UserEmailService : IUserEmailService
         Guid userId, CancellationToken cancellationToken = default) =>
         _repository.RemoveAllForUserAsync(userId, cancellationToken);
 
+    public async Task<int> ReassignToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken cancellationToken = default)
+    {
+        var count = await _repository.ReassignToUserAsync(
+            sourceUserId, targetUserId, updatedAt, cancellationToken);
+
+        await _fullProfileInvalidator.InvalidateAsync(sourceUserId, cancellationToken);
+        await _fullProfileInvalidator.InvalidateAsync(targetUserId, cancellationToken);
+
+        return count;
+    }
+
     public async Task AddVerifiedEmailAsync(
         Guid userId, string email, CancellationToken cancellationToken = default)
     {

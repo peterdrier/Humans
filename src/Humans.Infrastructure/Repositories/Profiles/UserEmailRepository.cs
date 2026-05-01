@@ -160,6 +160,56 @@ public sealed class UserEmailRepository : IUserEmailRepository
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task<int> ReassignToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        var sourceRows = await ctx.UserEmails
+            .Where(e => e.UserId == sourceUserId)
+            .ToListAsync(ct);
+        var targetRows = await ctx.UserEmails
+            .Where(e => e.UserId == targetUserId)
+            .ToListAsync(ct);
+
+        // Lookup target rows by case-insensitive address. UserEmail.Email is
+        // service-normalized (lowercased before persistence by AddEmailAsync /
+        // AddVerifiedEmailAsync), but defensive lower-casing here keeps the
+        // collapse correct even if a legacy mixed-case row exists.
+        var targetByAddress = targetRows
+            .ToDictionary(e => e.Email, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var src in sourceRows)
+        {
+            if (targetByAddress.TryGetValue(src.Email, out var tgt))
+            {
+                // Same address on both sides — collapse onto target row.
+                // OR-combine IsVerified; preserve target's IsPrimary/IsGoogle.
+                if (src.IsVerified)
+                {
+                    tgt.IsVerified = true;
+                }
+                tgt.UpdatedAt = updatedAt;
+                ctx.UserEmails.Remove(src);
+            }
+            else
+            {
+                // Re-FK to target. Clear IsPrimary/IsGoogle so the target's
+                // existing authoritative selections stand.
+                ctx.Entry(src).Property(nameof(UserEmail.UserId)).CurrentValue = targetUserId;
+                src.IsPrimary = false;
+                src.IsGoogle = false;
+                src.UpdatedAt = updatedAt;
+            }
+        }
+
+        await ctx.SaveChangesAsync(ct);
+
+        return await ctx.UserEmails
+            .CountAsync(e => e.UserId == targetUserId, ct);
+    }
+
     public async Task<bool> MarkVerifiedAsync(
         Guid emailId, NodaTime.Instant now, CancellationToken ct = default)
     {

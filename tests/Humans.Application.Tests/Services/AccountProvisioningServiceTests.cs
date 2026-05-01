@@ -311,6 +311,10 @@ public class AccountProvisioningServiceTests
         public Task<IReadOnlyList<UserEmail>> FindAllByProviderKeyAsync(
             string provider, string providerKey, CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task<int> ReassignToUserAsync(
+            Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+            CancellationToken ct = default) =>
+            throw new NotSupportedException();
     }
 
     private readonly FakeClock _clock;
