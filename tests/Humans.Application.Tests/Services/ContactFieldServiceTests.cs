@@ -43,7 +43,7 @@ public class ContactFieldServiceTests : IDisposable
 
         _service = new ContactFieldService(
             repository, _profileRepository, _teamService, _roleAssignmentService,
-            Substitute.For<IFullProfileInvalidator>(), _clock);
+            _clock);
     }
 
     public void Dispose()

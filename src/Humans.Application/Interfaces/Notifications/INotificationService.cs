@@ -54,13 +54,27 @@ public interface INotificationService : INotificationEmitter
     /// the source's row is dropped (one notification per user max). The
     /// shared parent <c>Notification</c> row is not touched. Returns the
     /// count of <c>NotificationRecipient</c> rows attributed to
-    /// <paramref name="targetUserId"/> after the move. Invalidates the
-    /// per-user notification badge cache for both users. Called only by
+    /// <paramref name="targetUserId"/> after the move. Called only by
     /// <c>AccountMergeService.AcceptAsync</c>.
+    /// <para>
+    /// <strong>Cache invalidation is the caller's responsibility</strong> —
+    /// must run AFTER the ambient TransactionScope completes. The
+    /// orchestrator calls <see cref="InvalidateBadgeCachesForUsers"/> with
+    /// both user ids in its post-commit block.
+    /// </para>
     /// </summary>
     Task<int> ReassignRecipientsToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,
         Instant updatedAt,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Evicts the per-user notification badge cache for each id in
+    /// <paramref name="userIds"/>. Called post-commit by
+    /// <c>AccountMergeService.AcceptAsync</c> after a fold so the next
+    /// badge read for source/target re-derives unread counts from the
+    /// committed <c>NotificationRecipient</c> state.
+    /// </summary>
+    void InvalidateBadgeCachesForUsers(IEnumerable<Guid> userIds);
 }

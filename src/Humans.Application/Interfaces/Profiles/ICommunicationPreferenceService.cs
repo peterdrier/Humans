@@ -114,11 +114,15 @@ public interface ICommunicationPreferenceService
     /// <c>UpdatedAt</c> wins (source's values are copied onto target when source
     /// is newer; otherwise the source row is dropped). Surviving source rows
     /// are re-FK'd to target. Stamps <c>UpdatedAt</c> on every row touched.
-    /// Invalidates the FullProfile cache for both users so admin/search/profile
-    /// surfaces reflect the move. Returns the count of
-    /// <c>CommunicationPreference</c> rows attributed to
+    /// Returns the count of <c>CommunicationPreference</c> rows attributed to
     /// <paramref name="targetUserId"/>. Called only by
     /// <c>AccountMergeService.AcceptAsync</c>.
+    /// <para>
+    /// <strong>Cache invalidation is the caller's responsibility</strong> —
+    /// must run AFTER the ambient TransactionScope completes. The
+    /// orchestrator already invalidates the FullProfile cache for source
+    /// and target in its post-commit block.
+    /// </para>
     /// </summary>
     Task<int> ReassignToUserAsync(
         Guid sourceUserId,

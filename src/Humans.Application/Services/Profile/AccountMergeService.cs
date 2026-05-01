@@ -226,10 +226,20 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
 
             // Cache invalidation runs AFTER the transaction commits so
             // cache-aside readers don't repopulate from rows that might
-            // still roll back.
+            // still roll back. Each owning section service strips its own
+            // in-Reassign invalidator calls and we re-issue them here.
+            // FullProfile covers UserEmail / ContactField /
+            // CommunicationPreference (all Profile-section). Claims +
+            // nav-badge cover RoleAssignment. Notification badge counts
+            // cover NotificationRecipient. Team caches cover the
+            // ITeamService.ReassignToUserAsync writes.
             await _fullProfileInvalidator.InvalidateAsync(sourceId, ct);
             await _fullProfileInvalidator.InvalidateAsync(targetId, ct);
             _teamService.RemoveMemberFromAllTeamsCache(sourceId);
+            _roleAssignmentService.InvalidateClaimsCacheForUser(sourceId);
+            _roleAssignmentService.InvalidateClaimsCacheForUser(targetId);
+            _roleAssignmentService.InvalidateNavBadgeCache();
+            _notificationService.InvalidateBadgeCachesForUsers([sourceId, targetId]);
         }
         finally
         {

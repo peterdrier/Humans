@@ -96,10 +96,15 @@ public interface IUserEmailService
     /// OR-combined; surviving source rows are re-FK'd with <c>IsPrimary</c>
     /// and <c>IsGoogle</c> cleared so the target's existing primary / Google
     /// selections remain authoritative. Stamps <c>UpdatedAt</c> on every row
-    /// touched. Invalidates the FullProfile cache for both users so
-    /// admin/search/profile surfaces reflect the move. Returns the count of
-    /// <c>UserEmail</c> rows attributed to <paramref name="targetUserId"/>.
-    /// Called only by <c>AccountMergeService.AcceptAsync</c>.
+    /// touched. Returns the count of <c>UserEmail</c> rows attributed to
+    /// <paramref name="targetUserId"/>. Called only by
+    /// <c>AccountMergeService.AcceptAsync</c>.
+    /// <para>
+    /// <strong>Cache invalidation is the caller's responsibility</strong> —
+    /// must run AFTER the ambient TransactionScope completes. The
+    /// orchestrator already invalidates the FullProfile cache for source
+    /// and target in its post-commit block.
+    /// </para>
     /// </summary>
     Task<int> ReassignToUserAsync(
         Guid sourceUserId,

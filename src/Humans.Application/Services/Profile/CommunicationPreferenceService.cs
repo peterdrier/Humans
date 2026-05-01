@@ -32,7 +32,6 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
     private readonly IUnsubscribeTokenProvider _tokenProvider;
     private readonly IClock _clock;
     private readonly IAuditLogService _auditLog;
-    private readonly IFullProfileInvalidator _fullProfileInvalidator;
     private readonly ILogger<CommunicationPreferenceService> _logger;
 
     public CommunicationPreferenceService(
@@ -40,14 +39,12 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
         IUnsubscribeTokenProvider tokenProvider,
         IClock clock,
         IAuditLogService auditLog,
-        IFullProfileInvalidator fullProfileInvalidator,
         ILogger<CommunicationPreferenceService> logger)
     {
         _repository = repository;
         _tokenProvider = tokenProvider;
         _clock = clock;
         _auditLog = auditLog;
-        _fullProfileInvalidator = fullProfileInvalidator;
         _logger = logger;
     }
 
@@ -233,12 +230,11 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken cancellationToken = default)
     {
-        var count = await _repository.ReassignToUserAsync(
+        // Cache invalidation is the caller's responsibility — must run AFTER
+        // the ambient TransactionScope completes so a rolled-back fold
+        // doesn't repopulate caches from now-uncommitted state.
+        // See AccountMergeService.AcceptAsync post-commit block.
+        return await _repository.ReassignToUserAsync(
             sourceUserId, targetUserId, updatedAt, cancellationToken);
-
-        await _fullProfileInvalidator.InvalidateAsync(sourceUserId, cancellationToken);
-        await _fullProfileInvalidator.InvalidateAsync(targetUserId, cancellationToken);
-
-        return count;
     }
 }

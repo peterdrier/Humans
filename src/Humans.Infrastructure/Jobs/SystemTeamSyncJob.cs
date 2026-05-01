@@ -549,31 +549,34 @@ public class SystemTeamSyncJob : ISystemTeamSync
     /// but a null GoogleEmail. This ensures Google Group sync uses the correct address.
     /// </summary>
     /// <remarks>
-    /// Iterates per-user through <see cref="IUserEmailService.TryBackfillGoogleEmailAsync"/>,
-    /// which is a no-op for users that already have <c>GoogleEmail</c> set or
-    /// no verified <c>@nobodies.team</c> row. At ~500-user scale the per-user
-    /// roundtrips are cheaper than the bulk service surface that previously
-    /// duplicated this logic on <c>IUserService</c> (removed in the
-    /// account-merge fold redesign budget gate).
+    /// Bulk-fetches the <c>@nobodies.team</c> map once via
+    /// <see cref="IUserEmailService.GetNobodiesTeamEmailsByUserIdsAsync"/>,
+    /// then iterates the user list calling
+    /// <see cref="IUserService.TrySetGoogleEmailAsync"/> (a no-op when
+    /// <c>GoogleEmail</c> is already set). One scan of <c>user_emails</c>
+    /// per sync pass instead of N.
     /// </remarks>
     private async Task BackfillGoogleEmailsAsync(SyncReport? report = null, CancellationToken cancellationToken = default)
     {
         var step = new SyncStepResult("Google Email Backfill");
 
         var allUsers = await _userService.GetAllUsersAsync(cancellationToken);
+        var nobodiesEmailByUser = await _userEmailService.GetNobodiesTeamEmailsByUserIdsAsync(
+            allUsers.Select(u => u.Id), cancellationToken);
+
         foreach (var user in allUsers)
         {
-            var backfilled = await _userEmailService.TryBackfillGoogleEmailAsync(user.Id, cancellationToken);
+            if (!nobodiesEmailByUser.TryGetValue(user.Id, out var nobodiesEmail))
+                continue;
+
+            var backfilled = await _userService.TrySetGoogleEmailAsync(
+                user.Id, nobodiesEmail, cancellationToken);
             if (!backfilled)
                 continue;
 
-            var googleEmail = await _userEmailService.GetNobodiesTeamEmailAsync(user.Id, cancellationToken);
-            if (googleEmail is null)
-                continue;
-
-            step.Fixed(user.Id, user.DisplayName, $"Set GoogleEmail to {googleEmail}");
+            step.Fixed(user.Id, user.DisplayName, $"Set GoogleEmail to {nobodiesEmail}");
             _logger.LogInformation(
-                "Backfilled GoogleEmail for {User} to {Email}", user.DisplayName, googleEmail);
+                "Backfilled GoogleEmail for {User} to {Email}", user.DisplayName, nobodiesEmail);
         }
 
         report?.Steps.Add(step);

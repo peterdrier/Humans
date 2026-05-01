@@ -326,13 +326,12 @@ public sealed class UserEmailService : IUserEmailService
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken cancellationToken = default)
     {
-        var count = await _repository.ReassignToUserAsync(
+        // Cache invalidation is the caller's responsibility — must run AFTER
+        // the ambient TransactionScope completes so a rolled-back fold
+        // doesn't repopulate caches from now-uncommitted state.
+        // See AccountMergeService.AcceptAsync post-commit block.
+        return await _repository.ReassignToUserAsync(
             sourceUserId, targetUserId, updatedAt, cancellationToken);
-
-        await _fullProfileInvalidator.InvalidateAsync(sourceUserId, cancellationToken);
-        await _fullProfileInvalidator.InvalidateAsync(targetUserId, cancellationToken);
-
-        return count;
     }
 
     public async Task AddVerifiedEmailAsync(

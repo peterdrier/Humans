@@ -61,10 +61,15 @@ public interface IContactFieldService
     /// dropped when target already has a row with the same field type and
     /// (case-insensitive) value; surviving source rows are re-FK'd to the
     /// target's profile. Stamps <c>UpdatedAt</c> on every row touched.
-    /// Invalidates the FullProfile cache for both users so admin/search/profile
-    /// surfaces reflect the move. Returns the count of <c>ContactField</c> rows
-    /// attributed to <paramref name="targetUserId"/>'s profile after dedup.
-    /// Called only by <c>AccountMergeService.AcceptAsync</c>.
+    /// Returns the count of <c>ContactField</c> rows attributed to
+    /// <paramref name="targetUserId"/>'s profile after dedup. Called only
+    /// by <c>AccountMergeService.AcceptAsync</c>.
+    /// <para>
+    /// <strong>Cache invalidation is the caller's responsibility</strong> —
+    /// must run AFTER the ambient TransactionScope completes. The
+    /// orchestrator already invalidates the FullProfile cache for source
+    /// and target in its post-commit block.
+    /// </para>
     /// </summary>
     Task<int> ReassignToUserAsync(
         Guid sourceUserId,

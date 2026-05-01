@@ -112,7 +112,6 @@ public class CommunicationPreferenceServiceTests : IDisposable
             tokenProvider,
             _clock,
             new StubAuditLogService(),
-            Substitute.For<IFullProfileInvalidator>(),
             NullLogger<CommunicationPreferenceService>.Instance);
     }
 

@@ -275,22 +275,26 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
         string roleName, CancellationToken ct = default) =>
         _repository.GetActiveUserIdsForRoleAsync(roleName, _clock.GetCurrentInstant(), ct);
 
-    public async Task<int> ReassignToUserAsync(
+    public Task<int> ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken cancellationToken = default)
     {
-        var count = await _repository.ReassignToUserAsync(
+        // Cache invalidation is the caller's responsibility — must run AFTER
+        // the ambient TransactionScope completes so a rolled-back fold
+        // doesn't strand the claims cache (and per-request roles) seeing
+        // now-uncommitted writes. The orchestrator calls
+        // <see cref="InvalidateClaimsCacheForUser"/> for both users and
+        // <see cref="InvalidateNavBadgeCache"/> globally in its post-commit
+        // block. See AccountMergeService.AcceptAsync.
+        return _repository.ReassignToUserAsync(
             sourceUserId, targetUserId, updatedAt, cancellationToken);
-
-        // Both users may have had their effective role set change. Invalidate
-        // their claims caches so the next request re-derives roles, and bump
-        // the global nav-badge cache (governance role lists change).
-        _claimsInvalidator.Invalidate(sourceUserId);
-        _claimsInvalidator.Invalidate(targetUserId);
-        _navBadge.Invalidate();
-
-        return count;
     }
+
+    public void InvalidateClaimsCacheForUser(Guid userId) =>
+        _claimsInvalidator.Invalidate(userId);
+
+    public void InvalidateNavBadgeCache() =>
+        _navBadge.Invalidate();
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
