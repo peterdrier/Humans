@@ -445,6 +445,19 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor
             .ToList();
     }
 
+    public async Task<int> ReassignToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default)
+    {
+        // Plain re-FK across feedback_reports.UserId and
+        // feedback_messages.SenderUserId in a single repo call. No
+        // FeedbackService cache to invalidate (per Feedback.md: no caching
+        // decorator). Nav-badge cache depends on actionable counts, which are
+        // status-driven, not authorship-driven — re-FK doesn't change which
+        // reports are actionable, so no INavBadgeCacheInvalidator call here.
+        return await _repository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+    }
+
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         var reports = await _repository.GetForUserExportAsync(userId, ct);
