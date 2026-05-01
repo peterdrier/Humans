@@ -236,4 +236,20 @@ public class User : IdentityUser<Guid>
     /// Navigation property to event participation records.
     /// </summary>
     public ICollection<EventParticipation> EventParticipations { get; } = new List<EventParticipation>();
+
+    /// <summary>
+    /// When set, marks this user as a tombstone that has been folded into the
+    /// referenced target user by <c>AccountMergeService.AcceptAsync</c>.
+    /// Reads of "data for the target" union the ids of every source whose
+    /// <c>MergedToUserId</c> points at the target (via
+    /// <c>IUserService.GetMergedSourceIdsAsync</c>) for append-only history
+    /// (audit log, consent records, budget audit log). Once set, the source
+    /// cannot sign in (<c>LockoutEnd</c> is bumped far-future during merge).
+    /// </summary>
+    public Guid? MergedToUserId { get; set; }
+
+    /// <summary>
+    /// Instant the merge tombstone was applied. Null while live.
+    /// </summary>
+    public Instant? MergedAt { get; set; }
 }

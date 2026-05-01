@@ -98,6 +98,17 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasIndex(u => new { u.ContactSource, u.ExternalSourceId })
             .HasFilter("\"ExternalSourceId\" IS NOT NULL");
 
+        // Account-merge tombstone marker. Self-referential FK with no cascade
+        // — deleting the target must not cascade-delete the source tombstone.
+        // Filtered index because the column is null for live users.
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(u => u.MergedToUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(u => u.MergedToUserId)
+            .HasFilter("\"MergedToUserId\" IS NOT NULL");
+
         // Ignore GetEffectiveEmail (method, not property - EF won't map it, but defensive)
     }
 }
