@@ -589,6 +589,46 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
+    public async Task LinkAsync_MatchedPendingRow_MarksItVerified()
+    {
+        // Pending unverified plain row exists for the user (e.g. added via
+        // "Add email" but never verified). User then signs in via OAuth with the
+        // same address. LinkAsync attaches Provider/ProviderKey to that row and
+        // MUST also set IsVerified=true — successful OAuth proves ownership, and
+        // VerifyEmailAsync filters on (Provider == null), so leaving the row
+        // unverified strands it permanently.
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        var pending = new UserEmail
+        {
+            Id = rowId,
+            UserId = userId,
+            Email = "match@example.com",
+            IsVerified = false,
+            IsPrimary = false,
+            Provider = null,
+            ProviderKey = null,
+            VerificationSentAt = _clock.GetCurrentInstant(),
+        };
+        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmail> { pending });
+        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+            .Returns(pending);
+        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(_ => new List<UserEmail> { pending });
+
+        var result = await _service.LinkAsync(
+            userId, "Google", "sub-pending", "Match@Example.com", actorId);
+
+        result.Should().BeTrue();
+        pending.IsVerified.Should().BeTrue();
+        pending.Provider.Should().Be("Google");
+        pending.ProviderKey.Should().Be("sub-pending");
+        pending.IsPrimary.Should().BeTrue();
+    }
+
+    [HumansFact]
     public async Task AddVerifiedEmailAsync_FirstRow_SetsIsPrimaryTrueEvenForGmail()
     {
         // Magic-link signup: a non-Workspace email (gmail) goes through

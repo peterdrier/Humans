@@ -666,13 +666,20 @@ public sealed class UserEmailService : IUserEmailService
                 ?? throw new InvalidOperationException(
                     $"UserEmail row {match.Id} disappeared between read and mutate.");
 
+            // Successful OAuth proves ownership, so promote a previously-pending
+            // plain row to verified. Without this the row is stranded —
+            // VerifyEmailAsync filters on (Provider == null) and won't pick it up.
+            var wasPending = !tracked.IsVerified;
             tracked.Provider = provider;
             tracked.ProviderKey = providerKey;
+            tracked.IsVerified = true;
             tracked.UpdatedAt = now;
             await _repository.UpdateAsync(tracked, cancellationToken);
 
             rowId = tracked.Id;
-            description = $"Linked {provider} `{tracked.Email}` to user";
+            description = wasPending
+                ? $"Linked {provider} `{tracked.Email}` to user (verified via OAuth)"
+                : $"Linked {provider} `{tracked.Email}` to user";
         }
         else
         {
