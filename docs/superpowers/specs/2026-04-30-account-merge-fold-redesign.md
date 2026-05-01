@@ -35,21 +35,24 @@ For append-only / immutable rows (audit log, consent records, budget audit log),
 
 | Source data | Re-FK? | Owning section interface | Conflict rule (same key on both source and target) |
 |---|---|---|---|
-| `UserEmail` | yes | `IUserEmailService` (Profile-section, internal repo OK) | OR-combine `IsVerified`; **target's `IsPrimary` and `IsGoogle` win** (target chose those settings); same address → collapse, keep target row |
+| `UserEmail` | yes | `IUserEmailService` | OR-combine `IsVerified`; **target's `IsPrimary` and `IsGoogle` win** (target chose those settings); same address → collapse, keep target row |
 | `AspNetUserLogins` | yes | `IUserService` | Same `Provider+ProviderKey` on both = literally the same OAuth identity duplicated → keep target's, drop source's |
-| `Profile` row | merge | `IProfileService` (internal) | Source row anonymized + tombstoned, NOT deleted (keeps `profiles.user_id` FK valid for any historical reference; tombstone-style) |
+| `Profile` row | merge | `IProfileService` | Source row anonymized + tombstoned, NOT deleted (keeps `profiles.user_id` FK valid for any historical reference; tombstone-style) |
 | `ContactField` (Profile sub-aggregate) | yes | `IContactFieldService` | Move; if target already has the same `Type`+`Value` then drop source's (dedup) |
-| `VolunteerHistory` entries (CV) | yes | `IProfileService` (internal) | Move; entries are `(year, role)` keyed — if source and target have an identical entry, keep one |
-| `Languages` (Profile sub-aggregate) | yes | `IProfileService` (internal) | Move with **dedup**: if both rows say "English", keep one row (highest proficiency wins on tie) |
-| `CommunicationPreference` | yes | `ICommunicationPreferenceService` (Profile-section) | Same key on both → keep most-recent `UpdatedAt` |
-| `EventParticipation` | yes | `ICalendarService` | Same event on both → keep highest-status row (`Attended > Ticketed > NoShow > NotAttending`, per `ParticipationStatus` enum) |
-| `Tickets` | yes | `ITicketQueryService` | No same-key conflicts (every ticket is unique per purchase) |
+| `VolunteerHistory` entries (CV) | yes | `IProfileService` | Move; entries are `(year, role)` keyed — if source and target have an identical entry, keep one |
+| `Languages` (Profile sub-aggregate) | yes | `IProfileService` | Move with **dedup**: if both rows say "English", keep one row (highest proficiency wins on tie) |
+| `CommunicationPreference` | yes | `ICommunicationPreferenceService` | Same key on both → keep most-recent `UpdatedAt` |
+| `EventParticipation` | yes | `IUserService` (Users section owns `event_participations` per `docs/sections/Users.md`) | Same event on both → keep highest-status row (`Attended > Ticketed > NoShow > NotAttending`, per `ParticipationStatus` enum) |
+| `Tickets` | yes | `ITicketSyncService` (write surface; `ITicketQueryService` is read-only by convention) | No same-key conflicts (every ticket is unique per purchase) |
 | `RoleAssignment` | yes | `IRoleAssignmentService` | Same active role on both → keep target's, drop source's |
 | `TeamMember` | yes | `ITeamService` | Already implemented in current `AcceptAsync` — add target to source's non-system teams, remove source. System teams (Volunteers etc.) are managed automatically. |
 | `TeamJoinRequest` | yes | `ITeamService` | Move; if target already has an active request to the same team, drop source's |
-| `ShiftSignup` + Shifts sub-aggregates (`VolunteerEventProfile`, `GeneralAvailability`, `ShiftTagPreferences`) | yes | `IShiftSignupService` | Move; for the `(eventYear, userId)`-keyed sub-aggregates, target's row wins (target represents the kept identity); shift signups are unique per slot so plain re-FK |
+| `ShiftSignup` | yes | `IShiftSignupService` | Plain re-FK; shift signups are unique per slot |
+| `VolunteerEventProfile`, `VolunteerTagPreference` | yes | `IShiftManagementService` (owns these tables per `docs/sections/Shifts.md`) | Move; target's row wins on `(eventYear, userId)` collision |
+| `GeneralAvailability` | yes | `IGeneralAvailabilityService` (owns `general_availability` per `docs/sections/Shifts.md`) | Move; target's row wins on `(eventYear, userId)` collision |
+| `Notification` recipients (`notification_recipients`) | yes | `INotificationService` | Plain re-FK on `UserId`; the parent `Notification` row is shared (resolution is shared across recipients), so only the per-user delivery row moves. If target already has a delivery row for the same notification, drop source's. |
 | `CampaignGrant` | yes | `ICampaignService` | Move; per-campaign uniqueness — if target already has a grant on that campaign, drop source's |
-| `CampLeadAssignment`, `CampRoleAssignment` | yes | `ICampService` | Move; same `(campId, userId, role)` on both → keep target's |
+| `CampLead`, `CampRoleAssignment` | yes | `ICampService` | Move; same `(campId, userId, role)` on both → keep target's |
 | `Application` (Governance) | yes | `IApplicationDecisionService` | Move all historical applications; no conflict rule (applications are unique events) |
 | `FeedbackReport` + `FeedbackMessage` | yes | `IFeedbackService` | Move (authorship transfers to merged human so they can see their own report history) |
 
@@ -61,7 +64,9 @@ For append-only / immutable rows (audit log, consent records, budget audit log),
 | `ConsentRecord` | `IConsentService` | DB triggers block UPDATE/DELETE. Same chain-follow rule on read. |
 | `BudgetAuditLog` | `IBudgetService` | Append-only. Same chain-follow rule on read. |
 
-**Read-side chain-follow** is the only behaviour change required outside merge for the immutable-row sections: anywhere we currently filter by `userId`, we must instead filter by `userId OR <set of tombstone ids whose MergedToUserId == userId>`. The set of mergeable tombstones for a target is small (typically zero, usually one) and is fetched from `IUserService` once per request.
+**Read-side chain-follow** is the only behaviour change required outside merge for the immutable-row sections: anywhere we currently filter by `userId`, we must instead filter by `userId OR <set of tombstone ids whose MergedToUserId == userId>`.
+
+**Shared lookup primitive:** `IUserService.GetMergedSourceIdsAsync(Guid targetUserId, CancellationToken ct)` returns the set of source tombstone Ids whose `MergedToUserId == targetUserId`. This is the single canonical entry point for chain-follow lookups; AuditLog, Consent, and BudgetAuditLog reads all call it (rather than each section reinventing its own query). The set is small (typically zero, usually one) and is cheap to fetch via `IUserRepository`. Cache for the duration of the request if a section makes multiple chain-follow calls.
 
 ### Tombstone
 
@@ -101,17 +106,19 @@ Each section's **service** (not repository — see `design-rules.md §9`) gains 
 | Section interface | New method | Notes |
 |---|---|---|
 | `IUserEmailService` | `ReassignToUserAsync` | OR-combine flags, target wins on `IsPrimary`/`IsGoogle`, collapse same-address |
-| `IUserService` | `ReassignLoginsToUserAsync` | drops same-(provider,key) duplicates |
+| `IUserService` | `ReassignLoginsToUserAsync`, `ReassignEventParticipationToUserAsync`, `AnonymizeForMergeAsync`, `GetMergedSourceIdsAsync` | logins drop same-(provider,key) dupes; event_participations highest-status wins; anonymize tombstones source User row; chain-follow lookup primitive |
 | `IProfileService` | `ReassignSubAggregatesToUserAsync` | moves VolunteerHistory + Languages; anonymizes source profile row |
 | `IContactFieldService` | `ReassignToUserAsync` | dedup on (Type, Value) |
 | `ICommunicationPreferenceService` | `ReassignToUserAsync` | most-recent wins per key |
-| `ICalendarService` | `ReassignParticipationToUserAsync` | highest-status wins per event |
-| `ITicketQueryService` | `ReassignToUserAsync` | plain re-FK |
+| `ITicketSyncService` | `ReassignToUserAsync` | plain re-FK (write surface — `ITicketQueryService` is read-only by convention) |
 | `IRoleAssignmentService` | `ReassignToUserAsync` | already on the interface; drops same-key actives |
 | `ITeamService` | `ReassignToUserAsync` | combines current AddMember/RemoveMember dance + TeamJoinRequest moves; replaces the inline foreach in current AcceptAsync |
-| `IShiftSignupService` | `ReassignToUserAsync` | shift signups + 3 sub-aggregates (target wins on collisions) |
+| `IShiftSignupService` | `ReassignToUserAsync` | re-FK shift_signups (no sub-aggregates — see Shifts split below) |
+| `IShiftManagementService` | `ReassignProfilesAndTagPrefsToUserAsync` | moves `volunteer_event_profiles` + `volunteer_tag_preferences` (owned by ShiftManagementService per `docs/sections/Shifts.md`) |
+| `IGeneralAvailabilityService` | `ReassignToUserAsync` | moves `general_availability` rows |
+| `INotificationService` | `ReassignRecipientsToUserAsync` | re-FK `notification_recipients.UserId`; drop source's row on per-notification collision |
 | `ICampaignService` | `ReassignGrantsToUserAsync` | dedup per campaign |
-| `ICampService` | `ReassignAssignmentsToUserAsync` | dedup per (camp, role) |
+| `ICampService` | `ReassignAssignmentsToUserAsync` | moves `CampLead` + `CampRoleAssignment`; dedup per (camp, role) |
 | `IApplicationDecisionService` | `ReassignApplicationsToUserAsync` | plain re-FK (historical applications, no dedup) |
 | `IFeedbackService` | `ReassignToUserAsync` | reports + messages |
 
@@ -151,21 +158,25 @@ public async Task<MergeResult> AcceptAsync(Guid mergeRequestId, Guid actorUserId
 
         // Cross-section
         await _userService.ReassignLoginsToUserAsync(sourceId, targetId, now, ct);
-        await _calendarService.ReassignParticipationToUserAsync(sourceId, targetId, now, ct);
-        await _ticketQueryService.ReassignToUserAsync(sourceId, targetId, now, ct);
+        await _userService.ReassignEventParticipationToUserAsync(sourceId, targetId, now, ct);
+        await _ticketSyncService.ReassignToUserAsync(sourceId, targetId, now, ct);
         await _roleAssignmentService.ReassignToUserAsync(sourceId, targetId, now, ct);
         await _teamService.ReassignToUserAsync(sourceId, targetId, actorUserId, now, ct);
         await _shiftSignupService.ReassignToUserAsync(sourceId, targetId, now, ct);
+        await _shiftManagementService.ReassignProfilesAndTagPrefsToUserAsync(sourceId, targetId, now, ct);
+        await _generalAvailabilityService.ReassignToUserAsync(sourceId, targetId, now, ct);
+        await _notificationService.ReassignRecipientsToUserAsync(sourceId, targetId, now, ct);
         await _campaignService.ReassignGrantsToUserAsync(sourceId, targetId, now, ct);
         await _campService.ReassignAssignmentsToUserAsync(sourceId, targetId, now, ct);
         await _applicationDecisionService.ReassignApplicationsToUserAsync(sourceId, targetId, now, ct);
         await _feedbackService.ReassignToUserAsync(sourceId, targetId, now, ct);
 
         // AuditLog / ConsentRecord / BudgetAuditLog: NOT touched. Their reads
-        // for target follow MergedToUserId chain.
+        // for target follow the MergedToUserId chain via
+        // IUserService.GetMergedSourceIdsAsync.
 
-        // Tombstone source.
-        await _userRepository.AnonymizeForMergeAsync(sourceId, targetId, now, ct);
+        // Tombstone source (anonymize User row + set MergedToUserId/MergedAt).
+        await _userService.AnonymizeForMergeAsync(sourceId, targetId, now, ct);
 
         // Mark merge request Accepted + audit + cache invalidations as today.
         scope.Complete();
@@ -192,9 +203,12 @@ One integration test per re-FK rule, asserting both the happy path AND the confl
 - `AcceptAsync_RoleAssignments_ReFKs_DropsSameKey`
 - `AcceptAsync_TeamMembers_AddTargetRemoveSource_NonSystemOnly`
 - `AcceptAsync_TeamJoinRequests_Move_DropDuplicateActive`
-- `AcceptAsync_ShiftSignups_AndSubAggregates_Move_TargetWinsOnCollision`
+- `AcceptAsync_ShiftSignups_PlainReFK`
+- `AcceptAsync_VolunteerEventProfiles_AndTagPrefs_Move_TargetWinsOnCollision`
+- `AcceptAsync_GeneralAvailability_Move_TargetWinsOnCollision`
+- `AcceptAsync_NotificationRecipients_Move_DropDuplicate`
 - `AcceptAsync_CampaignGrants_Move_DedupPerCampaign`
-- `AcceptAsync_CampAssignments_Move_DedupPerRole`
+- `AcceptAsync_CampLeadAndRoleAssignments_Move_DedupPerRole`
 - `AcceptAsync_Applications_Move_AllHistorical`
 - `AcceptAsync_FeedbackReportsAndMessages_Move`
 - `AcceptAsync_AuditLog_NotMutated_StaysAtSourceId`
@@ -225,7 +239,7 @@ Code-only deletion of the anonymize-source path is rollback-safe via `git revert
 
 1. **Source User's `Email` column.** Identity still uses `User.Email` for some flows (login lookup, password reset). The email-decoupling sequence (PRs 1–4) is moving Identity off the column. Once the source User is tombstoned and `Email` is cleared, anything still reading `User.Email` for the source returns null — verify nothing in current Identity flows breaks. Should be safe since the tombstoned user is locked out.
 
-2. **Chain-follow scope.** The three chain-follow sections (AuditLog, Consent, BudgetAuditLog) currently filter by `userId` directly. Confirm whether the chain-follow update lands in this PR or as a small followup per section. (Recommendation: same PR — the merge isn't truly correct without it.)
+2. **Chain-follow scope.** The three chain-follow sections (AuditLog, Consent, BudgetAuditLog) currently filter by `userId` directly. They will be updated to call `IUserService.GetMergedSourceIdsAsync` and union the source-tombstone Ids into their per-user filters. Confirm whether the chain-follow update lands in this PR or as a small followup per section. (Recommendation: same PR — the merge isn't truly correct without it.)
 
 3. **Section ownership of `ReassignToUserAsync`.** Each section adds the method on its **service** interface (not repo), per §9. Confirm with section owners before opening the implementation PR.
 
