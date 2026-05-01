@@ -1127,6 +1127,21 @@ public sealed class BudgetRepository : IBudgetRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<BudgetAuditLog>> GetAuditLogEntriesForUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return [];
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        return await ctx.BudgetAuditLogs
+            .AsNoTracking()
+            .Where(bal => userIds.Contains(bal.ActorUserId))
+            .OrderByDescending(bal => bal.OccurredAt)
+            .ToListAsync(ct);
+    }
+
     // ==========================================================================
     // Private helpers
     // ==========================================================================
