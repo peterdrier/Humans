@@ -155,6 +155,25 @@ public interface ICampaignRepository
     Task<IReadOnlyList<GrantExportRow>> GetGrantsForUserExportAsync(
         Guid userId, CancellationToken ct = default);
 
+    // ==========================================================================
+    // Account-merge fold
+    // ==========================================================================
+
+    /// <summary>
+    /// Re-FKs <c>campaign_grants.UserId</c> from
+    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
+    /// Per-<c>CampaignId</c> collision: if target already has a grant on the
+    /// same campaign, the source's grant is dropped (target wins). The
+    /// <paramref name="updatedAt"/> arg is accepted for cross-fold signature
+    /// parity; <c>CampaignGrant</c> has no <c>UpdatedAt</c> column so it is
+    /// not stamped. Returns the count of grants attributed to
+    /// <paramref name="targetUserId"/> after the move.
+    /// </summary>
+    Task<int> ReassignGrantsToUserAsync(
+        Guid sourceUserId,
+        Guid targetUserId,
+        Instant updatedAt,
+        CancellationToken ct = default);
 }
 
 /// <summary>

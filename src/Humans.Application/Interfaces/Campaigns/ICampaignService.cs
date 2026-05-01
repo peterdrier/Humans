@@ -86,4 +86,22 @@ public interface ICampaignService
         Humans.Domain.Enums.EmailOutboxStatus status,
         Instant latestEmailAt,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Account-merge fold: bulk-moves <c>CampaignGrant</c> rows from
+    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
+    /// Re-FKs the grant's <c>UserId</c>. Conflict rule: if the target
+    /// already has a grant on the same <c>CampaignId</c>, the source's grant
+    /// is dropped (one grant per (User, Campaign) max — target wins).
+    /// <c>CampaignGrant</c> has no <c>UpdatedAt</c> column so
+    /// <paramref name="updatedAt"/> is accepted for signature parity but is
+    /// not stamped. Returns the count of <c>CampaignGrant</c> rows attributed
+    /// to <paramref name="targetUserId"/> after the move. Called only by
+    /// <c>AccountMergeService.AcceptAsync</c>.
+    /// </summary>
+    Task<int> ReassignGrantsToUserAsync(
+        Guid sourceUserId,
+        Guid targetUserId,
+        Instant updatedAt,
+        CancellationToken ct = default);
 }

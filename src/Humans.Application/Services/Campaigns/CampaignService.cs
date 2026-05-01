@@ -664,4 +664,10 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor
         Instant latestEmailAt,
         CancellationToken ct = default) =>
         _repository.UpdateGrantStatusAsync(grantId, status, latestEmailAt, ct);
+
+    public Task<int> ReassignGrantsToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default) =>
+        // No service-level per-user campaign-grants cache — plain delegate.
+        _repository.ReassignGrantsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 }
