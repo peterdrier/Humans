@@ -75,4 +75,29 @@ public interface ICampRoleRepository
     /// </summary>
     Task<IReadOnlyList<(Guid CampSeasonId, Guid DefinitionId, int Count)>> GetAssignmentCountsForYearAsync(
         int year, CancellationToken ct = default);
+
+    // Account-merge fold
+
+    /// <summary>
+    /// Account-merge fold: bulk-moves <c>CampRoleAssignment</c> rows from
+    /// source to target. Walks via <c>CampMember</c>: for each source
+    /// assignment, looks up target's <c>CampMember</c> in the same
+    /// <c>CampSeason</c>. If target has a member there, re-FKs the
+    /// assignment to target's <c>CampMember</c>; on collision against the
+    /// unique <c>(CampSeasonId, CampRoleDefinitionId, CampMemberId)</c>
+    /// index target wins (source's row is dropped). If target has no
+    /// member in the source assignment's season, the row is left in place
+    /// (still pointing at source's <c>CampMember</c>, which remains as a
+    /// tombstone — the role-section spec carries this row forward
+    /// untouched). <c>CampRoleAssignment</c> has no <c>UpdatedAt</c>, so
+    /// <paramref name="updatedAt"/> is unused for this table and accepted
+    /// for caller-side symmetry. Returns the count of
+    /// <c>CampRoleAssignment</c> rows whose <c>CampMember</c> belongs to
+    /// <paramref name="targetUserId"/> after the move.
+    /// </summary>
+    Task<int> ReassignAssignmentsToUserAsync(
+        Guid sourceUserId,
+        Guid targetUserId,
+        Instant updatedAt,
+        CancellationToken ct = default);
 }

@@ -55,6 +55,11 @@ public class InterfaceMethodBudgetTests
         // CampSeason getters (SoundZone/Name/Info) with single GetCampSeasonByIdAsync.
         // 56→55: collapsed GetCampsForYearAsync + GetAllCampsForYearAsync into one
         // method; callers filter via Camp.IsPublic predicate.
+        // 55→55: account-merge fold redesign Phase 3.3. Added
+        // ReassignAssignmentsToUserAsync; removed GetCampByIdAsync (pure
+        // passthrough to ICampRepository.GetByIdAsync — zero production
+        // callers, zero tests, zero internal callers; CampDetail/Edit
+        // flows resolve by slug, not id).
         [typeof(ICampService)] = 55,
         // +1: GetOverallCoverageAsync for admin dashboard shift-coverage tile (peterdrier#349).
         // 50→50: account-merge fold redesign Phase 3.2. Added

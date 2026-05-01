@@ -428,6 +428,28 @@ public interface ICampRepository
     /// <summary>Returns (CampSeasonId, UserId, Status) for the member, or null if not found. Read-only.</summary>
     Task<(Guid CampSeasonId, Guid UserId, CampMemberStatus Status)?> GetMemberLookupAsync(
         Guid campMemberId, CancellationToken ct = default);
+
+    // ==========================================================================
+    // Account-merge fold
+    // ==========================================================================
+
+    /// <summary>
+    /// Account-merge fold: bulk-moves <c>CampLead</c> rows from
+    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/> in
+    /// a single save. Conflict on the active <c>(CampId, UserId)</c> unique
+    /// index is resolved target-wins: if target already has an active lead
+    /// row for the same camp, the source row is dropped; otherwise the
+    /// source row is re-FK'd to target. <c>CampLead</c> has no
+    /// <c>UpdatedAt</c>, so <paramref name="updatedAt"/> is unused for this
+    /// table and accepted for caller-side symmetry. Returns the count of
+    /// CampLead rows attributed to <paramref name="targetUserId"/> after the
+    /// move (active + closed combined).
+    /// </summary>
+    Task<int> ReassignLeadsToUserAsync(
+        Guid sourceUserId,
+        Guid targetUserId,
+        Instant updatedAt,
+        CancellationToken ct = default);
 }
 
 /// <summary>

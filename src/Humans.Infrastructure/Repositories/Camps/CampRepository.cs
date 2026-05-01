@@ -844,4 +844,52 @@ public sealed class CampRepository : ICampRepository
             .FirstOrDefaultAsync(ct);
         return row is null ? null : (row.CampSeasonId, row.UserId, row.Status);
     }
+
+    // ==========================================================================
+    // Account-merge fold
+    // ==========================================================================
+
+    public async Task<int> ReassignLeadsToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        // CampLead canonical uniqueness is the partial index
+        // (CampId, UserId) WHERE LeftAt IS NULL — i.e. one active lead per
+        // (camp, user). Closed (LeftAt != null) rows can coexist freely, so
+        // they always re-FK without collision; only active source rows
+        // collide with active target rows in the same camp.
+        var sourceRows = await ctx.CampLeads
+            .Where(l => l.UserId == sourceUserId)
+            .ToListAsync(ct);
+
+        var targetActiveCampIds = await ctx.CampLeads
+            .Where(l => l.UserId == targetUserId && l.LeftAt == null)
+            .Select(l => l.CampId)
+            .ToListAsync(ct);
+        var targetActiveCampIdSet = new HashSet<Guid>(targetActiveCampIds);
+
+        foreach (var src in sourceRows)
+        {
+            if (src.LeftAt == null && targetActiveCampIdSet.Contains(src.CampId))
+            {
+                // Target already has an active lead row for this camp —
+                // target wins, drop source's active row. Closed source
+                // rows for the same camp still re-FK below (history).
+                ctx.CampLeads.Remove(src);
+            }
+            else
+            {
+                // CampLead.UserId is init-only on the entity; mutate via
+                // the EF change-tracker so the column updates.
+                ctx.Entry(src).Property(nameof(CampLead.UserId)).CurrentValue = targetUserId;
+            }
+        }
+
+        await ctx.SaveChangesAsync(ct);
+
+        return await ctx.CampLeads
+            .CountAsync(l => l.UserId == targetUserId, ct);
+    }
 }
