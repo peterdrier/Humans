@@ -108,6 +108,7 @@ The originating system for a notification, mapped to a `MessageCategory` for pre
 - After every successful send, resolve, dismiss, mark-read, mark-all-read, or click-through, the per-user `CacheKeys.NotificationBadgeCounts(userId)` entry is removed for each affected user (the `NotificationBellViewComponent` re-computes on next render). Dispatch and inbox services hold `IMemoryCache` directly for this — they do not route through `INavBadgeCacheInvalidator`.
 - Per-section meter caches invalidate via `INotificationMeterCacheInvalidator` after any write that changes an owning-section count (called from owning sections such as `ApplicationDecisionService`, `CachingProfileService`, etc.).
 - `INotificationInboxService.ResolveBySourceAsync(userId, source)` exists for sections that need to auto-resolve all open notifications of a given source for a user when the underlying condition is fixed (e.g. resolving `AccessSuspended` when consents are completed).
+- When an account merge accepts, `INotificationService.ReassignRecipientsToUserAsync` re-FKs `NotificationRecipient.UserId` from source to target (collapsing duplicates where the target already has a recipient row for the same notification). `Notification.ResolvedByUserId` is also re-FK'd. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
 
 ## Cross-Section Dependencies
 
@@ -122,6 +123,10 @@ The originating system for a notification, mapped to a `MessageCategory` for pre
 - **GDPR:** `NotificationInboxService` implements `IUserDataContributor` (via `INotificationRepository.GetAllForUserContributorAsync`) for the GDPR export.
 
 This section is **fan-in**: almost every other section calls in, but this section only reads back a small, narrow slice of count + recipient methods from each. It does not aggregate-join.
+
+Inbound (other sections → Notifications):
+
+- **Profiles:** Called by `IAccountMergeService` (Profiles section) — `INotificationService.ReassignRecipientsToUserAsync` re-FKs `NotificationRecipient` rows during account merge fold.
 
 ## Architecture
 

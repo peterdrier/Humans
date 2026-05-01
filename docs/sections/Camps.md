@@ -234,6 +234,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - When a lead uses the "add active member" shortcut at `/Camps/{slug}/Members/Add`, `ICampService.AddCampMemberAsLeadAsync` creates `CampMember(Status=Active)` directly and writes a `CampMemberAddedByLead` audit entry.
 - Assigning a per-camp role writes a `CampRoleAssigned` audit entry and sends a best-effort `CampRoleAssigned` notification to the assignee. Unassign writes `CampRoleUnassigned` and does **not** notify.
 - Definition CRUD (`CampRoleDefinitionCreated` / `Updated` / `Deactivated` / `Reactivated`) writes audit entries; ordering is `repo.Add` then `SaveChangesAsync` then `auditLog.LogAsync`.
+- When an account merge accepts, `ICampService.ReassignAssignmentsToUserAsync` re-FKs `CampLead.UserId` and `CampRoleAssignment.AssignedByUserId` from source to target. Called only by `IAccountMergeService.AcceptAsync` (Profiles section). **Known gap:** `CampMember.UserId` is **not** currently folded — `CampMember` rows attached to a source remain attributed to the tombstoned source after merge.
 
 ## Cross-Section Dependencies
 
@@ -243,6 +244,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - **Camps internal — `CampRoleService` ↔ `CampService`:** `CampRoleService` calls `ICampService` for camp/season lookup and active-membership verification, and is called back by `ICampService` from the Leave/Withdraw/Remove paths via `ICampRoleService.RemoveAllForMemberAsync`. Both services live within the Camps section.
 - **Audit Log:** `IAuditLogService` — definition CRUD, role assign/unassign, and `CampMemberAddedByLead` actions.
 - **Notifications:** `INotificationService` — `CampRoleAssigned` notification on assign (best-effort, try/catch in controller).
+- **Profiles:** Called by `IAccountMergeService` (Profiles section) — `ICampService.ReassignAssignmentsToUserAsync` re-FKs `CampLead` and `CampRoleAssignment` user references during account merge fold. `CampMember` is **not** folded (known gap).
 
 ## Architecture
 

@@ -119,6 +119,7 @@ Stored as string (`HasConversion<string>()`, max length 20).
 - When a human unsubscribes (legacy campaign-only token or new category-aware token), `ICommunicationPreferenceService.UpdatePreferenceAsync` flips their `MessageCategory.CampaignCodes` (legacy tokens map to `MessageCategory.Marketing`) preference to opted-out; they are then excluded from future wave sends. (The legacy `User.UnsubscribedFromCampaigns` boolean still exists on the entity for GDPR export but is no longer the active gate.)
 - When `TicketSyncService` detects a granted code redeemed in a ticket purchase, it calls `ICampaignService.MarkGrantsRedeemedAsync` to set `CampaignGrant.RedeemedAt`.
 - When an enqueue throws during `SendWaveAsync` or `RetryAllFailedAsync`, the single offending grant is flipped to `Failed` so the next pass of `RetryAllFailedAsync` can pick it up.
+- When an account merge accepts, `ICampaignService.ReassignGrantsToUserAsync` re-FKs `CampaignGrant.UserId` from source to target (collapsing duplicates where target already holds a grant for the same campaign). Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
 
 ## Cross-Section Dependencies
 
@@ -127,6 +128,7 @@ Stored as string (`HasConversion<string>()`, max length 20).
 - **Profiles / Users:** `IUserEmailService.GetNotificationTargetEmailsAsync(IReadOnlyCollection<Guid>)` — resolves notification targets for grant emails; `IUserService.GetByIdAsync` / `GetByIdsAsync` — recipient `DisplayName` for the email payload and code-tracking display; `ICommunicationPreferenceService.IsOptedOutAsync(MessageCategory.CampaignCodes)` — opt-out gate; `IUnsubscribeService` (in `Humans.Application.Services.Users`) processes the public `/Unsubscribe/{token}` endpoint, validating both new category-aware tokens and legacy campaign-only tokens before delegating opt-out to `ICommunicationPreferenceService.UpdatePreferenceAsync`.
 - **Notifications:** `INotificationService.SendAsync` — `CampaignReceived` in-app notifications for wave recipients.
 - **Teams:** `ITeamService.GetActiveTeamOptionsAsync` (Send Wave team picker) and `ITeamService.GetTeamMembersAsync` (team-scoped wave targeting).
+- **Profiles:** Called by `IAccountMergeService` (Profiles section) — `ICampaignService.ReassignGrantsToUserAsync` re-FKs `CampaignGrant` from source to target during account merge fold.
 
 ## Architecture
 

@@ -90,6 +90,7 @@ Singleton (`Id` always 1) tracking ticket sync operational state. `VendorEventId
 - "Who Hasn't Bought" lists active Volunteers-team members (via `ITeamService.GetActiveMemberUserIdsAsync(SystemTeamIds.Volunteers)`) minus those whose current-year `EventParticipation.Status` is `NotAttending`. `HasTicket` is true when the user appears in the union of matched attendee user-ids and matched order user-ids (see `GetAllMatchedUserIdsAsync`).
 - The Volunteer Ticket Coverage card on `/Tickets` divides matched-attendee Volunteers (`UserIdsWithTickets`) by total active Volunteers — buyer-only matches are excluded by construction.
 - Code redemption: vendor discount codes attached to orders are pushed back to Campaigns via `ICampaignService.MarkGrantsRedeemedAsync` so each `CampaignGrant.RedeemedAt` reflects the order's `PurchasedAt`.
+- When an account merge accepts, `ITicketSyncService.ReassignToUserAsync` re-FKs `TicketOrder.MatchedUserId` and `TicketAttendee.MatchedUserId` from source to target. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
 
 ### TicketDashboardStats cache (ghost cache key)
 
@@ -105,6 +106,7 @@ Singleton (`Id` always 1) tracking ticket sync operational state. `VendorEventId
 - **Budget:** `IBudgetService` — `GetActiveYearAsync` + `ComputeBudgetSummary` feed the dashboard's break-even calculation; `TicketingBudgetService` bridges paid-order data into Budget's projection writes via `ITicketingBudgetRepository` (Tickets-owned narrow read surface) without ever touching `budget_*` tables directly.
 - **GDPR:** `TicketQueryService` implements `IUserDataContributor`, contributing the `TicketOrders` and `TicketAttendeeMatches` slices to the per-user data export.
 - **Stripe (Infrastructure):** `IStripeService.GetPaymentDetailsAsync` looks up payment-intent details to populate `PaymentMethod` / `PaymentMethodDetail` / `StripeFee` / `ApplicationFee` per order. Configuration is via `STRIPE_API_KEY` env var; if unset, enrichment is skipped silently and the dashboard's fee breakdown stays empty.
+- **Profiles:** Called by `IAccountMergeService` (Profiles section) — `ITicketSyncService.ReassignToUserAsync` re-FKs `TicketOrder.MatchedUserId` and `TicketAttendee.MatchedUserId` during account merge fold.
 
 ## Architecture
 

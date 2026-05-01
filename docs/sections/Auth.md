@@ -123,6 +123,7 @@ The auth surface is mid-transition per `docs/plans/2026-04-03-first-class-author
 - **On `RevokeAllActiveAsync(userId)`:** every currently-active row for the user has `ValidTo` stamped to now in one batch update, then `IRoleAssignmentClaimsCacheInvalidator.Invalidate(userId)` is called. (Nav-badge counters and per-row notifications are intentionally **not** dispatched on this bulk path — it's a privacy/account-deletion code path, not an admin role-management action.)
 - **On magic-link login email sent:** `User.MagicLinkSentAt` is stamped (in `SendLoginLinkAsync`, before the cache-backed cooldown applies) so subsequent send requests within 60 seconds for the same user are silently no-op'd. Signup-link sends use a separate `IMagicLinkRateLimiter.TryReserveSignupSendAsync` reservation per email address (released on send failure so the caller can retry).
 - **On magic-link login token verified:** the token is reserved in the replay cache for the remainder of its 15-minute lifetime via `IMagicLinkRateLimiter.TryConsumeLoginTokenAsync` so it cannot be redeemed twice. `AccountController.MagicLink` stamps `User.LastLoginAt` after the verified sign-in.
+- **On account merge accept:** `IAccountMergeService.AcceptAsync` (Profiles section) calls `IRoleAssignmentService.ReassignToUserAsync(sourceId, targetId, …)` to re-FK active `role_assignments` rows from source to target. AspNetUserLogins re-FK is handled separately by `IUserService.ReassignLoginsToUserAsync`.
 
 ## Cross-Section Dependencies
 
@@ -130,6 +131,7 @@ The auth surface is mid-transition per `docs/plans/2026-04-03-first-class-author
 - **Teams:** `ISystemTeamSync.SyncBoardTeamAsync` — Board system team's membership mirrors current `Board` role assignments.
 - **Governance:** Tier applications and board voting flows are a separate concern. Governance concerns association-level affairs; Auth concerns who-has-what-role within the running system. `role_assignments` is owned by Auth, not Governance.
 - **Notifications:** `INotificationEmitter` (the narrow per-user dispatch surface — `INotificationService` extends it but Auth only needs the emitter) — best-effort in-app notifications on role changes.
+- **Profiles:** Called by `IAccountMergeService` (Profiles section) — `IRoleAssignmentService.ReassignToUserAsync` re-FKs `role_assignments` from source to target during account merge fold.
 
 ## Architecture
 

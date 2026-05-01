@@ -67,6 +67,7 @@ Cross-aggregate nav `ConsentRecord.DocumentVersion` — still declared and walke
 - When all required global documents have active consent, the human's consent check status transitions from unset to Pending.
 - Legal documents are synced from a GitHub repository by a background job.
 - When a new document version is published, existing consents for the old version become stale and re-consent is required.
+- Per-user reads on `consent_records` chain-follow merge tombstones via `IUserService.GetMergedSourceIdsAsync(userId)` so consents signed under a now-merged source id surface for the fold target. Consent records stay at source after merge by design — DB triggers (`prevent_consent_record_update`, `prevent_consent_record_delete`) make any rewrite physically impossible, so `AnonymizeForMergeAsync` cannot move them. Applies to `ConsentService.GetUserConsentsAsync`, `HasAllRequiredConsentsAsync`, the consent dashboard, and `ContributeForUserAsync` (GDPR).
 
 ## Negative Access Rules
 
@@ -90,6 +91,7 @@ Cross-aggregate nav `ConsentRecord.DocumentVersion` — still declared and walke
 - **Notifications:** `INotificationService` (in-app fan-out from `LegalDocumentSyncService`) and `INotificationInboxService.ResolveBySourceAsync` (auto-resolve `AccessSuspended` notifications from `ConsentService` once all required consents are complete).
 - **Google Integration:** `ISystemTeamSync.SyncVolunteersMembershipForUserAsync` / `SyncCoordinatorsMembershipForUserAsync` — `ConsentService` re-syncs system team membership after each consent submit.
 - **Governance:** `IMembershipCalculator.GetRequiredTeamIdsForUserAsync` / `HasAllRequiredConsentsAsync` — `ConsentService` resolves which teams' documents apply to a given user and whether all required consents are complete.
+- **Users/Identity:** `IUserService.GetMergedSourceIdsAsync` — chain-follow merge tombstones on every per-user consent read so consents signed under a source id surface for the fold target. Consent records are immutable per §12 and stay at source.
 
 `IGitHubLegalDocumentConnector` is owned by this section (interface in `Humans.Application.Interfaces.Legal`, implementation in `Humans.Infrastructure`); not a cross-section dependency.
 

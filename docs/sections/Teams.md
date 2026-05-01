@@ -164,6 +164,7 @@ Stored as string via `HasConversion<string>()`.
 - When a member is added to a team, Google resource sync (Drive folder permissions, Group memberships) runs inline against the Google APIs (and rolls up to the parent department's resources for sub-team adds). Per-user removals are deferred to the daily reconciliation job rather than running inline. Failed sync calls fall through to the Google sync outbox, processed by `process-google-sync-outbox`.
 - When a department coordinator role assignment changes, the Coordinators system team membership is recalculated for the affected human. Sub-team manager changes do not affect the Coordinators system team.
 - The system team sync job runs hourly (Hangfire `Cron.Hourly` recurring job `system-team-sync`), reconciling system team membership for Volunteers (consent compliance), Coordinators (department-level management role assignments), Board (active Board role assignments), Asociados/Colaboradors (approved tier applications with active terms), and Barrio Leads (active camp lead assignments). The job also reconciles `TeamMember.Role` against `IsManagement` role assignments and backfills `User.GoogleEmail` for verified `@nobodies.team` accounts.
+- When an account merge accepts, `ITeamService.ReassignToUserAsync` re-FKs `TeamMember` and `TeamJoinRequest` rows from source to target, collapsing duplicates so the same target doesn't end up with two memberships of the same team. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
 
 ## Cross-Section Dependencies
 
@@ -174,6 +175,7 @@ Stored as string via `HasConversion<string>()`.
 - **Governance:** Colaborador/Asociado approval or expiry adds/removes humans from the respective system teams.
 - **Camps:** Active camp lead assignments feed the Barrio Leads system team via `ICampRepository.GetActiveLeadUserIdsAsync` / `IsLeadAnywhereAsync`.
 - **Users/Identity:** `IUserService.GetByIdsAsync` — display data stitching for nav-stripped sections.
+- **Profiles:** Called by `IAccountMergeService` (Profiles section) — `ITeamService.ReassignToUserAsync` re-FKs `TeamMember` and `TeamJoinRequest` from source to target during account merge fold.
 
 ## Architecture
 

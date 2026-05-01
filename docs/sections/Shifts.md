@@ -166,6 +166,7 @@ Stored as string via `HasConversion<string>()`.
 - Range signup, range voluntell, range bail, range approve, and range refuse all use a shared `SignupBlockId` and operate on the entire block atomically (with per-shift filtering for capacity/conflicts on creation paths).
 - Moving a rota to a different team writes an `AuditAction.RotaMovedToTeam` log entry and updates `Rota.TeamId` via a targeted update (only `TeamId` + `UpdatedAt` are marked modified).
 - Deleting a rota or shift is rejected if any signup is in Confirmed state. Pending signups on a deleted rota/shift are auto-Cancelled via the entity's `Cancel` method.
+- When an account merge accepts, `IShiftSignupService.ReassignToUserAsync` re-FKs `ShiftSignup` rows (volunteer / enrolled-by / reviewed-by user references) from source to target; `IShiftManagementService.ReassignProfilesAndTagPrefsToUserAsync` re-FKs `VolunteerEventProfile` + `VolunteerTagPreference` (with conflict resolution since both are `(UserId)`-unique); `IGeneralAvailabilityService.ReassignToUserAsync` re-FKs `GeneralAvailability`. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
 
 ## Cross-Section Dependencies
 
@@ -176,6 +177,7 @@ Stored as string via `HasConversion<string>()`.
 - **Audit Log:** `IAuditLogService` — every signup state change and rota move emits an audit entry.
 - **Notifications:** `INotificationService` — coordinator notifications for signup changes, voluntell assignments, and coverage gaps. No direct email-outbox dependency from this section.
 - **GDPR:** `ShiftSignupService` implements `IUserDataContributor` (export of signups, volunteer event profile, general availability, tag preferences) and `CancelActiveSignupsForUserAsync` (deletion).
+- **Profiles:** Called by `IAccountMergeService` (Profiles section) — `IShiftSignupService.ReassignToUserAsync`, `IShiftManagementService.ReassignProfilesAndTagPrefsToUserAsync`, and `IGeneralAvailabilityService.ReassignToUserAsync` re-FK Shifts-owned user-scoped rows from source to target during account merge fold.
 
 ## Architecture
 

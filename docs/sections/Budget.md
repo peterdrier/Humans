@@ -147,12 +147,13 @@ Stored as string via `HasConversion<string>()`.
 ## Triggers
 
 - Every mutation to budget groups, categories, or line items generates an append-only `BudgetAuditLog` entry.
+- `BudgetService.ContributeForUserAsync` (GDPR contributor) chain-follows merge tombstones via `IUserService.GetMergedSourceIdsAsync` so `BudgetAuditLog` entries written under a now-merged source `ActorUserId` surface for the fold target. `BudgetAuditLog` is append-only (§12) and stays attributed to the source User row by design.
 
 ## Cross-Section Dependencies
 
 - **Teams:** `ITeamService.GetBudgetableTeamsAsync` / `ITeamService.GetEffectiveBudgetCoordinatorTeamIdsAsync` — narrow cross-section reads for team lookups and coordinator-scope resolution.
 - **Tickets:** `ITicketingBudgetRepository` (Tickets-owned, added for PR #545b) — paid-order lookups for ticketing budget projections. Budget no longer has a code path that reads Tickets tables directly.
-- **Users/Identity:** `IUserService.GetByIdsAsync` — actor display names for audit log.
+- **Users/Identity:** `IUserService.GetByIdsAsync` — actor display names for audit log. `IUserService.GetMergedSourceIdsAsync` — chain-follow merge tombstones on `BudgetAuditLog` GDPR export so source-attributed entries surface for the fold target.
 - **Admin:** Budget year lifecycle management is restricted to FinanceAdmin and Admin.
 
 ## Architecture
