@@ -1,4 +1,5 @@
 using Humans.Domain.Entities;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -219,4 +220,22 @@ public interface IShiftSignupRepository
     /// </summary>
     Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
         Guid userId, string reason, CancellationToken ct = default);
+
+    /// <summary>
+    /// Account-merge fold: re-FKs <c>shift_signups</c> rows from
+    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
+    /// Plain re-FK with one defensive guard — when source and target both
+    /// have a row for the same <c>ShiftId</c>, the source row is dropped so
+    /// the slot is not duplicated under the merged user. (No DB-level
+    /// unique constraint on <c>(UserId, ShiftId)</c>; the no-double-signup
+    /// invariant is enforced at the service layer.) Stamps <c>UpdatedAt</c>
+    /// with <paramref name="updatedAt"/> on every re-FK'd row. Single
+    /// <c>SaveChanges</c>. Returns the count of rows attributed to target
+    /// after the move.
+    /// </summary>
+    Task<int> ReassignToUserAsync(
+        Guid sourceUserId,
+        Guid targetUserId,
+        Instant updatedAt,
+        CancellationToken ct = default);
 }

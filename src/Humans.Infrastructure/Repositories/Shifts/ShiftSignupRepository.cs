@@ -244,4 +244,42 @@ public sealed class ShiftSignupRepository : IShiftSignupRepository
         return cancelled;
     }
 
+    // ============================================================
+    // Account-merge fold
+    // ============================================================
+
+    public async Task<int> ReassignToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default)
+    {
+        var sourceRows = await _dbContext.ShiftSignups
+            .Where(s => s.UserId == sourceUserId)
+            .ToListAsync(ct);
+
+        var targetShiftIds = await _dbContext.ShiftSignups
+            .Where(s => s.UserId == targetUserId)
+            .Select(s => s.ShiftId)
+            .ToListAsync(ct);
+        var targetShiftIdSet = new HashSet<Guid>(targetShiftIds);
+
+        foreach (var src in sourceRows)
+        {
+            if (targetShiftIdSet.Contains(src.ShiftId))
+            {
+                // Defensive: target already has a signup for this shift.
+                // Drop the source row — target's slot stands.
+                _dbContext.ShiftSignups.Remove(src);
+            }
+            else
+            {
+                src.UserId = targetUserId;
+                src.UpdatedAt = updatedAt;
+            }
+        }
+
+        await _dbContext.SaveChangesAsync(ct);
+
+        return await _dbContext.ShiftSignups
+            .CountAsync(s => s.UserId == targetUserId, ct);
+    }
 }

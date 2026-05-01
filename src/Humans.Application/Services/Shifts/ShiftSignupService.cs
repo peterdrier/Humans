@@ -1090,4 +1090,13 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
     public Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
         Guid userId, string reason, CancellationToken ct = default) =>
         _repo.CancelActiveSignupsForUserAsync(userId, reason, ct);
+
+    public Task<int> ReassignToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default) =>
+        // No per-user signup cache to invalidate — signup reads are
+        // request-scoped (see class remarks). The shift-authorization cache
+        // on ShiftManagementService is keyed by team-coordination, not
+        // signup ownership, so re-FKing signups doesn't stale it.
+        _repo.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 }
