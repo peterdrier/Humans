@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -30,9 +31,16 @@ public class AcceptAsyncFoldTests : IClassFixture<HumansWebApplicationFactory>
     {
         // AcceptAsync writes ResolvedByUserId = adminUserId on the merge request
         // and ActorUserId = adminUserId on the audit row, both FK'd to AspNetUsers.
-        // Seed a real admin row per test so those FKs resolve.
+        // It also calls TeamService.RemoveMemberAsync for non-system team folds,
+        // which requires the actor to be Admin / Board / TeamsAdmin (per
+        // CanUserApproveRequestsForTeamAsync). Seed an admin User + an active
+        // Admin RoleAssignment per test so those FKs resolve and authorization
+        // succeeds.
         await using var scope = _factory.Services.CreateAsyncScope();
         var um = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var now = SystemClock.Instance.GetCurrentInstant();
+
         var adminId = Guid.NewGuid();
         var admin = new User
         {
@@ -40,7 +48,7 @@ public class AcceptAsyncFoldTests : IClassFixture<HumansWebApplicationFactory>
             DisplayName = "Test Admin",
             Email = $"admin-{adminId:N}@test.local",
             UserName = $"admin-{adminId:N}@test.local",
-            CreatedAt = SystemClock.Instance.GetCurrentInstant(),
+            CreatedAt = now,
         };
         var result = await um.CreateAsync(admin);
         if (!result.Succeeded)
@@ -49,6 +57,18 @@ public class AcceptAsyncFoldTests : IClassFixture<HumansWebApplicationFactory>
                 "Failed to seed admin user for AcceptAsyncFoldTests: "
                 + string.Join("; ", result.Errors.Select(e => e.Description)));
         }
+
+        db.RoleAssignments.Add(new RoleAssignment
+        {
+            Id = Guid.NewGuid(),
+            UserId = adminId,
+            RoleName = RoleNames.Admin,
+            ValidFrom = now.Minus(Duration.FromDays(1)),
+            ValidTo = null,
+            CreatedAt = now,
+            CreatedByUserId = adminId,
+        });
+        await db.SaveChangesAsync();
         return adminId;
     }
 
@@ -603,6 +623,336 @@ public class AcceptAsyncFoldTests : IClassFixture<HumansWebApplicationFactory>
             .Where(cf => cf.ProfileId == sourceProfileId)
             .ToListAsync();
         sourceFields.Should().BeEmpty();
+    }
+
+    // ==================================================================
+    // RoleAssignments — rule 11 (Pass 2)
+    // ==================================================================
+
+    [HumansFact(Timeout = 30_000)]
+    public async Task AcceptAsync_RoleAssignments_ReFKs_DropsSameKey()
+    {
+        var sharedRole = $"shared-role-{Guid.NewGuid():N}";
+        var sourceOnlyRole = $"source-only-role-{Guid.NewGuid():N}";
+
+        var (sourceId, targetId) = await _factory.SeedMergeFixtureAsync(b =>
+        {
+            // Both have an active assignment for sharedRole — drop source's row.
+            b.WithSourceRoleAssignment(sharedRole);
+            b.WithTargetRoleAssignment(sharedRole);
+
+            // Source-only — re-FK to target.
+            b.WithSourceRoleAssignment(sourceOnlyRole);
+        });
+        var requestId = await _factory.SeedMergeRequestAsync(sourceId, targetId);
+
+        var adminId = await SeedAdminUserAsync();
+        await AcceptAsync(requestId, adminId);
+
+        await using var assertScope = _factory.Services.CreateAsyncScope();
+        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        var targetRows = await db.RoleAssignments
+            .AsNoTracking()
+            .Where(ra => ra.UserId == targetId
+                && (ra.RoleName == sharedRole || ra.RoleName == sourceOnlyRole))
+            .ToListAsync();
+
+        targetRows.Should().HaveCount(2);
+        targetRows.Should().ContainSingle(ra => string.Equals(ra.RoleName, sharedRole, StringComparison.Ordinal));
+        targetRows.Should().ContainSingle(ra => string.Equals(ra.RoleName, sourceOnlyRole, StringComparison.Ordinal));
+
+        var sourceRows = await db.RoleAssignments
+            .AsNoTracking()
+            .Where(ra => ra.UserId == sourceId
+                && (ra.RoleName == sharedRole || ra.RoleName == sourceOnlyRole))
+            .ToListAsync();
+        sourceRows.Should().BeEmpty();
+    }
+
+    // ==================================================================
+    // TeamMembers — rule 12 (Pass 2)
+    // ==================================================================
+
+    [HumansFact(Timeout = 30_000)]
+    public async Task AcceptAsync_TeamMembers_AddTargetRemoveSource_NonSystemOnly()
+    {
+        Guid sharedTeamId = Guid.Empty, sourceOnlyTeamId = Guid.Empty;
+
+        var (sourceId, targetId) = await _factory.SeedMergeFixtureAsync(b =>
+        {
+            sharedTeamId = b.SeedTeamNow($"Shared-{Guid.NewGuid():N}");
+            sourceOnlyTeamId = b.SeedTeamNow($"SourceOnly-{Guid.NewGuid():N}");
+
+            // Both members of sharedTeam — source's slot drops, target stays.
+            b.WithSourceTeamMember(sharedTeamId);
+            b.WithTargetTeamMember(sharedTeamId);
+
+            // Only source belongs to sourceOnlyTeam — target gets added, source removed.
+            b.WithSourceTeamMember(sourceOnlyTeamId);
+        });
+        var requestId = await _factory.SeedMergeRequestAsync(sourceId, targetId);
+
+        var adminId = await SeedAdminUserAsync();
+        await AcceptAsync(requestId, adminId);
+
+        await using var assertScope = _factory.Services.CreateAsyncScope();
+        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        // Target should have ACTIVE memberships (LeftAt == null) on both teams.
+        var targetActiveTeams = await db.TeamMembers
+            .AsNoTracking()
+            .Where(tm => tm.UserId == targetId && tm.LeftAt == null
+                && (tm.TeamId == sharedTeamId || tm.TeamId == sourceOnlyTeamId))
+            .Select(tm => tm.TeamId)
+            .ToListAsync();
+        targetActiveTeams.Should().Contain(sharedTeamId);
+        targetActiveTeams.Should().Contain(sourceOnlyTeamId);
+
+        // Source should have NO active memberships on either team after the fold.
+        var sourceActive = await db.TeamMembers
+            .AsNoTracking()
+            .Where(tm => tm.UserId == sourceId && tm.LeftAt == null
+                && (tm.TeamId == sharedTeamId || tm.TeamId == sourceOnlyTeamId))
+            .ToListAsync();
+        sourceActive.Should().BeEmpty();
+    }
+
+    // ==================================================================
+    // TeamJoinRequests — rule 13 (Pass 2)
+    // ==================================================================
+
+    [HumansFact(Timeout = 30_000)]
+    public async Task AcceptAsync_TeamJoinRequests_Move_DropDuplicateActive()
+    {
+        Guid contestedTeamId = Guid.Empty, sourceOnlyTeamId = Guid.Empty;
+
+        var (sourceId, targetId) = await _factory.SeedMergeFixtureAsync(b =>
+        {
+            contestedTeamId = b.SeedTeamNow($"Contested-{Guid.NewGuid():N}");
+            sourceOnlyTeamId = b.SeedTeamNow($"SourceOnlyTJR-{Guid.NewGuid():N}");
+
+            // Both pending on contestedTeam — drop source.
+            b.WithSourceTeamJoinRequest(contestedTeamId, TeamJoinRequestStatus.Pending);
+            b.WithTargetTeamJoinRequest(contestedTeamId, TeamJoinRequestStatus.Pending);
+
+            // Source pending on sourceOnly — re-FK to target.
+            b.WithSourceTeamJoinRequest(sourceOnlyTeamId, TeamJoinRequestStatus.Pending);
+        });
+        var requestId = await _factory.SeedMergeRequestAsync(sourceId, targetId);
+
+        var adminId = await SeedAdminUserAsync();
+        await AcceptAsync(requestId, adminId);
+
+        await using var assertScope = _factory.Services.CreateAsyncScope();
+        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        var targetRequests = await db.TeamJoinRequests
+            .AsNoTracking()
+            .Where(r => r.UserId == targetId
+                && (r.TeamId == contestedTeamId || r.TeamId == sourceOnlyTeamId))
+            .ToListAsync();
+
+        // One pending on each team; source's contested-team duplicate dropped.
+        targetRequests.Should().HaveCount(2);
+        targetRequests.Should().ContainSingle(r => r.TeamId == contestedTeamId);
+        targetRequests.Should().ContainSingle(r => r.TeamId == sourceOnlyTeamId);
+
+        var sourceRequests = await db.TeamJoinRequests
+            .AsNoTracking()
+            .Where(r => r.UserId == sourceId
+                && (r.TeamId == contestedTeamId || r.TeamId == sourceOnlyTeamId))
+            .ToListAsync();
+        sourceRequests.Should().BeEmpty();
+    }
+
+    // ==================================================================
+    // NotificationRecipients — rule 17 (Pass 2)
+    // ==================================================================
+
+    [HumansFact(Timeout = 30_000)]
+    public async Task AcceptAsync_NotificationRecipients_Move_DropDuplicate()
+    {
+        Guid sharedNotificationId = Guid.Empty, sourceOnlyNotificationId = Guid.Empty;
+
+        var (sourceId, targetId) = await _factory.SeedMergeFixtureAsync(b =>
+        {
+            sharedNotificationId = b.SeedNotificationNow($"shared-{Guid.NewGuid():N}");
+            sourceOnlyNotificationId = b.SeedNotificationNow($"source-only-{Guid.NewGuid():N}");
+
+            b.WithSourceNotificationRecipient(sharedNotificationId);
+            b.WithTargetNotificationRecipient(sharedNotificationId);
+            b.WithSourceNotificationRecipient(sourceOnlyNotificationId);
+        });
+        var requestId = await _factory.SeedMergeRequestAsync(sourceId, targetId);
+
+        var adminId = await SeedAdminUserAsync();
+        await AcceptAsync(requestId, adminId);
+
+        await using var assertScope = _factory.Services.CreateAsyncScope();
+        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        var targetRecipients = await db.NotificationRecipients
+            .AsNoTracking()
+            .Where(nr => nr.UserId == targetId
+                && (nr.NotificationId == sharedNotificationId || nr.NotificationId == sourceOnlyNotificationId))
+            .ToListAsync();
+
+        targetRecipients.Should().HaveCount(2, "duplicate on shared notification dropped, source-only re-FK'd");
+        targetRecipients.Should().ContainSingle(nr => nr.NotificationId == sharedNotificationId);
+        targetRecipients.Should().ContainSingle(nr => nr.NotificationId == sourceOnlyNotificationId);
+
+        var sourceRecipients = await db.NotificationRecipients
+            .AsNoTracking()
+            .Where(nr => nr.UserId == sourceId
+                && (nr.NotificationId == sharedNotificationId || nr.NotificationId == sourceOnlyNotificationId))
+            .ToListAsync();
+        sourceRecipients.Should().BeEmpty();
+    }
+
+    // ==================================================================
+    // CampaignGrants — rule 18 (Pass 2)
+    // ==================================================================
+
+    [HumansFact(Timeout = 30_000)]
+    public async Task AcceptAsync_CampaignGrants_Move_DedupPerCampaign()
+    {
+        Guid contestedCampaignId = Guid.Empty, sourceOnlyCampaignId = Guid.Empty;
+        Guid creatorId = Guid.Empty;
+
+        var (sourceId, targetId) = await _factory.SeedMergeFixtureAsync();
+
+        // Need a real user to satisfy Campaign.CreatedByUserId FK; use the
+        // source as creator (fold doesn't touch Campaigns).
+        creatorId = sourceId;
+
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+            var builder = new MergeFixtureBuilder(scope, sourceId, targetId);
+            contestedCampaignId = builder.SeedCampaignNow($"Contested-{Guid.NewGuid():N}", creatorId);
+            sourceOnlyCampaignId = builder.SeedCampaignNow($"SourceOnly-{Guid.NewGuid():N}", creatorId);
+
+            builder
+                .WithSourceCampaignGrant(contestedCampaignId)
+                .WithTargetCampaignGrant(contestedCampaignId)
+                .WithSourceCampaignGrant(sourceOnlyCampaignId);
+
+            await builder.SaveAllAsync();
+        }
+        var requestId = await _factory.SeedMergeRequestAsync(sourceId, targetId);
+
+        var adminId = await SeedAdminUserAsync();
+        await AcceptAsync(requestId, adminId);
+
+        await using var assertScope = _factory.Services.CreateAsyncScope();
+        var db2 = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        var targetGrants = await db2.CampaignGrants
+            .AsNoTracking()
+            .Where(g => g.UserId == targetId
+                && (g.CampaignId == contestedCampaignId || g.CampaignId == sourceOnlyCampaignId))
+            .ToListAsync();
+        targetGrants.Should().HaveCount(2);
+        targetGrants.Should().ContainSingle(g => g.CampaignId == contestedCampaignId);
+        targetGrants.Should().ContainSingle(g => g.CampaignId == sourceOnlyCampaignId);
+
+        var sourceGrants = await db2.CampaignGrants
+            .AsNoTracking()
+            .Where(g => g.UserId == sourceId
+                && (g.CampaignId == contestedCampaignId || g.CampaignId == sourceOnlyCampaignId))
+            .ToListAsync();
+        sourceGrants.Should().BeEmpty();
+    }
+
+    // ==================================================================
+    // FeedbackMessages — rule 21 part 2 (Pass 2)
+    // ==================================================================
+
+    [HumansFact(Timeout = 30_000)]
+    public async Task AcceptAsync_FeedbackMessages_Move()
+    {
+        Guid reportId = Guid.Empty;
+        var sourceContent = $"source-msg-{Guid.NewGuid():N}";
+        var targetContent = $"target-msg-{Guid.NewGuid():N}";
+
+        var (sourceId, targetId) = await _factory.SeedMergeFixtureAsync();
+
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var builder = new MergeFixtureBuilder(scope, sourceId, targetId);
+            // FeedbackMessages.SenderUserId references either user; the
+            // FeedbackReport itself can belong to either side too. Use the
+            // target's report so it's untouched by the merge (the message
+            // SenderUserId moves source -> target).
+            reportId = builder.SeedFeedbackReportNow(targetId, $"report-{Guid.NewGuid():N}");
+
+            builder
+                .WithSourceFeedbackMessage(reportId, sourceContent)
+                .WithTargetFeedbackMessage(reportId, targetContent);
+
+            await builder.SaveAllAsync();
+        }
+        var requestId = await _factory.SeedMergeRequestAsync(sourceId, targetId);
+
+        var adminId = await SeedAdminUserAsync();
+        await AcceptAsync(requestId, adminId);
+
+        await using var assertScope = _factory.Services.CreateAsyncScope();
+        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        // Both messages should now be attributed to target.
+        var targetMessages = await db.FeedbackMessages
+            .AsNoTracking()
+            .Where(m => m.SenderUserId == targetId
+                && (m.Content == sourceContent || m.Content == targetContent))
+            .ToListAsync();
+        targetMessages.Should().HaveCount(2);
+
+        var sourceMessages = await db.FeedbackMessages
+            .AsNoTracking()
+            .Where(m => m.SenderUserId == sourceId)
+            .ToListAsync();
+        sourceMessages.Should().BeEmpty();
+    }
+
+    // ==================================================================
+    // BudgetAuditLog — rule 24 (Pass 2)
+    // Append-only — fold MUST NOT mutate; chain-follow stitches at read time.
+    // ==================================================================
+
+    [HumansFact(Timeout = 30_000)]
+    public async Task AcceptAsync_BudgetAuditLog_NotMutated_StaysAtSourceId()
+    {
+        var description = $"budget-source-action-{Guid.NewGuid():N}";
+
+        var (sourceId, targetId) = await _factory.SeedMergeFixtureAsync();
+
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var builder = new MergeFixtureBuilder(scope, sourceId, targetId);
+            var budgetYearId = builder.SeedBudgetYearNow($"BY-{Guid.NewGuid():N}".Substring(0, 6));
+            builder.WithSourceBudgetAuditLog(budgetYearId, description);
+            await builder.SaveAllAsync();
+        }
+
+        var requestId = await _factory.SeedMergeRequestAsync(sourceId, targetId);
+
+        var adminId = await SeedAdminUserAsync();
+        await AcceptAsync(requestId, adminId);
+
+        await using var assertScope = _factory.Services.CreateAsyncScope();
+        var db = assertScope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        // Audit row must still point at the source user — fold doesn't
+        // mutate append-only logs; chain-follow at read time stitches them
+        // with the target.
+        var rows = await db.BudgetAuditLogs
+            .AsNoTracking()
+            .Where(l => l.Description == description)
+            .ToListAsync();
+        rows.Should().HaveCount(1);
+        rows[0].ActorUserId.Should().Be(sourceId);
     }
 
     // ==================================================================

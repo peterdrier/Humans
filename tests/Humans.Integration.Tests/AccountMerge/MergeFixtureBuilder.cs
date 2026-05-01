@@ -360,23 +360,278 @@ public sealed class MergeFixtureBuilder
     }
 
     // ==================================================================
-    // Deferred — phase 6.2 test author adds these as cases come online.
-    // Each requires more cross-section setup than the minimum-viable
-    // fixture warrants this PR.
+    // RoleAssignment (Auth section)
+    // ==================================================================
+
+    public MergeFixtureBuilder WithSourceRoleAssignment(
+        string roleName, Instant? validFrom = null, Instant? validTo = null)
+        => AddRoleAssignment(SourceUserId, roleName, validFrom, validTo);
+
+    public MergeFixtureBuilder WithTargetRoleAssignment(
+        string roleName, Instant? validFrom = null, Instant? validTo = null)
+        => AddRoleAssignment(TargetUserId, roleName, validFrom, validTo);
+
+    private MergeFixtureBuilder AddRoleAssignment(
+        Guid userId, string roleName, Instant? validFrom, Instant? validTo)
+    {
+        _pending.Add(db => db.RoleAssignments.Add(new RoleAssignment
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            RoleName = roleName,
+            ValidFrom = validFrom ?? _now.Minus(Duration.FromDays(30)),
+            ValidTo = validTo,
+            CreatedAt = _now,
+            CreatedByUserId = userId, // self-assign for fixture purposes
+        }));
+        return this;
+    }
+
+    // ==================================================================
+    // Team / TeamMember / TeamJoinRequest (Teams section)
+    //
+    // The fixture creates non-system teams ad hoc, returning the Team.Id
+    // so tests can assert against it. System teams are excluded from the
+    // fold, so we always build IsSystemTeam = false here.
+    // ==================================================================
+
+    public Guid SeedTeamNow(string name)
+    {
+        var teamId = Guid.NewGuid();
+        // IsSystemTeam is computed (SystemTeamType == None). Leaving
+        // SystemTeamType at default None gives IsSystemTeam = false, which
+        // is what the merge fold expects for the TeamMember rule.
+        var team = new Team
+        {
+            Id = teamId,
+            Name = name,
+            Slug = $"team-{teamId:N}".Substring(0, 12),
+            IsActive = true,
+            CreatedAt = _now,
+            UpdatedAt = _now,
+        };
+        _db.Teams.Add(team);
+        _db.SaveChanges();
+        return teamId;
+    }
+
+    public MergeFixtureBuilder WithSourceTeamMember(Guid teamId)
+        => AddTeamMember(SourceUserId, teamId);
+
+    public MergeFixtureBuilder WithTargetTeamMember(Guid teamId)
+        => AddTeamMember(TargetUserId, teamId);
+
+    private MergeFixtureBuilder AddTeamMember(Guid userId, Guid teamId)
+    {
+        _pending.Add(db => db.TeamMembers.Add(new TeamMember
+        {
+            Id = Guid.NewGuid(),
+            TeamId = teamId,
+            UserId = userId,
+            JoinedAt = _now,
+        }));
+        return this;
+    }
+
+    public MergeFixtureBuilder WithSourceTeamJoinRequest(
+        Guid teamId, TeamJoinRequestStatus status = TeamJoinRequestStatus.Pending)
+        => AddTeamJoinRequest(SourceUserId, teamId, status);
+
+    public MergeFixtureBuilder WithTargetTeamJoinRequest(
+        Guid teamId, TeamJoinRequestStatus status = TeamJoinRequestStatus.Pending)
+        => AddTeamJoinRequest(TargetUserId, teamId, status);
+
+    private MergeFixtureBuilder AddTeamJoinRequest(
+        Guid userId, Guid teamId, TeamJoinRequestStatus status)
+    {
+        _pending.Add(db => db.TeamJoinRequests.Add(new TeamJoinRequest
+        {
+            Id = Guid.NewGuid(),
+            TeamId = teamId,
+            UserId = userId,
+            Status = status,
+            RequestedAt = _now,
+        }));
+        return this;
+    }
+
+    // ==================================================================
+    // Notification / NotificationRecipient (Notifications section)
+    // ==================================================================
+
+    public Guid SeedNotificationNow(string title)
+    {
+        var notificationId = Guid.NewGuid();
+        var notification = new Notification
+        {
+            Id = notificationId,
+            Title = title,
+            Priority = NotificationPriority.Normal,
+            Source = NotificationSource.SyncError,
+            Class = NotificationClass.Informational,
+            CreatedAt = _now,
+        };
+        _db.Notifications.Add(notification);
+        _db.SaveChanges();
+        return notificationId;
+    }
+
+    // ==================================================================
+    // Campaign / CampaignGrant (Campaigns section)
+    // ==================================================================
+
+    public Guid SeedCampaignNow(string title, Guid creatorUserId)
+    {
+        var campaignId = Guid.NewGuid();
+        var campaign = new Campaign
+        {
+            Id = campaignId,
+            Title = title,
+            EmailSubject = $"{title} subject",
+            EmailBodyTemplate = "test body",
+            Status = CampaignStatus.Draft,
+            CreatedAt = _now,
+            CreatedByUserId = creatorUserId,
+        };
+        _db.Campaigns.Add(campaign);
+
+        // CampaignGrant requires a CampaignCode FK; seed one alongside the
+        // campaign so tests can attach grants without extra plumbing.
+        var code = new CampaignCode
+        {
+            Id = Guid.NewGuid(),
+            CampaignId = campaignId,
+            Code = $"code-{campaignId:N}",
+            ImportOrder = 0,
+            ImportedAt = _now,
+        };
+        _db.CampaignCodes.Add(code);
+        _db.SaveChanges();
+        return campaignId;
+    }
+
+    public MergeFixtureBuilder WithSourceCampaignGrant(Guid campaignId)
+        => AddCampaignGrant(SourceUserId, campaignId);
+
+    public MergeFixtureBuilder WithTargetCampaignGrant(Guid campaignId)
+        => AddCampaignGrant(TargetUserId, campaignId);
+
+    private MergeFixtureBuilder AddCampaignGrant(Guid userId, Guid campaignId)
+    {
+        _pending.Add(db =>
+        {
+            // One CampaignCode per grant (1:1 nav on the entity). Seed a
+            // fresh code per grant so two grants on the same campaign
+            // don't collide on the unique CampaignCodeId.
+            var codeId = Guid.NewGuid();
+            db.CampaignCodes.Add(new CampaignCode
+            {
+                Id = codeId,
+                CampaignId = campaignId,
+                Code = $"code-{codeId:N}",
+                ImportOrder = 0,
+                ImportedAt = _now,
+            });
+            db.CampaignGrants.Add(new CampaignGrant
+            {
+                Id = Guid.NewGuid(),
+                CampaignId = campaignId,
+                CampaignCodeId = codeId,
+                UserId = userId,
+                AssignedAt = _now,
+            });
+        });
+        return this;
+    }
+
+    // ==================================================================
+    // FeedbackMessage (Feedback section)
+    // ==================================================================
+
+    public Guid SeedFeedbackReportNow(Guid userId, string description)
+    {
+        var reportId = Guid.NewGuid();
+        var report = new FeedbackReport
+        {
+            Id = reportId,
+            UserId = userId,
+            Category = FeedbackCategory.Bug,
+            Description = description,
+            PageUrl = "/test",
+            Status = FeedbackStatus.Open,
+            CreatedAt = _now,
+            UpdatedAt = _now,
+        };
+        _db.FeedbackReports.Add(report);
+        _db.SaveChanges();
+        return reportId;
+    }
+
+    public MergeFixtureBuilder WithSourceFeedbackMessage(Guid reportId, string content)
+        => AddFeedbackMessage(SourceUserId, reportId, content);
+
+    public MergeFixtureBuilder WithTargetFeedbackMessage(Guid reportId, string content)
+        => AddFeedbackMessage(TargetUserId, reportId, content);
+
+    private MergeFixtureBuilder AddFeedbackMessage(Guid userId, Guid reportId, string content)
+    {
+        _pending.Add(db => db.FeedbackMessages.Add(new FeedbackMessage
+        {
+            Id = Guid.NewGuid(),
+            FeedbackReportId = reportId,
+            SenderUserId = userId,
+            Content = content,
+            CreatedAt = _now,
+        }));
+        return this;
+    }
+
+    // ==================================================================
+    // BudgetAuditLog (Budget section)
+    //
+    // Append-only with DB triggers blocking UPDATE/DELETE; INSERT is the
+    // only legal mutation. Chain-follow read mirrors the audit-log pattern.
+    // ==================================================================
+
+    public Guid SeedBudgetYearNow(string yearLabel)
+    {
+        var budgetYearId = Guid.NewGuid();
+        var year = new BudgetYear
+        {
+            Id = budgetYearId,
+            Year = yearLabel,
+            Name = $"Budget {yearLabel}",
+            CreatedAt = _now,
+            UpdatedAt = _now,
+        };
+        _db.BudgetYears.Add(year);
+        _db.SaveChanges();
+        return budgetYearId;
+    }
+
+    public MergeFixtureBuilder WithSourceBudgetAuditLog(
+        Guid budgetYearId, string description)
+    {
+        _pending.Add(db => db.BudgetAuditLogs.Add(new BudgetAuditLog
+        {
+            Id = Guid.NewGuid(),
+            BudgetYearId = budgetYearId,
+            EntityType = "BudgetYear",
+            EntityId = budgetYearId,
+            Description = description,
+            ActorUserId = SourceUserId,
+            OccurredAt = _now,
+        }));
+        return this;
+    }
+
+    // ==================================================================
+    // Deferred — heavier chains; phase 6.2 author can pull these in as
+    // needed.
     // ==================================================================
 
     // TODO(phase 6.x): seed Ticket — needs a TicketOrder + TicketAttendee
     //   pair and lives in the Tickets section; the order is keyed by user.
-
-    // TODO(phase 6.x): seed RoleAssignment — Auth section. Requires a known
-    //   role name + valid-from instant; safe to add when the per-rule test
-    //   for role-assignment chain follow lands.
-
-    // TODO(phase 6.x): seed TeamMember — Teams section. Needs a Team row;
-    //   either pre-seed in the test or extend with WithSourceTeamId helper.
-
-    // TODO(phase 6.x): seed TeamJoinRequest — Teams section. Same prereq
-    //   as TeamMember (existing Team row).
 
     // TODO(phase 6.x): seed VolunteerEventProfile — needs an EventSettings
     //   row; phase 6.2 test for that rule pre-seeds it.
@@ -386,22 +641,18 @@ public sealed class MergeFixtureBuilder
     // TODO(phase 6.x): seed GeneralAvailability — needs an EventSettings
     //   row.
 
-    // TODO(phase 6.x): seed CampaignGrant — needs a Campaign row.
+    // TODO(phase 6.x): seed ShiftSignup helper for phase 6.2 — the existing
+    //   builder takes a Shift.Id but seeding the Shift requires a Rota +
+    //   EventSettings + Team. Defer until a rota fixture is needed.
 
     // TODO(phase 6.x): seed CampLead — needs a Camp + CampSeason chain.
 
     // TODO(phase 6.x): seed CampRoleAssignment — needs Camp + CampSeason
     //   + CampRoleDefinition.
 
-    // TODO(phase 6.x): seed FeedbackMessage — straightforward; just needs
-    //   a FeedbackReport.Id from a prior WithSource/TargetFeedbackReport.
-
     // TODO(phase 6.x): seed ConsentRecord — append-only; needs a published
-    //   DocumentVersion. Insert via db.ConsentRecords.Add (DB triggers
-    //   block update/delete but allow insert).
-
-    // TODO(phase 6.x): seed BudgetAuditLog — append-only Budget section
-    //   row; chain-follow read mirrors the audit-log pattern.
+    //   DocumentVersion -> LegalDocument -> Team chain. Insert via
+    //   db.ConsentRecords.Add (DB triggers block update/delete).
 
     // ------------------------------------------------------------------
 
