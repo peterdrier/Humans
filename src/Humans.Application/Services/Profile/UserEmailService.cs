@@ -221,6 +221,7 @@ public sealed class UserEmailService : IUserEmailService
         await _repository.UpdateAsync(pendingEmail, cancellationToken);
 
         await TryBackfillGoogleEmailAsync(userId, cancellationToken);
+        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
 
         return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: false);
     }
@@ -268,6 +269,7 @@ public sealed class UserEmailService : IUserEmailService
         email.Visibility = visibility;
         email.UpdatedAt = _clock.GetCurrentInstant();
         await _repository.UpdateAsync(email, cancellationToken);
+        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
     }
 
     public async Task<bool> DeleteEmailAsync(
