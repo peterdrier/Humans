@@ -46,11 +46,31 @@ public interface IConsentRepository
         Guid userId, Guid documentVersionId, CancellationToken ct = default);
 
     /// <summary>
+    /// Multi-id overload of <see cref="ExistsForUserAndVersionAsync"/> used
+    /// by the service-layer chain-follow read path so a fold-target's
+    /// existing-consent check transparently includes consents that stayed
+    /// attributed to merged-source tombstones.
+    /// </summary>
+    Task<bool> ExistsForUserIdsAndVersionAsync(
+        IReadOnlyCollection<Guid> userIds, Guid documentVersionId, CancellationToken ct = default);
+
+    /// <summary>
     /// Loads a consent record for the given user and document version, or
     /// null if none exists. Read-only (AsNoTracking).
     /// </summary>
     Task<ConsentRecord?> GetByUserAndVersionAsync(
         Guid userId, Guid documentVersionId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Multi-id overload of <see cref="GetByUserAndVersionAsync"/> used by
+    /// the service-layer chain-follow read path so a fold-target's review
+    /// detail transparently surfaces a consent record that stayed
+    /// attributed to a merged-source tombstone. Returns the most recent
+    /// matching record (ordered by <c>ConsentedAt</c> descending) when
+    /// multiple ids consented to the same version.
+    /// </summary>
+    Task<ConsentRecord?> GetByUserIdsAndVersionAsync(
+        IReadOnlyCollection<Guid> userIds, Guid documentVersionId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns every consent record for a user, ordered by <c>ConsentedAt</c>
@@ -63,9 +83,27 @@ public interface IConsentRepository
         Guid userId, CancellationToken ct = default);
 
     /// <summary>
+    /// Multi-id overload of <see cref="GetAllForUserAsync"/> used by the
+    /// service-layer chain-follow read path so a fold-target's history
+    /// transparently includes records that stayed attributed to merged-source
+    /// tombstones. Same ordering and includes as the single-id form.
+    /// </summary>
+    Task<IReadOnlyList<ConsentRecord>> GetAllForUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the count of consent records for a user.
     /// </summary>
     Task<int> GetCountForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Multi-id overload of <see cref="GetCountForUserAsync"/> used by the
+    /// service-layer chain-follow read path so a fold-target's count
+    /// transparently includes records that stayed attributed to merged-source
+    /// tombstones.
+    /// </summary>
+    Task<int> GetCountForUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the set of <c>DocumentVersionId</c> values that the user has
@@ -73,6 +111,16 @@ public interface IConsentRepository
     /// </summary>
     Task<IReadOnlySet<Guid>> GetExplicitlyConsentedVersionIdsAsync(
         Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Multi-id overload of <see cref="GetExplicitlyConsentedVersionIdsAsync"/>
+    /// used by the service-layer chain-follow read path so a fold-target's
+    /// consented-versions set transparently includes versions that were
+    /// explicitly consented to by merged-source tombstones. Returns the
+    /// flat union across all input ids.
+    /// </summary>
+    Task<IReadOnlySet<Guid>> GetExplicitlyConsentedVersionIdsForUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     /// <summary>
     /// For each input user id, returns the set of <c>DocumentVersionId</c>

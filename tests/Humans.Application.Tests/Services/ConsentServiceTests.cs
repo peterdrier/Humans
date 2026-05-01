@@ -18,6 +18,7 @@ using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Consent;
 
 namespace Humans.Application.Tests.Services;
@@ -33,6 +34,7 @@ public class ConsentServiceTests : IDisposable
     private readonly INotificationInboxService _notificationInboxService = Substitute.For<INotificationInboxService>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
     private readonly IProfileService _profileService = Substitute.For<IProfileService>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
 
     public ConsentServiceTests()
@@ -72,6 +74,11 @@ public class ConsentServiceTests : IDisposable
         var factory = new TestDbContextFactory(options);
         var consentRepository = new ConsentRepository(factory);
 
+        // Default: no merge tombstones — chain-follow short-circuits to the
+        // single-id repo path.
+        _userService.GetMergedSourceIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlySet<Guid>)new HashSet<Guid>());
+
         _service = new ConsentService(
             consentRepository,
             _onboardingService,
@@ -79,6 +86,7 @@ public class ConsentServiceTests : IDisposable
             _notificationInboxService,
             _syncJob,
             _profileService,
+            _userService,
             serviceProvider,
             _metrics,
             _clock,
