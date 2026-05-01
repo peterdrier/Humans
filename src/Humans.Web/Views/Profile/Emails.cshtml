@@ -89,7 +89,7 @@
                                     <code>@row.Email</code>
                                 </td>
                                 <td>
-                                    @if (Model.MergePendingEmailIds.Contains(row.Id))
+                                    @if (row.IsMergePending)
                                     {
                                         <span class="badge bg-warning text-dark">
                                             <i class="fa-solid fa-code-merge me-1"></i>@Localizer["EmailGrid_StatusMergePending"]
@@ -140,7 +140,7 @@
                                 </td>
                                 <td>
                                     @{
-                                        var googleChecked = isLockedRow ? true : row.IsGoogleServiceEmail;
+                                        var googleChecked = isLockedRow ? true : row.IsGoogle;
                                         var googleDisabled = workspaceLocked || !row.IsVerified;
                                     }
                                     <form asp-action="@(Model.IsAdminContext ? "AdminSetGoogle" : "SetGoogle")"

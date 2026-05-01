@@ -150,12 +150,6 @@ public sealed class UserEmailService : IUserEmailService
 
         await _repository.AddAsync(userEmail, cancellationToken);
 
-        // Maintain the IsPrimary invariant. AddEmailAsync inserts an unverified
-        // row, so this is normally a no-op (unverified rows can't be primary),
-        // but the helper is cheap and protects against latent bugs in any
-        // existing rows.
-        await EnsurePrimaryInvariantAsync(userId, cancellationToken);
-
         // Generate verification token via Identity
         var token = await _userManager.GenerateUserTokenAsync(
             user,
@@ -234,7 +228,7 @@ public sealed class UserEmailService : IUserEmailService
     public async Task SetPrimaryAsync(
         Guid userId, Guid emailId, CancellationToken cancellationToken = default)
     {
-        var emails = await _repository.GetByUserIdForMutationAsync(userId, cancellationToken);
+        var emails = (await _repository.GetByUserIdForMutationAsync(userId, cancellationToken)).ToList();
 
         var target = emails.FirstOrDefault(e => e.Id == emailId)
             ?? throw new InvalidOperationException("Email not found.");
@@ -243,13 +237,22 @@ public sealed class UserEmailService : IUserEmailService
             throw new ValidationException("Only verified emails can be the notification target.");
 
         var now = _clock.GetCurrentInstant();
+        var changed = new List<UserEmail>();
         foreach (var email in emails)
         {
-            email.IsPrimary = email.Id == emailId;
-            email.UpdatedAt = now;
+            var shouldBePrimary = email.Id == emailId;
+            if (email.IsPrimary != shouldBePrimary)
+            {
+                email.IsPrimary = shouldBePrimary;
+                email.UpdatedAt = now;
+                changed.Add(email);
+            }
         }
 
-        await _repository.UpdateBatchAsync(emails.ToList(), cancellationToken);
+        if (changed.Count == 0)
+            return;
+
+        await _repository.UpdateBatchAsync(changed, cancellationToken);
 
         // FullProfile.NotificationEmail derives from the row with IsPrimary=true.
         await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
@@ -282,23 +285,11 @@ public sealed class UserEmailService : IUserEmailService
             return false;
         }
 
-        // Preserve-at-least-one-verified-email invariant — replaces the old
-        // IsOAuth-based block per email-identity-decoupling spec PR 1
-        // (docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md).
-        //
-        // The original rule was "preserve at least one auth method" (verified
-        // UserEmail OR AspNetUserLogins row). Tightened to "preserve at least
-        // one verified UserEmail" because OAuth-only users are still un-
-        // notifiable: GetEffectiveEmail() falls back to User.Email which is
-        // null for post-PR-1 users, so an OAuth-only state would silently
-        // drop every system email (re-consent reminders, suspension notices,
-        // password resets, etc.). The OAuth login still works for sign-in,
-        // but signing in to an account that can't receive notifications is
-        // worse UX than blocking the delete.
-        //
-        // We only enforce when removing a verified row — unverified rows
-        // aren't notification targets and aren't usable for magic-link
-        // sign-in, so deleting one cannot reduce the verified-email count.
+        // Preserve at least one verified UserEmail. An OAuth-only account can still
+        // sign in but cannot receive system notifications (GetEffectiveEmail falls
+        // back to User.Email, which is null post email-decoupling), so blocking the
+        // last-verified-row delete is preferable to silently dropping notifications.
+        // Unverified rows aren't notification targets, so deleting one is safe.
         if (email.IsVerified)
         {
             var allEmails = await _repository.GetByUserIdForMutationAsync(userId, cancellationToken);
@@ -314,10 +305,8 @@ public sealed class UserEmailService : IUserEmailService
 
         await _repository.RemoveAsync(email, cancellationToken);
 
-        // Centralized IsPrimary invariant. If the removed row was the primary,
-        // the helper promotes the highest-priority remaining verified row
-        // (Workspace > most-recently-updated). Replaces the prior inline
-        // alphabetical successor pick.
+        // If the removed row was primary, promote the highest-priority remaining
+        // verified row (Workspace > most-recently-updated).
         await EnsurePrimaryInvariantAsync(userId, cancellationToken);
 
         // FullProfile.NotificationEmail derives from user_emails; drop the stale entry so
@@ -349,11 +338,7 @@ public sealed class UserEmailService : IUserEmailService
             UserId = userId,
             Email = email,
             IsVerified = true,
-            // IsPrimary is set by EnsurePrimaryInvariantAsync below — the helper
-            // promotes the @nobodies.team row when present, otherwise picks the
-            // most-recently-updated verified row. This restores the pre-PR-4
-            // invariant: every user with at least one verified email has exactly
-            // one IsPrimary row (Profiles.md Data Model — UserEmail.IsNotificationTarget).
+            // IsPrimary set below by EnsurePrimaryInvariantAsync.
             IsPrimary = false,
             Visibility = ContactFieldVisibility.BoardOnly,
             CreatedAt = now,
@@ -362,10 +347,6 @@ public sealed class UserEmailService : IUserEmailService
 
         await _repository.AddAsync(userEmail, cancellationToken);
 
-        // Centralized IsPrimary invariant. For a brand-new user, this promotes
-        // the just-added row to primary. For an existing user adding a
-        // @nobodies.team row, this demotes the prior primary and promotes the
-        // Workspace row.
         await EnsurePrimaryInvariantAsync(userId, cancellationToken);
 
         // Auto-set GoogleEmail when @nobodies.team email is added (cross-section → IUserService)
@@ -712,10 +693,8 @@ public sealed class UserEmailService : IUserEmailService
             description = $"Linked {provider} `{fresh.Email}` to user (new row)";
         }
 
-        // Centralized IsPrimary invariant. For a brand-new user (first OAuth
-        // sign-in), the row just added is verified and the helper promotes it
-        // to primary. Without this, the user would have zero IsPrimary rows
-        // and GetEffectiveEmail() / NotificationEmail derivation would fail.
+        // First OAuth sign-in: promote the just-added row to primary so
+        // GetEffectiveEmail() / NotificationEmail derivation has a target.
         await EnsurePrimaryInvariantAsync(userId, cancellationToken);
 
         await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
@@ -767,8 +746,8 @@ public sealed class UserEmailService : IUserEmailService
 
         await _repository.RemoveAsync(row, cancellationToken);
 
-        // Centralized IsPrimary invariant. If the unlinked row was the primary,
-        // the helper promotes the highest-priority remaining verified row.
+        // If the unlinked row was primary, promote the highest-priority
+        // remaining verified row.
         await EnsurePrimaryInvariantAsync(userId, cancellationToken);
 
         await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);

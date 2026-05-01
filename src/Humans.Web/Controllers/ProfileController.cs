@@ -883,15 +883,9 @@ public class ProfileController : HumansControllerBase
         return RedirectToAction(nameof(Emails));
     }
 
-    // -------------------------------------------------------------------------
-    // Admin grid actions — parameterized by {userId}. Mirror six of the seven
-    // self-grid actions against a target user. Authorize via
-    // UserEmailOperations.Edit (succeeds for self-or-admin via the resource-based
-    // authorization handler). No AdminLink: Link is self-only by spec — admins
-    // cannot link OAuth identities on a user's behalf, since the OAuth flow
-    // requires the target user to authenticate with the provider. Email/OAuth
-    // decoupling design (PR 4, Task 16).
-    // -------------------------------------------------------------------------
+    // Admin grid actions — parameterized by {userId}, mirror the self-grid
+    // against a target user. No AdminLink because OAuth linking requires the
+    // target user to authenticate with the provider.
 
     [HttpGet("{id:guid}/Admin/Emails")]
     public async Task<IActionResult> AdminEmails(Guid id, CancellationToken ct)
@@ -2131,14 +2125,6 @@ public class ProfileController : HumansControllerBase
             .Select(e => e.Email)
             .FirstOrDefault();
 
-        // UserEmailService.GetUserEmailsAsync already populates IsMergePending on
-        // each row via IAccountMergeService.GetPendingEmailIdsAsync; reuse that
-        // rather than making a second roundtrip here.
-        var mergePendingIds = (IReadOnlySet<Guid>)emails
-            .Where(e => e.IsMergePending)
-            .Select(e => e.Id)
-            .ToHashSet();
-
         // Workspace canonical identity: Provider=Google AND email on the configured
         // Workspace domain. While present, Primary + Google radios lock to that row.
         // If multiple match (shouldn't happen), prefer IsPrimary, else first.
@@ -2162,11 +2148,7 @@ public class ProfileController : HumansControllerBase
                 IsPrimary = e.IsPrimary,
                 Visibility = e.Visibility,
                 IsPendingVerification = e.IsPendingVerification,
-                // Reflect the canonical Google identity strictly — the row's IsGoogle
-                // flag. No implicit fallback to "any Provider-attached row" when no
-                // row has IsGoogle=true: the canonical resolver above only counts
-                // IsVerified && IsGoogle, so the display must match.
-                IsGoogleServiceEmail = e.IsGoogle,
+                IsMergePending = e.IsMergePending,
                 IsNobodiesTeamDomain = e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase),
                 Provider = e.Provider
             }).ToList(),
@@ -2178,7 +2160,6 @@ public class ProfileController : HumansControllerBase
             TargetUserId = user.Id,
             TargetDisplayName = user.DisplayName,
             IsAdminContext = isAdminContext,
-            MergePendingEmailIds = mergePendingIds,
             WorkspaceLockedEmailId = workspaceLockedEmail?.Id
         };
     }

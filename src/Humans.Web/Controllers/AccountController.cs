@@ -541,16 +541,9 @@ public class AccountController : HumansControllerBase
             return View("MagicLinkError");
         }
 
-        // Create the verified UserEmail row. Magic-link signup is not an OAuth
-        // flow — there is no Provider/ProviderKey to attach — so this uses
-        // AddVerifiedEmailAsync (verified, no OAuth tagging) rather than
-        // LinkAsync (which is the OAuth-callback path).
-        //
-        // If creating the UserEmail row fails (race condition, DB error, etc.)
-        // delete the just-created User. RequireUniqueEmail = false means
-        // Identity no longer rejects partial state on its own; an orphan User
-        // with no UserEmail row would be unreachable via either OAuth or
-        // magic link. Same pattern as the OAuth callback new-user branch.
+        // RequireUniqueEmail = false: Identity no longer rejects partial state,
+        // so if creating the UserEmail row fails we must roll back the User to
+        // avoid an orphan that's unreachable via either OAuth or magic link.
         try
         {
             await _userEmailService.AddVerifiedEmailAsync(user.Id, email);

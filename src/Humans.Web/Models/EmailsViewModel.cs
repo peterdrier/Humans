@@ -65,11 +65,6 @@ public class EmailsViewModel
     public bool IsAdminContext { get; set; }
 
     /// <summary>
-    /// Subset of email row ids that have a pending account-merge request.
-    /// </summary>
-    public IReadOnlySet<Guid> MergePendingEmailIds { get; set; } = new HashSet<Guid>();
-
-    /// <summary>
     /// When non-null, identifies the email row that is the user's Workspace
     /// canonical identity (Provider=Google + email on the configured Workspace
     /// domain). While set, the view locks Primary and Google radios across the
@@ -92,7 +87,7 @@ public class EmailRowViewModel
     public bool IsPrimary { get; set; }
     public ContactFieldVisibility? Visibility { get; set; }
     public bool IsPendingVerification { get; set; }
-    public bool IsGoogleServiceEmail { get; set; }
+    public bool IsMergePending { get; set; }
     public bool IsNobodiesTeamDomain { get; set; }
 
     /// <summary>

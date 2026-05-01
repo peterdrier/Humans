@@ -2,7 +2,7 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application.Authorization.UserEmail;
 using Humans.Domain.Constants;
-using Humans.Web.Authorization;
+using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
 using Xunit;
 
