@@ -103,16 +103,6 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         return team?.ParentTeamId is not null && teamIds.Contains(team.ParentTeamId.Value);
     }
 
-    public async Task<bool> CanManageShiftsAsync(Guid userId, Guid departmentTeamId)
-    {
-        // Admin and VolunteerCoordinator can manage all shifts system-wide; NoInfoAdmin CANNOT
-        if (await HasActiveRoleAsync(userId, RoleNames.Admin) ||
-            await HasActiveRoleAsync(userId, RoleNames.VolunteerCoordinator))
-            return true;
-
-        return await IsDeptCoordinatorAsync(userId, departmentTeamId);
-    }
-
     public async Task<bool> CanApproveSignupsAsync(Guid userId, Guid departmentTeamId)
     {
         // Admin, NoInfoAdmin, and VolunteerCoordinator can approve signups system-wide
@@ -1609,4 +1599,13 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     public Task<int> DeleteShiftProfilesForUserAsync(
         Guid userId, CancellationToken ct = default) =>
         _repo.DeleteVolunteerEventProfilesForUserAsync(userId, ct);
+
+    public Task<int> ReassignProfilesAndTagPrefsToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default) =>
+        // No service-level cache for VolunteerEventProfile or
+        // VolunteerTagPreference — plain delegate to the repo, which
+        // performs the move + collision resolution in a single save.
+        _repo.ReassignProfilesAndTagPrefsToUserAsync(
+            sourceUserId, targetUserId, updatedAt, ct);
 }

@@ -12,9 +12,11 @@ public class VolunteerTagPreference
     public Guid Id { get; init; }
 
     /// <summary>
-    /// FK to the volunteer.
+    /// FK to the volunteer. Settable so the account-merge fold
+    /// (<c>IShiftManagementService.ReassignProfilesAndTagPrefsToUserAsync</c>)
+    /// can re-FK rows from a source user to the merge target.
     /// </summary>
-    public Guid UserId { get; init; }
+    public Guid UserId { get; set; }
 
     /// <summary>
     /// FK to the shift tag.

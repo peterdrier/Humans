@@ -732,4 +732,77 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
         await ctx.SaveChangesAsync(ct);
         return profiles.Count;
     }
+
+    // ==========================================================================
+    // Account-merge fold
+    // ==========================================================================
+
+    public async Task<int> ReassignProfilesAndTagPrefsToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        // VolunteerEventProfile is 1:1 with User (unique index on UserId).
+        // Source has at most one row; target has at most one row.
+        var sourceProfiles = await ctx.VolunteerEventProfiles
+            .Where(p => p.UserId == sourceUserId)
+            .ToListAsync(ct);
+
+        var targetHasProfile = await ctx.VolunteerEventProfiles
+            .AnyAsync(p => p.UserId == targetUserId, ct);
+
+        foreach (var src in sourceProfiles)
+        {
+            if (targetHasProfile)
+            {
+                // Target already has a profile — target wins, drop source.
+                ctx.VolunteerEventProfiles.Remove(src);
+            }
+            else
+            {
+                src.UserId = targetUserId;
+                src.UpdatedAt = updatedAt;
+                // After re-FK'ing the first (and only) source row, any
+                // additional source rows would now collide; defensive guard.
+                targetHasProfile = true;
+            }
+        }
+
+        // VolunteerTagPreference uniqueness is on (UserId, ShiftTagId).
+        var sourceTagPrefs = await ctx.VolunteerTagPreferences
+            .Where(v => v.UserId == sourceUserId)
+            .ToListAsync(ct);
+
+        var targetTagIds = await ctx.VolunteerTagPreferences
+            .Where(v => v.UserId == targetUserId)
+            .Select(v => v.ShiftTagId)
+            .ToListAsync(ct);
+        var targetTagIdSet = new HashSet<Guid>(targetTagIds);
+
+        foreach (var src in sourceTagPrefs)
+        {
+            if (targetTagIdSet.Contains(src.ShiftTagId))
+            {
+                // Target already prefers this tag — target wins, drop source.
+                ctx.VolunteerTagPreferences.Remove(src);
+            }
+            else
+            {
+                src.UserId = targetUserId;
+                // VolunteerTagPreference has no UpdatedAt; updatedAt is
+                // unused for this table.
+                targetTagIdSet.Add(src.ShiftTagId);
+            }
+        }
+
+        await ctx.SaveChangesAsync(ct);
+
+        var profileCount = await ctx.VolunteerEventProfiles
+            .CountAsync(p => p.UserId == targetUserId, ct);
+        var tagPrefCount = await ctx.VolunteerTagPreferences
+            .CountAsync(v => v.UserId == targetUserId, ct);
+
+        return profileCount + tagPrefCount;
+    }
 }

@@ -57,6 +57,11 @@ public class InterfaceMethodBudgetTests
         // method; callers filter via Camp.IsPublic predicate.
         [typeof(ICampService)] = 55,
         // +1: GetOverallCoverageAsync for admin dashboard shift-coverage tile (peterdrier#349).
+        // 50→50: account-merge fold redesign Phase 3.2. Added
+        // ReassignProfilesAndTagPrefsToUserAsync; removed CanManageShiftsAsync
+        // (zero production callers, zero tests — fully dead since the
+        // shift-management slice 1/2 plan that introduced it never wired it
+        // up; controllers use IsDeptCoordinatorAsync + role checks directly).
         [typeof(IShiftManagementService)] = 50,
         // +1 for SetProfilePictureAsync (nobodies-collective/Humans#532 — Google avatar import button needs a
         // narrow service write that owns its own cache invalidation; controllers can't reach
