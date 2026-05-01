@@ -165,6 +165,25 @@ public interface INotificationRepository
     /// </summary>
     Task<IReadOnlyList<Guid>> GetRecipientUserIdsAsync(
         IReadOnlyCollection<Guid> notificationIds, CancellationToken ct = default);
+
+    // ==========================================================================
+    // Account-merge fold
+    // ==========================================================================
+
+    /// <summary>
+    /// Re-FKs <c>notification_recipients.UserId</c> from
+    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
+    /// Same-Notification collision: if the target already has a recipient
+    /// row on the same parent <c>NotificationId</c>, the source's row is
+    /// dropped (target wins). The shared parent <c>Notification</c> row is
+    /// not touched. Returns the count of recipient rows attributed to
+    /// <paramref name="targetUserId"/> after the move.
+    /// </summary>
+    Task<int> ReassignRecipientsToUserAsync(
+        Guid sourceUserId,
+        Guid targetUserId,
+        Instant updatedAt,
+        CancellationToken ct = default);
 }
 
 /// <summary>

@@ -406,4 +406,51 @@ public sealed class NotificationRepository : INotificationRepository
             .Distinct()
             .ToListAsync(ct);
     }
+
+    // ==========================================================================
+    // Account-merge fold
+    // ==========================================================================
+
+    public async Task<int> ReassignRecipientsToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        var sourceRows = await ctx.NotificationRecipients
+            .Where(nr => nr.UserId == sourceUserId)
+            .ToListAsync(ct);
+
+        var targetNotificationIds = await ctx.NotificationRecipients
+            .Where(nr => nr.UserId == targetUserId)
+            .Select(nr => nr.NotificationId)
+            .ToListAsync(ct);
+        var targetNotificationIdSet = new HashSet<Guid>(targetNotificationIds);
+
+        foreach (var src in sourceRows)
+        {
+            // NotificationRecipient.UserId is init-only (composite-key field),
+            // so re-FK is implemented as remove + add a fresh row preserving
+            // ReadAt. Same-NotificationId collision: target already has a
+            // recipient row, so drop source's without re-adding.
+            ctx.NotificationRecipients.Remove(src);
+
+            if (targetNotificationIdSet.Contains(src.NotificationId))
+            {
+                continue;
+            }
+
+            ctx.NotificationRecipients.Add(new NotificationRecipient
+            {
+                NotificationId = src.NotificationId,
+                UserId = targetUserId,
+                ReadAt = src.ReadAt,
+            });
+        }
+
+        await ctx.SaveChangesAsync(ct);
+
+        return await ctx.NotificationRecipients
+            .CountAsync(nr => nr.UserId == targetUserId, ct);
+    }
 }

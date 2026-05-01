@@ -221,4 +221,18 @@ public sealed class NotificationService : INotificationService
             _cache.Remove(CacheKeys.NotificationBadgeCounts(userId));
         }
     }
+
+    public async Task<int> ReassignRecipientsToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default)
+    {
+        var count = await _repo.ReassignRecipientsToUserAsync(
+            sourceUserId, targetUserId, updatedAt, ct);
+
+        // Source's badge counts are stale (rows removed); target's counts are
+        // stale (rows re-FK'd in or merged). Invalidate both.
+        InvalidateBadgeCaches([sourceUserId, targetUserId]);
+
+        return count;
+    }
 }
