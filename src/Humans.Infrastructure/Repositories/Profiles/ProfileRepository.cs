@@ -333,10 +333,6 @@ public sealed class ProfileRepository : IProfileRepository
             .Where(l => l.ProfileId == targetProfile.Id)
             .ToListAsync(ct);
 
-        var sourceContactFields = await ctx.ContactFields
-            .Where(cf => cf.ProfileId == sourceProfile.Id)
-            .ToListAsync(ct);
-
         // VolunteerHistory: dedup on (year, EventName) — drop source rows with
         // a key that already exists on target, re-FK survivors. EventName
         // comparison is case-sensitive (matches today's CV reconciliation).
@@ -382,8 +378,9 @@ public sealed class ProfileRepository : IProfileRepository
         // Anonymize the source profile in place (rolls in the work of
         // AnonymizeForMergeByUserIdAsync). The row is kept as a tombstone
         // counterpart to User.MergedToUserId; only identifying scalars are
-        // cleared. ContactField rows for the source are removed in the same
-        // save.
+        // cleared. ContactField rows belong to the ContactFields section
+        // (IContactFieldService) and are re-FK'd by the merge orchestrator's
+        // separate ContactFieldService.ReassignToUserAsync call.
         sourceProfile.FirstName = "Merged";
         sourceProfile.LastName = "User";
         sourceProfile.BurnerName = string.Empty;
@@ -404,9 +401,6 @@ public sealed class ProfileRepository : IProfileRepository
         sourceProfile.ContributionInterests = null;
         sourceProfile.BoardNotes = null;
         sourceProfile.UpdatedAt = updatedAt;
-
-        if (sourceContactFields.Count > 0)
-            ctx.ContactFields.RemoveRange(sourceContactFields);
 
         await ctx.SaveChangesAsync(ct);
 

@@ -410,23 +410,39 @@ public sealed class UserRepository : IUserRepository
             .Select(l => (l.LoginProvider, l.ProviderKey))
             .ToHashSet();
 
+        // First pass: remove all source rows. A SaveChanges flushes the
+        // deletes before we add the re-FK'd replacements — IdentityUserLogin's
+        // composite PK (LoginProvider, ProviderKey) would otherwise collide
+        // in EF's identity map ("another instance with the same key value
+        // ... is already being tracked").
+        var toReFk = new List<IdentityUserLogin<Guid>>();
         foreach (var login in sourceLogins)
         {
             ctx.Set<IdentityUserLogin<Guid>>().Remove(login);
 
             if (!targetKeySet.Contains((login.LoginProvider, login.ProviderKey)))
             {
-                ctx.Set<IdentityUserLogin<Guid>>().Add(new IdentityUserLogin<Guid>
-                {
-                    LoginProvider = login.LoginProvider,
-                    ProviderKey = login.ProviderKey,
-                    ProviderDisplayName = login.ProviderDisplayName,
-                    UserId = targetUserId
-                });
+                toReFk.Add(login);
             }
         }
 
         if (sourceLogins.Count > 0)
+        {
+            await ctx.SaveChangesAsync(ct);
+        }
+
+        foreach (var login in toReFk)
+        {
+            ctx.Set<IdentityUserLogin<Guid>>().Add(new IdentityUserLogin<Guid>
+            {
+                LoginProvider = login.LoginProvider,
+                ProviderKey = login.ProviderKey,
+                ProviderDisplayName = login.ProviderDisplayName,
+                UserId = targetUserId
+            });
+        }
+
+        if (toReFk.Count > 0)
         {
             await ctx.SaveChangesAsync(ct);
         }

@@ -145,27 +145,24 @@ public class AcceptAsyncFoldTests : IClassFixture<HumansWebApplicationFactory>
     // AspNetUserLogins — rule 3
     // ==================================================================
 
-    [HumansFact(
-        Timeout = 30_000,
-        Skip = "Phase 1-5 bug — UserRepository.ReassignLoginsToUserAsync removes "
-            + "the source row and adds a new IdentityUserLogin<Guid> with the same "
-            + "composite PK (LoginProvider, ProviderKey) in the same DbContext, "
-            + "tripping EF's identity map. Needs a SaveChanges between the Remove "
-            + "and Add or a switch to ExecuteUpdate. Tracked separately from "
-            + "phase 6.2 test work.")]
+    [HumansFact(Timeout = 30_000)]
     public async Task AcceptAsync_AspNetUserLogins_ReFKs_DropsSameKey()
     {
-        var sharedKey = $"shared-sub-{Guid.NewGuid():N}";
-        var sourceOnlyKey = $"source-only-sub-{Guid.NewGuid():N}";
+        // user_logins PK is (LoginProvider, ProviderKey) — UserId is just an
+        // FK — so two users can never share the same (provider, key) in the
+        // DB. The realistic merge scenario is: source has logins with keys
+        // that are NOT on target, and they re-FK over. The code path also
+        // hits the EF identity-map conflict (Remove+Add same composite PK
+        // in one DbContext) on every re-FK, which Bug 1 fixes.
+        var sourceKey1 = $"source-sub-1-{Guid.NewGuid():N}";
+        var sourceKey2 = $"source-sub-2-{Guid.NewGuid():N}";
+        var targetKey = $"target-sub-{Guid.NewGuid():N}";
 
         var (sourceId, targetId) = await _factory.SeedMergeFixtureAsync(b =>
         {
-            // Same provider+key on both — collision, drop source.
-            b.WithSourceLogin("Google", sharedKey);
-            b.WithTargetLogin("Google", sharedKey);
-
-            // Source-only — moves to target.
-            b.WithSourceLogin("Google", sourceOnlyKey);
+            b.WithSourceLogin("Google", sourceKey1);
+            b.WithSourceLogin("Google", sourceKey2);
+            b.WithTargetLogin("Google", targetKey);
         });
         var requestId = await _factory.SeedMergeRequestAsync(sourceId, targetId);
 
@@ -180,13 +177,17 @@ public class AcceptAsyncFoldTests : IClassFixture<HumansWebApplicationFactory>
             .AsNoTracking()
             .ToListAsync();
 
-        targetLogins.Should().HaveCount(2);
+        // All three logins now point at target.
+        targetLogins.Should().HaveCount(3);
         targetLogins.Should().ContainSingle(l =>
             string.Equals(l.LoginProvider, "Google", StringComparison.Ordinal)
-            && string.Equals(l.ProviderKey, sharedKey, StringComparison.Ordinal));
+            && string.Equals(l.ProviderKey, sourceKey1, StringComparison.Ordinal));
         targetLogins.Should().ContainSingle(l =>
             string.Equals(l.LoginProvider, "Google", StringComparison.Ordinal)
-            && string.Equals(l.ProviderKey, sourceOnlyKey, StringComparison.Ordinal));
+            && string.Equals(l.ProviderKey, sourceKey2, StringComparison.Ordinal));
+        targetLogins.Should().ContainSingle(l =>
+            string.Equals(l.LoginProvider, "Google", StringComparison.Ordinal)
+            && string.Equals(l.ProviderKey, targetKey, StringComparison.Ordinal));
 
         var sourceLogins = await db.Set<IdentityUserLogin<Guid>>()
             .Where(l => l.UserId == sourceId)
@@ -231,8 +232,6 @@ public class AcceptAsyncFoldTests : IClassFixture<HumansWebApplicationFactory>
 
     // ==================================================================
     // VolunteerHistory + Languages — rules 6, 7
-    // (ContactField rule 5 is exercised through profile sub-aggregates;
-    // see comment on the contact-fields test below for the ordering bug.)
     // ==================================================================
 
     [HumansFact(Timeout = 30_000)]
@@ -569,13 +568,6 @@ public class AcceptAsyncFoldTests : IClassFixture<HumansWebApplicationFactory>
 
     // ==================================================================
     // ContactField — rule 5
-    // (Documented for Pass 1 even though the assertion is currently
-    // weakened: ProfileService.ReassignSubAggregatesToUserAsync deletes
-    // source ContactFields BEFORE ContactFieldService.ReassignToUserAsync
-    // runs, so source rows are dropped rather than re-FK'd. See bug note
-    // in the Phase 6.2 report. The assertion below verifies the *current*
-    // behavior — when the bug is fixed, change to expect the source row
-    // to be re-FK'd onto the target profile.)
     // ==================================================================
 
     [HumansFact(Timeout = 30_000)]
@@ -584,9 +576,9 @@ public class AcceptAsyncFoldTests : IClassFixture<HumansWebApplicationFactory>
         var (sourceId, targetId) = await _factory.SeedMergeFixtureAsync(b =>
         {
             b.WithTargetContactField(ContactFieldType.Phone, "+34 600 100 200");
-            b.WithSourceContactField(ContactFieldType.Phone, "+34 600 100 200"); // dup
-            b.WithSourceContactField(ContactFieldType.Telegram, "@source-handle"); // unique to source
-            b.WithTargetContactField(ContactFieldType.Telegram, "@target-handle"); // unique to target
+            b.WithSourceContactField(ContactFieldType.Phone, "+34 600 100 200"); // dup — drop source
+            b.WithSourceContactField(ContactFieldType.Telegram, "@source-handle"); // unique to source — moves
+            b.WithTargetContactField(ContactFieldType.Telegram, "@target-handle"); // unique to target — stays
         });
         var requestId = await _factory.SeedMergeRequestAsync(sourceId, targetId);
 
@@ -607,9 +599,13 @@ public class AcceptAsyncFoldTests : IClassFixture<HumansWebApplicationFactory>
             .Where(cf => cf.ProfileId == targetProfileId)
             .ToListAsync();
 
-        // Target's pre-existing rows survive regardless of the ordering bug.
+        // Net union with dedup: target has its two pre-existing rows + the
+        // source-only Telegram row re-FK'd. The source's duplicate Phone
+        // row was dropped (target's kept).
+        targetFields.Should().HaveCount(3);
         targetFields.Should().ContainSingle(cf => cf.FieldType == ContactFieldType.Phone && cf.Value == "+34 600 100 200");
         targetFields.Should().ContainSingle(cf => cf.FieldType == ContactFieldType.Telegram && cf.Value == "@target-handle");
+        targetFields.Should().ContainSingle(cf => cf.FieldType == ContactFieldType.Telegram && cf.Value == "@source-handle");
 
         // Source profile must have no contact fields after the fold.
         var sourceProfileId = await db.Profiles
