@@ -43,7 +43,11 @@ public static class AdminNavTree
             new("Email outbox",       "Email",  "EmailOutbox",  null, null, "fa-solid fa-inbox",     PolicyNames.AdminOnly),
             new("Campaigns",          "Campaign", "Index",      null, null, "fa-solid fa-bullhorn",  PolicyNames.AdminOnly),
             new("Workspace accounts", "Google",  "Accounts",    null, null, "fa-solid fa-at",        PolicyNames.AdminOnly),
-            new("Agent",              "AdminAgent", "Settings", null, null, "fa-solid fa-robot",     PolicyNames.AdminOnly),
+        }),
+        new("Agent", new AdminNavItem[]
+        {
+            new("Agent Config",  "AdminAgent", "Settings",      null, null, "fa-solid fa-robot",    PolicyNames.AdminOnly),
+            new("Agent History", "AdminAgent", "Conversations", null, null, "fa-solid fa-comments", PolicyNames.AdminOnly),
         }),
         new("People data", new AdminNavItem[]
         {
