@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260429123832_AddIssues")]
+    [Migration("20260502160719_AddIssues")]
     partial class AddIssues
     {
         /// <inheritdoc />
@@ -3491,7 +3491,8 @@ namespace Humans.Infrastructure.Migrations
 
                     b.Property<string>("GoogleEmail")
                         .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("GoogleEmail");
 
                     b.Property<string>("GoogleEmailStatus")
                         .IsRequired()
@@ -3517,6 +3518,12 @@ namespace Humans.Infrastructure.Migrations
 
                     b.Property<Instant?>("MagicLinkSentAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant?>("MergedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("MergedToUserId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
@@ -3566,6 +3573,9 @@ namespace Humans.Infrastructure.Migrations
 
                     b.HasIndex("Email");
 
+                    b.HasIndex("MergedToUserId")
+                        .HasFilter("\"MergedToUserId\" IS NOT NULL");
+
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
 
@@ -3589,21 +3599,35 @@ namespace Humans.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("DisplayOrder")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("DisplayOrder");
 
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
-                    b.Property<bool>("IsNotificationTarget")
+                    b.Property<bool>("IsGoogle")
                         .HasColumnType("boolean");
 
                     b.Property<bool>("IsOAuth")
-                        .HasColumnType("boolean");
+                        .HasColumnType("boolean")
+                        .HasColumnName("IsOAuth");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("boolean")
+                        .HasColumnName("IsNotificationTarget");
 
                     b.Property<bool>("IsVerified")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("Provider")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ProviderKey")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
 
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -4795,6 +4819,14 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("BudgetGroup");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.User", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("MergedToUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.UserEmail", b =>
