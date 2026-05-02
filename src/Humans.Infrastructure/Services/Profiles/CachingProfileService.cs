@@ -360,6 +360,26 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
     }
 
     // ==========================================================================
+    // IUserMerge implementation — delegate to inner, then evict both users from
+    // the FullProfile dict. Eviction (not RefreshEntryAsync) is intentional:
+    // ReassignAsync runs inside the orchestrator's TransactionScope, so a
+    // DB-backed rebuild here would read uncommitted state. Eviction is
+    // rollback-safe — the next read repopulates from whatever the DB ends up
+    // with after the scope completes (or rolls back).
+    // ==========================================================================
+
+    public async Task ReassignAsync(
+        Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        await inner.ReassignAsync(mergedFromUserId, mergedToUserId, actorUserId, now, ct);
+
+        _byUserId.TryRemove(mergedFromUserId, out _);
+        _byUserId.TryRemove(mergedToUserId, out _);
+    }
+
+    // ==========================================================================
     // IFullProfileInvalidator implementation
     // ==========================================================================
 

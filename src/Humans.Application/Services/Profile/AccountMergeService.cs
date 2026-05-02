@@ -173,13 +173,12 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
             // cache-aside readers don't repopulate from rows that might
             // still roll back. Each owning section service strips its own
             // in-Reassign invalidator calls and we re-issue them here.
-            // FullProfile covers UserEmail / ContactField /
-            // CommunicationPreference (all Profile-section). Claims +
-            // nav-badge cover RoleAssignment. Notification badge counts
-            // cover NotificationRecipient. Team caches cover the
-            // TeamService.ReassignAsync writes.
-            await _fullProfileInvalidator.InvalidateAsync(mergedFromId, ct);
-            await _fullProfileInvalidator.InvalidateAsync(mergedToId, ct);
+            // FullProfile eviction for both users is handled by the
+            // CachingProfileService decorator inside the fan-out (covers
+            // Profile / UserEmail / ContactField / CommunicationPreference,
+            // all Profile-section). Claims + nav-badge cover RoleAssignment.
+            // Notification badge counts cover NotificationRecipient. Team
+            // caches cover the TeamService.ReassignAsync writes.
             _teamService.RemoveMemberFromAllTeamsCache(mergedFromId);
             _roleAssignmentService.InvalidateClaimsCacheForUser(mergedFromId);
             _roleAssignmentService.InvalidateClaimsCacheForUser(mergedToId);

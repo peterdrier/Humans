@@ -73,7 +73,6 @@ internal static class ProfileSectionExtensions
         services.AddScoped<ProfilesProfileService>(sp =>
             (ProfilesProfileService)sp.GetRequiredKeyedService<IProfileService>(CachingProfileService.InnerServiceKey));
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ProfilesProfileService>());
-        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ProfilesProfileService>());
 
         // CachingProfileService: Singleton so the _byUserId ConcurrentDictionary persists
         // across requests. Resolves the Scoped inner IProfileService (keyed "profile-inner")
@@ -85,10 +84,13 @@ internal static class ProfileSectionExtensions
         services.AddSingleton<CachingProfileService>();
         services.AddSingleton<IProfileService>(sp => sp.GetRequiredService<CachingProfileService>());
 
-        // CRITICAL: IFullProfileInvalidator must resolve to the same Singleton decorator instance
-        // that backs IProfileService. Both interfaces share the single CachingProfileService
-        // instance, so the _byUserId dict is never split.
+        // CRITICAL: IFullProfileInvalidator and IUserMerge must resolve to the same
+        // Singleton decorator instance that backs IProfileService. The merge fan-out
+        // goes through the decorator so the orchestrator never has to know
+        // ProfileService has a cache — the decorator owns its own eviction.
         services.AddSingleton<IFullProfileInvalidator>(sp =>
+            sp.GetRequiredService<CachingProfileService>());
+        services.AddSingleton<IUserMerge>(sp =>
             sp.GetRequiredService<CachingProfileService>());
 
         // Eagerly warm the FullProfile dict at startup so bulk reads

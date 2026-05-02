@@ -1,5 +1,6 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -7,7 +8,7 @@ using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Application.Interfaces.Profiles;
 
-public interface IProfileService
+public interface IProfileService : IUserMerge
 {
     Task<Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default);
 
