@@ -176,7 +176,9 @@
             fetch(`/Issues/${issueId}?partial=true`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
-            .then(r => r.text())
+            .then(r => r.ok
+                ? r.text()
+                : '<div class="d-flex align-items-center justify-content-center h-100 text-muted"><p>@Localizer["Issue_Unavailable"]</p></div>')
             .then(html => {
                 document.getElementById('detail-panel').innerHTML = html;
                 document.querySelectorAll('#detail-panel .detail-auto-submit').forEach(el => {

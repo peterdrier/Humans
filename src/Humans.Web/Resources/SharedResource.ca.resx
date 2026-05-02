@@ -66,6 +66,7 @@
   <data name="Nav_OnboardingReview" xml:space="preserve"><value>Cua de revisió</value></data>
   <data name="Nav_MyFeedback" xml:space="preserve"><value>El meu feedback</value></data>
   <data name="Nav_Issues" xml:space="preserve"><value>Incidències</value></data>
+  <data name="Issue_Unavailable" xml:space="preserve"><value>Aquesta incidència no està disponible — pot ser que s'hagi eliminat o que no hi tinguis accés.</value></data>
 
 
   <!-- ======================== -->

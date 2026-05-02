@@ -66,6 +66,7 @@
   <data name="Nav_OnboardingReview" xml:space="preserve"><value>Review Queue</value></data>
   <data name="Nav_MyFeedback" xml:space="preserve"><value>My Feedback</value></data>
   <data name="Nav_Issues" xml:space="preserve"><value>Issues</value></data>
+  <data name="Issue_Unavailable" xml:space="preserve"><value>That issue isn't available — it may have been removed, or you don't have access to it.</value></data>
 
 
   <!-- ======================== -->
