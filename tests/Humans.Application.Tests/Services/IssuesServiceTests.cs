@@ -16,6 +16,7 @@ using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Issues;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -37,6 +38,8 @@ public class IssuesServiceTests : IDisposable
     private readonly IRoleAssignmentService _roleService;
     private readonly INotificationService _notificationService;
     private readonly INavBadgeCacheInvalidator _navBadge;
+    private readonly IIssuesBadgeCacheInvalidator _issuesBadge;
+    private readonly IMemoryCache _cache;
     private readonly IIssuesRepository _repository;
     private readonly IssuesApplicationService _service;
 
@@ -98,12 +101,15 @@ public class IssuesServiceTests : IDisposable
 
         _notificationService = Substitute.For<INotificationService>();
         _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
+        _issuesBadge = Substitute.For<IIssuesBadgeCacheInvalidator>();
+        _cache = new MemoryCache(new MemoryCacheOptions());
 
         _repository = new IssuesRepository(new TestDbContextFactory(options));
 
         _service = new IssuesApplicationService(
             _repository, _userService, _userEmailService, _roleService,
             _emailService, _notificationService, _auditLog, _navBadge,
+            _issuesBadge, _cache,
             _clock, env, NullLogger<IssuesApplicationService>.Instance);
     }
 
@@ -488,6 +494,7 @@ public class IssuesServiceTests : IDisposable
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
             _emailService, _notificationService, _auditLog, _navBadge,
+            _issuesBadge, _cache,
             _clock, env, NullLogger<IssuesApplicationService>.Instance);
 
         await svc.GetIssueListAsync(new IssueListFilter(), Guid.NewGuid(), [], viewerIsAdmin: true);
@@ -515,6 +522,7 @@ public class IssuesServiceTests : IDisposable
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
             _emailService, _notificationService, _auditLog, _navBadge,
+            _issuesBadge, _cache,
             _clock, env, NullLogger<IssuesApplicationService>.Instance);
 
         var viewerId = Guid.NewGuid();
@@ -546,6 +554,7 @@ public class IssuesServiceTests : IDisposable
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
             _emailService, _notificationService, _auditLog, _navBadge,
+            _issuesBadge, _cache,
             _clock, env, NullLogger<IssuesApplicationService>.Instance);
 
         var viewerId = Guid.NewGuid();
@@ -580,6 +589,7 @@ public class IssuesServiceTests : IDisposable
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
             _emailService, _notificationService, _auditLog, _navBadge,
+            _issuesBadge, _cache,
             _clock, env, NullLogger<IssuesApplicationService>.Instance);
 
         await svc.GetActionableCountForViewerAsync(
@@ -606,6 +616,7 @@ public class IssuesServiceTests : IDisposable
         var svc = new IssuesApplicationService(
             repo, _userService, _userEmailService, _roleService,
             _emailService, _notificationService, _auditLog, _navBadge,
+            _issuesBadge, _cache,
             _clock, env, NullLogger<IssuesApplicationService>.Instance);
 
         var viewerId = Guid.NewGuid();

@@ -142,6 +142,8 @@ public class IssuesApiController : ControllerBase
         }
         catch (InvalidOperationException)
         {
+            // Service throws InvalidOperationException when the issue id
+            // doesn't resolve to a row — surface as 404.
             return NotFound();
         }
         catch (Exception ex)
@@ -162,6 +164,8 @@ public class IssuesApiController : ControllerBase
         }
         catch (InvalidOperationException)
         {
+            // Service throws InvalidOperationException when the issue id
+            // doesn't resolve to a row — surface as 404.
             return NotFound();
         }
         catch (Exception ex)
@@ -181,6 +185,8 @@ public class IssuesApiController : ControllerBase
         }
         catch (InvalidOperationException)
         {
+            // Service throws InvalidOperationException when the issue id
+            // doesn't resolve to a row — surface as 404.
             return NotFound();
         }
         catch (Exception ex)
@@ -224,6 +230,8 @@ public class IssuesApiController : ControllerBase
         }
         catch (InvalidOperationException)
         {
+            // Service throws InvalidOperationException when the issue id
+            // doesn't resolve to a row — surface as 404.
             return NotFound();
         }
         catch (Exception ex)

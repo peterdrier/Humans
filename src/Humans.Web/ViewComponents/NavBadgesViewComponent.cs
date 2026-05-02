@@ -82,7 +82,8 @@ public class NavBadgesViewComponent : ViewComponent
     /// Per-user count of issues actionable by the viewer:
     /// Open + Triage in sections their roles own, plus their own non-terminal
     /// issues. Admins see the global open count. Claims-first role lookup —
-    /// see coding-rules.md.
+    /// see coding-rules.md. Caching + per-user invalidation live in
+    /// <c>IssuesService</c> per <c>memory/code/viewcomponent-no-cache.md</c>.
     /// </summary>
     private async Task<int> GetPerUserIssuesCountAsync()
     {
@@ -90,19 +91,13 @@ public class NavBadgesViewComponent : ViewComponent
         if (!Guid.TryParse(claim, out var currentUserId))
             return 0;
 
-        var cacheKey = CacheKeys.IssuesBadge(currentUserId);
-        return await _cache.GetOrCreateAsync(cacheKey, async entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
+        var roles = UserClaimsPrincipal.Claims
+            .Where(c => string.Equals(c.Type, ClaimTypes.Role, StringComparison.Ordinal))
+            .Select(c => c.Value)
+            .ToList();
+        var isAdmin = UserClaimsPrincipal.IsInRole(RoleNames.Admin);
 
-            var roles = UserClaimsPrincipal.Claims
-                .Where(c => string.Equals(c.Type, ClaimTypes.Role, StringComparison.Ordinal))
-                .Select(c => c.Value)
-                .ToList();
-            var isAdmin = UserClaimsPrincipal.IsInRole(RoleNames.Admin);
-
-            return await _issuesService.GetActionableCountForViewerAsync(
-                currentUserId, roles, isAdmin);
-        });
+        return await _issuesService.GetActionableCountForViewerAsync(
+            currentUserId, roles, isAdmin);
     }
 }

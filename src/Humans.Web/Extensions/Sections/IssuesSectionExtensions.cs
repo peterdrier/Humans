@@ -1,6 +1,8 @@
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Issues;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Issues;
 using Humans.Web.Filters;
@@ -18,6 +20,7 @@ internal static class IssuesSectionExtensions
         services.AddScoped<IssuesApplicationService>();
         services.AddScoped<IIssuesService>(sp => sp.GetRequiredService<IssuesApplicationService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<IssuesApplicationService>());
+        services.AddScoped<IIssuesBadgeCacheInvalidator, IssuesBadgeCacheInvalidator>();
 
         // Issues API key. Missing/empty key is a runtime 503 at the filter,
         // not a startup failure.

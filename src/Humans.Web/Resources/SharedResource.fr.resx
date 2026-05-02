@@ -1945,7 +1945,11 @@
   <data name="Issue_Attachment" xml:space="preserve"><value>Capture (optionnelle)</value></data>
   <data name="Issue_Attachment_Hint" xml:space="preserve"><value>PNG ou JPEG, 5 Mo max.</value></data>
   <data name="Issue_FileIssue" xml:space="preserve"><value>Signaler l'incident</value></data>
+  <data name="Issue_FileAnIssue" xml:space="preserve"><value>Signaler un incident</value></data>
   <data name="Issue_Cancel" xml:space="preserve"><value>Annuler</value></data>
+  <data name="Issue_Widget_ToastSuccess" xml:space="preserve"><value>Merci ! Incident enregistré. Voir ici : {0}</value><comment>{0} = absolute URL path of the new issue</comment></data>
+  <data name="Issue_Widget_ToastValidationFailed" xml:space="preserve"><value>Impossible d'enregistrer l'incident. Veuillez vérifier les champs requis et réessayer.</value></data>
+  <data name="Issue_Widget_ToastNetworkError" xml:space="preserve"><value>Une erreur s'est produite. Veuillez réessayer.</value></data>
   <data name="Issue_Tips_Title" xml:space="preserve"><value>Conseils pour un bon signalement</value></data>
   <data name="Issue_Tips_Bullet1" xml:space="preserve"><value>Décrivez ce que vous essayiez de faire.</value></data>
   <data name="Issue_Tips_Bullet2" xml:space="preserve"><value>Décrivez ce qui s'est passé et ce que vous attendiez.</value></data>

@@ -318,6 +318,8 @@ public class IssuesController : HumansControllerBase
         }
         catch (InvalidOperationException)
         {
+            // Race: issue existed at the null-check above but was deleted
+            // before the mutation reached the service.
             return NotFound();
         }
         catch (Exception ex)
@@ -348,6 +350,8 @@ public class IssuesController : HumansControllerBase
         }
         catch (InvalidOperationException)
         {
+            // Race: issue existed at the null-check above but was deleted
+            // before the mutation reached the service.
             return NotFound();
         }
         catch (Exception ex)
@@ -378,6 +382,8 @@ public class IssuesController : HumansControllerBase
         }
         catch (InvalidOperationException)
         {
+            // Race: issue existed at the null-check above but was deleted
+            // before the mutation reached the service.
             return NotFound();
         }
         catch (Exception ex)
@@ -442,6 +448,8 @@ public class IssuesController : HumansControllerBase
         }
         catch (InvalidOperationException)
         {
+            // Race: issue existed at the null-check above but was deleted
+            // before the mutation reached the service.
             return NotFound();
         }
         catch (Exception ex)

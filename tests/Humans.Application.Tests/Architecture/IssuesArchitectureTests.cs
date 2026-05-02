@@ -41,15 +41,13 @@ public class IssuesArchitectureTests
     }
 
     [HumansFact]
-    public void IssuesService_HasNoIMemoryCacheConstructorParameter()
+    public void IssuesService_TakesIssuesBadgeInvalidator()
     {
         var ctor = typeof(IssuesService).GetConstructors().Single();
-        var cachingParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
-                .StartsWith("Microsoft.Extensions.Caching.Memory", StringComparison.Ordinal));
+        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
-        cachingParam.Should().BeNull(
-            because: "Issues has no canonical domain cache; cross-cutting nav-badge invalidation goes through INavBadgeCacheInvalidator, not IMemoryCache directly (design-rules §5)");
+        paramTypes.Should().Contain(typeof(IIssuesBadgeCacheInvalidator),
+            because: "IssuesService owns the per-user actionable-count cache surfaced by NavBadgesViewComponent and must explicitly evict each affected viewer's entry on every count-shifting mutation (memory/code/viewcomponent-no-cache.md + code-review-rules.md §Cache Invalidation)");
     }
 
     [HumansFact]

@@ -1971,7 +1971,11 @@
   <data name="Issue_Attachment" xml:space="preserve"><value>Captura (opcional)</value></data>
   <data name="Issue_Attachment_Hint" xml:space="preserve"><value>PNG o JPEG, máximo 5 MB.</value></data>
   <data name="Issue_FileIssue" xml:space="preserve"><value>Reportar incidencia</value></data>
+  <data name="Issue_FileAnIssue" xml:space="preserve"><value>Reportar una incidencia</value></data>
   <data name="Issue_Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="Issue_Widget_ToastSuccess" xml:space="preserve"><value>¡Gracias! Incidencia registrada. Verla aquí: {0}</value><comment>{0} = absolute URL path of the new issue</comment></data>
+  <data name="Issue_Widget_ToastValidationFailed" xml:space="preserve"><value>No se pudo registrar la incidencia. Revisa los campos obligatorios e inténtalo de nuevo.</value></data>
+  <data name="Issue_Widget_ToastNetworkError" xml:space="preserve"><value>Algo salió mal. Inténtalo de nuevo.</value></data>
   <data name="Issue_Tips_Title" xml:space="preserve"><value>Consejos para una buena incidencia</value></data>
   <data name="Issue_Tips_Bullet1" xml:space="preserve"><value>Describe qué estabas intentando hacer.</value></data>
   <data name="Issue_Tips_Bullet2" xml:space="preserve"><value>Describe qué pasó y qué esperabas.</value></data>

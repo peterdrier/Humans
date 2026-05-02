@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Application;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
@@ -40,9 +42,13 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
     private readonly INotificationService _notifications;
     private readonly IAuditLogService _audit;
     private readonly INavBadgeCacheInvalidator _navBadge;
+    private readonly IIssuesBadgeCacheInvalidator _issuesBadge;
+    private readonly IMemoryCache _cache;
     private readonly IClock _clock;
     private readonly IHostEnvironment _env;
     private readonly ILogger<IssuesService> _logger;
+
+    private static readonly TimeSpan BadgeCacheDuration = TimeSpan.FromMinutes(2);
 
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -68,6 +74,8 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         INotificationService notifications,
         IAuditLogService audit,
         INavBadgeCacheInvalidator navBadge,
+        IIssuesBadgeCacheInvalidator issuesBadge,
+        IMemoryCache cache,
         IClock clock,
         IHostEnvironment env,
         ILogger<IssuesService> logger)
@@ -80,6 +88,8 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         _notifications = notifications;
         _audit = audit;
         _navBadge = navBadge;
+        _issuesBadge = issuesBadge;
+        _cache = cache;
         _clock = clock;
         _env = env;
         _logger = logger;
@@ -154,6 +164,8 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
 
         await _repo.AddIssueAsync(issue, ct);
         _navBadge.Invalidate();
+        _issuesBadge.InvalidateMany(
+            await ResolveBadgeUserIdsAsync(reporterUserId, section, null, ct));
 
         _logger.LogInformation(
             "Issue {IssueId} submitted by {UserId}: {Category}/{Section}",
@@ -300,6 +312,11 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
 
         await DispatchCommentNotificationsAsync(issue, comment, senderIsReporter, ct);
         _navBadge.Invalidate();
+        if (statusChangedToOpen)
+        {
+            _issuesBadge.InvalidateMany(
+                await ResolveBadgeUserIdsAsync(issue.ReporterUserId, issue.Section, null, ct));
+        }
 
         _logger.LogInformation(
             "Comment posted on issue {IssueId} by {UserId} (reporter: {Reporter})",
@@ -338,6 +355,8 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             $"status: {oldStatus} → {newStatus}");
         await DispatchStatusChangedNotificationAsync(issue, oldStatus, newStatus, actorUserId, ct);
         _navBadge.Invalidate();
+        _issuesBadge.InvalidateMany(
+            await ResolveBadgeUserIdsAsync(issue.ReporterUserId, issue.Section, null, ct));
     }
 
     public async Task UpdateAssigneeAsync(
@@ -394,7 +413,8 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
                 $"Cannot change section on a terminal issue (status: {issue.Status}).");
         }
 
-        var oldSection = issue.Section ?? "(unknown)";
+        var previousSection = issue.Section;
+        var oldSection = previousSection ?? "(unknown)";
         var nextSection = newSection ?? "(unknown)";
 
         issue.Section = newSection;
@@ -405,6 +425,8 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             AuditAction.IssueSectionChanged, issueId, actorUserId,
             $"section: {oldSection} → {nextSection}");
         _navBadge.Invalidate();
+        _issuesBadge.InvalidateMany(
+            await ResolveBadgeUserIdsAsync(issue.ReporterUserId, newSection, previousSection, ct));
     }
 
     public async Task SetGitHubIssueNumberAsync(
@@ -433,10 +455,45 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         Guid viewerUserId, IReadOnlyList<string> viewerRoles, bool viewerIsAdmin,
         CancellationToken ct = default)
     {
-        if (viewerIsAdmin) return await _repo.CountActionableAsync(null, null, ct);
+        var cacheKey = CacheKeys.IssuesBadge(viewerUserId);
+        return await _cache.GetOrCreateAsync(cacheKey, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = BadgeCacheDuration;
 
-        var sections = IssueSectionRouting.SectionsForRoles(viewerRoles);
-        return await _repo.CountActionableAsync(sections, viewerUserId, ct);
+            if (viewerIsAdmin) return await _repo.CountActionableAsync(null, null, ct);
+
+            var sections = IssueSectionRouting.SectionsForRoles(viewerRoles);
+            return await _repo.CountActionableAsync(sections, viewerUserId, ct);
+        });
+    }
+
+    /// <summary>
+    /// Returns every user whose actionable-issues badge count may have shifted
+    /// because of a mutation on an issue with the given (and optionally
+    /// previous) section: the reporter, every active Admin, and every
+    /// role-holder for the section's owning role(s). Empty sections fall back
+    /// to admins-only routing per <see cref="IssueSectionRouting"/>.
+    /// </summary>
+    private async Task<IReadOnlySet<Guid>> ResolveBadgeUserIdsAsync(
+        Guid reporterUserId, string? section, string? previousSection,
+        CancellationToken ct)
+    {
+        var ids = new HashSet<Guid> { reporterUserId };
+
+        var admins = await _roles.GetActiveUserIdsInRoleAsync(RoleNames.Admin, ct);
+        foreach (var id in admins) ids.Add(id);
+
+        foreach (var s in new[] { section, previousSection })
+        {
+            if (s is null) continue;
+            foreach (var role in IssueSectionRouting.RolesFor(s))
+            {
+                var holders = await _roles.GetActiveUserIdsInRoleAsync(role, ct);
+                foreach (var id in holders) ids.Add(id);
+            }
+        }
+
+        return ids;
     }
 
     public async Task<IReadOnlyList<DistinctReporterRow>> GetDistinctReportersAsync(

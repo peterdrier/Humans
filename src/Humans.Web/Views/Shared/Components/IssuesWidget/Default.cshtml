@@ -1,13 +1,16 @@
 @model string
 @{
     var pagePath = Model ?? string.Empty;
+    var toastSuccessTemplate = Localizer["Issue_Widget_ToastSuccess"].Value;
+    var toastValidationFailed = Localizer["Issue_Widget_ToastValidationFailed"].Value;
+    var toastNetworkError = Localizer["Issue_Widget_ToastNetworkError"].Value;
 }
 
 <!-- Floating "file an issue" button -->
 <button type="button" class="btn btn-primary rounded-circle shadow position-fixed"
         style="bottom: 24px; right: 24px; width: 56px; height: 56px; z-index: 1050;"
         data-bs-toggle="modal" data-bs-target="#issuesWidgetModal"
-        title="File an issue">
+        title="@Localizer["Issue_FileAnIssue"]">
     <i class="fa-solid fa-circle-exclamation fa-lg"></i>
 </button>
 
@@ -15,40 +18,44 @@
 <div class="modal fade" id="issuesWidgetModal" tabindex="-1" aria-labelledby="issuesWidgetModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form id="issuesWidgetForm" asp-controller="Issues" asp-action="Submit" method="post" enctype="multipart/form-data">
+            <form id="issuesWidgetForm" asp-controller="Issues" asp-action="Submit" method="post" enctype="multipart/form-data"
+                  data-toast-success="@toastSuccessTemplate"
+                  data-toast-validation-failed="@toastValidationFailed"
+                  data-toast-network-error="@toastNetworkError">
                 @Html.AntiForgeryToken()
                 <div class="modal-header">
-                    <h5 class="modal-title" id="issuesWidgetModalLabel">File an issue</h5>
+                    <h5 class="modal-title" id="issuesWidgetModalLabel">@Localizer["Issue_FileAnIssue"]</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Title</label>
+                        <label class="form-label">@Localizer["Issue_Title"]</label>
                         <input type="text" name="Title" class="form-control" required maxlength="200" />
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Type</label>
+                        <label class="form-label">@Localizer["Issue_Type"]</label>
                         <select name="Category" class="form-select" required>
-                            <option value="Bug">🐛 Bug</option>
-                            <option value="Feature">✨ Feature</option>
-                            <option value="Question">❓ Question</option>
+                            @foreach (var c in Enum.GetValues<IssueCategory>())
+                            {
+                                <option value="@c">@IssuePresentation.CategoryEmoji(c) @c</option>
+                            }
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Description</label>
+                        <label class="form-label">@Localizer["Issue_Description"]</label>
                         <textarea name="Description" class="form-control" rows="5" required maxlength="5000"
-                                  placeholder="What happened? What did you expect to happen?"></textarea>
+                                  placeholder="@Localizer["Issue_Description_Placeholder"]"></textarea>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Screenshot (optional)</label>
+                        <label class="form-label">@Localizer["Issue_Attachment"]</label>
                         <input type="file" name="Screenshot" class="form-control" accept="image/*" />
                     </div>
                     <input type="hidden" name="PageUrl" id="issuesWidgetPageUrl" value="@pagePath" />
                     <input type="hidden" name="UserAgent" id="issuesWidgetUserAgent" />
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">File issue</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Localizer["Issue_Cancel"]</button>
+                    <button type="submit" class="btn btn-primary">@Localizer["Issue_FileIssue"]</button>
                 </div>
             </form>
         </div>
@@ -67,6 +74,18 @@
 
         var form = document.getElementById('issuesWidgetForm');
         if (!form) return;
+
+        var toastSuccessTemplate = form.getAttribute('data-toast-success') || '';
+        var toastValidationFailed = form.getAttribute('data-toast-validation-failed') || '';
+        var toastNetworkError = form.getAttribute('data-toast-network-error') || '';
+
+        function show(msg, kind) {
+            if (typeof showToast === 'function') {
+                showToast(msg, kind);
+            } else {
+                alert(msg);
+            }
+        }
 
         form.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -90,28 +109,13 @@
                     form.reset();
                     var modal = bootstrap.Modal.getInstance(modalEl);
                     if (modal) modal.hide();
-                    var msg = 'Thanks! Issue logged. View it here: /Issues/' + result.data.id;
-                    if (typeof showToast === 'function') {
-                        showToast(msg, 'success');
-                    } else {
-                        alert(msg);
-                    }
+                    show(toastSuccessTemplate.replace('{0}', '/Issues/' + result.data.id), 'success');
                 } else {
-                    var msg = 'Could not file the issue. Please check the required fields and try again.';
-                    if (typeof showToast === 'function') {
-                        showToast(msg, 'danger');
-                    } else {
-                        alert(msg);
-                    }
+                    show(toastValidationFailed, 'danger');
                 }
             })
             .catch(function () {
-                var msg = 'Something went wrong. Please try again.';
-                if (typeof showToast === 'function') {
-                    showToast(msg, 'danger');
-                } else {
-                    alert(msg);
-                }
+                show(toastNetworkError, 'danger');
             })
             .finally(function () {
                 if (submitBtn) submitBtn.disabled = false;

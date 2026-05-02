@@ -1945,7 +1945,11 @@
   <data name="Issue_Attachment" xml:space="preserve"><value>Schermata (opzionale)</value></data>
   <data name="Issue_Attachment_Hint" xml:space="preserve"><value>PNG o JPEG, max 5 MB.</value></data>
   <data name="Issue_FileIssue" xml:space="preserve"><value>Invia segnalazione</value></data>
+  <data name="Issue_FileAnIssue" xml:space="preserve"><value>Segnala un problema</value></data>
   <data name="Issue_Cancel" xml:space="preserve"><value>Annulla</value></data>
+  <data name="Issue_Widget_ToastSuccess" xml:space="preserve"><value>Grazie! Segnalazione registrata. Vedila qui: {0}</value><comment>{0} = absolute URL path of the new issue</comment></data>
+  <data name="Issue_Widget_ToastValidationFailed" xml:space="preserve"><value>Impossibile inviare la segnalazione. Controlla i campi obbligatori e riprova.</value></data>
+  <data name="Issue_Widget_ToastNetworkError" xml:space="preserve"><value>Qualcosa è andato storto. Riprova.</value></data>
   <data name="Issue_Tips_Title" xml:space="preserve"><value>Consigli per una buona segnalazione</value></data>
   <data name="Issue_Tips_Bullet1" xml:space="preserve"><value>Descrivi cosa stavi cercando di fare.</value></data>
   <data name="Issue_Tips_Bullet2" xml:space="preserve"><value>Descrivi cosa è successo e cosa ti aspettavi.</value></data>
