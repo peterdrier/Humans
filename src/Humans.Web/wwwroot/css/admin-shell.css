@@ -458,7 +458,9 @@ body.admin-shell .split-panels {
 }
 
 /* Below 768px the sidebar collapses into a horizontal scroll strip beneath
-   the topbar — no offcanvas/hamburger. */
+   the topbar — no offcanvas/hamburger. Edge-fade gradients indicate when
+   items are off-screen; site.js toggles data-scroll-start/end on .sidebar
+   to show/hide the gradients and scrolls the active item into view. */
 @media (max-width: 767.98px) {
     body.admin-shell .app-shell { grid-template-columns: 1fr; }
     body.admin-shell .stats { grid-template-columns: 1fr; }
@@ -472,7 +474,12 @@ body.admin-shell .split-panels {
     body.admin-shell .m-nav .exit-admin { padding: 6px 8px; }
     body.admin-shell .m-nav .avatar { width: 28px; height: 28px; font-size: 0.74rem; }
 
-    body.admin-shell .sidebar { padding: 0; border-right: 0; border-bottom: 1px solid rgba(255,245,221,0.1); }
+    body.admin-shell .sidebar {
+        padding: 0;
+        border-right: 0;
+        border-bottom: 1px solid rgba(255,245,221,0.1);
+        position: relative;
+    }
     body.admin-shell .sidebar-scroll {
         flex-direction: row;
         align-items: center;
@@ -480,6 +487,9 @@ body.admin-shell .split-panels {
         padding: 0 8px;
         overflow-x: auto;
         scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+        scroll-behavior: smooth;
     }
     body.admin-shell .sidebar-scroll::-webkit-scrollbar { display: none; }
     body.admin-shell .sidebar h4 { display: none; }
@@ -498,4 +508,32 @@ body.admin-shell .split-panels {
         background: transparent;
     }
     body.admin-shell .sidebar .pill { font-size: 0.6rem; padding: 1px 6px; }
+
+    /* Edge-fade affordances. The overlay is over .sidebar (which has the
+       same bg as the strip), so fading from transparent to --h-aged-ink
+       creates a clean reveal/conceal of off-screen items. JS toggles the
+       data-scroll-start/end attributes; default state shows the right fade
+       (since pages typically load scrolled to the start). */
+    body.admin-shell .sidebar::before,
+    body.admin-shell .sidebar::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 1px; /* don't cover the bottom border */
+        width: 32px;
+        pointer-events: none;
+        z-index: 1;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+    }
+    body.admin-shell .sidebar::before {
+        left: 0;
+        background: linear-gradient(to right, var(--h-aged-ink), rgba(28,24,20,0));
+    }
+    body.admin-shell .sidebar::after {
+        right: 0;
+        background: linear-gradient(to left, var(--h-aged-ink), rgba(28,24,20,0));
+    }
+    body.admin-shell .sidebar[data-scroll-start="false"]::before { opacity: 1; }
+    body.admin-shell .sidebar[data-scroll-end="false"]::after { opacity: 1; }
 }

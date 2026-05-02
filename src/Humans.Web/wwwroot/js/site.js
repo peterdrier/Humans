@@ -294,3 +294,37 @@ function showToast(message, type) {
         }
     }, true);
 })();
+
+// Admin sidebar mobile scroll affordances — toggles data-scroll-start/end
+// on the .sidebar so admin-shell.css can show/hide the edge fades, and
+// scrolls the active nav item into view on load when the strip overflows.
+(function () {
+    var sidebar = document.querySelector('body.admin-shell .sidebar');
+    if (!sidebar) return;
+    var scroll = sidebar.querySelector('.sidebar-scroll');
+    if (!scroll) return;
+
+    function update() {
+        var atStart = scroll.scrollLeft <= 1;
+        var atEnd = scroll.scrollLeft + scroll.clientWidth >= scroll.scrollWidth - 1;
+        sidebar.dataset.scrollStart = atStart ? 'true' : 'false';
+        sidebar.dataset.scrollEnd = atEnd ? 'true' : 'false';
+    }
+
+    scroll.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+
+    // On mobile (horizontal strip), bring the active item into view if it's
+    // off-screen so users land on the right item without manual scrolling.
+    var horizontal = window.matchMedia('(max-width: 767.98px)');
+    if (horizontal.matches) {
+        var active = scroll.querySelector('a.active');
+        if (active) {
+            var prev = scroll.style.scrollBehavior;
+            scroll.style.scrollBehavior = 'auto';
+            active.scrollIntoView({ inline: 'center', block: 'nearest' });
+            scroll.style.scrollBehavior = prev;
+        }
+    }
+    update();
+})();
