@@ -197,7 +197,7 @@ public static class AreaLabelMap
             [IssueSectionRouting.Profiles] = "Profile & onboarding",
             [IssueSectionRouting.Teams] = "Teams",
             [IssueSectionRouting.Governance] = "Voting & governance",
-            [IssueSectionRouting.Camps] = "Camp setup & ops",
+            [IssueSectionRouting.Camps] = "Barrios",
             [IssueSectionRouting.Tickets] = "Tickets",
             [IssueSectionRouting.Users] = "Account",
             [IssueSectionRouting.Budget] = "Budget",
