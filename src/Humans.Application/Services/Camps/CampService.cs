@@ -1773,7 +1773,8 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     // Account-merge fold
     // ==========================================================================
 
-    public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct)
+    public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+        CancellationToken ct)
     {
         // Two repo calls because section ownership splits the tables:
         // CampRepository owns camp_leads, CampRoleRepository owns

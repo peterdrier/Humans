@@ -665,6 +665,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         CancellationToken ct = default) =>
         _repository.UpdateGrantStatusAsync(grantId, status, latestEmailAt, ct);
 
-    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct) =>
+    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+        CancellationToken ct) =>
         _repository.ReassignGrantsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 }

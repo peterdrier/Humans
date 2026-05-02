@@ -226,6 +226,7 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
     public string GenerateBrowserUnsubscribeUrl(Guid userId, MessageCategory category) =>
         _tokenProvider.GenerateBrowserUnsubscribeUrl(userId, category);
 
-    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken cancellationToken) 
+    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+        CancellationToken cancellationToken) 
         => _repository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, cancellationToken);
 }

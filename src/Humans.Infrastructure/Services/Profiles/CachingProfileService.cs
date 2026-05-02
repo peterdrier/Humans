@@ -627,11 +627,12 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         return downgrades;
     }
 
-    public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct)
+    public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+        CancellationToken ct)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-        await inner.ReassignAsync(sourceUserId, targetUserId, updatedAt, ct);
+        var inner = (IUserMerge)scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        await inner.ReassignAsync(sourceUserId, targetUserId, actorUserId, updatedAt, ct);
 
         // Source profile is anonymized in place, target gains sub-aggregates
         // — refresh both entries so the FullProfile projection reflects the

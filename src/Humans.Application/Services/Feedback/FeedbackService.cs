@@ -445,7 +445,8 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             .ToList();
     }
 
-    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct) 
+    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+        CancellationToken ct) 
         => _repository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)

@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Campaigns;
 using CampaignsCampaignService = Humans.Application.Services.Campaigns.CampaignService;
 
@@ -16,6 +17,7 @@ internal static class CampaignsSectionExtensions
         services.AddScoped<CampaignsCampaignService>();
         services.AddScoped<ICampaignService>(sp => sp.GetRequiredService<CampaignsCampaignService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CampaignsCampaignService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<CampaignsCampaignService>());
 
         return services;
     }

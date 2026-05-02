@@ -221,7 +221,8 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
         await _ticketRepository.ResetSyncStateLastSyncAsync();
     }
 
-    public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct)
+    public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+        CancellationToken ct)
     {
         await _ticketRepository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 

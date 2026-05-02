@@ -274,7 +274,8 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
     public Task<IReadOnlyList<Guid>> GetActiveUserIdsForRoleAsync(string roleName, CancellationToken ct = default) =>
         _repository.GetActiveUserIdsForRoleAsync(roleName, _clock.GetCurrentInstant(), ct);
 
-    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken cancellationToken)
+    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+        CancellationToken cancellationToken)
     {
         // Cache invalidation is the caller's responsibility — must run AFTER
         // the ambient TransactionScope completes so a rolled-back fold

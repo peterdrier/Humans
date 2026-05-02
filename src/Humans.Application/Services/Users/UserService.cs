@@ -34,7 +34,7 @@ namespace Humans.Application.Services.Users;
 /// <c>feedback_user_profile_foundational</c> memory.
 /// </para>
 /// </remarks>
-public sealed class UserService : IUserService, IUserDataContributor
+public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
 {
     private readonly IUserRepository _repo;
     private readonly IFullProfileInvalidator _fullProfileInvalidator;
@@ -358,26 +358,16 @@ public sealed class UserService : IUserService, IUserDataContributor
         return anonymized;
     }
 
-    public Task<int> ReassignLoginsToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
-        CancellationToken ct = default)
+    public async Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now,
+        CancellationToken ct)
     {
-        // AspNetUserLogins has no UpdatedAt column — parameter is for
-        // signature consistency with the other Reassign…ToUserAsync
-        // primitives across the merge fold.
-        _ = updatedAt;
-        return _repo.ReassignLoginsToUserAsync(sourceUserId, targetUserId, ct);
-    }
-
-    public Task<int> ReassignEventParticipationToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
-        CancellationToken ct = default)
-    {
-        // EventParticipation has no UpdatedAt column — parameter is for
-        // signature consistency with the other Reassign…ToUserAsync
-        // primitives across the merge fold.
-        _ = updatedAt;
-        return _repo.ReassignEventParticipationToUserAsync(sourceUserId, targetUserId, ct);
+        // Neither AspNetUserLogins nor EventParticipation carries an
+        // UpdatedAt column or an actor field, so `now` and `actorUserId`
+        // are unused here — kept for the IUserMerge contract.
+        _ = actorUserId;
+        _ = now;
+        await _repo.ReassignLoginsToUserAsync(mergedFromUserId, mergedToUserId, ct);
+        await _repo.ReassignEventParticipationToUserAsync(mergedFromUserId, mergedToUserId, ct);
     }
 
     public async Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(

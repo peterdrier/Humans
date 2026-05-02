@@ -4,6 +4,7 @@ using ShiftsShiftManagementService = Humans.Application.Services.Shifts.ShiftMan
 using ShiftsShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
 using ShiftsGeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Shifts;
 
 namespace Humans.Web.Extensions.Sections;
@@ -22,6 +23,7 @@ internal static class ShiftsSectionExtensions
         services.AddScoped<ShiftsShiftManagementService>();
         services.AddScoped<IShiftManagementService>(sp => sp.GetRequiredService<ShiftsShiftManagementService>());
         services.AddScoped<IShiftAuthorizationInvalidator>(sp => sp.GetRequiredService<ShiftsShiftManagementService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ShiftsShiftManagementService>());
 
         // ShiftSignupService — §15 repository pattern (issue #541, sub-task b).
         // Lives in Humans.Application.Services.Shifts; goes through
@@ -31,13 +33,16 @@ internal static class ShiftsSectionExtensions
         services.AddScoped<ShiftsShiftSignupService>();
         services.AddScoped<IShiftSignupService>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ShiftsShiftSignupService>());
 
         // General Availability — §15 repository pattern (issue #541, sub-task c).
         // Application-layer service goes through IGeneralAvailabilityRepository;
         // no caching decorator (Option A — small admin/self-service surface,
         // same rationale as Users/#243 and Audit Log/#552).
         services.AddSingleton<IGeneralAvailabilityRepository, GeneralAvailabilityRepository>();
-        services.AddScoped<IGeneralAvailabilityService, ShiftsGeneralAvailabilityService>();
+        services.AddScoped<ShiftsGeneralAvailabilityService>();
+        services.AddScoped<IGeneralAvailabilityService>(sp => sp.GetRequiredService<ShiftsGeneralAvailabilityService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ShiftsGeneralAvailabilityService>());
 
         return services;
     }

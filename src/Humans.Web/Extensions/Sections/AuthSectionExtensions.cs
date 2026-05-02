@@ -2,6 +2,7 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Auth;
 using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Repositories.Auth;
@@ -22,6 +23,7 @@ internal static class AuthSectionExtensions
         services.AddScoped<RoleAssignmentService>();
         services.AddScoped<IRoleAssignmentService>(sp => sp.GetRequiredService<RoleAssignmentService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<RoleAssignmentService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<RoleAssignmentService>());
 
         // Auth section (§15 migration, issue #551) — Application-layer
         // MagicLinkService + Infrastructure-owned token/url builder and

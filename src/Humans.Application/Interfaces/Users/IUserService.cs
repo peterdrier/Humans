@@ -261,41 +261,6 @@ public interface IUserService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Moves <c>AspNetUserLogins</c> rows from <paramref name="sourceUserId"/>
-    /// to <paramref name="targetUserId"/>; drops the source's row when the
-    /// target already has a login on the same
-    /// (<c>LoginProvider</c>, <c>ProviderKey</c>) pair. Returns the count
-    /// of logins now attributed to the target. The
-    /// <paramref name="updatedAt"/> parameter is accepted for signature
-    /// parity with other <c>Reassign…ToUserAsync</c> methods across the
-    /// merge fold but is <b>unused</b> — <c>AspNetUserLogins</c> has no
-    /// <c>UpdatedAt</c> column. Implementations explicitly discard the
-    /// value (do not "fix" the discard — there is nothing to stamp).
-    /// Used by <c>AccountMergeService.AcceptAsync</c>.
-    /// </summary>
-    Task<int> ReassignLoginsToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Moves <c>event_participations</c> rows from
-    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>;
-    /// on (EventYear, UserId) collision, keeps the row with the highest
-    /// <see cref="ParticipationStatus"/> per the precedence
-    /// <c>Attended &gt; Ticketed &gt; NoShow &gt; NotAttending</c>.
-    /// Returns the count of rows now attributed to the target. The
-    /// <paramref name="updatedAt"/> parameter is accepted for signature
-    /// parity with other <c>Reassign…ToUserAsync</c> methods across the
-    /// merge fold but is <b>unused</b> — <c>EventParticipation</c> has no
-    /// <c>UpdatedAt</c> column. Implementations explicitly discard the
-    /// value (do not "fix" the discard — there is nothing to stamp).
-    /// Used by <c>AccountMergeService.AcceptAsync</c>.
-    /// </summary>
-    Task<int> ReassignEventParticipationToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
-        CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the set of source-tombstone ids whose <c>MergedToUserId</c>
     /// equals <paramref name="targetUserId"/>. Single canonical chain-follow
     /// primitive: AuditLog, Consent, BudgetAuditLog reads call this rather

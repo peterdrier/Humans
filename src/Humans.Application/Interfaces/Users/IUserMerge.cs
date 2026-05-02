@@ -27,9 +27,5 @@ public interface IUserMerge
     /// rules and stamp <paramref name="now"/> as <c>UpdatedAt</c> on tables
     /// that carry one.
     /// </summary>
-    Task ReassignAsync(
-        Guid mergedFromUserId,
-        Guid mergedToUserId,
-        Instant now,
-        CancellationToken ct);
+    Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct);
 }

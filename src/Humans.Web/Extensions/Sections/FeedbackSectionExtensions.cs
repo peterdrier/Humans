@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces.Feedback;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Repositories.Feedback;
 using Humans.Web.Filters;
@@ -18,6 +19,7 @@ internal static class FeedbackSectionExtensions
         services.AddScoped<FeedbackApplicationService>();
         services.AddScoped<IFeedbackService>(sp => sp.GetRequiredService<FeedbackApplicationService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<FeedbackApplicationService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<FeedbackApplicationService>());
 
         // Feedback API key
         services.Configure<FeedbackApiSettings>(opts =>

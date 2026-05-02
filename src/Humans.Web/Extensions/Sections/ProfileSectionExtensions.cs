@@ -37,11 +37,19 @@ internal static class ProfileSectionExtensions
 
         services.AddScoped<IUnsubscribeTokenProvider, UnsubscribeTokenProvider>();
 
-        services.AddScoped<ICommunicationPreferenceService, ProfilesCommunicationPreferenceService>();
+        services.AddScoped<ProfilesCommunicationPreferenceService>();
+        services.AddScoped<ICommunicationPreferenceService>(sp => sp.GetRequiredService<ProfilesCommunicationPreferenceService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ProfilesCommunicationPreferenceService>());
+
         services.AddScoped<IUnsubscribeService, UsersUnsubscribeService>();
 
-        services.AddScoped<IContactFieldService, ProfilesContactFieldService>();
-        services.AddScoped<IUserEmailService, ProfilesUserEmailService>();
+        services.AddScoped<ProfilesContactFieldService>();
+        services.AddScoped<IContactFieldService>(sp => sp.GetRequiredService<ProfilesContactFieldService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ProfilesContactFieldService>());
+
+        services.AddScoped<ProfilesUserEmailService>();
+        services.AddScoped<IUserEmailService>(sp => sp.GetRequiredService<ProfilesUserEmailService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ProfilesUserEmailService>());
         // Google Integration §15 migration (issue #554) — email provisioning.
         // Service lives in Humans.Application, goes through IUserService /
         // IProfileService / IUserEmailService rather than injecting HumansDbContext.
@@ -65,6 +73,7 @@ internal static class ProfileSectionExtensions
         services.AddScoped<ProfilesProfileService>(sp =>
             (ProfilesProfileService)sp.GetRequiredKeyedService<IProfileService>(CachingProfileService.InnerServiceKey));
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ProfilesProfileService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ProfilesProfileService>());
 
         // CachingProfileService: Singleton so the _byUserId ConcurrentDictionary persists
         // across requests. Resolves the Scoped inner IProfileService (keyed "profile-inner")

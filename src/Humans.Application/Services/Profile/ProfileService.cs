@@ -1169,8 +1169,8 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     // Cache invalidation (FullProfile refresh for both source and target) is
     // handled by the CachingProfileService decorator's wrapper for this
     // method — ProfileService is the inner / non-cached implementation.
-    public Task ReassignAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct) =>
+    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+        CancellationToken ct) =>
         _profileRepository.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 
     // ==========================================================================

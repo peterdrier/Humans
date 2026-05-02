@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Teams;
@@ -36,6 +37,7 @@ internal static class TeamsSectionExtensions
         services.AddScoped<TeamsTeamService>();
         services.AddScoped<ITeamService>(sp => sp.GetRequiredService<TeamsTeamService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<TeamsTeamService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<TeamsTeamService>());
 
         services.AddScoped<ITeamPageService, TeamsTeamPageService>();
 

@@ -8,15 +8,9 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Campaigns;
-using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Feedback;
-using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Profile;
@@ -37,8 +31,8 @@ namespace Humans.Application.Services.Profile;
 /// <para>
 /// As of the fold-into-target redesign (Phase 5), <see cref="AcceptAsync"/>
 /// no longer anonymizes Profile rows or wipes source data. Instead each
-/// section service exposes a <c>Reassign…ToUserAsync</c> method that re-FKs
-/// its rows from source to target; <see cref="IUserService.AnonymizeForMergeAsync"/>
+/// section service implements <see cref="IUserMerge"/> to re-FK its rows
+/// from source to target; <see cref="IUserService.AnonymizeForMergeAsync"/>
 /// then tombstones the source <c>User</c> row by setting
 /// <c>MergedToUserId</c> and <c>MergedAt</c> and locking out login.
 /// </para>
@@ -52,25 +46,16 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
     private readonly ILogger<AccountMergeService> _logger;
     private readonly IClock _clock;
 
-    // Profile section
-    private readonly IUserEmailService _userEmailService;
-    private readonly IProfileService _profileService;
-    private readonly IContactFieldService _contactFieldService;
-    private readonly ICommunicationPreferenceService _communicationPreferenceService;
+    // Fan-out over every section that participates in account merge.
+    // Implementations register themselves alongside their owning service in
+    // each section's Add…Section extension.
+    private readonly IEnumerable<IUserMerge> _userMerges;
 
-    // Cross-section
+    // Cross-section terminal steps + post-commit cache invalidation owners.
     private readonly IUserService _userService;
-    private readonly ITicketSyncService _ticketSyncService;
-    private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly ITeamService _teamService;
-    private readonly IShiftSignupService _shiftSignupService;
-    private readonly IShiftManagementService _shiftManagementService;
-    private readonly IGeneralAvailabilityService _generalAvailabilityService;
+    private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly INotificationService _notificationService;
-    private readonly ICampaignService _campaignService;
-    private readonly ICampService _campService;
-    private readonly IApplicationDecisionService _applicationDecisionService;
-    private readonly IFeedbackService _feedbackService;
 
     public AccountMergeService(
         IAccountMergeRepository mergeRepository,
@@ -79,22 +64,11 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
         IFullProfileInvalidator fullProfileInvalidator,
         ILogger<AccountMergeService> logger,
         IClock clock,
-        IUserEmailService userEmailService,
-        IProfileService profileService,
-        IContactFieldService contactFieldService,
-        ICommunicationPreferenceService communicationPreferenceService,
+        IEnumerable<IUserMerge> userMerges,
         IUserService userService,
-        ITicketSyncService ticketSyncService,
-        IRoleAssignmentService roleAssignmentService,
         ITeamService teamService,
-        IShiftSignupService shiftSignupService,
-        IShiftManagementService shiftManagementService,
-        IGeneralAvailabilityService generalAvailabilityService,
-        INotificationService notificationService,
-        ICampaignService campaignService,
-        ICampService campService,
-        IApplicationDecisionService applicationDecisionService,
-        IFeedbackService feedbackService)
+        IRoleAssignmentService roleAssignmentService,
+        INotificationService notificationService)
     {
         _mergeRepository = mergeRepository;
         _userEmailRepository = userEmailRepository;
@@ -102,24 +76,11 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
         _fullProfileInvalidator = fullProfileInvalidator;
         _logger = logger;
         _clock = clock;
-
-        _userEmailService = userEmailService;
-        _profileService = profileService;
-        _contactFieldService = contactFieldService;
-        _communicationPreferenceService = communicationPreferenceService;
-
+        _userMerges = userMerges;
         _userService = userService;
-        _ticketSyncService = ticketSyncService;
-        _roleAssignmentService = roleAssignmentService;
         _teamService = teamService;
-        _shiftSignupService = shiftSignupService;
-        _shiftManagementService = shiftManagementService;
-        _generalAvailabilityService = generalAvailabilityService;
+        _roleAssignmentService = roleAssignmentService;
         _notificationService = notificationService;
-        _campaignService = campaignService;
-        _campService = campService;
-        _applicationDecisionService = applicationDecisionService;
-        _feedbackService = feedbackService;
     }
 
     public Task<IReadOnlyList<AccountMergeRequest>> GetPendingRequestsAsync(CancellationToken ct = default) =>
@@ -141,12 +102,12 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
         }
 
         var now = _clock.GetCurrentInstant();
-        var sourceId = request.SourceUserId;
-        var targetId = request.TargetUserId;
+        var mergedFromId = request.SourceUserId;
+        var mergedToId = request.TargetUserId;
 
         _logger.LogInformation(
             "Admin {AdminId} accepting merge request {RequestId}: folding {SourceUserId} into {TargetUserId}",
-            adminUserId, requestId, sourceId, targetId);
+            adminUserId, requestId, mergedFromId, mergedToId);
 
         try
         {
@@ -162,36 +123,20 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
                 new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
                 TransactionScopeAsyncFlowOption.Enabled))
             {
-                // 1. Profile-section internal — re-FK the Profile sub-aggregates
-                //    (UserEmail rows, Profile children, ContactFields,
-                //    CommunicationPreferences) onto the target user.
-                await _userEmailService.ReassignAsync(sourceId, targetId, now, ct);
-                await _profileService.ReassignAsync(sourceId, targetId, now, ct);
-                await _contactFieldService.ReassignToUserAsync(sourceId, targetId, now, ct);
-                await _communicationPreferenceService.ReassignToUserAsync(sourceId, targetId, now, ct);
+                // 1. Fan out across every section that owns user-keyed rows.
+                //    Each IUserMerge impl re-FKs its section's data from
+                //    source → target. Order doesn't matter for correctness
+                //    inside the same transaction.
+                foreach (var merger in _userMerges)
+                {
+                    await merger.ReassignAsync(mergedFromId, mergedToId, adminUserId, now, ct);
+                }
 
-                // 2. Cross-section — each owning service moves its rows from
-                //    source to target. Order doesn't matter for correctness
-                //    inside the same transaction, but we follow the order
-                //    documented in the fold redesign spec (Phase 1–4 commits).
-                await _userService.ReassignLoginsToUserAsync(sourceId, targetId, now, ct);
-                await _userService.ReassignEventParticipationToUserAsync(sourceId, targetId, now, ct);
-                await _ticketSyncService.ReassignToUserAsync(sourceId, targetId, now, ct);
-                await _roleAssignmentService.ReassignToUserAsync(sourceId, targetId, now, ct);
-                await _teamService.ReassignToUserAsync(sourceId, targetId, adminUserId, now, ct);
-                await _shiftSignupService.ReassignToUserAsync(sourceId, targetId, now, ct);
-                await _shiftManagementService.ReassignProfilesAndTagPrefsToUserAsync(sourceId, targetId, now, ct);
-                await _generalAvailabilityService.ReassignToUserAsync(sourceId, targetId, now, ct);
-                await _notificationService.ReassignRecipientsToUserAsync(sourceId, targetId, now, ct);
-                await _campaignService.ReassignGrantsToUserAsync(sourceId, targetId, now, ct);
-                await _campService.ReassignAssignmentsToUserAsync(sourceId, targetId, now, ct);
-                await _applicationDecisionService.ReassignApplicationsToUserAsync(sourceId, targetId, now, ct);
-                await _feedbackService.ReassignToUserAsync(sourceId, targetId, now, ct);
-
-                // 3. Verify the pending email on the target. UserEmail.ReassignToUserAsync
-                //    above moved any non-conflicting source emails over; the
-                //    pending row was created on the target during request
-                //    submission and still needs to flip to verified.
+                // 2. Verify the pending email on the target. The UserEmail
+                //    section's IUserMerge.ReassignAsync above moved any
+                //    non-conflicting source emails over; the pending row was
+                //    created on the target during request submission and
+                //    still needs to flip to verified.
                 var verified = await _userEmailRepository.MarkVerifiedAsync(request.PendingEmailId, now, ct);
                 if (!verified)
                 {
@@ -199,27 +144,27 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
                         $"Pending email {request.PendingEmailId} no longer exists. Cannot complete merge.");
                 }
 
-                // 4. Tombstone the source User row: sets MergedToUserId,
+                // 3. Tombstone the source User row: sets MergedToUserId,
                 //    MergedAt, and locks out login. Does NOT wipe data —
                 //    the source row stays as a redirect for chain-follow
                 //    reads (audit, consent, budget).
-                await _userService.AnonymizeForMergeAsync(sourceId, targetId, now, ct);
+                await _userService.AnonymizeForMergeAsync(mergedFromId, mergedToId, now, ct);
 
-                // 5. Mark the merge request as accepted.
+                // 4. Mark the merge request as accepted.
                 request.Status = AccountMergeRequestStatus.Accepted;
                 request.ResolvedAt = now;
                 request.ResolvedByUserId = adminUserId;
                 request.AdminNotes = notes;
                 await _mergeRepository.UpdateAsync(request, ct);
 
-                // 6. Audit inside the same scope so a rolled-back merge
+                // 5. Audit inside the same scope so a rolled-back merge
                 //    doesn't leave a ghost audit row.
                 await _auditLogService.LogAsync(
                     AuditAction.AccountMergeAccepted,
                     nameof(AccountMergeRequest), request.Id,
-                    $"Folded source {sourceId} into target {targetId} — email: {request.Email}",
+                    $"Folded source {mergedFromId} into target {mergedToId} — email: {request.Email}",
                     adminUserId,
-                    relatedEntityId: targetId, relatedEntityType: nameof(User));
+                    relatedEntityId: mergedToId, relatedEntityType: nameof(User));
 
                 scope.Complete();
             }
@@ -232,14 +177,14 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
             // CommunicationPreference (all Profile-section). Claims +
             // nav-badge cover RoleAssignment. Notification badge counts
             // cover NotificationRecipient. Team caches cover the
-            // ITeamService.ReassignToUserAsync writes.
-            await _fullProfileInvalidator.InvalidateAsync(sourceId, ct);
-            await _fullProfileInvalidator.InvalidateAsync(targetId, ct);
-            _teamService.RemoveMemberFromAllTeamsCache(sourceId);
-            _roleAssignmentService.InvalidateClaimsCacheForUser(sourceId);
-            _roleAssignmentService.InvalidateClaimsCacheForUser(targetId);
+            // TeamService.ReassignAsync writes.
+            await _fullProfileInvalidator.InvalidateAsync(mergedFromId, ct);
+            await _fullProfileInvalidator.InvalidateAsync(mergedToId, ct);
+            _teamService.RemoveMemberFromAllTeamsCache(mergedFromId);
+            _roleAssignmentService.InvalidateClaimsCacheForUser(mergedFromId);
+            _roleAssignmentService.InvalidateClaimsCacheForUser(mergedToId);
             _roleAssignmentService.InvalidateNavBadgeCache();
-            _notificationService.InvalidateBadgeCachesForUsers([sourceId, targetId]);
+            _notificationService.InvalidateBadgeCachesForUsers([mergedFromId, mergedToId]);
         }
         finally
         {

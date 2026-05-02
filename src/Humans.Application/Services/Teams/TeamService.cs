@@ -56,7 +56,7 @@ namespace Humans.Application.Services.Teams;
 /// §15 Profile migration established.
 /// </para>
 /// </summary>
-public sealed class TeamService : ITeamService, IUserDataContributor
+public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
 {
     private readonly ITeamRepository _repo;
     private readonly IAuditLogService _auditLogService;
@@ -1869,12 +1869,12 @@ public sealed class TeamService : ITeamService, IUserDataContributor
         return count;
     }
 
-    public async Task ReassignToUserAsync(
+    public async Task ReassignAsync(
         Guid sourceUserId,
         Guid targetUserId,
         Guid actorUserId,
         Instant updatedAt,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         // 1. TeamMember fold. System teams are reconciled by SystemTeamSyncJob;
         //    skip them here. Compose AddMemberToTeamAsync / RemoveMemberAsync

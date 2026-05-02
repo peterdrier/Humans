@@ -702,7 +702,8 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         MembershipTier excludeTier, LocalDate today, CancellationToken ct = default) =>
         _repository.GetOtherActiveTierAssignmentsAsync(excludeTier, today, ct);
 
-    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct) =>
+    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+        CancellationToken ct) =>
         _repository.ReassignApplicationsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 
     public async Task UpdateDraftApplicationAsync(

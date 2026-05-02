@@ -223,7 +223,8 @@ public sealed class NotificationService : INotificationService, IUserMerge
         }
     }
 
-    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct) 
+    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+        CancellationToken ct) 
         => _repo.ReassignRecipientsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 
     public void InvalidateBadgeCachesForUsers(IEnumerable<Guid> userIds) =>

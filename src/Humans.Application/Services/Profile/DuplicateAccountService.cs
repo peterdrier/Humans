@@ -225,8 +225,11 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
             {
                 // 1. Re-link external logins from source to target. Same
                 //    composite-key (LoginProvider, ProviderKey) dupes are
-                //    dropped rather than duplicated.
-                await _userService.ReassignLoginsToUserAsync(sourceUserId, targetUserId, now, ct);
+                //    dropped rather than duplicated. Routed through the
+                //    repo directly because duplicate-resolve is not the
+                //    full account-merge fold flow — it only wants the
+                //    logins move, not the IUserMerge fan-out.
+                await _userRepository.ReassignLoginsToUserAsync(sourceUserId, targetUserId, ct);
 
                 // 2. Add target to any non-system teams the source is in, preserving
                 //    coordinator role from the source membership.

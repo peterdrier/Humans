@@ -323,8 +323,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         _repository.RemoveAllForUserAsync(userId, cancellationToken);
 
     /// <inheritdoc />
-    public async Task ReassignAsync(
-        Guid mergedFromUserId, Guid mergedToUserId, Instant now,
+    public async Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now,
         CancellationToken ct)
     {
         // Cache invalidation is the caller's responsibility — must run AFTER
