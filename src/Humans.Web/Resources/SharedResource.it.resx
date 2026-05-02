@@ -1577,6 +1577,9 @@
   <data name="ContainerMap_ClearPlacement" xml:space="preserve"><value>Rimuovi posizione</value></data>
   <data name="ContainerMap_PlaceOnMap" xml:space="preserve"><value>Posiziona sulla mappa</value></data>
   <data name="ContainerMap_ConfirmClear" xml:space="preserve"><value>Rimuovere il posizionamento di «{0}»? Questa azione non può essere annullata.</value></data>
+  <data name="ContainerMap_Legend_Title" xml:space="preserve"><value>Legenda contenitori</value></data>
+  <data name="ContainerMap_Legend_Body" xml:space="preserve"><value>Corpo 6 m × 2,4 m</value></data>
+  <data name="ContainerMap_Legend_Door" xml:space="preserve"><value>Triangolo = lato porta</value></data>
   <!-- ======================== -->
   <!-- User-Facing Views        -->
   <!-- ======================== -->

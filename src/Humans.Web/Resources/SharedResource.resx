@@ -1597,6 +1597,9 @@
   <data name="ContainerMap_ClearPlacement" xml:space="preserve"><value>Clear placement</value></data>
   <data name="ContainerMap_PlaceOnMap" xml:space="preserve"><value>Place on map</value></data>
   <data name="ContainerMap_ConfirmClear" xml:space="preserve"><value>Remove placement for «{0}»? This cannot be undone.</value><comment>{0} = container name</comment></data>
+  <data name="ContainerMap_Legend_Title" xml:space="preserve"><value>Container legend</value></data>
+  <data name="ContainerMap_Legend_Body" xml:space="preserve"><value>6 m × 2.4 m body</value></data>
+  <data name="ContainerMap_Legend_Door" xml:space="preserve"><value>Triangle = door end</value></data>
   <!-- ======================== -->
   <!-- User-Facing Views        -->
   <!-- ======================== -->

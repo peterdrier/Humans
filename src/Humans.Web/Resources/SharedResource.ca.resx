@@ -1579,6 +1579,9 @@
   <data name="ContainerMap_ClearPlacement" xml:space="preserve"><value>Treure col·locació</value></data>
   <data name="ContainerMap_PlaceOnMap" xml:space="preserve"><value>Col·locar al mapa</value></data>
   <data name="ContainerMap_ConfirmClear" xml:space="preserve"><value>Treure la col·locació de «{0}»? Aquesta acció no es pot desfer.</value></data>
+  <data name="ContainerMap_Legend_Title" xml:space="preserve"><value>Llegenda de contenidors</value></data>
+  <data name="ContainerMap_Legend_Body" xml:space="preserve"><value>Cos 6 m × 2,4 m</value></data>
+  <data name="ContainerMap_Legend_Door" xml:space="preserve"><value>Triangle = costat porta</value></data>
   <!-- ======================== -->
   <!-- User-Facing Views        -->
   <!-- ======================== -->

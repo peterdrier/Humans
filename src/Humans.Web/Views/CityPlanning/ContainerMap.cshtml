@@ -60,13 +60,28 @@
              data-user-camp-season-id="@Model.UserCampSeasonId"></div>
         <div id="rotation-handle"></div>
         <div id="map-toast" class="alert alert-danger py-2 px-3 mb-0 shadow-sm" role="alert"></div>
-        <div class="position-absolute top-0 end-0 m-3" style="z-index:10;">
+        <div class="position-absolute top-0 end-0 m-3 d-grid gap-3" style="z-index:10;">
             <div class="card shadow-sm">
                 <div class="card-body py-2 px-3 d-flex flex-column gap-1">
                     <vc:access-matrix section="ContainerMap" />
                     <button id="measure-btn" class="btn btn-outline-secondary btn-sm" aria-pressed="false">
                         <i class="fa-solid fa-ruler me-1"></i> @Localizer["CityPlanning_MeasureButton"]
                     </button>
+                </div>
+            </div>
+            <div class="card shadow-sm">
+                <div class="card-body py-2 px-3" style="font-size:11px; line-height:1.4;">
+                    <div class="fw-semibold mb-1 text-muted text-uppercase" style="font-size:10px; letter-spacing:.05em;">@Localizer["ContainerMap_Legend_Title"]</div>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                      <svg width="36" height="22" viewBox="0 0 36 22" style="flex-shrink:0;">
+                          <polygon points="0,0 0,18 24,18 24,13.5 30,9 24,4.5 24,0" fill="#e8a020" fill-opacity="0.85" stroke="white" stroke-width="1.5"/>
+                          <polygon points="24,4.5 30,9 24,13.5" fill="white" fill-opacity="0.7"/>
+                      </svg>
+                      <ul class="list-unstyled">
+                        <li>@Localizer["ContainerMap_Legend_Body"]</li>
+                        <li>@Localizer["ContainerMap_Legend_Door"]</li>
+                      </ul>
+                    </div>
                 </div>
             </div>
         </div>
