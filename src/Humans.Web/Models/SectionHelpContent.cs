@@ -256,6 +256,45 @@ public static class SectionHelpContent
             - Order status updates are reflected automatically
             """,
 
+        ["ContainerMap"] = """
+            ## Container Placement Map
+
+            The Container Placement Map lets barrio leads and Map Admins drag shipping containers onto the festival site map and lock in their positions.
+
+            ### Placing a Container
+
+            1. Find an unplaced container in the **Unplaced** list on the left sidebar
+            2. Click it — a blue pentagon appears at your barrio's centre
+            3. Drag the container to the exact position you want
+            4. Release to auto-save — the card moves to the **Placed** list
+
+            ### Adjusting Position
+
+            Click a placed container card in the sidebar (or click the orange polygon on the map) to select it, then drag to reposition. Every drag-release auto-saves.
+
+            ### Rotating a Container
+
+            When a container is active (blue), a small blue handle appears at the door end (the triangular tip). Drag this handle in a circle to rotate the container. Releasing auto-saves.
+
+            ### Clearing a Placement
+
+            Click **Clear placement** on a placed card and confirm the prompt. The container returns to the Unplaced list and its polygon is removed from the map.
+
+            ### Locating a Placed Container
+
+            Click the pin icon on a placed card to fly the map to that container's position.
+
+            ### Measure Tool
+
+            Click the **Measure** button (ruler icon) to enter measurement mode. Click points on the map to trace a path — the total distance is shown as you go. Click the Measure button again to exit.
+
+            ### Who Can Edit What
+
+            - **Map Admins** — can place and move any container at any time
+            - **Barrio leads** — can place and move their barrio's containers while placement is **open**
+            - **Everyone else** — read-only view of placed containers
+            """,
+
         ["CityPlanning"] = """
             ## How City Planning Works
 
@@ -435,6 +474,22 @@ public static class SectionHelpContent
 | **Sync** | The process of pulling ticket data from the vendor into the system. |
 | **Discount Code** | A promotional code that provides a discount on ticket purchases. |
 | **TicketAdmin** | A role with access to ticket management, sync operations, and discount codes. |
+""",
+
+        ["ContainerMap"] = """
+## Container Placement Glossary
+
+| Term | Definition |
+|------|-----------|
+| **Container** | A 20 ft shipping container represented as a pentagon on the map (rectangle body + triangular door end). |
+| **Unplaced** | A container that has not yet been given a position on the map. |
+| **Placed** | A container whose position has been saved on the map. |
+| **Active container** | The container currently selected for dragging or rotating (shown in blue). |
+| **Rotation handle** | The blue dot at the container's door tip — drag it to rotate the container. |
+| **Placement open** | The admin-controlled window during which barrio leads can place and move their containers. |
+| **Map Admin** | Effective role for city-planning administration. Granted by holding `CampAdmin` or being a member of the `city-planning` team. |
+| **Barrio Lead** | The camp lead for a barrio — can place that barrio's containers while placement is open. |
+| **Measure tool** | A click-to-trace tool that shows cumulative distances on the map. |
 """,
 
         ["CityPlanning"] = """

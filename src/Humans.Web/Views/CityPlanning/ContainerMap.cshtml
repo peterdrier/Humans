@@ -60,11 +60,15 @@
              data-user-camp-season-id="@Model.UserCampSeasonId"></div>
         <div id="rotation-handle"></div>
         <div id="map-toast" class="alert alert-danger py-2 px-3 mb-0 shadow-sm" role="alert"></div>
-        <div class="position-absolute top-0 end-0 m-2" style="z-index:10;">
-            <button id="measure-btn" class="btn btn-outline-secondary btn-sm shadow-sm"
-                    aria-pressed="false">
-                <i class="fa-solid fa-ruler me-1"></i> @Localizer["CityPlanning_MeasureButton"]
-            </button>
+        <div class="position-absolute top-0 end-0 m-3" style="z-index:10;">
+            <div class="card shadow-sm">
+                <div class="card-body py-2 px-3 d-flex flex-column gap-1">
+                    <vc:access-matrix section="ContainerMap" />
+                    <button id="measure-btn" class="btn btn-outline-secondary btn-sm" aria-pressed="false">
+                        <i class="fa-solid fa-ruler me-1"></i> @Localizer["CityPlanning_MeasureButton"]
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </div>

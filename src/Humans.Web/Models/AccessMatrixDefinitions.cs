@@ -150,6 +150,20 @@ public static class AccessMatrixDefinitions
             ]
         },
 
+        ["ContainerMap"] = new AccessMatrixData
+        {
+            SectionName = "Container Placement",
+            Roles = ["Volunteer", "Barrio Lead", "Map Admin"],
+            Features =
+            [
+                Feature("View placed containers", "Volunteer", A, "Barrio Lead", A, "Map Admin", A),
+                Feature("Place / move own barrio's containers (placement open)", "Volunteer", D, "Barrio Lead", A, "Map Admin", A),
+                Feature("Place / move any container", "Volunteer", D, "Barrio Lead", D, "Map Admin", A),
+                Feature("Clear placement", "Volunteer", D, "Barrio Lead", A, "Map Admin", A),
+                Feature("Measure distances", "Volunteer", A, "Barrio Lead", A, "Map Admin", A),
+            ]
+        },
+
         ["CityPlanning"] = new AccessMatrixData
         {
             SectionName = "City Planning",
