@@ -1,3 +1,4 @@
+@using Humans.Web.Extensions
 @model System.Collections.Generic.IReadOnlyList<Humans.Domain.Entities.AgentConversation>
 @{ ViewData["Title"] = "Agent — Conversations"; }
 
@@ -9,11 +10,11 @@
 <form method="get" class="row g-2 mb-3">
     <div class="col-auto">
         <div class="form-check form-check-inline">
-            <input class="form-check-input" type="checkbox" name="refusalsOnly" value="true" @(Context.Request.Query["refusalsOnly"] == "true" ? "checked" : "") id="refusalsOnly" />
+            <input class="form-check-input" type="checkbox" name="refusalsOnly" value="true" @(Context.Request.Query["refusalsOnly"] == "true" ? "checked" : null) id="refusalsOnly" />
             <label class="form-check-label" for="refusalsOnly">Refusals only</label>
         </div>
         <div class="form-check form-check-inline">
-            <input class="form-check-input" type="checkbox" name="handoffsOnly" value="true" @(Context.Request.Query["handoffsOnly"] == "true" ? "checked" : "") id="handoffsOnly" />
+            <input class="form-check-input" type="checkbox" name="handoffsOnly" value="true" @(Context.Request.Query["handoffsOnly"] == "true" ? "checked" : null) id="handoffsOnly" />
             <label class="form-check-label" for="handoffsOnly">Handoffs only</label>
         </div>
     </div>
@@ -43,11 +44,11 @@ else
             @foreach (var conv in Model)
             {
                 <tr>
-                    <td>@conv.StartedAt.ToDateTimeUtc().ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>@conv.StartedAt.ToAuditMinuteTimestamp()</td>
                     <td>@conv.UserId</td>
                     <td>@conv.Locale</td>
                     <td>@conv.MessageCount</td>
-                    <td>@conv.LastMessageAt.ToDateTimeUtc().ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>@conv.LastMessageAt.ToAuditMinuteTimestamp()</td>
                     <td><a asp-action="ConversationDetail" asp-route-id="@conv.Id">View</a></td>
                 </tr>
             }

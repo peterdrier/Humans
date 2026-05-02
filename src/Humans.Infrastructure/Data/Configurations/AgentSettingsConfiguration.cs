@@ -10,7 +10,11 @@ public class AgentSettingsConfiguration : IEntityTypeConfiguration<AgentSettings
 {
     public void Configure(EntityTypeBuilder<AgentSettings> builder)
     {
-        builder.ToTable("agent_settings");
+        // Singleton: CHECK ("Id" = 1) declared here so EF generates
+        // CreateCheckConstraint/DropCheckConstraint in the migration — no raw
+        // migrationBuilder.Sql() (per memory/architecture/no-hand-edited-migrations.md).
+        builder.ToTable("agent_settings", t =>
+            t.HasCheckConstraint("ck_agent_settings_singleton", "\"Id\" = 1"));
 
         builder.HasKey(s => s.Id);
         builder.Property(s => s.Id).ValueGeneratedNever();
@@ -33,6 +37,5 @@ public class AgentSettingsConfiguration : IEntityTypeConfiguration<AgentSettings
             UpdatedAt = Instant.FromUtc(2026, 4, 21, 0, 0)
         });
 
-        // Enforce singleton: CHECK (id = 1). Added in the migration SQL, not here.
     }
 }

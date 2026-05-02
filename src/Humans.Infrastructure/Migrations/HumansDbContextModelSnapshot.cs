@@ -224,7 +224,10 @@ namespace Humans.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("agent_settings", (string)null);
+                    b.ToTable("agent_settings", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_agent_settings_singleton", "\"Id\" = 1");
+                        });
 
                     b.HasData(
                         new
@@ -1963,10 +1966,8 @@ namespace Humans.Infrastructure.Migrations
 
                     b.Property<string>("Source")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasDefaultValue("UserReport");
+                        .HasColumnType("character varying(32)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -4141,13 +4142,11 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.AgentConversation", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", "User")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.AgentMessage", b =>
@@ -4158,25 +4157,21 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Humans.Domain.Entities.FeedbackReport", "HandedOffToFeedback")
+                    b.HasOne("Humans.Domain.Entities.FeedbackReport", null)
                         .WithMany()
                         .HasForeignKey("HandedOffToFeedbackId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Conversation");
-
-                    b.Navigation("HandedOffToFeedback");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.AgentRateLimit", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", "User")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Application", b =>

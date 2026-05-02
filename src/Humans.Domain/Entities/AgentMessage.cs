@@ -28,5 +28,4 @@ public class AgentMessage
     public string? RefusalReason { get; set; }
 
     public Guid? HandedOffToFeedbackId { get; set; }
-    public FeedbackReport? HandedOffToFeedback { get; set; }
 }

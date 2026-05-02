@@ -29,7 +29,10 @@ public class AgentMessageConfiguration : IEntityTypeConfiguration<AgentMessage>
             .HasForeignKey(m => m.ConversationId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne(m => m.HandedOffToFeedback)
+        // Cross-domain FK to FeedbackReport: stored as a column, no navigation
+        // property (per design-rules §6c). Feedback handoff lookup goes through
+        // IFeedbackService when needed.
+        builder.HasOne<Humans.Domain.Entities.FeedbackReport>()
             .WithMany()
             .HasForeignKey(m => m.HandedOffToFeedbackId)
             .OnDelete(DeleteBehavior.SetNull);

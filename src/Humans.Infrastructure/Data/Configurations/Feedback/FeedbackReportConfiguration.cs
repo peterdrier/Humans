@@ -46,10 +46,13 @@ public class FeedbackReportConfiguration : IEntityTypeConfiguration<FeedbackRepo
             .HasMaxLength(50)
             .IsRequired();
 
+        // No HasDefaultValue: FeedbackSource.UserReport == 0 is the CLR default,
+        // which collides with EF's sentinel detection (HasDefaultValue + CLR-default
+        // → EF substitutes the DB default and ignores explicit assignments). The
+        // entity's property initializer sets the right default already.
         builder.Property(f => f.Source)
             .HasConversion<string>()
             .HasMaxLength(32)
-            .HasDefaultValue(FeedbackSource.UserReport)
             .IsRequired();
 
         builder.HasOne(f => f.AgentConversation)

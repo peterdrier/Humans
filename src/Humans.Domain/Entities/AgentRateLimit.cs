@@ -9,7 +9,6 @@ namespace Humans.Domain.Entities;
 public class AgentRateLimit
 {
     public Guid UserId { get; init; }
-    public User User { get; set; } = null!;
 
     public LocalDate Day { get; init; }
 

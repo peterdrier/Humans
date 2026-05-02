@@ -3,6 +3,7 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
+using Humans.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -27,7 +28,9 @@ public class AgentConversationRetentionJobTests
         var settings = Substitute.For<IAgentSettingsService>();
         settings.Current.Returns(new AgentSettings { RetentionDays = 90 });
 
-        var job = new AgentConversationRetentionJob(db, settings, new FakeClock(now), NullLogger<AgentConversationRetentionJob>.Instance);
+        var clock = new FakeClock(now);
+        var repo = new AgentConversationRepository(db, clock);
+        var job = new AgentConversationRetentionJob(repo, settings, clock, NullLogger<AgentConversationRetentionJob>.Instance);
         await job.ExecuteAsync(CancellationToken.None);
 
         (await db.AgentConversations.CountAsync()).Should().Be(1);

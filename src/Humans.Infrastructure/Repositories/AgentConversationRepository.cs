@@ -62,9 +62,7 @@ public sealed class AgentConversationRepository : IAgentConversationRepository
         bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
         CancellationToken cancellationToken)
     {
-        IQueryable<AgentConversation> q = _db.AgentConversations
-            .AsNoTracking()
-            .Include(c => c.User);
+        IQueryable<AgentConversation> q = _db.AgentConversations.AsNoTracking();
 
         if (userId is Guid u) q = q.Where(c => c.UserId == u);
         if (refusalsOnly) q = q.Where(c => c.Messages.Any(m => m.RefusalReason != null));
@@ -85,8 +83,15 @@ public sealed class AgentConversationRepository : IAgentConversationRepository
 
     public async Task<int> PurgeOlderThanAsync(Instant cutoff, CancellationToken cancellationToken)
     {
-        return await _db.AgentConversations
+        // Standard load+remove pattern (vs ExecuteDeleteAsync) — small scale,
+        // retention runs once a day, and the in-memory provider used in unit
+        // tests doesn't support ExecuteDeleteAsync.
+        var stale = await _db.AgentConversations
             .Where(c => c.LastMessageAt < cutoff)
-            .ExecuteDeleteAsync(cancellationToken);
+            .ToListAsync(cancellationToken);
+        if (stale.Count == 0) return 0;
+        _db.AgentConversations.RemoveRange(stale);
+        await _db.SaveChangesAsync(cancellationToken);
+        return stale.Count;
     }
 }

@@ -32,11 +32,13 @@ public sealed class AgentRateLimitHandler
     {
         var now = _clock.GetCurrentInstant().InZone(_zone);
         var today = now.Date;
+        var hour = now.Hour;
         var settings = _settings.Current;
-        var snapshot = _rateLimit.Get(userId, today);
+        var snapshot = _rateLimit.Get(userId, today, hour);
 
         if (snapshot.MessagesToday >= settings.DailyMessageCap ||
-            snapshot.TokensToday >= settings.DailyTokenCap)
+            snapshot.TokensToday >= settings.DailyTokenCap ||
+            snapshot.MessagesThisHour >= settings.HourlyMessageCap)
         {
             return Task.CompletedTask; // Fail: don't call Succeed.
         }

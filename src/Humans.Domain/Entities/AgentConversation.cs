@@ -7,7 +7,6 @@ public class AgentConversation
     public Guid Id { get; init; }
 
     public Guid UserId { get; init; }
-    public User User { get; set; } = null!;
 
     public Instant StartedAt { get; init; }
     public Instant LastMessageAt { get; set; }

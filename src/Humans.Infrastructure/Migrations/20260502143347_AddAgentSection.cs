@@ -24,7 +24,7 @@ namespace Humans.Infrastructure.Migrations
                 type: "character varying(32)",
                 maxLength: 32,
                 nullable: false,
-                defaultValue: "UserReport");
+                defaultValue: "");
 
             migrationBuilder.CreateTable(
                 name: "agent_conversations",
@@ -85,13 +85,8 @@ namespace Humans.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_agent_settings", x => x.Id);
+                    table.CheckConstraint("ck_agent_settings_singleton", "\"Id\" = 1");
                 });
-
-            migrationBuilder.Sql(
-                """
-                ALTER TABLE agent_settings
-                    ADD CONSTRAINT ck_agent_settings_singleton CHECK ("Id" = 1);
-                """);
 
             migrationBuilder.CreateTable(
                 name: "agent_messages",
@@ -199,8 +194,6 @@ namespace Humans.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "agent_rate_limits");
-
-            migrationBuilder.Sql("ALTER TABLE agent_settings DROP CONSTRAINT IF EXISTS ck_agent_settings_singleton;");
 
             migrationBuilder.DropTable(
                 name: "agent_settings");

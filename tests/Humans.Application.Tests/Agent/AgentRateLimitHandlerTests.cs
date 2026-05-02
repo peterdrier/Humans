@@ -36,8 +36,31 @@ public class AgentRateLimitHandlerTests
     {
         var user = Guid.NewGuid();
         var store = new AgentRateLimitStore();
-        store.Record(user, new LocalDate(2026, 4, 21), messagesDelta: 30, tokensDelta: 0);
-        var settings = FakeSettings(new AgentSettings { DailyMessageCap = 30, DailyTokenCap = 50_000 });
+        // Spread the 30 messages across hours so the daily cap fires before
+        // the hourly cap (which we exercise in a separate test).
+        for (var h = 0; h < 30; h++)
+            store.Record(user, new LocalDate(2026, 4, 21), hour: h, messagesDelta: 1, tokensDelta: 0);
+        var settings = FakeSettings(new AgentSettings { DailyMessageCap = 30, DailyTokenCap = 50_000, HourlyMessageCap = 10 });
+        var handler = new AgentRateLimitHandler(store, settings, FakeClock(2026, 4, 21));
+
+        var context = new AuthorizationHandlerContext(
+            [new AgentRateLimitRequirement()],
+            new System.Security.Claims.ClaimsPrincipal(),
+            user);
+        await handler.HandleAsync(context);
+
+        context.HasSucceeded.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task Rejects_when_hourly_messages_cap_hit()
+    {
+        var user = Guid.NewGuid();
+        var store = new AgentRateLimitStore();
+        // Pile 10 messages into the same hour the clock is in (12:00 UTC).
+        for (var i = 0; i < 10; i++)
+            store.Record(user, new LocalDate(2026, 4, 21), hour: 12, messagesDelta: 1, tokensDelta: 0);
+        var settings = FakeSettings(new AgentSettings { DailyMessageCap = 30, DailyTokenCap = 50_000, HourlyMessageCap = 10 });
         var handler = new AgentRateLimitHandler(store, settings, FakeClock(2026, 4, 21));
 
         var context = new AuthorizationHandlerContext(

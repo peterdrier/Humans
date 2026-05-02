@@ -63,11 +63,19 @@ public sealed class AgentService : IAgentService, IUserDataContributor
         }
 
         var now = _clock.GetCurrentInstant();
-        var today = now.InUtc().Date;
-        var usage = _rateLimit.Get(request.UserId, today);
+        var nowZoned = now.InUtc();
+        var today = nowZoned.Date;
+        var hour = nowZoned.Hour;
+        var usage = _rateLimit.Get(request.UserId, today, hour);
         if (usage.MessagesToday >= settings.DailyMessageCap ||
-            usage.TokensToday >= settings.DailyTokenCap)
+            usage.TokensToday >= settings.DailyTokenCap ||
+            usage.MessagesThisHour >= settings.HourlyMessageCap)
         {
+            // Invariant 6 (Agent.md): every refused turn writes an AgentMessage
+            // with RefusalReason != null. The controller-level handler normally
+            // blocks first, but this in-service guard is a second line of
+            // defence and must honour the same invariant.
+            await PersistRefusal(request, "rate_limited", cancellationToken);
             yield return Finalizer(stopReason: "rate_limited");
             yield break;
         }
@@ -220,7 +228,7 @@ public sealed class AgentService : IAgentService, IUserDataContributor
         await _repo.AppendMessageAsync(message, cancellationToken);
 
         var totalTokens = message.PromptTokens + message.OutputTokens;
-        _rateLimit.Record(request.UserId, today, messagesDelta: 1, tokensDelta: totalTokens);
+        _rateLimit.Record(request.UserId, today, hour, messagesDelta: 1, tokensDelta: totalTokens);
 
         // FIX 2 — break null-coalesce apart to avoid type mismatch
         var fallbackFinalizer = finalFinalizer ?? new AgentTurnFinalizer(0, 0, 0, 0, _settings.Current.Model, "unknown");
@@ -242,6 +250,14 @@ public sealed class AgentService : IAgentService, IUserDataContributor
         if (conv is null || conv.UserId != userId) return;
         await _repo.DeleteAsync(conversationId, ct);
     }
+
+    public Task<IReadOnlyList<AgentConversation>> ListAllConversationsForAdminAsync(
+        bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
+        CancellationToken ct) =>
+        _repo.ListAllAsync(refusalsOnly, handoffsOnly, userId, take, skip, ct);
+
+    public Task<AgentConversation?> GetConversationForAdminAsync(Guid id, CancellationToken ct) =>
+        _repo.GetByIdAsync(id, ct);
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {

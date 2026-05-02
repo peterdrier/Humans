@@ -1,3 +1,4 @@
+@using Humans.Web.Extensions
 @model Humans.Domain.Entities.AgentConversation
 @{ ViewData["Title"] = "Conversation Detail"; }
 
@@ -12,9 +13,9 @@
     <dt class="col-sm-3">User</dt>
     <dd class="col-sm-9">@Model.UserId</dd>
     <dt class="col-sm-3">Started</dt>
-    <dd class="col-sm-9">@Model.StartedAt.ToDateTimeUtc().ToString("yyyy-MM-dd HH:mm:ss") UTC</dd>
+    <dd class="col-sm-9">@Model.StartedAt.ToAuditTimestamp() UTC</dd>
     <dt class="col-sm-3">Last message</dt>
-    <dd class="col-sm-9">@Model.LastMessageAt.ToDateTimeUtc().ToString("yyyy-MM-dd HH:mm:ss") UTC</dd>
+    <dd class="col-sm-9">@Model.LastMessageAt.ToAuditTimestamp() UTC</dd>
     <dt class="col-sm-3">Locale</dt>
     <dd class="col-sm-9">@Model.Locale</dd>
     <dt class="col-sm-3">Message count</dt>
@@ -29,7 +30,7 @@
         <div class="card mb-2 @(msg.Role == Humans.Domain.Enums.AgentRole.User ? "border-primary" : "border-secondary")">
             <div class="card-header d-flex justify-content-between">
                 <span><strong>@msg.Role</strong></span>
-                <span class="text-muted small">@msg.CreatedAt.ToDateTimeUtc().ToString("HH:mm:ss") UTC</span>
+                <span class="text-muted small">@msg.CreatedAt.ToAuditTimestamp() UTC</span>
             </div>
             <div class="card-body">
                 <p class="mb-1" style="white-space: pre-wrap;">@msg.Content</p>
