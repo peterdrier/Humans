@@ -1,0 +1,10 @@
+---
+name: no cross-section EF joins or nav properties
+description: HARD RULE. A section's EF model joins only to its own tables. No `HasOne<X>()` to another section, no nav properties across sections, no FK constraints to non-owned tables. Cross-section linkage is a bare Guid column only.
+---
+
+A new section's EF configurations may only reference that section's own tables. Cross-section linkage is by FK *column* (a bare `Guid`), never by FK *constraint*, navigation property, or `HasOne()/HasMany()` mapping. Lookups across sections happen at the service layer via the other section's repository — never via EF traversal.
+
+**Why:** Sections are vertical slices that own their tables. Cross-section EF relationships create implicit coupling: cascade-delete behavior leaks across boundaries, query plans pull joins through unrelated tables, and the table-ownership map in `design-rules.md` becomes a lie. Past instance during Agent section work: `FeedbackReport.AgentConversationId` was initially modeled with `HasOne(f => f.AgentConversation)` and a nav property. That made `agent_conversations` reachable from a Feedback query plan and gave EF a cascade path Agent-section retention couldn't reason about. Stripped in `1f113b60`: `feedback_reports.AgentConversationId`, `agent_conversations.UserId`, and `agent_messages.HandedOffToFeedbackId` are now bare `Guid` columns with no `HasOne`/`HasMany` and no nav property. Orphans expire via the section's own retention job.
+
+**How to apply:** When you write an EF `IEntityTypeConfiguration<T>` for a section's table, the only `HasOne`/`HasMany` allowed are to other tables in the same section. If you need a cross-section ID, declare a plain `public Guid OtherSectionId { get; set; }` (or nullable `Guid?`) on the entity and stop there — no `.HasOne(x => x.Other).WithMany().HasForeignKey(...)`. Resolve the linkage in the service via `IOtherSectionService`/`IOtherSectionRepository`. User deletion does not cascade into the new section's tables — the section owns its own retention. See also [`design-rules.md`](../../docs/architecture/design-rules.md) §8 (table ownership map).

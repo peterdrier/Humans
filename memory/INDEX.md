@@ -16,10 +16,12 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`no-admin-url-section`](architecture/no-admin-url-section.md) — new admin pages live at `/<Section>/Admin/*`, never `/Admin/<Section>/*`
 - [`no-column-drops-for-decoupling`](architecture/no-column-drops-for-decoupling.md) — HARD RULE. Property override IS the migration; column drop waits for a separate PR after prod verification
 - [`no-concurrency-tokens`](architecture/no-concurrency-tokens.md) — HARD RULE. No `IsConcurrencyToken` / `[ConcurrencyCheck]` / row versioning. Single server, ~500 users.
+- [`no-cross-section-ef-joins`](architecture/no-cross-section-ef-joins.md) — HARD RULE. A section's EF model joins only to its own tables. Cross-section linkage is a bare Guid column, never a `HasOne`/nav property/FK constraint.
 - [`no-drops-until-prod-verified`](architecture/no-drops-until-prod-verified.md) — HARD RULE. Hard storage (DB columns/tables/indexes, files) drops in a separate PR after replacement is verified in prod
 - [`no-hand-edited-migrations`](architecture/no-hand-edited-migrations.md) — HARD RULE. EF migrations 100% auto-generated. Backfills in admin buttons. Pre-commit hook enforces.
 - [`no-linq-at-db-layer`](architecture/no-linq-at-db-layer.md) — services call thick repo methods returning materialized lists, not `db.Set<T>().Where/Select` chains
 - [`no-startup-guards`](architecture/no-startup-guards.md) — HARD RULE. App must always boot. Fix at runtime / admin button / idempotent migration — never refuse to start.
+- [`repository-required-for-db-access`](architecture/repository-required-for-db-access.md) — HARD RULE. Every DB-accessing service goes through a repository interface; no service injects `HumansDbContext` directly, even for singleton-row tables.
 - [`shared-drives-only`](architecture/shared-drives-only.md) — Drive resources on Shared Drives only; API calls need `SupportsAllDrives` + `permissionDetails`
 - [`user-profile-foundational`](architecture/user-profile-foundational.md) — UserService/ProfileService are bottom of the stack; no outbound calls to higher-level sections
 
