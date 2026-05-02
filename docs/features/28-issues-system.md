@@ -75,7 +75,7 @@ This is **not** the same surface as Feedback (`27-feedback-system.md`). Feedback
 
 **Acceptance Criteria:**
 - When a new issue is submitted, an in-app `NotificationSource.IssueSubmitted` notification fans out to every viewer for whom the issue is in-queue (Admin + role-holders of `issue.Section`)
-- When a comment is posted, an in-app notification + email goes to the **other party** — handlers when the reporter comments, the reporter when a handler comments
+- When a comment is posted, an in-app notification goes to the **other party** — handlers + assignee when the reporter comments, the reporter + assignee when a handler comments. Email is only sent when a **handler** comments (to the reporter); reporter→handler comments are in-app only because handlers already see new comments in their queue.
 - When status changes, the reporter and current assignee are notified
 - When an issue is assigned, the new assignee is notified
 - Emails are queued via the email outbox (`OutboxEmailService`) and localized in the recipient's preferred language (en/es/de/fr/it/ca)

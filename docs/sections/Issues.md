@@ -144,7 +144,7 @@ Two controllers serve this section:
 ## Triggers
 
 - When an issue is submitted, an in-app `NotificationSource.IssueSubmitted` notification fans out to every handler for whom the issue is in-queue (Admins + role-holders of `IssueSectionRouting.RolesFor(issue.Section)`), excluding the reporter. The nav-badge actionable count for those same handlers is invalidated in the same step.
-- When a comment is posted (by reporter or handler), a notification fan-out + email targets the **other party** — handlers when the reporter comments, the reporter when a handler comments — using `IUserEmailService.GetNotificationTargetEmailsAsync` to resolve the effective notification email and queueing a localized email through `IEmailService` (the production binding is `OutboxEmailService`, so emails go through the email outbox).
+- When a comment is posted, an in-app notification fans out to the **other party** — handlers + assignee when the reporter comments, the reporter + assignee when a handler comments. Email is sent **only when a handler comments** (to the reporter), via `IUserEmailService.GetNotificationTargetEmailsAsync` + a localized `IEmailService.SendIssueCommentAsync` queued through the email outbox (`OutboxEmailService` in production). Reporter→handler comments are in-app only — handlers see the new comment in their queue without an email ping.
 - When status changes, the reporter and current assignee are notified.
 - When an issue is assigned, the new assignee is notified.
 - When a reporter comments on a terminal issue, the issue is auto-reopened to `Open` and an audit row records the implicit status change with actor = the reporter.
