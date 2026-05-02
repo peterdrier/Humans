@@ -5,7 +5,7 @@
     <div>
         <h2 class="mb-0">What would be sent to Anthropic</h2>
         <small class="text-muted">
-            Regenerated on demand. Reflects current preload corpus, current user
+            Regenerated on demand. Reflects current preload corpus, current human
             snapshot, current settings — not what was sent at the time of any
             historical turn. Nothing is recorded.
         </small>
@@ -45,7 +45,7 @@
     <summary class="h5">Replayed history (@Model.ReplayedHistory.Count turn(s))</summary>
     @if (Model.ReplayedHistory.Count == 0)
     {
-        <p class="text-muted small mt-2">No prior turns to replay — this would be the first user message in the conversation.</p>
+        <p class="text-muted small mt-2">No prior turns to replay — this would be the first turn in the conversation.</p>
     }
     else
     {
