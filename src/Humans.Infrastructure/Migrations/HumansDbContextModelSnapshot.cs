@@ -224,7 +224,10 @@ namespace Humans.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("agent_settings", (string)null);
+                    b.ToTable("agent_settings", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_agent_settings_singleton", "\"Id\" = 1");
+                        });
 
                     b.HasData(
                         new
@@ -1963,10 +1966,8 @@ namespace Humans.Infrastructure.Migrations
 
                     b.Property<string>("Source")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasDefaultValue("UserReport");
+                        .HasColumnType("character varying(32)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -3541,7 +3542,8 @@ namespace Humans.Infrastructure.Migrations
 
                     b.Property<string>("GoogleEmail")
                         .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("GoogleEmail");
 
                     b.Property<string>("GoogleEmailStatus")
                         .IsRequired()
@@ -3639,7 +3641,8 @@ namespace Humans.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("DisplayOrder")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("DisplayOrder");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -3649,11 +3652,13 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<bool>("IsGoogle")
                         .HasColumnType("boolean");
 
-                    b.Property<bool>("IsNotificationTarget")
-                        .HasColumnType("boolean");
-
                     b.Property<bool>("IsOAuth")
-                        .HasColumnType("boolean");
+                        .HasColumnType("boolean")
+                        .HasColumnName("IsOAuth");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("boolean")
+                        .HasColumnName("IsNotificationTarget");
 
                     b.Property<bool>("IsVerified")
                         .HasColumnType("boolean");
@@ -4000,13 +4005,11 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.AgentConversation", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", "User")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.AgentMessage", b =>
@@ -4017,25 +4020,21 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Humans.Domain.Entities.FeedbackReport", "HandedOffToFeedback")
+                    b.HasOne("Humans.Domain.Entities.FeedbackReport", null)
                         .WithMany()
                         .HasForeignKey("HandedOffToFeedbackId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Conversation");
-
-                    b.Navigation("HandedOffToFeedback");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.AgentRateLimit", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", "User")
+                    b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Application", b =>

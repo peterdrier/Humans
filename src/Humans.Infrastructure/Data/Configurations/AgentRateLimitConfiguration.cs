@@ -15,7 +15,9 @@ public class AgentRateLimitConfiguration : IEntityTypeConfiguration<AgentRateLim
         builder.Property(r => r.MessagesToday).IsRequired();
         builder.Property(r => r.TokensToday).IsRequired();
 
-        builder.HasOne(r => r.User)
+        // Cross-domain FK to User: stored as a column, no navigation property
+        // (per design-rules §6c).
+        builder.HasOne<Humans.Domain.Entities.User>()
             .WithMany()
             .HasForeignKey(r => r.UserId)
             .OnDelete(DeleteBehavior.Cascade);

@@ -17,7 +17,9 @@ public class AgentConversationConfiguration : IEntityTypeConfiguration<AgentConv
         builder.Property(c => c.LastMessageAt).IsRequired();
         builder.Property(c => c.MessageCount).IsRequired();
 
-        builder.HasOne(c => c.User)
+        // Cross-domain FK to User: stored as a column, no navigation property
+        // (per design-rules §6c). Service layer stitches user-display when needed.
+        builder.HasOne<Humans.Domain.Entities.User>()
             .WithMany()
             .HasForeignKey(c => c.UserId)
             .OnDelete(DeleteBehavior.Cascade);

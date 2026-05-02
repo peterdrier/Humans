@@ -27,7 +27,9 @@ public class AgentServiceTests
     {
         var userId = Guid.NewGuid();
         var store = new AgentRateLimitStore();
-        store.Record(userId, new LocalDate(2026, 4, 21), messagesDelta: 30, tokensDelta: 0);
+        // Spread the 30 across hours so the daily cap is the binding constraint.
+        for (var h = 0; h < 30; h++)
+            store.Record(userId, new LocalDate(2026, 4, 21), hour: h, messagesDelta: 1, tokensDelta: 0);
 
         var (svc, _) = await BuildService(s =>
         {

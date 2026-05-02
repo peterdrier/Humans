@@ -3,10 +3,9 @@
 
 <h2>Agent Settings</h2>
 
-@if (TempData["Status"] is string status)
-{
-    <div class="alert alert-success">@status</div>
-}
+@* Success/info/error messages are rendered by the shared admin layout's
+   toast container via TempDataKeys; SetSuccess() in the controller wires
+   into that. No per-view status block needed. *@
 
 <form asp-action="Settings" method="post">
     @Html.AntiForgeryToken()
