@@ -240,9 +240,11 @@ public interface IProfileRepository
     /// counterpart to <c>User.MergedToUserId</c>) but its identifying scalars
     /// (name → "Merged"/"User", picture, location, bio, emergency contact,
     /// pronouns, birthday, admin notes, contribution interests, board notes)
-    /// are cleared. <see cref="ContactField"/> rows for the source profile
-    /// are also removed in the same save (matches today's
-    /// <see cref="AnonymizeForMergeByUserIdAsync"/> behaviour).
+    /// are cleared. <see cref="ContactField"/> rows are owned by the
+    /// ContactFields section (<c>IContactFieldService</c>) and are re-FK'd
+    /// separately by the merge orchestrator's
+    /// <c>ContactFieldService.ReassignAsync</c> call — this method does not
+    /// touch <c>ContactField</c> rows.
     /// Returns the post-move count of (VolunteerHistory + Languages) rows
     /// attributed to the target profile, for caller diagnostics.
     /// No-op (returns 0) if the source has no profile.
