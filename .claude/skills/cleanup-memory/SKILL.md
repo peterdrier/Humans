@@ -38,27 +38,36 @@ The slug is the project's absolute git-root path with `:`, `/`, and `\` replaced
 | `/home/peter/humans` (Linux)    | `-home-peter-humans`       |
 | `/Users/peter/humans` (macOS)   | `-Users-peter-humans`      |
 
-Derive at runtime — do not hardcode:
+Derive at runtime — do not hardcode. **Use glob+content match as the primary mechanism**; the derived slug is only a fast-path optimization. Why: on Windows, `git rev-parse --show-toplevel` may report a different case than the directory Claude Code actually created (e.g. cwd reports `humans` lowercase while the slug dir is `H--source-Humans`). Lookup by exact slug succeeds on Windows by accident (case-insensitive FS) but fails on Linux/macOS. Glob-then-match works everywhere.
 
 ```bash
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
-SLUG="$(printf '%s' "$PROJECT_ROOT" | sed 's|[:/\\]|-|g')"
-EXT_DIR="$HOME/.claude/projects/$SLUG/memory"
-```
+REPO_NAME="$(basename "$PROJECT_ROOT")"
 
-If `$EXT_DIR` does not exist, fall back to globbing and content-matching:
-
-```bash
+# Primary: glob and find by content (case-safe across all OSes).
+EXT_DIR=""
 for d in "$HOME"/.claude/projects/*/memory; do
   [ -f "$d/MEMORY.md" ] || continue
-  # Match by repo name appearing in MEMORY.md preamble.
-  if grep -qiE "(humans|nobodies)" "$d/MEMORY.md" 2>/dev/null; then
-    EXT_DIR="$d"; break
+  # Match by repo name (case-insensitive) appearing in the directory name
+  # OR in MEMORY.md content. Cheap to check both.
+  parent_slug="$(basename "$(dirname "$d")")"
+  if echo "$parent_slug" | grep -qi "$REPO_NAME" \
+     || grep -qiE "(humans|nobodies)" "$d/MEMORY.md" 2>/dev/null; then
+    EXT_DIR="$d"
+    break
   fi
 done
+
+# Fallback: derived slug (still useful if glob found nothing — e.g. exotic
+# project name that doesn't match the substring check).
+if [ -z "$EXT_DIR" ]; then
+  SLUG="$(printf '%s' "$PROJECT_ROOT" | sed 's|[:/\\]|-|g')"
+  candidate="$HOME/.claude/projects/$SLUG/memory"
+  [ -d "$candidate" ] && EXT_DIR="$candidate"
+fi
 ```
 
-If still not found, ask Peter — do not guess. The external dir might not exist on a fresh machine, in which case Phase 1 has nothing to do; report that and skip to Phase 2.
+If `$EXT_DIR` is still empty, ask Peter — do not guess. The external dir might not exist on a fresh machine, in which case Phase 1 has nothing to do; report that and skip to Phase 2.
 
 ---
 
@@ -89,13 +98,15 @@ Sort every file in `$EXT_DIR` into one of four buckets, then act on each bucket:
 6. **Surface the report to Peter and pause.** Do not act without explicit per-bucket approval.
 7. **Apply approved actions:**
    - **Bucket A deletions:** `rm "$EXT_DIR/<file>"` per approved entry. Update `$EXT_DIR/MEMORY.md` to drop the corresponding index lines.
-   - **Bucket D migrations:** Create a worktree:
+   - **Bucket D migrations:** Create a worktree, then `cd` into it before any further work. **Without the `cd`, every subsequent write lands in the main checkout, not the worktree** — that violates this skill's own "always work in a worktree" hard rule and pollutes the user's primary tree.
      ```bash
      cd "$PROJECT_ROOT"
      git fetch origin main
-     git worktree add -b feat/migrate-external-memory-<YYYYMMDD> .worktrees/migrate-external-memory-<YYYYMMDD> origin/main
+     WT_DIR="$PROJECT_ROOT/.worktrees/migrate-external-memory-<YYYYMMDD>"
+     git worktree add -b feat/migrate-external-memory-<YYYYMMDD> "$WT_DIR" origin/main
+     cd "$WT_DIR"   # MANDATORY — every later edit/commit assumes cwd is the worktree
      ```
-     For each migrated rule, write `memory/<bucket>/<kebab-case-name>.md` (frontmatter per `memory/META.md`), add the INDEX line (alphabetical within bucket), commit, push, open PR. **Do NOT delete the external file in the same PR** — wait until the PR merges, then delete in a follow-up step (the same way PR 379 was structured).
+     From inside the worktree, for each migrated rule write `memory/<bucket>/<kebab-case-name>.md` (frontmatter per `memory/META.md`), add the INDEX line (alphabetical within bucket), commit, push, open PR. **Do NOT delete the external file in the same PR** — wait until the PR merges, then delete in a follow-up step (the same way PR 379 was structured).
    - **Buckets B and C:** No action.
 
 ### Outputs
@@ -130,7 +141,7 @@ Run these and bundle findings into a single report. Each finding gets: severity 
 
 1. **Dead INDEX entries.** For each line in `memory/INDEX.md`, verify the linked file exists. Missing → BLOCK.
 2. **Orphan atoms.** For each `memory/<bucket>/*.md` file, verify it has an entry in `memory/INDEX.md`. Missing → BLOCK.
-3. **Description drift.** For each atom, compare the `description:` frontmatter against the INDEX one-liner. They should match (or INDEX is a tighter compression). Mismatch → IMPORTANT.
+3. **Description sanity.** For each atom, verify the `description:` frontmatter exists and is non-empty (BLOCK if missing). Then verify the INDEX one-liner shares at least one substantive noun (≥4 chars, not a stopword) with the atom's frontmatter description — this catches an INDEX line that drifted to describe something the atom no longer does. Do NOT flag mere wording differences: by design the INDEX line is a tighter compression of the atom's description, so they should overlap on key terms but otherwise diverge freely. (Earlier versions of this skill required first-50-char prefix match — that produced ~95% false-positive rate because the compression intentionally rewords. Don't bring that back.)
 4. **Bucket misplacement.** Read each atom and check it lives under the right bucket (`architecture/`, `code/`, `process/`, `product/`) per `META.md`'s definitions. Wrong bucket → IMPORTANT.
 5. **Content duplication.** Compare every pair of atoms within the same bucket (and cross-bucket for likely conflicts) for substantive overlap. Two atoms saying ~the same thing → IMPORTANT, propose merge or split-of-concerns.
 6. **Atom vs constitution drift.** For each atom, search `docs/architecture/design-rules.md` for content that overlaps. If `design-rules.md` covers the same ground:
@@ -149,7 +160,7 @@ Run these and bundle findings into a single report. Each finding gets: severity 
 ### Outputs
 
 - A consolidated markdown report grouped by severity.
-- After Peter approves a subset, apply the fixes in a new worktree + branch + PR.
+- After Peter approves a subset, apply the fixes in a new worktree + branch + PR. Use the same `git worktree add` + **mandatory `cd`** pattern as Phase 1's Bucket D migrations — without the `cd` into the worktree, edits land in the main checkout.
 - BLOCK findings should be queued first; IMPORTANT next; NIT only if Peter explicitly opts in.
 
 ---
