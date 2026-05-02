@@ -271,7 +271,5 @@ public interface ITicketRepository
     /// <c>ticket_attendees</c> rows ultimately attributed to
     /// <paramref name="targetUserId"/>.
     /// </summary>
-    Task<int> ReassignToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
-        CancellationToken ct = default);
+    Task<int> ReassignToUserAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default);
 }

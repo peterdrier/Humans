@@ -89,30 +89,7 @@ public interface IUserEmailService
         Guid userId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Account-merge fold: bulk-moves <c>UserEmail</c> rows from
-    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
-    /// Same-address rows collapse onto target with <c>IsVerified</c>
-    /// OR-combined; surviving source rows are re-FK'd with <c>IsPrimary</c>
-    /// and <c>IsGoogle</c> cleared so the target's existing primary / Google
-    /// selections remain authoritative. Stamps <c>UpdatedAt</c> on every row
-    /// touched. Returns the count of <c>UserEmail</c> rows attributed to
-    /// <paramref name="targetUserId"/>. Called only by
-    /// <c>AccountMergeService.AcceptAsync</c>.
-    /// <para>
-    /// <strong>Cache invalidation is the caller's responsibility</strong> —
-    /// must run AFTER the ambient TransactionScope completes. The
-    /// orchestrator already invalidates the FullProfile cache for source
-    /// and target in its post-commit block.
-    /// </para>
-    /// </summary>
-    Task<int> ReassignToUserAsync(
-        Guid sourceUserId,
-        Guid targetUserId,
-        Instant updatedAt,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
+/// <summary>
     /// Adds a verified email directly (admin provisioning/linking — no verification flow needed).
     /// If the email is @nobodies.team, it's automatically set as the notification target.
     /// Skips if the email already exists for this user.

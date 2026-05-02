@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Notifications;
 
@@ -30,7 +31,7 @@ namespace Humans.Application.Services.Notifications;
 /// invalidates those per-user cache keys after every successful send.
 /// </para>
 /// </remarks>
-public sealed class NotificationService : INotificationService
+public sealed class NotificationService : INotificationService, IUserMerge
 {
     private readonly INotificationEmitter _emitter;
     private readonly INotificationRepository _repo;
@@ -222,18 +223,8 @@ public sealed class NotificationService : INotificationService
         }
     }
 
-    public Task<int> ReassignRecipientsToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
-        CancellationToken ct = default)
-    {
-        // Cache invalidation is the caller's responsibility — must run AFTER
-        // the ambient TransactionScope completes so a rolled-back fold
-        // doesn't strand the badge cache showing now-uncommitted state.
-        // AccountMergeService.AcceptAsync calls
-        // <see cref="InvalidateBadgeCachesForUsers"/> in its post-commit block.
-        return _repo.ReassignRecipientsToUserAsync(
-            sourceUserId, targetUserId, updatedAt, ct);
-    }
+    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct) 
+        => _repo.ReassignRecipientsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 
     public void InvalidateBadgeCachesForUsers(IEnumerable<Guid> userIds) =>
         InvalidateBadgeCaches(userIds);

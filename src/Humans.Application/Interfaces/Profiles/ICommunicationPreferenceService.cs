@@ -106,27 +106,4 @@ public interface ICommunicationPreferenceService
     /// suitable for direct use in anchor tags.
     /// </summary>
     string GenerateBrowserUnsubscribeUrl(Guid userId, MessageCategory category);
-
-    /// <summary>
-    /// Account-merge fold: bulk-moves <c>CommunicationPreference</c> rows from
-    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
-    /// Same-category rows collapse — the row with the most-recent
-    /// <c>UpdatedAt</c> wins (source's values are copied onto target when source
-    /// is newer; otherwise the source row is dropped). Surviving source rows
-    /// are re-FK'd to target. Stamps <c>UpdatedAt</c> on every row touched.
-    /// Returns the count of <c>CommunicationPreference</c> rows attributed to
-    /// <paramref name="targetUserId"/>. Called only by
-    /// <c>AccountMergeService.AcceptAsync</c>.
-    /// <para>
-    /// <strong>Cache invalidation is the caller's responsibility</strong> —
-    /// must run AFTER the ambient TransactionScope completes. The
-    /// orchestrator already invalidates the FullProfile cache for source
-    /// and target in its post-commit block.
-    /// </para>
-    /// </summary>
-    Task<int> ReassignToUserAsync(
-        Guid sourceUserId,
-        Guid targetUserId,
-        Instant updatedAt,
-        CancellationToken cancellationToken = default);
 }

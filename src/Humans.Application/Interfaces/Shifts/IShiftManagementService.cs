@@ -330,27 +330,6 @@ public interface IShiftManagementService
     /// </summary>
     Task<int> DeleteShiftProfilesForUserAsync(
         Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Account-merge fold: bulk-moves <c>VolunteerEventProfile</c> and
-    /// <c>VolunteerTagPreference</c> rows from <paramref name="sourceUserId"/>
-    /// to <paramref name="targetUserId"/> in a single save. Conflict on the
-    /// canonical key is resolved target-wins: for the 1:1
-    /// <c>VolunteerEventProfile</c>, if target already has a profile the
-    /// source row is dropped; for <c>VolunteerTagPreference</c>, any source
-    /// row whose <c>(UserId, ShiftTagId)</c> already exists for target is
-    /// dropped. Otherwise the source row is re-FK'd to target;
-    /// <c>VolunteerEventProfile.UpdatedAt</c> is stamped with
-    /// <paramref name="updatedAt"/> (<c>VolunteerTagPreference</c> has no
-    /// <c>UpdatedAt</c>). Returns the total count of rows attributed to
-    /// <paramref name="targetUserId"/> across both tables. Called only by
-    /// <c>AccountMergeService.AcceptAsync</c>.
-    /// </summary>
-    Task<int> ReassignProfilesAndTagPrefsToUserAsync(
-        Guid sourceUserId,
-        Guid targetUserId,
-        Instant updatedAt,
-        CancellationToken ct = default);
 }
 
 /// <summary>

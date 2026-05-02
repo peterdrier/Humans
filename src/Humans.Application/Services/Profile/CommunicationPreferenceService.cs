@@ -14,7 +14,7 @@ namespace Humans.Application.Services.Profile;
 /// Token generation and URL building are delegated to
 /// <see cref="IUnsubscribeTokenProvider"/> (Infrastructure concern).
 /// </summary>
-public sealed class CommunicationPreferenceService : ICommunicationPreferenceService
+public sealed class CommunicationPreferenceService : ICommunicationPreferenceService, IUserMerge
 {
     private static readonly Dictionary<MessageCategory, bool> DefaultOptedOut = new()
     {
@@ -226,15 +226,6 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
     public string GenerateBrowserUnsubscribeUrl(Guid userId, MessageCategory category) =>
         _tokenProvider.GenerateBrowserUnsubscribeUrl(userId, category);
 
-    public async Task<int> ReassignToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
-        CancellationToken cancellationToken = default)
-    {
-        // Cache invalidation is the caller's responsibility — must run AFTER
-        // the ambient TransactionScope completes so a rolled-back fold
-        // doesn't repopulate caches from now-uncommitted state.
-        // See AccountMergeService.AcceptAsync post-commit block.
-        return await _repository.ReassignToUserAsync(
-            sourceUserId, targetUserId, updatedAt, cancellationToken);
-    }
+    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken cancellationToken) 
+        => _repository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, cancellationToken);
 }

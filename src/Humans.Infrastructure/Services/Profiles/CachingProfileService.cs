@@ -3,14 +3,12 @@ using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Application;
 using Humans.Application.DTOs;
-using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using MemberApplication = Humans.Domain.Entities.Application;
 using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
-using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Governance;
@@ -39,7 +37,7 @@ namespace Humans.Infrastructure.Services.Profiles;
 /// injected directly because they are also Singleton (IDbContextFactory-based).
 /// </para>
 /// </summary>
-public sealed class CachingProfileService : IProfileService, IFullProfileInvalidator
+public sealed class CachingProfileService : IProfileService, IFullProfileInvalidator, IUserMerge
 {
     // Phase 3 cache-collapse note:
     //
@@ -629,21 +627,16 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         return downgrades;
     }
 
-    public async Task<int> ReassignSubAggregatesToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
-        CancellationToken ct = default)
+    public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-        var count = await inner.ReassignSubAggregatesToUserAsync(
-            sourceUserId, targetUserId, updatedAt, ct);
+        await inner.ReassignAsync(sourceUserId, targetUserId, updatedAt, ct);
 
         // Source profile is anonymized in place, target gains sub-aggregates
         // — refresh both entries so the FullProfile projection reflects the
         // post-merge state immediately.
         await RefreshEntryAsync(sourceUserId, ct);
         await RefreshEntryAsync(targetUserId, ct);
-
-        return count;
     }
 }

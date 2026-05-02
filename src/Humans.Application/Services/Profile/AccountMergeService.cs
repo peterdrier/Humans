@@ -165,8 +165,8 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
                 // 1. Profile-section internal — re-FK the Profile sub-aggregates
                 //    (UserEmail rows, Profile children, ContactFields,
                 //    CommunicationPreferences) onto the target user.
-                await _userEmailService.ReassignToUserAsync(sourceId, targetId, now, ct);
-                await _profileService.ReassignSubAggregatesToUserAsync(sourceId, targetId, now, ct);
+                await _userEmailService.ReassignAsync(sourceId, targetId, now, ct);
+                await _profileService.ReassignAsync(sourceId, targetId, now, ct);
                 await _contactFieldService.ReassignToUserAsync(sourceId, targetId, now, ct);
                 await _communicationPreferenceService.ReassignToUserAsync(sourceId, targetId, now, ct);
 

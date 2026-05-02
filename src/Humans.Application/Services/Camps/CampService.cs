@@ -43,7 +43,7 @@ namespace Humans.Application.Services.Camps;
 /// are request-acceleration caches, not canonical domain caches, so §15
 /// transparent-cache rules do not apply (see design-rules §15f).
 /// </remarks>
-public sealed class CampService : ICampService, IUserDataContributor
+public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 {
     private readonly ICampRepository _repo;
     private readonly ICampRoleRepository _roleRepo;
@@ -1773,19 +1773,15 @@ public sealed class CampService : ICampService, IUserDataContributor
     // Account-merge fold
     // ==========================================================================
 
-    public async Task<int> ReassignAssignmentsToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
-        CancellationToken ct = default)
+    public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct)
     {
         // Two repo calls because section ownership splits the tables:
         // CampRepository owns camp_leads, CampRoleRepository owns
         // camp_role_assignments. Each repo runs a single SaveChanges; the
         // caller (AccountMergeService.AcceptAsync) wraps both inside its
         // ambient TransactionScope so the two saves are atomic.
-        var leadCount = await _repo.ReassignLeadsToUserAsync(
-            sourceUserId, targetUserId, updatedAt, ct);
-        var assignmentCount = await _roleRepo.ReassignAssignmentsToUserAsync(
-            sourceUserId, targetUserId, updatedAt, ct);
+        await _repo.ReassignLeadsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        await _roleRepo.ReassignAssignmentsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 
         // Active CampLead moves change Barrio Leads system-team membership
         // for both source and target, and the per-lead pending-membership
@@ -1795,8 +1791,6 @@ public sealed class CampService : ICampService, IUserDataContributor
         await _systemTeamSync.SyncBarrioLeadsMembershipForUserAsync(targetUserId, ct);
         _leadBadgeInvalidator.Invalidate(sourceUserId);
         _leadBadgeInvalidator.Invalidate(targetUserId);
-
-        return leadCount + assignmentCount;
     }
 
     // ==========================================================================

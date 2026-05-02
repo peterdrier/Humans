@@ -26,7 +26,7 @@ namespace Humans.Application.Services.Profile;
 /// Cache management is handled by the <c>CachingProfileService</c> decorator.
 /// Cross-domain reads use owning-section service interfaces.
 /// </summary>
-public sealed class ProfileService : IProfileService, IUserDataContributor
+public sealed class ProfileService : IProfileService, IUserDataContributor, IUserMerge
 {
     private readonly IProfileRepository _profileRepository;
     private readonly IUserService _userService;
@@ -1169,11 +1169,9 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
     // Cache invalidation (FullProfile refresh for both source and target) is
     // handled by the CachingProfileService decorator's wrapper for this
     // method — ProfileService is the inner / non-cached implementation.
-    public Task<int> ReassignSubAggregatesToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
-        CancellationToken ct = default) =>
-        _profileRepository.ReassignSubAggregatesToUserAsync(
-            sourceUserId, targetUserId, updatedAt, ct);
+    public Task ReassignAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct) =>
+        _profileRepository.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 
     // ==========================================================================
     // Helpers

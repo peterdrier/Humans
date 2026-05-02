@@ -86,32 +86,6 @@ public interface IRoleAssignmentService
         string roleName, CancellationToken ct = default);
 
     /// <summary>
-    /// Account-merge fold: bulk-moves <c>RoleAssignment</c> rows from
-    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
-    /// When source has an <em>active</em> assignment for a role that target
-    /// also has active at <paramref name="updatedAt"/>, the source row is
-    /// dropped (target's existing assignment wins — both lifetime and
-    /// <c>CreatedByUserId</c> are preserved). All other source rows
-    /// (inactive, historical, or active-without-target-conflict) are re-FK'd
-    /// to target so history is preserved. Returns the count of
-    /// <c>RoleAssignment</c> rows attributed to
-    /// <paramref name="targetUserId"/>. Called only by
-    /// <c>AccountMergeService.AcceptAsync</c>.
-    /// <para>
-    /// <strong>Cache invalidation is the caller's responsibility</strong> —
-    /// must run AFTER the ambient TransactionScope completes. The
-    /// orchestrator calls <see cref="InvalidateClaimsCacheForUser"/> for
-    /// both users and <see cref="InvalidateNavBadgeCache"/> globally in
-    /// its post-commit block.
-    /// </para>
-    /// </summary>
-    Task<int> ReassignToUserAsync(
-        Guid sourceUserId,
-        Guid targetUserId,
-        Instant updatedAt,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Evicts the cached claims for <paramref name="userId"/> so the next
     /// request re-derives roles from <c>role_assignments</c>. Called
     /// post-commit by <c>AccountMergeService.AcceptAsync</c> after a fold,

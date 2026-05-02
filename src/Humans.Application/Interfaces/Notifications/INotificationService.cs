@@ -1,5 +1,4 @@
 using Humans.Domain.Enums;
-using NodaTime;
 
 namespace Humans.Application.Interfaces.Notifications;
 
@@ -45,29 +44,6 @@ public interface INotificationService : INotificationEmitter
         string? actionUrl = null,
         string? actionLabel = null,
         CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Account-merge fold: bulk-moves <c>NotificationRecipient</c> rows from
-    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
-    /// Re-FKs the recipient row's <c>UserId</c>. Conflict rule: if the target
-    /// already has a recipient row on the same parent <c>NotificationId</c>,
-    /// the source's row is dropped (one notification per user max). The
-    /// shared parent <c>Notification</c> row is not touched. Returns the
-    /// count of <c>NotificationRecipient</c> rows attributed to
-    /// <paramref name="targetUserId"/> after the move. Called only by
-    /// <c>AccountMergeService.AcceptAsync</c>.
-    /// <para>
-    /// <strong>Cache invalidation is the caller's responsibility</strong> —
-    /// must run AFTER the ambient TransactionScope completes. The
-    /// orchestrator calls <see cref="InvalidateBadgeCachesForUsers"/> with
-    /// both user ids in its post-commit block.
-    /// </para>
-    /// </summary>
-    Task<int> ReassignRecipientsToUserAsync(
-        Guid sourceUserId,
-        Guid targetUserId,
-        Instant updatedAt,
-        CancellationToken ct = default);
 
     /// <summary>
     /// Evicts the per-user notification badge cache for each id in

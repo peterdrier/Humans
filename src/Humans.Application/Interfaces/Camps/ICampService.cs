@@ -157,30 +157,6 @@ public interface ICampService
 
     Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId)>>
         GetCampSeasonsForComplianceAsync(int year, CancellationToken ct = default);
-
-    /// <summary>
-    /// Account-merge fold: bulk-moves source's <c>CampLead</c> +
-    /// <c>CampRoleAssignment</c> rows to <paramref name="targetUserId"/>.
-    /// CampLead is re-FK'd on <c>UserId</c>; on collision against the
-    /// active <c>(CampId, UserId)</c> unique index target wins (source's
-    /// row is dropped). CampRoleAssignment is re-FK'd via <c>CampMember</c>:
-    /// for each source assignment, if target has a <c>CampMember</c> in the
-    /// same <c>CampSeason</c>, the assignment is re-pointed to target's
-    /// <c>CampMember</c>; if that creates a duplicate of the unique
-    /// <c>(CampSeasonId, CampRoleDefinitionId, CampMemberId)</c> key, target
-    /// wins and source's row is dropped. Assignments whose source
-    /// <c>CampMember</c> has no target counterpart in the same season are
-    /// left in place (target has no membership to attach the role to;
-    /// source's <c>CampMember</c> remains as a tombstone). Returns the
-    /// total count of CampLead + CampRoleAssignment rows attributed to
-    /// <paramref name="targetUserId"/> after the move. Called only by
-    /// <c>AccountMergeService.AcceptAsync</c>.
-    /// </summary>
-    Task<int> ReassignAssignmentsToUserAsync(
-        Guid sourceUserId,
-        Guid targetUserId,
-        Instant updatedAt,
-        CancellationToken ct = default);
 }
 
 public sealed record CampMemberLookup(Guid CampSeasonId, Guid UserId, CampMemberStatus Status);

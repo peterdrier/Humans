@@ -34,7 +34,7 @@ namespace Humans.Application.Services.Governance;
 /// badge cache invalidations are called inline after successful writes —
 /// Governance is low-traffic enough that a caching decorator isn't warranted.
 /// </summary>
-public sealed class ApplicationDecisionService : IApplicationDecisionService, IUserDataContributor
+public sealed class ApplicationDecisionService : IApplicationDecisionService, IUserDataContributor, IUserMerge
 {
     private readonly IApplicationRepository _repository;
     private readonly IUserService _userService;
@@ -702,14 +702,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         MembershipTier excludeTier, LocalDate today, CancellationToken ct = default) =>
         _repository.GetOtherActiveTierAssignmentsAsync(excludeTier, today, ct);
 
-    public Task<int> ReassignApplicationsToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
-        CancellationToken ct = default) =>
-        // No per-user applications cache (Governance is low-traffic enough
-        // that ApplicationDecisionService has no caching decorator). Nav /
-        // notification-meter / voting-badge invalidations are unaffected by
-        // a plain re-FK of historical rows — Submitted-count and per-voter
-        // badges depend on the application id, not on UserId. Plain delegate.
+    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct) =>
         _repository.ReassignApplicationsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 
     public async Task UpdateDraftApplicationAsync(

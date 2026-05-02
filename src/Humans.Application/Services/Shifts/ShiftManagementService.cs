@@ -39,7 +39,7 @@ namespace Humans.Application.Services.Shifts;
 /// (design-rules §6b).
 /// </para>
 /// </summary>
-public sealed class ShiftManagementService : IShiftManagementService, IShiftAuthorizationInvalidator
+public sealed class ShiftManagementService : IShiftManagementService, IShiftAuthorizationInvalidator, IUserMerge
 {
     private static readonly TimeSpan AuthCacheDuration = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan DashboardCacheTtl = TimeSpan.FromMinutes(5);
@@ -1600,12 +1600,6 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         Guid userId, CancellationToken ct = default) =>
         _repo.DeleteVolunteerEventProfilesForUserAsync(userId, ct);
 
-    public Task<int> ReassignProfilesAndTagPrefsToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
-        CancellationToken ct = default) =>
-        // No service-level cache for VolunteerEventProfile or
-        // VolunteerTagPreference — plain delegate to the repo, which
-        // performs the move + collision resolution in a single save.
-        _repo.ReassignProfilesAndTagPrefsToUserAsync(
-            sourceUserId, targetUserId, updatedAt, ct);
+    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct) =>
+        _repo.ReassignProfilesAndTagPrefsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 }

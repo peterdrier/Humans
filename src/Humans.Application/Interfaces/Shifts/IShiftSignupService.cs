@@ -116,24 +116,6 @@ public interface IShiftSignupService
     /// </summary>
     Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
         Guid userId, string reason, CancellationToken ct = default);
-
-    /// <summary>
-    /// Account-merge fold: bulk-moves <c>ShiftSignup</c> rows from
-    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
-    /// Plain re-FK — a single human should never have signed up for the same
-    /// shift under two accounts pre-merge. Defensive guard: if both source
-    /// and target somehow have a signup for the same <c>ShiftId</c>, the
-    /// source row is dropped (target's row wins) so the merge does not
-    /// duplicate the slot. Stamps <paramref name="updatedAt"/> on every
-    /// re-FK'd row. Returns the count of <c>ShiftSignup</c> rows attributed
-    /// to <paramref name="targetUserId"/> after the move. Called only by
-    /// <c>AccountMergeService.AcceptAsync</c>.
-    /// </summary>
-    Task<int> ReassignToUserAsync(
-        Guid sourceUserId,
-        Guid targetUserId,
-        Instant updatedAt,
-        CancellationToken ct = default);
 }
 
 /// <summary>

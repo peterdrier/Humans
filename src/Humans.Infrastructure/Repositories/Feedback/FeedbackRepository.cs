@@ -168,7 +168,7 @@ public sealed class FeedbackRepository : IFeedbackRepository
     // Account-merge fold
     // ==========================================================================
 
-    public async Task<int> ReassignToUserAsync(
+    public async Task ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
@@ -196,11 +196,5 @@ public sealed class FeedbackRepository : IFeedbackRepository
         }
 
         await ctx.SaveChangesAsync(ct);
-
-        var reportCount = await ctx.FeedbackReports
-            .CountAsync(r => r.UserId == targetUserId, ct);
-        var messageCount = await ctx.FeedbackMessages
-            .CountAsync(m => m.SenderUserId == targetUserId, ct);
-        return reportCount + messageCount;
     }
 }

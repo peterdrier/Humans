@@ -126,7 +126,7 @@ public interface IFeedbackRepository
     /// the total count of report + message rows attributed to
     /// <paramref name="targetUserId"/> after the move.
     /// </summary>
-    Task<int> ReassignToUserAsync(
+    Task ReassignToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,
         Instant updatedAt,

@@ -28,7 +28,7 @@ namespace Humans.Application.Services.Campaigns;
 /// leave the Failed set without a corresponding outbox row and never be
 /// retriable again.
 /// </remarks>
-public sealed class CampaignService : ICampaignService, IUserDataContributor
+public sealed class CampaignService : ICampaignService, IUserDataContributor, IUserMerge
 {
     private readonly ICampaignRepository _repository;
     private readonly ITeamService _teamService;
@@ -665,9 +665,6 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor
         CancellationToken ct = default) =>
         _repository.UpdateGrantStatusAsync(grantId, status, latestEmailAt, ct);
 
-    public Task<int> ReassignGrantsToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
-        CancellationToken ct = default) =>
-        // No service-level per-user campaign-grants cache — plain delegate.
+    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct) =>
         _repository.ReassignGrantsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 }
