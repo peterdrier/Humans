@@ -259,6 +259,43 @@ public sealed class AgentService : IAgentService, IUserDataContributor
     public Task<AgentConversation?> GetConversationForAdminAsync(Guid id, CancellationToken ct) =>
         _repo.GetByIdAsync(id, ct);
 
+    public async Task<AgentPromptPreview?> GetPromptPreviewForAdminAsync(
+        Guid conversationId, CancellationToken ct)
+    {
+        var conversation = await _repo.GetByIdAsync(conversationId, ct);
+        if (conversation is null) return null;
+
+        var settings = _settings.Current;
+        var snapshot = await _snapshots.LoadAsync(conversation.UserId, ct);
+        var preloadText = await _preload.BuildAsync(settings.PreloadConfig, ct);
+        var systemPrompt = _assembler.BuildSystemPrompt(preloadText);
+        var tail = _assembler.BuildUserContextTail(snapshot);
+        var toolDefs = _assembler.BuildToolDefinitions();
+
+        // Mirror AskAsync's history replay rules so the preview matches what
+        // would actually be sent on the next turn.
+        var replayed = conversation.Messages
+            .Where(m => (m.Role == AgentRole.User || m.Role == AgentRole.Assistant)
+                        && !string.IsNullOrEmpty(m.Content))
+            .OrderBy(m => m.CreatedAt)
+            .TakeLast(HistoryReplayLimit)
+            .Select(m => new AgentPromptHistoryTurn(
+                Role: m.Role == AgentRole.User ? "user" : "assistant",
+                Text: m.Content))
+            .ToList();
+
+        var tools = toolDefs
+            .Select(t => new AgentPromptToolDefinition(t.Name, t.Description, t.JsonSchema))
+            .ToList();
+
+        return new AgentPromptPreview(
+            Model: settings.Model,
+            SystemPrompt: systemPrompt,
+            UserContextTail: tail,
+            Tools: tools,
+            ReplayedHistory: replayed);
+    }
+
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         var conversations = await _repo.ListForUserAsync(userId, take: int.MaxValue, ct);

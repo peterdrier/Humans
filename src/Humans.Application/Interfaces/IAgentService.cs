@@ -22,4 +22,12 @@ public interface IAgentService : IUserDataContributor
     /// <summary>Admin-only fetch of a single conversation with messages eagerly loaded.</summary>
     Task<Humans.Domain.Entities.AgentConversation?> GetConversationForAdminAsync(
         Guid id, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Admin-only diagnostic: regenerates what would be sent to Anthropic for the
+    /// next turn of a conversation, *with the current code and current state*.
+    /// Returns null if the conversation does not exist. The preview is never stored.
+    /// </summary>
+    Task<AgentPromptPreview?> GetPromptPreviewForAdminAsync(
+        Guid conversationId, CancellationToken cancellationToken);
 }

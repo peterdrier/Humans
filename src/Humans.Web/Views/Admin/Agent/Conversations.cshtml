@@ -1,5 +1,5 @@
 @using Humans.Web.Extensions
-@model System.Collections.Generic.IReadOnlyList<Humans.Domain.Entities.AgentConversation>
+@model System.Collections.Generic.IReadOnlyList<Humans.Web.Controllers.AdminAgentConversationRow>
 @{ ViewData["Title"] = "Agent — Conversations"; }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -29,26 +29,28 @@
 }
 else
 {
-    <table class="table table-sm table-hover">
+    @* width:auto + Bootstrap's table-sm — grid sizes to content rather than spanning the full column. *@
+    <table class="table table-sm table-hover" style="width: auto;">
         <thead>
             <tr>
                 <th>Started</th>
                 <th>Human</th>
                 <th>Locale</th>
-                <th>Messages</th>
+                <th class="text-end">Messages</th>
                 <th>Last Message</th>
                 <th></th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var conv in Model)
+            @foreach (var row in Model)
             {
+                var conv = row.Conversation;
                 <tr>
-                    <td>@conv.StartedAt.ToAuditMinuteTimestamp()</td>
-                    <td>@conv.UserId</td>
+                    <td class="text-nowrap">@conv.StartedAt.ToAuditMinuteTimestamp()</td>
+                    <td><human-link user-id="@conv.UserId" display-name="@row.DisplayName" admin="true" /></td>
                     <td>@conv.Locale</td>
-                    <td>@conv.MessageCount</td>
-                    <td>@conv.LastMessageAt.ToAuditMinuteTimestamp()</td>
+                    <td class="text-end">@conv.MessageCount</td>
+                    <td class="text-nowrap">@conv.LastMessageAt.ToAuditMinuteTimestamp()</td>
                     <td><a asp-action="ConversationDetail" asp-route-id="@conv.Id">View</a></td>
                 </tr>
             }

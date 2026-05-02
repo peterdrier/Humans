@@ -1,31 +1,36 @@
 @using Humans.Web.Extensions
-@model Humans.Domain.Entities.AgentConversation
-@{ ViewData["Title"] = "Conversation Detail"; }
+@model Humans.Web.Controllers.AdminAgentConversationDetail
+@{ ViewData["Title"] = "Conversation Detail"; var conv = Model.Conversation; }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 class="mb-0">Conversation</h2>
-    <a asp-action="Conversations" class="btn btn-outline-secondary btn-sm">Back to list</a>
+    <div class="d-flex gap-2">
+        <a asp-action="ConversationPrompt" asp-route-id="@conv.Id" class="btn btn-outline-info btn-sm">
+            Show what would be sent to Anthropic
+        </a>
+        <a asp-action="Conversations" class="btn btn-outline-secondary btn-sm">Back to list</a>
+    </div>
 </div>
 
 <dl class="row mb-4">
     <dt class="col-sm-3">ID</dt>
-    <dd class="col-sm-9"><code>@Model.Id</code></dd>
+    <dd class="col-sm-9"><code>@conv.Id</code></dd>
     <dt class="col-sm-3">Human</dt>
-    <dd class="col-sm-9">@Model.UserId</dd>
+    <dd class="col-sm-9"><human-link user-id="@conv.UserId" display-name="@Model.DisplayName" admin="true" /></dd>
     <dt class="col-sm-3">Started</dt>
-    <dd class="col-sm-9">@Model.StartedAt.ToAuditTimestamp() UTC</dd>
+    <dd class="col-sm-9">@conv.StartedAt.ToAuditTimestamp() UTC</dd>
     <dt class="col-sm-3">Last message</dt>
-    <dd class="col-sm-9">@Model.LastMessageAt.ToAuditTimestamp() UTC</dd>
+    <dd class="col-sm-9">@conv.LastMessageAt.ToAuditTimestamp() UTC</dd>
     <dt class="col-sm-3">Locale</dt>
-    <dd class="col-sm-9">@Model.Locale</dd>
+    <dd class="col-sm-9">@conv.Locale</dd>
     <dt class="col-sm-3">Message count</dt>
-    <dd class="col-sm-9">@Model.MessageCount</dd>
+    <dd class="col-sm-9">@conv.MessageCount</dd>
 </dl>
 
-@if (Model.Messages.Any())
+@if (conv.Messages.Any())
 {
     <h4>Messages</h4>
-    @foreach (var msg in Model.Messages.OrderBy(m => m.CreatedAt))
+    @foreach (var msg in conv.Messages.OrderBy(m => m.CreatedAt))
     {
         <div class="card mb-2 @(msg.Role == Humans.Domain.Enums.AgentRole.User ? "border-primary" : "border-secondary")">
             <div class="card-header d-flex justify-content-between">
