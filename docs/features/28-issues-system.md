@@ -98,7 +98,7 @@ This is **not** the same surface as Feedback (`27-feedback-system.md`). Feedback
 **As** the org **and** as the system, **I want** issues to land in the right queue automatically based on which section they're about, **so that** triage scales as we add coordinators per section.
 
 **Acceptance Criteria:**
-- `Issue.Section` is one of the constants in `IssueSectionRouting.AllKnownSections` (Tickets, Camps, Teams, Shifts, Onboarding, Profiles, Users, Budget, Governance, Legal, CityPlanning) or null
+- `Issue.Section` is one of the constants in `IssueSectionRouting.AllKnownSections` (Tickets, Camps, Teams, Shifts, Onboarding, Profiles, Budget, Governance, Legal, CityPlanning) or null
 - `IssueSectionRouting.RolesFor(section)` is the routing table mapping section → role(s) whose holders see that section; Admin is always implicit
 - Null `Section` falls to the Admin queue only
 - Routing is data-driven: a change to `IssueSectionRouting.RolesFor` takes effect immediately (sections are stored as strings; no migration needed)

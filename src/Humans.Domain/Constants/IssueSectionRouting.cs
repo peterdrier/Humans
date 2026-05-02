@@ -20,7 +20,6 @@ public static class IssueSectionRouting
     public const string Shifts = "Shifts";
     public const string Onboarding = "Onboarding";
     public const string Profiles = "Profiles";
-    public const string Users = "Users";
     public const string Budget = "Budget";
     public const string Governance = "Governance";
     public const string Legal = "Legal";
@@ -39,7 +38,6 @@ public static class IssueSectionRouting
         Shifts => [RoleNames.NoInfoAdmin],
         Onboarding => [RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator, RoleNames.HumanAdmin],
         Profiles => [RoleNames.HumanAdmin],
-        Users => [RoleNames.HumanAdmin],
         Budget => [RoleNames.FinanceAdmin],
         Governance => [RoleNames.Board],
         Legal => [RoleNames.ConsentCoordinator],
@@ -65,7 +63,7 @@ public static class IssueSectionRouting
 
     public static readonly IReadOnlyList<string> AllKnownSections =
     [
-        Tickets, Camps, Teams, Shifts, Onboarding, Profiles, Users,
+        Tickets, Camps, Teams, Shifts, Onboarding, Profiles,
         Budget, Governance, Legal, CityPlanning
     ];
 }
