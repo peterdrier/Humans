@@ -66,6 +66,7 @@
   <data name="Nav_OnboardingReview" xml:space="preserve"><value>File d'attente</value></data>
   <data name="Nav_MyFeedback" xml:space="preserve"><value>Mon feedback</value></data>
   <data name="Nav_Issues" xml:space="preserve"><value>Tickets</value></data>
+  <data name="Issue_Unavailable" xml:space="preserve"><value>Ce ticket n'est pas disponible — il a peut-être été supprimé, ou vous n'y avez pas accès.</value></data>
 
 
   <!-- ======================== -->

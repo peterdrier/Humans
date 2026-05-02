@@ -227,12 +227,25 @@ public class IssuesController : HumansControllerBase
         var (userMissing, user) = await RequireCurrentUserAsync();
         if (userMissing is not null) return userMissing;
 
+        var isPartial = partial || Request.Headers.XRequestedWith == "XMLHttpRequest";
         var issue = await _issues.GetIssueByIdAsync(id);
-        if (issue is null) return NotFound();
 
-        var canHandle = (await _authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)).Succeeded;
-        var isReporter = issue.ReporterUserId == user.Id;
-        if (!canHandle && !isReporter) return NotFound();
+        // Treat "not found" and "no access" identically so we don't leak which
+        // GUIDs exist. For partial requests (the JS that paints the right pane
+        // on /Issues?selected=X), return a small inline notice so the panel
+        // doesn't get the framework's full-layout 404 rendered into it. For a
+        // direct nav, drop back to the Index without the selected param so the
+        // URL doesn't keep advertising the bad ID.
+        var canHandle = issue is not null
+            && (await _authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)).Succeeded;
+        var isReporter = issue is not null && issue.ReporterUserId == user.Id;
+
+        if (issue is null || (!canHandle && !isReporter))
+        {
+            return isPartial
+                ? PartialView("_DetailUnavailable")
+                : RedirectToAction(nameof(Index));
+        }
 
         var thread = await _issues.GetThreadAsync(id);
         var vm = MapDetailViewModel(issue, thread, isHandler: canHandle, isReporter: isReporter);
@@ -242,7 +255,7 @@ public class IssuesController : HumansControllerBase
             await PopulateAssigneeOptionsAsync(vm);
         }
 
-        if (partial || Request.Headers.XRequestedWith == "XMLHttpRequest")
+        if (isPartial)
         {
             return PartialView("_Detail", vm);
         }

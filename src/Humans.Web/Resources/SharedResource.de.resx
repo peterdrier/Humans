@@ -66,6 +66,7 @@
   <data name="Nav_OnboardingReview" xml:space="preserve"><value>Pr&#xFC;fwarteschlange</value></data>
   <data name="Nav_MyFeedback" xml:space="preserve"><value>Mein Feedback</value></data>
   <data name="Nav_Issues" xml:space="preserve"><value>Vorgänge</value></data>
+  <data name="Issue_Unavailable" xml:space="preserve"><value>Dieser Vorgang ist nicht verfügbar — er wurde möglicherweise entfernt oder du hast keinen Zugriff darauf.</value></data>
 
 
   <!-- ======================== -->
