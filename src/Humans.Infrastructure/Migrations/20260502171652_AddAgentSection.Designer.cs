@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260502154438_AddAgentSection")]
+    [Migration("20260502171652_AddAgentSection")]
     partial class AddAgentSection
     {
         /// <inheritdoc />
@@ -2136,6 +2136,134 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("google_sync_outbox", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.Issue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AdditionalContext")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid?>("AssigneeUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)");
+
+                    b.Property<LocalDate?>("DueDate")
+                        .HasColumnType("date");
+
+                    b.Property<int?>("GitHubIssueNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PageUrl")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid>("ReporterUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ResolvedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ScreenshotContentType")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ScreenshotFileName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("ScreenshotStoragePath")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("Section")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssigneeUserId");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("ReporterUserId");
+
+                    b.HasIndex("ResolvedByUserId");
+
+                    b.HasIndex("Section");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("Section", "Status");
+
+                    b.ToTable("issues", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.IssueComment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("IssueId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SenderUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("IssueId");
+
+                    b.HasIndex("SenderUserId");
+
+                    b.ToTable("issue_comments", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.LegalDocument", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3554,6 +3682,12 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<Instant?>("MagicLinkSentAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Instant?>("MergedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("MergedToUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
@@ -3601,6 +3735,9 @@ namespace Humans.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Email");
+
+                    b.HasIndex("MergedToUserId")
+                        .HasFilter("\"MergedToUserId\" IS NOT NULL");
 
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
@@ -4520,6 +4657,49 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.Issue", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.User", "Assignee")
+                        .WithMany()
+                        .HasForeignKey("AssigneeUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Humans.Domain.Entities.User", "Reporter")
+                        .WithMany()
+                        .HasForeignKey("ReporterUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Humans.Domain.Entities.User", "ResolvedByUser")
+                        .WithMany()
+                        .HasForeignKey("ResolvedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Assignee");
+
+                    b.Navigation("Reporter");
+
+                    b.Navigation("ResolvedByUser");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.IssueComment", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.Issue", "Issue")
+                        .WithMany("Comments")
+                        .HasForeignKey("IssueId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Humans.Domain.Entities.User", "SenderUser")
+                        .WithMany()
+                        .HasForeignKey("SenderUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Issue");
+
+                    b.Navigation("SenderUser");
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.LegalDocument", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.Team", "Team")
@@ -4815,6 +4995,14 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("BudgetGroup");
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.User", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("MergedToUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.UserEmail", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.User", null)
@@ -5009,6 +5197,11 @@ namespace Humans.Infrastructure.Migrations
             modelBuilder.Entity("Humans.Domain.Entities.FeedbackReport", b =>
                 {
                     b.Navigation("Messages");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.Issue", b =>
+                {
+                    b.Navigation("Comments");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.LegalDocument", b =>
