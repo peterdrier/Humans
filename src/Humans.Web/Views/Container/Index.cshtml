@@ -61,7 +61,13 @@ else
                     }
                 </div>
                 <div class="flex-grow-1 min-width-0">
-                    <div class="fw-semibold">@c.Name</div>
+                    <div class="fw-semibold d-flex align-items-center gap-2">
+                        @c.Name
+                        @if (c.IsPlaced)
+                        {
+                            <span class="badge bg-success fw-normal" style="font-size:10px;">@Localizer["ContainerMap_Placed"]</span>
+                        }
+                    </div>
                     @if (!string.IsNullOrEmpty(c.Description))
                     {
                         <div class="text-muted small">@c.Description</div>

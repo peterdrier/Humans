@@ -90,7 +90,8 @@ public class ContainerController : HumansControllerBase
                 Name = c.Name,
                 Description = c.Description,
                 ImageUrl = c.ImageStoragePath,
-                ImageFileName = c.ImageFileName
+                ImageFileName = c.ImageFileName,
+                IsPlaced = c.LocationGeoJson is not null,
             }).ToList()
         };
 
