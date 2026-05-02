@@ -24,21 +24,18 @@ public class AgentMessageConfiguration : IEntityTypeConfiguration<AgentMessage>
                 v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
                 v => System.Text.Json.JsonSerializer.Deserialize<string[]>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? Array.Empty<string>());
 
+        // Same-section FK only: agent_messages → agent_conversations.
         builder.HasOne(m => m.Conversation)
             .WithMany(c => c.Messages)
             .HasForeignKey(m => m.ConversationId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Cross-domain FK to FeedbackReport: stored as a column, no navigation
-        // property (per design-rules §6c). Feedback handoff lookup goes through
-        // IFeedbackService when needed.
-        builder.HasOne<Humans.Domain.Entities.FeedbackReport>()
-            .WithMany()
-            .HasForeignKey(m => m.HandedOffToFeedbackId)
-            .OnDelete(DeleteBehavior.SetNull);
-
+        // No cross-section FK to FeedbackReport. HandedOffToFeedbackId is a
+        // plain nullable Guid column. Feedback handoff lookup goes through
+        // IFeedbackService when display data is needed.
         builder.HasIndex(m => m.ConversationId);
         builder.HasIndex(m => m.CreatedAt);
         builder.HasIndex(m => m.RefusalReason);
+        builder.HasIndex(m => m.HandedOffToFeedbackId);
     }
 }

@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services.Agent;
 using Humans.Infrastructure.Stores;
 using Microsoft.EntityFrameworkCore;
@@ -31,7 +32,9 @@ public class AgentSettingsServiceTests
         await db.SaveChangesAsync();
 
         var store = new AgentSettingsStore();
-        var service = new AgentSettingsService(db, store, new TestClock(Instant.FromUtc(2026, 4, 22, 9, 0)));
+        var clock = new TestClock(Instant.FromUtc(2026, 4, 22, 9, 0));
+        var repo = new AgentRepository(db, clock);
+        var service = new AgentSettingsService(repo, store, clock);
         await service.LoadAsync(CancellationToken.None);
 
         await service.UpdateAsync(s =>

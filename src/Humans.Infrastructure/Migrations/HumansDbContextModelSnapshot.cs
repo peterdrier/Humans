@@ -4121,15 +4121,6 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("TargetUser");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.AgentConversation", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Humans.Domain.Entities.AgentMessage", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.AgentConversation", "Conversation")
@@ -4137,11 +4128,6 @@ namespace Humans.Infrastructure.Migrations
                         .HasForeignKey("ConversationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("Humans.Domain.Entities.FeedbackReport", null)
-                        .WithMany()
-                        .HasForeignKey("HandedOffToFeedbackId")
-                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Conversation");
                 });
@@ -4595,11 +4581,6 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.FeedbackReport", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.AgentConversation", "AgentConversation")
-                        .WithMany()
-                        .HasForeignKey("AgentConversationId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("Humans.Domain.Entities.Team", "AssignedToTeam")
                         .WithMany()
                         .HasForeignKey("AssignedToTeamId")
@@ -4620,8 +4601,6 @@ namespace Humans.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("AgentConversation");
 
                     b.Navigation("AssignedToTeam");
 

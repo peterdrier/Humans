@@ -146,10 +146,9 @@ public class AgentServiceTests
 
         var clock = new FakeClock(Instant.FromUtc(2026, 4, 21, 12, 0));
         var store = new AgentSettingsStore();
-        var settingsService = new AgentSettingsService(db, store, clock);
+        var repo = new AgentRepository(db, clock);
+        var settingsService = new AgentSettingsService(repo, store, clock);
         await settingsService.LoadAsync(CancellationToken.None);
-
-        var repo = new AgentConversationRepository(db, clock);
         var ratelimit = rateLimitStore ?? new AgentRateLimitStore();
         var abuse = new AgentAbuseDetector();
         var snapshots = Substitute.For<IAgentUserSnapshotProvider>();

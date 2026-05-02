@@ -40,12 +40,6 @@ namespace Humans.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_agent_conversations", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_agent_conversations_users_UserId",
-                        column: x => x.UserId,
-                        principalTable: "users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -95,12 +89,6 @@ namespace Humans.Infrastructure.Migrations
                         principalTable: "agent_conversations",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_agent_messages_feedback_reports_HandedOffToFeedbackId",
-                        column: x => x.HandedOffToFeedbackId,
-                        principalTable: "feedback_reports",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.InsertData(
@@ -147,23 +135,11 @@ namespace Humans.Infrastructure.Migrations
                 name: "IX_agent_messages_RefusalReason",
                 table: "agent_messages",
                 column: "RefusalReason");
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_feedback_reports_agent_conversations_AgentConversationId",
-                table: "feedback_reports",
-                column: "AgentConversationId",
-                principalTable: "agent_conversations",
-                principalColumn: "Id",
-                onDelete: ReferentialAction.SetNull);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_feedback_reports_agent_conversations_AgentConversationId",
-                table: "feedback_reports");
-
             migrationBuilder.DropTable(
                 name: "agent_messages");
 

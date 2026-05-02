@@ -29,7 +29,7 @@ public class AgentConversationRetentionJobTests
         settings.Current.Returns(new AgentSettings { RetentionDays = 90 });
 
         var clock = new FakeClock(now);
-        var repo = new AgentConversationRepository(db, clock);
+        var repo = new AgentRepository(db, clock);
         var job = new AgentConversationRetentionJob(repo, settings, clock, NullLogger<AgentConversationRetentionJob>.Instance);
         await job.ExecuteAsync(CancellationToken.None);
 

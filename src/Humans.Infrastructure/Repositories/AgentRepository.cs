@@ -6,23 +6,40 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Repositories;
 
-public sealed class AgentConversationRepository : IAgentConversationRepository
+public sealed class AgentRepository : IAgentRepository
 {
     private readonly HumansDbContext _db;
     private readonly IClock _clock;
 
-    public AgentConversationRepository(HumansDbContext db, IClock clock)
+    public AgentRepository(HumansDbContext db, IClock clock)
     {
         _db = db;
         _clock = clock;
     }
 
-    public Task<AgentConversation?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
+    // ---- Settings ----------------------------------------------------------
+
+    public Task<AgentSettings?> GetSettingsAsync(CancellationToken cancellationToken) =>
+        _db.AgentSettings.AsNoTracking().FirstOrDefaultAsync(s => s.Id == 1, cancellationToken);
+
+    public async Task<AgentSettings> UpdateSettingsAsync(
+        Action<AgentSettings> mutator, Instant updatedAt, CancellationToken cancellationToken)
+    {
+        var row = await _db.AgentSettings.FirstAsync(s => s.Id == 1, cancellationToken);
+        mutator(row);
+        row.UpdatedAt = updatedAt;
+        await _db.SaveChangesAsync(cancellationToken);
+        return row;
+    }
+
+    // ---- Conversations + messages -----------------------------------------
+
+    public Task<AgentConversation?> GetConversationByIdAsync(Guid id, CancellationToken cancellationToken) =>
         _db.AgentConversations
             .Include(c => c.Messages.OrderBy(m => m.CreatedAt))
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
 
-    public async Task<AgentConversation> CreateAsync(Guid userId, string locale, CancellationToken cancellationToken)
+    public async Task<AgentConversation> CreateConversationAsync(Guid userId, string locale, CancellationToken cancellationToken)
     {
         var now = _clock.GetCurrentInstant();
         var conv = new AgentConversation
@@ -50,7 +67,7 @@ public sealed class AgentConversationRepository : IAgentConversationRepository
         await _db.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<AgentConversation>> ListForUserAsync(Guid userId, int take, CancellationToken cancellationToken) =>
+    public async Task<IReadOnlyList<AgentConversation>> ListConversationsForUserAsync(Guid userId, int take, CancellationToken cancellationToken) =>
         await _db.AgentConversations
             .AsNoTracking()
             .Where(c => c.UserId == userId)
@@ -58,7 +75,7 @@ public sealed class AgentConversationRepository : IAgentConversationRepository
             .Take(take)
             .ToListAsync(cancellationToken);
 
-    public async Task<IReadOnlyList<AgentConversation>> ListForUserWithMessagesAsync(Guid userId, CancellationToken cancellationToken) =>
+    public async Task<IReadOnlyList<AgentConversation>> ListConversationsForUserWithMessagesAsync(Guid userId, CancellationToken cancellationToken) =>
         await _db.AgentConversations
             .AsNoTracking()
             .Where(c => c.UserId == userId)
@@ -66,7 +83,7 @@ public sealed class AgentConversationRepository : IAgentConversationRepository
             .OrderByDescending(c => c.LastMessageAt)
             .ToListAsync(cancellationToken);
 
-    public async Task<IReadOnlyList<AgentConversation>> ListAllAsync(
+    public async Task<IReadOnlyList<AgentConversation>> ListAllConversationsAsync(
         bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
         CancellationToken cancellationToken)
     {
@@ -81,7 +98,7 @@ public sealed class AgentConversationRepository : IAgentConversationRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken)
+    public async Task DeleteConversationAsync(Guid id, CancellationToken cancellationToken)
     {
         var conv = await _db.AgentConversations.FindAsync([id], cancellationToken);
         if (conv is null) return;
@@ -89,7 +106,7 @@ public sealed class AgentConversationRepository : IAgentConversationRepository
         await _db.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<int> PurgeOlderThanAsync(Instant cutoff, CancellationToken cancellationToken)
+    public async Task<int> PurgeConversationsOlderThanAsync(Instant cutoff, CancellationToken cancellationToken)
     {
         // Standard load+remove pattern (vs ExecuteDeleteAsync) — small scale,
         // retention runs once a day, and the in-memory provider used in unit

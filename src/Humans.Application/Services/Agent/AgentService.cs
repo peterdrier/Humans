@@ -20,7 +20,7 @@ public sealed class AgentService : IAgentService, IUserDataContributor
     private readonly IAgentSettingsService _settings;
     private readonly IAgentRateLimitStore _rateLimit;
     private readonly IAgentAbuseDetector _abuse;
-    private readonly IAgentConversationRepository _repo;
+    private readonly IAgentRepository _repo;
     private readonly IAgentUserSnapshotProvider _snapshots;
     private readonly IAgentPreloadCorpusBuilder _preload;
     private readonly IAgentPromptAssembler _assembler;
@@ -34,7 +34,7 @@ public sealed class AgentService : IAgentService, IUserDataContributor
         IAgentSettingsService settings,
         IAgentRateLimitStore rateLimit,
         IAgentAbuseDetector abuse,
-        IAgentConversationRepository repo,
+        IAgentRepository repo,
         IAgentUserSnapshotProvider snapshots,
         IAgentPreloadCorpusBuilder preload,
         IAgentPromptAssembler assembler,
@@ -89,8 +89,8 @@ public sealed class AgentService : IAgentService, IUserDataContributor
         }
 
         var conversation = request.ConversationId == Guid.Empty
-            ? await _repo.CreateAsync(request.UserId, request.Locale, cancellationToken)
-            : await _repo.GetByIdAsync(request.ConversationId, cancellationToken)
+            ? await _repo.CreateConversationAsync(request.UserId, request.Locale, cancellationToken)
+            : await _repo.GetConversationByIdAsync(request.ConversationId, cancellationToken)
               ?? throw new InvalidOperationException("Unknown conversation");
 
         if (conversation.UserId != request.UserId)
@@ -239,27 +239,27 @@ public sealed class AgentService : IAgentService, IUserDataContributor
     private const int HistoryReplayLimit = 20;
 
     public Task<IReadOnlyList<AgentConversation>> GetHistoryAsync(Guid userId, int take, CancellationToken ct) =>
-        _repo.ListForUserAsync(userId, take, ct);
+        _repo.ListConversationsForUserAsync(userId, take, ct);
 
     public async Task DeleteConversationAsync(Guid userId, Guid conversationId, CancellationToken ct)
     {
-        var conv = await _repo.GetByIdAsync(conversationId, ct);
+        var conv = await _repo.GetConversationByIdAsync(conversationId, ct);
         if (conv is null || conv.UserId != userId) return;
-        await _repo.DeleteAsync(conversationId, ct);
+        await _repo.DeleteConversationAsync(conversationId, ct);
     }
 
     public Task<IReadOnlyList<AgentConversation>> ListAllConversationsForAdminAsync(
         bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
         CancellationToken ct) =>
-        _repo.ListAllAsync(refusalsOnly, handoffsOnly, userId, take, skip, ct);
+        _repo.ListAllConversationsAsync(refusalsOnly, handoffsOnly, userId, take, skip, ct);
 
     public Task<AgentConversation?> GetConversationForAdminAsync(Guid id, CancellationToken ct) =>
-        _repo.GetByIdAsync(id, ct);
+        _repo.GetConversationByIdAsync(id, ct);
 
     public async Task<AgentPromptPreview?> GetPromptPreviewForAdminAsync(
         Guid conversationId, CancellationToken ct)
     {
-        var conversation = await _repo.GetByIdAsync(conversationId, ct);
+        var conversation = await _repo.GetConversationByIdAsync(conversationId, ct);
         if (conversation is null) return null;
 
         var settings = _settings.Current;
@@ -295,7 +295,7 @@ public sealed class AgentService : IAgentService, IUserDataContributor
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var conversations = await _repo.ListForUserWithMessagesAsync(userId, ct);
+        var conversations = await _repo.ListConversationsForUserWithMessagesAsync(userId, ct);
         var shaped = conversations.Select(c => new
         {
             c.Id,
@@ -322,8 +322,8 @@ public sealed class AgentService : IAgentService, IUserDataContributor
     private async Task PersistRefusal(AgentTurnRequest req, string reason, CancellationToken ct)
     {
         var conv = req.ConversationId == Guid.Empty
-            ? await _repo.CreateAsync(req.UserId, req.Locale, ct)
-            : await _repo.GetByIdAsync(req.ConversationId, ct) ?? await _repo.CreateAsync(req.UserId, req.Locale, ct);
+            ? await _repo.CreateConversationAsync(req.UserId, req.Locale, ct)
+            : await _repo.GetConversationByIdAsync(req.ConversationId, ct) ?? await _repo.CreateConversationAsync(req.UserId, req.Locale, ct);
 
         await _repo.AppendMessageAsync(new AgentMessage
         {
