@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Humans.Application.Constants;
 using Humans.Application.Interfaces;
 using Humans.Application.Models;
 
@@ -64,15 +65,15 @@ public sealed class AgentPromptAssembler : IAgentPromptAssembler
     public IReadOnlyList<AnthropicToolDefinition> BuildToolDefinitions() =>
     [
         new AnthropicToolDefinition(
-            Name: "fetch_feature_spec",
+            Name: AgentToolNames.FetchFeatureSpec,
             Description: "Fetch a feature specification from docs/features/{name}.md. Use only for whitelisted filename stems.",
             JsonSchema: """{"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}"""),
         new AnthropicToolDefinition(
-            Name: "fetch_section_guide",
+            Name: AgentToolNames.FetchSectionGuide,
             Description: "Fetch the long procedural guide for a given section key from SectionHelpContent.Guides.",
             JsonSchema: """{"type":"object","properties":{"section":{"type":"string"}},"required":["section"]}"""),
         new AnthropicToolDefinition(
-            Name: "route_to_feedback",
+            Name: AgentToolNames.RouteToFeedback,
             Description: "Create a feedback report for a question the agent cannot answer. Terminates the turn and returns the feedback URL.",
             JsonSchema: """{"type":"object","properties":{"summary":{"type":"string"},"topic":{"type":"string"}},"required":["summary","topic"]}""")
     ];

@@ -1809,6 +1809,7 @@
   <data name="Agent_HistoryTitle" xml:space="preserve"><value>Assistente — Le mie conversazioni</value></data>
   <data name="Agent_InputPlaceholder" xml:space="preserve"><value>Chiedi come funziona il sistema…</value></data>
   <data name="Agent_PanelTitle" xml:space="preserve"><value>Assistente</value></data>
+  <data name="Agent_ViewHistory" xml:space="preserve"><value>Cronologia</value></data>
   <data name="Agent_Send" xml:space="preserve"><value>Invia</value></data>
   <data name="Agent_WidgetButton" xml:space="preserve"><value>Apri l'assistente</value></data>
   <data name="Nav_Agent" xml:space="preserve"><value>Assistente</value></data>

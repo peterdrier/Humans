@@ -168,27 +168,6 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("agent_messages", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.AgentRateLimit", b =>
-                {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<LocalDate>("Day")
-                        .HasColumnType("date");
-
-                    b.Property<int>("MessagesToday")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("TokensToday")
-                        .HasColumnType("integer");
-
-                    b.HasKey("UserId", "Day");
-
-                    b.HasIndex("Day");
-
-                    b.ToTable("agent_rate_limits", (string)null);
-                });
-
             modelBuilder.Entity("Humans.Domain.Entities.AgentSettings", b =>
                 {
                     b.Property<int>("Id")
@@ -1966,8 +1945,10 @@ namespace Humans.Infrastructure.Migrations
 
                     b.Property<string>("Source")
                         .IsRequired()
+                        .ValueGeneratedOnAdd()
                         .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValueSql("'UserReport'");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -4026,15 +4007,6 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Conversation");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.AgentRateLimit", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Application", b =>

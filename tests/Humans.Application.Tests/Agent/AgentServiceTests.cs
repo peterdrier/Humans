@@ -1,10 +1,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using AwesomeAssertions;
+using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Stores;
 using Humans.Application.Models;
+using Humans.Application.Services.Agent;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -160,7 +162,7 @@ public class AgentServiceTests
         var assembler = new AgentPromptAssembler();
         var tools = Substitute.For<IAgentToolDispatcher>();
         var client = new AnthropicClientFake();
-        var options = Options.Create(new Humans.Infrastructure.Configuration.AnthropicOptions());
+        var options = Options.Create(new AnthropicOptions());
         var logger = NullLogger<AgentService>.Instance;
 
         var svc = new AgentService(settingsService, ratelimit, abuse, repo, snapshots, preload,

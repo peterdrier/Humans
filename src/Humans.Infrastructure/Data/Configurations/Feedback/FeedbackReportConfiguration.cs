@@ -46,19 +46,16 @@ public class FeedbackReportConfiguration : IEntityTypeConfiguration<FeedbackRepo
             .HasMaxLength(50)
             .IsRequired();
 
-        // No HasDefaultValue: FeedbackSource.UserReport == 0 is the CLR default,
-        // which collides with EF's sentinel detection (HasDefaultValue + CLR-default
-        // → EF substitutes the DB default and ignores explicit assignments). The
-        // entity's property initializer sets the right default already.
+        // HasDefaultValueSql (raw SQL) instead of HasDefaultValue: the latter
+        // trips EF's sentinel detection because FeedbackSource.UserReport == 0
+        // is the CLR default and EF would silently overwrite explicit assignments
+        // with the DB default. We still need a DB-level default so the migration
+        // can backfill existing rows when this NOT-NULL column is added.
         builder.Property(f => f.Source)
             .HasConversion<string>()
             .HasMaxLength(32)
+            .HasDefaultValueSql("'UserReport'")
             .IsRequired();
-
-        builder.HasOne(f => f.AgentConversation)
-            .WithMany()
-            .HasForeignKey(f => f.AgentConversationId)
-            .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(f => f.Source);
         builder.HasIndex(f => f.AgentConversationId);
@@ -71,6 +68,11 @@ public class FeedbackReportConfiguration : IEntityTypeConfiguration<FeedbackRepo
         // but the DB-level FK + cascade behavior is still owned here — suppress
         // the obsolete warning only for this wiring block.
 #pragma warning disable CS0618
+        builder.HasOne(f => f.AgentConversation)
+            .WithMany()
+            .HasForeignKey(f => f.AgentConversationId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.HasOne(f => f.User)
             .WithMany()
             .HasForeignKey(f => f.UserId)

@@ -70,7 +70,6 @@ public class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<FeedbackMessage> FeedbackMessages => Set<FeedbackMessage>();
     public DbSet<AgentConversation> AgentConversations => Set<AgentConversation>();
     public DbSet<AgentMessage> AgentMessages => Set<AgentMessage>();
-    public DbSet<AgentRateLimit> AgentRateLimits => Set<AgentRateLimit>();
     public DbSet<AgentSettings> AgentSettings => Set<AgentSettings>();
     public DbSet<AccountMergeRequest> AccountMergeRequests => Set<AccountMergeRequest>();
     public DbSet<CommunicationPreference> CommunicationPreferences => Set<CommunicationPreference>();

@@ -43,6 +43,13 @@ public class FeedbackReport
     public FeedbackSource Source { get; set; } = FeedbackSource.UserReport;
 
     public Guid? AgentConversationId { get; set; }
+
+    /// <summary>
+    /// Cross-domain navigation to the originating <see cref="AgentConversation"/>.
+    /// Repositories must not <c>.Include()</c> it; resolve via the Agent
+    /// section's services when the report's transcript is needed.
+    /// </summary>
+    [Obsolete("Cross-domain nav — Agent section. FK only per design-rules §6c.")]
     public AgentConversation? AgentConversation { get; set; }
 
     public Instant? ResolvedAt { get; set; }

@@ -18,9 +18,10 @@ Conversational helper backed by Anthropic Claude. Phase 1 is Admin-only; broader
 |----------|------|---------|
 | Id | Guid | PK |
 | UserId | Guid | FK → User (cascade-delete) |
-| Title | string | First-message-derived label |
-| CreatedAt | Instant | When the conversation started |
-| UpdatedAt | Instant | Last message append |
+| Locale | string | User locale captured at conversation start |
+| StartedAt | Instant | When the conversation started |
+| LastMessageAt | Instant | Append timestamp of the most recent message |
+| MessageCount | int | Cached number of messages in the conversation |
 
 ### AgentMessage
 
@@ -34,27 +35,21 @@ Conversational helper backed by Anthropic Claude. Phase 1 is Admin-only; broader
 | Content | string | Message text or tool result |
 | FetchedDocs | string[]? | Section/feature slugs the tool dispatcher loaded for this turn |
 | RefusalReason | string? | Set when the turn was refused (rate limit, abuse, disabled, etc.) |
-| InputTokens | int? | Anthropic usage |
-| OutputTokens | int? | Anthropic usage |
+| HandedOffToFeedbackId | Guid? | FK → FeedbackReport (set-null) — populated when `route_to_feedback` fires |
+| PromptTokens / OutputTokens / CachedTokens | int | Anthropic usage |
+| Model | string | Model id used for the turn |
+| DurationMs | int | Wall-clock duration of the turn |
 | CreatedAt | Instant | Append timestamp |
-
-### AgentRateLimit
-
-**Table:** `agent_rate_limits`
-
-| Property | Type | Purpose |
-|----------|------|---------|
-| UserId | Guid | PK — one row per user |
-| HourlyCount | int | Turns in the current hour bucket |
-| HourlyResetAt | Instant | Bucket boundary |
-| DailyCount | int | Turns in the current day bucket |
-| DailyResetAt | Instant | Bucket boundary |
 
 ### AgentSettings
 
 **Table:** `agent_settings`
 
-Single-row table holding the live tunables: `Enabled`, `PreloadConfig` (`Tier1`/`Tier2`), `MaxToolCallsPerTurn`, `RetentionDays`, per-user `HourlyCap`, `DailyCap`. Mutated only via `IAgentSettingsService`; reads served by the Singleton `IAgentSettingsStore` (warmup hosted service preloads it).
+Single-row table (PK `Id = 1`, enforced by `ck_agent_settings_singleton`) holding the live tunables: `Enabled`, `Model`, `PreloadConfig` (`Tier1`/`Tier2`), `DailyMessageCap`, `HourlyMessageCap`, `DailyTokenCap`, `RetentionDays`. Mutated only via `IAgentSettingsService`; reads served by the Singleton `IAgentSettingsStore` (warmup hosted service preloads it). Tool-call cap is `AnthropicOptions.MaxToolCallsPerTurn` (config, not DB).
+
+### Rate-limit counters (in-memory)
+
+Per-user message and token counters live in the Singleton `IAgentRateLimitStore`. Phase 1 has no persisted `agent_rate_limits` table — counters reset whenever the process restarts. Phase 2 revisits persistence if abuse traffic warrants it.
 
 ### FeedbackReport additions (cross-section)
 
@@ -103,15 +98,15 @@ Single-row table holding the live tunables: `Enabled`, `PreloadConfig` (`Tier1`/
 ## Architecture
 
 **Owning services:** `AgentService` (orchestrator), `AgentSettingsService`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AgentPromptAssembler`, `AgentPreloadCorpusBuilder`, `AgentPreloadAugmentor`, `AnthropicClient`, `AgentConversationRetentionJob`.
-**Owned tables:** `agent_conversations`, `agent_messages`, `agent_rate_limits`, `agent_settings`.
-**Status:** (B) Section-organized but not §15-migrated — services live in `Humans.Infrastructure/Services/Agent/` and `Humans.Infrastructure/Services/Preload/`, repositories live in `Humans.Infrastructure/Repositories/`. Phase 1 ships in this shape; a future pass moves the orchestrator and stateless helpers to `Humans.Application/Services/Agent/` once §15 work in adjacent sections settles.
+**Owned tables:** `agent_conversations`, `agent_messages`, `agent_settings`.
+**Status:** (B) Partially §15-migrated — `AgentService` lives in `Humans.Application/Services/Agent/`. The remaining stateless helpers (`AgentPromptAssembler`, `AgentAbuseDetector`, `AgentUserSnapshotProvider`) and Infrastructure-tied services (`AgentSettingsService`, `AgentToolDispatcher`, `AnthropicClient`) live in `Humans.Infrastructure/Services/Agent/` and `Humans.Infrastructure/Services/Anthropic/`. `AgentSettingsService` is a documented §15i exception (singleton-row settings table; building a repository is overkill). `AgentToolDispatcher` and `AgentUserSnapshotProvider` stay until the preload readers are abstracted.
 
 - **DI registration** lives in `src/Humans.Web/Extensions/Sections/AgentSectionExtensions.cs` (`services.AddAgentSection(configuration)`), called from `InfrastructureServiceCollectionExtensions.AddHumansInfrastructure`.
 - **Stores** — `IAgentSettingsStore` and `IAgentRateLimitStore` are Singleton (in-process). `AgentSettingsStoreWarmupHostedService` populates the settings store at startup.
 - **Repositories** — `IAgentConversationRepository` (Scoped) handles persistence of conversations and messages.
 - **Provider boundary** — `IAnthropicClient` (Singleton, wraps the `Anthropic` 12.11.0 SDK) is the only place that touches the Anthropic API. `AgentService` knows nothing about HTTP, retries, or SDK-specific types.
 - **Tooling** — `IAgentToolDispatcher` is the only path that loads section/feature markdown or calls `IFeedbackService.SubmitFromAgentAsync`. The whitelist of tools is enforced in dispatcher constants; unknown names short-circuit before any I/O.
-- **Authorization** — `[Authorize(Policy = AgentPolicyNames.AgentAsk)]` on `AgentController.Ask` runs `AgentRateLimitHandler` (resource-based requirement) which checks consent + enabled + per-user caps before the controller body. Phase 1 widget rendering additionally checks `User.IsInRole(RoleNames.Admin)`.
+- **Authorization** — `AgentController.Ask` performs the consent gate and enabled gate inline (returning 403 / 503 respectively), then calls `IAuthorizationService.AuthorizeAsync(User, userId, PolicyNames.AgentRateLimit)` which runs `AgentRateLimitHandler` (resource-based) — the handler only checks per-user daily message cap, daily token cap, and hourly message cap. A failed authorization yields `429 TooManyRequests`. Phase 1 widget rendering additionally checks `User.IsInRole(RoleNames.Admin)`.
 
 ### Touch-and-clean guidance
 
