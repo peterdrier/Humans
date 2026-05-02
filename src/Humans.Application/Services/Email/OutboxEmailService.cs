@@ -68,7 +68,8 @@ public sealed class OutboxEmailService : IEmailService
         CancellationToken cancellationToken = default)
     {
         var content = _renderer.RenderApplicationApproved(userName, tier, culture);
-        await EnqueueAsync(userEmail, userName, content, "application_approved", cancellationToken);
+        await EnqueueAsync(userEmail, userName, content, "application_approved", cancellationToken,
+            category: MessageCategory.Governance);
     }
 
     /// <inheritdoc />
@@ -81,7 +82,8 @@ public sealed class OutboxEmailService : IEmailService
         CancellationToken cancellationToken = default)
     {
         var content = _renderer.RenderApplicationRejected(userName, tier, reason, culture);
-        await EnqueueAsync(userEmail, userName, content, "application_rejected", cancellationToken);
+        await EnqueueAsync(userEmail, userName, content, "application_rejected", cancellationToken,
+            category: MessageCategory.Governance);
     }
 
     /// <inheritdoc />
@@ -253,7 +255,8 @@ public sealed class OutboxEmailService : IEmailService
         CancellationToken cancellationToken = default)
     {
         var content = _renderer.RenderAdminDailyDigest(name, date, counts, culture);
-        await EnqueueAsync(email, name, content, "admin_daily_digest", cancellationToken);
+        await EnqueueAsync(email, name, content, "admin_daily_digest", cancellationToken,
+            category: MessageCategory.Governance);
     }
 
     /// <inheritdoc />

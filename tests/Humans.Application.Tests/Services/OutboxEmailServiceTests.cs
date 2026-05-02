@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Email;
@@ -236,6 +237,95 @@ public sealed class OutboxEmailServiceTests : IDisposable
         messages[0].RecipientEmail.Should().Be("dana@example.com");
         messages[0].TemplateName.Should().Be("added_to_team");
         messages[0].UserId.Should().Be(userId);
+    }
+
+    [HumansFact]
+    public async Task SendApplicationApprovedAsync_WhenOptedOutOfGovernance_DoesNotCreateOutboxRow()
+    {
+        var userId = Guid.NewGuid();
+        _userEmailService.GetUserIdByVerifiedEmailAsync("eve@example.com", Arg.Any<CancellationToken>())
+            .Returns(userId);
+        _commPrefService.IsOptedOutAsync(userId, MessageCategory.Governance, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        _renderer.RenderApplicationApproved("Eve", MembershipTier.Colaborador, "en")
+            .Returns(new EmailContent("Approved!", "<p>Congrats</p>"));
+
+        await _service.SendApplicationApprovedAsync(
+            "eve@example.com", "Eve", MembershipTier.Colaborador, "en");
+
+        var messages = await _dbContext.EmailOutboxMessages.ToListAsync();
+        messages.Should().BeEmpty(
+            "ApplicationApproved is now Governance-categorized and must be suppressed when opted out.");
+    }
+
+    [HumansFact]
+    public async Task SendApplicationRejectedAsync_WhenOptedOutOfGovernance_DoesNotCreateOutboxRow()
+    {
+        var userId = Guid.NewGuid();
+        _userEmailService.GetUserIdByVerifiedEmailAsync("frank@example.com", Arg.Any<CancellationToken>())
+            .Returns(userId);
+        _commPrefService.IsOptedOutAsync(userId, MessageCategory.Governance, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        _renderer.RenderApplicationRejected("Frank", MembershipTier.Asociado, "Insufficient tenure", "en")
+            .Returns(new EmailContent("Rejected", "<p>Sorry</p>"));
+
+        await _service.SendApplicationRejectedAsync(
+            "frank@example.com", "Frank", MembershipTier.Asociado, "Insufficient tenure", "en");
+
+        var messages = await _dbContext.EmailOutboxMessages.ToListAsync();
+        messages.Should().BeEmpty(
+            "ApplicationRejected is now Governance-categorized and must be suppressed when opted out.");
+    }
+
+    [HumansFact]
+    public async Task SendAdminDailyDigestAsync_WhenOptedOutOfGovernance_DoesNotCreateOutboxRow()
+    {
+        var userId = Guid.NewGuid();
+        _userEmailService.GetUserIdByVerifiedEmailAsync("admin@example.com", Arg.Any<CancellationToken>())
+            .Returns(userId);
+        _commPrefService.IsOptedOutAsync(userId, MessageCategory.Governance, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var counts = new AdminDigestCounts(0, 0, 0, 0, 0, 0, 0, 0, 0, false, null);
+        _renderer.RenderAdminDailyDigest("Admin", "2026-05-01", counts, "en")
+            .Returns(new EmailContent("Admin Digest", "<p>Today</p>"));
+
+        await _service.SendAdminDailyDigestAsync(
+            "admin@example.com", "Admin", "2026-05-01", counts, "en");
+
+        var messages = await _dbContext.EmailOutboxMessages.ToListAsync();
+        messages.Should().BeEmpty(
+            "AdminDailyDigest is now Governance-categorized and must be suppressed when opted out.");
+    }
+
+    [HumansFact]
+    public async Task SendApplicationApprovedAsync_WhenOptedIn_StampsUnsubscribeUrlIntoBody()
+    {
+        var userId = Guid.NewGuid();
+        _userEmailService.GetUserIdByVerifiedEmailAsync("grace@example.com", Arg.Any<CancellationToken>())
+            .Returns(userId);
+        _commPrefService.IsOptedOutAsync(userId, MessageCategory.Governance, Arg.Any<CancellationToken>())
+            .Returns(false);
+        _commPrefService.GenerateUnsubscribeHeaders(userId, MessageCategory.Governance)
+            .Returns(new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["List-Unsubscribe"] = "<https://example.com/u>",
+            });
+        _commPrefService.GenerateBrowserUnsubscribeUrl(userId, MessageCategory.Governance)
+            .Returns("https://example.com/Unsubscribe/abc");
+
+        _renderer.RenderApplicationApproved("Grace", MembershipTier.Colaborador, "en")
+            .Returns(new EmailContent("Approved!", "<p>Congrats Grace</p>"));
+
+        await _service.SendApplicationApprovedAsync(
+            "grace@example.com", "Grace", MembershipTier.Colaborador, "en");
+
+        var msg = await _dbContext.EmailOutboxMessages.SingleAsync();
+        msg.UserId.Should().Be(userId);
+        msg.ExtraHeaders.Should().NotBeNull("List-Unsubscribe headers must be stamped for Governance emails.");
+        _bodyComposer.Received().Compose(Arg.Any<string>(), "https://example.com/Unsubscribe/abc");
     }
 
     [HumansFact]
