@@ -88,6 +88,17 @@ public sealed class AgentService : IAgentService, IUserDataContributor
         if (conversation.UserId != request.UserId)
             throw new UnauthorizedAccessException("Conversation does not belong to this user.");
 
+        // Replay prior turns so the model has continuity. Snapshot before appending
+        // the new user message so we don't double-add it to sdkMessages below. Only
+        // user/assistant text turns replay; tool-call internals from prior turns are
+        // dropped (the model re-derives them via fetch_section_guide as needed).
+        var priorTurns = conversation.Messages
+            .Where(m => (m.Role == AgentRole.User || m.Role == AgentRole.Assistant)
+                        && !string.IsNullOrEmpty(m.Content))
+            .OrderBy(m => m.CreatedAt)
+            .TakeLast(HistoryReplayLimit)
+            .ToList();
+
         await _repo.AppendMessageAsync(new AgentMessage
         {
             Id = Guid.NewGuid(),
@@ -104,10 +115,20 @@ public sealed class AgentService : IAgentService, IUserDataContributor
         var tail = _assembler.BuildUserContextTail(snapshot);
         var tools = _assembler.BuildToolDefinitions();
 
-        var sdkMessages = new List<AnthropicMessage>
+        var sdkMessages = new List<AnthropicMessage>(priorTurns.Count + 1);
+        foreach (var prior in priorTurns)
         {
-            new(Role: "user", Text: tail + "\n\n" + request.Message, ToolCalls: null, ToolResults: null)
-        };
+            sdkMessages.Add(new AnthropicMessage(
+                Role: prior.Role == AgentRole.User ? "user" : "assistant",
+                Text: prior.Content,
+                ToolCalls: null,
+                ToolResults: null));
+        }
+        sdkMessages.Add(new AnthropicMessage(
+            Role: "user",
+            Text: tail + "\n\n" + request.Message,
+            ToolCalls: null,
+            ToolResults: null));
 
         var assistantBuffer = new StringBuilder();
         var fetchedDocs = new List<string>();
@@ -203,8 +224,14 @@ public sealed class AgentService : IAgentService, IUserDataContributor
 
         // FIX 2 — break null-coalesce apart to avoid type mismatch
         var fallbackFinalizer = finalFinalizer ?? new AgentTurnFinalizer(0, 0, 0, 0, _settings.Current.Model, "unknown");
-        yield return new AgentTurnToken(null, null, fallbackFinalizer);
+        // Stamp the conversation id so the client can reuse it on the next send.
+        yield return new AgentTurnToken(null, null, fallbackFinalizer with { ConversationId = conversation.Id });
     }
+
+    /// <summary>How many prior user/assistant turns to replay to the model. Bounded
+    /// so long conversations don't blow the context budget; the daily message cap
+    /// (default 30) keeps most conversations well under this.</summary>
+    private const int HistoryReplayLimit = 20;
 
     public Task<IReadOnlyList<AgentConversation>> GetHistoryAsync(Guid userId, int take, CancellationToken ct) =>
         _repo.ListForUserAsync(userId, take, ct);

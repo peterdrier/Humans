@@ -6,4 +6,5 @@ public sealed record AgentTurnFinalizer(
     int CacheReadTokens,
     int CacheCreationTokens,
     string Model,
-    string? StopReason);
+    string? StopReason,
+    Guid ConversationId = default);

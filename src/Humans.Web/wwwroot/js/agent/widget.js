@@ -77,6 +77,14 @@
             const reason = parsed.finalizer.stopReason;
             if (reason === 'disabled') bubble.textContent = '(The agent is currently disabled.)';
             if (reason === 'rate_limited') bubble.textContent = '(Daily limit reached — try again tomorrow.)';
+            // Capture the conversation id from the first successful turn so the
+            // next send continues the same conversation server-side. Bail-out
+            // finalizers (disabled, rate_limited) carry an empty Guid; ignore
+            // those so we don't clobber an existing in-progress conversation.
+            const newId = parsed.finalizer.conversationId;
+            if (newId && newId !== '00000000-0000-0000-0000-000000000000') {
+                currentConversationId = newId;
+            }
         }
     }
 
