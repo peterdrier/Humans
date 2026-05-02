@@ -37,7 +37,7 @@ namespace Humans.Infrastructure.Services.Profiles;
 /// injected directly because they are also Singleton (IDbContextFactory-based).
 /// </para>
 /// </summary>
-public sealed class CachingProfileService : IProfileService, IFullProfileInvalidator, IUserMerge
+public sealed class CachingProfileService : IProfileService, IFullProfileInvalidator
 {
     // Phase 3 cache-collapse note:
     //
@@ -625,19 +625,5 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
             await RefreshEntryAsync(userId, ct);
         }
         return downgrades;
-    }
-
-    public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
-        CancellationToken ct)
-    {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = (IUserMerge)scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-        await inner.ReassignAsync(sourceUserId, targetUserId, actorUserId, updatedAt, ct);
-
-        // Source profile is anonymized in place, target gains sub-aggregates
-        // — refresh both entries so the FullProfile projection reflects the
-        // post-merge state immediately.
-        await RefreshEntryAsync(sourceUserId, ct);
-        await RefreshEntryAsync(targetUserId, ct);
     }
 }

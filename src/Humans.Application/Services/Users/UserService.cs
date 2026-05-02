@@ -352,10 +352,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         Guid sourceUserId, Guid targetUserId, Instant now,
         CancellationToken ct = default)
     {
-        var anonymized = await _repo.AnonymizeForMergeAsync(sourceUserId, targetUserId, now, ct);
-        if (anonymized)
-            await _fullProfileInvalidator.InvalidateAsync(sourceUserId, ct);
-        return anonymized;
+        return await _repo.AnonymizeForMergeAsync(sourceUserId, targetUserId, now, ct);
     }
 
     public async Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now,

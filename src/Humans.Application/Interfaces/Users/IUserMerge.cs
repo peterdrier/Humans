@@ -11,10 +11,10 @@ namespace Humans.Application.Interfaces.Users;
 /// <para>
 /// The orchestrator (<c>AccountMergeService.AcceptAsync</c>) fans out across
 /// every registered implementation inside an ambient <c>TransactionScope</c>,
-/// so all section moves either commit or roll back atomically. Cache
-/// invalidation is the orchestrator's responsibility post-commit — impls
-/// should not invalidate caches inline (see <c>AccountMergeService</c>'s
-/// post-commit block).
+/// so all section moves either commit or roll back atomically. Impls may
+/// invalidate their own caches inline if eviction (not synchronous DB rebuild)
+/// is safe-on-rollback; otherwise the orchestrator handles cache refresh in
+/// its post-commit block.
 /// </para>
 /// </summary>
 public interface IUserMerge
