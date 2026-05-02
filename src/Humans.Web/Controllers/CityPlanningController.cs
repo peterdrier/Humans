@@ -304,11 +304,20 @@ public class CityPlanningController : HumansControllerBase
         if (!isMapAdmin && (!settings.IsContainerPlacementOpen || !userSeasonId.HasValue))
             return Forbid();
 
+        string campSlug = string.Empty;
+        if (!isMapAdmin && userSeasonId.HasValue)
+        {
+            var displayData = await _campService.GetCampSeasonDisplayDataForYearAsync(year, cancellationToken);
+            if (displayData.TryGetValue(userSeasonId.Value, out var data))
+                campSlug = data.CampSlug;
+        }
+
         return View(new ContainerMapViewModel
         {
             Year = year,
             IsMapAdmin = isMapAdmin,
             UserCampSeasonId = userSeasonId?.ToString() ?? string.Empty,
+            CampSlug = campSlug,
         });
     }
 
