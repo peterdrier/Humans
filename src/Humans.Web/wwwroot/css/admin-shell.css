@@ -490,6 +490,7 @@ body.admin-shell .split-panels {
         -webkit-overflow-scrolling: touch;
         overscroll-behavior-x: contain;
         scroll-behavior: smooth;
+        cursor: grab;
     }
     body.admin-shell .sidebar-scroll::-webkit-scrollbar { display: none; }
     body.admin-shell .sidebar h4 { display: none; }

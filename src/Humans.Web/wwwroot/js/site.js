@@ -314,6 +314,51 @@ function showToast(message, type) {
     scroll.addEventListener('scroll', update, { passive: true });
     window.addEventListener('resize', update);
 
+    // Mouse drag-to-scroll. Native overflow-x:auto handles touch panning on
+    // real phones, but a mouse on desktop (or DevTools mobile emulation
+    // without touch sim) can't drag-scroll without JS. Threshold is 5px so
+    // a tiny jitter during a click doesn't suppress navigation.
+    var dragStartX = 0;
+    var dragStartScroll = 0;
+    var dragMoved = 0;
+    var dragging = false;
+
+    scroll.addEventListener('mousedown', function (e) {
+        if (e.button !== 0) return;
+        dragging = true;
+        dragStartX = e.pageX;
+        dragStartScroll = scroll.scrollLeft;
+        dragMoved = 0;
+        scroll.style.cursor = 'grabbing';
+        scroll.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', function (e) {
+        if (!dragging) return;
+        var dx = e.pageX - dragStartX;
+        if (Math.abs(dx) > Math.abs(dragMoved)) dragMoved = dx;
+        scroll.scrollLeft = dragStartScroll - dx;
+    });
+
+    function endDrag() {
+        if (!dragging) return;
+        dragging = false;
+        scroll.style.cursor = '';
+        scroll.style.userSelect = '';
+    }
+    document.addEventListener('mouseup', endDrag);
+    scroll.addEventListener('mouseleave', endDrag);
+
+    // Suppress the click that follows a real drag, so dragging across a
+    // nav link doesn't accidentally navigate.
+    scroll.addEventListener('click', function (e) {
+        if (Math.abs(dragMoved) > 5) {
+            e.preventDefault();
+            e.stopPropagation();
+            dragMoved = 0;
+        }
+    }, true);
+
     // On mobile (horizontal strip), bring the active item into view if it's
     // off-screen so users land on the right item without manual scrolling.
     var horizontal = window.matchMedia('(max-width: 767.98px)');
