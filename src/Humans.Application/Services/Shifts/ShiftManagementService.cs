@@ -304,16 +304,16 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     // ============================================================
 
     /// <summary>
-    /// Default start time for build/strike all-day shifts (08:00 local).
+    /// Re-export of <see cref="Shift.AllDayWindowStart"/> for callers in the Application
+    /// layer that do not reference the Domain entity directly.
     /// </summary>
-    public static readonly LocalTime AllDayShiftStartTime = new(8, 0);
+    public static LocalTime AllDayShiftStartTime => Shift.AllDayWindowStart;
 
     /// <summary>
-    /// Default duration for build/strike all-day shifts (10 hours, e.g. 08:00–18:00 with implicit siesta).
-    /// Modeling the real working window — not a 24h block — so that overnight shifts
-    /// from the previous day (e.g. night watch ending at 02:00) don't falsely conflict.
+    /// Re-export of <see cref="Shift.AllDayWindowEnd"/> for callers in the Application
+    /// layer that do not reference the Domain entity directly.
     /// </summary>
-    public static readonly Duration AllDayShiftDuration = Duration.FromHours(10);
+    public static LocalTime AllDayShiftEndTime => Shift.AllDayWindowEnd;
 
     public async Task CreateBuildStrikeShiftsAsync(Guid rotaId, Dictionary<int, (int Min, int Max)> dailyStaffing)
     {
@@ -347,8 +347,10 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
                 RotaId = rotaId,
                 IsAllDay = true,
                 DayOffset = dayOffset,
-                StartTime = AllDayShiftStartTime,
-                Duration = AllDayShiftDuration,
+                // StartTime and Duration are don't-care for IsAllDay rows; GetAbsoluteStart/End
+                // short-circuit to AllDayWindowStart/End. Store midnight/24h as a neutral sentinel.
+                StartTime = LocalTime.Midnight,
+                Duration = Duration.FromHours(24),
                 MinVolunteers = staffing.Min,
                 MaxVolunteers = staffing.Max,
                 CreatedAt = now,
@@ -741,7 +743,9 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
             foreach (var shift in overlapping)
             {
-                var hours = shift.IsAllDay ? 8.0 : shift.Duration.TotalHours;
+                var hours = shift.IsAllDay
+                    ? Duration.FromTicks(Shift.AllDayWindowEnd.TickOfDay - Shift.AllDayWindowStart.TickOfDay).TotalHours
+                    : shift.Duration.TotalHours;
                 var totalHours = hours * shift.MaxVolunteers;
 
                 switch (shift.Rota.Priority)

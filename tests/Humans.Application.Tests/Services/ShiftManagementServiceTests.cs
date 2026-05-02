@@ -112,14 +112,15 @@ public class ShiftManagementServiceTests : IDisposable
         // Act
         await _service.CreateBuildStrikeShiftsAsync(rota.Id, staffing);
 
-        // Assert: 3 shifts created, all IsAllDay=true, correct DayOffsets
+        // Assert: 3 shifts created, all IsAllDay=true, correct DayOffsets.
+        // StartTime/Duration are stored as the midnight/24h sentinel (don't-care for IsAllDay rows).
         var shifts = await _dbContext.Shifts.Where(s => s.RotaId == rota.Id).ToListAsync();
         shifts.Should().HaveCount(3);
         shifts.Should().AllSatisfy(s =>
         {
             s.IsAllDay.Should().BeTrue();
-            s.StartTime.Should().Be(ShiftManagementService.AllDayShiftStartTime);
-            s.Duration.Should().Be(ShiftManagementService.AllDayShiftDuration);
+            s.StartTime.Should().Be(LocalTime.Midnight);
+            s.Duration.Should().Be(Duration.FromHours(24));
         });
         shifts.Select(s => s.DayOffset).Should().BeEquivalentTo(new[] { -3, -2, -1 });
     }

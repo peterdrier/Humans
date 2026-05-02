@@ -234,11 +234,13 @@ public sealed class DevelopmentDashboardSeeder
                     Id = Guid.NewGuid(),
                     RotaId = rota.Id,
                     DayOffset = dayOffset,
+                    // All-day rows: StartTime/Duration are don't-care; GetAbsoluteStart/End
+                    // compute bounds from Shift.AllDayWindowStart/End. Store midnight/24h sentinel.
                     StartTime = isAllDay
-                        ? ShiftManagementService.AllDayShiftStartTime
+                        ? LocalTime.Midnight
                         : new LocalTime(_rng.Next(8, 20), 0),
                     Duration = isAllDay
-                        ? ShiftManagementService.AllDayShiftDuration
+                        ? Duration.FromHours(24)
                         : Duration.FromHours(_rng.Next(2, 9)),
                     MinVolunteers = min,
                     MaxVolunteers = max,

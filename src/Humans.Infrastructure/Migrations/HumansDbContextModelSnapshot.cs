@@ -3360,8 +3360,7 @@ namespace Humans.Infrastructure.Migrations
 
                     b.Property<string>("GoogleEmail")
                         .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
-                        .HasColumnName("GoogleEmail");
+                        .HasColumnType("character varying(256)");
 
                     b.Property<string>("GoogleEmailStatus")
                         .IsRequired()
@@ -3459,8 +3458,7 @@ namespace Humans.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("DisplayOrder")
-                        .HasColumnType("integer")
-                        .HasColumnName("DisplayOrder");
+                        .HasColumnType("integer");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -3474,8 +3472,7 @@ namespace Humans.Infrastructure.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<bool>("IsOAuth")
-                        .HasColumnType("boolean")
-                        .HasColumnName("IsOAuth");
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsVerified")
                         .HasColumnType("boolean");

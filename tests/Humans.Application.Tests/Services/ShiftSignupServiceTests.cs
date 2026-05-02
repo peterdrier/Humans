@@ -144,21 +144,44 @@ public class ShiftSignupServiceTests : IDisposable
     [HumansFact]
     public async Task SignUp_AllDayShiftAfterPriorNightWatch_DoesNotFalselyConflict()
     {
-        // Regression for the "bundled half-day" all-day shift bug: a night watch
-        // ending at 02:00 used to collide with the next day's all-day shift
-        // because all-day was modeled as 00:00-24:00. Now it's 08:00-18:00,
-        // so the overnight shift no longer overlaps.
+        // Regression: a night watch ending at 02:00 used to collide with the next day's
+        // all-day shift because all-day was modeled as 00:00-24:00. GetAbsoluteStart/End
+        // now short-circuit to 08:00/18:00 for IsAllDay rows, so the overnight shift
+        // ending at 02:00 no longer overlaps with the 08:00 start.
         var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
         rota.Period = RotaPeriod.Strike;
         // Night watch: day 0, 22:00-02:00 (next day) — 4h
         var nightWatch = SeedShift(rota, dayOffset: 0, startHour: 22, durationHours: 4);
-        // All-day strike shift on the following day, using the new 08:00 / 10h defaults
+        // All-day strike shift on the following day; stored as midnight/24h sentinel (don't-care)
         var allDay = SeedAllDayShift(rota, dayOffset: 1);
         var userId = Guid.NewGuid();
         SeedSignup(userId, nightWatch.Id, SignupStatus.Confirmed);
         await _dbContext.SaveChangesAsync();
 
         var result = await _service.SignUpAsync(userId, allDay.Id);
+
+        result.Success.Should().BeTrue();
+        result.Error.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task SignUp_SameDayEarlyShiftBeforeAllDay_DoesNotFalselyConflict()
+    {
+        // Symmetric regression: an early-morning shift (03:00-07:00) on the same day
+        // as an all-day shift must be allowed. Before the fix, all-day was 00:00-24:00
+        // which would overlap with any shift on the same calendar day. After the fix,
+        // all-day starts at 08:00, so a 03:00-07:00 shift has no overlap.
+        var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
+        rota.Period = RotaPeriod.Strike;
+        // Early shift: day 0, 03:00-07:00 — ends one hour before all-day window starts
+        var earlyShift = SeedShift(rota, dayOffset: 0, startHour: 3, durationHours: 4);
+        // All-day shift on the same day (08:00-18:00 computed)
+        var allDay = SeedAllDayShift(rota, dayOffset: 0);
+        var userId = Guid.NewGuid();
+        SeedSignup(userId, allDay.Id, SignupStatus.Confirmed);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.SignUpAsync(userId, earlyShift.Id);
 
         result.Success.Should().BeTrue();
         result.Error.Should().BeNull();
@@ -589,8 +612,9 @@ public class ShiftSignupServiceTests : IDisposable
             RotaId = rota.Id,
             DayOffset = dayOffset,
             IsAllDay = true,
-            StartTime = ShiftManagementService.AllDayShiftStartTime,
-            Duration = ShiftManagementService.AllDayShiftDuration,
+            // StartTime/Duration are don't-care for IsAllDay rows; store midnight/24h sentinel.
+            StartTime = LocalTime.Midnight,
+            Duration = Duration.FromHours(24),
             MinVolunteers = 2,
             MaxVolunteers = 5,
             CreatedAt = TestNow,
