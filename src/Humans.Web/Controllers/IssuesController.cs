@@ -157,6 +157,10 @@ public class IssuesController : HumansControllerBase
             var additionalContext = additionalContextParts.Count > 0
                 ? string.Join(" | ", additionalContextParts)
                 : null;
+            // additional_context column is varchar(2000); the user input is bounded
+            // by [StringLength(2000)] but the roles suffix can push it past the limit.
+            if (additionalContext is { Length: > 2000 })
+                additionalContext = additionalContext[..2000];
 
             var issue = await _issues.SubmitIssueAsync(
                 reporterUserId: user.Id,

@@ -38,7 +38,7 @@ In-app issue tracker (bugs, features, questions) with screenshots, role-routed t
 | Property | Type | Notes |
 |----------|------|-------|
 | Id | Guid | PK |
-| ReporterUserId | Guid | FK → User (reporter), Cascade on delete — **FK only**, `[Obsolete]`-marked nav |
+| ReporterUserId | Guid | FK → User (reporter), Restrict on delete — **FK only**, `[Obsolete]`-marked nav. Restrict is intentional: `IAccountDeletionService` anonymizes the User row in place rather than removing it, so the FK should never trip; if anyone bypasses the deletion service, Restrict makes the DB reject the operation rather than silently wiping reported issues. |
 | Section | string? | One of `IssueSectionRouting.AllKnownSections` or null. Max 64. Indexed. |
 | Category | IssueCategory | Bug, Feature, Question. Stored as string (max 32). |
 | Title | string | Issue title (max 200) |
@@ -149,6 +149,7 @@ Two controllers serve this section:
 - When an issue is assigned, the new assignee is notified.
 - When a reporter comments on a terminal issue, the issue is auto-reopened to `Open` and an audit row records the implicit status change with actor = the reporter.
 - When the actionable count for a viewer could have changed (issue created, status changed, comment posted, section changed, assignee changed), the nav-badge cache is invalidated via `INavBadgeCacheInvalidator`.
+- **Retention.** Issues that have been in a terminal state (Resolved / WontFix / Duplicate) for at least 6 months are deleted by `CleanupIssuesJob` (daily Hangfire job at 05:00 UTC). Comments cascade via FK; the screenshot directory under `wwwroot/uploads/issues/{id}/` is removed best-effort in the same pass. A reporter comment that auto-reopens a terminal issue clears `ResolvedAt`, which automatically excludes the issue from the retention sweep.
 - When a user is purged via `IAccountDeletionService.PurgeAsync`, the User row is **anonymized in place** (display name + email replaced with sentinels) — the row itself stays, so issues they reported persist with their FKs intact and continue to render under the anonymized name. The `Reporter` FK uses `Restrict` (not `Cascade`) so a stray `db.Users.Remove(user)` would be rejected by the DB rather than silently wiping every issue. Assignee / resolved-by FKs on issues where the deleted-user was acting in those roles set to null. Their comments set `SenderUserId` to null but keep the row.
 
 ## Cross-Section Dependencies

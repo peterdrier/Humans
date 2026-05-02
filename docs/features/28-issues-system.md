@@ -32,7 +32,8 @@ This is **not** the same surface as Feedback (`27-feedback-system.md`). Feedback
 - `/Issues/New` page with full form (title, type, optional section override, description, optional screenshot)
 - `Section` defaults to auto-detected from `PageUrl` via `IssueSectionInference.FromPath` when the widget is used; the `/Issues/New` form lets the reporter pick or leave blank for auto-detection
 - Page URL, user agent, and the reporter's roles captured automatically into `AdditionalContext`
-- Screenshot upload limited to JPEG/PNG/WebP, max 5 MB
+- Screenshot upload limited to JPEG/PNG/WebP, max 10 MB
+- Issues are retained for 6 months after entering a terminal state (Resolved / WontFix / Duplicate); a daily Hangfire job (`CleanupIssuesJob`) then deletes the row, comments, and screenshot directory
 - Success/error feedback via TempData toast
 - Submission lands at `Status = Triage` with `Section` from the form (or auto-inferred, or null → Admin queue)
 

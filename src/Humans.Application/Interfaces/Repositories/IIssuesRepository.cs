@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces.Issues;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -32,4 +33,25 @@ public interface IIssuesRepository
 
     /// <summary>For GDPR export.</summary>
     Task<IReadOnlyList<Issue>> GetForUserExportAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the IDs and screenshot storage paths of issues whose
+    /// <c>ResolvedAt</c> is non-null and at or before <paramref name="cutoff"/>.
+    /// Used by the retention job to find rows ready for deletion.
+    /// </summary>
+    Task<IReadOnlyList<ExpiredIssueRow>> GetExpiredTerminalAsync(
+        Instant cutoff, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes the supplied issue rows. Comments cascade via FK. No-op when the
+    /// list is empty. Returns the number of rows actually removed.
+    /// </summary>
+    Task<int> DeleteByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default);
 }
+
+/// <summary>
+/// Projection used by the retention job. <see cref="ScreenshotStoragePath"/> is
+/// the relative path stored on the issue (under <c>wwwroot/uploads/issues/{id}/</c>);
+/// null when the issue had no screenshot.
+/// </summary>
+public sealed record ExpiredIssueRow(Guid Id, string? ScreenshotStoragePath);

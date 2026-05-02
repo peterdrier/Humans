@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Issues;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Issues;
 using Humans.Web.Filters;
 using IssuesApplicationService = Humans.Application.Services.Issues.IssuesService;
@@ -25,6 +26,9 @@ internal static class IssuesSectionExtensions
             opts.ApiKey = Environment.GetEnvironmentVariable("ISSUES_API_KEY") ?? string.Empty;
         });
         services.AddScoped<IssuesApiKeyAuthFilter>();
+
+        // Daily retention job — purges terminal issues older than 6 months.
+        services.AddScoped<CleanupIssuesJob>();
 
         return services;
     }

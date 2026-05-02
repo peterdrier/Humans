@@ -4,6 +4,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
 
 namespace Humans.Infrastructure.Repositories.Issues;
 
@@ -137,5 +138,36 @@ public sealed class IssuesRepository : IIssuesRepository
             .Include(i => i.Comments.OrderBy(c => c.CreatedAt))
             .Where(i => i.ReporterUserId == userId)
             .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<ExpiredIssueRow>> GetExpiredTerminalAsync(
+        Instant cutoff, CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        return await db.Issues
+            .AsNoTracking()
+            .Where(i => i.ResolvedAt != null && i.ResolvedAt <= cutoff)
+            .Select(i => new ExpiredIssueRow(i.Id, i.ScreenshotStoragePath))
+            .ToListAsync(ct);
+    }
+
+    public async Task<int> DeleteByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default)
+    {
+        if (ids.Count == 0) return 0;
+
+        // Load-then-RemoveRange (matching EmailOutboxRepository.DeleteSentOlderThanAsync)
+        // so unit tests using the EF InMemory provider still cover the path.
+        // ExecuteDeleteAsync would be cheaper at scale but is not supported by
+        // the InMemory provider.
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        var toDelete = await db.Issues
+            .Where(i => ids.Contains(i.Id))
+            .ToListAsync(ct);
+
+        if (toDelete.Count == 0) return 0;
+
+        db.Issues.RemoveRange(toDelete);
+        await db.SaveChangesAsync(ct);
+        return toDelete.Count;
     }
 }

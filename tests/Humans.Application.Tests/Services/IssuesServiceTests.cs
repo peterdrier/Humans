@@ -695,4 +695,193 @@ public class IssuesServiceTests : IDisposable
         await _dbContext.SaveChangesAsync();
         return issue.Id;
     }
+
+    private async Task<Guid> SeedIssueWithResolvedAtAsync(
+        IssueStatus status, Instant resolvedAt, string? screenshotPath = null)
+    {
+        var reporterId = Guid.NewGuid();
+        _dbContext.Users.Add(new User
+        {
+            Id = reporterId,
+            Email = $"{reporterId}@test.com",
+            DisplayName = "Reporter",
+            PreferredLanguage = "en"
+        });
+        var issue = new Issue
+        {
+            Id = Guid.NewGuid(),
+            ReporterUserId = reporterId,
+            Category = IssueCategory.Bug,
+            Title = "Title",
+            Description = "Description",
+            Status = status,
+            CreatedAt = resolvedAt,
+            UpdatedAt = resolvedAt,
+            ResolvedAt = status.IsTerminal() ? resolvedAt : null,
+            ScreenshotStoragePath = screenshotPath
+        };
+        _dbContext.Issues.Add(issue);
+        await _dbContext.SaveChangesAsync();
+        return issue.Id;
+    }
+
+    // ==========================================================================
+    // PurgeExpiredAsync — 6-month retention sweep used by CleanupIssuesJob
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task PurgeExpiredAsync_DeletesTerminalIssuesOlderThanSixMonths()
+    {
+        var now = _clock.GetCurrentInstant();
+        var oldResolved = now - Duration.FromDays(181);
+
+        var toPurge = await SeedIssueWithResolvedAtAsync(IssueStatus.Resolved, oldResolved);
+        var alsoPurgeWontFix = await SeedIssueWithResolvedAtAsync(IssueStatus.WontFix, oldResolved);
+        var alsoPurgeDuplicate = await SeedIssueWithResolvedAtAsync(IssueStatus.Duplicate, oldResolved);
+
+        var deleted = await _service.PurgeExpiredAsync();
+
+        deleted.Should().Be(3);
+        _dbContext.Issues.Any(i => i.Id == toPurge).Should().BeFalse();
+        _dbContext.Issues.Any(i => i.Id == alsoPurgeWontFix).Should().BeFalse();
+        _dbContext.Issues.Any(i => i.Id == alsoPurgeDuplicate).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task PurgeExpiredAsync_KeepsTerminalIssuesYoungerThanSixMonths()
+    {
+        var now = _clock.GetCurrentInstant();
+        var recentResolved = now - Duration.FromDays(179);
+
+        var keep = await SeedIssueWithResolvedAtAsync(IssueStatus.Resolved, recentResolved);
+
+        var deleted = await _service.PurgeExpiredAsync();
+
+        deleted.Should().Be(0);
+        _dbContext.Issues.Any(i => i.Id == keep).Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task PurgeExpiredAsync_NeverDeletesNonTerminalIssuesEvenWhenAncient()
+    {
+        var ancient = _clock.GetCurrentInstant() - Duration.FromDays(365 * 5);
+
+        var keepOpen = await SeedIssueWithResolvedAtAsync(IssueStatus.Open, ancient);
+        var keepInProgress = await SeedIssueWithResolvedAtAsync(IssueStatus.InProgress, ancient);
+        var keepTriage = await SeedIssueWithResolvedAtAsync(IssueStatus.Triage, ancient);
+
+        var deleted = await _service.PurgeExpiredAsync();
+
+        deleted.Should().Be(0);
+        _dbContext.Issues.Any(i => i.Id == keepOpen).Should().BeTrue();
+        _dbContext.Issues.Any(i => i.Id == keepInProgress).Should().BeTrue();
+        _dbContext.Issues.Any(i => i.Id == keepTriage).Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task PurgeExpiredAsync_DeletesScreenshotDirectory()
+    {
+        var oldResolved = _clock.GetCurrentInstant() - Duration.FromDays(200);
+
+        var issueId = Guid.NewGuid();
+        var screenshotDir = Path.Combine(
+            Path.GetTempPath(), "wwwroot", "uploads", "issues", issueId.ToString());
+        Directory.CreateDirectory(screenshotDir);
+        var screenshotFile = Path.Combine(screenshotDir, "shot.png");
+        await File.WriteAllBytesAsync(screenshotFile, new byte[] { 1, 2, 3 });
+
+        try
+        {
+            var reporterId = Guid.NewGuid();
+            _dbContext.Users.Add(new User
+            {
+                Id = reporterId,
+                Email = $"{reporterId}@test.com",
+                DisplayName = "Reporter",
+                PreferredLanguage = "en"
+            });
+            _dbContext.Issues.Add(new Issue
+            {
+                Id = issueId,
+                ReporterUserId = reporterId,
+                Category = IssueCategory.Bug,
+                Title = "Has screenshot",
+                Description = "...",
+                Status = IssueStatus.Resolved,
+                CreatedAt = oldResolved,
+                UpdatedAt = oldResolved,
+                ResolvedAt = oldResolved,
+                ScreenshotStoragePath = $"uploads/issues/{issueId}/shot.png"
+            });
+            await _dbContext.SaveChangesAsync();
+
+            var deleted = await _service.PurgeExpiredAsync();
+
+            deleted.Should().Be(1);
+            Directory.Exists(screenshotDir).Should().BeFalse();
+        }
+        finally
+        {
+            if (Directory.Exists(screenshotDir))
+                Directory.Delete(screenshotDir, recursive: true);
+        }
+    }
+
+    [HumansFact]
+    public async Task PurgeExpiredAsync_TolerantOfMissingScreenshotDirectory()
+    {
+        // Issue claims a screenshot path but the directory was already removed
+        // (e.g. wiped manually, prior partial sweep). The DB delete must still
+        // succeed.
+        var oldResolved = _clock.GetCurrentInstant() - Duration.FromDays(200);
+
+        var reporterId = Guid.NewGuid();
+        _dbContext.Users.Add(new User
+        {
+            Id = reporterId,
+            Email = $"{reporterId}@test.com",
+            DisplayName = "Reporter",
+            PreferredLanguage = "en"
+        });
+        var issueId = Guid.NewGuid();
+        _dbContext.Issues.Add(new Issue
+        {
+            Id = issueId,
+            ReporterUserId = reporterId,
+            Category = IssueCategory.Bug,
+            Title = "Title",
+            Description = "Description",
+            Status = IssueStatus.Resolved,
+            CreatedAt = oldResolved,
+            UpdatedAt = oldResolved,
+            ResolvedAt = oldResolved,
+            ScreenshotStoragePath = $"uploads/issues/{issueId}/missing.png"
+        });
+        await _dbContext.SaveChangesAsync();
+
+        var deleted = await _service.PurgeExpiredAsync();
+
+        deleted.Should().Be(1);
+        _dbContext.Issues.Any(i => i.Id == issueId).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task PurgeExpiredAsync_InvalidatesNavBadge()
+    {
+        var oldResolved = _clock.GetCurrentInstant() - Duration.FromDays(200);
+        await SeedIssueWithResolvedAtAsync(IssueStatus.Resolved, oldResolved);
+
+        await _service.PurgeExpiredAsync();
+
+        _navBadge.Received().Invalidate();
+    }
+
+    [HumansFact]
+    public async Task PurgeExpiredAsync_NoOpWhenNothingExpired_DoesNotInvalidateNavBadge()
+    {
+        var deleted = await _service.PurgeExpiredAsync();
+
+        deleted.Should().Be(0);
+        _navBadge.DidNotReceive().Invalidate();
+    }
 }
