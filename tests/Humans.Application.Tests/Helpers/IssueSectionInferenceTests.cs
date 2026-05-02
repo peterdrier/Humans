@@ -17,7 +17,7 @@ public class IssueSectionInferenceTests
     [InlineData("/Vol/something", IssueSectionRouting.Shifts)]
     [InlineData("/OnboardingReview/queue", IssueSectionRouting.Onboarding)]
     [InlineData("/Profile", IssueSectionRouting.Profiles)]
-    [InlineData("/Humans/1", IssueSectionRouting.Users)]
+    [InlineData("/Humans/1", IssueSectionRouting.Profiles)]
     [InlineData("/Finance", IssueSectionRouting.Budget)]
     [InlineData("/Budget", IssueSectionRouting.Budget)]
     [InlineData("/Board", IssueSectionRouting.Governance)]

@@ -24,7 +24,7 @@ In-app issue tracker (bugs, features, questions) with screenshots, role-routed t
 
 - An **Issue** is an in-app submission from a human — a bug report, feature request, or question. It is routed to the section's role-holders based on `Issue.Section` and stays in their queue until terminal.
 - An **IssueComment** is one entry in an issue's conversation thread, posted by either the reporter or a handler. There is no admin/reporter flag on the row — sender role is derived by comparing `SenderUserId` to `Issue.ReporterUserId`.
-- **Section** is a free-form string drawn from `IssueSectionRouting.AllKnownSections` (Tickets, Camps, Teams, Shifts, Onboarding, Profiles, Users, Budget, Governance, Legal, CityPlanning) or `null`. Stored as a string so the routing table can change without migrations. Null-section issues fall to the Admin queue only.
+- **Section** is a free-form string drawn from `IssueSectionRouting.AllKnownSections` (Tickets, Camps, Teams, Shifts, Onboarding, Profiles, Budget, Governance, Legal, CityPlanning) or `null`. Stored as a string so the routing table can change without migrations. Null-section issues fall to the Admin queue only.
 - A **Handler** is a user who can triage, assign, change status of, or comment as a non-reporter on an issue: `Admin`, or any role listed by `IssueSectionRouting.RolesFor(issue.Section)`.
 - **Ball-in-court** is **derived**, not stored: compare the latest comment's `SenderUserId` to `Issue.ReporterUserId`. There is no boolean column for "needs reply" — it is computed at read time.
 - **Issue status** tracks the lifecycle: Triage, Open, InProgress, Resolved, WontFix, Duplicate. Resolved/WontFix/Duplicate are terminal.
