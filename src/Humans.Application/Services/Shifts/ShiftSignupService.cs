@@ -1093,6 +1093,6 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         _repo.CancelActiveSignupsForUserAsync(userId, reason, ct);
 
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
-        CancellationToken ct) 
+        CancellationToken ct)
         => _repo.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 }

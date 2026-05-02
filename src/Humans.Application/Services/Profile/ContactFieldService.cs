@@ -179,7 +179,7 @@ public sealed class ContactFieldService : IContactFieldService, IUserMerge
     }
 
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
-        CancellationToken cancellationToken) 
+        CancellationToken cancellationToken)
         => _repository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, cancellationToken);
 
     private static List<ContactFieldVisibility> GetAllowedVisibilities(ContactFieldVisibility accessLevel) =>

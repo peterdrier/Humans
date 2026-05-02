@@ -89,7 +89,7 @@ public interface IUserEmailService
         Guid userId,
         CancellationToken cancellationToken = default);
 
-/// <summary>
+    /// <summary>
     /// Adds a verified email directly (admin provisioning/linking — no verification flow needed).
     /// If the email is @nobodies.team, it's automatically set as the notification target.
     /// Skips if the email already exists for this user.

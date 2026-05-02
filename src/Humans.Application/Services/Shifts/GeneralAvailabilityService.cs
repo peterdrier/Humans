@@ -63,6 +63,6 @@ public sealed class GeneralAvailabilityService : IGeneralAvailabilityService, IU
         _repo.DeleteAsync(userId, eventSettingsId);
 
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
-        CancellationToken ct) 
+        CancellationToken ct)
         => _repo.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 }
