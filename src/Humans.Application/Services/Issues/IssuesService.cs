@@ -51,6 +51,14 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
 
     private const long MaxScreenshotBytes = 10 * 1024 * 1024; // 10MB
 
+    /// <summary>
+    /// Issues are kept for 6 months after they enter a terminal state. After
+    /// that the row + comments + screenshot directory are removed by
+    /// <c>CleanupIssuesJob</c>. Days, not months, so the cutoff is a simple
+    /// <see cref="Duration"/>.
+    /// </summary>
+    private static readonly Duration RetentionPeriod = Duration.FromDays(180);
+
     public IssuesService(
         IIssuesRepository repo,
         IUserService users,
@@ -445,6 +453,51 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
                 r.Count))
             .OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    // ==========================================================================
+    // Retention — invoked daily by CleanupIssuesJob
+    // ==========================================================================
+
+    public async Task<int> PurgeExpiredAsync(CancellationToken ct = default)
+    {
+        var cutoff = _clock.GetCurrentInstant() - RetentionPeriod;
+
+        var expired = await _repo.GetExpiredTerminalAsync(cutoff, ct);
+        if (expired.Count == 0) return 0;
+
+        var ids = expired.Select(e => e.Id).ToList();
+        var deleted = await _repo.DeleteByIdsAsync(ids, ct);
+
+        // Best-effort filesystem cleanup. Each issue's screenshots live under
+        // wwwroot/uploads/issues/{id}/. We delete the whole directory rather
+        // than file-by-file so a stray sibling (e.g. partial upload) is also
+        // swept. Failures are logged but do not roll back the DB delete — the
+        // worst case is an orphan file the next sweep will see again.
+        foreach (var row in expired)
+        {
+            var issueDir = Path.Combine(
+                _env.ContentRootPath, "wwwroot", "uploads", "issues", row.Id.ToString());
+
+            try
+            {
+                if (Directory.Exists(issueDir))
+                    Directory.Delete(issueDir, recursive: true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "Failed to delete screenshot directory {Dir} for purged issue {IssueId}",
+                    issueDir, row.Id);
+            }
+        }
+
+        _logger.LogInformation(
+            "PurgeExpiredAsync: deleted {Count} issues older than {Cutoff} (retention {Days}d)",
+            deleted, cutoff, RetentionPeriod.Days);
+
+        _navBadge.Invalidate();
+        return deleted;
     }
 
     // ==========================================================================

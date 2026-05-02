@@ -53,4 +53,12 @@ public interface IIssuesService
         CancellationToken ct = default);
 
     Task<IReadOnlyList<DistinctReporterRow>> GetDistinctReportersAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes issues that entered a terminal state (Resolved / WontFix / Duplicate)
+    /// at least 6 months ago, along with their screenshot files. Comments cascade
+    /// via the FK. Returns the number of issue rows removed. Invoked by
+    /// <c>CleanupIssuesJob</c> on a daily Hangfire schedule.
+    /// </summary>
+    Task<int> PurgeExpiredAsync(CancellationToken ct = default);
 }
