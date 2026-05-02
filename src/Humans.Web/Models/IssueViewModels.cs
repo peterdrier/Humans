@@ -129,6 +129,13 @@ public class IssueDetailViewModel
     public bool IsReporter { get; set; }
 
     public List<IssueThreadEventViewModel> Thread { get; set; } = new();
+
+    /// <summary>
+    /// Active humans the handler can assign this issue to. Empty for non-handlers.
+    /// Reuses <see cref="AssigneeOption"/> from the Feedback view models so the
+    /// shape stays consistent across triage UIs.
+    /// </summary>
+    public List<AssigneeOption> AssigneeOptions { get; set; } = new();
 }
 
 public class IssueThreadEventViewModel

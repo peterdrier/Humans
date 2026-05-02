@@ -1,8 +1,10 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Humans.Application.Interfaces.Issues;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -24,12 +26,14 @@ public class IssuesController : HumansControllerBase
 {
     private readonly IIssuesService _issues;
     private readonly IAuthorizationService _authorization;
+    private readonly IProfileService _profiles;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ILogger<IssuesController> _logger;
 
     public IssuesController(
         IIssuesService issues,
         IAuthorizationService authorization,
+        IProfileService profiles,
         UserManager<User> userManager,
         IStringLocalizer<SharedResource> localizer,
         ILogger<IssuesController> logger)
@@ -37,9 +41,19 @@ public class IssuesController : HumansControllerBase
     {
         _issues = issues;
         _authorization = authorization;
+        _profiles = profiles;
         _localizer = localizer;
         _logger = logger;
     }
+
+    // Roles must come from claims (the RoleAssignment → claims-transformation
+    // path), NOT from UserManager.GetRolesAsync (which only returns Identity-DB
+    // roles and misses RoleAssignment-driven roles like CampAdmin). Mirrors
+    // NavBadgesViewComponent so the badge count and the list always agree.
+    private List<string> ClaimsRoles() => User.Claims
+        .Where(c => string.Equals(c.Type, ClaimTypes.Role, StringComparison.Ordinal))
+        .Select(c => c.Value)
+        .ToList();
 
     [HttpGet("")]
     public async Task<IActionResult> Index(
@@ -53,7 +67,7 @@ public class IssuesController : HumansControllerBase
         var (userMissing, user) = await RequireCurrentUserAsync();
         if (userMissing is not null) return userMissing;
 
-        var roles = (await UserManager.GetRolesAsync(user)).ToList();
+        var roles = ClaimsRoles();
         var isAdmin = User.IsInRole(RoleNames.Admin);
 
         var filter = new IssueListFilter(
@@ -148,7 +162,7 @@ public class IssuesController : HumansControllerBase
 
         try
         {
-            var roles = await UserManager.GetRolesAsync(user);
+            var roles = ClaimsRoles();
             var additionalContextParts = new List<string>();
             if (!string.IsNullOrWhiteSpace(model.AdditionalContext))
                 additionalContextParts.Add(model.AdditionalContext);
@@ -204,12 +218,38 @@ public class IssuesController : HumansControllerBase
         var thread = await _issues.GetThreadAsync(id);
         var vm = MapDetailViewModel(issue, thread, isHandler: canHandle, isReporter: isReporter);
 
+        if (canHandle)
+        {
+            await PopulateAssigneeOptionsAsync(vm);
+        }
+
         if (partial || Request.Headers.XRequestedWith == "XMLHttpRequest")
         {
             return PartialView("_Detail", vm);
         }
 
         return RedirectToAction(nameof(Index), new { selected = id });
+    }
+
+    private async Task PopulateAssigneeOptionsAsync(IssueDetailViewModel vm)
+    {
+        var humans = await _profiles.GetFilteredHumansAsync(null, "Active");
+        vm.AssigneeOptions = humans
+            .OrderBy(h => h.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .Select(h => new AssigneeOption { Id = h.UserId, DisplayName = h.DisplayName })
+            .ToList();
+
+        // If the current assignee isn't in the active list (left org, etc.),
+        // surface them anyway so the dropdown doesn't silently un-assign.
+        if (vm.AssigneeUserId.HasValue &&
+            vm.AssigneeOptions.All(a => a.Id != vm.AssigneeUserId.Value))
+        {
+            vm.AssigneeOptions.Insert(0, new AssigneeOption
+            {
+                Id = vm.AssigneeUserId.Value,
+                DisplayName = (vm.AssigneeName ?? "Unknown") + " (inactive)"
+            });
+        }
     }
 
     [HttpPost("{id}/Comments")]

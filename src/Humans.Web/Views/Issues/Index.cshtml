@@ -120,7 +120,7 @@
                     <tr class="issues-list-item @(isSelected ? "table-active" : "")"
                         data-issue-id="@issue.Id" style="cursor: pointer;">
                         <td>
-                            <span class="badge status-pill @IssuePresentation.StatusPillClass(issue.Status)">@issue.Status</span>
+                            <span class="badge @IssuePresentation.StatusPillClass(issue.Status)">@issue.Status</span>
                         </td>
                         <td>
                             <div class="d-flex align-items-center gap-1">
@@ -145,7 +145,7 @@
                             </div>
                         </td>
                         <td class="text-muted small text-end">
-                            <div>@issue.LastUpdate.ToString("MMM dd")</div>
+                            <div>@issue.LastUpdate.ToDisplayDayMonth()</div>
                             @if (issue.CommentCount > 0)
                             {
                                 <div><i class="fa-solid fa-comment fa-xs"></i> @issue.CommentCount</div>

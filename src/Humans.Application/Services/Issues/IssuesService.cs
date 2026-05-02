@@ -295,7 +295,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         {
             await LogAuditAsync(
                 AuditAction.IssueStatusChanged, issueId, senderUserId,
-                $"Issue {issueId} reopened (reporter comment on terminal)");
+                "reopened (reporter comment on terminal)");
         }
 
         await DispatchCommentNotificationsAsync(issue, comment, senderIsReporter, ct);
@@ -335,7 +335,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         await _repo.SaveTrackedIssueAsync(issue, ct);
         await LogAuditAsync(
             AuditAction.IssueStatusChanged, issueId, actorUserId,
-            $"Issue {issueId} status changed: {oldStatus} → {newStatus}");
+            $"status: {oldStatus} → {newStatus}");
         await DispatchStatusChangedNotificationAsync(issue, oldStatus, newStatus, actorUserId, ct);
         _navBadge.Invalidate();
     }
@@ -371,7 +371,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
 
         await LogAuditAsync(
             AuditAction.IssueAssigneeChanged, issueId, actorUserId,
-            $"Issue {issueId} assignee: {oldName} → {newName}");
+            $"assignee: {oldName} → {newName}");
 
         if (newAssigneeUserId.HasValue)
         {
@@ -403,7 +403,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
 
         await LogAuditAsync(
             AuditAction.IssueSectionChanged, issueId, actorUserId,
-            $"Issue {issueId} section: {oldSection} → {nextSection}");
+            $"section: {oldSection} → {nextSection}");
         _navBadge.Invalidate();
     }
 
@@ -422,7 +422,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
 
         await LogAuditAsync(
             AuditAction.IssueGitHubLinked, issueId, actorUserId,
-            $"Issue {issueId} GitHub link: {(githubIssueNumber.HasValue ? githubIssueNumber.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : "(cleared)")}");
+            $"GitHub link: {(githubIssueNumber.HasValue ? githubIssueNumber.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : "(cleared)")}");
     }
 
     // ==========================================================================
