@@ -90,7 +90,7 @@ namespace Humans.Infrastructure.Migrations
             migrationBuilder.Sql(
                 """
                 ALTER TABLE agent_settings
-                    ADD CONSTRAINT ck_agent_settings_singleton CHECK (id = 1);
+                    ADD CONSTRAINT ck_agent_settings_singleton CHECK ("Id" = 1);
                 """);
 
             migrationBuilder.CreateTable(

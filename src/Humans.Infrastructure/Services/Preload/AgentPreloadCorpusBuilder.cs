@@ -36,16 +36,18 @@ public sealed class AgentPreloadCorpusBuilder : IAgentPreloadCorpusBuilder
         var sb = new StringBuilder();
         sb.AppendLine("# Nobodies Collective — System Knowledge");
         sb.AppendLine();
-        sb.AppendLine("The following is the canonical operational documentation for the Humans system. Use it verbatim when answering questions; do not invent rules, routes, or role names not present here.");
+        sb.AppendLine("Below is the section index for the Humans system: each entry has a section key and a one-line summary. The full invariants doc for any section is fetched on demand via the `fetch_section_guide` tool — do NOT answer substantive questions from this index alone.");
+        sb.AppendLine();
+        sb.AppendLine("## Section Index");
         sb.AppendLine();
         foreach (var key in sections)
         {
             var body = await _sections.ReadAsync(key, cancellationToken);
             if (body is null) continue;
-            sb.AppendLine($"# {key}");
-            sb.AppendLine(body);
-            sb.AppendLine();
+            var tagline = ExtractTagline(body);
+            sb.Append("- **").Append(key).Append("** — ").AppendLine(tagline);
         }
+        sb.AppendLine();
 
         if (_augmentor is not null)
         {
@@ -59,5 +61,22 @@ public sealed class AgentPreloadCorpusBuilder : IAgentPreloadCorpusBuilder
         var result = sb.ToString();
         _cache.Set(cacheKey, result, TimeSpan.FromMinutes(30));
         return result;
+    }
+
+    private static string ExtractTagline(string body)
+    {
+        bool foundH1 = false;
+        foreach (var raw in body.Split('\n'))
+        {
+            var line = raw.TrimEnd('\r');
+            if (!foundH1)
+            {
+                if (line.StartsWith("# ", StringComparison.Ordinal)) foundH1 = true;
+                continue;
+            }
+            if (line.Length == 0) continue;
+            return line;
+        }
+        return "";
     }
 }

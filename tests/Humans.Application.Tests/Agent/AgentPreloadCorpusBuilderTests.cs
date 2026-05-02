@@ -11,34 +11,46 @@ namespace Humans.Application.Tests.Agent;
 public class AgentPreloadCorpusBuilderTests
 {
     [HumansFact]
-    public async Task Tier1_includes_only_the_eight_highest_signal_sections()
+    public async Task Tier1_index_lists_only_the_eight_highest_signal_sections()
     {
         var builder = MakeBuilder();
         var text = await builder.BuildAsync(AgentPreloadConfig.Tier1, CancellationToken.None);
 
-        text.Should().Contain("# Onboarding");
-        text.Should().Contain("# Teams");
-        text.Should().Contain("# LegalAndConsent");
-        text.Should().Contain("# Governance");
-        text.Should().Contain("# Shifts");
-        text.Should().Contain("# Tickets");
-        text.Should().Contain("# Profiles");
-        text.Should().Contain("# Auth");
-        text.Should().NotContain("# Budget");
-        text.Should().NotContain("# Camps");
-        text.Should().NotContain("# CityPlanning");
+        text.Should().Contain("**Onboarding**");
+        text.Should().Contain("**Teams**");
+        text.Should().Contain("**LegalAndConsent**");
+        text.Should().Contain("**Governance**");
+        text.Should().Contain("**Shifts**");
+        text.Should().Contain("**Tickets**");
+        text.Should().Contain("**Profiles**");
+        text.Should().Contain("**Auth**");
+        text.Should().NotContain("**Budget**");
+        text.Should().NotContain("**Camps**");
+        text.Should().NotContain("**CityPlanning**");
     }
 
     [HumansFact]
-    public async Task Tier2_includes_all_fourteen_sections()
+    public async Task Tier2_index_lists_all_fourteen_sections()
     {
         var builder = MakeBuilder();
         var text = await builder.BuildAsync(AgentPreloadConfig.Tier2, CancellationToken.None);
 
-        text.Should().Contain("# Budget");
-        text.Should().Contain("# Camps");
-        text.Should().Contain("# CityPlanning");
-        text.Should().Contain("# Campaigns");
+        text.Should().Contain("**Budget**");
+        text.Should().Contain("**Camps**");
+        text.Should().Contain("**CityPlanning**");
+        text.Should().Contain("**Campaigns**");
+    }
+
+    [HumansFact]
+    public async Task Index_does_not_include_section_bodies()
+    {
+        var builder = MakeBuilder();
+        var text = await builder.BuildAsync(AgentPreloadConfig.Tier2, CancellationToken.None);
+
+        // Section bodies have these subheadings; the index must not include them.
+        text.Should().NotContain("## Invariants");
+        text.Should().NotContain("## Data Model");
+        text.Should().NotContain("## Triggers");
     }
 
     [HumansFact]
@@ -48,8 +60,11 @@ public class AgentPreloadCorpusBuilderTests
         var text = await builder.BuildAsync(AgentPreloadConfig.Tier1, CancellationToken.None);
 
         // Rough token estimate: 1 token ≈ 3.8 chars for English/Spanish mix.
+        // The index is just keys + taglines; section bodies are fetched on demand
+        // via fetch_section_guide. 2K tokens leaves enormous headroom under the
+        // Anthropic ITPM budget that previously bounded this corpus at ~25K.
         var estimatedTokens = text.Length / 3.8;
-        estimatedTokens.Should().BeLessThan(26_000, "Tier1 preload must stay under the 25K spec budget with slack for the user-context tail");
+        estimatedTokens.Should().BeLessThan(2_000, "Tier1 preload is now a section index; full bodies are fetched on demand");
     }
 
     private static IAgentPreloadCorpusBuilder MakeBuilder()
