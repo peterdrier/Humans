@@ -1460,6 +1460,8 @@
   <data name="CityPlanning_HistoryButton" xml:space="preserve"><value>Historial</value></data>
   <data name="CityPlanning_MeasureButton" xml:space="preserve"><value>Medir</value></data>
   <data name="CityPlanning_CampLimits" xml:space="preserve"><value>Límites del camp</value></data>
+  <data name="CityPlanning_BarrioZones" xml:space="preserve"><value>Zonas de barrio</value></data>
+  <data name="CityPlanning_Layers" xml:space="preserve"><value>Capas</value></data>
   <data name="CityPlanning_AdminLink" xml:space="preserve"><value>Admin</value></data>
   <data name="CityPlanning_GoToPlacementMap" xml:space="preserve"><value>Ir al mapa de colocación</value></data>
   <data name="CityPlanning_Admin_Title" xml:space="preserve"><value>Admin del Mapa de Barrios</value></data>

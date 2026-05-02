@@ -2,6 +2,7 @@
 // Shows official zones and camps always; containers and camp limits are togglable.
 
 import { CONFIG } from './config.js';
+import { initMeasure, enterMeasureMode, exitMeasureMode, isMeasuring } from '../container-map/measure.js';
 
 const LAYER_GROUPS = {
     containers:  ['containers-fill', 'containers-active-fill', 'containers-labels'],
@@ -20,6 +21,7 @@ async function init() {
     });
 
     await new Promise(resolve => map.on('load', resolve));
+    initMeasure(map);
 
     const state = await fetch('/api/city-planning/state').then(r => r.json());
 
@@ -76,8 +78,8 @@ async function init() {
         let limitData = JSON.parse(state.limitZoneGeoJson);
         if (limitData.type === 'Feature') limitData = { type: 'FeatureCollection', features: [limitData] };
         map.addSource('limit-zone', { type: 'geojson', data: limitData });
-        map.addLayer({ id: 'limit-zone-fill', type: 'fill', source: 'limit-zone', paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.06 } });
-        map.addLayer({ id: 'limit-zone-line', type: 'line', source: 'limit-zone', paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-dasharray': [4, 2] } });
+        map.addLayer({ id: 'limit-zone-fill', type: 'fill', source: 'limit-zone', layout: { visibility: 'none' }, paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.06 } });
+        map.addLayer({ id: 'limit-zone-line', type: 'line', source: 'limit-zone', layout: { visibility: 'none' }, paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-dasharray': [4, 2] } });
         LAYER_GROUPS.campLimits = ['limit-zone-fill', 'limit-zone-line'];
     }
 
@@ -96,17 +98,21 @@ async function init() {
         });
 
     map.addSource('containers', { type: 'geojson', data: { type: 'FeatureCollection', features: placedFeatures } });
-    map.addLayer({ id: 'containers-fill', type: 'fill', source: 'containers', paint: { 'fill-color': containerColor, 'fill-opacity': 0.7 } });
+    map.addLayer({ id: 'containers-fill', type: 'fill', source: 'containers', layout: { visibility: 'none' }, paint: { 'fill-color': containerColor, 'fill-opacity': 0.7 } });
     map.addLayer({
         id: 'containers-labels', type: 'symbol', source: 'containers',
         minzoom: 17,
-        layout: { 'text-field': ['get', 'name'], 'text-size': 10, 'text-anchor': 'center', 'text-allow-overlap': false },
+        layout: { visibility: 'none', 'text-field': ['get', 'name'], 'text-size': 10, 'text-anchor': 'center', 'text-allow-overlap': false },
         paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1 },
     });
 
     // ── Toggle buttons ────────────────────────────────────────────────────────
     wireToggle('toggle-containers',  LAYER_GROUPS.containers,  map);
     wireToggle('toggle-camp-limits', LAYER_GROUPS.campLimits,  map);
+
+    document.getElementById('measure-btn').addEventListener('click', () => {
+        if (isMeasuring()) exitMeasureMode(); else enterMeasureMode();
+    });
 }
 
 function wireToggle(btnId, layerIds, map) {
@@ -115,7 +121,7 @@ function wireToggle(btnId, layerIds, map) {
         if (btn) btn.disabled = true;
         return;
     }
-    let visible = true;
+    let visible = false;
     btn.addEventListener('click', () => {
         visible = !visible;
         const v = visible ? 'visible' : 'none';

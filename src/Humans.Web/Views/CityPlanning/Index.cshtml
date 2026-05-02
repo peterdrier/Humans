@@ -19,14 +19,22 @@
 <div id="map-page">
     <div id="map" data-year="@year"></div>
 
-    <div class="position-absolute top-0 end-0 m-3" style="z-index:10;">
+    <div class="position-absolute top-0 end-0 m-3 d-grid gap-3" style="z-index:10;">
+        <div class="card shadow-sm">
+            <div class="card-body py-2 px-3">
+                <button id="measure-btn" class="btn btn-outline-secondary btn-sm w-100" aria-pressed="false">
+                    <i class="fa-solid fa-ruler me-1"></i> @Localizer["CityPlanning_MeasureButton"]
+                </button>
+            </div>
+        </div>
         <div class="card shadow-sm">
             <div class="card-body py-2 px-3 d-flex flex-column gap-1">
-                <button id="toggle-containers" class="btn btn-outline-secondary btn-sm active" aria-pressed="true">
-                    <i class="fa-solid fa-box me-1"></i> @Localizer["ContainerMap_Legend_Title"]
+                <div class="fw-semibold text-muted text-uppercase mb-1" style="font-size:10px; letter-spacing:.05em;">@Localizer["CityPlanning_Layers"]</div>
+                <button id="toggle-containers" class="btn btn-outline-secondary btn-sm" aria-pressed="false">
+                    <i class="fa-solid fa-box me-1"></i> @Localizer["Container_Breadcrumb"]
                 </button>
-                <button id="toggle-camp-limits" class="btn btn-outline-secondary btn-sm active" aria-pressed="true">
-                    <i class="fa-solid fa-draw-polygon me-1"></i> @Localizer["CityPlanning_CampLimits"]
+                <button id="toggle-camp-limits" class="btn btn-outline-secondary btn-sm" aria-pressed="false">
+                    <i class="fa-solid fa-draw-polygon me-1"></i> @Localizer["CityPlanning_BarrioZones"]
                 </button>
             </div>
         </div>

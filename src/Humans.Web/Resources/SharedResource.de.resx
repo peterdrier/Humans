@@ -1458,6 +1458,8 @@
   <data name="CityPlanning_HistoryButton" xml:space="preserve"><value>Verlauf</value></data>
   <data name="CityPlanning_MeasureButton" xml:space="preserve"><value>Messen</value></data>
   <data name="CityPlanning_CampLimits" xml:space="preserve"><value>Lagergelände-Grenzen</value></data>
+  <data name="CityPlanning_BarrioZones" xml:space="preserve"><value>Barrio-Zonen</value></data>
+  <data name="CityPlanning_Layers" xml:space="preserve"><value>Ebenen</value></data>
   <data name="CityPlanning_AdminLink" xml:space="preserve"><value>Admin</value></data>
   <data name="CityPlanning_GoToPlacementMap" xml:space="preserve"><value>Zur Platzierungskarte</value></data>
   <data name="CityPlanning_Admin_Title" xml:space="preserve"><value>Barrio-Karte Admin</value></data>
