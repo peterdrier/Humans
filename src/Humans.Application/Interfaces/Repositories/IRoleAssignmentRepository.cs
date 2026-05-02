@@ -97,16 +97,6 @@ public interface IRoleAssignmentRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the distinct set of user IDs with an active assignment to
-    /// <paramref name="roleName"/> at <paramref name="now"/>. Used by
-    /// role-targeted notification dispatch.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetActiveUserIdsForRoleAsync(
-        string roleName,
-        Instant now,
-        CancellationToken ct = default);
-
-    /// <summary>
     /// All currently-active assignments for the user for mutation via
     /// <see cref="UpdateManyAsync"/>. Used by <c>RevokeAllActiveAsync</c> to
     /// stamp <c>ValidTo</c> on each.
