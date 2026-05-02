@@ -83,7 +83,7 @@ export function selectPlacedContainer(container) {
     repositionHandle();
     rotationHandle.style.display = 'flex';
 
-    _map.easeTo({ center: [_currentCenter.lng, _currentCenter.lat], zoom: 19, duration: 300 });
+    _map.easeTo({ center: [_currentCenter.lng, _currentCenter.lat], zoom: Math.max				(_map.getZoom(), 19), duration: 300 });
 }
 
 /**
