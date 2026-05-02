@@ -17,13 +17,10 @@ public class AgentConversationConfiguration : IEntityTypeConfiguration<AgentConv
         builder.Property(c => c.LastMessageAt).IsRequired();
         builder.Property(c => c.MessageCount).IsRequired();
 
-        // Cross-domain FK to User: stored as a column, no navigation property
-        // (per design-rules §6c). Service layer stitches user-display when needed.
-        builder.HasOne<Humans.Domain.Entities.User>()
-            .WithMany()
-            .HasForeignKey(c => c.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-
+        // No cross-section FK to User. Agent owns only agent_* tables — section
+        // boundaries are enforced at the EF model. UserId is a plain Guid column;
+        // user deletion does not cascade. Orphaned rows expire via
+        // AgentConversationRetentionJob (RetentionDays).
         builder.HasIndex(c => c.UserId);
         builder.HasIndex(c => c.LastMessageAt);
     }

@@ -23,7 +23,7 @@ internal static class AgentSectionExtensions
         services.AddSingleton<IAgentSettingsStore, AgentSettingsStore>();
         services.AddSingleton<IAgentRateLimitStore, AgentRateLimitStore>();
 
-        services.AddScoped<IAgentConversationRepository, AgentConversationRepository>();
+        services.AddScoped<IAgentRepository, AgentRepository>();
         services.AddScoped<IAgentSettingsService, AgentSettingsService>();
         services.AddScoped<IAgentUserSnapshotProvider, AgentUserSnapshotProvider>();
 

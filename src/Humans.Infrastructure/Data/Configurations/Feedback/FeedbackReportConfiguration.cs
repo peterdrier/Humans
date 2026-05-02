@@ -67,12 +67,12 @@ public class FeedbackReportConfiguration : IEntityTypeConfiguration<FeedbackRepo
         // The nav properties themselves are [Obsolete] for the Application layer,
         // but the DB-level FK + cascade behavior is still owned here — suppress
         // the obsolete warning only for this wiring block.
-#pragma warning disable CS0618
-        builder.HasOne(f => f.AgentConversation)
-            .WithMany()
-            .HasForeignKey(f => f.AgentConversationId)
-            .OnDelete(DeleteBehavior.SetNull);
+        // No cross-section FK to agent_conversations. AgentConversationId is
+        // a plain nullable Guid column on feedback_reports — Feedback owns the
+        // column, Agent owns the referenced rows, and EF does not model the
+        // join. Index on the column lives below.
 
+#pragma warning disable CS0618
         builder.HasOne(f => f.User)
             .WithMany()
             .HasForeignKey(f => f.UserId)

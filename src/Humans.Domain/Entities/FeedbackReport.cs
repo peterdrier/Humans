@@ -42,15 +42,13 @@ public class FeedbackReport
     /// <summary>Defaults to UserReport; set to AgentUnresolved when created by the agent's route_to_feedback tool.</summary>
     public FeedbackSource Source { get; set; } = FeedbackSource.UserReport;
 
-    public Guid? AgentConversationId { get; set; }
-
     /// <summary>
-    /// Cross-domain navigation to the originating <see cref="AgentConversation"/>.
-    /// Repositories must not <c>.Include()</c> it; resolve via the Agent
-    /// section's services when the report's transcript is needed.
+    /// FK column only — no navigation property and no EF FK constraint to
+    /// agent_conversations. Agent is a self-contained section; cross-section
+    /// joins are not modeled in EF. Resolve transcripts via the Agent
+    /// section's services when needed.
     /// </summary>
-    [Obsolete("Cross-domain nav — Agent section. FK only per design-rules §6c.")]
-    public AgentConversation? AgentConversation { get; set; }
+    public Guid? AgentConversationId { get; set; }
 
     public Instant? ResolvedAt { get; set; }
 

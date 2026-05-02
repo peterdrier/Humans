@@ -7,13 +7,13 @@ namespace Humans.Infrastructure.Jobs;
 
 public class AgentConversationRetentionJob : IRecurringJob
 {
-    private readonly IAgentConversationRepository _repo;
+    private readonly IAgentRepository _repo;
     private readonly IAgentSettingsService _settings;
     private readonly IClock _clock;
     private readonly ILogger<AgentConversationRetentionJob> _logger;
 
     public AgentConversationRetentionJob(
-        IAgentConversationRepository repo,
+        IAgentRepository repo,
         IAgentSettingsService settings,
         IClock clock,
         ILogger<AgentConversationRetentionJob> logger)
@@ -24,7 +24,7 @@ public class AgentConversationRetentionJob : IRecurringJob
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         var cutoff = _clock.GetCurrentInstant() - Duration.FromDays(_settings.Current.RetentionDays);
-        var deleted = await _repo.PurgeOlderThanAsync(cutoff, cancellationToken);
+        var deleted = await _repo.PurgeConversationsOlderThanAsync(cutoff, cancellationToken);
 
         if (deleted > 0)
         {

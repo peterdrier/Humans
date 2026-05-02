@@ -53,7 +53,7 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 
 ### FeedbackReport additions (cross-section)
 
-`FeedbackReport.Source` (`FeedbackSource` enum: `User`, `AgentUnresolved`) and `FeedbackReport.AgentConversationId` (nullable FK → AgentConversation, set-null on deletion). Owned by Feedback section; mutated by Agent on `route_to_feedback` handoff.
+`FeedbackReport.Source` (`FeedbackSource` enum: `UserReport`, `AgentUnresolved`) and `FeedbackReport.AgentConversationId` (plain nullable Guid column, no EF FK constraint, no nav property). Owned by Feedback section; mutated by Agent on `route_to_feedback` handoff. Cross-section linkage is by FK column only — Agent only joins to its own tables.
 
 ## Actors & Roles
 
@@ -86,24 +86,24 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 
 - On `FeedbackReport.Source = AgentUnresolved` creation: no additional triggers — admin notification bell handles it via the existing feedback path.
 - On `AgentSettings` update: `IAgentSettingsStore` reloads the singleton; next request sees the new value.
-- On user deletion: `AgentConversation` cascades → `AgentMessage` cascades. `FeedbackReport.AgentConversationId` is set-null (report survives).
+- On user deletion: no cross-section cascade. Agent owns no FK to `users`; orphaned `agent_conversations` rows are cleaned up by `AgentConversationRetentionJob` within `RetentionDays`. `FeedbackReport.AgentConversationId` is owned by Feedback and is left as-is (the column may dangle if the conversation was purged; readers must tolerate `null` lookups).
 
 ## Cross-Section Dependencies
 
 - **Feedback** — `IFeedbackService.SubmitFromAgentAsync` writes a `FeedbackReport` with `Source = AgentUnresolved` and `AgentConversationId` set. Triage UI filters `Source = AgentUnresolved`.
 - **Legal & Consent** — `ILegalDocumentSyncService` resolves the active `AgentChatTerms` version; `IConsentService` gates widget visibility.
 - **Profiles / Users / Auth / Teams** — `IAgentUserSnapshotProvider` composes the per-turn user context from `IProfileService`, `IUserService`, `IRoleAssignmentService.GetActiveForUserAsync`, `ITeamService.GetActiveTeamNamesForUserAsync`.
-- **GDPR** — `AgentService` implements `IUserDataContributor` so per-user export pulls conversation history; user deletion cascades `AgentConversation` → `AgentMessage`.
+- **GDPR** — `AgentService` implements `IUserDataContributor` so per-user export pulls conversation history. User deletion does not cascade into Agent; orphan rows expire via the retention job.
 
 ## Architecture
 
 **Owning services:** `AgentService` (orchestrator), `AgentSettingsService`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AgentPromptAssembler`, `AgentPreloadCorpusBuilder`, `AgentPreloadAugmentor`, `AnthropicClient`, `AgentConversationRetentionJob`.
 **Owned tables:** `agent_conversations`, `agent_messages`, `agent_settings`.
-**Status:** (B) Partially §15-migrated — `AgentService` lives in `Humans.Application/Services/Agent/`. The remaining stateless helpers (`AgentPromptAssembler`, `AgentAbuseDetector`, `AgentUserSnapshotProvider`) and Infrastructure-tied services (`AgentSettingsService`, `AgentToolDispatcher`, `AnthropicClient`) live in `Humans.Infrastructure/Services/Agent/` and `Humans.Infrastructure/Services/Anthropic/`. `AgentSettingsService` is a documented §15i exception (singleton-row settings table; building a repository is overkill). `AgentToolDispatcher` and `AgentUserSnapshotProvider` stay until the preload readers are abstracted.
+**Status:** (B) Partially §15-migrated — `AgentService` lives in `Humans.Application/Services/Agent/` and goes through `IAgentRepository` for all DB access. `AgentSettingsService` also goes through the same `IAgentRepository` (settings + conversations + messages share one repo). Stateless helpers (`AgentPromptAssembler`, `AgentAbuseDetector`, `AgentUserSnapshotProvider`) and Infrastructure-tied services (`AgentToolDispatcher`, `AnthropicClient`) live in `Humans.Infrastructure/Services/Agent/` and `Humans.Infrastructure/Services/Anthropic/`. `AgentToolDispatcher` and `AgentUserSnapshotProvider` stay until the preload readers are abstracted. **No cross-section FK or nav at the EF level** — `agent_conversations.UserId`, `agent_messages.HandedOffToFeedbackId`, and `feedback_reports.AgentConversationId` are bare Guid columns.
 
 - **DI registration** lives in `src/Humans.Web/Extensions/Sections/AgentSectionExtensions.cs` (`services.AddAgentSection(configuration)`), called from `InfrastructureServiceCollectionExtensions.AddHumansInfrastructure`.
 - **Stores** — `IAgentSettingsStore` and `IAgentRateLimitStore` are Singleton (in-process). `AgentSettingsStoreWarmupHostedService` populates the settings store at startup.
-- **Repositories** — `IAgentConversationRepository` (Scoped) handles persistence of conversations and messages.
+- **Repositories** — `IAgentRepository` (Scoped) is the single repository for the section: settings (`agent_settings`), conversations (`agent_conversations`), and messages (`agent_messages`). Nothing in the section injects `HumansDbContext` directly.
 - **Provider boundary** — `IAnthropicClient` (Singleton, wraps the `Anthropic` 12.11.0 SDK) is the only place that touches the Anthropic API. `AgentService` knows nothing about HTTP, retries, or SDK-specific types.
 - **Tooling** — `IAgentToolDispatcher` is the only path that loads section/feature markdown or calls `IFeedbackService.SubmitFromAgentAsync`. The whitelist of tools is enforced in dispatcher constants; unknown names short-circuit before any I/O.
 - **Authorization** — `AgentController.Ask` performs the consent gate and enabled gate inline (returning 403 / 503 respectively), then calls `IAuthorizationService.AuthorizeAsync(User, userId, PolicyNames.AgentRateLimit)` which runs `AgentRateLimitHandler` (resource-based) — the handler only checks per-user daily message cap, daily token cap, and hourly message cap. A failed authorization yields `429 TooManyRequests`. Phase 1 widget rendering additionally checks `User.IsInRole(RoleNames.Admin)`.
