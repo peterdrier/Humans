@@ -47,7 +47,7 @@ When a user opts out of Facilitated Messages, the "Send Message" button is hidde
 - `OptedOut` (bool) — true = user does NOT receive email for this category
 - `InboxEnabled` (bool) — true = user receives in-app alerts for this category
 - `UpdatedAt` (Instant) — when preference was last changed
-- `UpdateSource` (string) — how it was set: "Profile", "MagicLink", "OneClick", "Default", "DataMigration"
+- `UpdateSource` (string) — how it was set: "Profile" (signed-in profile UI), "Guest" (signed-in Guest dashboard, profileless), "MagicLink" (anonymous unsubscribe-token endpoints), "OneClick" (RFC 8058 List-Unsubscribe), "Default" (lazy seed), "DataMigration"
 
 **Enum:** `MessageCategory` — stored as string in DB
 - Active: System, CampaignCodes, FacilitatedMessages, Ticketing, VolunteerUpdates, TeamUpdates, Governance, Marketing

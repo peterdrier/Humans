@@ -1593,6 +1593,10 @@
   <data name="CommPrefs_Alert" xml:space="preserve"><value>Alerte</value></data>
   <data name="CommPrefs_BackToProfile" xml:space="preserve"><value>Retour au profil</value></data>
   <data name="CommPrefs_BackToDashboard" xml:space="preserve"><value>Retour au tableau de bord</value></data>
+  <data name="CommPrefs_OneClick_Prompt" xml:space="preserve"><value>Vous avez cliqué sur un lien de désabonnement dans les e-mails de {0}.</value></data>
+  <data name="CommPrefs_OneClick_Hint" xml:space="preserve"><value>Désabonnement en un clic, ou ajustez les détails dans la matrice ci-dessous.</value></data>
+  <data name="CommPrefs_OneClick_Button" xml:space="preserve"><value>Se désabonner de {0}</value></data>
+  <data name="CommPrefs_OneClick_Done" xml:space="preserve"><value>Désabonné. Vous pouvez réactiver n'importe quelle catégorie ci-dessous.</value></data>
 
   <data name="Emails_Header_Email" xml:space="preserve"><value>E-mail</value></data>
   <data name="Emails_Header_Status" xml:space="preserve"><value>Statut</value></data>

@@ -1593,6 +1593,10 @@
   <data name="CommPrefs_Alert" xml:space="preserve"><value>Benachrichtigung</value></data>
   <data name="CommPrefs_BackToProfile" xml:space="preserve"><value>Zurück zum Profil</value></data>
   <data name="CommPrefs_BackToDashboard" xml:space="preserve"><value>Zurück zum Dashboard</value></data>
+  <data name="CommPrefs_OneClick_Prompt" xml:space="preserve"><value>Du hast auf einen Abmeldelink in {0}-E-Mails geklickt.</value></data>
+  <data name="CommPrefs_OneClick_Hint" xml:space="preserve"><value>Mit einem Klick abmelden oder die Matrix unten anpassen.</value></data>
+  <data name="CommPrefs_OneClick_Button" xml:space="preserve"><value>{0} abbestellen</value></data>
+  <data name="CommPrefs_OneClick_Done" xml:space="preserve"><value>Abgemeldet. Du kannst jede Kategorie unten wieder aktivieren.</value></data>
 
   <data name="Emails_Header_Email" xml:space="preserve"><value>E-Mail</value></data>
   <data name="Emails_Header_Status" xml:space="preserve"><value>Status</value></data>

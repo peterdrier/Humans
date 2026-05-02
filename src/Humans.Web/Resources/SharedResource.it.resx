@@ -1593,6 +1593,10 @@
   <data name="CommPrefs_Alert" xml:space="preserve"><value>Avviso</value></data>
   <data name="CommPrefs_BackToProfile" xml:space="preserve"><value>Torna al profilo</value></data>
   <data name="CommPrefs_BackToDashboard" xml:space="preserve"><value>Torna alla dashboard</value></data>
+  <data name="CommPrefs_OneClick_Prompt" xml:space="preserve"><value>Hai cliccato su un link di disiscrizione dalle email di {0}.</value></data>
+  <data name="CommPrefs_OneClick_Hint" xml:space="preserve"><value>Disiscriviti con un clic, oppure regola i dettagli nella matrice qui sotto.</value></data>
+  <data name="CommPrefs_OneClick_Button" xml:space="preserve"><value>Disiscriviti da {0}</value></data>
+  <data name="CommPrefs_OneClick_Done" xml:space="preserve"><value>Disiscritto. Puoi riattivare qualsiasi categoria qui sotto.</value></data>
 
   <data name="Emails_Header_Email" xml:space="preserve"><value>E-mail</value></data>
   <data name="Emails_Header_Status" xml:space="preserve"><value>Stato</value></data>

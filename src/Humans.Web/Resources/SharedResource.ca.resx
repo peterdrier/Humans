@@ -1595,6 +1595,10 @@
   <data name="CommPrefs_Alert" xml:space="preserve"><value>Alerta</value></data>
   <data name="CommPrefs_BackToProfile" xml:space="preserve"><value>Tornar al perfil</value></data>
   <data name="CommPrefs_BackToDashboard" xml:space="preserve"><value>Tornar al tauler</value></data>
+  <data name="CommPrefs_OneClick_Prompt" xml:space="preserve"><value>Has fet clic en un enllaç per donar-te de baixa dels correus de {0}.</value></data>
+  <data name="CommPrefs_OneClick_Hint" xml:space="preserve"><value>Dóna't de baixa amb un sol clic, o ajusta els detalls a la matriu de sota.</value></data>
+  <data name="CommPrefs_OneClick_Button" xml:space="preserve"><value>Donar-se de baixa de {0}</value></data>
+  <data name="CommPrefs_OneClick_Done" xml:space="preserve"><value>T'has donat de baixa. Pots tornar a activar qualsevol categoria a sota.</value></data>
 
   <data name="Emails_Header_Email" xml:space="preserve"><value>Correu</value></data>
   <data name="Emails_Header_Status" xml:space="preserve"><value>Estat</value></data>

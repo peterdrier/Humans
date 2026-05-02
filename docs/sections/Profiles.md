@@ -195,7 +195,7 @@ Per-user, per-category email opt-in/opt-out preferences. One row per user per ca
 | OptedOut | bool | true = user opted out of email for this category |
 | InboxEnabled | bool | Default true; when false, informational in-app notifications for this category are suppressed (actionable notifications always show) |
 | UpdatedAt | Instant | Last change |
-| UpdateSource | string (100) | "Profile", "MagicLink", "OneClick", "Default", "DataMigration" |
+| UpdateSource | string (100) | "Profile" (signed-in profile UI), "Guest" (signed-in Guest dashboard, profileless), "MagicLink" (anonymous unsubscribe-token endpoints), "OneClick" (RFC 8058 List-Unsubscribe), "Default" (lazy seed), "DataMigration" |
 
 **Unique constraint:** `(UserId, Category)`. **Indexes:** `UserId`.
 

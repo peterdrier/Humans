@@ -1595,6 +1595,10 @@
   <data name="CommPrefs_Alert" xml:space="preserve"><value>Alerta</value></data>
   <data name="CommPrefs_BackToProfile" xml:space="preserve"><value>Volver al perfil</value></data>
   <data name="CommPrefs_BackToDashboard" xml:space="preserve"><value>Volver al panel</value></data>
+  <data name="CommPrefs_OneClick_Prompt" xml:space="preserve"><value>Has hecho clic en un enlace para darte de baja de los correos de {0}.</value></data>
+  <data name="CommPrefs_OneClick_Hint" xml:space="preserve"><value>Date de baja con un solo clic, o ajusta los detalles en la matriz de abajo.</value></data>
+  <data name="CommPrefs_OneClick_Button" xml:space="preserve"><value>Darse de baja de {0}</value></data>
+  <data name="CommPrefs_OneClick_Done" xml:space="preserve"><value>Te has dado de baja. Puedes volver a activar cualquier categoría abajo.</value></data>
 
   <data name="Emails_Header_Email" xml:space="preserve"><value>Correo</value></data>
   <data name="Emails_Header_Status" xml:space="preserve"><value>Estado</value></data>
