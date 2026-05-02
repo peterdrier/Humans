@@ -1,3 +1,4 @@
+using Humans.Application.Constants;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Consent;
 using Humans.Domain.Constants;
@@ -39,9 +40,8 @@ public class AgentWidgetViewComponent : ViewComponent
             return Content(string.Empty);
 
         // GetPendingDocumentNamesAsync returns the display names of documents the user has not yet consented to.
-        // We check whether "Agent Chat Terms" is in the pending list.
         var pending = await _consents.GetPendingDocumentNamesAsync(user.Id, HttpContext.RequestAborted);
-        var hasConsent = !pending.Any(name => string.Equals(name, "Agent Chat Terms", StringComparison.Ordinal));
+        var hasConsent = !pending.Any(name => string.Equals(name, LegalDocumentNames.AgentChatTerms, StringComparison.Ordinal));
 
         // Render the widget even without consent — the Razor view shows the consent gate UI on first click.
         return View(new AgentWidgetModel(hasConsent));

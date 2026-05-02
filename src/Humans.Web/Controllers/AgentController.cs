@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using Humans.Application.Constants;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Models;
@@ -59,7 +60,7 @@ public class AgentController : HumansControllerBase
         }
 
         var pendingDocs = await _consents.GetPendingDocumentNamesAsync(user.Id, cancellationToken);
-        if (pendingDocs.Contains("Agent Chat Terms", StringComparer.OrdinalIgnoreCase))
+        if (pendingDocs.Contains(LegalDocumentNames.AgentChatTerms, StringComparer.Ordinal))
         {
             Response.StatusCode = StatusCodes.Status403Forbidden;
             return;

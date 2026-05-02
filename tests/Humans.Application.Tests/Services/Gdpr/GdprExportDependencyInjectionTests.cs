@@ -88,7 +88,7 @@ public class GdprExportDependencyInjectionTests
         typeof(CampService),
         typeof(AuditLogService),
         typeof(BudgetService),
-        typeof(Humans.Infrastructure.Services.Agent.AgentService)
+        typeof(Humans.Application.Services.Agent.AgentService)
     ];
 
     [HumansFact]
@@ -109,7 +109,7 @@ public class GdprExportDependencyInjectionTests
         // still holds most of them, and Humans.Application is the new target
         // location per the repository/store/decorator migration — the first
         // such move is ApplicationDecisionService (Governance, PR #503).
-        var infrastructureAssembly = typeof(Humans.Infrastructure.Services.Agent.AgentService).Assembly;
+        var infrastructureAssembly = typeof(Humans.Infrastructure.Data.HumansDbContext).Assembly;
         var applicationAssembly = typeof(ApplicationDecisionService).Assembly;
 
         var foundContributors = new[] { infrastructureAssembly, applicationAssembly }

@@ -26,8 +26,12 @@ public class AgentConversationRetentionJob : IRecurringJob
         var cutoff = _clock.GetCurrentInstant() - Duration.FromDays(_settings.Current.RetentionDays);
         var deleted = await _repo.PurgeOlderThanAsync(cutoff, cancellationToken);
 
-        _logger.LogInformation(
-            "AgentConversationRetentionJob deleted {Count} conversations older than {Cutoff}",
-            deleted, cutoff);
+        if (deleted > 0)
+        {
+            // Warning so the entry is visible in the prod log viewer (Warning+ default).
+            _logger.LogWarning(
+                "AgentConversationRetentionJob deleted {Count} conversations older than {Cutoff}",
+                deleted, cutoff);
+        }
     }
 }

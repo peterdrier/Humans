@@ -7,7 +7,9 @@ namespace Humans.Infrastructure.Stores;
 
 public sealed class AgentSettingsStore : IAgentSettingsStore
 {
-    // Safe default mirrors the DB seed so the store is always queryable before the warmup runs.
+    // Singleton store; readers (request threads) and the writer (settings save +
+    // warmup hosted service) race on the snapshot reference. Interlocked.Exchange
+    // gives us atomic publish + visibility without a lock.
     private AgentSettings _current = new()
     {
         Id = 1,
@@ -21,7 +23,7 @@ public sealed class AgentSettingsStore : IAgentSettingsStore
         UpdatedAt = Instant.MinValue
     };
 
-    public AgentSettings Current => _current;
+    public AgentSettings Current => System.Threading.Volatile.Read(ref _current);
 
-    public void Set(AgentSettings settings) => _current = settings;
+    public void Set(AgentSettings settings) => System.Threading.Interlocked.Exchange(ref _current, settings);
 }

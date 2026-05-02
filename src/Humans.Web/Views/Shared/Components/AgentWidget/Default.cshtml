@@ -12,7 +12,14 @@
             z-index: 1050; background: white; border-radius: 12px; overflow: hidden;">
     <div class="agent-header d-flex justify-content-between align-items-center p-3 border-bottom">
         <strong>@Localizer["Agent_PanelTitle"]</strong>
-        <button type="button" class="btn-close" id="agentPanelClose" aria-label="Close"></button>
+        <div class="d-flex align-items-center gap-2">
+            <a asp-controller="Agent" asp-action="History"
+               class="text-decoration-none small"
+               title="@Localizer["Agent_ViewHistory"]">
+                @Localizer["Agent_ViewHistory"]
+            </a>
+            <button type="button" class="btn-close" id="agentPanelClose" aria-label="Close"></button>
+        </div>
     </div>
     <div class="agent-consent p-3" id="agentConsentGate"
          style="display: @(Model.HasConsented ? "none" : "block");">

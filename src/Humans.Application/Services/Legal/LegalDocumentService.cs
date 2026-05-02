@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Humans.Application.Constants;
 using Humans.Application.Interfaces.Legal;
 
 namespace Humans.Application.Services.Legal;
@@ -18,7 +19,7 @@ public sealed class LegalDocumentService : ILegalDocumentService
     private static readonly IReadOnlyList<LegalDocumentDefinition> Documents =
     [
         new("statutes", "Statutes", "Estatutos", "ESTATUTOS"),
-        new("agent-chat", "Agent Chat Terms", "AgentChat", "AGENTCHAT"),
+        new("agent-chat", LegalDocumentNames.AgentChatTerms, "AgentChat", "AGENTCHAT"),
     ];
 
     private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(1);

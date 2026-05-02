@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Text;
+using Humans.Application.Configuration;
 using Humans.Application.Constants;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Gdpr;
@@ -8,12 +9,11 @@ using Humans.Application.Interfaces.Stores;
 using Humans.Application.Models;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
 
-namespace Humans.Infrastructure.Services.Agent;
+namespace Humans.Application.Services.Agent;
 
 public sealed class AgentService : IAgentService, IUserDataContributor
 {
@@ -169,7 +169,6 @@ public sealed class AgentService : IAgentService, IUserDataContributor
                 }
             }
 
-            // FIX 3 part 1 — string.Equals with StringComparison.Ordinal
             if (pendingToolCalls.Count == 0 || !string.Equals(finalFinalizer?.StopReason, "tool_use", StringComparison.Ordinal))
                 break;
 
@@ -194,7 +193,6 @@ public sealed class AgentService : IAgentService, IUserDataContributor
                 results.Add(result);
                 fetchedDocs.Add(call.Name + ":" + call.JsonArguments);
 
-                // FIX 3 part 2 — string.Equals with StringComparison.Ordinal
                 if (string.Equals(call.Name, AgentToolNames.RouteToFeedback, StringComparison.Ordinal) && !result.IsError)
                 {
                     var marker = "/Feedback/";
@@ -230,7 +228,6 @@ public sealed class AgentService : IAgentService, IUserDataContributor
         var totalTokens = message.PromptTokens + message.OutputTokens;
         _rateLimit.Record(request.UserId, today, hour, messagesDelta: 1, tokensDelta: totalTokens);
 
-        // FIX 2 — break null-coalesce apart to avoid type mismatch
         var fallbackFinalizer = finalFinalizer ?? new AgentTurnFinalizer(0, 0, 0, 0, _settings.Current.Model, "unknown");
         // Stamp the conversation id so the client can reuse it on the next send.
         yield return new AgentTurnToken(null, null, fallbackFinalizer with { ConversationId = conversation.Id });
@@ -298,7 +295,7 @@ public sealed class AgentService : IAgentService, IUserDataContributor
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var conversations = await _repo.ListForUserAsync(userId, take: int.MaxValue, ct);
+        var conversations = await _repo.ListForUserWithMessagesAsync(userId, ct);
         var shaped = conversations.Select(c => new
         {
             c.Id,
@@ -319,7 +316,6 @@ public sealed class AgentService : IAgentService, IUserDataContributor
         return [new UserDataSlice(GdprExportSections.AgentConversations, shaped)];
     }
 
-    // FIX 1 — helper returns AgentTurnToken (wrapping the finalizer), not AgentTurnFinalizer directly
     private AgentTurnToken Finalizer(string stopReason) =>
         new(null, null, new AgentTurnFinalizer(0, 0, 0, 0, _settings.Current.Model, stopReason));
 

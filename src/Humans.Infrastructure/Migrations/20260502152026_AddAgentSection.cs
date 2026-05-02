@@ -24,7 +24,7 @@ namespace Humans.Infrastructure.Migrations
                 type: "character varying(32)",
                 maxLength: 32,
                 nullable: false,
-                defaultValue: "");
+                defaultValueSql: "'UserReport'");
 
             migrationBuilder.CreateTable(
                 name: "agent_conversations",
@@ -42,26 +42,6 @@ namespace Humans.Infrastructure.Migrations
                     table.PrimaryKey("PK_agent_conversations", x => x.Id);
                     table.ForeignKey(
                         name: "FK_agent_conversations_users_UserId",
-                        column: x => x.UserId,
-                        principalTable: "users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "agent_rate_limits",
-                columns: table => new
-                {
-                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
-                    Day = table.Column<LocalDate>(type: "date", nullable: false),
-                    MessagesToday = table.Column<int>(type: "integer", nullable: false),
-                    TokensToday = table.Column<int>(type: "integer", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_agent_rate_limits", x => new { x.UserId, x.Day });
-                    table.ForeignKey(
-                        name: "FK_agent_rate_limits_users_UserId",
                         column: x => x.UserId,
                         principalTable: "users",
                         principalColumn: "Id",
@@ -168,11 +148,6 @@ namespace Humans.Infrastructure.Migrations
                 table: "agent_messages",
                 column: "RefusalReason");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_agent_rate_limits_Day",
-                table: "agent_rate_limits",
-                column: "Day");
-
             migrationBuilder.AddForeignKey(
                 name: "FK_feedback_reports_agent_conversations_AgentConversationId",
                 table: "feedback_reports",
@@ -191,9 +166,6 @@ namespace Humans.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "agent_messages");
-
-            migrationBuilder.DropTable(
-                name: "agent_rate_limits");
 
             migrationBuilder.DropTable(
                 name: "agent_settings");

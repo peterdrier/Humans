@@ -5,9 +5,10 @@ using System.Text.Json;
 using System.Threading;
 using Anthropic.Core;
 using Anthropic.Models.Messages;
+using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Application.Models;
-using Humans.Infrastructure.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SdkAnthropicClient = Anthropic.AnthropicClient;
 
@@ -18,8 +19,9 @@ namespace Humans.Infrastructure.Services.Anthropic;
 public sealed class AnthropicClient : IAnthropicClient
 {
     private readonly SdkAnthropicClient _sdk;
+    private readonly ILogger<AnthropicClient> _logger;
 
-    public AnthropicClient(IOptions<AnthropicOptions> options)
+    public AnthropicClient(IOptions<AnthropicOptions> options, ILogger<AnthropicClient> logger)
     {
         var opts = options.Value;
         _sdk = new SdkAnthropicClient(new ClientOptions
@@ -27,6 +29,7 @@ public sealed class AnthropicClient : IAnthropicClient
             ApiKey = opts.ApiKey,
             Timeout = opts.Timeout,
         });
+        _logger = logger;
     }
 
     public async IAsyncEnumerable<AgentTurnToken> StreamAsync(
@@ -62,72 +65,122 @@ public sealed class AnthropicClient : IAnthropicClient
         long cacheReadTokens = 0;
         long cacheCreationTokens = 0;
         string? stopReason = null;
+        bool streamErrored = false;
 
-        await foreach (var evt in _sdk.Messages.CreateStreaming(sdkRequest, cancellationToken))
+        // The await foreach below is a live HTTP/SSE call. Any failure (timeout,
+        // 5xx, network) would otherwise propagate without a finalizer, leaving
+        // the caller hung. Catch, log, and emit a synthetic "error" finalizer
+        // so AgentService can write its assistant message and yield a final
+        // SSE frame to the browser. Cancellation is re-thrown so cooperative
+        // shutdown still works.
+        var enumerator = _sdk.Messages.CreateStreaming(sdkRequest, cancellationToken).GetAsyncEnumerator(cancellationToken);
+        try
         {
-            if (evt.TryPickStart(out var startEvent))
+            while (true)
             {
-                model = startEvent.Message.Model;
-                inputTokens = startEvent.Message.Usage.InputTokens;
-                outputTokens = startEvent.Message.Usage.OutputTokens;
-                cacheReadTokens = startEvent.Message.Usage.CacheReadInputTokens ?? 0;
-                cacheCreationTokens = startEvent.Message.Usage.CacheCreationInputTokens ?? 0;
-                continue;
-            }
-
-            if (evt.TryPickContentBlockDelta(out var deltaEvent))
-            {
-                if (deltaEvent.Delta.TryPickText(out var textDelta))
+                bool moved;
+                try
                 {
-                    yield return new AgentTurnToken(textDelta.Text, null, null);
+                    moved = await enumerator.MoveNextAsync().ConfigureAwait(false);
                 }
-                continue;
-            }
-
-            if (evt.TryPickContentBlockStart(out var blockStartEvent))
-            {
-                if (blockStartEvent.ContentBlock.TryPickToolUse(out var toolUseBlock))
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
-                    var jsonArgs = JsonSerializer.Serialize(toolUseBlock.Input);
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Anthropic streaming call failed; emitting synthetic error finalizer.");
+                    streamErrored = true;
+                    break;
+                }
+
+                if (!moved) break;
+                var evt = enumerator.Current;
+
+                if (evt.TryPickStart(out var startEvent))
+                {
+                    model = startEvent.Message.Model;
+                    inputTokens = startEvent.Message.Usage.InputTokens;
+                    outputTokens = startEvent.Message.Usage.OutputTokens;
+                    cacheReadTokens = startEvent.Message.Usage.CacheReadInputTokens ?? 0;
+                    cacheCreationTokens = startEvent.Message.Usage.CacheCreationInputTokens ?? 0;
+                    continue;
+                }
+
+                if (evt.TryPickContentBlockDelta(out var deltaEvent))
+                {
+                    if (deltaEvent.Delta.TryPickText(out var textDelta))
+                    {
+                        yield return new AgentTurnToken(textDelta.Text, null, null);
+                    }
+                    continue;
+                }
+
+                if (evt.TryPickContentBlockStart(out var blockStartEvent))
+                {
+                    if (blockStartEvent.ContentBlock.TryPickToolUse(out var toolUseBlock))
+                    {
+                        var jsonArgs = JsonSerializer.Serialize(toolUseBlock.Input);
+                        yield return new AgentTurnToken(
+                            null,
+                            new AnthropicToolCall(toolUseBlock.ID, toolUseBlock.Name, jsonArgs),
+                            null);
+                    }
+                    continue;
+                }
+
+                if (evt.TryPickDelta(out var messageDeltaEvent))
+                {
+                    // Usage in the delta event is cumulative output usage.
+                    outputTokens = messageDeltaEvent.Usage.OutputTokens;
+                    cacheReadTokens = messageDeltaEvent.Usage.CacheReadInputTokens ?? cacheReadTokens;
+                    cacheCreationTokens = messageDeltaEvent.Usage.CacheCreationInputTokens ?? cacheCreationTokens;
+
+                    var sr = messageDeltaEvent.Delta.StopReason;
+                    if (sr is not null)
+                    {
+                        stopReason = sr.Raw();
+                    }
+                    continue;
+                }
+
+                if (evt.TryPickStop(out _))
+                {
+                    // Emit exactly one finalizer at the end of the stream.
                     yield return new AgentTurnToken(
                         null,
-                        new AnthropicToolCall(toolUseBlock.ID, toolUseBlock.Name, jsonArgs),
-                        null);
+                        null,
+                        new AgentTurnFinalizer(
+                            ClampToInt(inputTokens),
+                            ClampToInt(outputTokens),
+                            ClampToInt(cacheReadTokens),
+                            ClampToInt(cacheCreationTokens),
+                            model ?? request.Model,
+                            stopReason));
                 }
-                continue;
-            }
-
-            if (evt.TryPickDelta(out var messageDeltaEvent))
-            {
-                // Usage in the delta event is cumulative output usage.
-                outputTokens = messageDeltaEvent.Usage.OutputTokens;
-                cacheReadTokens = messageDeltaEvent.Usage.CacheReadInputTokens ?? cacheReadTokens;
-                cacheCreationTokens = messageDeltaEvent.Usage.CacheCreationInputTokens ?? cacheCreationTokens;
-
-                var sr = messageDeltaEvent.Delta.StopReason;
-                if (sr is not null)
-                {
-                    stopReason = sr.Raw();
-                }
-                continue;
-            }
-
-            if (evt.TryPickStop(out _))
-            {
-                // Emit exactly one finalizer at the end of the stream.
-                yield return new AgentTurnToken(
-                    null,
-                    null,
-                    new AgentTurnFinalizer(
-                        (int)inputTokens,
-                        (int)outputTokens,
-                        (int)cacheReadTokens,
-                        (int)cacheCreationTokens,
-                        model ?? request.Model,
-                        stopReason));
             }
         }
+        finally
+        {
+            await enumerator.DisposeAsync().ConfigureAwait(false);
+        }
+
+        if (streamErrored)
+        {
+            yield return new AgentTurnToken(
+                null,
+                null,
+                new AgentTurnFinalizer(
+                    ClampToInt(inputTokens),
+                    ClampToInt(outputTokens),
+                    ClampToInt(cacheReadTokens),
+                    ClampToInt(cacheCreationTokens),
+                    model ?? request.Model,
+                    "error"));
+        }
     }
+
+    private static int ClampToInt(long value) => value > int.MaxValue ? int.MaxValue : (int)value;
 
     private static List<MessageParam> MapMessages(IReadOnlyList<AnthropicMessage> messages)
     {

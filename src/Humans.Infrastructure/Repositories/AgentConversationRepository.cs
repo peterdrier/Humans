@@ -58,6 +58,14 @@ public sealed class AgentConversationRepository : IAgentConversationRepository
             .Take(take)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<AgentConversation>> ListForUserWithMessagesAsync(Guid userId, CancellationToken cancellationToken) =>
+        await _db.AgentConversations
+            .AsNoTracking()
+            .Where(c => c.UserId == userId)
+            .Include(c => c.Messages.OrderBy(m => m.CreatedAt))
+            .OrderByDescending(c => c.LastMessageAt)
+            .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<AgentConversation>> ListAllAsync(
         bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
         CancellationToken cancellationToken)

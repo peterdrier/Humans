@@ -12,6 +12,13 @@ public interface IAgentConversationRepository
 
     Task<IReadOnlyList<AgentConversation>> ListForUserAsync(Guid userId, int take, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// GDPR-export variant: includes <see cref="AgentConversation.Messages"/>
+    /// ordered by <c>CreatedAt</c> so the export contains full transcripts.
+    /// Do not use from list/grid pages — message hydration is wasteful there.
+    /// </summary>
+    Task<IReadOnlyList<AgentConversation>> ListForUserWithMessagesAsync(Guid userId, CancellationToken cancellationToken);
+
     Task<IReadOnlyList<AgentConversation>> ListAllAsync(
         bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
         CancellationToken cancellationToken);
