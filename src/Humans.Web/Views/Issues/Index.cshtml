@@ -19,14 +19,14 @@
     <!-- Filter bar -->
     <form method="get" class="issues-filter-form d-flex gap-2 mb-3 flex-wrap align-items-center">
         <div class="btn-group btn-group-sm" role="group" aria-label="Quick filters">
-            <a class="btn btn-outline-secondary @(Model.StatusFilter is null && Model.ReporterFilter is null ? "active" : "")"
+            <a class="btn btn-outline-secondary @(Model.View == IssueViewMode.All ? "active" : "")"
                asp-action="Index">@Localizer["Issue_All"]</a>
-            <a class="btn btn-outline-secondary @(Model.StatusFilter == IssueStatus.Open ? "active" : "")"
-               asp-action="Index" asp-route-status="@IssueStatus.Open">@Localizer["Issue_Open"]</a>
-            <a class="btn btn-outline-secondary @(Model.ReporterFilter == Model.CurrentUserId ? "active" : "")"
-               asp-action="Index" asp-route-reporter="@Model.CurrentUserId">@Localizer["Issue_Mine"]</a>
-            <a class="btn btn-outline-secondary @(Model.StatusFilter == IssueStatus.Resolved ? "active" : "")"
-               asp-action="Index" asp-route-status="@IssueStatus.Resolved">@Localizer["Issue_Closed"]</a>
+            <a class="btn btn-outline-secondary @(Model.View == IssueViewMode.Open ? "active" : "")"
+               asp-action="Index" asp-route-view="@IssueViewMode.Open">@Localizer["Issue_Open"]</a>
+            <a class="btn btn-outline-secondary @(Model.View == IssueViewMode.Mine ? "active" : "")"
+               asp-action="Index" asp-route-view="@IssueViewMode.Mine">@Localizer["Issue_Mine"]</a>
+            <a class="btn btn-outline-secondary @(Model.View == IssueViewMode.Closed ? "active" : "")"
+               asp-action="Index" asp-route-view="@IssueViewMode.Closed">@Localizer["Issue_Closed"]</a>
         </div>
 
         <select name="category" class="form-select form-select-sm" style="width: auto;">
@@ -88,7 +88,7 @@
             @Localizer["Issue_Apply"]
         </button>
 
-        @if (Model.StatusFilter.HasValue || Model.CategoryFilter.HasValue
+        @if (Model.View != IssueViewMode.All || Model.CategoryFilter.HasValue
             || Model.ReporterFilter.HasValue || !string.IsNullOrEmpty(Model.SectionFilter)
             || !string.IsNullOrEmpty(Model.SearchText))
         {

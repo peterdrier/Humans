@@ -45,11 +45,24 @@ public class SubmitIssueViewModel
     public LocalDate? DueDate { get; set; }
 }
 
+/// <summary>
+/// Quick-filter "view" pill for the Issues index page. Mutually exclusive
+/// with itself (only one is active at a time). Keeps the URL clean and lets
+/// "Open" mean "everything not closed" instead of the literal Open enum value.
+/// </summary>
+public enum IssueViewMode
+{
+    All,
+    Open,    // Statuses ∈ {Triage, Open, InProgress} — matches the nav-badge "actionable" set
+    Mine,    // ReporterUserId = current user
+    Closed   // Statuses ∈ {Resolved, WontFix, Duplicate}
+}
+
 public class IssuePageViewModel
 {
     public List<IssueListItemViewModel> Issues { get; set; } = new();
 
-    public IssueStatus? StatusFilter { get; set; }
+    public IssueViewMode View { get; set; } = IssueViewMode.All;
     public IssueCategory? CategoryFilter { get; set; }
     public string? SectionFilter { get; set; }
     public Guid? ReporterFilter { get; set; }

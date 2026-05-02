@@ -57,7 +57,7 @@ public class IssuesController : HumansControllerBase
 
     [HttpGet("")]
     public async Task<IActionResult> Index(
-        IssueStatus? status,
+        IssueViewMode? view,
         IssueCategory? category,
         string? section,
         Guid? reporter,
@@ -69,12 +69,31 @@ public class IssuesController : HumansControllerBase
 
         var roles = ClaimsRoles();
         var isAdmin = User.IsInRole(RoleNames.Admin);
+        var viewMode = view ?? IssueViewMode.All;
+
+        // "Open" expands to the non-terminal set so the count matches the
+        // nav badge's actionable definition; "Closed" inverts to terminal.
+        // "Mine" forces ReporterUserId to the current user — allowed for any
+        // user since filtering on your own reports is never a privacy escalation.
+        var statuses = viewMode switch
+        {
+            IssueViewMode.Open => new[] { IssueStatus.Triage, IssueStatus.Open, IssueStatus.InProgress },
+            IssueViewMode.Closed => new[] { IssueStatus.Resolved, IssueStatus.WontFix, IssueStatus.Duplicate },
+            _ => null
+        };
+
+        // Admin reporter dropdown is independent of the view-mode buttons.
+        // Non-admins may only filter by their own ID (the Mine button); the
+        // dropdown is never rendered for them.
+        Guid? reporterFilter = viewMode == IssueViewMode.Mine
+            ? user.Id
+            : (isAdmin ? reporter : null);
 
         var filter = new IssueListFilter(
-            Statuses: status.HasValue ? new[] { status.Value } : null,
+            Statuses: statuses,
             Categories: category.HasValue ? new[] { category.Value } : null,
             Sections: !string.IsNullOrWhiteSpace(section) ? new string?[] { section } : null,
-            ReporterUserId: isAdmin ? reporter : null,
+            ReporterUserId: reporterFilter,
             AssigneeUserId: null,
             SearchText: !string.IsNullOrWhiteSpace(search) ? search : null,
             Limit: 200);
@@ -111,7 +130,7 @@ public class IssuesController : HumansControllerBase
         var vm = new IssuePageViewModel
         {
             Issues = rows,
-            StatusFilter = status,
+            View = viewMode,
             CategoryFilter = category,
             SectionFilter = section,
             ReporterFilter = isAdmin ? reporter : null,
