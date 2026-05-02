@@ -33,7 +33,7 @@ See the [README](README.md#development-setup) for local setup instructions.
 
 ## Code Standards
 
-- Follow the conventions in `docs/architecture/coding-rules.md`
+- Follow the project rules cataloged in `memory/INDEX.md` (atomic, one rule per file under `memory/<bucket>/`). Read the architecture story in `docs/architecture/design-rules.md` and the reviewer reject rules in `docs/architecture/code-review-rules.md`.
 - Every new page must have a navigation link (no orphan pages)
 - Use `nameof()` and constants instead of magic strings
 - Use NodaTime for all date/time handling

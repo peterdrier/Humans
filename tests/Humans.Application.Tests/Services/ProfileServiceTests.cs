@@ -1671,8 +1671,8 @@ public class ProfileServiceTests : IDisposable
     [HumansFact]
     public async Task ContributeForUserAsync_EmitsIsOAuthKey_SourcedFromProviderColumn()
     {
-        // The JSON key stays "IsOAuth" per coding-rules.md (never rename serialized
-        // fields — exports are JSON files users download). The value sources from
+        // The JSON key stays "IsOAuth" per memory/code/no-rename-serialized-fields.md
+        // (exports are JSON files users download). The value sources from
         // (Provider != null) — pre-PR-4 semantics meaning "this row has an OAuth
         // login attached". The PR 4 spec's Task 17 swapped both the JSON key and
         // the value source (e.IsGoogle); both have been reverted so the export
@@ -1702,8 +1702,8 @@ public class ProfileServiceTests : IDisposable
             string.Equals(s.SectionName, Humans.Application.Interfaces.Gdpr.GdprExportSections.UserEmails, StringComparison.Ordinal));
         var json = System.Text.Json.JsonSerializer.Serialize(userEmailsSlice.Data);
         json.Should().Contain("\"IsOAuth\":true");
-        // Legacy JSON key preserved for the C# IsPrimary rename (coding-rules.md
-        // never-rename-serialized-fields). Mirrors EF's HasColumnName pin on the
+        // Legacy JSON key preserved for the C# IsPrimary rename
+        // (memory/code/no-rename-serialized-fields.md). Mirrors EF's HasColumnName pin on the
         // renamed property — the GDPR export must keep emitting "IsNotificationTarget".
         json.Should().Contain("\"IsNotificationTarget\":true");
         json.Should().NotContain("\"IsPrimary\":");

@@ -74,7 +74,8 @@ jobs:
             Anchor your review on the project's own rule documents (read them
             from the checkout):
               - CLAUDE.md
-              - docs/architecture/coding-rules.md
+              - memory/INDEX.md (atomic project rules; fetch atoms whose
+                description matches the change under review)
               - docs/architecture/code-review-rules.md
               - docs/architecture/design-rules.md
 

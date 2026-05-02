@@ -138,7 +138,7 @@ Domain          Entities, Enums, Value Objects
 | [Conventions](architecture/conventions.md) | Domain invariants, transactions, integration, time/config, rendering (Razor vs fetch), testing, exception rule, smell checklist |
 | [Dependency Graph](architecture/dependency-graph.md) | Service-to-service dependency graph, current vs target edges, circular dependency analysis |
 | [Data Model](architecture/data-model.md) | Entities, relationships, serialization notes |
-| [Coding Rules](architecture/coding-rules.md) | NodaTime, JSON, enums, string comparisons, nav, magic strings |
+| [Project Rules Catalog](../memory/INDEX.md) | Atomic rules (one per file under `memory/<bucket>/`). `architecture/coding-rules.md` is now a stub redirecting here. |
 | [Code Review Rules](architecture/code-review-rules.md) | Hard-reject rules for code review |
 | [Service / Data Access Map](architecture/service-data-access-map.md) | Per-service table access inventory |
 | [Code Analysis](architecture/code-analysis.md) | Analyzers, ReSharper configuration |

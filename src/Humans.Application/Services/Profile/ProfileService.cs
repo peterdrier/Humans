@@ -866,8 +866,8 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         {
             e.Email,
             e.IsVerified,
-            // JSON keys stay "IsOAuth" and "IsNotificationTarget" per coding-rules.md
-            // "Never Rename Fields in Serialized Objects" — the GDPR export is a JSON
+            // JSON keys stay "IsOAuth" and "IsNotificationTarget" per
+            // memory/code/no-rename-serialized-fields.md — the GDPR export is a JSON
             // file users download. IsOAuth sources from (Provider != null) — the
             // pre-PR-4 semantics meaning "this row has an OAuth login attached".
             // The PR 4 spec's Task 17 swapped both the JSON key (rename) and the
