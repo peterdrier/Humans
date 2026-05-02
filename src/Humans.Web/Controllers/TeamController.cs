@@ -91,6 +91,7 @@ public class TeamController : HumansControllerBase
             MyTeams = directory.MyTeams.Select(MapTeamSummary).ToList(),
             Departments = directory.Departments.Select(MapTeamSummary).ToList(),
             SystemTeams = directory.SystemTeams.Select(MapTeamSummary).ToList(),
+            HiddenTeams = directory.HiddenTeams.Select(MapTeamSummary).ToList(),
             CanCreateTeam = directory.CanCreateTeam,
             IsAuthenticated = directory.IsAuthenticated
         };
@@ -106,6 +107,7 @@ public class TeamController : HumansControllerBase
         Slug = team.Slug,
         MemberCount = team.MemberCount,
         IsSystemTeam = team.IsSystemTeam,
+        IsHidden = team.IsHidden,
         RequiresApproval = team.RequiresApproval,
         IsPublicPage = team.IsPublicPage,
         IsCurrentUserMember = team.IsCurrentUserMember,

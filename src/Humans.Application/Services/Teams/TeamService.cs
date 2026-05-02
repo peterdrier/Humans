@@ -279,7 +279,8 @@ public sealed class TeamService : ITeamService, IUserDataContributor
                 CanCreateTeam: false,
                 MyTeams: [],
                 Departments: publicDepartments,
-                SystemTeams: []);
+                SystemTeams: [],
+                HiddenTeams: []);
         }
 
         var isBoardMember = await RoleAssignmentService.IsUserBoardMemberAsync(userId.Value, cancellationToken);
@@ -305,13 +306,18 @@ public sealed class TeamService : ITeamService, IUserDataContributor
             .ToList();
 
         var departments = summaries
-            .Where(t => !t.IsCurrentUserMember && !t.IsSystemTeam)
+            .Where(t => !t.IsCurrentUserMember && !t.IsSystemTeam && !t.IsHidden)
             .OrderBy(t => t.SortKey, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var systemTeams = summaries
-            .Where(t => !t.IsCurrentUserMember && t.IsSystemTeam)
+            .Where(t => !t.IsCurrentUserMember && t.IsSystemTeam && !t.IsHidden)
             .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var hiddenTeams = summaries
+            .Where(t => !t.IsCurrentUserMember && t.IsHidden)
+            .OrderBy(t => t.SortKey, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         return new TeamDirectoryResult(
@@ -319,7 +325,8 @@ public sealed class TeamService : ITeamService, IUserDataContributor
             CanCreateTeam: canCreateTeam,
             MyTeams: myTeams,
             Departments: departments,
-            SystemTeams: systemTeams);
+            SystemTeams: systemTeams,
+            HiddenTeams: hiddenTeams);
     }
 
     public async Task<TeamDetailResult?> GetTeamDetailAsync(
@@ -2255,6 +2262,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor
             team.Slug,
             team.Members.Count,
             team.IsSystemTeam,
+            team.IsHidden,
             team.RequiresApproval,
             team.IsPublicPage,
             isCurrentUserMember,

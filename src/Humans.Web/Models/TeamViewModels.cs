@@ -15,6 +15,7 @@ public class TeamIndexViewModel
     public List<TeamSummaryViewModel> MyTeams { get; set; } = [];
     public List<TeamSummaryViewModel> Departments { get; set; } = [];
     public List<TeamSummaryViewModel> SystemTeams { get; set; } = [];
+    public List<TeamSummaryViewModel> HiddenTeams { get; set; } = [];
     public bool CanCreateTeam { get; set; }
     public bool IsAuthenticated { get; set; }
 }
@@ -27,6 +28,7 @@ public class TeamSummaryViewModel
     public string Slug { get; set; } = string.Empty;
     public int MemberCount { get; set; }
     public bool IsSystemTeam { get; set; }
+    public bool IsHidden { get; set; }
     public bool RequiresApproval { get; set; }
     public bool IsPublicPage { get; set; }
     public bool IsCurrentUserMember { get; set; }

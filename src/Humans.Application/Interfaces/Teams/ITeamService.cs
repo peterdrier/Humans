@@ -22,6 +22,7 @@ public record TeamDirectorySummary(
     string Slug,
     int MemberCount,
     bool IsSystemTeam,
+    bool IsHidden,
     bool RequiresApproval,
     bool IsPublicPage,
     bool IsCurrentUserMember,
@@ -37,7 +38,8 @@ public record TeamDirectoryResult(
     bool CanCreateTeam,
     IReadOnlyList<TeamDirectorySummary> MyTeams,
     IReadOnlyList<TeamDirectorySummary> Departments,
-    IReadOnlyList<TeamDirectorySummary> SystemTeams);
+    IReadOnlyList<TeamDirectorySummary> SystemTeams,
+    IReadOnlyList<TeamDirectorySummary> HiddenTeams);
 
 public record TeamDetailMemberSummary(
     Guid UserId,
