@@ -38,15 +38,17 @@ public class IssuesApiController : ControllerBase
         [FromQuery] IssueCategory? category,
         [FromQuery] string? section,
         [FromQuery] Guid? assignee,
+        [FromQuery] Guid? reporter = null,
+        [FromQuery] string? search = null,
         [FromQuery] int limit = 50)
     {
         var filter = new IssueListFilter(
             Statuses: status.HasValue ? new[] { status.Value } : null,
             Categories: category.HasValue ? new[] { category.Value } : null,
             Sections: section is not null ? new string?[] { section } : null,
-            ReporterUserId: null,
+            ReporterUserId: reporter,
             AssigneeUserId: assignee,
-            SearchText: null,
+            SearchText: string.IsNullOrWhiteSpace(search) ? null : search,
             Limit: limit);
 
         var issues = await _issues.GetIssueListAsync(

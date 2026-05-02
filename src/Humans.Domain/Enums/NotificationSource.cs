@@ -97,5 +97,8 @@ public enum NotificationSource
     IssueStatusChanged = 30,
 
     /// <summary>An issue was assigned to a user (notifies the new assignee).</summary>
-    IssueAssigned = 31
+    IssueAssigned = 31,
+
+    /// <summary>A new issue was submitted (notifies admins + section role-holders).</summary>
+    IssueSubmitted = 32
 }

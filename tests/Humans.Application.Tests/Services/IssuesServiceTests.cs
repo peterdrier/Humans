@@ -146,6 +146,44 @@ public class IssuesServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task SubmitIssueAsync_notifies_admins_and_section_handlers_excluding_reporter()
+    {
+        var reporterId = Guid.NewGuid();
+        var adminId = Guid.NewGuid();
+        var ticketAdminId = Guid.NewGuid();
+        _dbContext.Users.Add(new User { Id = reporterId, Email = "r@x", DisplayName = "R" });
+        await _dbContext.SaveChangesAsync();
+
+        _roleService
+            .GetActiveUserIdsInRoleAsync(RoleNames.Admin, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>([adminId, reporterId]));
+        _roleService
+            .GetActiveUserIdsInRoleAsync(RoleNames.TicketAdmin, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>([ticketAdminId]));
+
+        IReadOnlyList<Guid>? capturedRecipients = null;
+        await _notificationService
+            .SendAsync(
+                NotificationSource.IssueSubmitted,
+                Arg.Any<NotificationClass>(),
+                Arg.Any<NotificationPriority>(),
+                Arg.Any<string>(),
+                Arg.Do<IReadOnlyList<Guid>>(r => capturedRecipients = r),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>());
+
+        await _service.SubmitIssueAsync(
+            reporterId, IssueCategory.Bug, "Title", "Desc",
+            section: IssueSectionRouting.Tickets,
+            pageUrl: "/Tickets", userAgent: null, additionalContext: null,
+            screenshot: null);
+
+        capturedRecipients.Should().NotBeNull();
+        capturedRecipients.Should().BeEquivalentTo(new[] { adminId, ticketAdminId });
+        capturedRecipients.Should().NotContain(reporterId);
+    }
+
+    [HumansFact]
     public async Task SubmitIssueAsync_with_oversized_screenshot_throws()
     {
         var userId = Guid.NewGuid();

@@ -167,6 +167,8 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         _issuesBadge.InvalidateMany(
             await ResolveBadgeUserIdsAsync(reporterUserId, section, null, ct));
 
+        await DispatchSubmittedNotificationAsync(issue, ct);
+
         _logger.LogInformation(
             "Issue {IssueId} submitted by {UserId}: {Category}/{Section}",
             issueId, reporterUserId, category, section ?? "(unknown)");
@@ -714,6 +716,51 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         {
             _logger.LogError(ex,
                 "Failed to dispatch IssueStatusChanged notification for issue {IssueId}",
+                issue.Id);
+        }
+    }
+
+    private async Task DispatchSubmittedNotificationAsync(Issue issue, CancellationToken ct)
+    {
+        // Fan out to Admins + section role-holders so handlers get an in-app
+        // ping instead of relying on the nav-badge alone (per
+        // docs/features/28-issues-system.md US-28.4). The reporter is
+        // excluded so a handler filing their own issue doesn't notify
+        // themselves.
+        var recipients = new HashSet<Guid>();
+
+        foreach (var id in await _roles.GetActiveUserIdsInRoleAsync(RoleNames.Admin, ct))
+        {
+            if (id != issue.ReporterUserId) recipients.Add(id);
+        }
+
+        foreach (var role in IssueSectionRouting.RolesFor(issue.Section))
+        {
+            foreach (var id in await _roles.GetActiveUserIdsInRoleAsync(role, ct))
+            {
+                if (id != issue.ReporterUserId) recipients.Add(id);
+            }
+        }
+
+        if (recipients.Count == 0) return;
+
+        try
+        {
+            await _notifications.SendAsync(
+                NotificationSource.IssueSubmitted,
+                NotificationClass.Actionable,
+                NotificationPriority.Normal,
+                $"New issue filed: {issue.Title}",
+                recipients.ToList(),
+                body: issue.Description,
+                actionUrl: $"/Issues/{issue.Id}",
+                actionLabel: "View issue",
+                cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to dispatch IssueSubmitted notification for issue {IssueId}",
                 issue.Id);
         }
     }

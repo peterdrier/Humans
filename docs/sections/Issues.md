@@ -143,7 +143,7 @@ Two controllers serve this section:
 
 ## Triggers
 
-- When an issue is submitted, the nav-badge actionable count refreshes for every handler whose role maps to the issue's `Section` (no in-app notification — handlers see the new item in their queue).
+- When an issue is submitted, an in-app `NotificationSource.IssueSubmitted` notification fans out to every handler for whom the issue is in-queue (Admins + role-holders of `IssueSectionRouting.RolesFor(issue.Section)`), excluding the reporter. The nav-badge actionable count for those same handlers is invalidated in the same step.
 - When a comment is posted (by reporter or handler), a notification fan-out + email targets the **other party** — handlers when the reporter comments, the reporter when a handler comments — using `IUserEmailService.GetNotificationTargetEmailsAsync` to resolve the effective notification email and queueing a localized email through `IEmailService` (the production binding is `OutboxEmailService`, so emails go through the email outbox).
 - When status changes, the reporter and current assignee are notified.
 - When an issue is assigned, the new assignee is notified.
@@ -158,7 +158,7 @@ Two controllers serve this section:
 - **Profiles:** `IUserEmailService.GetNotificationTargetEmailsAsync` — resolves the effective notification email for the reporter when a handler comments, and for the assignee on status/assignment changes.
 - **Auth:** `IRoleAssignmentService` — used by the section-routing logic to fan out notifications to the set of users who currently hold a role mapped to the issue's `Section`.
 - **Email:** `IEmailService.SendIssueCommentAsync` — comment-thread emails (queued through the outbox in production).
-- **Notifications:** `INotificationService.SendAsync` — `NotificationSource.IssueComment`, `NotificationSource.IssueStatusChanged`, `NotificationSource.IssueAssigned` in-app notifications.
+- **Notifications:** `INotificationService.SendAsync` — `NotificationSource.IssueSubmitted`, `NotificationSource.IssueComment`, `NotificationSource.IssueStatusChanged`, `NotificationSource.IssueAssigned` in-app notifications.
 - **Audit Log:** `IAuditLogService.LogAsync` — every mutation (`AuditAction.IssueStatusChanged`, `AuditAction.IssueAssigneeChanged`, `AuditAction.IssueSectionChanged`, `AuditAction.IssueGitHubLinked`).
 - **Caching:** `INavBadgeCacheInvalidator` — invalidated whenever the actionable count for a viewer could have changed.
 - **GDPR:** implements `IUserDataContributor` to export the user's reported issues and their comments under `GdprExportSections.Issues`.

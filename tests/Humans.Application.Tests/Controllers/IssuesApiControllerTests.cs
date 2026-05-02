@@ -122,6 +122,64 @@ public class IssuesApiControllerTests
         captured!.Sections.Should().BeEquivalentTo(new string?[] { "Tickets" });
     }
 
+    [HumansFact]
+    public async Task List_filters_by_reporter()
+    {
+        IssueListFilter? captured = null;
+        _issues
+            .GetIssueListAsync(
+                Arg.Do<IssueListFilter>(f => captured = f),
+                Arg.Any<Guid>(), Arg.Any<IReadOnlyList<string>>(),
+                Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Issue>>(Array.Empty<Issue>()));
+
+        var reporterId = Guid.NewGuid();
+        await _sut.List(
+            status: null, category: null, section: null, assignee: null,
+            reporter: reporterId);
+
+        captured.Should().NotBeNull();
+        captured!.ReporterUserId.Should().Be(reporterId);
+    }
+
+    [HumansFact]
+    public async Task List_filters_by_search_text()
+    {
+        IssueListFilter? captured = null;
+        _issues
+            .GetIssueListAsync(
+                Arg.Do<IssueListFilter>(f => captured = f),
+                Arg.Any<Guid>(), Arg.Any<IReadOnlyList<string>>(),
+                Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Issue>>(Array.Empty<Issue>()));
+
+        await _sut.List(
+            status: null, category: null, section: null, assignee: null,
+            search: "duplicate");
+
+        captured.Should().NotBeNull();
+        captured!.SearchText.Should().Be("duplicate");
+    }
+
+    [HumansFact]
+    public async Task List_treats_blank_search_as_unset()
+    {
+        IssueListFilter? captured = null;
+        _issues
+            .GetIssueListAsync(
+                Arg.Do<IssueListFilter>(f => captured = f),
+                Arg.Any<Guid>(), Arg.Any<IReadOnlyList<string>>(),
+                Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Issue>>(Array.Empty<Issue>()));
+
+        await _sut.List(
+            status: null, category: null, section: null, assignee: null,
+            search: "   ");
+
+        captured.Should().NotBeNull();
+        captured!.SearchText.Should().BeNull();
+    }
+
     // ==========================================================================
     // Get
     // ==========================================================================
