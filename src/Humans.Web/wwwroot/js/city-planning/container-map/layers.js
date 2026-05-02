@@ -1,8 +1,8 @@
 // MapLibre layer setup for the container placement map.
 // addBackgroundLayers mirrors the read-only styling from city-planning/layers.js.
 // addContainerLayers adds container-specific sources and layers.
-import { addOfficialZonesLayers } from '../city-planning/shared/official-zones-layer.js';
-import { SOUND_ZONE_FILL_EXPR, SOUND_ZONE_LINE_EXPR } from '../city-planning/shared/sound-zone-colors.js';
+import { addOfficialZonesLayers } from '../shared/official-zones-layer.js';
+import { SOUND_ZONE_FILL_EXPR, SOUND_ZONE_LINE_EXPR } from '../shared/sound-zone-colors.js';
 
 /**
  * Adds read-only background layers: camp polygons and official zones.

@@ -1,5 +1,5 @@
 // Server-side values injected via data-* attributes on #map.
-import { ESRI_TILES, MAP_BOUNDS } from '../city-planning/shared/map-constants.js';
+import { ESRI_TILES, MAP_BOUNDS } from '../shared/map-constants.js';
 
 const el = document.getElementById('map');
 
