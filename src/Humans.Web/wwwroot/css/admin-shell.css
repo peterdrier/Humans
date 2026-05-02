@@ -462,7 +462,11 @@ body.admin-shell .split-panels {
    items are off-screen; site.js toggles data-scroll-start/end on .sidebar
    to show/hide the gradients and scrolls the active item into view. */
 @media (max-width: 767.98px) {
-    body.admin-shell .app-shell { grid-template-columns: 1fr; }
+    /* minmax(0, 1fr) instead of 1fr — without min:0, the grid column
+       sizes to the auto-min-content of .sidebar-scroll's flex children
+       (which have flex-shrink:0), so the column expands past the viewport
+       and the inner overflow:auto never triggers. */
+    body.admin-shell .app-shell { grid-template-columns: minmax(0, 1fr); }
     body.admin-shell .stats { grid-template-columns: 1fr; }
     body.admin-shell .split-panels { grid-template-columns: 1fr; }
 
@@ -479,6 +483,8 @@ body.admin-shell .split-panels {
         border-right: 0;
         border-bottom: 1px solid rgba(255,245,221,0.1);
         position: relative;
+        min-width: 0;
+        overflow: hidden;
     }
     body.admin-shell .sidebar-scroll {
         flex-direction: row;
