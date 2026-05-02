@@ -61,6 +61,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`discord-release-notes-format`](process/discord-release-notes-format.md) — audience-grouped (coordinators/volunteers/under-the-hood/known-issues), plain-language, no emojis
 - [`dotnet-verbosity-quiet`](process/dotnet-verbosity-quiet.md) — always `-v quiet` on `dotnet build`/`test`; never pipe through `tail`/`head`/`grep`
 - [`ef-migration-review-gate`](process/ef-migration-review-gate.md) — MANDATORY. Run `.claude/agents/ef-migration-reviewer.md` before commit/PR
+- [`feature-spec-on-new-feature`](process/feature-spec-on-new-feature.md) — when implementing a non-trivial new feature, create `docs/features/<feature>.md` in the same PR (covers create-new; post-fix-doc-check covers update-existing)
 - [`issue-comments-mandatory`](process/issue-comments-mandatory.md) — HARD RULE (hook). Always fetch issues/PRs with comments; Peter's comments often flip OP intent
 - [`issue-no-non-peter-without-approval`](process/issue-no-non-peter-without-approval.md) — HARD RULE (hook). If `.author.login != peterdrier`, STOP and get Peter's input first
 - [`issue-refs-qualified`](process/issue-refs-qualified.md) — `peterdrier#N` (fork) or `nobodies-collective#N` (upstream); pass `--repo` to every `gh` call

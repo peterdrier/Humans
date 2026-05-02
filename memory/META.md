@@ -1,11 +1,19 @@
 # How `memory/` Works
 
-A flat-ish catalog of atomic project rules. Each rule lives in its own file with frontmatter + a `Why:` / `How to apply:` body. `INDEX.md` is the table of contents — it's the file that gets pulled into Claude's always-loaded context via `CLAUDE.md`.
+A flat-ish catalog of atomic project rules. Each rule lives in its own file with frontmatter + a `Why:` / `How to apply:` body. `INDEX.md` is the on-demand catalog Claude consults when a task needs to check project rules — not auto-loaded itself. `CLAUDE.md` (which IS auto-loaded) tells Claude when and why to read `INDEX.md`, and Claude then reads the specific atom on demand.
 
-This pattern replaces three earlier mechanisms:
-- The external Claude memory system (per-machine, didn't sync across Peter's Windows / NUC / laptop)
-- Long bullet sections in `CLAUDE.md` (paid context every turn even when irrelevant)
-- Long bullet sections in `coding-rules.md` (not auto-loaded; rules buried in prose)
+## Design intent
+
+Two goals drive the structure, and both are non-negotiable:
+
+1. **Token efficiency.** Only `CLAUDE.md` (~80 lines, orientation + pointers) is paid every turn. `INDEX.md` is a 1-read scan when a rule might apply; the atom body is a 2nd read when one does. The old long-bullet `CLAUDE.md` paid context for every rule on every turn, even when 95% were irrelevant to the current task.
+2. **Portability across machines.** All rules live in the repo and sync via git across Peter's Windows / NUC / laptop. The previous external Claude memory at `~/.claude/projects/H--source-Humans/memory/` was per-machine — a rule learned in one session was invisible from any other machine. That's the bug this directory exists to fix; preserve it. New rules go here, not there.
+
+## What this replaces
+
+- The external Claude memory system (per-machine, didn't sync across Peter's Windows / NUC / laptop).
+- Long bullet sections in `CLAUDE.md` (paid context every turn even when irrelevant).
+- Long bullet sections in `coding-rules.md` (not auto-loaded; rules buried in prose).
 
 ## When to add a rule here vs. somewhere else
 

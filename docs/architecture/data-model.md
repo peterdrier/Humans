@@ -131,9 +131,9 @@ CampaignGrant (Campaigns)
 ## Cross-cutting serialization rules
 
 - All entities use `System.Text.Json` serialization.
-- All dates and times use NodaTime (`Instant`, `LocalDate`, `LocalDateTime`, `OffsetDateTime`) — never `DateTime` or `DateTimeOffset`. See [`coding-rules.md`](coding-rules.md).
+- All dates and times use NodaTime (`Instant`, `LocalDate`, `LocalDateTime`, `OffsetDateTime`) — never `DateTime` or `DateTimeOffset`. See [`memory/code/nodatime-for-dates.md`](../../memory/code/nodatime-for-dates.md).
 - Enums are stored as strings via `HasConversion<string>()` unless otherwise noted on the owning section's doc.
-- Entity serialization rules: see [`coding-rules.md`](coding-rules.md) — in particular: never rename serialized fields; never remove "unused" properties (reflection); always include the full set of required fields at serialization time.
+- Entity serialization rules — never rename serialized fields ([`memory/code/no-rename-serialized-fields.md`](../../memory/code/no-rename-serialized-fields.md)); never remove "unused" properties because they may be reflection-bound ([`memory/code/no-remove-unused-properties.md`](../../memory/code/no-remove-unused-properties.md)); private setters need `[JsonInclude]` and polymorphic types need `[JsonPolymorphic]` + `[JsonDerivedType]` ([`memory/code/json-serialization.md`](../../memory/code/json-serialization.md)).
 
 ## Append-only entities (§12)
 
