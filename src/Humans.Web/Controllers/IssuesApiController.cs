@@ -145,7 +145,9 @@ public class IssuesApiController : ControllerBase
         catch (InvalidOperationException)
         {
             // Service throws InvalidOperationException when the issue id
-            // doesn't resolve to a row — surface as 404.
+            // doesn't resolve to a row — surface as 404. Log at Warning so
+            // the event stays visible in prod (always-log-problems.md).
+            _logger.LogWarning("Issue {IssueId} not found during API PostComment", id);
             return NotFound();
         }
         catch (Exception ex)
@@ -167,7 +169,9 @@ public class IssuesApiController : ControllerBase
         catch (InvalidOperationException)
         {
             // Service throws InvalidOperationException when the issue id
-            // doesn't resolve to a row — surface as 404.
+            // doesn't resolve to a row — surface as 404. Log at Warning so
+            // the event stays visible in prod (always-log-problems.md).
+            _logger.LogWarning("Issue {IssueId} not found during API UpdateStatus", id);
             return NotFound();
         }
         catch (Exception ex)
@@ -188,7 +192,9 @@ public class IssuesApiController : ControllerBase
         catch (InvalidOperationException)
         {
             // Service throws InvalidOperationException when the issue id
-            // doesn't resolve to a row — surface as 404.
+            // doesn't resolve to a row — surface as 404. Log at Warning so
+            // the event stays visible in prod (always-log-problems.md).
+            _logger.LogWarning("Issue {IssueId} not found during API UpdateAssignee", id);
             return NotFound();
         }
         catch (Exception ex)
@@ -208,11 +214,18 @@ public class IssuesApiController : ControllerBase
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
         {
+            // Log at Warning so the event stays visible in prod
+            // (always-log-problems.md). Exception object dropped — the
+            // race-style "not found" carries no useful stack.
+            _logger.LogWarning("Issue {IssueId} not found during API UpdateSection: {Reason}", id, ex.Message);
             return NotFound();
         }
         catch (InvalidOperationException ex)
         {
             // State-machine violation (e.g. issue is terminal) — surface as 422.
+            // Log at Warning per always-log-problems.md so reject events are
+            // visible in the prod log viewer.
+            _logger.LogWarning("Issue {IssueId} API UpdateSection rejected: {Reason}", id, ex.Message);
             return UnprocessableEntity(new { error = ex.Message });
         }
         catch (Exception ex)
@@ -233,7 +246,9 @@ public class IssuesApiController : ControllerBase
         catch (InvalidOperationException)
         {
             // Service throws InvalidOperationException when the issue id
-            // doesn't resolve to a row — surface as 404.
+            // doesn't resolve to a row — surface as 404. Log at Warning so
+            // the event stays visible in prod (always-log-problems.md).
+            _logger.LogWarning("Issue {IssueId} not found during API SetGitHubIssue", id);
             return NotFound();
         }
         catch (Exception ex)

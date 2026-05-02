@@ -320,6 +320,7 @@ public class IssuesController : HumansControllerBase
         {
             // Race: issue existed at the null-check above but was deleted
             // before the mutation reached the service.
+            _logger.LogWarning("Issue {IssueId} not found during PostComment (deleted in race)", id);
             return NotFound();
         }
         catch (Exception ex)
@@ -352,6 +353,7 @@ public class IssuesController : HumansControllerBase
         {
             // Race: issue existed at the null-check above but was deleted
             // before the mutation reached the service.
+            _logger.LogWarning("Issue {IssueId} not found during UpdateStatus (deleted in race)", id);
             return NotFound();
         }
         catch (Exception ex)
@@ -384,6 +386,7 @@ public class IssuesController : HumansControllerBase
         {
             // Race: issue existed at the null-check above but was deleted
             // before the mutation reached the service.
+            _logger.LogWarning("Issue {IssueId} not found during UpdateAssignee (deleted in race)", id);
             return NotFound();
         }
         catch (Exception ex)
@@ -417,7 +420,10 @@ public class IssuesController : HumansControllerBase
             // UpdateSectionAsync throws for both "not found" and "section is
             // not editable on a terminal issue" — surface the message so a
             // handler trying to re-route a closed issue sees the actual reason
-            // rather than a silent 404.
+            // rather than a silent 404. Both are expected user-driven problems;
+            // log at Warning so they stay visible in the prod log viewer
+            // (memory/code/always-log-problems.md).
+            _logger.LogWarning("Issue {IssueId} UpdateSection rejected: {Reason}", id, ex.Message);
             SetError(ex.Message);
         }
         catch (Exception ex)
@@ -450,6 +456,7 @@ public class IssuesController : HumansControllerBase
         {
             // Race: issue existed at the null-check above but was deleted
             // before the mutation reached the service.
+            _logger.LogWarning("Issue {IssueId} not found during SetGitHubIssue (deleted in race)", id);
             return NotFound();
         }
         catch (Exception ex)
