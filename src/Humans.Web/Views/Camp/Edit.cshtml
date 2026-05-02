@@ -329,22 +329,22 @@
                                     </div>
                                 }
 
-                                @* Empty slots — assign forms (only for managers) *@
+                                @* Empty slots — search + assign (adds the human to the camp if not already a member). *@
                                 @if (Model.RolesPanel.CanManage)
                                 {
+                                    var alreadyInRole = role.FilledSlots.Select(s => s.UserId).ToList();
                                     @for (var i = 0; i < role.EmptySlotCount; i++)
                                     {
-                                        <form asp-action="AssignRole" asp-route-slug="@Model.Slug" method="post" class="d-flex gap-2 mb-1">
+                                        <form asp-action="AssignRoleByUser" asp-route-slug="@Model.Slug" method="post" class="d-flex gap-2 mb-1">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="roleDefinitionId" value="@role.DefinitionId" />
-                                            <select name="campMemberId" class="form-select form-select-sm" required>
-                                                <option value="">Pick an active member…</option>
-                                                @foreach (var m in Model.RolesPanel.ActiveMembers.Where(am => !assignedMemberIds.Contains(am.CampMemberId)))
-                                                {
-                                                    <option value="@m.CampMemberId">@m.DisplayName</option>
-                                                }
-                                            </select>
-                                            <button class="btn btn-sm btn-outline-primary" type="submit" title="Assign selected member">
+                                            <partial name="_HumanSearchInput" view-data='@(new ViewDataDictionary(ViewData) {
+                                                { "FieldName", "userId" },
+                                                { "InstanceKey", $"role-{role.DefinitionId:N}-slot-{i}" },
+                                                { "Placeholder", "Search humans…" },
+                                                { "ExcludeUserIds", alreadyInRole }
+                                            })' />
+                                            <button class="btn btn-sm btn-outline-primary" type="submit" title="Assign — adds to camp if not yet a member">
                                                 <i class="fa-solid fa-check"></i>
                                             </button>
                                         </form>

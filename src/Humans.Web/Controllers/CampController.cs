@@ -74,7 +74,8 @@ public class CampController : HumansCampControllerBase
                     filters.Vibe,
                     filters.SoundZone,
                     filters.KidsFriendly,
-                    filters.AcceptingMembers));
+                    filters.AcceptingMembers,
+                    filters.Search));
 
         ViewBag.PendingCount = directory.PendingCount;
 
@@ -1046,6 +1047,74 @@ public class CampController : HumansCampControllerBase
         if (openSeason is null)
         {
             SetError("No active season for this camp.");
+            return RedirectToAction(nameof(Edit), new { slug });
+        }
+
+        var outcome = await _campRoleService.AssignAsync(openSeason.Id, roleDefinitionId, campMemberId, user.Id, ct);
+        var message = outcome switch
+        {
+            AssignCampRoleOutcome.Assigned => "Role assigned.",
+            AssignCampRoleOutcome.RoleNotFound => "Role definition not found.",
+            AssignCampRoleOutcome.RoleDeactivated => "That role is deactivated.",
+            AssignCampRoleOutcome.MemberNotFound => "Camp member not found.",
+            AssignCampRoleOutcome.MemberNotActive => "Only active camp members can hold roles.",
+            AssignCampRoleOutcome.MemberSeasonMismatch => "Member is not in this season.",
+            AssignCampRoleOutcome.SlotCapReached => "All slots for this role are filled.",
+            AssignCampRoleOutcome.AlreadyHoldsRole => "That human already holds this role.",
+            AssignCampRoleOutcome.SeasonNotFound => "Season not found.",
+            _ => "Unknown error.",
+        };
+
+        if (outcome == AssignCampRoleOutcome.Assigned)
+        {
+            SetSuccess(message);
+        }
+        else
+        {
+            SetError(message);
+        }
+
+        return RedirectToAction(nameof(Edit), new { slug });
+    }
+
+    /// <summary>
+    /// Search-driven assign: takes a userId from the human-search typeahead. If the
+    /// human isn't yet a camp member, they're added as Active first (idempotent), then
+    /// the role is assigned. One UI action covers both "assign existing member" and
+    /// "add this human and assign them" — see issue request from Frank, May 2026.
+    /// </summary>
+    [Authorize]
+    [HttpPost("{slug}/Roles/AssignByUser")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AssignRoleByUser(string slug, Guid roleDefinitionId, Guid userId, CancellationToken ct)
+    {
+        var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null) return errorResult;
+
+        if (userId == Guid.Empty)
+        {
+            SetError("Please search and select a human first.");
+            return RedirectToAction(nameof(Edit), new { slug });
+        }
+
+        var openSeason = camp.Seasons.FirstOrDefault(s => s.Status == CampSeasonStatus.Active);
+        if (openSeason is null)
+        {
+            SetError("No active season for this camp.");
+            return RedirectToAction(nameof(Edit), new { slug });
+        }
+
+        Guid campMemberId;
+        try
+        {
+            // Idempotent: returns existing memberId if the human is already an active
+            // member, otherwise inserts them as Active.
+            campMemberId = await _campService.AddCampMemberAsLeadAsync(openSeason.Id, userId, user.Id, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "AssignRoleByUser: AddCampMember failed for camp {CampSlug}, user {UserId}.", slug, userId);
+            SetError("Failed to add human to camp.");
             return RedirectToAction(nameof(Edit), new { slug });
         }
 

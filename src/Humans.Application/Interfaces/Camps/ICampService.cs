@@ -255,7 +255,8 @@ public record CampDirectoryFilter(
     CampVibe? Vibe = null,
     SoundZone? SoundZone = null,
     bool KidsFriendly = false,
-    bool AcceptingMembers = false);
+    bool AcceptingMembers = false,
+    string? Search = null);
 
 public record CampDirectoryCard(
     Guid Id,

@@ -283,16 +283,26 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         var year = settings.PublicYear;
         var camps = await GetCampsForYearAsync(year, cancellationToken);
 
+        // Pull the user's currently-led camps once so we can both (a) pin them to the
+        // top of the public listing and (b) build the "my pending camps" panel below.
+        var leadCampIds = new HashSet<Guid>();
+        IReadOnlyList<Camp> leadCamps = Array.Empty<Camp>();
+        if (userId.HasValue)
+        {
+            leadCamps = await _repo.GetCampsByLeadUserIdAsync(userId.Value, cancellationToken);
+            leadCampIds = leadCamps.Select(c => c.Id).ToHashSet();
+        }
+
         var cards = ApplyCampDirectoryFilter(
             camps.Where(c => c.HasPublicSeasonForYear(year)).Select(camp => CreateCampDirectoryCard(camp, year)),
             filter)
-            .OrderBy(card => card.Name, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(card => leadCampIds.Contains(card.Id) ? 0 : 1)
+            .ThenBy(card => card.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var myCamps = new List<CampDirectoryCard>();
         if (userId.HasValue)
         {
-            var leadCamps = await _repo.GetCampsByLeadUserIdAsync(userId.Value, cancellationToken);
             myCamps = leadCamps
                 .Where(camp => camp.Seasons.Any(season =>
                     season.Year == year &&
@@ -419,6 +429,13 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         if (filter?.AcceptingMembers == true)
         {
             camps = camps.Where(card => card.AcceptingMembers == YesNoMaybe.Yes);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter?.Search))
+        {
+            var q = filter.Search.Trim();
+            camps = camps.Where(card =>
+                card.Name.Contains(q, StringComparison.OrdinalIgnoreCase));
         }
 
         return camps;

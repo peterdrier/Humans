@@ -306,6 +306,8 @@ h5, .h5 { font-size: 1.1rem; }
     border-radius: var(--h-radius);
     box-shadow: var(--h-shadow-lg);
     font-family: var(--h-font-body);
+    /* Stay above the human-search typeahead's open dropdown (z-index 2000). */
+    z-index: 3000;
 }
 
 .profile-dropdown-menu .dropdown-item {

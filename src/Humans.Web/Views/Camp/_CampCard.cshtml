@@ -1,6 +1,6 @@
 @model Humans.Web.Models.CampCardViewModel
 
-<div class="col">
+<div class="col camp-card" data-camp-name="@Model.Name">
     <div class="card h-100">
         @if (!string.IsNullOrEmpty(Model.ImageUrl))
         {

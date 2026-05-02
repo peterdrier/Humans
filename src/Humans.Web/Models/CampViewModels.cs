@@ -35,6 +35,7 @@ public class CampFilterViewModel
     public SoundZone? SoundZone { get; set; }
     public bool KidsFriendly { get; set; }
     public bool AcceptingMembers { get; set; }
+    public string? Search { get; set; }
 }
 
 // Detail page
