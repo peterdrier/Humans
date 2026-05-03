@@ -487,40 +487,23 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         return await inner.GetPendingReviewCountAsync(ct);
     }
 
-    public async Task<OnboardingResult> ClearConsentCheckAsync(
-        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default)
+    public async Task<OnboardingResult> RecordConsentCheckAsync(
+        Guid userId, Guid reviewerId, ConsentCheckStatus result, string? notes,
+        CancellationToken ct = default)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
         var navBadge = scope.ServiceProvider.GetRequiredService<INavBadgeCacheInvalidator>();
         var notificationMeter = scope.ServiceProvider.GetRequiredService<INotificationMeterCacheInvalidator>();
 
-        var result = await inner.ClearConsentCheckAsync(userId, reviewerId, notes, ct);
-        if (result.Success)
+        var outcome = await inner.RecordConsentCheckAsync(userId, reviewerId, result, notes, ct);
+        if (outcome.Success)
         {
             navBadge.Invalidate();
             notificationMeter.Invalidate();
             await RefreshEntryAsync(userId, ct);
         }
-        return result;
-    }
-
-    public async Task<OnboardingResult> FlagConsentCheckAsync(
-        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default)
-    {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-        var navBadge = scope.ServiceProvider.GetRequiredService<INavBadgeCacheInvalidator>();
-        var notificationMeter = scope.ServiceProvider.GetRequiredService<INotificationMeterCacheInvalidator>();
-
-        var result = await inner.FlagConsentCheckAsync(userId, reviewerId, notes, ct);
-        if (result.Success)
-        {
-            navBadge.Invalidate();
-            notificationMeter.Invalidate();
-            await RefreshEntryAsync(userId, ct);
-        }
-        return result;
+        return outcome;
     }
 
     public async Task<OnboardingResult> RejectSignupAsync(
@@ -559,25 +542,14 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         return result;
     }
 
-    public async Task<OnboardingResult> SuspendAsync(
-        Guid userId, Guid adminId, string? notes, CancellationToken ct = default)
+    public async Task<OnboardingResult> SetSuspendedAsync(
+        Guid userId, Guid adminId, bool suspended, string? notes,
+        CancellationToken ct = default)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
 
-        var result = await inner.SuspendAsync(userId, adminId, notes, ct);
-        if (result.Success)
-            await RefreshEntryAsync(userId, ct);
-        return result;
-    }
-
-    public async Task<OnboardingResult> UnsuspendAsync(
-        Guid userId, Guid adminId, CancellationToken ct = default)
-    {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-
-        var result = await inner.UnsuspendAsync(userId, adminId, ct);
+        var result = await inner.SetSuspendedAsync(userId, adminId, suspended, notes, ct);
         if (result.Success)
             await RefreshEntryAsync(userId, ct);
         return result;

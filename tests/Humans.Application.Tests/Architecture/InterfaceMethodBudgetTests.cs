@@ -100,7 +100,14 @@ public class InterfaceMethodBudgetTests
         // 41→40: account-merge fold final consolidation — removed
         // ReassignSubAggregatesToUserAsync from IProfileService (moved to
         // IUserMerge.ReassignAsync, dispatched via fan-out).
-        [typeof(IProfileService)] = 40,
+        // 40→39: barrio-mgmt-fixes audit (peterdrier#390). Net -1 after
+        // adding SearchHumansByNameAsync (+1) and merging two pairs of
+        // sibling state-setters (-2):
+        // ClearConsentCheckAsync + FlagConsentCheckAsync → RecordConsentCheckAsync
+        // (takes a ConsentCheckStatus result; the system-driven
+        // SetConsentCheckPendingAsync stays separate — different actor).
+        // SuspendAsync + UnsuspendAsync → SetSuspendedAsync (takes a bool).
+        [typeof(IProfileService)] = 39,
         // -1 for GetContactUsersAsync removal (/Contacts surface deleted in PR 2 of
         // email-identity-decoupling — only ContactService called it).
         // 31→31: account-merge fold redesign Phase 3.4. Added 3 fold primitives

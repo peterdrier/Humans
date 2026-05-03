@@ -136,7 +136,8 @@ public sealed class OnboardingService : IOnboardingService
         Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default)
     {
         // Profile mutation + cache invalidation owned by ProfileService/decorator.
-        var result = await _profileService.ClearConsentCheckAsync(userId, reviewerId, notes, ct);
+        var result = await _profileService.RecordConsentCheckAsync(
+            userId, reviewerId, ConsentCheckStatus.Cleared, notes, ct);
         if (!result.Success)
             return result;
 
@@ -160,7 +161,8 @@ public sealed class OnboardingService : IOnboardingService
     public async Task<OnboardingResult> FlagConsentCheckAsync(
         Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default)
     {
-        var result = await _profileService.FlagConsentCheckAsync(userId, reviewerId, notes, ct);
+        var result = await _profileService.RecordConsentCheckAsync(
+            userId, reviewerId, ConsentCheckStatus.Flagged, notes, ct);
         if (!result.Success)
             return result;
 
@@ -280,7 +282,7 @@ public sealed class OnboardingService : IOnboardingService
     public async Task<OnboardingResult> SuspendAsync(
         Guid userId, Guid adminId, string? notes, CancellationToken ct = default)
     {
-        var result = await _profileService.SuspendAsync(userId, adminId, notes, ct);
+        var result = await _profileService.SetSuspendedAsync(userId, adminId, suspended: true, notes, ct);
         if (!result.Success)
             return result;
 
@@ -312,7 +314,7 @@ public sealed class OnboardingService : IOnboardingService
     public async Task<OnboardingResult> UnsuspendAsync(
         Guid userId, Guid adminId, CancellationToken ct = default)
     {
-        var result = await _profileService.UnsuspendAsync(userId, adminId, ct);
+        var result = await _profileService.SetSuspendedAsync(userId, adminId, suspended: false, notes: null, ct);
         if (!result.Success)
             return result;
 

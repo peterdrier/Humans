@@ -175,18 +175,17 @@ public interface IProfileService : IUserMerge
     Task<int> GetPendingReviewCountAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Clears the consent check for the given user (marks cleared + approved).
-    /// Error keys: <c>NotFound</c>, <c>AlreadyRejected</c>.
+    /// Records a reviewer's consent-check decision. <paramref name="result"/>
+    /// must be <see cref="ConsentCheckStatus.Cleared"/> (also sets
+    /// <c>IsApproved=true</c>) or <see cref="ConsentCheckStatus.Flagged"/>
+    /// (sets <c>IsApproved=false</c>). The system-side
+    /// <see cref="ConsentCheckStatus.Pending"/> transition lives on
+    /// <see cref="SetConsentCheckPendingAsync"/>. Error keys:
+    /// <c>NotFound</c>, <c>AlreadyRejected</c> (Cleared only).
     /// </summary>
-    Task<OnboardingResult> ClearConsentCheckAsync(
-        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default);
-
-    /// <summary>
-    /// Flags the consent check for the given user (marks flagged + unapproved).
-    /// Error keys: <c>NotFound</c>.
-    /// </summary>
-    Task<OnboardingResult> FlagConsentCheckAsync(
-        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default);
+    Task<OnboardingResult> RecordConsentCheckAsync(
+        Guid userId, Guid reviewerId, ConsentCheckStatus result, string? notes,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Rejects a signup (records rejection reason, sets RejectedAt).
@@ -203,18 +202,13 @@ public interface IProfileService : IUserMerge
         Guid userId, Guid adminId, CancellationToken ct = default);
 
     /// <summary>
-    /// Suspends the human (sets IsSuspended). Admin notes saved on the profile.
-    /// Error keys: <c>NotFound</c>.
+    /// Sets the human's <c>IsSuspended</c> flag. Suspending also persists
+    /// <paramref name="notes"/> as <c>AdminNotes</c>; unsuspending ignores
+    /// notes. Error keys: <c>NotFound</c>.
     /// </summary>
-    Task<OnboardingResult> SuspendAsync(
-        Guid userId, Guid adminId, string? notes, CancellationToken ct = default);
-
-    /// <summary>
-    /// Unsuspends the human (clears IsSuspended).
-    /// Error keys: <c>NotFound</c>.
-    /// </summary>
-    Task<OnboardingResult> UnsuspendAsync(
-        Guid userId, Guid adminId, CancellationToken ct = default);
+    Task<OnboardingResult> SetSuspendedAsync(
+        Guid userId, Guid adminId, bool suspended, string? notes,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Sets a profile's consent check status to <c>Pending</c> and bumps
