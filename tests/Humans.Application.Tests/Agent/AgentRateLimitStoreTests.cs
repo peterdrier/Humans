@@ -37,6 +37,24 @@ public class AgentRateLimitStoreTests
     }
 
     [HumansFact]
+    public void Buckets_older_than_yesterday_are_evicted_on_subsequent_record()
+    {
+        var store = new AgentRateLimitStore();
+        var user = Guid.NewGuid();
+
+        // Day 1 — original record.
+        store.Record(user, new LocalDate(2026, 4, 19), hour: 9, messagesDelta: 4, tokensDelta: 200);
+        store.Get(user, new LocalDate(2026, 4, 19), hour: 9).MessagesToday.Should().Be(4);
+
+        // Two days later — eviction triggers; yesterday is retained, anything older drops.
+        store.Record(user, new LocalDate(2026, 4, 21), hour: 9, messagesDelta: 1, tokensDelta: 50);
+
+        store.Get(user, new LocalDate(2026, 4, 19), hour: 9).MessagesToday.Should().Be(0,
+            "buckets more than one day old must be evicted to bound memory growth");
+        store.Get(user, new LocalDate(2026, 4, 21), hour: 9).MessagesToday.Should().Be(1);
+    }
+
+    [HumansFact]
     public void Hourly_bucket_resets_when_the_hour_changes_but_daily_total_does_not()
     {
         var store = new AgentRateLimitStore();

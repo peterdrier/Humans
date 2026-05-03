@@ -88,10 +88,21 @@ public sealed class AgentService : IAgentService, IUserDataContributor
             yield break;
         }
 
-        var conversation = request.ConversationId == Guid.Empty
-            ? await _repo.CreateConversationAsync(request.UserId, request.Locale, cancellationToken)
-            : await _repo.GetConversationByIdAsync(request.ConversationId, cancellationToken)
-              ?? throw new InvalidOperationException("Unknown conversation");
+        AgentConversation conversation;
+        if (request.ConversationId == Guid.Empty)
+        {
+            conversation = await _repo.CreateConversationAsync(request.UserId, request.Locale, cancellationToken);
+        }
+        else
+        {
+            var existing = await _repo.GetConversationByIdAsync(request.ConversationId, cancellationToken);
+            // Conversation may have been retention-purged or deleted in another tab
+            // between page load and submit. Start a fresh one rather than 500ing
+            // the SSE stream — the finalizer stamps the new ConversationId so the
+            // client picks it up transparently.
+            conversation = existing
+                ?? await _repo.CreateConversationAsync(request.UserId, request.Locale, cancellationToken);
+        }
 
         if (conversation.UserId != request.UserId)
             throw new UnauthorizedAccessException("Conversation does not belong to this user.");
@@ -321,9 +332,22 @@ public sealed class AgentService : IAgentService, IUserDataContributor
 
     private async Task PersistRefusal(AgentTurnRequest req, string reason, CancellationToken ct)
     {
-        var conv = req.ConversationId == Guid.Empty
-            ? await _repo.CreateConversationAsync(req.UserId, req.Locale, ct)
-            : await _repo.GetConversationByIdAsync(req.ConversationId, ct) ?? await _repo.CreateConversationAsync(req.UserId, req.Locale, ct);
+        AgentConversation conv;
+        if (req.ConversationId == Guid.Empty)
+        {
+            conv = await _repo.CreateConversationAsync(req.UserId, req.Locale, ct);
+        }
+        else
+        {
+            var existing = await _repo.GetConversationByIdAsync(req.ConversationId, ct);
+            // Refusal must be persisted (Agent.md invariant 6), but never into
+            // someone else's transcript. The rate-limit/abuse paths in AskAsync
+            // run BEFORE the ownership check, so a client supplying another
+            // user's conversation GUID would otherwise pollute their thread.
+            conv = (existing is not null && existing.UserId == req.UserId)
+                ? existing
+                : await _repo.CreateConversationAsync(req.UserId, req.Locale, ct);
+        }
 
         await _repo.AppendMessageAsync(new AgentMessage
         {

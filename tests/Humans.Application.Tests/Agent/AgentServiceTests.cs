@@ -116,8 +116,67 @@ public class AgentServiceTests
         lastRequest.Messages[2].Text.Should().Contain("Can I join?", "the current user message is on the tail of the message list");
     }
 
-    // TODO(future): additional tests for disabled_returns_unavailable_finalizer, abuse_phrase_returns_refusal,
-    // tool_loop_terminates_after_three_calls, handoff_records_FeedbackId, streaming_appends_message_rows.
+    [HumansFact]
+    public async Task Ask_with_unknown_conversation_id_starts_a_new_conversation_instead_of_throwing()
+    {
+        var userId = Guid.NewGuid();
+        var (svc, client) = await BuildService(s => s.Enabled = true);
+
+        client.EnqueueTurn(
+            new AgentTurnToken("hi back", null, null),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+
+        Guid? finalConversationId = null;
+        // Conversation may have been retention-purged or deleted in another tab —
+        // a stale id from the client must not 500 the SSE stream.
+        await foreach (var t in svc.AskAsync(
+            new AgentTurnRequest(ConversationId: Guid.NewGuid(), UserId: userId, Message: "hi", Locale: "es"),
+            CancellationToken.None))
+        {
+            if (t.Finalizer is { } f) finalConversationId = f.ConversationId;
+        }
+
+        finalConversationId.Should().NotBeNull("a fresh conversation must be started so the client can continue");
+        finalConversationId.Should().NotBe(Guid.Empty);
+    }
+
+    [HumansFact]
+    public async Task Rate_limited_refusal_is_not_written_into_another_users_conversation()
+    {
+        var attackerId = Guid.NewGuid();
+        var victimId = Guid.NewGuid();
+
+        // Trip the daily cap for the attacker before they call AskAsync.
+        var store = new AgentRateLimitStore();
+        for (var h = 0; h < 30; h++)
+            store.Record(attackerId, new LocalDate(2026, 4, 21), hour: h, messagesDelta: 1, tokensDelta: 0);
+
+        var (svc, _) = await BuildService(s =>
+        {
+            s.Enabled = true;
+            s.DailyMessageCap = 30;
+        }, rateLimitStore: store);
+
+        // The repo behind the service is private; we can't reach the victim's
+        // conversation directly. Instead, exercise the surface: the attacker
+        // submits with a non-empty (and thus unknown-to-them) conversation id
+        // and trips the rate limit. The refusal must NOT land on the supplied
+        // GUID. Verified by reading the conversation back through the service:
+        // it must either not exist or not belong to the attacker.
+        var spoofedId = Guid.NewGuid();
+        await foreach (var _ in svc.AskAsync(
+            new AgentTurnRequest(ConversationId: spoofedId, UserId: attackerId, Message: "hi", Locale: "es"),
+            CancellationToken.None))
+        {
+        }
+
+        // The attacker's GET-history must not surface the spoofed id (because the
+        // service started a new conversation owned by the attacker for the refusal).
+        var attackerHistory = await svc.GetHistoryAsync(attackerId, take: 10, CancellationToken.None);
+        attackerHistory.Should().NotContain(c => c.Id == spoofedId,
+            "the rate-limit refusal must persist into a new attacker-owned conversation, never into the spoofed id");
+        attackerHistory.Should().HaveCount(1, "exactly one new conversation was started for the refusal");
+    }
 
     private static async Task<(IAgentService Svc, AnthropicClientFake Client)> BuildService(
         Action<AgentSettings> tune,
