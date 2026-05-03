@@ -1,0 +1,209 @@
+@model Humans.Web.Models.IssuePageViewModel
+@{
+    ViewData["Title"] = Localizer["Issue_PageTitle"].Value;
+}
+
+<div class="container-fluid issues-index">
+    <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+        <div>
+            <h2 class="mb-1">@Localizer["Issue_PageTitle"]</h2>
+            <p class="text-muted small mb-0">
+                @Model.OpenCount open · @Model.TotalCount total
+            </p>
+        </div>
+        <a class="btn btn-primary" asp-action="New">
+            <i class="fa-solid fa-plus me-1"></i> @Localizer["Issue_New"]
+        </a>
+    </div>
+
+    <!-- Filter bar -->
+    <form method="get" class="issues-filter-form d-flex gap-2 mb-3 flex-wrap align-items-center">
+        <div class="btn-group btn-group-sm" role="group" aria-label="Quick filters">
+            <a class="btn btn-outline-secondary @(Model.View == IssueViewMode.All ? "active" : "")"
+               asp-action="Index">@Localizer["Issue_All"]</a>
+            <a class="btn btn-outline-secondary @(Model.View == IssueViewMode.Open ? "active" : "")"
+               asp-action="Index" asp-route-view="@IssueViewMode.Open">@Localizer["Issue_Open"]</a>
+            <a class="btn btn-outline-secondary @(Model.View == IssueViewMode.Mine ? "active" : "")"
+               asp-action="Index" asp-route-view="@IssueViewMode.Mine">@Localizer["Issue_Mine"]</a>
+            <a class="btn btn-outline-secondary @(Model.View == IssueViewMode.Closed ? "active" : "")"
+               asp-action="Index" asp-route-view="@IssueViewMode.Closed">@Localizer["Issue_Closed"]</a>
+        </div>
+
+        <select name="category" class="form-select form-select-sm" style="width: auto;">
+            <option value="">@Localizer["Issue_AllCategories"]</option>
+            @foreach (var c in Model.CategoryValues)
+            {
+                if (Model.CategoryFilter == c)
+                {
+                    <option value="@c" selected>@c</option>
+                }
+                else
+                {
+                    <option value="@c">@c</option>
+                }
+            }
+        </select>
+
+        @if (Model.SectionOptions.Count > 0)
+        {
+            <select name="section" class="form-select form-select-sm" style="width: auto;">
+                <option value="">@Localizer["Issue_AllAreas"]</option>
+                @foreach (var s in Model.SectionOptions)
+                {
+                    if (string.Equals(Model.SectionFilter, s.Section, StringComparison.Ordinal))
+                    {
+                        <option value="@s.Section" selected>@s.Label</option>
+                    }
+                    else
+                    {
+                        <option value="@s.Section">@s.Label</option>
+                    }
+                }
+            </select>
+        }
+
+        @if (Model.IsAdmin && Model.Reporters.Count > 0)
+        {
+            <select name="reporter" class="form-select form-select-sm" style="width: auto;">
+                <option value="">@Localizer["Issue_AllReporters"]</option>
+                @foreach (var r in Model.Reporters)
+                {
+                    if (Model.ReporterFilter == r.UserId)
+                    {
+                        <option value="@r.UserId" selected>@r.DisplayName (@r.Count)</option>
+                    }
+                    else
+                    {
+                        <option value="@r.UserId">@r.DisplayName (@r.Count)</option>
+                    }
+                }
+            </select>
+        }
+
+        <input type="search" name="search" value="@Model.SearchText"
+               class="form-control form-control-sm" style="width: 220px;"
+               placeholder="@Localizer["Issue_SearchPlaceholder"]" />
+
+        <button type="submit" class="btn btn-sm btn-outline-secondary">
+            @Localizer["Issue_Apply"]
+        </button>
+
+        @if (Model.View != IssueViewMode.All || Model.CategoryFilter.HasValue
+            || Model.ReporterFilter.HasValue || !string.IsNullOrEmpty(Model.SectionFilter)
+            || !string.IsNullOrEmpty(Model.SearchText))
+        {
+            <a asp-action="Index" class="btn btn-sm btn-link">@Localizer["Issue_Clear"]</a>
+        }
+    </form>
+
+    <div class="row" style="min-height: 500px;">
+        <!-- Left column: list -->
+        <div class="col-md-5 col-lg-4 border-end overflow-auto" style="max-height: 80vh;">
+            @if (Model.Issues.Count == 0)
+            {
+                <p class="text-muted p-3">@Localizer["Issue_NoneFound"]</p>
+            }
+            <table class="table table-hover table-sm align-middle issues-table mb-0">
+                <thead class="visually-hidden">
+                    <tr>
+                        <th>Status</th>
+                        <th>Title</th>
+                        <th>Reporter</th>
+                        <th>Updated</th>
+                        <th>Comments</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var issue in Model.Issues)
+                {
+                    var isSelected = issue.Id == Model.SelectedIssueId;
+                    <tr class="issues-list-item @(isSelected ? "table-active" : "")"
+                        data-issue-id="@issue.Id" style="cursor: pointer;">
+                        <td>
+                            <span class="badge @IssuePresentation.StatusPillClass(issue.Status)">@issue.Status</span>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-1">
+                                <span title="@issue.Category">@IssuePresentation.CategoryEmoji(issue.Category)</span>
+                                <span class="fw-semibold text-truncate" style="max-width: 240px;">
+                                    @issue.Title
+                                </span>
+                            </div>
+                            <div class="text-muted small">
+                                <span class="badge bg-light text-muted border">@issue.AreaLabel</span>
+                                @if (issue.GitHubIssueNumber.HasValue)
+                                {
+                                    <span class="ms-1">GH #@issue.GitHubIssueNumber</span>
+                                }
+                            </div>
+                            <div class="text-muted small">
+                                @issue.ReporterName
+                                @if (!string.IsNullOrEmpty(issue.AssigneeName))
+                                {
+                                    <span> · @Localizer["Issue_AssignedTo"] @issue.AssigneeName</span>
+                                }
+                            </div>
+                        </td>
+                        <td class="text-muted small text-end">
+                            <div>@issue.LastUpdate.ToDisplayDayMonth()</div>
+                            @if (issue.CommentCount > 0)
+                            {
+                                <div><i class="fa-solid fa-comment fa-xs"></i> @issue.CommentCount</div>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Right column: detail -->
+        <div class="col-md-7 col-lg-8" id="detail-panel">
+            <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+                <p>@Localizer["Issue_SelectOne"]</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function loadIssueDetail(issueId) {
+            document.querySelectorAll('.issues-list-item').forEach(el => el.classList.remove('table-active'));
+            const selected = document.querySelector(`[data-issue-id="${issueId}"]`);
+            if (selected) selected.classList.add('table-active');
+
+            fetch(`/Issues/${issueId}?partial=true`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => r.ok
+                ? r.text()
+                : '<div class="d-flex align-items-center justify-content-center h-100 text-muted"><p>@Localizer["Issue_Unavailable"]</p></div>')
+            .then(html => {
+                document.getElementById('detail-panel').innerHTML = html;
+                document.querySelectorAll('#detail-panel .detail-auto-submit').forEach(el => {
+                    el.addEventListener('change', () => el.form.submit());
+                });
+            })
+            .catch(err => console.error('Failed to load detail:', err));
+
+            history.replaceState(null, '', `/Issues?selected=${issueId}`);
+        }
+
+        document.querySelectorAll('.issues-filter-form select').forEach(sel => {
+            sel.addEventListener('change', () => sel.form.submit());
+        });
+        document.querySelectorAll('[data-issue-id]').forEach(el => {
+            el.addEventListener('click', () => loadIssueDetail(el.dataset.issueId));
+        });
+
+        @if (Model.SelectedIssueId.HasValue)
+        {
+            <text>
+            document.addEventListener('DOMContentLoaded', function() {
+                loadIssueDetail('@Model.SelectedIssueId');
+            });
+            </text>
+        }
+    </script>
+}

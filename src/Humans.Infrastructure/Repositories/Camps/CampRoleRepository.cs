@@ -2,6 +2,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
 
 namespace Humans.Infrastructure.Repositories.Camps;
 
@@ -158,5 +159,107 @@ public sealed class CampRoleRepository : ICampRoleRepository
             .Select(g => new { g.Key.CampSeasonId, g.Key.CampRoleDefinitionId, Count = g.Count() })
             .ToListAsync(ct);
         return rows.Select(r => (r.CampSeasonId, r.CampRoleDefinitionId, r.Count)).ToList();
+    }
+
+    // ==========================================================================
+    // Account-merge fold
+    // ==========================================================================
+
+    public async Task<int> ReassignAssignmentsToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        // CampRoleAssignment is keyed by CampMemberId, not UserId. To "move
+        // by user" we walk source's CampMembers and find target's CampMember
+        // in the same season (the CampMember unique-active index is on
+        // (CampSeasonId, UserId), so target has at most one per season).
+        // For each source assignment whose source-member's season has a
+        // target-member, re-FK CampMemberId to that target-member; on
+        // collision against the unique index
+        // (CampSeasonId, CampRoleDefinitionId, CampMemberId) target wins
+        // (drop source). Assignments whose season has no target-member are
+        // left in place — source's CampMember row is the tombstone, not in
+        // scope for this method.
+        var sourceMembers = await ctx.CampMembers.AsNoTracking()
+            .Where(m => m.UserId == sourceUserId)
+            .Select(m => new { m.Id, m.CampSeasonId })
+            .ToListAsync(ct);
+        if (sourceMembers.Count == 0)
+            return await ctx.CampRoleAssignments
+                .CountAsync(a => a.CampMember.UserId == targetUserId, ct);
+
+        var sourceMemberIds = sourceMembers.Select(m => m.Id).ToList();
+        var sourceSeasonIds = sourceMembers.Select(m => m.CampSeasonId).Distinct().ToList();
+
+        var targetMembersBySeason = await ctx.CampMembers.AsNoTracking()
+            .Where(m => m.UserId == targetUserId
+                && sourceSeasonIds.Contains(m.CampSeasonId))
+            .Select(m => new { m.Id, m.CampSeasonId })
+            .ToListAsync(ct);
+        var targetMemberIdBySeason = targetMembersBySeason
+            .ToDictionary(m => m.CampSeasonId, m => m.Id);
+
+        // Map source CampMemberId -> target CampMemberId (when target has a
+        // member in the same season; otherwise no entry).
+        var sourceToTargetMember = new Dictionary<Guid, Guid>();
+        foreach (var sm in sourceMembers)
+        {
+            if (targetMemberIdBySeason.TryGetValue(sm.CampSeasonId, out var targetMemberId))
+                sourceToTargetMember[sm.Id] = targetMemberId;
+        }
+
+        if (sourceToTargetMember.Count == 0)
+            return await ctx.CampRoleAssignments
+                .CountAsync(a => a.CampMember.UserId == targetUserId, ct);
+
+        var targetMemberIds = sourceToTargetMember.Values.Distinct().ToList();
+
+        // Existing target assignments — used for collision detection on
+        // (CampSeasonId, CampRoleDefinitionId, CampMemberId).
+        var targetExisting = await ctx.CampRoleAssignments.AsNoTracking()
+            .Where(a => targetMemberIds.Contains(a.CampMemberId))
+            .Select(a => new { a.CampSeasonId, a.CampRoleDefinitionId, a.CampMemberId })
+            .ToListAsync(ct);
+        var targetExistingKeys = new HashSet<(Guid, Guid, Guid)>(
+            targetExisting.Select(t => (t.CampSeasonId, t.CampRoleDefinitionId, t.CampMemberId)));
+
+        var sourceAssignments = await ctx.CampRoleAssignments
+            .Where(a => sourceMemberIds.Contains(a.CampMemberId))
+            .ToListAsync(ct);
+
+        foreach (var src in sourceAssignments)
+        {
+            if (!sourceToTargetMember.TryGetValue(src.CampMemberId, out var targetMemberId))
+            {
+                // Target has no CampMember in this season — leave source's
+                // assignment in place.
+                continue;
+            }
+
+            var collisionKey = (src.CampSeasonId, src.CampRoleDefinitionId, targetMemberId);
+            if (targetExistingKeys.Contains(collisionKey))
+            {
+                // Target already holds this role for this season — target
+                // wins, drop source's row.
+                ctx.CampRoleAssignments.Remove(src);
+            }
+            else
+            {
+                // Re-FK to target's CampMember. CampMemberId is init-only;
+                // mutate via the EF change-tracker.
+                ctx.Entry(src).Property(nameof(CampRoleAssignment.CampMemberId))
+                    .CurrentValue = targetMemberId;
+                // Track the new key so a second source row that would
+                // resolve to the same target slot is also de-duplicated.
+                targetExistingKeys.Add(collisionKey);
+            }
+        }
+
+        await ctx.SaveChangesAsync(ct);
+
+        return await ctx.CampRoleAssignments
+            .CountAsync(a => a.CampMember.UserId == targetUserId, ct);
     }
 }

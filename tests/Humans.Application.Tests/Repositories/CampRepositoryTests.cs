@@ -171,11 +171,11 @@ public sealed class CampRepositoryTests : IDisposable
     }
 
     // ==========================================================================
-    // GetPublicCampsForYearAsync
+    // Camp.HasPublicSeasonForYear predicate (caller-side filter on GetAllCampsForYearAsync)
     // ==========================================================================
 
     [HumansFact]
-    public async Task GetPublicCampsForYearAsync_ReturnsActiveAndFull_ExcludesPendingAndRejected()
+    public async Task GetAllCampsForYearAsync_WithHasPublicSeasonFilter_ReturnsActiveAndFull()
     {
         var activeCamp = await SeedCampAsync("active");
         await SeedSeasonAsync(activeCamp.Id, 2026, CampSeasonStatus.Active);
@@ -186,9 +186,10 @@ public sealed class CampRepositoryTests : IDisposable
         var pendingCamp = await SeedCampAsync("pending");
         await SeedSeasonAsync(pendingCamp.Id, 2026, CampSeasonStatus.Pending);
 
-        var result = await _repo.GetPublicCampsForYearAsync(2026);
+        var result = await _repo.GetAllCampsForYearAsync(2026);
 
-        result.Select(c => c.Slug).Should().BeEquivalentTo(["active", "full"]);
+        result.Where(c => c.HasPublicSeasonForYear(2026)).Select(c => c.Slug)
+            .Should().BeEquivalentTo(["active", "full"]);
     }
 
     // ==========================================================================

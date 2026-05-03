@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using NodaTime;
 
@@ -26,7 +27,7 @@ namespace Humans.Application.Services.Shifts;
 /// <c>DbContext</c> directly until the follow-up sub-tasks (#541a, #541b).
 /// </para>
 /// </remarks>
-public sealed class GeneralAvailabilityService : IGeneralAvailabilityService
+public sealed class GeneralAvailabilityService : IGeneralAvailabilityService, IUserMerge
 {
     private readonly IGeneralAvailabilityRepository _repo;
     private readonly IClock _clock;
@@ -60,4 +61,8 @@ public sealed class GeneralAvailabilityService : IGeneralAvailabilityService
 
     public Task DeleteAsync(Guid userId, Guid eventSettingsId) =>
         _repo.DeleteAsync(userId, eventSettingsId);
+
+    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+        CancellationToken ct)
+        => _repo.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 }

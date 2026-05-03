@@ -234,6 +234,25 @@ public interface IApplicationRepository
     /// </summary>
     Task<IReadOnlyDictionary<Guid, MembershipTier>> GetOtherActiveTierAssignmentsAsync(
         MembershipTier excludeTier, LocalDate today, CancellationToken ct = default);
+
+    // ==========================================================================
+    // Account-merge fold
+    // ==========================================================================
+
+    /// <summary>
+    /// Bulk-moves <c>Application</c> rows from <paramref name="sourceUserId"/>
+    /// to <paramref name="targetUserId"/>. Plain re-FK — applications are
+    /// historical records that may exist on both sides (e.g. a Colaborador
+    /// application from 2024 on source plus another on target across years);
+    /// every row is preserved. <c>UpdatedAt</c> is stamped to
+    /// <paramref name="updatedAt"/>. Returns the count of <c>Application</c>
+    /// rows attributed to <paramref name="targetUserId"/> after the move.
+    /// </summary>
+    Task<int> ReassignApplicationsToUserAsync(
+        Guid sourceUserId,
+        Guid targetUserId,
+        Instant updatedAt,
+        CancellationToken ct = default);
 }
 
 /// <summary>

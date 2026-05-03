@@ -88,7 +88,7 @@
                     </dt>
                     <dd class="col-9">
                         <a href="mailto:@email.Email">@email.Email</a>
-                        @if (email.IsNotificationTarget)
+                        @if (email.IsPrimary)
                         {
                             <span class="badge bg-primary ms-1" title="@Localizer["Profile_NotificationTarget"]" data-bs-toggle="tooltip"><i class="fa-solid fa-bell"></i> @Localizer["Profile_NotificationTargetShort"]</span>
                         }
@@ -258,7 +258,7 @@
                     </dt>
                     <dd class="col-9">
                         <a href="mailto:@email.Email">@email.Email</a>
-                        @if (email.IsNotificationTarget)
+                        @if (email.IsPrimary)
                         {
                             <span class="badge bg-primary ms-1" title="@Localizer["Profile_NotificationTarget"]" data-bs-toggle="tooltip"><i class="fa-solid fa-bell"></i> @Localizer["Profile_NotificationTargetShort"]</span>
                         }

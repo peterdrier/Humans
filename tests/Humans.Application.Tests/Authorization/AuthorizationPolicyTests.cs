@@ -1,14 +1,17 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CitiPlanning;
+using Humans.Application.Interfaces.Stores;
 using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Constants;
 using Humans.Web.Authorization;
 using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using NodaTime;
 using NSubstitute;
 using Xunit;
 
@@ -32,6 +35,9 @@ public class AuthorizationPolicyTests : IDisposable
         services.AddScoped(_ => Substitute.For<ICampService>());
         services.AddScoped(_ => Substitute.For<ICityPlanningService>());
         services.AddScoped(_ => Substitute.For<ITeamService>());
+        services.AddScoped(_ => Substitute.For<IAgentRateLimitStore>());
+        services.AddScoped(_ => Substitute.For<IAgentSettingsService>());
+        services.AddSingleton<IClock>(SystemClock.Instance);
         services.AddHumansAuthorizationPolicies();
         _serviceProvider = services.BuildServiceProvider();
         _authorizationService = _serviceProvider.GetRequiredService<IAuthorizationService>();
@@ -60,6 +66,42 @@ public class AuthorizationPolicyTests : IDisposable
     public async Task AdminOnly_DeniesUnauthenticated()
     {
         var result = await AuthorizeAnonymousAsync(PolicyNames.AdminOnly);
+        result.Succeeded.Should().BeFalse();
+    }
+
+    // --- AnyAdminRole (admin-shell entry point) ---
+
+    [HumansTheory]
+    [InlineData(RoleNames.Admin, true)]
+    [InlineData(RoleNames.Board, true)]
+    [InlineData(RoleNames.HumanAdmin, true)]
+    [InlineData(RoleNames.TeamsAdmin, true)]
+    [InlineData(RoleNames.CampAdmin, true)]
+    [InlineData(RoleNames.TicketAdmin, true)]
+    [InlineData(RoleNames.FeedbackAdmin, true)]
+    [InlineData(RoleNames.FinanceAdmin, true)]
+    [InlineData(RoleNames.NoInfoAdmin, true)]
+    [InlineData(RoleNames.VolunteerCoordinator, true)]
+    [InlineData(RoleNames.ConsentCoordinator, true)]
+    public async Task AnyAdminRole_AllowsAllAdminShapedRoles(string role, bool expected)
+    {
+        var result = await AuthorizeAsync(PolicyNames.AnyAdminRole, role);
+        result.Succeeded.Should().Be(expected);
+    }
+
+    [HumansFact]
+    public async Task AnyAdminRole_DeniesUnauthenticated()
+    {
+        var result = await AuthorizeAnonymousAsync(PolicyNames.AnyAdminRole);
+        result.Succeeded.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task AnyAdminRole_DeniesAuthenticatedNonAdmin()
+    {
+        // Authenticated user with no admin-shaped role (e.g. a regular member)
+        // must not reach the admin shell.
+        var result = await AuthorizeAsync(PolicyNames.AnyAdminRole, "SomeNonAdminRole");
         result.Succeeded.Should().BeFalse();
     }
 
@@ -283,21 +325,6 @@ public class AuthorizationPolicyTests : IDisposable
     public async Task VolunteerManager_ChecksCorrectRoles(string role, bool expected)
     {
         var result = await AuthorizeAsync(PolicyNames.VolunteerManager, role);
-        result.Succeeded.Should().Be(expected);
-    }
-
-    // --- VolunteerSectionAccess ---
-
-    [HumansTheory]
-    [InlineData(RoleNames.TeamsAdmin, true)]
-    [InlineData(RoleNames.Board, true)]
-    [InlineData(RoleNames.Admin, true)]
-    [InlineData(RoleNames.VolunteerCoordinator, true)]
-    [InlineData(RoleNames.NoInfoAdmin, false)]
-    [InlineData(RoleNames.CampAdmin, false)]
-    public async Task VolunteerSectionAccess_ChecksCorrectRoles(string role, bool expected)
-    {
-        var result = await AuthorizeAsync(PolicyNames.VolunteerSectionAccess, role);
         result.Succeeded.Should().Be(expected);
     }
 

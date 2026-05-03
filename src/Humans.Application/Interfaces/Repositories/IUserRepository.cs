@@ -52,23 +52,6 @@ public interface IUserRepository
     Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns every <see cref="User"/> that has no
-    /// <see cref="UserEmail"/> row. Used by
-    /// <c>IUserEmailBackfillService</c> to find orphan Users during the PR 1
-    /// admin backfill operation
-    /// (<c>docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md</c>).
-    /// Read-only (AsNoTracking).
-    /// </summary>
-    Task<IReadOnlyList<User>> GetUsersWithoutUserEmailRowAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the ids of every user in the system, read-only. Used by the
-    /// admin dashboard to partition all users into status buckets without
-    /// loading the full User graph.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetAllUserIdsAsync(CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the language distribution of the given user ids, grouped by
     /// <see cref="User.PreferredLanguage"/>. Used by the admin dashboard to
     /// render language stats for approved humans after the caller has
@@ -88,23 +71,6 @@ public interface IUserRepository
         string normalizedEmail, string? alternateEmail, CancellationToken ct = default);
 
     /// <summary>
-    /// Finds a user whose <c>NormalizedEmail</c> exactly matches the supplied
-    /// value. The caller is responsible for normalizing the input (Identity's
-    /// <c>UserManager.NormalizeEmail</c>). Read-only (AsNoTracking). Used by
-    /// <c>MagicLinkService.FindUserByAnyEmailAsync</c> as the fallback lookup
-    /// when no verified UserEmail row exists.
-    /// </summary>
-    Task<User?> GetByNormalizedEmailAsync(
-        string? normalizedEmail, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns all contact users (ContactSource != null, LastLoginAt == null),
-    /// optionally filtered by display name or email substring.
-    /// Ordered by CreatedAt descending. Read-only.
-    /// </summary>
-    Task<IReadOnlyList<User>> GetContactUsersAsync(string? search, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the <c>LastLoginAt</c> timestamp of every user whose last login
     /// falls within the half-open window <c>[fromInclusive, toExclusive)</c>.
     /// Read-only (AsNoTracking). Used by the shift coordinator dashboard.
@@ -120,6 +86,15 @@ public interface IUserRepository
     /// </summary>
     Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
         string email, Guid excludeUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the legacy <c>GoogleEmail</c> shadow-column value for the given
+    /// users (only entries where the column is non-null are present in the
+    /// result). The CLR property is gone — this is the only way to observe the
+    /// legacy column for the deferred backfill admin button. Read-only.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, string>> GetLegacyGoogleEmailsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     // ==========================================================================
     // Writes — User (atomic field updates)
@@ -183,31 +158,54 @@ public interface IUserRepository
     Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Anonymizes the identity portion of a user record for the account-merge
-    /// / duplicate-resolve flow: display name, username, email fields, phone,
-    /// profile picture URL, deletion fields, security stamp, iCal token, and
-    /// lockout. The source account is set to <c>"Merged User"</c> with a
-    /// synthetic <c>@merged.local</c> email and a lockout end of
-    /// <see cref="DateTimeOffset.MaxValue"/> so it cannot be logged into.
-    /// Returns false if the user does not exist.
+    /// Tombstones <paramref name="sourceUserId"/> as merged into
+    /// <paramref name="targetUserId"/>. Sets <c>MergedToUserId</c> +
+    /// <c>MergedAt</c>, anonymizes the identity portion of the user row
+    /// (display name, profile picture URL, phone, security stamp, iCal
+    /// token, deletion fields), and locks the source out
+    /// (<c>LockoutEnd = DateTimeOffset.MaxValue</c>) so it cannot be
+    /// logged into. Returns false if the user does not exist.
     /// </summary>
-    Task<bool> AnonymizeForMergeAsync(Guid userId, CancellationToken ct = default);
+    Task<bool> AnonymizeForMergeAsync(
+        Guid sourceUserId, Guid targetUserId, Instant now,
+        CancellationToken ct = default);
 
     /// <summary>
-    /// Removes every <c>AspNetUserLogins</c> row for the given user. Used by
-    /// <c>AccountMergeService.AcceptAsync</c> to prevent the anonymized
-    /// source account from being logged into via its OAuth providers.
+    /// Returns every user id whose <c>MergedToUserId</c> equals
+    /// <paramref name="targetUserId"/>. Powers
+    /// <c>IUserService.GetMergedSourceIdsAsync</c>, the canonical chain-follow
+    /// primitive for append-only sections (audit log, consent records, budget
+    /// audit log) so per-user reads can also surface rows attributed to merged
+    /// tombstones. Read-only (AsNoTracking).
     /// </summary>
-    Task RemoveExternalLoginsAsync(Guid userId, CancellationToken ct = default);
+    Task<IReadOnlyList<Guid>> GetMergedSourceIdsAsync(
+        Guid targetUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Migrates every external-login row from <paramref name="sourceUserId"/>
-    /// to <paramref name="targetUserId"/>. If the target already has a login
-    /// with the same <c>LoginProvider</c>, the source's row is dropped rather
-    /// than duplicated. Used by <c>DuplicateAccountService.ResolveAsync</c>
-    /// to re-link sign-in credentials before archiving the source account.
+    /// Migrates every <c>AspNetUserLogins</c> row from
+    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
+    /// <c>IdentityUserLogin&lt;Guid&gt;</c>'s primary key is
+    /// (<c>LoginProvider</c>, <c>ProviderKey</c>) only — <c>UserId</c> is
+    /// just an FK column — so two users can never share a row at the DB
+    /// level, and no de-duplication is possible. Returns the count of
+    /// logins now attributed to the target. Used by
+    /// <c>AccountMergeService.AcceptAsync</c> /
+    /// <c>DuplicateAccountService.ResolveAsync</c> to re-link sign-in
+    /// credentials before archiving the source account.
     /// </summary>
-    Task MigrateExternalLoginsAsync(
+    Task<int> ReassignLoginsToUserAsync(
+        Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Migrates every <c>event_participations</c> row from
+    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
+    /// On (Year, UserId) collision, keeps the row with the highest
+    /// <see cref="ParticipationStatus"/> per the precedence
+    /// <c>Attended &gt; Ticketed &gt; NoShow &gt; NotAttending</c>.
+    /// Returns the count of rows now attributed to the target. Used by
+    /// <c>AccountMergeService.AcceptAsync</c>.
+    /// </summary>
+    Task<int> ReassignEventParticipationToUserAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
 
     /// <summary>
@@ -234,11 +232,6 @@ public interface IUserRepository
     /// rows — those are either retained (audit) or removed by cascades.
     /// </remarks>
     Task<string?> PurgeAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the count of users with a non-null <c>DeletionRequestedAt</c>.
-    /// </summary>
-    Task<int> GetPendingDeletionCountAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Sets <c>User.LastConsentReminderSentAt</c> to <paramref name="sentAt"/>.
@@ -340,16 +333,6 @@ public interface IUserRepository
         IReadOnlyList<(Guid UserId, ParticipationStatus Status)> entries,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// For each user whose <see cref="User.GoogleEmail"/> is currently null
-    /// but who has a verified <see cref="UserEmail"/> row whose address ends
-    /// in <c>@nobodies.team</c>, set <c>User.GoogleEmail</c> to that verified
-    /// address. Persists in a single save. Returns one descriptor per
-    /// mutated user so the caller can emit audit entries without reloading.
-    /// Used by the system team sync's backfill pass.
-    /// </summary>
-    Task<IReadOnlyList<(Guid UserId, string DisplayName, string GoogleEmail)>>
-        BackfillNobodiesTeamGoogleEmailsAsync(CancellationToken ct = default);
 }
 
 /// <summary>

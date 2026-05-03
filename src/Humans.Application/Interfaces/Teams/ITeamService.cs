@@ -22,6 +22,7 @@ public record TeamDirectorySummary(
     string Slug,
     int MemberCount,
     bool IsSystemTeam,
+    bool IsHidden,
     bool RequiresApproval,
     bool IsPublicPage,
     bool IsCurrentUserMember,
@@ -37,7 +38,8 @@ public record TeamDirectoryResult(
     bool CanCreateTeam,
     IReadOnlyList<TeamDirectorySummary> MyTeams,
     IReadOnlyList<TeamDirectorySummary> Departments,
-    IReadOnlyList<TeamDirectorySummary> SystemTeams);
+    IReadOnlyList<TeamDirectorySummary> SystemTeams,
+    IReadOnlyList<TeamDirectorySummary> HiddenTeams);
 
 public record TeamDetailMemberSummary(
     Guid UserId,
@@ -172,11 +174,6 @@ public interface ITeamService
     /// Gets all active teams.
     /// </summary>
     Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets all user-created (non-system) teams.
-    /// </summary>
-    Task<IReadOnlyList<Team>> GetUserCreatedTeamsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the summarized team directory for anonymous or authenticated viewers.

@@ -110,6 +110,20 @@ public class TeamServiceTests : IDisposable
                 return Task.FromResult<IReadOnlyDictionary<Guid, User>>(users.ToDictionary(u => u.Id));
             });
         testUserService
+            .GetByIdsWithEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
+                if (ids.Count == 0)
+                    return Task.FromResult<IReadOnlyDictionary<Guid, User>>(new Dictionary<Guid, User>());
+                using var db = new HumansDbContext(options);
+                var users = db.Users.AsNoTracking()
+                    .Include(u => u.UserEmails)
+                    .Where(u => ids.Contains(u.Id))
+                    .ToList();
+                return Task.FromResult<IReadOnlyDictionary<Guid, User>>(users.ToDictionary(u => u.Id));
+            });
+        testUserService
             .GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
@@ -656,49 +670,6 @@ public class TeamServiceTests : IDisposable
         var result = await _service.GetAllTeamsAsync();
 
         result.Should().BeEmpty();
-    }
-
-    // ==========================================================================
-    // GetUserCreatedTeamsAsync
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task GetUserCreatedTeamsAsync_ExcludesSystemTeams()
-    {
-        SeedTeam("User Team");
-        SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetUserCreatedTeamsAsync();
-
-        result.Should().ContainSingle();
-        result[0].Name.Should().Be("User Team");
-    }
-
-    [HumansFact]
-    public async Task GetUserCreatedTeamsAsync_ExcludesInactiveTeams()
-    {
-        SeedTeam("Active");
-        SeedTeam("Inactive", isActive: false);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetUserCreatedTeamsAsync();
-
-        result.Should().ContainSingle();
-        result[0].Name.Should().Be("Active");
-    }
-
-    [HumansFact]
-    public async Task GetUserCreatedTeamsAsync_OrderedByName()
-    {
-        SeedTeam("Zebra");
-        SeedTeam("Apple");
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetUserCreatedTeamsAsync();
-
-        result[0].Name.Should().Be("Apple");
-        result[1].Name.Should().Be("Zebra");
     }
 
     // ==========================================================================

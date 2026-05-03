@@ -171,17 +171,18 @@ See [Profiles — Account Deletion](02-profiles.md#account-deletion-right-to-era
 **Schedule**: Hourly (**CURRENTLY DISABLED** for scheduled runs — modifies Google permissions). Can be triggered manually from Admin dashboard via "Sync System Teams" button.
 
 **Inline Triggers**: In addition to the scheduled job, single-user sync is triggered immediately by:
-- `AdminController.ApproveVolunteer` — after setting `IsApproved = true`
-- `ConsentController.Submit` — after recording a consent
+- `ProfileController.ApproveVolunteer` — after a Consent Coordinator clears the consent check (audit annotation; admission may already have happened via consent submit)
+- `ConsentController.Submit` — after recording a consent (this is the path that admits a new human to Volunteers)
 
 Both call `SyncVolunteersMembershipForUserAsync(userId)`, which evaluates a single user without affecting other members.
 
 **Process**:
 ```
 1. SyncVolunteersTeamAsync()
-   - Eligible: Approved (IsApproved), non-suspended, with all required Volunteers-team consents
+   - Eligible: Has a profile, !IsSuspended, ConsentCheckStatus != Flagged, RejectedAt is null, with all required Volunteers-team consents
    - Add: New eligible users
-   - Remove: Users who lost eligibility
+   - Remove: Users who lost eligibility (suspended, flagged, rejected, or consent lapsed)
+   - (Profile.IsApproved is the CC audit annotation; not consulted)
 
 2. SyncCoordinatorsTeamAsync()
    - Eligible: Users who are Coordinator of any user-created team + Coordinators-team consents
@@ -201,7 +202,7 @@ Both call `SyncVolunteersMembershipForUserAsync(userId)`, which evaluates a sing
 **System Teams**:
 | Team | Eligibility Criteria |
 |------|---------------------|
-| Volunteers | IsApproved AND !IsSuspended AND HasAllRequiredConsentsForTeam(Volunteers) |
+| Volunteers | HasProfile AND !IsSuspended AND ConsentCheckStatus != Flagged AND RejectedAt is null AND HasAllRequiredConsentsForTeam(Volunteers) |
 | Coordinators | TeamMember.Role = Coordinator (non-system teams) AND HasAllRequiredConsentsForTeam(Coordinators) |
 | Board | RoleAssignment.RoleName = "Board" AND active AND HasAllRequiredConsentsForTeam(Board) |
 

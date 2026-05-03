@@ -1,24 +1,20 @@
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Caching;
-using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.HostedServices;
-using Humans.Infrastructure.Services;
 using Humans.Infrastructure.Services.Profiles;
 using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
 using ProfilesContactFieldService = Humans.Application.Services.Profile.ContactFieldService;
 using ProfilesUserEmailService = Humans.Application.Services.Profile.UserEmailService;
 using ProfilesCommunicationPreferenceService = Humans.Application.Services.Profile.CommunicationPreferenceService;
-using ProfilesContactService = Humans.Application.Services.Profile.ContactService;
 using ProfilesAccountMergeService = Humans.Application.Services.Profile.AccountMergeService;
 using ProfilesDuplicateAccountService = Humans.Application.Services.Profile.DuplicateAccountService;
 using UsersAccountProvisioningService = Humans.Application.Services.Users.AccountProvisioningService;
 using UsersUnsubscribeService = Humans.Application.Services.Users.UnsubscribeService;
-using UsersUserEmailBackfillService = Humans.Application.Services.Users.UserEmailBackfillService;
 using GoogleEmailProvisioningService = Humans.Application.Services.GoogleIntegration.EmailProvisioningService;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Profiles;
 
@@ -30,12 +26,6 @@ internal static class ProfileSectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Profile picture filesystem storage (issue nobodies-collective/Humans#527).
-        // Phase 1: dual-write filesystem + DB; read filesystem-first, migrate-on-miss.
-        services.Configure<ProfilePictureStorageOptions>(
-            configuration.GetSection(ProfilePictureStorageOptions.SectionName));
-        services.AddSingleton<IProfilePictureStore, FileSystemProfilePictureStore>();
-
         // Profile section — repository/store/decorator pattern (§15 Step 0, PR #504)
         // Repositories use IDbContextFactory and are registered as Singleton so the
         // CachingProfileService Singleton can inject them directly without scope-factory indirection.
@@ -47,11 +37,19 @@ internal static class ProfileSectionExtensions
 
         services.AddScoped<IUnsubscribeTokenProvider, UnsubscribeTokenProvider>();
 
-        services.AddScoped<ICommunicationPreferenceService, ProfilesCommunicationPreferenceService>();
+        services.AddScoped<ProfilesCommunicationPreferenceService>();
+        services.AddScoped<ICommunicationPreferenceService>(sp => sp.GetRequiredService<ProfilesCommunicationPreferenceService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ProfilesCommunicationPreferenceService>());
+
         services.AddScoped<IUnsubscribeService, UsersUnsubscribeService>();
 
-        services.AddScoped<IContactFieldService, ProfilesContactFieldService>();
-        services.AddScoped<IUserEmailService, ProfilesUserEmailService>();
+        services.AddScoped<ProfilesContactFieldService>();
+        services.AddScoped<IContactFieldService>(sp => sp.GetRequiredService<ProfilesContactFieldService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ProfilesContactFieldService>());
+
+        services.AddScoped<ProfilesUserEmailService>();
+        services.AddScoped<IUserEmailService>(sp => sp.GetRequiredService<ProfilesUserEmailService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ProfilesUserEmailService>());
         // Google Integration §15 migration (issue #554) — email provisioning.
         // Service lives in Humans.Application, goes through IUserService /
         // IProfileService / IUserEmailService rather than injecting HumansDbContext.
@@ -64,9 +62,8 @@ internal static class ProfileSectionExtensions
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ProfilesAccountMergeService>());
 
         services.AddScoped<IDuplicateAccountService, ProfilesDuplicateAccountService>();
-        services.AddScoped<IContactService, ProfilesContactService>();
         services.AddScoped<IAccountProvisioningService, UsersAccountProvisioningService>();
-        services.AddScoped<IUserEmailBackfillService, UsersUserEmailBackfillService>();
+        services.AddScoped<IUserEmailProviderBackfillService, Humans.Application.Services.Users.UserEmailProviderBackfillService>();
 
         // ProfileService (inner): Scoped — has many Scoped cross-section deps.
         // Registered under the keyed "profile-inner" key so CachingProfileService can
@@ -87,10 +84,13 @@ internal static class ProfileSectionExtensions
         services.AddSingleton<CachingProfileService>();
         services.AddSingleton<IProfileService>(sp => sp.GetRequiredService<CachingProfileService>());
 
-        // CRITICAL: IFullProfileInvalidator must resolve to the same Singleton decorator instance
-        // that backs IProfileService. Both interfaces share the single CachingProfileService
-        // instance, so the _byUserId dict is never split.
+        // CRITICAL: IFullProfileInvalidator and IUserMerge must resolve to the same
+        // Singleton decorator instance that backs IProfileService. The merge fan-out
+        // goes through the decorator so the orchestrator never has to know
+        // ProfileService has a cache — the decorator owns its own eviction.
         services.AddSingleton<IFullProfileInvalidator>(sp =>
+            sp.GetRequiredService<CachingProfileService>());
+        services.AddSingleton<IUserMerge>(sp =>
             sp.GetRequiredService<CachingProfileService>());
 
         // Eagerly warm the FullProfile dict at startup so bulk reads

@@ -89,12 +89,6 @@ public interface IUserService
     Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the ids of every user in the system, read-only. Used by the
-    /// admin dashboard to partition all users without loading the full graph.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetAllUserIdsAsync(CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the language distribution for the given user ids, grouped by
     /// <see cref="User.PreferredLanguage"/>. Used by the admin dashboard
     /// to render language stats for approved humans.
@@ -150,19 +144,6 @@ public interface IUserService
     Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
 
     /// <summary>
-    /// Sets <see cref="User.GoogleEmailStatus"/> to <paramref name="status"/>.
-    /// Unconditional — used by operator-driven overrides (e.g. email-backfill
-    /// flows that promote a freshly-provisioned <c>@nobodies.team</c> address
-    /// back to <see cref="GoogleEmailStatus.Valid"/>). Sync-driven writes must
-    /// use <see cref="TrySetGoogleEmailStatusFromSyncAsync"/> so the
-    /// "Rejected is terminal" invariant is preserved in one place.
-    /// Returns true when a write occurred (user exists and status actually
-    /// changed), false otherwise.
-    /// </summary>
-    Task<bool> SetGoogleEmailStatusAsync(
-        Guid userId, GoogleEmailStatus status, CancellationToken ct = default);
-
-    /// <summary>
     /// Sync-driven <see cref="User.GoogleEmailStatus"/> write that preserves
     /// the "Rejected is terminal" invariant: once flagged
     /// <see cref="GoogleEmailStatus.Rejected"/> (Google HTTP 403 on a
@@ -215,13 +196,6 @@ public interface IUserService
     Task<User?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all contact users (ContactSource != null, LastLoginAt == null),
-    /// optionally filtered by display name or email search term.
-    /// Ordered by CreatedAt descending.
-    /// </summary>
-    Task<IReadOnlyList<User>> GetContactUsersAsync(string? search, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the <c>LastLoginAt</c> timestamp of every user whose last login falls
     /// within the half-open window <c>[fromInclusive, toExclusive)</c>. Used by the
     /// shift coordinator dashboard to chart distinct logins by day without reading
@@ -243,14 +217,6 @@ public interface IUserService
         string email,
         Guid excludeUserId,
         CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the count of users with a non-null <c>DeletionRequestedAt</c>.
-    /// Used by the notification meter to surface pending account deletions
-    /// to Admin without letting the Notifications section read the users
-    /// table directly (design-rules §2c).
-    /// </summary>
-    Task<int> GetPendingDeletionCountAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Sets <c>User.LastConsentReminderSentAt</c> to <paramref name="sentAt"/>.
@@ -278,16 +244,31 @@ public interface IUserService
     Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
         Instant now, CancellationToken ct = default);
 
+    // ---- Methods added for AccountMergeService fold-into-target redesign ----
+
     /// <summary>
-    /// For every user whose <see cref="User.GoogleEmail"/> is null but who has
-    /// a verified <c>@nobodies.team</c> <see cref="UserEmail"/> row, sets
-    /// <see cref="User.GoogleEmail"/> to that verified address. Persists all
-    /// changes in a single save and returns the list of backfill descriptors
-    /// (UserId, DisplayName, NewGoogleEmail) so the caller can emit audit
-    /// entries. Used by <c>SystemTeamSyncJob.BackfillGoogleEmailsAsync</c>.
+    /// Tombstones source user as merged into target. Sets
+    /// <c>MergedToUserId</c>, <c>MergedAt</c>, locks the source out
+    /// (<c>LockoutEnd</c> far future), and applies the existing per-user
+    /// anonymization fields (display name, picture, phone, security stamp,
+    /// iCal token). Returns true if the source row existed; false if it
+    /// was missing. Invalidates the FullProfile cache for the source on
+    /// success. Used by <c>AccountMergeService.AcceptAsync</c> as the
+    /// final step of the fold-into-target flow.
     /// </summary>
-    Task<IReadOnlyList<(Guid UserId, string DisplayName, string GoogleEmail)>>
-        BackfillNobodiesTeamGoogleEmailsAsync(CancellationToken ct = default);
+    Task<bool> AnonymizeForMergeAsync(
+        Guid sourceUserId, Guid targetUserId, Instant now,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the set of source-tombstone ids whose <c>MergedToUserId</c>
+    /// equals <paramref name="targetUserId"/>. Single canonical chain-follow
+    /// primitive: AuditLog, Consent, BudgetAuditLog reads call this rather
+    /// than each section reinventing the lookup. Set is small (typically
+    /// zero, usually one).
+    /// </summary>
+    Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(
+        Guid targetUserId, CancellationToken ct = default);
 }
 
 /// <summary>

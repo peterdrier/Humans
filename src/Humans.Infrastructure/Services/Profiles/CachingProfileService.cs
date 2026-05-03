@@ -3,14 +3,12 @@ using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Application;
 using Humans.Application.DTOs;
-using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using MemberApplication = Humans.Domain.Entities.Application;
 using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
-using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Governance;
@@ -154,7 +152,7 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         }
 
         var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
-        var notificationEmail = userEmails.FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified)?.Email
+        var notificationEmail = userEmails.FirstOrDefault(e => e.IsPrimary && e.IsVerified)?.Email
                                 ?? user.Email;
 
         _byUserId[userId] = FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), notificationEmail);
@@ -217,14 +215,6 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         return await inner.GetProfileIndexDataAsync(userId, ct);
     }
 
-    public async Task<IReadOnlyList<CampaignGrant>> GetActiveOrCompletedCampaignGrantsAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-        return await inner.GetActiveOrCompletedCampaignGrantsAsync(userId, ct);
-    }
-
     public async Task<(Profile? Profile, bool IsTierLocked, MemberApplication? PendingApplication)>
         GetProfileEditDataAsync(Guid userId, CancellationToken ct = default)
     {
@@ -261,6 +251,9 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
         return await inner.GetActiveApprovedUserIdsAsync(ct);
     }
+
+    public Task<int> GetActiveApprovedCountAsync(CancellationToken ct = default) =>
+        Task.FromResult(_byUserId.Values.Count(p => p.IsApproved && !p.IsSuspended));
 
     public async Task<int> GetConsentReviewPendingCountAsync(CancellationToken ct = default)
     {
@@ -364,6 +357,26 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         var userId = _byUserId.Values.FirstOrDefault(p => p.ProfileId == profileId)?.UserId;
         if (userId.HasValue)
             await RefreshEntryAsync(userId.Value, ct);
+    }
+
+    // ==========================================================================
+    // IUserMerge implementation — delegate to inner, then evict both users from
+    // the FullProfile dict. Eviction (not RefreshEntryAsync) is intentional:
+    // ReassignAsync runs inside the orchestrator's TransactionScope, so a
+    // DB-backed rebuild here would read uncommitted state. Eviction is
+    // rollback-safe — the next read repopulates from whatever the DB ends up
+    // with after the scope completes (or rolls back).
+    // ==========================================================================
+
+    public async Task ReassignAsync(
+        Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        await inner.ReassignAsync(mergedFromUserId, mergedToUserId, actorUserId, now, ct);
+
+        _byUserId.TryRemove(mergedFromUserId, out _);
+        _byUserId.TryRemove(mergedToUserId, out _);
     }
 
     // ==========================================================================

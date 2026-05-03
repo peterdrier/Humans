@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Notifications;
 
@@ -30,7 +31,7 @@ namespace Humans.Application.Services.Notifications;
 /// invalidates those per-user cache keys after every successful send.
 /// </para>
 /// </remarks>
-public sealed class NotificationService : INotificationService
+public sealed class NotificationService : INotificationService, IUserMerge
 {
     private readonly INotificationEmitter _emitter;
     private readonly INotificationRepository _repo;
@@ -221,4 +222,11 @@ public sealed class NotificationService : INotificationService
             _cache.Remove(CacheKeys.NotificationBadgeCounts(userId));
         }
     }
+
+    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+        CancellationToken ct)
+        => _repo.ReassignRecipientsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+
+    public void InvalidateBadgeCachesForUsers(IEnumerable<Guid> userIds) =>
+        InvalidateBadgeCaches(userIds);
 }

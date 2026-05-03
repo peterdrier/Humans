@@ -376,6 +376,16 @@ public interface IBudgetRepository
     /// </summary>
     Task<IReadOnlyList<BudgetAuditLog>> GetAuditLogEntriesForUserAsync(
         Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Multi-id overload of <see cref="GetAuditLogEntriesForUserAsync"/> used
+    /// by the service-layer chain-follow read path so a fold-target's GDPR
+    /// export transparently includes audit entries that stayed attributed
+    /// to merged-source tombstones. Returns every entry authored by any of
+    /// the supplied ids, ordered by <c>OccurredAt</c> descending.
+    /// </summary>
+    Task<IReadOnlyList<BudgetAuditLog>> GetAuditLogEntriesForUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 }
 
 // ==========================================================================

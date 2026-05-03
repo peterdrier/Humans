@@ -63,16 +63,39 @@ public interface IUserEmailRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the maximum display order for a user's emails.
-    /// </summary>
-    Task<int> GetMaxDisplayOrderAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns all verified @nobodies.team emails across all users.
     /// Used as a bulk load to support in-memory filtering by callers.
     /// </summary>
     Task<IReadOnlyList<UserEmail>> GetAllVerifiedNobodiesTeamEmailsAsync(
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Bulk-moves <c>user_emails</c> rows from <paramref name="sourceUserId"/>
+    /// to <paramref name="targetUserId"/> for the account-merge fold flow.
+    /// Conflict rule per the fold spec: when source and target both have a
+    /// row for the same address (case-insensitive), the rows collapse —
+    /// <c>IsVerified</c> is OR-combined onto the target's row and the
+    /// source's row is deleted. Surviving source rows are re-FK'd to target
+    /// with <c>IsPrimary</c> and <c>IsGoogle</c> cleared so the target's
+    /// existing primary / Google selections remain authoritative.
+    /// <c>UpdatedAt</c> is stamped to <paramref name="updatedAt"/> on every
+    /// row touched. Returns the count of <c>user_emails</c> rows ultimately
+    /// attributed to <paramref name="targetUserId"/>.
+    /// </summary>
+    Task<int> ReassignToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns a snapshot of every <see cref="UserEmail"/> row for the user that
+    /// also carries the legacy <c>IsOAuth</c> shadow-column value. Used by
+    /// <c>UserEmailProviderBackfillService</c> to read the legacy flag via
+    /// <c>EF.Property&lt;bool&gt;(...)</c> without reaching back into the
+    /// deleted CLR property.
+    /// </summary>
+    Task<IReadOnlyList<UserEmailLegacyBackfillSnapshot>>
+        GetLegacyBackfillSnapshotsByUserIdAsync(
+            Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns every user email, read-only. Used by the duplicate-account
@@ -185,7 +208,7 @@ public interface IUserEmailRepository
     /// email-backfill workflow. Returns true when a row was updated. No-op if the
     /// user has no OAuth email row.
     /// </summary>
-    Task<bool> RewriteOAuthEmailAsync(Guid userId, string newEmail, CancellationToken ct = default);
+    Task<bool> RewriteLinkedEmailAsync(Guid userId, string newEmail, CancellationToken ct = default);
 
     /// <summary>
     /// Rewrites the <c>Email</c> of the user's existing <see cref="UserEmail"/> row
@@ -197,6 +220,26 @@ public interface IUserEmailRepository
     Task<bool> RewriteEmailAddressAsync(
         Guid userId, string oldEmail, string newEmail, Instant updatedAt,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every <see cref="UserEmail"/> row with matching
+    /// <paramref name="provider"/> / <paramref name="providerKey"/>.
+    /// Read-only (AsNoTracking). Used by
+    /// <c>UserEmailService.FindByProviderKeyAsync</c> for OAuth-callback rename
+    /// detection. The single-row-per-pair invariant is service-enforced; a
+    /// healthy database returns 0 or 1 rows.
+    /// </summary>
+    Task<IReadOnlyList<UserEmail>> FindAllByProviderKeyAsync(
+        string provider, string providerKey, CancellationToken ct = default);
+
+    /// <summary>
+    /// Single-transaction flip: sets <see cref="UserEmail.IsGoogle"/> = true
+    /// on the target row, and IsGoogle = false on every sibling row for the
+    /// same user. Stamps <c>UpdatedAt</c> with <paramref name="updatedAt"/>
+    /// on every row whose <c>IsGoogle</c> value changes. Owner-gate
+    /// (userId match) is performed by the caller.
+    /// </summary>
+    Task SetGoogleExclusiveAsync(Guid userId, Guid userEmailId, Instant updatedAt, CancellationToken cancellationToken = default);
 
     Task AddAsync(UserEmail email, CancellationToken ct = default);
     Task RemoveAsync(UserEmail email, CancellationToken ct = default);

@@ -51,6 +51,18 @@ public sealed class ConsentRepository : IConsentRepository
             .AnyAsync(c => c.UserId == userId && c.DocumentVersionId == documentVersionId, ct);
     }
 
+    public async Task<bool> ExistsForUserIdsAndVersionAsync(
+        IReadOnlyCollection<Guid> userIds, Guid documentVersionId, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return false;
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.ConsentRecords
+            .AsNoTracking()
+            .AnyAsync(c => userIds.Contains(c.UserId) && c.DocumentVersionId == documentVersionId, ct);
+    }
+
     public async Task<ConsentRecord?> GetByUserAndVersionAsync(
         Guid userId, Guid documentVersionId, CancellationToken ct = default)
     {
@@ -58,6 +70,20 @@ public sealed class ConsentRepository : IConsentRepository
         return await ctx.ConsentRecords
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.UserId == userId && c.DocumentVersionId == documentVersionId, ct);
+    }
+
+    public async Task<ConsentRecord?> GetByUserIdsAndVersionAsync(
+        IReadOnlyCollection<Guid> userIds, Guid documentVersionId, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return null;
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.ConsentRecords
+            .AsNoTracking()
+            .Where(c => userIds.Contains(c.UserId) && c.DocumentVersionId == documentVersionId)
+            .OrderByDescending(c => c.ConsentedAt)
+            .FirstOrDefaultAsync(ct);
     }
 
     public async Task<IReadOnlyList<ConsentRecord>> GetAllForUserAsync(
@@ -73,11 +99,38 @@ public sealed class ConsentRepository : IConsentRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<ConsentRecord>> GetAllForUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return [];
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.ConsentRecords
+            .AsNoTracking()
+            .Include(c => c.DocumentVersion)
+                .ThenInclude(v => v.LegalDocument)
+            .Where(c => userIds.Contains(c.UserId))
+            .OrderByDescending(c => c.ConsentedAt)
+            .ToListAsync(ct);
+    }
+
     public async Task<int> GetCountForUserAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.ConsentRecords
             .CountAsync(c => c.UserId == userId, ct);
+    }
+
+    public async Task<int> GetCountForUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return 0;
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.ConsentRecords
+            .CountAsync(c => userIds.Contains(c.UserId), ct);
     }
 
     public async Task<IReadOnlySet<Guid>> GetExplicitlyConsentedVersionIdsAsync(
@@ -87,6 +140,22 @@ public sealed class ConsentRepository : IConsentRepository
         var ids = await ctx.ConsentRecords
             .AsNoTracking()
             .Where(c => c.UserId == userId && c.ExplicitConsent)
+            .Select(c => c.DocumentVersionId)
+            .ToListAsync(ct);
+
+        return ids.ToHashSet();
+    }
+
+    public async Task<IReadOnlySet<Guid>> GetExplicitlyConsentedVersionIdsForUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return new HashSet<Guid>();
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var ids = await ctx.ConsentRecords
+            .AsNoTracking()
+            .Where(c => userIds.Contains(c.UserId) && c.ExplicitConsent)
             .Select(c => c.DocumentVersionId)
             .ToListAsync(ct);
 

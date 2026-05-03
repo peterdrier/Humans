@@ -220,7 +220,7 @@
             </div>
             <div class="card-body">
                 <div class="row g-3">
-                    @foreach (var lead in Model.SubteamLeads)
+                    @foreach (var lead in Model.SubteamLeads.OrderBy(l => l.DisplayName, StringComparer.OrdinalIgnoreCase))
                     {
                         <div class="col-6 col-sm-4 col-md-3">
                             <human-link user-id="@lead.UserId" display-name="@lead.DisplayName"
@@ -246,7 +246,7 @@
             </div>
             <div class="card-body">
                 <div class="row g-3">
-                    @foreach (var member in Model.ChildTeamMembers)
+                    @foreach (var member in Model.ChildTeamMembers.OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase))
                     {
                         <div class="col-6 col-sm-4 col-md-3">
                             <human-link user-id="@member.UserId" display-name="@member.DisplayName"

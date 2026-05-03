@@ -66,6 +66,8 @@
   <data name="Nav_Admin" xml:space="preserve"><value>Admin</value></data>
   <data name="Nav_OnboardingReview" xml:space="preserve"><value>Cola de revisi&#xF3;n</value></data>
   <data name="Nav_MyFeedback" xml:space="preserve"><value>Mi feedback</value></data>
+  <data name="Nav_Issues" xml:space="preserve"><value>Incidencias</value></data>
+  <data name="Issue_Unavailable" xml:space="preserve"><value>Esa incidencia no está disponible — puede que se haya eliminado o que no tengas acceso.</value></data>
 
 
   <!-- ======================== -->
@@ -535,10 +537,6 @@
   <data name="Teams_NotOnAnyTeam" xml:space="preserve"><value>A&#xFA;n no se ha unido a ning&#xFA;n equipo.</value></data>
   <data name="Teams_NoOtherTeams" xml:space="preserve"><value>No hay otros equipos disponibles.</value></data>
   <data name="Teams_System" xml:space="preserve"><value>Sistema</value></data>
-
-  <!-- Vol/Teams landing: Browse Shifts CTA (#534) -->
-  <data name="VolTeams_BrowseShiftsBanner" xml:space="preserve"><value>&#xBF;Buscas turnos? M&#xED;ralos todos aqu&#xED;, o elige un equipo abajo.</value></data>
-  <data name="VolTeams_BrowseShiftsButton" xml:space="preserve"><value>Ver turnos</value></data>
 
   <!-- Team Detail View -->
   <data name="TeamDetail_NoDescription" xml:space="preserve"><value>Sin descripci&#xF3;n.</value></data>
@@ -1305,6 +1303,17 @@
 &lt;p&gt;¡Gracias por ayudarnos a mejorar!&lt;/p&gt;
 &lt;p&gt;El equipo de Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = original description, {2} = response message</comment></data>
 
+  <!-- Issue Comment Email -->
+  <data name="Email_IssueComment_Subject" xml:space="preserve"><value>Nuevo comentario en tu issue: {0}</value></data>
+  <data name="Email_IssueComment_Body" xml:space="preserve"><value>&lt;h2&gt;Nuevo comentario en tu issue&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Hay un nuevo comentario en tu issue:&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Issue:&lt;/strong&gt; {1}&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Comentario:&lt;/strong&gt;&lt;/p&gt;
+&lt;blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #666;"&gt;{2}&lt;/blockquote&gt;
+&lt;p&gt;&lt;a href="{3}"&gt;Abrir issue&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;— El equipo de Humans&lt;/p&gt;</value><comment>{0} = display name, {1} = issue title, {2} = comment HTML, {3} = issue URL</comment></data>
+
   <!-- Feedback Widget -->
   <data name="Feedback_Button" xml:space="preserve"><value>Feedback</value></data>
   <data name="Feedback_Title" xml:space="preserve"><value>Enviar Feedback</value></data>
@@ -1640,7 +1649,6 @@
   <data name="Emails_Header_Status" xml:space="preserve"><value>Estado</value></data>
   <data name="Emails_Header_Notifications" xml:space="preserve"><value>Notificaciones</value></data>
   <data name="Emails_Header_Visibility" xml:space="preserve"><value>Visibilidad del perfil</value></data>
-  <data name="Emails_SignIn" xml:space="preserve"><value>Inicio de sesión</value></data>
   <data name="Emails_MergePending" xml:space="preserve"><value>Fusión pendiente</value></data>
   <data name="Emails_Verified" xml:space="preserve"><value>Verificado</value></data>
   <data name="Emails_StatusPending" xml:space="preserve"><value>Pendiente</value></data>
@@ -1692,6 +1700,10 @@
   <data name="Shifts_SetPreferences" xml:space="preserve"><value>Configura tus preferencias</value></data>
   <data name="Shifts_PreferencesHelp" xml:space="preserve"><value>Selecciona etiquetas que coincidan con el trabajo que te gusta. Los turnos coincidentes se resaltarán con una estrella.</value></data>
   <data name="Shifts_SavePreferences" xml:space="preserve"><value>Guardar preferencias</value></data>
+  <data name="Shifts_HeroTitle" xml:space="preserve"><value>Encuentra tu turno perfecto</value></data>
+  <data name="Shifts_HeroSubtitle" xml:space="preserve"><value>Explora las opciones de voluntariado, filtra por fase o departamento, y apúntate a los turnos que mejor se adapten a ti.</value></data>
+  <data name="Shifts_LearnMore" xml:space="preserve"><value>Saber más</value></data>
+  <data name="Shifts_EditPreferences" xml:space="preserve"><value>Editar preferencias</value></data>
   <data name="Shifts_NotOpenYet" xml:space="preserve"><value>Los turnos aún no están abiertos. Solo coordinadores y administradores pueden ver esta página.</value></data>
   <data name="Shifts_NoShiftsAvailable" xml:space="preserve"><value>Aún no hay turnos disponibles.</value></data>
   <data name="Shifts_AllShiftsFull" xml:space="preserve"><value>Todos los turnos de {0} están completos.</value><comment>{0} = period name</comment></data>
@@ -1747,6 +1759,7 @@
   <data name="Shifts_GeneralAvailability" xml:space="preserve"><value>Disponibilidad general</value></data>
   <data name="Shifts_AvailabilityHelp" xml:space="preserve"><value>Marca los días que estás disponible para ayudar. Los coordinadores pueden ver quién está disponible al asignar turnos.</value></data>
   <data name="Shifts_SaveAvailability" xml:space="preserve"><value>Guardar disponibilidad</value></data>
+  <data name="Shifts_DaysSelected" xml:space="preserve"><value>días seleccionados</value></data>
   <data name="Shifts_SlotsFull" xml:space="preserve"><value>Algunos días aún necesitan ayuda, pero todos los turnos disponibles están completos. Vuelve más tarde por si se abren plazas.</value></data>
 
   <data name="ShiftDash_Title" xml:space="preserve"><value>Panel de turnos</value></data>
@@ -1848,6 +1861,23 @@
   <data name="Privacy_ContactBody" xml:space="preserve"><value>Para preguntas o dudas sobre esta política, contacta con nuestro Delegado de Protección de Datos en {0}.</value><comment>{0} = DPO email</comment></data>
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>Si no estás satisfecho con nuestra respuesta, tienes derecho a presentar una reclamación ante la Agencia Española de Protección de Datos (AEPD) en {0}.</value><comment>{0} = AEPD URL</comment></data>
 
+  <!-- Agent Widget -->
+  <data name="Agent_ConsentPrompt" xml:space="preserve"><value>Antes de usar el asistente, revisa y acepta las Condiciones del Chat del Asistente.</value></data>
+  <data name="Agent_ConsentReviewButton" xml:space="preserve"><value>Revisar condiciones</value></data>
+  <data name="Agent_HistoryActions" xml:space="preserve"><value>Acciones</value></data>
+  <data name="Agent_HistoryDelete" xml:space="preserve"><value>Eliminar</value></data>
+  <data name="Agent_HistoryEmpty" xml:space="preserve"><value>Aún no tienes conversaciones.</value></data>
+  <data name="Agent_HistoryLastMessage" xml:space="preserve"><value>Último mensaje</value></data>
+  <data name="Agent_HistoryMessages" xml:space="preserve"><value>Mensajes</value></data>
+  <data name="Agent_HistoryStarted" xml:space="preserve"><value>Inicio</value></data>
+  <data name="Agent_HistoryTitle" xml:space="preserve"><value>Asistente — Mis conversaciones</value></data>
+  <data name="Agent_InputPlaceholder" xml:space="preserve"><value>Pregunta cómo funciona el sistema…</value></data>
+  <data name="Agent_PanelTitle" xml:space="preserve"><value>Asistente</value></data>
+  <data name="Agent_ViewHistory" xml:space="preserve"><value>Historial</value></data>
+  <data name="Agent_Send" xml:space="preserve"><value>Enviar</value></data>
+  <data name="Agent_WidgetButton" xml:space="preserve"><value>Abrir el asistente</value></data>
+  <data name="Nav_Agent" xml:space="preserve"><value>Asistente</value></data>
+
 
   <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Plazas cubiertas</value></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Con entrada</value></data>
@@ -1926,5 +1956,108 @@
   <data name="ShiftDash_Status_AtRisk" xml:space="preserve"><value>En riesgo</value></data>
   <data name="ShiftDash_Status_BelowTarget" xml:space="preserve"><value>Por debajo del objetivo</value></data>
   <data name="ShiftDash_Coordinators_StaleLabel" xml:space="preserve"><value>Inactivo más de 7 días</value></data>
+  <data name="EmailGrid_AdminContextBanner" xml:space="preserve"><value>Gestionando correos de otro usuario</value></data>
+  <data name="EmailGrid_AdminContextBannerNamed" xml:space="preserve"><value>Gestionando correos de {0}</value><comment>{0} = target user display name</comment></data>
+  <data name="EmailGrid_AdminUnknownTarget" xml:space="preserve"><value>otro usuario</value></data>
+  <data name="Emails_AdminUnknownTarget" xml:space="preserve"><value>otro usuario</value></data>
+  <data name="EmailGrid_Email" xml:space="preserve"><value>Correo</value></data>
+  <data name="EmailGrid_Status" xml:space="preserve"><value>Estado</value></data>
+  <data name="EmailGrid_Primary" xml:space="preserve"><value>Principal</value></data>
+  <data name="EmailGrid_Google" xml:space="preserve"><value>Google</value></data>
+  <data name="EmailGrid_GoogleColumnTooltip" xml:space="preserve"><value>Correo usado para la sincronización con Google Workspace.</value></data>
+  <data name="EmailGrid_WorkspaceLockedHelp" xml:space="preserve"><value>Principal y Google los gestiona Google Workspace mientras tu dirección @nobodies.team esté presente.</value></data>
+  <data name="EmailGrid_VerificationPendingTitle" xml:space="preserve"><value>Verificación de correo pendiente</value></data>
+  <data name="EmailGrid_VerificationPendingBody" xml:space="preserve"><value>Revisa tu bandeja de entrada y haz clic en el enlace del correo de verificación para confirmar tu dirección.</value></data>
+  <data name="EmailGrid_Visibility" xml:space="preserve"><value>Visibilidad</value></data>
+  <data name="EmailGrid_Actions" xml:space="preserve"><value>Acciones</value></data>
+  <data name="EmailGrid_StatusMergePending" xml:space="preserve"><value>Fusión pendiente</value></data>
+  <data name="EmailGrid_StatusVerified" xml:space="preserve"><value>Verificado</value></data>
+  <data name="EmailGrid_StatusPending" xml:space="preserve"><value>Pendiente</value></data>
+  <data name="EmailGrid_PrimarySelected" xml:space="preserve"><value>Principal</value></data>
+  <data name="EmailGrid_LinkGoogleAccount" xml:space="preserve"><value>Vincular cuenta de Google</value></data>
+  <data name="EmailGrid_LinkGoogleHelp" xml:space="preserve"><value>Inicia sesión con Google para vincular una cuenta de Google adicional a tu perfil.</value></data>
+  <data name="EmailGrid_BackToAdminDetail" xml:space="preserve"><value>Volver al detalle del usuario</value></data>
+  <data name="EmailGrid_Unlink" xml:space="preserve"><value>Desvincular</value></data>
+  <data name="EmailGrid_ConfirmUnlink" xml:space="preserve"><value>¿Desvincular esta cuenta de Google?</value></data>
+  <data name="EmailGrid_SetGoogleRejected" xml:space="preserve"><value>No se pudo establecer el correo de servicio de Google: la fila es desconocida o no está verificada.</value></data>
+  <data name="EmailGrid_UnlinkRejected" xml:space="preserve"><value>No se pudo desvincular: la fila es desconocida o no tiene proveedor de inicio de sesión.</value></data>
+  <data name="EmailGrid_GoogleServiceUpdated" xml:space="preserve"><value>Correo de servicio de Google actualizado. La sincronización se reintentará con el nuevo correo.</value></data>
+  <data name="EmailGrid_UnlinkSuccess" xml:space="preserve"><value>Proveedor de inicio de sesión desvinculado.</value></data>
+  <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve"><value>Este correo está vinculado a un proveedor de inicio de sesión. Usa Desvincular en su lugar.</value></data>
+  <data name="EmailGrid_AdminAddSentVerification" xml:space="preserve"><value>Correo de verificación enviado al usuario.</value></data>
+  <data name="EmailGrid_LinkFailed" xml:space="preserve"><value>No hemos podido vincular esta cuenta de Google. Inténtalo de nuevo.</value></data>
+  <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>Gestionar correos</value></data>
+
+  <!-- Issues section -->
+  <data name="Issue_PageTitle" xml:space="preserve"><value>Incidencias</value></data>
+  <data name="Issue_New" xml:space="preserve"><value>Nueva incidencia</value></data>
+  <data name="Issue_New_Title" xml:space="preserve"><value>Reportar una nueva incidencia</value></data>
+  <data name="Issue_BackToList" xml:space="preserve"><value>Volver a la lista</value></data>
+  <data name="Issue_All" xml:space="preserve"><value>Todas</value></data>
+  <data name="Issue_Open" xml:space="preserve"><value>Abiertas</value></data>
+  <data name="Issue_Mine" xml:space="preserve"><value>Mías</value></data>
+  <data name="Issue_Closed" xml:space="preserve"><value>Cerradas</value></data>
+  <data name="Issue_AllCategories" xml:space="preserve"><value>Todos los tipos</value></data>
+  <data name="Issue_AllAreas" xml:space="preserve"><value>Todas las áreas</value></data>
+  <data name="Issue_AllReporters" xml:space="preserve"><value>Todos los reporteros</value></data>
+  <data name="Issue_SearchPlaceholder" xml:space="preserve"><value>Buscar título o descripción…</value></data>
+  <data name="Issue_Apply" xml:space="preserve"><value>Aplicar</value></data>
+  <data name="Issue_Clear" xml:space="preserve"><value>Limpiar</value></data>
+  <data name="Issue_NoneFound" xml:space="preserve"><value>Ninguna incidencia coincide con los filtros actuales.</value></data>
+  <data name="Issue_AssignedTo" xml:space="preserve"><value>asignada a</value></data>
+  <data name="Issue_SelectOne" xml:space="preserve"><value>Selecciona una incidencia de la lista para ver los detalles.</value></data>
+  <data name="Issue_Detail_Heading" xml:space="preserve"><value>Incidencia</value></data>
+  <data name="Issue_OpenedBy" xml:space="preserve"><value>Abierta por</value></data>
+  <data name="Issue_Screenshot" xml:space="preserve"><value>Captura de pantalla</value></data>
+  <data name="Issue_Thread" xml:space="preserve"><value>Conversación</value></data>
+  <data name="Issue_NoActivity" xml:space="preserve"><value>Aún no hay actividad.</value></data>
+  <data name="Issue_Reporter" xml:space="preserve"><value>Reportero</value></data>
+  <data name="Issue_ComposerPlaceholder" xml:space="preserve"><value>Añadir un comentario…</value></data>
+  <data name="Issue_Comment" xml:space="preserve"><value>Comentar</value></data>
+  <data name="Issue_CommentAndResolve" xml:space="preserve"><value>Comentar y marcar como resuelta</value></data>
+  <data name="Issue_ReopenByCommenting" xml:space="preserve"><value>Publicar un comentario reabrirá esta incidencia.</value></data>
+  <data name="Issue_Details" xml:space="preserve"><value>Detalles</value></data>
+  <data name="Issue_Status" xml:space="preserve"><value>Estado</value></data>
+  <data name="Issue_Type" xml:space="preserve"><value>Tipo</value></data>
+  <data name="Issue_Area" xml:space="preserve"><value>Área</value></data>
+  <data name="Issue_Unspecified" xml:space="preserve"><value>Sin especificar</value></data>
+  <data name="Issue_Assignee" xml:space="preserve"><value>Asignada a</value></data>
+  <data name="Issue_Unassigned" xml:space="preserve"><value>Sin asignar</value></data>
+  <data name="Issue_GitHub" xml:space="preserve"><value>GitHub</value></data>
+  <data name="Issue_Opened" xml:space="preserve"><value>Abierta</value></data>
+  <data name="Issue_LastUpdate" xml:space="preserve"><value>Última actualización</value></data>
+  <data name="Issue_Due" xml:space="preserve"><value>Fecha límite</value></data>
+  <data name="Issue_Resolved" xml:space="preserve"><value>Resuelta</value></data>
+  <data name="Issue_ResolvedBy" xml:space="preserve"><value>por</value></data>
+  <data name="Issue_Title" xml:space="preserve"><value>Título</value></data>
+  <data name="Issue_Area_Auto" xml:space="preserve"><value>Detectar automáticamente</value></data>
+  <data name="Issue_Area_Hint" xml:space="preserve"><value>Déjalo en blanco para detectarlo desde la página actual.</value></data>
+  <data name="Issue_Description" xml:space="preserve"><value>Descripción</value></data>
+  <data name="Issue_Description_Placeholder" xml:space="preserve"><value>¿Qué pasó? ¿Qué esperabas que pasara?</value></data>
+  <data name="Issue_Attachment" xml:space="preserve"><value>Captura (opcional)</value></data>
+  <data name="Issue_Attachment_Hint" xml:space="preserve"><value>PNG o JPEG, máximo 5 MB.</value></data>
+  <data name="Issue_FileIssue" xml:space="preserve"><value>Reportar incidencia</value></data>
+  <data name="Issue_FileAnIssue" xml:space="preserve"><value>Reportar una incidencia</value></data>
+  <data name="Issue_Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="Issue_Widget_ToastSuccess" xml:space="preserve"><value>¡Gracias! Incidencia registrada. Verla aquí: {0}</value><comment>{0} = absolute URL path of the new issue</comment></data>
+  <data name="Issue_Widget_ToastValidationFailed" xml:space="preserve"><value>No se pudo registrar la incidencia. Revisa los campos obligatorios e inténtalo de nuevo.</value></data>
+  <data name="Issue_Widget_ToastNetworkError" xml:space="preserve"><value>Algo salió mal. Inténtalo de nuevo.</value></data>
+  <data name="Issue_Tips_Title" xml:space="preserve"><value>Consejos para una buena incidencia</value></data>
+  <data name="Issue_Tips_Bullet1" xml:space="preserve"><value>Describe qué estabas intentando hacer.</value></data>
+  <data name="Issue_Tips_Bullet2" xml:space="preserve"><value>Describe qué pasó y qué esperabas.</value></data>
+  <data name="Issue_Tips_Bullet3" xml:space="preserve"><value>Incluye una captura si ayuda a explicarlo.</value></data>
+  <data name="Issue_Tips_Bullet4" xml:space="preserve"><value>Una incidencia por reporte — los problemas distintos deben ir en incidencias separadas.</value></data>
+  <data name="Issue_NotEmail_Notice" xml:space="preserve"><value>Esto no es correo — las respuestas suceden aquí, en la conversación de la incidencia.</value></data>
+
+  <!-- Issues — mensajes de estado del controlador (TempData) -->
+  <data name="Issue_Submitted" xml:space="preserve"><value>Incidencia enviada. ¡Gracias!</value></data>
+  <data name="Issue_Error" xml:space="preserve"><value>Algo salió mal. Inténtalo de nuevo.</value></data>
+  <data name="Issue_Comment_Posted" xml:space="preserve"><value>Comentario publicado.</value></data>
+  <data name="Issue_Comment_Reopened" xml:space="preserve"><value>Incidencia reabierta.</value></data>
+  <data name="Issue_Comment_PostFailed" xml:space="preserve"><value>No se pudo publicar el comentario.</value></data>
+  <data name="Issue_Status_Updated" xml:space="preserve"><value>Estado actualizado.</value></data>
+  <data name="Issue_Assignee_Updated" xml:space="preserve"><value>Asignación actualizada.</value></data>
+  <data name="Issue_Section_Updated" xml:space="preserve"><value>Sección actualizada.</value></data>
+  <data name="Issue_GitHub_Linked" xml:space="preserve"><value>Vinculada con GitHub.</value></data>
 
 </root>

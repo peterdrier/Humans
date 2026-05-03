@@ -56,6 +56,7 @@ public class RecentOrder
     public string Currency { get; init; } = "EUR";
     public Instant PurchasedAt { get; init; }
     public bool IsMatched { get; init; }
+    public TicketPaymentStatus PaymentStatus { get; init; }
 }
 
 /// <summary>Weekly and quarterly sales aggregates for reporting.</summary>

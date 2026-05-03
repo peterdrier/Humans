@@ -55,7 +55,8 @@ public class NotificationMeterProviderTests : IDisposable
         // consentReviewsPending = 1, totalNotApproved = 2 → onboardingPending = 1
         _profileService.GetConsentReviewPendingCountAsync(Arg.Any<CancellationToken>()).Returns(1);
         _profileService.GetNotApprovedAndNotSuspendedCountAsync(Arg.Any<CancellationToken>()).Returns(2);
-        _userService.GetPendingDeletionCountAsync(Arg.Any<CancellationToken>()).Returns(0);
+        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<Humans.Domain.Entities.User>)Array.Empty<Humans.Domain.Entities.User>());
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _teamService.GetTotalPendingJoinRequestCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
@@ -74,7 +75,8 @@ public class NotificationMeterProviderTests : IDisposable
     {
         _profileService.GetConsentReviewPendingCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _profileService.GetNotApprovedAndNotSuspendedCountAsync(Arg.Any<CancellationToken>()).Returns(1);
-        _userService.GetPendingDeletionCountAsync(Arg.Any<CancellationToken>()).Returns(0);
+        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<Humans.Domain.Entities.User>)Array.Empty<Humans.Domain.Entities.User>());
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _teamService.GetTotalPendingJoinRequestCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
@@ -91,7 +93,8 @@ public class NotificationMeterProviderTests : IDisposable
     {
         _profileService.GetConsentReviewPendingCountAsync(Arg.Any<CancellationToken>()).Returns(3);
         _profileService.GetNotApprovedAndNotSuspendedCountAsync(Arg.Any<CancellationToken>()).Returns(3);
-        _userService.GetPendingDeletionCountAsync(Arg.Any<CancellationToken>()).Returns(0);
+        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<Humans.Domain.Entities.User>)Array.Empty<Humans.Domain.Entities.User>());
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _teamService.GetTotalPendingJoinRequestCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
@@ -108,7 +111,11 @@ public class NotificationMeterProviderTests : IDisposable
     {
         _profileService.GetConsentReviewPendingCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _profileService.GetNotApprovedAndNotSuspendedCountAsync(Arg.Any<CancellationToken>()).Returns(0);
-        _userService.GetPendingDeletionCountAsync(Arg.Any<CancellationToken>()).Returns(2);
+        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>()).Returns((IReadOnlyList<Humans.Domain.Entities.User>)new[]
+        {
+            new Humans.Domain.Entities.User { Id = Guid.NewGuid(), DeletionRequestedAt = NodaTime.Instant.FromUtc(2026, 4, 1, 0, 0) },
+            new Humans.Domain.Entities.User { Id = Guid.NewGuid(), DeletionRequestedAt = NodaTime.Instant.FromUtc(2026, 4, 2, 0, 0) },
+        });
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(5);
         _teamService.GetTotalPendingJoinRequestCountAsync(Arg.Any<CancellationToken>()).Returns(7);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(true);
@@ -128,7 +135,8 @@ public class NotificationMeterProviderTests : IDisposable
 
         _profileService.GetConsentReviewPendingCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _profileService.GetNotApprovedAndNotSuspendedCountAsync(Arg.Any<CancellationToken>()).Returns(0);
-        _userService.GetPendingDeletionCountAsync(Arg.Any<CancellationToken>()).Returns(0);
+        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<Humans.Domain.Entities.User>)Array.Empty<Humans.Domain.Entities.User>());
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _teamService.GetTotalPendingJoinRequestCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);

@@ -319,6 +319,20 @@ public class SmtpEmailService : IEmailService
         _metrics.RecordEmailSent("campaign_code");
     }
 
+    public async Task SendIssueCommentAsync(
+        string to,
+        string displayName,
+        string issueTitle,
+        string commentContent,
+        string issueLink,
+        string preferredLanguage,
+        CancellationToken ct = default)
+    {
+        var content = _renderer.RenderIssueComment(displayName, issueTitle, commentContent, issueLink, preferredLanguage);
+        await SendEmailAsync(to, content.Subject, content.HtmlBody, ct);
+        _metrics.RecordEmailSent("issue_comment");
+    }
+
     private async Task SendEmailAsync(
         string toAddress,
         string subject,

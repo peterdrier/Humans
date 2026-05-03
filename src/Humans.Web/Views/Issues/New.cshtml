@@ -1,0 +1,112 @@
+@model Humans.Web.Models.SubmitIssueViewModel
+@{
+    ViewData["Title"] = Localizer["Issue_New_Title"].Value;
+}
+
+<div class="container issues-new mt-3" style="max-width: 960px;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">@Localizer["Issue_New_Title"]</h2>
+        <a class="btn btn-link btn-sm" asp-action="Index">
+            <i class="fa-solid fa-arrow-left me-1"></i> @Localizer["Issue_BackToList"]
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <form asp-action="Submit" method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+
+                <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
+
+                <div class="mb-3">
+                    <label asp-for="Title" class="form-label">@Localizer["Issue_Title"]</label>
+                    <input asp-for="Title" class="form-control" maxlength="200" autofocus required />
+                    <span asp-validation-for="Title" class="text-danger small"></span>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Category" class="form-label">@Localizer["Issue_Type"]</label>
+                        <select asp-for="Category" class="form-select" required>
+                            @foreach (var c in Enum.GetValues<IssueCategory>())
+                            {
+                                if (Model.Category == c)
+                                {
+                                    <option value="@c" selected>@IssuePresentation.CategoryEmoji(c) @c</option>
+                                }
+                                else
+                                {
+                                    <option value="@c">@IssuePresentation.CategoryEmoji(c) @c</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Section" class="form-label">@Localizer["Issue_Area"]</label>
+                        <select asp-for="Section" class="form-select">
+                            <option value="">@Localizer["Issue_Area_Auto"]</option>
+                            @foreach (var kvp in Humans.Web.Models.AreaLabelMap.Map)
+                            {
+                                if (string.Equals(Model.Section, kvp.Key, StringComparison.Ordinal))
+                                {
+                                    <option value="@kvp.Key" selected>@kvp.Value</option>
+                                }
+                                else
+                                {
+                                    <option value="@kvp.Key">@kvp.Value</option>
+                                }
+                            }
+                        </select>
+                        <div class="form-text small">@Localizer["Issue_Area_Hint"]</div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Description" class="form-label">@Localizer["Issue_Description"]</label>
+                    <textarea asp-for="Description" class="form-control" rows="8" maxlength="5000" required
+                              placeholder="@Localizer["Issue_Description_Placeholder"]"></textarea>
+                    <span asp-validation-for="Description" class="text-danger small"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Screenshot" class="form-label">@Localizer["Issue_Attachment"]</label>
+                    <input asp-for="Screenshot" type="file" class="form-control" accept="image/*" />
+                    <div class="form-text small">@Localizer["Issue_Attachment_Hint"]</div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        @Localizer["Issue_FileIssue"]
+                    </button>
+                    <a class="btn btn-outline-secondary" asp-action="Index">@Localizer["Issue_Cancel"]</a>
+                </div>
+            </form>
+        </div>
+
+        <aside class="col-md-4">
+            <div class="card border-info-subtle">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="fa-solid fa-lightbulb text-info me-1"></i>
+                        @Localizer["Issue_Tips_Title"]
+                    </h6>
+                    <ul class="small mb-3 ps-3">
+                        <li>@Localizer["Issue_Tips_Bullet1"]</li>
+                        <li>@Localizer["Issue_Tips_Bullet2"]</li>
+                        <li>@Localizer["Issue_Tips_Bullet3"]</li>
+                        <li>@Localizer["Issue_Tips_Bullet4"]</li>
+                    </ul>
+                    <div class="alert alert-info small mb-0">
+                        <i class="fa-solid fa-circle-info me-1"></i>
+                        @Localizer["Issue_NotEmail_Notice"]
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

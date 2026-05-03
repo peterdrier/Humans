@@ -50,6 +50,8 @@ Extends `IdentityUser<Guid>` with project-specific columns. The full field table
 | DeletionRequestedAt | Instant? | When the user requested account deletion |
 | DeletionScheduledFor | Instant? | `DeletionRequestedAt + 30 days`; the earliest the job will anonymize |
 | DeletionEligibleAfter | Instant? | Optional event-hold floor for ticket holders; the job waits past this date too |
+| MergedToUserId | Guid? | Self-referential FK → User. Set on this row when `AccountMergeService.AcceptAsync` folds it into the target. Source rows are tombstones — they outlive their target's lifecycle (`OnDelete: Restrict`) so append-only history (audit log, consent records, budget audit log) stays attributable. Filtered index `IX_users_MergedToUserId` (WHERE NOT NULL) backs the chain-follow lookup. |
+| MergedAt | Instant? | When the merge tombstone was applied. Null while live. |
 
 Computed: `IsDeletionPending => DeletionRequestedAt.HasValue`.
 
@@ -107,9 +109,10 @@ These are managed by `UserManager<User>` / `SignInManager<User>` / `RoleManager<
 - `AccountController` / `DevLoginController` and the ASP.NET Identity framework surface may inject `UserManager<User>` and `SignInManager<User>` directly — this is the explicit §2a exception because Identity is a framework concern, not a domain service. Application-layer code (`AccountProvisioningService`) may also inject `UserManager<User>` for user creation; everything else routes through `IUserService`.
 - Event-participation derivation is monotonic on `Attended`: once an attendee has been checked in, their `EventParticipation.Status = Attended` row cannot be downgraded by ticket sync. `Ticketed`, `NotAttending`, and `NoShow` are mutable.
 - `UndoNotAttendingAsync` only succeeds when the existing record is `(Status = NotAttending, Source = UserDeclared)`; an admin backfill or ticket-sync row cannot be undone via the user surface.
-- `User.GoogleEmailStatus = Rejected` is terminal for sync-driven writes: `TrySetGoogleEmailStatusFromSyncAsync` refuses to flip a `Rejected` user back to `Valid`. Operator-driven overrides (email-backfill flows that promote a freshly-provisioned `@nobodies.team`) use the unconditional `SetGoogleEmailStatusAsync`.
+- `User.GoogleEmailStatus = Rejected` is terminal for sync-driven writes: `TrySetGoogleEmailStatusFromSyncAsync` refuses to flip a `Rejected` user back to `Valid`. The unconditional override (`SetGoogleEmailStatusAsync`) was removed from the public surface as of the account-merge fold redesign — all external callers are sync-driven and go through the Try variant.
 - `/Unsubscribe/{token}` is unauthenticated; new-format tokens are validated by Profile's `CommunicationPreferenceService` (signed via ASP.NET Data Protection with the `CommunicationPreferences` purpose), legacy tokens by the `CampaignUnsubscribe` time-limited protector. Token tampering returns `NotFound`; no account enumeration. The RFC 8058 `/Unsubscribe/OneClick` POST is also unauthenticated and skips the anti-forgery token by design.
 - `UserService` implements `IUserDataContributor` (design-rules §8) and contributes the User-account slice (Id, Email, DisplayName, PreferredLanguage, GoogleEmail, UnsubscribedFromCampaigns, SuppressScheduleChangeEmails, ContactSource, deletion / created / last-login timestamps) under `GdprExportSections.Account` to the GDPR export. EventParticipation is not currently exported — tracked at nobodies-collective/Humans#595.
+- A `User` row whose `MergedToUserId` is non-null is a **merge tombstone**: its identity fields are anonymized, its OAuth logins have been re-FK'd to the target, `LockoutEnd` is far-future, but the row itself persists indefinitely so append-only history written under the source id stays resolvable. The self-referential FK is `OnDelete(Restrict)` — deleting a target cannot cascade-delete its source tombstones.
 
 ## Negative Access Rules
 
@@ -119,6 +122,7 @@ These are managed by `UserManager<User>` / `SignInManager<User>` / `RoleManager<
 - Regular humans **cannot** purge any account.
 - An Admin **cannot** purge their own account — `AdminController.PurgeHuman` returns the user to the admin-detail page with an error when `user.Id == currentUser.Id`.
 - Purge **cannot** run in Production — `AdminController.PurgeHuman` returns `NotFound` when `IWebHostEnvironment.IsProduction()`. Account anonymization (the GDPR-deletion path through `AnonymizeExpiredAccountAsync`) runs in every environment via `ProcessAccountDeletionsJob`.
+- A merge-tombstoned `User` (`MergedToUserId` non-null) **cannot** sign in — `LockoutEnd` is bumped far-future during fold. Application code outside `IAccountMergeService` **cannot** clear `MergedToUserId` / `MergedAt` or revive a tombstone.
 
 ## Triggers
 
@@ -131,6 +135,8 @@ These are managed by `UserManager<User>` / `SignInManager<User>` / `RoleManager<
 - **On account-deletion request (user-initiated):** `IAccountDeletionService.RequestDeletionAsync` orchestrates the user-initiated path. Internally calls `IUserService.SetDeletionPendingAsync` to stamp `DeletionRequestedAt` + `DeletionScheduledFor` on the User row, revokes team memberships and governance roles immediately so the user loses access during the 30-day grace period, and sends a confirmation email.
 - **On scheduled deletion expiry:** `ProcessAccountDeletionsJob` calls `IAccountDeletionService.AnonymizeExpiredAccountAsync` per due user. That coordinates: end team memberships (`ITeamService.RevokeAllMembershipsAsync`), end governance role assignments (`IRoleAssignmentService.RevokeAllActiveAsync`), anonymize the profile (`IProfileService.AnonymizeExpiredProfileAsync`), cancel active shift signups (`IShiftSignupService.CancelActiveSignupsForUserAsync`), delete VolunteerEventProfile rows (`IShiftManagementService.DeleteShiftProfilesForUserAsync`), then anonymize identity / remove `UserEmail` rows (`IUserService.ApplyExpiredDeletionAnonymizationAsync`). Cross-cutting caches (`IFullProfileInvalidator`, Teams active-teams + member, role-assignment claims, shift authorization) are then invalidated. The orchestrator writes the `AuditAction.AccountAnonymized` audit entry and sends the confirmation email.
 - **On admin purge (non-Production only):** `AdminController.PurgeHuman` removes external logins via `UserManager.RemoveLoginAsync`, then calls `IAccountDeletionService.PurgeAsync`. The orchestrator delegates the actual identity collapse to `IUserService.PurgeOwnDataAsync` (anonymizes the `users` row, drops `UserEmail` rows, invalidates the FullProfile cache), then drops the Teams active-teams cache and per-user role-assignment / shift-authorization caches. Identity-only — does not cascade to Profile rows. (Replaces the pre-PR routing through `IOnboardingService.PurgeHumanAsync` and the renamed `IUserService.PurgeAsync`.)
+- **On account merge accept:** `IAccountMergeService.AcceptAsync` (Profiles section) calls `IUserService.ReassignLoginsToUserAsync` (re-FKs `AspNetUserLogins` source → target) and `ReassignEventParticipationToUserAsync` (re-FKs `event_participations`), then `AnonymizeForMergeAsync` to tombstone the source row by setting `MergedToUserId` + `MergedAt` and bumping `LockoutEnd` far-future so the source can no longer sign in. The source `User` row stays in place as a redirect — it is NOT deleted — so append-only history written under the source id (audit log, consent records, budget audit log) remains attributable.
+- **On per-user reads of a target after merge:** `IUserService.GetMergedSourceIdsAsync(targetUserId)` returns the set of source ids whose `MergedToUserId` points at the target. Append-only sections (`IAuditLogService`, `IConsentService`, `IBudgetService.ContributeForUserAsync`) union this set with `targetUserId` before querying so source-tombstoned rows surface for the target.
 
 ## Cross-Section Dependencies
 
@@ -146,12 +152,14 @@ Inbound (other sections → Users) — the typical direction:
 - **Shifts / Tickets:** call `IUserService.DeclareNotAttendingAsync` (Home controller for self-declaration), `SetParticipationFromTicketSyncAsync`, `RemoveTicketSyncParticipationAsync`, `BackfillParticipationsAsync`. Direct writes to `event_participations` are forbidden.
 - **Notifications, Email, AuditLog:** call `IUserService.GetByIdsAsync` / `GetByIdsWithEmailsAsync` to resolve recipient identity/email without navigating cross-domain navs.
 - **Account-deletion job (Infrastructure):** calls `IUserService.GetAccountsDueForAnonymizationAsync` + `AnonymizeExpiredAccountAsync`.
+- **Profiles (`IAccountMergeService.AcceptAsync`):** calls `IUserService.ReassignLoginsToUserAsync`, `ReassignEventParticipationToUserAsync`, and `AnonymizeForMergeAsync` to fold a source User into a target.
+- **Audit Log / Legal & Consent / Budget:** call `IUserService.GetMergedSourceIdsAsync(targetUserId)` to chain-follow merge tombstones on per-user reads of append-only entities.
 
 ## Architecture
 
 **Owning services:** `UserService`, `AccountProvisioningService`, `UnsubscribeService`, `AccountDeletionService` (all in `Humans.Application.Services.Users/`).
 **Owned tables:** `users`, `user_claims`, `user_logins`, `user_tokens`, `roles` (legacy), `user_roles` (legacy), `role_claims` (legacy), `event_participations`.
-**Status:** (A) Migrated (peterdrier/Humans PR #243 for issue nobodies-collective/Humans#511, 2026-04-21).
+**Status:** (A) Migrated (peterdrier/Humans PR #243 for issue nobodies-collective/Humans#511, 2026-04-21). Account merge fold support added 2026-05-01 (User.MergedToUserId / MergedAt; Reassign + AnonymizeForMerge methods).
 
 - `UserService`, `AccountProvisioningService`, `UnsubscribeService` live in `Humans.Application.Services.Users/` and never import `Microsoft.EntityFrameworkCore`. `AccountProvisioningService` does inject `UserManager<User>` per the §2a exception (Identity owns the password hash / security stamp surface).
 - `IUserRepository` (impl `Humans.Infrastructure/Repositories/Users/UserRepository.cs`) owns the SQL surface for `users` plus `event_participations` (the natural key is User). `IUserEmailRepository` is the parallel surface for `UserEmail` (owned by Profiles but read/written from Users for lookup + OAuth-email lock-step).

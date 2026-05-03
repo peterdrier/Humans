@@ -175,7 +175,8 @@ public class ShiftSignupServiceEarlyEntryTests : IDisposable
             RotaId = rota.Id,
             DayOffset = dayOffset,
             IsAllDay = true,
-            StartTime = new LocalTime(0, 0),
+            // StartTime/Duration are don't-care for IsAllDay rows; store midnight/24h sentinel.
+            StartTime = LocalTime.Midnight,
             Duration = Duration.FromHours(24),
             MinVolunteers = 1,
             MaxVolunteers = 5,

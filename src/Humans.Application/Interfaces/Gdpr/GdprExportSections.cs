@@ -33,6 +33,7 @@ public static class GdprExportSections
     public const string GeneralAvailability = "GeneralAvailability";
     public const string ShiftTagPreferences = "ShiftTagPreferences";
     public const string FeedbackReports = "FeedbackReports";
+    public const string Issues = "Issues";
     public const string Notifications = "Notifications";
     public const string TicketOrders = "TicketOrders";
     public const string TicketAttendeeMatches = "TicketAttendeeMatches";
@@ -42,4 +43,5 @@ public static class GdprExportSections
     public const string AccountMergeRequests = "AccountMergeRequests";
     public const string AuditLog = "AuditLog";
     public const string BudgetAuditLog = "BudgetAuditLog";
+    public const string AgentConversations = "AgentConversations";
 }

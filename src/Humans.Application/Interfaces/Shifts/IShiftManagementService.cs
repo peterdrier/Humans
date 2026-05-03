@@ -21,12 +21,6 @@ public interface IShiftManagementService
     Task<bool> IsDeptCoordinatorAsync(Guid userId, Guid departmentTeamId);
 
     /// <summary>
-    /// Whether the user can create/edit shifts and rotas for the department.
-    /// True for dept coordinators, Admin, and VolunteerCoordinator (NOT NoInfoAdmin).
-    /// </summary>
-    Task<bool> CanManageShiftsAsync(Guid userId, Guid departmentTeamId);
-
-    /// <summary>
     /// Whether the user can approve/refuse signups and voluntell for the department.
     /// True for dept coordinators, Admin, NoInfoAdmin, AND VolunteerCoordinator.
     /// </summary>
@@ -262,6 +256,14 @@ public interface IShiftManagementService
     /// </summary>
     Task<CoverageHeatmap> GetCoverageHeatmapAsync(
         Guid eventSettingsId, ShiftPeriod? period);
+
+    /// <summary>
+    /// Returns overall shift coverage for the active event:
+    /// (filled signups / total slots, plus the ratio).
+    /// Returns (0, 0, 0d) if no event is active.
+    /// Used by the admin dashboard's shift-coverage stat tile.
+    /// </summary>
+    Task<(int Filled, int Total, double Ratio)> GetOverallCoverageAsync(CancellationToken ct = default);
 
     // === Shift Tags ===
 

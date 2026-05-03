@@ -9,10 +9,11 @@ public record UserEmailDto(
     Guid Id,
     string Email,
     bool IsVerified,
-    bool IsOAuth,
-    bool IsNotificationTarget,
-    ContactFieldVisibility? Visibility,
-    int DisplayOrder);
+    bool IsGoogle,
+    string? Provider,
+    string? ProviderKey,
+    bool IsPrimary,
+    ContactFieldVisibility? Visibility);
 
 /// <summary>
 /// User email data for the Manage Emails page.
@@ -21,8 +22,10 @@ public record UserEmailEditDto(
     Guid Id,
     string Email,
     bool IsVerified,
-    bool IsOAuth,
-    bool IsNotificationTarget,
+    bool IsGoogle,
+    string? Provider,
+    string? ProviderKey,
+    bool IsPrimary,
     ContactFieldVisibility? Visibility,
     bool IsPendingVerification,
     bool IsMergePending = false);

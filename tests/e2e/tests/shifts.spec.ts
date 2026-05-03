@@ -30,9 +30,4 @@ test.describe('Shifts (25-shift-management)', () => {
     await loginAsVolunteer(page);
     await expectBlocked(page, '/Shifts/Settings');
   });
-
-  test('boundary: volunteer cannot access /Vol/Management', async ({ page }) => {
-    await loginAsVolunteer(page);
-    await expectBlocked(page, '/Vol/Management');
-  });
 });

@@ -109,8 +109,38 @@ public class AuditLogViewComponent : ViewComponent
         AuditAction.SignupRejected => "rejected signup for",
         AuditAction.TierApplicationApproved => "approved tier application for",
         AuditAction.TierApplicationRejected => "rejected tier application for",
+        AuditAction.ShiftSignupCreated => "created signup for",
+        AuditAction.ShiftSignupConfirmed => "confirmed signup for",
+        AuditAction.ShiftSignupRefused => "refused signup for",
+        AuditAction.ShiftSignupVoluntold => "voluntold",
+        AuditAction.ShiftSignupBailed => "bailed",
+        AuditAction.ShiftSignupNoShow => "marked no-show for",
+        AuditAction.ShiftSignupCancelled => "removed signup for",
+        AuditAction.ShiftSignupReassigned => "reassigned shift signups for",
         _ => null
     };
+
+    // Self-form: avoids dangling preposition when actor == subject (subject is suppressed in the view).
+    public static string? GetActionSelfVerb(AuditAction action) => action switch
+    {
+        AuditAction.ShiftSignupCreated => "signed up for",
+        AuditAction.ShiftSignupConfirmed => "signed up for",
+        AuditAction.ShiftSignupBailed => "bailed from",
+        _ => null
+    };
+
+    // True when the action's description is written as a context tail (e.g. "shift 'X'") rather
+    // than a stand-alone sentence (e.g. "Joined Build Team directly"). Tail-style descriptions
+    // append cleanly after the structured verb+subject; sentence-style ones produce redundancy.
+    public static bool ShouldRenderDescriptionTail(AuditAction action) => action
+        is AuditAction.ShiftSignupCreated
+        or AuditAction.ShiftSignupConfirmed
+        or AuditAction.ShiftSignupRefused
+        or AuditAction.ShiftSignupVoluntold
+        or AuditAction.ShiftSignupBailed
+        or AuditAction.ShiftSignupNoShow
+        or AuditAction.ShiftSignupCancelled
+        or AuditAction.ShiftSignupReassigned;
 }
 
 public class AuditLogComponentViewModel

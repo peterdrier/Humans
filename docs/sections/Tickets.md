@@ -68,6 +68,7 @@ Singleton (`Id` always 1) tracking ticket sync operational state. `VendorEventId
 - Ticket orders and attendees are synced from the external vendor — they cannot be manually created or edited from this app.
 - Stripe enrichment (`PaymentMethod`, `PaymentMethodDetail`, `StripeFee`, `ApplicationFee`) is preserved across re-syncs and only re-run for orders that have a `StripePaymentIntentId` and are still missing fee data; if `IStripeService.IsConfigured` is false the pass is silently skipped.
 - VAT is computed locally per order using VIP-split logic on attendees with `Status` in (`Valid`, `CheckedIn`); orders not in `Paid` status carry `VatAmount = 0`. The vendor's tax line is intentionally ignored.
+- All `/Tickets` dashboard aggregate metrics (`TicketsSold`, `Revenue`, `NetRevenue`, fee totals, `UnmatchedOrderCount`, the daily-sales chart, the per-payment-method fee breakdown) are computed only over orders with `PaymentStatus == Paid`; ticket counts within those are further restricted to attendees with `Status` in (`Valid`, `CheckedIn`). Refunded/Cancelled/Pending orders are still synced and visible on `/Tickets/Orders` (with the new Status column on Recent Orders) but never contribute to dashboard totals. The "unmatched orders" badge links to `/Tickets/Orders?filterMatched=false&filterPaymentStatus=Paid` so the count and the drill-down agree.
 - Auto-matching uses normalized email comparison (`NormalizingEmailComparer`) against the full UserEmails set; collisions resolve to the OAuth owner or stay unmatched. Buyer match writes `TicketOrder.MatchedUserId`; attendee match writes `TicketAttendee.MatchedUserId` independently.
 - A user "has a ticket" iff at least one `Valid` or `CheckedIn` `TicketAttendee` is matched to their `UserId`. Buyer-only matches do not count — purchasing tickets for others does not give the buyer ticket coverage.
 - `TicketSyncState` is a singleton row (Id = 1). `LastSyncAt` is the resume cursor passed back to the vendor as `updated_at.gte` on the next run. A sync stuck in `Running` for >30 minutes is auto-reset to `Error` by `GetDashboardStatsAsync` (crash recovery).
@@ -89,6 +90,7 @@ Singleton (`Id` always 1) tracking ticket sync operational state. `VendorEventId
 - "Who Hasn't Bought" lists active Volunteers-team members (via `ITeamService.GetActiveMemberUserIdsAsync(SystemTeamIds.Volunteers)`) minus those whose current-year `EventParticipation.Status` is `NotAttending`. `HasTicket` is true when the user appears in the union of matched attendee user-ids and matched order user-ids (see `GetAllMatchedUserIdsAsync`).
 - The Volunteer Ticket Coverage card on `/Tickets` divides matched-attendee Volunteers (`UserIdsWithTickets`) by total active Volunteers — buyer-only matches are excluded by construction.
 - Code redemption: vendor discount codes attached to orders are pushed back to Campaigns via `ICampaignService.MarkGrantsRedeemedAsync` so each `CampaignGrant.RedeemedAt` reflects the order's `PurchasedAt`.
+- When an account merge accepts, `ITicketSyncService.ReassignToUserAsync` re-FKs `TicketOrder.MatchedUserId` and `TicketAttendee.MatchedUserId` from source to target. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
 
 ### TicketDashboardStats cache (ghost cache key)
 
@@ -104,6 +106,7 @@ Singleton (`Id` always 1) tracking ticket sync operational state. `VendorEventId
 - **Budget:** `IBudgetService` — `GetActiveYearAsync` + `ComputeBudgetSummary` feed the dashboard's break-even calculation; `TicketingBudgetService` bridges paid-order data into Budget's projection writes via `ITicketingBudgetRepository` (Tickets-owned narrow read surface) without ever touching `budget_*` tables directly.
 - **GDPR:** `TicketQueryService` implements `IUserDataContributor`, contributing the `TicketOrders` and `TicketAttendeeMatches` slices to the per-user data export.
 - **Stripe (Infrastructure):** `IStripeService.GetPaymentDetailsAsync` looks up payment-intent details to populate `PaymentMethod` / `PaymentMethodDetail` / `StripeFee` / `ApplicationFee` per order. Configuration is via `STRIPE_API_KEY` env var; if unset, enrichment is skipped silently and the dashboard's fee breakdown stays empty.
+- **Profiles:** Called by `IAccountMergeService` (Profiles section) — `ITicketSyncService.ReassignToUserAsync` re-FKs `TicketOrder.MatchedUserId` and `TicketAttendee.MatchedUserId` during account merge fold.
 
 ## Architecture
 

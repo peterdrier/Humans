@@ -66,6 +66,8 @@
   <data name="Nav_Admin" xml:space="preserve"><value>Admin</value></data>
   <data name="Nav_OnboardingReview" xml:space="preserve"><value>File d'attente</value></data>
   <data name="Nav_MyFeedback" xml:space="preserve"><value>Mon feedback</value></data>
+  <data name="Nav_Issues" xml:space="preserve"><value>Tickets</value></data>
+  <data name="Issue_Unavailable" xml:space="preserve"><value>Ce ticket n'est pas disponible — il a peut-être été supprimé, ou vous n'y avez pas accès.</value></data>
 
 
   <!-- ======================== -->
@@ -531,10 +533,6 @@
   <data name="Teams_NotOnAnyTeam" xml:space="preserve"><value>Vous n'avez encore rejoint aucune &#xE9;quipe.</value></data>
   <data name="Teams_NoOtherTeams" xml:space="preserve"><value>Aucune autre &#xE9;quipe disponible.</value></data>
   <data name="Teams_System" xml:space="preserve"><value>Syst&#xE8;me</value></data>
-
-  <!-- Vol/Teams landing: Browse Shifts CTA (#534) -->
-  <data name="VolTeams_BrowseShiftsBanner" xml:space="preserve"><value>Vous cherchez des cr&#xE9;neaux&#xA0;? Parcourez-les tous ici, ou choisissez une &#xE9;quipe ci-dessous.</value></data>
-  <data name="VolTeams_BrowseShiftsButton" xml:space="preserve"><value>Voir les cr&#xE9;neaux</value></data>
 
   <!-- Team Detail View -->
   <data name="TeamDetail_NoDescription" xml:space="preserve"><value>Aucune description fournie.</value></data>
@@ -1285,6 +1283,17 @@
 &lt;p&gt;Merci de nous aider à nous améliorer !&lt;/p&gt;
 &lt;p&gt;L'équipe Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = original description, {2} = response message</comment></data>
 
+  <!-- Issue Comment Email -->
+  <data name="Email_IssueComment_Subject" xml:space="preserve"><value>Nouveau commentaire sur votre issue : {0}</value></data>
+  <data name="Email_IssueComment_Body" xml:space="preserve"><value>&lt;h2&gt;Nouveau commentaire sur votre issue&lt;/h2&gt;
+&lt;p&gt;Bonjour {0},&lt;/p&gt;
+&lt;p&gt;Il y a un nouveau commentaire sur votre issue :&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Issue :&lt;/strong&gt; {1}&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Commentaire :&lt;/strong&gt;&lt;/p&gt;
+&lt;blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #666;"&gt;{2}&lt;/blockquote&gt;
+&lt;p&gt;&lt;a href="{3}"&gt;Ouvrir l'issue&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;— L'équipe Humans&lt;/p&gt;</value><comment>{0} = display name, {1} = issue title, {2} = comment HTML, {3} = issue URL</comment></data>
+
   <!-- Feedback Widget -->
   <data name="Feedback_Button" xml:space="preserve"><value>Feedback</value></data>
   <data name="Feedback_Title" xml:space="preserve"><value>Envoyer un Feedback</value></data>
@@ -1638,7 +1647,6 @@
   <data name="Emails_Header_Status" xml:space="preserve"><value>Statut</value></data>
   <data name="Emails_Header_Notifications" xml:space="preserve"><value>Notifications</value></data>
   <data name="Emails_Header_Visibility" xml:space="preserve"><value>Visibilité du profil</value></data>
-  <data name="Emails_SignIn" xml:space="preserve"><value>Connexion</value></data>
   <data name="Emails_MergePending" xml:space="preserve"><value>Fusion en attente</value></data>
   <data name="Emails_Verified" xml:space="preserve"><value>Vérifié</value></data>
   <data name="Emails_StatusPending" xml:space="preserve"><value>En attente</value></data>
@@ -1690,6 +1698,10 @@
   <data name="Shifts_SetPreferences" xml:space="preserve"><value>Définir vos préférences</value></data>
   <data name="Shifts_PreferencesHelp" xml:space="preserve"><value>Sélectionnez les tags correspondant au type de travail que vous aimez. Les quarts correspondants seront mis en valeur avec une étoile.</value></data>
   <data name="Shifts_SavePreferences" xml:space="preserve"><value>Enregistrer les préférences</value></data>
+  <data name="Shifts_HeroTitle" xml:space="preserve"><value>Trouve ton créneau idéal</value></data>
+  <data name="Shifts_HeroSubtitle" xml:space="preserve"><value>Explore les options de bénévolat, filtre par phase ou département, et inscris-toi aux créneaux qui te conviennent.</value></data>
+  <data name="Shifts_LearnMore" xml:space="preserve"><value>En savoir plus</value></data>
+  <data name="Shifts_EditPreferences" xml:space="preserve"><value>Modifier les préférences</value></data>
   <data name="Shifts_NotOpenYet" xml:space="preserve"><value>Les quarts ne sont pas encore ouverts. Seuls les coordinateurs et admins peuvent voir cette page.</value></data>
   <data name="Shifts_NoShiftsAvailable" xml:space="preserve"><value>Aucun quart disponible pour le moment.</value></data>
   <data name="Shifts_AllShiftsFull" xml:space="preserve"><value>Tous les quarts de {0} sont complets.</value><comment>{0} = period name</comment></data>
@@ -1745,6 +1757,7 @@
   <data name="Shifts_GeneralAvailability" xml:space="preserve"><value>Disponibilité générale</value></data>
   <data name="Shifts_AvailabilityHelp" xml:space="preserve"><value>Indiquez les jours où vous êtes disponible. Les coordinateurs peuvent voir qui est disponible lors de l'attribution des quarts.</value></data>
   <data name="Shifts_SaveAvailability" xml:space="preserve"><value>Enregistrer la disponibilité</value></data>
+  <data name="Shifts_DaysSelected" xml:space="preserve"><value>jours sélectionnés</value></data>
   <data name="Shifts_SlotsFull" xml:space="preserve"><value>Certains jours ont encore besoin d'aide, mais tous les créneaux disponibles sont complets. Reviens plus tard au cas où des places se libèrent.</value></data>
 
   <data name="ShiftDash_Title" xml:space="preserve"><value>Tableau de bord des quarts</value></data>
@@ -1846,6 +1859,23 @@
   <data name="Privacy_ContactBody" xml:space="preserve"><value>Pour toute question ou préoccupation concernant cette politique, contactez notre Délégué à la Protection des Données à {0}.</value><comment>{0} = DPO email</comment></data>
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>Si vous n'êtes pas satisfait de notre réponse, vous avez le droit de déposer une plainte auprès de l'Agence Espagnole de Protection des Données (AEPD) à {0}.</value><comment>{0} = AEPD URL</comment></data>
 
+  <!-- Agent Widget -->
+  <data name="Agent_ConsentPrompt" xml:space="preserve"><value>Avant d'utiliser l'assistant, veuillez accepter les conditions.</value></data>
+  <data name="Agent_ConsentReviewButton" xml:space="preserve"><value>Consulter les conditions</value></data>
+  <data name="Agent_HistoryActions" xml:space="preserve"><value>Actions</value></data>
+  <data name="Agent_HistoryDelete" xml:space="preserve"><value>Supprimer</value></data>
+  <data name="Agent_HistoryEmpty" xml:space="preserve"><value>Aucune conversation.</value></data>
+  <data name="Agent_HistoryLastMessage" xml:space="preserve"><value>Dernier message</value></data>
+  <data name="Agent_HistoryMessages" xml:space="preserve"><value>Messages</value></data>
+  <data name="Agent_HistoryStarted" xml:space="preserve"><value>Début</value></data>
+  <data name="Agent_HistoryTitle" xml:space="preserve"><value>Assistant — Mes conversations</value></data>
+  <data name="Agent_InputPlaceholder" xml:space="preserve"><value>Posez une question sur le fonctionnement…</value></data>
+  <data name="Agent_PanelTitle" xml:space="preserve"><value>Assistant</value></data>
+  <data name="Agent_ViewHistory" xml:space="preserve"><value>Historique</value></data>
+  <data name="Agent_Send" xml:space="preserve"><value>Envoyer</value></data>
+  <data name="Agent_WidgetButton" xml:space="preserve"><value>Ouvrir l'assistant</value></data>
+  <data name="Nav_Agent" xml:space="preserve"><value>Assistant</value></data>
+
 
   <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Places remplies</value></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Détenteurs de billets</value></data>
@@ -1900,5 +1930,108 @@
   <data name="ShiftDash_Status_AtRisk" xml:space="preserve"><value>À risque</value></data>
   <data name="ShiftDash_Status_BelowTarget" xml:space="preserve"><value>En dessous de l'objectif</value></data>
   <data name="ShiftDash_Coordinators_StaleLabel" xml:space="preserve"><value>Inactif depuis plus de 7 jours</value></data>
+  <data name="EmailGrid_AdminContextBanner" xml:space="preserve"><value>Gestion des e-mails d'un autre utilisateur</value></data>
+  <data name="EmailGrid_AdminContextBannerNamed" xml:space="preserve"><value>Gestion des e-mails de {0}</value><comment>{0} = target user display name</comment></data>
+  <data name="EmailGrid_AdminUnknownTarget" xml:space="preserve"><value>un autre utilisateur</value></data>
+  <data name="Emails_AdminUnknownTarget" xml:space="preserve"><value>un autre utilisateur</value></data>
+  <data name="EmailGrid_Email" xml:space="preserve"><value>E-mail</value></data>
+  <data name="EmailGrid_Status" xml:space="preserve"><value>Statut</value></data>
+  <data name="EmailGrid_Primary" xml:space="preserve"><value>Principal</value></data>
+  <data name="EmailGrid_Google" xml:space="preserve"><value>Google</value></data>
+  <data name="EmailGrid_GoogleColumnTooltip" xml:space="preserve"><value>E-mail utilisé pour la synchronisation Google Workspace.</value></data>
+  <data name="EmailGrid_WorkspaceLockedHelp" xml:space="preserve"><value>Principal et Google sont gérés par Google Workspace tant que votre adresse @nobodies.team est présente.</value></data>
+  <data name="EmailGrid_VerificationPendingTitle" xml:space="preserve"><value>Vérification de l’e-mail en attente</value></data>
+  <data name="EmailGrid_VerificationPendingBody" xml:space="preserve"><value>Vérifiez votre boîte de réception et cliquez sur le lien dans l’e-mail de vérification pour confirmer votre adresse.</value></data>
+  <data name="EmailGrid_Visibility" xml:space="preserve"><value>Visibilité</value></data>
+  <data name="EmailGrid_Actions" xml:space="preserve"><value>Actions</value></data>
+  <data name="EmailGrid_StatusMergePending" xml:space="preserve"><value>Fusion en attente</value></data>
+  <data name="EmailGrid_StatusVerified" xml:space="preserve"><value>Vérifié</value></data>
+  <data name="EmailGrid_StatusPending" xml:space="preserve"><value>En attente</value></data>
+  <data name="EmailGrid_PrimarySelected" xml:space="preserve"><value>Principal</value></data>
+  <data name="EmailGrid_LinkGoogleAccount" xml:space="preserve"><value>Associer un compte Google</value></data>
+  <data name="EmailGrid_LinkGoogleHelp" xml:space="preserve"><value>Connectez-vous avec Google pour associer un compte Google supplémentaire à votre profil.</value></data>
+  <data name="EmailGrid_BackToAdminDetail" xml:space="preserve"><value>Retour au détail de l'utilisateur</value></data>
+  <data name="EmailGrid_Unlink" xml:space="preserve"><value>Dissocier</value></data>
+  <data name="EmailGrid_ConfirmUnlink" xml:space="preserve"><value>Dissocier ce compte Google ?</value></data>
+  <data name="EmailGrid_SetGoogleRejected" xml:space="preserve"><value>Impossible de définir l'e-mail de service Google — ligne inconnue ou non vérifiée.</value></data>
+  <data name="EmailGrid_UnlinkRejected" xml:space="preserve"><value>Impossible de dissocier — ligne inconnue ou sans fournisseur de connexion.</value></data>
+  <data name="EmailGrid_GoogleServiceUpdated" xml:space="preserve"><value>E-mail de service Google mis à jour. La synchronisation sera relancée avec le nouvel e-mail.</value></data>
+  <data name="EmailGrid_UnlinkSuccess" xml:space="preserve"><value>Fournisseur de connexion dissocié.</value></data>
+  <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve"><value>Cet e-mail est lié à un fournisseur de connexion. Utilisez Dissocier à la place.</value></data>
+  <data name="EmailGrid_AdminAddSentVerification" xml:space="preserve"><value>E-mail de vérification envoyé à l'utilisateur.</value></data>
+  <data name="EmailGrid_LinkFailed" xml:space="preserve"><value>Nous n'avons pas pu associer ce compte Google. Veuillez réessayer.</value></data>
+  <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>Gérer les e-mails</value></data>
+
+  <!-- Issues section -->
+  <data name="Issue_PageTitle" xml:space="preserve"><value>Incidents</value></data>
+  <data name="Issue_New" xml:space="preserve"><value>Nouvel incident</value></data>
+  <data name="Issue_New_Title" xml:space="preserve"><value>Signaler un nouvel incident</value></data>
+  <data name="Issue_BackToList" xml:space="preserve"><value>Retour à la liste</value></data>
+  <data name="Issue_All" xml:space="preserve"><value>Tous</value></data>
+  <data name="Issue_Open" xml:space="preserve"><value>Ouverts</value></data>
+  <data name="Issue_Mine" xml:space="preserve"><value>Les miens</value></data>
+  <data name="Issue_Closed" xml:space="preserve"><value>Fermés</value></data>
+  <data name="Issue_AllCategories" xml:space="preserve"><value>Tous les types</value></data>
+  <data name="Issue_AllAreas" xml:space="preserve"><value>Toutes les zones</value></data>
+  <data name="Issue_AllReporters" xml:space="preserve"><value>Tous les rapporteurs</value></data>
+  <data name="Issue_SearchPlaceholder" xml:space="preserve"><value>Rechercher un titre ou une description…</value></data>
+  <data name="Issue_Apply" xml:space="preserve"><value>Appliquer</value></data>
+  <data name="Issue_Clear" xml:space="preserve"><value>Effacer</value></data>
+  <data name="Issue_NoneFound" xml:space="preserve"><value>Aucun incident ne correspond aux filtres actuels.</value></data>
+  <data name="Issue_AssignedTo" xml:space="preserve"><value>assigné à</value></data>
+  <data name="Issue_SelectOne" xml:space="preserve"><value>Sélectionnez un incident dans la liste pour voir les détails.</value></data>
+  <data name="Issue_Detail_Heading" xml:space="preserve"><value>Incident</value></data>
+  <data name="Issue_OpenedBy" xml:space="preserve"><value>Ouvert par</value></data>
+  <data name="Issue_Screenshot" xml:space="preserve"><value>Capture d'écran</value></data>
+  <data name="Issue_Thread" xml:space="preserve"><value>Conversation</value></data>
+  <data name="Issue_NoActivity" xml:space="preserve"><value>Aucune activité pour le moment.</value></data>
+  <data name="Issue_Reporter" xml:space="preserve"><value>Rapporteur</value></data>
+  <data name="Issue_ComposerPlaceholder" xml:space="preserve"><value>Ajouter un commentaire…</value></data>
+  <data name="Issue_Comment" xml:space="preserve"><value>Commenter</value></data>
+  <data name="Issue_CommentAndResolve" xml:space="preserve"><value>Commenter et marquer résolu</value></data>
+  <data name="Issue_ReopenByCommenting" xml:space="preserve"><value>Publier un commentaire rouvrira cet incident.</value></data>
+  <data name="Issue_Details" xml:space="preserve"><value>Détails</value></data>
+  <data name="Issue_Status" xml:space="preserve"><value>Statut</value></data>
+  <data name="Issue_Type" xml:space="preserve"><value>Type</value></data>
+  <data name="Issue_Area" xml:space="preserve"><value>Zone</value></data>
+  <data name="Issue_Unspecified" xml:space="preserve"><value>Non spécifié</value></data>
+  <data name="Issue_Assignee" xml:space="preserve"><value>Responsable</value></data>
+  <data name="Issue_Unassigned" xml:space="preserve"><value>Non attribué</value></data>
+  <data name="Issue_GitHub" xml:space="preserve"><value>GitHub</value></data>
+  <data name="Issue_Opened" xml:space="preserve"><value>Ouvert</value></data>
+  <data name="Issue_LastUpdate" xml:space="preserve"><value>Dernière mise à jour</value></data>
+  <data name="Issue_Due" xml:space="preserve"><value>Échéance</value></data>
+  <data name="Issue_Resolved" xml:space="preserve"><value>Résolu</value></data>
+  <data name="Issue_ResolvedBy" xml:space="preserve"><value>par</value></data>
+  <data name="Issue_Title" xml:space="preserve"><value>Titre</value></data>
+  <data name="Issue_Area_Auto" xml:space="preserve"><value>Détecter automatiquement</value></data>
+  <data name="Issue_Area_Hint" xml:space="preserve"><value>Laissez vide pour détecter depuis la page actuelle.</value></data>
+  <data name="Issue_Description" xml:space="preserve"><value>Description</value></data>
+  <data name="Issue_Description_Placeholder" xml:space="preserve"><value>Que s'est-il passé ? Qu'attendiez-vous ?</value></data>
+  <data name="Issue_Attachment" xml:space="preserve"><value>Capture (optionnelle)</value></data>
+  <data name="Issue_Attachment_Hint" xml:space="preserve"><value>PNG ou JPEG, 5 Mo max.</value></data>
+  <data name="Issue_FileIssue" xml:space="preserve"><value>Signaler l'incident</value></data>
+  <data name="Issue_FileAnIssue" xml:space="preserve"><value>Signaler un incident</value></data>
+  <data name="Issue_Cancel" xml:space="preserve"><value>Annuler</value></data>
+  <data name="Issue_Widget_ToastSuccess" xml:space="preserve"><value>Merci ! Incident enregistré. Voir ici : {0}</value><comment>{0} = absolute URL path of the new issue</comment></data>
+  <data name="Issue_Widget_ToastValidationFailed" xml:space="preserve"><value>Impossible d'enregistrer l'incident. Veuillez vérifier les champs requis et réessayer.</value></data>
+  <data name="Issue_Widget_ToastNetworkError" xml:space="preserve"><value>Une erreur s'est produite. Veuillez réessayer.</value></data>
+  <data name="Issue_Tips_Title" xml:space="preserve"><value>Conseils pour un bon signalement</value></data>
+  <data name="Issue_Tips_Bullet1" xml:space="preserve"><value>Décrivez ce que vous essayiez de faire.</value></data>
+  <data name="Issue_Tips_Bullet2" xml:space="preserve"><value>Décrivez ce qui s'est passé et ce que vous attendiez.</value></data>
+  <data name="Issue_Tips_Bullet3" xml:space="preserve"><value>Ajoutez une capture d'écran si elle aide à expliquer.</value></data>
+  <data name="Issue_Tips_Bullet4" xml:space="preserve"><value>Un incident par signalement — des problèmes différents doivent être signalés séparément.</value></data>
+  <data name="Issue_NotEmail_Notice" xml:space="preserve"><value>Ce n'est pas un email — les réponses se font ici, dans la conversation de l'incident.</value></data>
+
+  <!-- Issues — messages d'état du contrôleur (TempData) -->
+  <data name="Issue_Submitted" xml:space="preserve"><value>Incident envoyé. Merci !</value></data>
+  <data name="Issue_Error" xml:space="preserve"><value>Une erreur est survenue. Veuillez réessayer.</value></data>
+  <data name="Issue_Comment_Posted" xml:space="preserve"><value>Commentaire publié.</value></data>
+  <data name="Issue_Comment_Reopened" xml:space="preserve"><value>Incident rouvert.</value></data>
+  <data name="Issue_Comment_PostFailed" xml:space="preserve"><value>Impossible de publier le commentaire.</value></data>
+  <data name="Issue_Status_Updated" xml:space="preserve"><value>Statut mis à jour.</value></data>
+  <data name="Issue_Assignee_Updated" xml:space="preserve"><value>Responsable mis à jour.</value></data>
+  <data name="Issue_Section_Updated" xml:space="preserve"><value>Section mise à jour.</value></data>
+  <data name="Issue_GitHub_Linked" xml:space="preserve"><value>Lié à GitHub.</value></data>
 
 </root>

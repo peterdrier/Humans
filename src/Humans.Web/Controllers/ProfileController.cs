@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Web;
 using Humans.Application.Authorization;
+using Humans.Application.Authorization.UserEmail;
 using Humans.Application.Configuration;
 using Humans.Application.Extensions;
 using Microsoft.AspNetCore.Authorization;
@@ -21,6 +22,7 @@ using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Campaigns;
@@ -70,6 +72,8 @@ public class ProfileController : HumansControllerBase
     private readonly IAuthorizationService _authorizationService;
     private readonly IUserService _userService;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly SignInManager<User> _signInManager;
+    private readonly GoogleWorkspaceOptions _googleWorkspaceOptions;
 
     private const int MaxProfilePictureUploadBytes = 20 * 1024 * 1024; // 20MB upload limit
     private const int MaxGooglePhotoDownloadBytes = 20 * 1024 * 1024; // 20MB hard ceiling for Google avatar fetch
@@ -121,7 +125,9 @@ public class ProfileController : HumansControllerBase
         IClock clock,
         IAuthorizationService authorizationService,
         IUserService userService,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        SignInManager<User> signInManager,
+        IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions)
         : base(userManager)
     {
         _userManager = userManager;
@@ -149,6 +155,8 @@ public class ProfileController : HumansControllerBase
         _authorizationService = authorizationService;
         _userService = userService;
         _httpClientFactory = httpClientFactory;
+        _signInManager = signInManager;
+        _googleWorkspaceOptions = googleWorkspaceOptions.Value;
     }
 
     // ─── Own Profile (Me) ────────────────────────────────────────────
@@ -165,7 +173,7 @@ public class ProfileController : HumansControllerBase
 
         var (profile, latestApplication, pendingConsentCount) =
             await _profileService.GetProfileIndexDataAsync(user.Id, ct);
-        var campaignGrants = await _profileService.GetActiveOrCompletedCampaignGrantsAsync(user.Id, ct);
+        var campaignGrants = await _campaignService.GetActiveOrCompletedGrantsForUserAsync(user.Id, ct);
 
         var viewModel = new ProfileViewModel
         {
@@ -665,23 +673,35 @@ public class ProfileController : HumansControllerBase
         return View("VerifyEmailResult");
     }
 
-    [HttpPost("Me/Emails/SetNotificationTarget")]
+    [HttpPost("Me/Emails/SetPrimary")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetNotificationTarget(Guid emailId)
+    public async Task<IActionResult> SetPrimary(Guid emailId, CancellationToken ct)
     {
         var user = await GetCurrentUserAsync();
         if (user is null)
             return NotFound();
 
+        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
         try
         {
-            await _userEmailService.SetNotificationTargetAsync(user.Id, emailId);
+            await _userEmailService.SetPrimaryAsync(user.Id, emailId, ct);
             _cache.InvalidateNobodiesTeamEmails();
+            // Self-path audit — symmetric with AdminSetPrimary. SetPrimaryAsync
+            // does not take actorUserId, so audit at the controller.
+            await _auditLogService.LogAsync(
+                AuditAction.UserEmailPrimarySet,
+                nameof(User), user.Id,
+                $"Set primary email row {emailId}",
+                user.Id,
+                relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
             SetSuccess(_localizer["Profile_NotificationTargetUpdated"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Failed to set notification target {EmailId} for user {UserId}", emailId, user.Id);
+            _logger.LogWarning(ex, "Failed to set primary email {EmailId} for user {UserId}", emailId, user.Id);
             SetError(ex.Message);
         }
 
@@ -696,6 +716,10 @@ public class ProfileController : HumansControllerBase
         if (user is null)
             return NotFound();
 
+        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
         ContactFieldVisibility? parsedVisibility = null;
         if (!string.IsNullOrEmpty(visibility) && Enum.TryParse<ContactFieldVisibility>(visibility, ignoreCase: true, out var v))
         {
@@ -705,6 +729,14 @@ public class ProfileController : HumansControllerBase
         try
         {
             await _userEmailService.SetVisibilityAsync(user.Id, emailId, parsedVisibility);
+            // Self-path audit — symmetric with AdminSetVisibility. SetVisibilityAsync
+            // does not take actorUserId, so audit at the controller.
+            await _auditLogService.LogAsync(
+                AuditAction.UserEmailVisibilityChanged,
+                nameof(User), user.Id,
+                $"Changed visibility on email row {emailId} to {(parsedVisibility?.ToString() ?? "hidden")}",
+                user.Id,
+                relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
             SetSuccess(_localizer["Profile_EmailVisibilityUpdated"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
@@ -724,11 +756,31 @@ public class ProfileController : HumansControllerBase
         if (user is null)
             return NotFound();
 
+        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
         try
         {
-            await _userEmailService.DeleteEmailAsync(user.Id, emailId);
-            _cache.InvalidateNobodiesTeamEmails();
-            SetSuccess(_localizer["Profile_EmailDeleted"].Value);
+            var deleted = await _userEmailService.DeleteEmailAsync(user.Id, emailId);
+            if (deleted)
+            {
+                _cache.InvalidateNobodiesTeamEmails();
+                // Self-path audit — symmetric with AdminDeleteEmail. DeleteEmailAsync
+                // does not take actorUserId, so audit at the controller.
+                await _auditLogService.LogAsync(
+                    AuditAction.UserEmailDeleted,
+                    nameof(User), user.Id,
+                    $"Deleted email row {emailId}",
+                    user.Id,
+                    relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
+                SetSuccess(_localizer["Profile_EmailDeleted"].Value);
+            }
+            else
+            {
+                // Provider-attached rows must go through Unlink, not Delete.
+                SetError(_localizer["EmailGrid_DeleteRejectedHasProvider"].Value);
+            }
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
@@ -739,56 +791,362 @@ public class ProfileController : HumansControllerBase
         return RedirectToAction(nameof(Emails));
     }
 
-    [HttpPost("Me/Emails/SetGoogleService")]
+    [HttpPost("Me/Emails/SetGoogle")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetGoogleServiceEmail(Guid emailId)
+    public async Task<IActionResult> SetGoogle(Guid emailId, CancellationToken ct)
     {
         var user = await GetCurrentUserAsync();
         if (user is null)
             return NotFound();
 
+        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
         try
         {
-            var emailAddress = await _userEmailService.GetVerifiedEmailAddressAsync(user.Id, emailId);
-
-            if (emailAddress is null)
+            var ok = await _userEmailService.SetGoogleAsync(user.Id, emailId, user.Id, ct);
+            if (ok)
             {
-                SetError("Email not found or not verified.");
-                return RedirectToAction(nameof(Emails));
+                _cache.InvalidateNobodiesTeamEmails();
+                SetSuccess(_localizer["EmailGrid_GoogleServiceUpdated"].Value);
             }
-
-            // If they have a @nobodies.team email, it must be used
-            var hasNobodiesTeam = await _userEmailService.HasNobodiesTeamEmailAsync(user.Id);
-
-            if (hasNobodiesTeam && !emailAddress.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
+            else
             {
-                SetError("Your @nobodies.team email must be used for Google services.");
-                return RedirectToAction(nameof(Emails));
+                SetError(_localizer["EmailGrid_SetGoogleRejected"].Value);
             }
-
-            // null = use OAuth email (default behavior)
-            var isOAuthEmail = string.Equals(emailAddress, user.Email, StringComparison.OrdinalIgnoreCase);
-            var previousEmail = user.GoogleEmail;
-            user.GoogleEmail = isOAuthEmail ? null : emailAddress;
-            user.GoogleEmailStatus = GoogleEmailStatus.Unknown;
-            await _userManager.UpdateAsync(user);
-
-            // If email changed, enqueue fresh sync events for all current team memberships
-            var newEmail = user.GetGoogleServiceEmail();
-            if (!string.Equals(previousEmail ?? user.Email, newEmail, StringComparison.OrdinalIgnoreCase))
-            {
-                await _teamService.EnqueueGoogleResyncForUserTeamsAsync(user.Id);
-            }
-
-            SetSuccess("Google service email updated. Sync will be retried with the new email.");
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogError(ex, "Failed to set Google service email for user {UserId}", user.Id);
-            SetError("Failed to update Google service email.");
+            _logger.LogWarning(ex, "Failed to set Google service email {EmailId} for user {UserId}", emailId, user.Id);
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Emails));
+    }
+
+    [HttpPost("Me/Emails/Link/{provider}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Link(string provider, string? returnUrl = null)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return NotFound();
+
+        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        // Route the OAuth round-trip through AccountController.ExternalLoginCallback
+        // so the link-while-signed-in branch (UserManager.AddLoginAsync +
+        // TryLinkProviderForUserEmailAsync) actually fires after the provider
+        // returns. Redirecting straight back to /Profile/Me/Emails would skip
+        // that branch and the linkage would never persist.
+        var resolvedReturnUrl = returnUrl ?? Url.Action(nameof(Emails)) ?? "/Profile/Me/Emails";
+        var redirectUrl = Url.Action("ExternalLoginCallback", "Account", new { returnUrl = resolvedReturnUrl })
+            ?? "/Account/ExternalLoginCallback";
+        var props = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
+        return Challenge(props, provider);
+    }
+
+    [HttpPost("Me/Emails/Unlink/{id:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Unlink(Guid id, CancellationToken ct)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return NotFound();
+
+        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        try
+        {
+            var ok = await _userEmailService.UnlinkAsync(user.Id, id, user.Id, ct);
+            if (ok)
+            {
+                _cache.InvalidateNobodiesTeamEmails();
+                SetSuccess(_localizer["EmailGrid_UnlinkSuccess"].Value);
+            }
+            else
+            {
+                SetError(_localizer["EmailGrid_UnlinkRejected"].Value);
+            }
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Failed to unlink email {EmailId} for user {UserId}", id, user.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Emails));
+    }
+
+    // Admin grid actions — parameterized by {userId}, mirror the self-grid
+    // against a target user. No AdminLink because OAuth linking requires the
+    // target user to authenticate with the provider.
+
+    [HttpGet("{id:guid}/Admin/Emails")]
+    public async Task<IActionResult> AdminEmails(Guid id, CancellationToken ct)
+    {
+        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        var targetUser = await FindUserByIdAsync(id);
+        if (targetUser is null)
+            return NotFound();
+
+        var viewModel = await BuildEmailsViewModelAsync(targetUser, isAdminContext: true, ct);
+        return View("Emails", viewModel);
+    }
+
+    [HttpPost("{id:guid}/Admin/Emails/SetGoogle")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AdminSetGoogle(Guid id, Guid emailId, CancellationToken ct)
+    {
+        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        var actor = await GetCurrentUserAsync();
+        if (actor is null)
+            return Forbid();
+
+        try
+        {
+            var ok = await _userEmailService.SetGoogleAsync(id, emailId, actor.Id, ct);
+            if (ok)
+            {
+                _cache.InvalidateNobodiesTeamEmails();
+                SetSuccess(_localizer["EmailGrid_GoogleServiceUpdated"].Value);
+            }
+            else
+            {
+                SetError(_localizer["EmailGrid_SetGoogleRejected"].Value);
+            }
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Admin failed to set Google service email {EmailId} for user {UserId}", emailId, id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(AdminEmails), new { id });
+    }
+
+    [HttpPost("{id:guid}/Admin/Emails/SetPrimary")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AdminSetPrimary(Guid id, Guid emailId, CancellationToken ct)
+    {
+        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        var actor = await GetCurrentUserAsync();
+        if (actor is null)
+            return Forbid();
+
+        try
+        {
+            await _userEmailService.SetPrimaryAsync(id, emailId, ct);
+            _cache.InvalidateNobodiesTeamEmails();
+            // Audit at the controller — SetPrimaryAsync does not take actorUserId.
+            await _auditLogService.LogAsync(
+                AuditAction.UserEmailPrimarySet,
+                nameof(User), id,
+                $"Admin set primary email row {emailId}",
+                actor.Id,
+                relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
+            SetSuccess(_localizer["Profile_NotificationTargetUpdated"].Value);
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Admin failed to set primary email {EmailId} for user {UserId}", emailId, id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(AdminEmails), new { id });
+    }
+
+    [HttpPost("{id:guid}/Admin/Emails/Add")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AdminAddEmail(Guid id, string email, CancellationToken ct)
+    {
+        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            SetError(_localizer["Profile_EnterEmail"].Value);
+            return RedirectToAction(nameof(AdminEmails), new { id });
+        }
+
+        var actor = await GetCurrentUserAsync();
+        if (actor is null)
+            return Forbid();
+
+        var targetUser = await FindUserByIdAsync(id);
+        if (targetUser is null)
+            return NotFound();
+
+        try
+        {
+            var result = await _userEmailService.AddEmailAsync(id, email, ct);
+
+            // Verification email goes to the target user (the human whose row this is),
+            // not to the admin. The admin can't verify on the user's behalf — that
+            // defeats the purpose of verification. Mirrors the self AddEmail path.
+            // VerifyEmail still binds by query-string userId, so pass it explicitly.
+            var verificationUrl = Url.Action(
+                nameof(VerifyEmail),
+                "Profile",
+                new { userId = id, token = HttpUtility.UrlEncode(result.Token) },
+                Request.Scheme);
+
+            await _emailService.SendEmailVerificationAsync(
+                email.Trim(),
+                targetUser.DisplayName,
+                verificationUrl!,
+                result.IsConflict,
+                targetUser.PreferredLanguage,
+                ct);
+
+            _logger.LogInformation(
+                "Admin sent email verification to {Email} for user {UserId} (conflict: {IsConflict})",
+                email, id, result.IsConflict);
+
+            // Controller-level audit for admin path — symmetric with AdminSetPrimary /
+            // AdminDeleteEmail. AddEmailAsync does not return the new row's Id and does
+            // not take actorUserId, so audit at the controller without relatedEntityId.
+            // UserEmailAdded (admin added a plain unverified email) is distinct from
+            // UserEmailLinked (OAuth provider attached to a UserEmail row).
+            await _auditLogService.LogAsync(
+                AuditAction.UserEmailAdded,
+                nameof(User), id,
+                $"Admin added pending email {email.Trim()} for user {id} (conflict: {result.IsConflict})",
+                actor.Id);
+
+            SetSuccess(_localizer["EmailGrid_AdminAddSentVerification"].Value);
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Admin failed to add email for user {UserId}: {Reason}", id, ex.Message);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(AdminEmails), new { id });
+    }
+
+    [HttpPost("{id:guid}/Admin/Emails/Unlink/{emailId:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AdminUnlink(Guid id, Guid emailId, CancellationToken ct)
+    {
+        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        var actor = await GetCurrentUserAsync();
+        if (actor is null)
+            return Forbid();
+
+        try
+        {
+            var ok = await _userEmailService.UnlinkAsync(id, emailId, actor.Id, ct);
+            if (ok)
+            {
+                _cache.InvalidateNobodiesTeamEmails();
+                SetSuccess(_localizer["EmailGrid_UnlinkSuccess"].Value);
+            }
+            else
+            {
+                SetError(_localizer["EmailGrid_UnlinkRejected"].Value);
+            }
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Admin failed to unlink email {EmailId} for user {UserId}", emailId, id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(AdminEmails), new { id });
+    }
+
+    [HttpPost("{id:guid}/Admin/Emails/Delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AdminDeleteEmail(Guid id, Guid emailId, CancellationToken ct)
+    {
+        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        var actor = await GetCurrentUserAsync();
+        if (actor is null)
+            return Forbid();
+
+        try
+        {
+            var deleted = await _userEmailService.DeleteEmailAsync(id, emailId, ct);
+            if (deleted)
+            {
+                _cache.InvalidateNobodiesTeamEmails();
+                // Audit at the controller — DeleteEmailAsync does not take actorUserId.
+                await _auditLogService.LogAsync(
+                    AuditAction.UserEmailDeleted,
+                    nameof(User), id,
+                    $"Admin deleted email row {emailId}",
+                    actor.Id,
+                    relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
+                SetSuccess(_localizer["Profile_EmailDeleted"].Value);
+            }
+            else
+            {
+                SetError(_localizer["EmailGrid_DeleteRejectedHasProvider"].Value);
+            }
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Admin failed to delete email {EmailId} for user {UserId}", emailId, id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(AdminEmails), new { id });
+    }
+
+    [HttpPost("{id:guid}/Admin/Emails/SetVisibility")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AdminSetVisibility(
+        Guid id, Guid emailId, ContactFieldVisibility? visibility, CancellationToken ct)
+    {
+        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        var actor = await GetCurrentUserAsync();
+        if (actor is null)
+            return Forbid();
+
+        try
+        {
+            await _userEmailService.SetVisibilityAsync(id, emailId, visibility, ct);
+            // Audit at the controller — SetVisibilityAsync does not take actorUserId.
+            await _auditLogService.LogAsync(
+                AuditAction.UserEmailVisibilityChanged,
+                nameof(User), id,
+                $"Admin changed visibility on email row {emailId} to {(visibility?.ToString() ?? "hidden")}",
+                actor.Id,
+                relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
+            SetSuccess(_localizer["Profile_EmailVisibilityUpdated"].Value);
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Admin failed to set email visibility for email {EmailId} and user {UserId}", emailId, id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(AdminEmails), new { id });
     }
 
     [HttpGet("Me/Outbox")]
@@ -1463,7 +1821,7 @@ public class ProfileController : HumansControllerBase
         var now = _clock.GetCurrentInstant();
 
         var effectiveEmail = data.UserEmails
-            .FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified)?.Email
+            .FirstOrDefault(e => e.IsPrimary && e.IsVerified)?.Email
             ?? data.User.Email;
 
         var viewModel = new AdminHumanDetailViewModel
@@ -1514,16 +1872,20 @@ public class ProfileController : HumansControllerBase
                 Proficiency = pl.Proficiency
             }).ToList(),
             OAuthEmail = data.User.Email,
-            GoogleServiceEmail = data.User.GetGoogleServiceEmail(),
+            GoogleServiceEmail = data.UserEmails
+                .Where(e => e.IsVerified && e.IsGoogle)
+                .Select(e => e.Email)
+                .FirstOrDefault()
+                ?? data.User.Email,
             GoogleEmailStatus = data.User.GoogleEmailStatus,
             UserEmails = data.UserEmails
-                .OrderBy(e => e.DisplayOrder)
+                .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
                 .Select(e => new AdminUserEmailViewModel
                 {
                     Email = e.Email,
-                    IsOAuth = e.IsOAuth,
+                    IsGoogle = e.IsGoogle,
                     IsVerified = e.IsVerified,
-                    IsNotificationTarget = e.IsNotificationTarget,
+                    IsPrimary = e.IsPrimary,
                     Visibility = e.Visibility,
                 }).ToList(),
         };
@@ -1733,9 +2095,9 @@ public class ProfileController : HumansControllerBase
     private (byte[] Data, string ContentType)? ResizeProfilePicture(byte[] imageData, string contentType) =>
         Helpers.ProfilePictureProcessor.ResizeProfilePicture(imageData, _logger);
 
-    private async Task<EmailsViewModel> BuildEmailsViewModelAsync(User user)
+    private async Task<EmailsViewModel> BuildEmailsViewModelAsync(User user, bool isAdminContext = false, CancellationToken ct = default)
     {
-        var emails = await _userEmailService.GetUserEmailsAsync(user.Id);
+        var emails = await _userEmailService.GetUserEmailsAsync(user.Id, ct);
 
         var canAdd = true;
         var minutesUntilResend = 0;
@@ -1744,7 +2106,7 @@ public class ProfileController : HumansControllerBase
         if (pendingEmail is not null)
         {
             var (cooldownCanAdd, cooldownMinutes, _) =
-                await _profileService.GetEmailCooldownInfoAsync(pendingEmail.Id);
+                await _profileService.GetEmailCooldownInfoAsync(pendingEmail.Id, ct);
             canAdd = cooldownCanAdd;
             minutesUntilResend = cooldownMinutes;
         }
@@ -1752,8 +2114,28 @@ public class ProfileController : HumansControllerBase
         var hasNobodiesTeam = emails.Any(e => e.IsVerified &&
             e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase));
 
-        if (hasNobodiesTeam && user.GoogleEmail is null)
-            await _userEmailService.TryBackfillGoogleEmailAsync(user.Id);
+        if (hasNobodiesTeam)
+            await _userEmailService.TryBackfillGoogleEmailAsync(user.Id, ct);
+
+        // Use the already-loaded `emails` list (from GetUserEmailsAsync above) rather
+        // than user.UserEmails — UserManager.GetUserAsync / FindByIdAsync don't
+        // .Include(UserEmails), so the navigation would lazily reload (or be empty).
+        var googleServiceEmail = emails
+            .Where(e => e.IsVerified && e.IsGoogle)
+            .Select(e => e.Email)
+            .FirstOrDefault();
+
+        // Workspace canonical identity: Provider=Google AND email on the configured
+        // Workspace domain. While present, Primary + Google radios lock to that row.
+        // If multiple match (shouldn't happen), prefer IsPrimary, else first.
+        var workspaceDomainSuffix = "@" + _googleWorkspaceOptions.Domain;
+        var workspaceCandidates = emails
+            .Where(e => !string.IsNullOrEmpty(e.Provider)
+                && string.Equals(e.Provider, "Google", StringComparison.OrdinalIgnoreCase)
+                && e.Email.EndsWith(workspaceDomainSuffix, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var workspaceLockedEmail = workspaceCandidates.FirstOrDefault(e => e.IsPrimary)
+            ?? workspaceCandidates.FirstOrDefault();
 
         return new EmailsViewModel
         {
@@ -1762,21 +2144,23 @@ public class ProfileController : HumansControllerBase
                 Id = e.Id,
                 Email = e.Email,
                 IsVerified = e.IsVerified,
-                IsOAuth = e.IsOAuth,
-                IsNotificationTarget = e.IsNotificationTarget,
+                IsGoogle = e.IsGoogle,
+                IsPrimary = e.IsPrimary,
                 Visibility = e.Visibility,
                 IsPendingVerification = e.IsPendingVerification,
                 IsMergePending = e.IsMergePending,
-                IsGoogleServiceEmail = user.GoogleEmail is not null
-                    ? string.Equals(e.Email, user.GoogleEmail, StringComparison.OrdinalIgnoreCase)
-                    : e.IsOAuth,
-                IsNobodiesTeamDomain = e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase)
+                IsNobodiesTeamDomain = e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase),
+                Provider = e.Provider
             }).ToList(),
             CanAddEmail = canAdd,
             MinutesUntilResend = minutesUntilResend,
-            GoogleServiceEmail = user.GoogleEmail,
+            GoogleServiceEmail = googleServiceEmail,
             HasNobodiesTeamEmail = hasNobodiesTeam,
-            GoogleEmailStatus = user.GoogleEmailStatus
+            GoogleEmailStatus = user.GoogleEmailStatus,
+            TargetUserId = user.Id,
+            TargetDisplayName = user.DisplayName,
+            IsAdminContext = isAdminContext,
+            WorkspaceLockedEmailId = workspaceLockedEmail?.Id
         };
     }
 

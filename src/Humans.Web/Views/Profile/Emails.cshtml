@@ -7,24 +7,51 @@
     <div class="col-md-8">
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a asp-action="Index">Profile</a></li>
+                @if (Model.IsAdminContext)
+                {
+                    <li class="breadcrumb-item"><a asp-action="AdminDetail" asp-route-id="@Model.TargetUserId">@(Model.TargetDisplayName ?? Localizer["Emails_AdminUnknownTarget"].Value)</a></li>
+                }
+                else
+                {
+                    <li class="breadcrumb-item"><a asp-action="Index">Profile</a></li>
+                }
                 <li class="breadcrumb-item active" aria-current="page">@Localizer["Emails_Title"]</li>
             </ol>
         </nav>
 
         <h1>@Localizer["Emails_Title"]</h1>
-        <p class="text-muted">
-            @Localizer["Emails_Description"]
-        </p>
+
+        @if (Model.IsAdminContext)
+        {
+            <div class="alert alert-warning d-flex align-items-center mb-3">
+                <i class="fa-solid fa-user-shield me-2 fs-4"></i>
+                <div>
+                    @if (!string.IsNullOrWhiteSpace(Model.TargetDisplayName))
+                    {
+                        @string.Format(Localizer["EmailGrid_AdminContextBannerNamed"].Value, Model.TargetDisplayName)
+                    }
+                    else
+                    {
+                        @Localizer["EmailGrid_AdminContextBanner"]
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <p class="text-muted">
+                @Localizer["Emails_Description"]
+            </p>
+        }
 
         <vc:temp-data-alerts />
 
-        @if (Model.Emails.Any(e => e.IsPendingVerification))
+        @if (!Model.IsAdminContext && Model.Emails.Any(e => e.IsPendingVerification))
         {
             <div class="alert alert-warning d-flex align-items-center mb-3">
                 <i class="fa-solid fa-envelope-circle-check me-2 fs-4"></i>
                 <div>
-                    <strong>Email verification pending</strong> — Check your inbox for the verification email and click the link to confirm your address.
+                    <strong>@Localizer["EmailGrid_VerificationPendingTitle"]</strong> — @Localizer["EmailGrid_VerificationPendingBody"]
                 </div>
             </div>
         }
@@ -34,109 +61,180 @@
                 <h5 class="mb-0">@Localizer["Emails_YourEmails"]</h5>
             </div>
             <div class="card-body p-0">
+                @if (Model.WorkspaceLockedEmailId.HasValue)
+                {
+                    <div class="px-3 pt-3">
+                        <small class="text-muted">
+                            <i class="fa-solid fa-lock me-1"></i>@Localizer["EmailGrid_WorkspaceLockedHelp"]
+                        </small>
+                    </div>
+                }
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
                         <thead>
                             <tr>
-                                <th>@Localizer["Emails_Header_Email"]</th>
-                                <th>@Localizer["Emails_Header_Status"]</th>
-                                <th>@Localizer["Emails_Header_Notifications"]</th>
-                                <th>@Localizer["Emails_Header_Visibility"]</th>
-                                <th></th>
+                                <th>@Localizer["EmailGrid_Email"]</th>
+                                <th>@Localizer["EmailGrid_Status"]</th>
+                                <th>@Localizer["EmailGrid_Primary"]</th>
+                                <th title="@Localizer["EmailGrid_GoogleColumnTooltip"]">@Localizer["EmailGrid_Google"]</th>
+                                <th>@Localizer["EmailGrid_Visibility"]</th>
+                                <th class="text-end">@Localizer["EmailGrid_Actions"]</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var email in Model.Emails)
-                            {
-                                <tr>
-                                    <td>
-                                        <code>@email.Email</code>
-                                        @if (email.IsOAuth)
+                        @foreach (var row in Model.Emails)
+                        {
+                            <tr>
+                                <td>
+                                    <code>@row.Email</code>
+                                </td>
+                                <td>
+                                    @if (row.IsMergePending)
+                                    {
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="fa-solid fa-code-merge me-1"></i>@Localizer["EmailGrid_StatusMergePending"]
+                                        </span>
+                                    }
+                                    else if (row.IsVerified)
+                                    {
+                                        <span class="badge bg-success">
+                                            <i class="fa-solid fa-check me-1"></i>@Localizer["EmailGrid_StatusVerified"]
+                                        </span>
+                                    }
+                                    else if (row.IsPendingVerification)
+                                    {
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="fa-solid fa-clock me-1"></i>@Localizer["EmailGrid_StatusPending"]
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">@Localizer["Emails_Unverified"]</span>
+                                    }
+                                </td>
+                                <td>
+                                    @{
+                                        var workspaceLocked = Model.WorkspaceLockedEmailId.HasValue;
+                                        var isLockedRow = workspaceLocked && Model.WorkspaceLockedEmailId == row.Id;
+                                        var primaryChecked = isLockedRow ? true : row.IsPrimary;
+                                        var primaryDisabled = workspaceLocked || !row.IsVerified;
+                                    }
+                                    <form asp-action="@(Model.IsAdminContext ? "AdminSetPrimary" : "SetPrimary")"
+                                          asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
+                                          method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="emailId" value="@row.Id" />
+                                        <label class="d-inline-flex align-items-center mb-0">
+                                            <input type="radio"
+                                                   class="form-check-input me-1 js-auto-submit"
+                                                   name="isPrimary"
+                                                   value="true"
+                                                   @(primaryChecked ? "checked" : "")
+                                                   @(primaryDisabled ? "disabled" : "") />
+                                            @if (!primaryChecked && !row.IsVerified)
+                                            {
+                                                <span class="text-muted small">@Localizer["Emails_VerifyFirst"]</span>
+                                            }
+                                        </label>
+                                    </form>
+                                </td>
+                                <td>
+                                    @{
+                                        var googleChecked = isLockedRow ? true : row.IsGoogle;
+                                        var googleDisabled = workspaceLocked || !row.IsVerified;
+                                    }
+                                    <form asp-action="@(Model.IsAdminContext ? "AdminSetGoogle" : "SetGoogle")"
+                                          asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
+                                          method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="emailId" value="@row.Id" />
+                                        <label class="d-inline-flex align-items-center mb-0">
+                                            <input type="radio"
+                                                   class="form-check-input me-1 js-auto-submit"
+                                                   name="isGoogle"
+                                                   value="true"
+                                                   @(googleChecked ? "checked" : "")
+                                                   @(googleDisabled ? "disabled" : "") />
+                                            @if (!googleChecked && !row.IsVerified)
+                                            {
+                                                <span class="text-muted small">@Localizer["Emails_VerifyFirst"]</span>
+                                            }
+                                        </label>
+                                    </form>
+                                </td>
+                                <td>
+                                    @if (row.IsVerified)
+                                    {
+                                        <form asp-action="@(Model.IsAdminContext ? "AdminSetVisibility" : "SetEmailVisibility")"
+                                              asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
+                                              method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="emailId" value="@row.Id" />
+                                            <select name="visibility" class="form-select form-select-sm js-auto-submit" style="width: auto; display: inline-block;">
+                                                <option value="" selected="@(row.Visibility == null ? "selected" : null)">@Localizer["Emails_Visibility_Hidden"]</option>
+                                                <option value="AllActiveProfiles" selected="@(row.Visibility == ContactFieldVisibility.AllActiveProfiles ? "selected" : null)">@Localizer["Emails_Visibility_AllHumans"]</option>
+                                                <option value="MyTeams" selected="@(row.Visibility == ContactFieldVisibility.MyTeams ? "selected" : null)">@Localizer["Emails_Visibility_MyTeams"]</option>
+                                                <option value="CoordinatorsAndBoard" selected="@(row.Visibility == ContactFieldVisibility.CoordinatorsAndBoard ? "selected" : null)">@Localizer["Emails_Visibility_CoordinatorsBoard"]</option>
+                                                <option value="BoardOnly" selected="@(row.Visibility == ContactFieldVisibility.BoardOnly ? "selected" : null)">@Localizer["Emails_Visibility_BoardOnly"]</option>
+                                            </select>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">—</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    @* Never offer a destructive action on the only remaining email — *@
+                                    @* removing the last row would leave the user with no email at all, *@
+                                    @* regardless of whether the row is provider-linked. *@
+                                    @if (Model.Emails.Count > 1)
+                                    {
+                                        @if (!string.IsNullOrEmpty(row.Provider))
                                         {
-                                            <span class="badge bg-secondary ms-1">@Localizer["Emails_SignIn"]</span>
-                                        }
-                                    </td>
-                                    <td>
-                                        @if (email.IsMergePending)
-                                        {
-                                            <span class="badge bg-info text-dark">
-                                                <i class="fa-solid fa-code-merge me-1"></i>@Localizer["Emails_MergePending"]
-                                            </span>
-                                        }
-                                        else if (email.IsVerified)
-                                        {
-                                            <span class="badge bg-success">
-                                                <i class="fa-solid fa-check me-1"></i>@Localizer["Emails_Verified"]
-                                            </span>
-                                        }
-                                        else if (email.IsPendingVerification)
-                                        {
-                                            <span class="badge bg-warning text-dark">
-                                                <i class="fa-solid fa-clock me-1"></i>@Localizer["Emails_StatusPending"]
-                                            </span>
+                                            @if (Model.IsAdminContext)
+                                            {
+                                                <form asp-action="AdminUnlink"
+                                                      asp-route-id="@Model.TargetUserId"
+                                                      asp-route-emailId="@row.Id"
+                                                      method="post" class="d-inline"
+                                                      data-confirm="@Localizer["EmailGrid_ConfirmUnlink"].Value">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-outline-warning btn-sm">
+                                                        <i class="fa-solid fa-link-slash me-1"></i>@Localizer["EmailGrid_Unlink"]
+                                                    </button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                <form asp-action="Unlink"
+                                                      asp-route-id="@row.Id"
+                                                      method="post" class="d-inline"
+                                                      data-confirm="@Localizer["EmailGrid_ConfirmUnlink"].Value">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-outline-warning btn-sm">
+                                                        <i class="fa-solid fa-link-slash me-1"></i>@Localizer["EmailGrid_Unlink"]
+                                                    </button>
+                                                </form>
+                                            }
                                         }
                                         else
                                         {
-                                            <span class="badge bg-secondary">@Localizer["Emails_Unverified"]</span>
-                                        }
-                                    </td>
-                                    <td>
-                                        @if (email.IsNotificationTarget)
-                                        {
-                                            <span class="badge bg-primary">
-                                                <i class="fa-solid fa-bell me-1"></i>@Localizer["Emails_NotifActive"]
-                                            </span>
-                                        }
-                                        else if (email.IsVerified)
-                                        {
-                                            <form asp-action="SetNotificationTarget" method="post" class="d-inline">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="emailId" value="@email.Id" />
-                                                <button type="submit" class="btn btn-outline-primary btn-sm">
-                                                    @Localizer["Emails_SetAsTarget"]
-                                                </button>
-                                            </form>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted small">@Localizer["Emails_VerifyFirst"]</span>
-                                        }
-                                    </td>
-                                    <td>
-                                        @if (email.IsVerified)
-                                        {
-                                            <form asp-action="SetEmailVisibility" method="post" class="d-inline">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="emailId" value="@email.Id" />
-                                                <select name="visibility" class="form-select form-select-sm js-auto-submit" style="width: auto; display: inline-block;">
-                                                    <option value="" selected="@(email.Visibility == null ? "selected" : null)">@Localizer["Emails_Visibility_Hidden"]</option>
-                                                    <option value="AllActiveProfiles" selected="@(email.Visibility == ContactFieldVisibility.AllActiveProfiles ? "selected" : null)">@Localizer["Emails_Visibility_AllHumans"]</option>
-                                                    <option value="MyTeams" selected="@(email.Visibility == ContactFieldVisibility.MyTeams ? "selected" : null)">@Localizer["Emails_Visibility_MyTeams"]</option>
-                                                    <option value="CoordinatorsAndBoard" selected="@(email.Visibility == ContactFieldVisibility.CoordinatorsAndBoard ? "selected" : null)">@Localizer["Emails_Visibility_CoordinatorsBoard"]</option>
-                                                    <option value="BoardOnly" selected="@(email.Visibility == ContactFieldVisibility.BoardOnly ? "selected" : null)">@Localizer["Emails_Visibility_BoardOnly"]</option>
-                                                </select>
-                                            </form>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted small">—</span>
-                                        }
-                                    </td>
-                                    <td class="text-end">
-                                        @if (!email.IsOAuth)
-                                        {
-                                            <form asp-action="DeleteEmail" method="post" class="d-inline"
+                                            <form asp-action="@(Model.IsAdminContext ? "AdminDeleteEmail" : "DeleteEmail")"
+                                                  asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
+                                                  method="post" class="d-inline"
                                                   data-confirm="@Localizer["Emails_ConfirmRemove"].Value">
                                                 @Html.AntiForgeryToken()
-                                                <input type="hidden" name="emailId" value="@email.Id" />
+                                                <input type="hidden" name="emailId" value="@row.Id" />
                                                 <button type="submit" class="btn btn-outline-danger btn-sm">
                                                     <i class="fa-solid fa-trash"></i>
                                                 </button>
                                             </form>
                                         }
-                                    </td>
-                                </tr>
-                            }
+                                    }
+                                </td>
+                            </tr>
+                        }
                         </tbody>
                     </table>
                 </div>
@@ -145,91 +243,39 @@
 
         <div class="card mb-4">
             <div class="card-header">
-                <h5 class="mb-0"><i class="fa-brands fa-google me-2"></i>@Localizer["Emails_GoogleTitle"]</h5>
-            </div>
-            <div class="card-body">
-                <p class="text-muted small mb-3">
-                    @Localizer["Emails_GoogleDescription"]
-                    @if (Model.HasNobodiesTeamEmail)
-                    {
-                        <text>@Localizer["Emails_GoogleAutoNobodies"]</text>
-                    }
-                </p>
-                @if (Model.GoogleEmailStatus == GoogleEmailStatus.Rejected)
-                {
-                    <div class="alert alert-danger mb-3">
-                        <i class="fa-solid fa-triangle-exclamation me-1"></i>
-                        @Localizer["Emails_GoogleRejected"]
-                    </div>
-                }
-                else if (Model.GoogleEmailStatus == GoogleEmailStatus.Valid)
-                {
-                    <div class="alert alert-success mb-3 py-2">
-                        <i class="fa-solid fa-circle-check me-1"></i>
-                        @Localizer["Emails_GoogleValid"]
-                    </div>
-                }
-                @foreach (var email in Model.Emails.Where(e => e.IsVerified))
-                {
-                    <div class="d-flex align-items-center mb-2">
-                        @if (email.IsGoogleServiceEmail)
-                        {
-                            <span class="badge bg-primary me-2">
-                                <i class="fa-solid fa-check me-1"></i>@Localizer["Emails_NotifActive"]
-                            </span>
-                            <code>@email.Email</code>
-                            @if (email.IsNobodiesTeamDomain)
-                            {
-                                <span class="badge bg-info text-dark ms-2">@Localizer["Emails_AutoSelected"]</span>
-                            }
-                            @if (Model.GoogleEmailStatus == GoogleEmailStatus.Rejected && !Model.HasNobodiesTeamEmail)
-                            {
-                                <span class="badge bg-danger ms-2">@Localizer["Emails_GoogleRejectedBadge"]</span>
-                            }
-                        }
-                        else if (!Model.HasNobodiesTeamEmail)
-                        {
-                            <form asp-action="SetGoogleServiceEmail" method="post" class="d-inline me-2">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="emailId" value="@email.Id" />
-                                <button type="submit" class="btn btn-outline-primary btn-sm">@Localizer["Emails_UseThis"]</button>
-                            </form>
-                            <code>@email.Email</code>
-                        }
-                        else
-                        {
-                            <span class="text-muted me-2"><code>@email.Email</code></span>
-                        }
-                    </div>
-                }
-            </div>
-        </div>
-
-        <div class="card mb-4">
-            <div class="card-header">
                 <h5 class="mb-0">@Localizer["Emails_AddNew"]</h5>
             </div>
             <div class="card-body">
-                <form asp-action="AddEmail" method="post">
+                <form asp-action="@(Model.IsAdminContext ? "AdminAddEmail" : "AddEmail")"
+                      asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
+                      method="post">
                     <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
                     <div class="mb-3">
                         <label asp-for="NewEmail" class="form-label"></label>
-                        <input asp-for="NewEmail" class="form-control" type="email"
-                               placeholder="you@example.com" />
-                        <span asp-validation-for="NewEmail" class="text-danger"></span>
+                        @if (Model.IsAdminContext)
+                        {
+                            <input class="form-control" type="email" name="email"
+                                   placeholder="you@example.com" required />
+                        }
+                        else
+                        {
+                            <input asp-for="NewEmail" class="form-control" type="email"
+                                   placeholder="you@example.com" />
+                            <span asp-validation-for="NewEmail" class="text-danger"></span>
+                        }
                         <div class="form-text">
                             @Localizer["Emails_VerificationWillBeSent"]
                         </div>
                     </div>
 
                     <button type="submit" class="btn btn-primary"
-                            @(Model.CanAddEmail ? "" : "disabled")>
+                            @((Model.IsAdminContext || Model.CanAddEmail) ? "" : "disabled")>
                         <i class="fa-solid fa-paper-plane me-1"></i>
                         @Localizer["Emails_SendVerification"]
                     </button>
 
-                    @if (!Model.CanAddEmail)
+                    @if (!Model.IsAdminContext && !Model.CanAddEmail)
                     {
                         <small class="text-muted ms-2">
                             @string.Format(Localizer["Emails_ResendCooldown"].Value, Model.MinutesUntilResend)
@@ -239,20 +285,48 @@
             </div>
         </div>
 
+        @if (!Model.IsAdminContext)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fa-brands fa-google me-2"></i>@Localizer["EmailGrid_LinkGoogleAccount"]</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        @Localizer["EmailGrid_LinkGoogleHelp"]
+                    </p>
+                    <form asp-action="Link" asp-route-provider="Google" method="post">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="fa-brands fa-google me-1"></i>@Localizer["EmailGrid_LinkGoogleAccount"]
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+
         <div class="mt-4">
-            <a asp-action="Edit" class="btn btn-outline-secondary">
-                <i class="fa-solid fa-arrow-left me-1"></i>
-                @Localizer["Emails_BackToEdit"]
-            </a>
+            @if (Model.IsAdminContext)
+            {
+                <a asp-action="AdminDetail" asp-route-id="@Model.TargetUserId" class="btn btn-outline-secondary">
+                    <i class="fa-solid fa-arrow-left me-1"></i>
+                    @Localizer["EmailGrid_BackToAdminDetail"]
+                </a>
+            }
+            else
+            {
+                <a asp-action="Edit" class="btn btn-outline-secondary">
+                    <i class="fa-solid fa-arrow-left me-1"></i>
+                    @Localizer["Emails_BackToEdit"]
+                </a>
+            }
         </div>
     </div>
 </div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-    <script>
-        document.querySelectorAll('.js-auto-submit').forEach(function (el) {
-            el.addEventListener('change', function () { this.form.submit(); });
-        });
-    </script>
+    @* site.js has a global form[data-confirm] submit handler and a global *@
+    @* js-auto-submit change handler that already cover these forms. No    *@
+    @* local listeners — duplicating the handler causes double-submit.     *@
 }

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO.Compression;
+using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Hangfire;
 using Hangfire.PostgreSql;
@@ -177,7 +178,8 @@ builder.Services.AddIdentity<User, IdentityRole<Guid>>(options =>
         options.SignIn.RequireConfirmedEmail = false;
     })
     .AddEntityFrameworkStores<HumansDbContext>()
-    .AddDefaultTokenProviders();
+    .AddDefaultTokenProviders()
+    .AddClaimsPrincipalFactory<HumansUserClaimsPrincipalFactory>();
 
 // Magic link tokens use DataProtection with explicit 15-minute lifetime (not Identity token providers).
 
@@ -323,7 +325,8 @@ builder.Services.AddHealthChecks()
     .AddCheck<ConfigurationHealthCheck>("configuration")
     .AddCheck<SmtpHealthCheck>("smtp")
     .AddCheck<GitHubHealthCheck>("github")
-    .AddCheck<GoogleWorkspaceHealthCheck>("google-workspace");
+    .AddCheck<GoogleWorkspaceHealthCheck>("google-workspace")
+    .AddCheck<AnthropicHealthCheck>("anthropic-api-reachable");
 
 builder.Services.AddHumansInfrastructure(builder.Configuration, builder.Environment, configRegistry);
 
@@ -379,7 +382,7 @@ builder.Services.AddRateLimiter(options =>
         }
 
         return RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: context.User.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+            partitionKey: context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 AutoReplenishment = true,
@@ -580,6 +583,24 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseResponseCompression();
 }
+
+// Profile pictures share the wwwroot/uploads/ mount with publicly-served
+// camp images but must NOT be reachable as static files — they're served
+// only via /Profile/Picture/{id} so the GDPR anonymization gate (DB
+// content-type) applies on every read. This middleware sits in front of
+// UseStaticFiles so direct requests under /uploads/profile-pictures/ 404
+// before the file provider sees them.
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path.Value;
+    if (path is not null &&
+        path.StartsWith("/uploads/profile-pictures/", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+    await next();
+});
 
 app.UseStaticFiles();
 

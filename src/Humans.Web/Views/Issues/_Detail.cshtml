@@ -1,0 +1,266 @@
+@model Humans.Web.Models.IssueDetailViewModel
+
+<div class="issue-detail">
+    <div class="row">
+        <!-- Left column: header + thread + composer -->
+        <div class="col-md-8">
+            <!-- Header -->
+            <div class="border-bottom pb-3 mb-3">
+                <div class="text-muted small mb-1">@Localizer["Issue_Detail_Heading"] · @Model.Id.ToString().Substring(0, 8)</div>
+                <h4 class="mb-1">
+                    @IssuePresentation.CategoryEmoji(Model.Category)
+                    @Model.Title
+                </h4>
+                <div class="d-flex gap-2 align-items-center flex-wrap">
+                    <span class="badge @IssuePresentation.StatusPillClass(Model.Status)">@Model.Status</span>
+                    <span class="badge bg-light text-muted border">@Model.Category</span>
+                    <span class="badge bg-light text-muted border">@Model.AreaLabel</span>
+                </div>
+                <div class="text-muted small mt-2">
+                    @Localizer["Issue_OpenedBy"]
+                    @if (Model.IsHandler)
+                    {
+                        <human-link user-id="@Model.ReporterUserId" display-name="@Model.ReporterName" admin="true" show-popover="true" />
+                    }
+                    else
+                    {
+                        @Model.ReporterName
+                    }
+                    · @Model.CreatedAt.ToDisplayDateTime()
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Description))
+                {
+                    <div class="mt-3">
+                        <pre class="issue-description small mb-0" style="white-space: pre-wrap; font-family: inherit;">@Model.Description</pre>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(Model.ScreenshotUrl))
+                {
+                    <div class="mt-2">
+                        <a href="@Model.ScreenshotUrl" target="_blank" rel="noopener">
+                            <img src="@Model.ScreenshotUrl" alt="@Localizer["Issue_Screenshot"]" style="max-width: 320px; max-height: 240px;" class="border rounded" />
+                        </a>
+                    </div>
+                }
+            </div>
+
+            <!-- Thread -->
+            <h6 class="text-muted small text-uppercase mb-2">@Localizer["Issue_Thread"]</h6>
+
+            @if (Model.Thread.Count == 0)
+            {
+                <p class="text-muted small">@Localizer["Issue_NoActivity"]</p>
+            }
+
+            @foreach (var ev in Model.Thread)
+            {
+                if (ev.Type == "comment")
+                {
+                    <div class="issue-comment border-start ps-3 mb-3 @(ev.ActorIsReporter ? "border-info" : "border-secondary")">
+                        <div class="d-flex justify-content-between small text-muted">
+                            <span>
+                                <strong>@ev.ActorName</strong>
+                                @if (ev.ActorIsReporter)
+                                {
+                                    <span class="badge bg-info bg-opacity-25 text-info-emphasis ms-1" style="font-size: 0.65rem;">@Localizer["Issue_Reporter"]</span>
+                                }
+                            </span>
+                            <span>@ev.At.ToDisplayDateTime()</span>
+                        </div>
+                        <div class="mt-1" style="white-space: pre-wrap;">@ev.Content</div>
+                    </div>
+                }
+                else
+                {
+                    <div class="issue-audit text-muted small mb-2">
+                        <i class="fa-solid fa-circle-info fa-xs me-1"></i>
+                        <strong>@(ev.ActorName ?? "System")</strong>
+                        @ev.Description
+                        <span class="ms-1">· @ev.At.ToDisplayDateTime()</span>
+                    </div>
+                }
+            }
+
+            <!-- Composer -->
+            @{
+                var canPostComment = Model.IsHandler || Model.IsReporter;
+            }
+            @if (canPostComment)
+            {
+                <form asp-action="PostComment" asp-route-id="@Model.Id" method="post" class="mt-3">
+                    @Html.AntiForgeryToken()
+                    <textarea name="Content" class="form-control" rows="3"
+                              placeholder="@Localizer["Issue_ComposerPlaceholder"]" required maxlength="5000"></textarea>
+                    <div class="d-flex gap-2 mt-2 flex-wrap">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            @Localizer["Issue_Comment"]
+                        </button>
+                        @if (Model.IsHandler && !Model.Status.IsTerminal())
+                        {
+                            <button type="submit" name="ResolveOnPost" value="true" class="btn btn-outline-success btn-sm">
+                                @Localizer["Issue_CommentAndResolve"]
+                            </button>
+                        }
+                        @if (Model.IsReporter && !Model.IsHandler && Model.Status.IsTerminal())
+                        {
+                            <span class="text-muted small align-self-center">
+                                @Localizer["Issue_ReopenByCommenting"]
+                            </span>
+                        }
+                    </div>
+                </form>
+            }
+        </div>
+
+        <!-- Right column: facts panel, top-aligned with the title -->
+        <div class="col-md-4">
+            <h6 class="text-muted small text-uppercase mb-2">@Localizer["Issue_Details"]</h6>
+            <dl class="row small mb-0">
+                <dt class="col-5">@Localizer["Issue_Status"]</dt>
+                <dd class="col-7">
+                    @if (Model.IsHandler)
+                    {
+                        <form asp-action="UpdateStatus" asp-route-id="@Model.Id" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <select name="Status" class="form-select form-select-sm detail-auto-submit">
+                                @foreach (var s in Enum.GetValues<IssueStatus>())
+                                {
+                                    if (Model.Status == s)
+                                    {
+                                        <option value="@s" selected>@s</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@s">@s</option>
+                                    }
+                                }
+                            </select>
+                        </form>
+                    }
+                    else
+                    {
+                        <span class="badge @IssuePresentation.StatusPillClass(Model.Status)">@Model.Status</span>
+                    }
+                </dd>
+
+                <dt class="col-5">@Localizer["Issue_Type"]</dt>
+                <dd class="col-7">@Model.Category</dd>
+
+                <dt class="col-5">@Localizer["Issue_Area"]</dt>
+                <dd class="col-7">
+                    @if (Model.IsHandler)
+                    {
+                        <form asp-action="UpdateSection" asp-route-id="@Model.Id" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <select name="Section" class="form-select form-select-sm detail-auto-submit">
+                                <option value="">@Localizer["Issue_Unspecified"]</option>
+                                @foreach (var kvp in Humans.Web.Models.AreaLabelMap.Map)
+                                {
+                                    if (string.Equals(Model.Section, kvp.Key, StringComparison.Ordinal))
+                                    {
+                                        <option value="@kvp.Key" selected>@kvp.Value</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@kvp.Key">@kvp.Value</option>
+                                    }
+                                }
+                            </select>
+                        </form>
+                    }
+                    else
+                    {
+                        @Model.AreaLabel
+                    }
+                </dd>
+
+                <dt class="col-5">@Localizer["Issue_Reporter"]</dt>
+                <dd class="col-7">
+                    <human-link user-id="@Model.ReporterUserId" display-name="@Model.ReporterName" admin="@Model.IsHandler" show-popover="true" />
+                </dd>
+
+                <dt class="col-5">@Localizer["Issue_Assignee"]</dt>
+                <dd class="col-7">
+                    @if (Model.IsHandler)
+                    {
+                        <form asp-action="UpdateAssignee" asp-route-id="@Model.Id" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <select name="AssigneeUserId" class="form-select form-select-sm detail-auto-submit">
+                                <option value="">@Localizer["Issue_Unassigned"]</option>
+                                @foreach (var a in Model.AssigneeOptions)
+                                {
+                                    if (Model.AssigneeUserId == a.Id)
+                                    {
+                                        <option value="@a.Id" selected>@a.DisplayName</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@a.Id">@a.DisplayName</option>
+                                    }
+                                }
+                            </select>
+                        </form>
+                    }
+                    else if (string.IsNullOrEmpty(Model.AssigneeName))
+                    {
+                        <span class="text-muted">@Localizer["Issue_Unassigned"]</span>
+                    }
+                    else
+                    {
+                        <human-link user-id="@Model.AssigneeUserId.GetValueOrDefault()" display-name="@Model.AssigneeName" />
+                    }
+                </dd>
+
+                <dt class="col-5">@Localizer["Issue_GitHub"]</dt>
+                <dd class="col-7">
+                    @if (Model.IsHandler)
+                    {
+                        <form asp-action="SetGitHubIssue" asp-route-id="@Model.Id" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">#</span>
+                                <input type="text" inputmode="numeric" pattern="[0-9]*"
+                                       name="GitHubIssueNumber" value="@Model.GitHubIssueNumber"
+                                       class="form-control form-control-sm detail-auto-submit" placeholder="—" />
+                            </div>
+                        </form>
+                    }
+                    else if (Model.GitHubIssueNumber.HasValue)
+                    {
+                        <span>#@Model.GitHubIssueNumber</span>
+                    }
+                    else
+                    {
+                        <span class="text-muted">—</span>
+                    }
+                </dd>
+
+                <dt class="col-5">@Localizer["Issue_Opened"]</dt>
+                <dd class="col-7">@Model.CreatedAt.ToDisplayDate()</dd>
+
+                <dt class="col-5">@Localizer["Issue_LastUpdate"]</dt>
+                <dd class="col-7">@Model.UpdatedAt.ToDisplayDateTime()</dd>
+
+                @if (Model.DueDate.HasValue)
+                {
+                    <dt class="col-5">@Localizer["Issue_Due"]</dt>
+                    <dd class="col-7">@Model.DueDate.Value.ToDisplayDate()</dd>
+                }
+
+                @if (Model.ResolvedAt.HasValue)
+                {
+                    <dt class="col-5">@Localizer["Issue_Resolved"]</dt>
+                    <dd class="col-7">
+                        @Model.ResolvedAt.Value.ToDisplayDate()
+                        @if (!string.IsNullOrEmpty(Model.ResolvedByName))
+                        {
+                            <div class="text-muted">@Localizer["Issue_ResolvedBy"] @Model.ResolvedByName</div>
+                        }
+                    </dd>
+                }
+            </dl>
+        </div>
+    </div>
+</div>

@@ -38,6 +38,18 @@ public class FeedbackReport
 
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }
+
+    /// <summary>Defaults to UserReport; set to AgentUnresolved when created by the agent's route_to_feedback tool.</summary>
+    public FeedbackSource Source { get; set; } = FeedbackSource.UserReport;
+
+    /// <summary>
+    /// FK column only — no navigation property and no EF FK constraint to
+    /// agent_conversations. Agent is a self-contained section; cross-section
+    /// joins are not modeled in EF. Resolve transcripts via the Agent
+    /// section's services when needed.
+    /// </summary>
+    public Guid? AgentConversationId { get; set; }
+
     public Instant? ResolvedAt { get; set; }
 
     public Guid? ResolvedByUserId { get; set; }

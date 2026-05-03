@@ -1,5 +1,6 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -7,7 +8,7 @@ using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Application.Interfaces.Profiles;
 
-public interface IProfileService
+public interface IProfileService : IUserMerge
 {
     Task<Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default);
 
@@ -53,7 +54,7 @@ public interface IProfileService
     /// profile has no picture or has been anonymized (the DB content-type
     /// column is null), so a stale on-disk file left behind by a failed
     /// anonymization cleanup is not served. Centralizing the read path here
-    /// keeps controllers free of <see cref="Profiles.IProfilePictureStore"/>.
+    /// keeps controllers free of <see cref="IFileStorage"/>.
     /// </summary>
     Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(Guid profileId, CancellationToken ct = default);
 
@@ -87,6 +88,13 @@ public interface IProfileService
     Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Returns the count of profiles whose status is approved and not suspended.
+    /// Used by the admin dashboard "Active humans" stat tile. At ~500-user scale
+    /// this can be a simple Count query — no caching required.
+    /// </summary>
+    Task<int> GetActiveApprovedCountAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the count of profiles whose <c>ConsentCheckStatus</c> is Pending
     /// or Flagged and whose <c>RejectedAt</c> is null. Used by the notification
     /// meter to surface pending consent reviews to Consent Coordinators
@@ -104,9 +112,6 @@ public interface IProfileService
 
     Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
         GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default);
-
-    Task<IReadOnlyList<CampaignGrant>> GetActiveOrCompletedCampaignGrantsAsync(
-        Guid userId, CancellationToken ct = default);
 
     Task<IReadOnlyList<BirthdayProfileInfo>>
         GetBirthdayProfilesAsync(int month, CancellationToken ct = default);

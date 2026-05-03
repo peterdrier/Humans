@@ -29,7 +29,7 @@ public class CampServiceTests : IDisposable
     private readonly CampService _service;
     private readonly IAuditLogService _auditLog;
     private readonly IUserService _userService;
-    private readonly InMemoryCampImageStorage _imageStorage;
+    private readonly InMemoryFileStorage _fileStorage;
     private readonly INotificationEmitter _notificationEmitter;
     private readonly ICampRoleService _campRoleService;
 
@@ -41,7 +41,7 @@ public class CampServiceTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 13, 12, 0));
         _auditLog = Substitute.For<IAuditLogService>();
-        _imageStorage = new InMemoryCampImageStorage();
+        _fileStorage = new InMemoryFileStorage();
 
         var factory = new TestDbContextFactory(options);
         var repo = new CampRepository(factory);
@@ -72,7 +72,7 @@ public class CampServiceTests : IDisposable
             _userService,
             _auditLog,
             Substitute.For<ISystemTeamSync>(),
-            _imageStorage,
+            _fileStorage,
             _notificationEmitter,
             Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),

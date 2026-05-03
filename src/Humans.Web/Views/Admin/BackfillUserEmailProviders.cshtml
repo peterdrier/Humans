@@ -1,0 +1,64 @@
+@model BackfillUserEmailProvidersViewModel
+@{
+    ViewData["Title"] = "Backfill UserEmail Provider / IsGoogle";
+}
+
+<h1 class="mb-3">Backfill UserEmail Provider / IsGoogle</h1>
+
+<vc:temp-data-alerts />
+
+<p>
+    Tags every <code>UserEmail</code> row with the OAuth identity that owns it
+    (<code>Provider</code> / <code>ProviderKey</code>) by joining each
+    <code>AspNetUserLogins</code> row to the matching <code>UserEmail</code>.
+    Sets <code>IsGoogle = true</code> on the row that matches the legacy
+    <code>User.GoogleEmail</code> field (or the legacy <code>IsOAuth = true</code>
+    row when <code>GoogleEmail</code> is null).
+</p>
+
+<p class="text-muted">
+    One-shot data fix tied to PR 3 of the email-identity-decoupling work
+    (<code>docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md</code>).
+    Idempotent — safe to re-run. Operator clicks on QA, verifies the counters,
+    then on production, verifies, before PR 7 ships the legacy column drops.
+</p>
+
+@if (Model.HasRun)
+{
+    <div class="alert alert-success">
+        <strong>Done.</strong>
+        Users processed: <strong>@Model.UsersProcessed</strong>.
+        Provider rows updated: <strong>@Model.ProviderRowsUpdated</strong>.
+        IsGoogle rows updated: <strong>@Model.IsGoogleRowsUpdated</strong>.
+    </div>
+
+    @if (Model.AmbiguousMatchesWarned > 0)
+    {
+        <div class="alert alert-warning">
+            <strong>@Model.AmbiguousMatchesWarned ambiguous match(es).</strong>
+            Some users have multiple <code>AspNetUserLogins</code> rows but only
+            one <code>UserEmail</code> row — first-match was used. Review the
+            warnings below and confirm the assignment is correct.
+            <ul class="mb-0 mt-2">
+                @foreach (var warning in Model.Warnings)
+                {
+                    <li><code>@warning</code></li>
+                }
+            </ul>
+        </div>
+    }
+}
+
+<div class="card">
+    <div class="card-body">
+        <form asp-action="BackfillUserEmailProvidersRun" method="post">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-play me-2"></i>Run backfill
+            </button>
+            <a asp-action="Index" class="btn btn-outline-secondary ms-2">
+                <i class="fa-solid fa-arrow-left me-2"></i>Back to Admin Tools
+            </a>
+        </form>
+    </div>
+</div>

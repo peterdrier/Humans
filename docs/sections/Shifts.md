@@ -12,7 +12,6 @@
   src/Humans.Web/Controllers/ShiftsController.cs
   src/Humans.Web/Controllers/ShiftAdminController.cs
   src/Humans.Web/Controllers/ShiftDashboardController.cs
-  src/Humans.Web/Controllers/VolController.cs
 -->
 <!-- freshness:flag-on-change
   Shift signup state machine, capacity ceilings, range-block atomicity, voluntelling rules, and coordinator/manager scope — review when Shifts services/entities/controllers change.
@@ -120,7 +119,7 @@ Stored as string via `HasConversion<string>()`.
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any active human | Browse available shifts (when browsing is open or they have existing signups). Sign up for shifts (single or date-range for build/strike rotas). View own signups and schedule. Bail from own signups (single or whole range). Set general availability. Fill out volunteer event profile. Save preferred rota tags. **Currently** can also see who has signed up for any shift on `/Shifts` and `/Vol/Shifts` (temporary public-signup-list policy — see [feature 26](../features/26-shift-signup-visibility.md)) |
+| Any active human | Browse available shifts (when browsing is open or they have existing signups). Sign up for shifts (single or date-range for build/strike rotas). View own signups and schedule. Bail from own signups (single or whole range). Set general availability. Fill out volunteer event profile. Save preferred rota tags. **Currently** can also see who has signed up for any shift on `/Shifts` (temporary public-signup-list policy — see [feature 26](../features/26-shift-signup-visibility.md)) |
 | Department coordinator | Manage rotas and shifts for their department and all sub-teams. Approve, refuse, and bail signups. Voluntell humans (single or range). Mark no-show. Remove confirmed signups. Manage rota tags. View volunteer event profiles (except medical data) |
 | Sub-team manager | Manage rotas and shifts for their sub-team only. Approve, refuse, and bail signups on their sub-team. Voluntell humans on their sub-team. Cannot manage sibling sub-teams or the parent department |
 | VolunteerCoordinator | All coordinator capabilities across all departments (rotas, shifts, signups, voluntell, no-show, remove). Move rotas between departments. Access the cross-department shift dashboard. Cannot view medical data |
@@ -135,7 +134,7 @@ Stored as string via `HasConversion<string>()`.
   - All other transitions throw `InvalidOperationException`. NoShow is post-shift only (`now >= shift.GetAbsoluteEnd(es)`). Cancel is system-only (rota/shift deletion, account deletion).
 - MaxVolunteers is a hard capacity ceiling. SignUp, Approve, Voluntell, and ApproveRange are blocked when the confirmed count reaches MaxVolunteers. Range signups skip full shifts; ApproveRange auto-refuses pending signups for shifts that have filled since the request was placed.
 - Rota visibility is controlled by `IsVisibleToVolunteers` (default: visible). Hidden rotas are only shown to privileged roles (Admin/NoInfoAdmin/VolunteerCoordinator/dept coordinator). Browse and Mine queries pass `includeHidden = isPrivileged`. The Hidden pill rendered on hidden rotas is therefore admin-only by virtue of the server-side filter (no separate role check).
-- Signup-list visibility on `/Shifts` and `/Vol/Shifts` is currently public to all authenticated viewers (temporary policy — see [feature 26](../features/26-shift-signup-visibility.md)). Both `ShowSignups` and `includeSignups` are unconditionally true on those pages; the `isPrivileged` computation is preserved so reverting is a one-line flip per controller. Admin-side signup lists (`/Teams/{slug}/Shifts`) remain coordinator-gated via `CanApproveAsync`.
+- Signup-list visibility on `/Shifts` is currently public to all authenticated viewers (temporary policy — see [feature 26](../features/26-shift-signup-visibility.md)). The browse partials (`_EventRotaTable`, `_BuildStrikeRotaTable`) render avatar chips for everyone; pending signups appear faded with a dashed border and the localized "Pending" label in the hover popover. `includeSignups` is unconditionally true so the column has data; the `isPrivileged` computation is preserved so reverting visibility is a one-line flip in `ShiftsController`. Admin-side signup lists (`/Teams/{slug}/Shifts`) remain coordinator-gated via `CanApproveAsync`.
 - Voluntelling (admin/coordinator-initiated signup) creates a Confirmed `ShiftSignup` with `Enrolled = true` and records `EnrolledByUserId` / `ReviewedByUserId`. Range voluntell uses a shared `SignupBlockId` and skips shifts that are full or already booked.
 - Range signups (build/strike rotas) create signups for every all-day shift in the date range under one `SignupBlockId`; conflicts and capacity are reported as warnings, not failures (provided at least one slot is available). The whole block is bailed/approved/refused atomically by `BailRangeAsync` / `ApproveRangeAsync` / `RefuseRangeAsync`.
 - Event settings is a singleton per event — `CreateAsync` / `UpdateAsync` reject a second IsActive=true row.
@@ -144,6 +143,7 @@ Stored as string via `HasConversion<string>()`.
 - When shift browsing is closed (`IsShiftBrowsingOpen = false`), regular volunteers can only see shifts if they already have signups (`hasSignups = true`). Coordinators and privileged roles can always browse. Sign-up and range sign-up are also gated by this flag.
 - Early-entry freeze: after `EventSettings.EarlyEntryClose`, non-privileged humans cannot sign up for, range-sign-up to, bail from, or have approval issued on Build-period shifts. Admin/NoInfoAdmin/VolunteerCoordinator/dept coordinators bypass the freeze.
 - Voluntelling and signup overlap detection rejects a target shift whose absolute time range intersects any of the user's existing Confirmed signups. The check uses event-timezone-resolved absolute instants.
+- All-day shifts cover the standard work block **08:00–18:00** local time (`Shift.AllDayWindowStart` / `Shift.AllDayWindowEnd`). Patterns outside this window must be modeled as regular time-slotted shifts, not as `IsAllDay = true`. The window is computed at read time by `GetAbsoluteStart` / `GetAbsoluteEnd`; the `StartTime` and `Duration` columns on `IsAllDay` rows are don't-care and must never be used directly for overlap math or staffing calculations.
 - All dashboard endpoints on `ShiftDashboardController` (and its analytics methods on `IShiftManagementService`: `GetDashboardOverviewAsync`, `GetCoordinatorActivityAsync`, `GetDashboardTrendsAsync`, `GetCoverageHeatmapAsync`, `GetDailyDepartmentStaffingAsync`, `GetShiftDurationBreakdownAsync`) require the `ShiftDashboardAccess` policy at the controller (Admin/NoInfoAdmin/VolunteerCoordinator). The services themselves are auth-free per design rules.
 - `DevelopmentDashboardSeeder` and its `POST /dev/seed/dashboard` endpoint are gated to `IWebHostEnvironment.IsDevelopment()` AND the `DevAuth:Enabled` setting. QA, preview, and production environments cannot invoke it regardless of role. The endpoint also requires `ShiftDashboardAccess`.
 
@@ -160,12 +160,13 @@ Stored as string via `HasConversion<string>()`.
 
 ## Triggers
 
-- Every signup state change (auto-confirm, approve, refuse, bail, voluntell, remove) writes an audit log entry (`AuditAction.ShiftSignupConfirmed/Refused/Bailed/Voluntold/Cancelled/NoShow`) and dispatches a `ShiftSignupChange` notification to the department's coordinators via `INotificationService`.
+- Every signup state change writes an audit log entry and dispatches a `ShiftSignupChange` notification to the department's coordinators via `INotificationService`. Action set: `AuditAction.ShiftSignup{Created,Confirmed,Refused,Voluntold,Bailed,Cancelled,NoShow,Reassigned}`. `ShiftSignupCreated` fires on every self-signup (Pending or Confirmed) so the creation moment is always traceable; `ShiftSignupConfirmed` fires only on the later Pending → Confirmed transition by an approver. `ShiftSignupReassigned` fires once per account-merge fold (re-FK of signups from source to target).
 - Voluntelling additionally fires a `ShiftAssigned` informational notification to the assigned volunteer (best-effort; failures logged but do not roll back the signup).
 - When a Bail or Remove drops the confirmed count below `MinVolunteers`, a `ShiftCoverageGap` actionable notification (priority High) is sent to the department's coordinators.
 - Range signup, range voluntell, range bail, range approve, and range refuse all use a shared `SignupBlockId` and operate on the entire block atomically (with per-shift filtering for capacity/conflicts on creation paths).
 - Moving a rota to a different team writes an `AuditAction.RotaMovedToTeam` log entry and updates `Rota.TeamId` via a targeted update (only `TeamId` + `UpdatedAt` are marked modified).
 - Deleting a rota or shift is rejected if any signup is in Confirmed state. Pending signups on a deleted rota/shift are auto-Cancelled via the entity's `Cancel` method.
+- When an account merge accepts, `IShiftSignupService.ReassignToUserAsync` re-FKs `ShiftSignup` rows (volunteer / enrolled-by / reviewed-by user references) from source to target; `IShiftManagementService.ReassignProfilesAndTagPrefsToUserAsync` re-FKs `VolunteerEventProfile` + `VolunteerTagPreference` (with conflict resolution since both are `(UserId)`-unique); `IGeneralAvailabilityService.ReassignToUserAsync` re-FKs `GeneralAvailability`. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
 
 ## Cross-Section Dependencies
 
@@ -176,6 +177,7 @@ Stored as string via `HasConversion<string>()`.
 - **Audit Log:** `IAuditLogService` — every signup state change and rota move emits an audit entry.
 - **Notifications:** `INotificationService` — coordinator notifications for signup changes, voluntell assignments, and coverage gaps. No direct email-outbox dependency from this section.
 - **GDPR:** `ShiftSignupService` implements `IUserDataContributor` (export of signups, volunteer event profile, general availability, tag preferences) and `CancelActiveSignupsForUserAsync` (deletion).
+- **Profiles:** Called by `IAccountMergeService` (Profiles section) — `IShiftSignupService.ReassignToUserAsync`, `IShiftManagementService.ReassignProfilesAndTagPrefsToUserAsync`, and `IGeneralAvailabilityService.ReassignToUserAsync` re-FK Shifts-owned user-scoped rows from source to target during account merge fold.
 
 ## Architecture
 

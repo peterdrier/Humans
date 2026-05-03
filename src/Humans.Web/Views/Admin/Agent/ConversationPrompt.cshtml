@@ -1,0 +1,62 @@
+@model Humans.Application.Models.AgentPromptPreview
+@{ ViewData["Title"] = "Prompt preview"; }
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-0">What would be sent to Anthropic</h2>
+        <small class="text-muted">
+            Regenerated on demand. Reflects current preload corpus, current human
+            snapshot, current settings — not what was sent at the time of any
+            historical turn. Nothing is recorded.
+        </small>
+    </div>
+    <a asp-action="Conversations" class="btn btn-outline-secondary btn-sm">Back to list</a>
+</div>
+
+<div class="mb-3">
+    <strong>Model:</strong> <code>@Model.Model</code>
+</div>
+
+<details class="mb-4" open>
+    <summary class="h5">System prompt</summary>
+    <pre class="bg-light border rounded p-3 small mt-2" style="white-space: pre-wrap; max-height: 60vh; overflow: auto;">@Model.SystemPrompt</pre>
+</details>
+
+<details class="mb-4" open>
+    <summary class="h5">User context tail (per-turn, not cached)</summary>
+    <pre class="bg-light border rounded p-3 small mt-2" style="white-space: pre-wrap;">@Model.UserContextTail</pre>
+</details>
+
+<details class="mb-4">
+    <summary class="h5">Tool definitions (@Model.Tools.Count)</summary>
+    @foreach (var tool in Model.Tools)
+    {
+        <div class="card mb-2">
+            <div class="card-header py-1"><code>@tool.Name</code></div>
+            <div class="card-body py-2">
+                <p class="mb-1 small">@tool.Description</p>
+                <pre class="bg-light border rounded p-2 small mb-0" style="white-space: pre-wrap;">@tool.JsonSchema</pre>
+            </div>
+        </div>
+    }
+</details>
+
+<details class="mb-4" open>
+    <summary class="h5">Replayed history (@Model.ReplayedHistory.Count turn(s))</summary>
+    @if (Model.ReplayedHistory.Count == 0)
+    {
+        <p class="text-muted small mt-2">No prior turns to replay — this would be the first turn in the conversation.</p>
+    }
+    else
+    {
+        @foreach (var turn in Model.ReplayedHistory)
+        {
+            <div class="card mb-2 @(turn.Role == "user" ? "border-primary" : "border-secondary")">
+                <div class="card-header py-1"><strong>@turn.Role</strong></div>
+                <div class="card-body py-2">
+                    <pre class="mb-0 small" style="white-space: pre-wrap;">@turn.Text</pre>
+                </div>
+            </div>
+        }
+    }
+</details>

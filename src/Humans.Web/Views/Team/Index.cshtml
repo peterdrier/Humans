@@ -60,8 +60,23 @@
     @if (Model.SystemTeams.Any())
     {
         <h4 class="mb-3">System Teams</h4>
-        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
             @foreach (var team in Model.SystemTeams)
+            {
+                @await Html.PartialAsync("_TeamCard", team)
+            }
+        </div>
+    }
+
+    @if (Model.HiddenTeams.Any())
+    {
+        <h4 class="mb-3">
+            Hidden Teams
+            <small class="text-muted fs-6">(visible to admins only)</small>
+            <i class="fa-solid fa-lock auth-lock-icon"></i>
+        </h4>
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            @foreach (var team in Model.HiddenTeams)
             {
                 @await Html.PartialAsync("_TeamCard", team)
             }

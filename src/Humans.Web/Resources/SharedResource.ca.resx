@@ -66,6 +66,8 @@
   <data name="Nav_Admin" xml:space="preserve"><value>Admin</value></data>
   <data name="Nav_OnboardingReview" xml:space="preserve"><value>Cua de revisió</value></data>
   <data name="Nav_MyFeedback" xml:space="preserve"><value>El meu feedback</value></data>
+  <data name="Nav_Issues" xml:space="preserve"><value>Incidències</value></data>
+  <data name="Issue_Unavailable" xml:space="preserve"><value>Aquesta incidència no està disponible — pot ser que s'hagi eliminat o que no hi tinguis accés.</value></data>
 
 
   <!-- ======================== -->
@@ -535,10 +537,6 @@
   <data name="Teams_NotOnAnyTeam" xml:space="preserve"><value>Encara no t'has unit a cap equip.</value></data>
   <data name="Teams_NoOtherTeams" xml:space="preserve"><value>No hi ha altres equips disponibles.</value></data>
   <data name="Teams_System" xml:space="preserve"><value>Sistema</value></data>
-
-  <!-- Vol/Teams landing: Browse Shifts CTA (#534) -->
-  <data name="VolTeams_BrowseShiftsBanner" xml:space="preserve"><value>Busques torns? Mira'ls tots aqu&#xED;, o tria un equip a sota.</value></data>
-  <data name="VolTeams_BrowseShiftsButton" xml:space="preserve"><value>Veure torns</value></data>
 
   <!-- Team Detail View -->
   <data name="TeamDetail_NoDescription" xml:space="preserve"><value>Sense descripció.</value></data>
@@ -1305,6 +1303,17 @@
 &lt;p&gt;Gràcies per ajudar-nos a millorar!&lt;/p&gt;
 &lt;p&gt;L’equip de Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = original description, {2} = response message</comment></data>
 
+  <!-- Issue Comment Email -->
+  <data name="Email_IssueComment_Subject" xml:space="preserve"><value>Nou comentari a la teva issue: {0}</value></data>
+  <data name="Email_IssueComment_Body" xml:space="preserve"><value>&lt;h2&gt;Nou comentari a la teva issue&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Hi ha un nou comentari a la teva issue:&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Issue:&lt;/strong&gt; {1}&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Comentari:&lt;/strong&gt;&lt;/p&gt;
+&lt;blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #666;"&gt;{2}&lt;/blockquote&gt;
+&lt;p&gt;&lt;a href="{3}"&gt;Obrir issue&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;— L’equip de Humans&lt;/p&gt;</value><comment>{0} = display name, {1} = issue title, {2} = comment HTML, {3} = issue URL</comment></data>
+
   <!-- Feedback Widget -->
   <data name="Feedback_Button" xml:space="preserve"><value>Feedback</value></data>
   <data name="Feedback_Title" xml:space="preserve"><value>Envia feedback</value></data>
@@ -1640,7 +1649,6 @@
   <data name="Emails_Header_Status" xml:space="preserve"><value>Estat</value></data>
   <data name="Emails_Header_Notifications" xml:space="preserve"><value>Notificacions</value></data>
   <data name="Emails_Header_Visibility" xml:space="preserve"><value>Visibilitat del perfil</value></data>
-  <data name="Emails_SignIn" xml:space="preserve"><value>Inici de sessió</value></data>
   <data name="Emails_MergePending" xml:space="preserve"><value>Fusió pendent</value></data>
   <data name="Emails_Verified" xml:space="preserve"><value>Verificat</value></data>
   <data name="Emails_StatusPending" xml:space="preserve"><value>Pendent</value></data>
@@ -1692,6 +1700,10 @@
   <data name="Shifts_SetPreferences" xml:space="preserve"><value>Configura les teves preferències</value></data>
   <data name="Shifts_PreferencesHelp" xml:space="preserve"><value>Selecciona etiquetes que coincideixin amb el treball que t'agrada. Els torns coincidents es ressaltaran amb una estrella.</value></data>
   <data name="Shifts_SavePreferences" xml:space="preserve"><value>Desar preferències</value></data>
+  <data name="Shifts_HeroTitle" xml:space="preserve"><value>Troba el teu torn perfecte</value></data>
+  <data name="Shifts_HeroSubtitle" xml:space="preserve"><value>Explora les opcions de voluntariat, filtra per fase o departament, i apunta't als torns que millor s'adaptin a tu.</value></data>
+  <data name="Shifts_LearnMore" xml:space="preserve"><value>Saber-ne més</value></data>
+  <data name="Shifts_EditPreferences" xml:space="preserve"><value>Editar preferències</value></data>
   <data name="Shifts_NotOpenYet" xml:space="preserve"><value>Els torns encara no estan oberts. Només coordinadors i administradors poden veure aquesta pàgina.</value></data>
   <data name="Shifts_NoShiftsAvailable" xml:space="preserve"><value>Encara no hi ha torns disponibles.</value></data>
   <data name="Shifts_AllShiftsFull" xml:space="preserve"><value>Tots els torns de {0} estan complets.</value><comment>{0} = period name</comment></data>
@@ -1747,6 +1759,7 @@
   <data name="Shifts_GeneralAvailability" xml:space="preserve"><value>Disponibilitat general</value></data>
   <data name="Shifts_AvailabilityHelp" xml:space="preserve"><value>Marca els dies que estàs disponible per ajudar. Els coordinadors poden veure qui està disponible en assignar torns.</value></data>
   <data name="Shifts_SaveAvailability" xml:space="preserve"><value>Desar disponibilitat</value></data>
+  <data name="Shifts_DaysSelected" xml:space="preserve"><value>dies seleccionats</value></data>
   <data name="Shifts_SlotsFull" xml:space="preserve"><value>Alguns dies encara necessiten ajuda, però totes les places disponibles estan completes. Torna més tard per si s'obren places.</value></data>
 
   <data name="ShiftDash_Title" xml:space="preserve"><value>Tauler de torns</value></data>
@@ -1848,6 +1861,23 @@
   <data name="Privacy_ContactBody" xml:space="preserve"><value>Per a preguntes o dubtes sobre aquesta política, contacta amb el nostre Delegat de Protecció de Dades a {0}.</value><comment>{0} = DPO email</comment></data>
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>Si no estàs satisfet amb la nostra resposta, tens dret a presentar una reclamació davant l'Agència Espanyola de Protecció de Dades (AEPD) a {0}.</value><comment>{0} = AEPD URL</comment></data>
 
+  <!-- Agent Widget -->
+  <data name="Agent_ConsentPrompt" xml:space="preserve"><value>Abans d'usar l'assistent, accepta les condicions.</value></data>
+  <data name="Agent_ConsentReviewButton" xml:space="preserve"><value>Revisar condicions</value></data>
+  <data name="Agent_HistoryActions" xml:space="preserve"><value>Accions</value></data>
+  <data name="Agent_HistoryDelete" xml:space="preserve"><value>Elimina</value></data>
+  <data name="Agent_HistoryEmpty" xml:space="preserve"><value>Encara no hi ha converses.</value></data>
+  <data name="Agent_HistoryLastMessage" xml:space="preserve"><value>Últim missatge</value></data>
+  <data name="Agent_HistoryMessages" xml:space="preserve"><value>Missatges</value></data>
+  <data name="Agent_HistoryStarted" xml:space="preserve"><value>Inici</value></data>
+  <data name="Agent_HistoryTitle" xml:space="preserve"><value>Assistent — Les meves converses</value></data>
+  <data name="Agent_InputPlaceholder" xml:space="preserve"><value>Pregunta com funciona el sistema…</value></data>
+  <data name="Agent_PanelTitle" xml:space="preserve"><value>Assistent</value></data>
+  <data name="Agent_ViewHistory" xml:space="preserve"><value>Historial</value></data>
+  <data name="Agent_Send" xml:space="preserve"><value>Envia</value></data>
+  <data name="Agent_WidgetButton" xml:space="preserve"><value>Obrir l'assistent</value></data>
+  <data name="Nav_Agent" xml:space="preserve"><value>Assistent</value></data>
+
 
   <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Places cobertes</value></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Amb entrada</value></data>
@@ -1902,5 +1932,108 @@
   <data name="ShiftDash_Status_AtRisk" xml:space="preserve"><value>En risc</value></data>
   <data name="ShiftDash_Status_BelowTarget" xml:space="preserve"><value>Per sota de l'objectiu</value></data>
   <data name="ShiftDash_Coordinators_StaleLabel" xml:space="preserve"><value>Inactiu més de 7 dies</value></data>
+  <data name="EmailGrid_AdminContextBanner" xml:space="preserve"><value>Gestionant correus d'un altre usuari</value></data>
+  <data name="EmailGrid_AdminContextBannerNamed" xml:space="preserve"><value>Gestionant correus de {0}</value><comment>{0} = target user display name</comment></data>
+  <data name="EmailGrid_AdminUnknownTarget" xml:space="preserve"><value>un altre usuari</value></data>
+  <data name="Emails_AdminUnknownTarget" xml:space="preserve"><value>un altre usuari</value></data>
+  <data name="EmailGrid_Email" xml:space="preserve"><value>Correu</value></data>
+  <data name="EmailGrid_Status" xml:space="preserve"><value>Estat</value></data>
+  <data name="EmailGrid_Primary" xml:space="preserve"><value>Principal</value></data>
+  <data name="EmailGrid_Google" xml:space="preserve"><value>Google</value></data>
+  <data name="EmailGrid_GoogleColumnTooltip" xml:space="preserve"><value>Correu usat per a la sincronització amb Google Workspace.</value></data>
+  <data name="EmailGrid_WorkspaceLockedHelp" xml:space="preserve"><value>Principal i Google els gestiona Google Workspace mentre la teva adreça @nobodies.team hi sigui present.</value></data>
+  <data name="EmailGrid_VerificationPendingTitle" xml:space="preserve"><value>Verificació de correu pendent</value></data>
+  <data name="EmailGrid_VerificationPendingBody" xml:space="preserve"><value>Revisa la teva safata d’entrada i fes clic a l’enllaç del correu de verificació per confirmar la teva adreça.</value></data>
+  <data name="EmailGrid_Visibility" xml:space="preserve"><value>Visibilitat</value></data>
+  <data name="EmailGrid_Actions" xml:space="preserve"><value>Accions</value></data>
+  <data name="EmailGrid_StatusMergePending" xml:space="preserve"><value>Fusió pendent</value></data>
+  <data name="EmailGrid_StatusVerified" xml:space="preserve"><value>Verificat</value></data>
+  <data name="EmailGrid_StatusPending" xml:space="preserve"><value>Pendent</value></data>
+  <data name="EmailGrid_PrimarySelected" xml:space="preserve"><value>Principal</value></data>
+  <data name="EmailGrid_LinkGoogleAccount" xml:space="preserve"><value>Vincular compte de Google</value></data>
+  <data name="EmailGrid_LinkGoogleHelp" xml:space="preserve"><value>Inicia sessió amb Google per vincular un compte de Google addicional al teu perfil.</value></data>
+  <data name="EmailGrid_BackToAdminDetail" xml:space="preserve"><value>Torna al detall de l'usuari</value></data>
+  <data name="EmailGrid_Unlink" xml:space="preserve"><value>Desvincular</value></data>
+  <data name="EmailGrid_ConfirmUnlink" xml:space="preserve"><value>Desvincular aquest compte de Google?</value></data>
+  <data name="EmailGrid_SetGoogleRejected" xml:space="preserve"><value>No s'ha pogut establir el correu de servei de Google: fila desconeguda o no verificada.</value></data>
+  <data name="EmailGrid_UnlinkRejected" xml:space="preserve"><value>No s'ha pogut desvincular: fila desconeguda o sense proveïdor d'inici de sessió.</value></data>
+  <data name="EmailGrid_GoogleServiceUpdated" xml:space="preserve"><value>Correu de servei de Google actualitzat. La sincronització es reintentarà amb el correu nou.</value></data>
+  <data name="EmailGrid_UnlinkSuccess" xml:space="preserve"><value>Proveïdor d'inici de sessió desvinculat.</value></data>
+  <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve"><value>Aquest correu està vinculat a un proveïdor d'inici de sessió. Fes servir Desvincula en lloc seu.</value></data>
+  <data name="EmailGrid_AdminAddSentVerification" xml:space="preserve"><value>Correu de verificació enviat a l'usuari.</value></data>
+  <data name="EmailGrid_LinkFailed" xml:space="preserve"><value>No hem pogut vincular aquest compte de Google. Torna-ho a provar.</value></data>
+  <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>Gestiona correus</value></data>
+
+  <!-- Issues section -->
+  <data name="Issue_PageTitle" xml:space="preserve"><value>Incidències</value></data>
+  <data name="Issue_New" xml:space="preserve"><value>Nova incidència</value></data>
+  <data name="Issue_New_Title" xml:space="preserve"><value>Reportar una nova incidència</value></data>
+  <data name="Issue_BackToList" xml:space="preserve"><value>Tornar a la llista</value></data>
+  <data name="Issue_All" xml:space="preserve"><value>Totes</value></data>
+  <data name="Issue_Open" xml:space="preserve"><value>Obertes</value></data>
+  <data name="Issue_Mine" xml:space="preserve"><value>Meves</value></data>
+  <data name="Issue_Closed" xml:space="preserve"><value>Tancades</value></data>
+  <data name="Issue_AllCategories" xml:space="preserve"><value>Tots els tipus</value></data>
+  <data name="Issue_AllAreas" xml:space="preserve"><value>Totes les àrees</value></data>
+  <data name="Issue_AllReporters" xml:space="preserve"><value>Tots els reporters</value></data>
+  <data name="Issue_SearchPlaceholder" xml:space="preserve"><value>Cerca títol o descripció…</value></data>
+  <data name="Issue_Apply" xml:space="preserve"><value>Aplicar</value></data>
+  <data name="Issue_Clear" xml:space="preserve"><value>Netejar</value></data>
+  <data name="Issue_NoneFound" xml:space="preserve"><value>Cap incidència coincideix amb els filtres actuals.</value></data>
+  <data name="Issue_AssignedTo" xml:space="preserve"><value>assignada a</value></data>
+  <data name="Issue_SelectOne" xml:space="preserve"><value>Selecciona una incidència de la llista per veure els detalls.</value></data>
+  <data name="Issue_Detail_Heading" xml:space="preserve"><value>Incidència</value></data>
+  <data name="Issue_OpenedBy" xml:space="preserve"><value>Oberta per</value></data>
+  <data name="Issue_Screenshot" xml:space="preserve"><value>Captura de pantalla</value></data>
+  <data name="Issue_Thread" xml:space="preserve"><value>Conversa</value></data>
+  <data name="Issue_NoActivity" xml:space="preserve"><value>Encara no hi ha activitat.</value></data>
+  <data name="Issue_Reporter" xml:space="preserve"><value>Reporter</value></data>
+  <data name="Issue_ComposerPlaceholder" xml:space="preserve"><value>Afegir un comentari…</value></data>
+  <data name="Issue_Comment" xml:space="preserve"><value>Comentar</value></data>
+  <data name="Issue_CommentAndResolve" xml:space="preserve"><value>Comentar i marcar com a resolta</value></data>
+  <data name="Issue_ReopenByCommenting" xml:space="preserve"><value>Publicar un comentari reobrirà aquesta incidència.</value></data>
+  <data name="Issue_Details" xml:space="preserve"><value>Detalls</value></data>
+  <data name="Issue_Status" xml:space="preserve"><value>Estat</value></data>
+  <data name="Issue_Type" xml:space="preserve"><value>Tipus</value></data>
+  <data name="Issue_Area" xml:space="preserve"><value>Àrea</value></data>
+  <data name="Issue_Unspecified" xml:space="preserve"><value>Sense especificar</value></data>
+  <data name="Issue_Assignee" xml:space="preserve"><value>Assignada a</value></data>
+  <data name="Issue_Unassigned" xml:space="preserve"><value>Sense assignar</value></data>
+  <data name="Issue_GitHub" xml:space="preserve"><value>GitHub</value></data>
+  <data name="Issue_Opened" xml:space="preserve"><value>Oberta</value></data>
+  <data name="Issue_LastUpdate" xml:space="preserve"><value>Última actualització</value></data>
+  <data name="Issue_Due" xml:space="preserve"><value>Data límit</value></data>
+  <data name="Issue_Resolved" xml:space="preserve"><value>Resolta</value></data>
+  <data name="Issue_ResolvedBy" xml:space="preserve"><value>per</value></data>
+  <data name="Issue_Title" xml:space="preserve"><value>Títol</value></data>
+  <data name="Issue_Area_Auto" xml:space="preserve"><value>Detectar automàticament</value></data>
+  <data name="Issue_Area_Hint" xml:space="preserve"><value>Deixa-ho en blanc per detectar-ho des de la pàgina actual.</value></data>
+  <data name="Issue_Description" xml:space="preserve"><value>Descripció</value></data>
+  <data name="Issue_Description_Placeholder" xml:space="preserve"><value>Què va passar? Què esperaves que passés?</value></data>
+  <data name="Issue_Attachment" xml:space="preserve"><value>Captura (opcional)</value></data>
+  <data name="Issue_Attachment_Hint" xml:space="preserve"><value>PNG o JPEG, màxim 5 MB.</value></data>
+  <data name="Issue_FileIssue" xml:space="preserve"><value>Reportar incidència</value></data>
+  <data name="Issue_FileAnIssue" xml:space="preserve"><value>Reportar una incidència</value></data>
+  <data name="Issue_Cancel" xml:space="preserve"><value>Cancel·lar</value></data>
+  <data name="Issue_Widget_ToastSuccess" xml:space="preserve"><value>Gràcies! Incidència registrada. Veure-la aquí: {0}</value><comment>{0} = absolute URL path of the new issue</comment></data>
+  <data name="Issue_Widget_ToastValidationFailed" xml:space="preserve"><value>No s'ha pogut registrar la incidència. Revisa els camps obligatoris i torna-ho a provar.</value></data>
+  <data name="Issue_Widget_ToastNetworkError" xml:space="preserve"><value>Alguna cosa ha anat malament. Torna-ho a provar.</value></data>
+  <data name="Issue_Tips_Title" xml:space="preserve"><value>Consells per a una bona incidència</value></data>
+  <data name="Issue_Tips_Bullet1" xml:space="preserve"><value>Descriu què intentaves fer.</value></data>
+  <data name="Issue_Tips_Bullet2" xml:space="preserve"><value>Descriu què va passar i què esperaves.</value></data>
+  <data name="Issue_Tips_Bullet3" xml:space="preserve"><value>Inclou una captura si ajuda a explicar-ho.</value></data>
+  <data name="Issue_Tips_Bullet4" xml:space="preserve"><value>Una incidència per report — els problemes diferents han d'anar en incidències separades.</value></data>
+  <data name="Issue_NotEmail_Notice" xml:space="preserve"><value>Això no és correu — les respostes passen aquí, en la conversa de la incidència.</value></data>
+
+  <!-- Issues — missatges d'estat del controlador (TempData) -->
+  <data name="Issue_Submitted" xml:space="preserve"><value>Incidència enviada. Gràcies!</value></data>
+  <data name="Issue_Error" xml:space="preserve"><value>Alguna cosa ha anat malament. Torna-ho a provar.</value></data>
+  <data name="Issue_Comment_Posted" xml:space="preserve"><value>Comentari publicat.</value></data>
+  <data name="Issue_Comment_Reopened" xml:space="preserve"><value>Incidència reoberta.</value></data>
+  <data name="Issue_Comment_PostFailed" xml:space="preserve"><value>No s'ha pogut publicar el comentari.</value></data>
+  <data name="Issue_Status_Updated" xml:space="preserve"><value>Estat actualitzat.</value></data>
+  <data name="Issue_Assignee_Updated" xml:space="preserve"><value>Assignació actualitzada.</value></data>
+  <data name="Issue_Section_Updated" xml:space="preserve"><value>Secció actualitzada.</value></data>
+  <data name="Issue_GitHub_Linked" xml:space="preserve"><value>Vinculada amb GitHub.</value></data>
 
 </root>

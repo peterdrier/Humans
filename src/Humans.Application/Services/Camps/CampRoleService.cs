@@ -216,7 +216,7 @@ public sealed class CampRoleService : ICampRoleService
         var inserted = await _repo.AddAssignmentAsync(assignment, ct);
         if (!inserted)
         {
-            // I5 fix — repo translated the unique-index race
+            // Repo translated the unique-index race.
             return AssignCampRoleOutcome.AlreadyHoldsRole;
         }
 

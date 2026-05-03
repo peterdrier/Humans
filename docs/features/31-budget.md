@@ -308,11 +308,14 @@ Outbound invoices to members/barrios:
 - Budget vs actuals view
 - **Exit:** Ticket sale income appears against Ticketing budget group
 
-### V2c: Holded Integration (1-3 sessions)
-- Prerequisite: Holded API investigation
-- Holded sync job
-- Expense transaction mapping
-- **Exit:** Expenses flow in and can be mapped to budget lines
+### V2c: Holded Integration (read-side) — DESIGN APPROVED, pending implementation
+- Spec: [`docs/superpowers/specs/2026-04-26-holded-read-integration-design.md`](../superpowers/specs/2026-04-26-holded-read-integration-design.md)
+- Tracked in: [nobodies-collective/Humans#463](https://github.com/nobodies-collective/Humans/issues/463)
+- Promotes Finance to its own section ([`../sections/Finance.md`](../sections/Finance.md)); Budget narrows to planning + public summary
+- Holded purchase docs sync into a new `HoldedTransaction` entity (Finance-owned), matched to budget categories via `{group-slug}-{category-slug}` tags
+- Adds `Slug` fields on `BudgetGroup` and `BudgetCategory`
+- Treasurer surface at `/Finance/HoldedUnmatched` with one-click reassignment that pushes corrected tag back to Holded
+- **Exit:** Expenses flow into Finance and roll up as planned-vs-actual on the year-detail view
 
 ### V2d: Invoicing (1-2 sessions)
 - Invoice creation for tickets and barrio services

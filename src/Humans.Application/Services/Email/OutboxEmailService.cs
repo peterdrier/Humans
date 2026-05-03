@@ -368,6 +368,21 @@ public sealed class OutboxEmailService : IEmailService
             request.CampaignGrantId, request.RecipientEmail);
     }
 
+    /// <inheritdoc />
+    public async Task SendIssueCommentAsync(
+        string to,
+        string displayName,
+        string issueTitle,
+        string commentContent,
+        string issueLink,
+        string preferredLanguage,
+        CancellationToken ct = default)
+    {
+        var content = _renderer.RenderIssueComment(displayName, issueTitle, commentContent, issueLink, preferredLanguage);
+        await EnqueueAsync(to, displayName, content, "issue_comment", ct,
+            category: MessageCategory.System);
+    }
+
     private async Task EnqueueAsync(
         string recipientEmail,
         string recipientName,

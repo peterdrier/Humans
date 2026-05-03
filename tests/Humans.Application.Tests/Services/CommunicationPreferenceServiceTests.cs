@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
+using NSubstitute;
 using Xunit;
 using CommunicationPreferenceService = Humans.Application.Services.Profile.CommunicationPreferenceService;
 
@@ -75,6 +76,10 @@ file sealed class StubAuditLogService : IAuditLogService
     public Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
         NodaTime.Instant windowStart, NodaTime.Instant windowEnd, AuditAction action, CancellationToken ct = default) =>
         Task.FromResult((IReadOnlyList<Guid>)Array.Empty<Guid>());
+
+    public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
+        string entityType, IReadOnlyList<AuditAction> actions, CancellationToken ct = default) =>
+        Task.FromResult((IReadOnlySet<Guid>)new HashSet<Guid>());
 }
 
 public class CommunicationPreferenceServiceTests : IDisposable

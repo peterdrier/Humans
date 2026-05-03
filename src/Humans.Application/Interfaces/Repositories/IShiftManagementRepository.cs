@@ -351,4 +351,25 @@ public interface IShiftManagementRepository
     /// </summary>
     Task<int> DeleteVolunteerEventProfilesForUserAsync(
         Guid userId, CancellationToken ct = default);
+
+    // ==========================================================================
+    // Account-merge fold
+    // ==========================================================================
+
+    /// <summary>
+    /// Account-merge fold: re-FK <c>VolunteerEventProfile</c> and
+    /// <c>VolunteerTagPreference</c> rows from <paramref name="sourceUserId"/>
+    /// to <paramref name="targetUserId"/> in a single
+    /// <see cref="Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(CancellationToken)"/>.
+    /// Target wins on collision: if target already has a
+    /// <c>VolunteerEventProfile</c>, source's profile row is removed;
+    /// for tag preferences, any source row matching an existing target
+    /// <c>(UserId, ShiftTagId)</c> is removed. Returns the total count of
+    /// rows attributed to target across both tables after the move.
+    /// </summary>
+    Task<int> ReassignProfilesAndTagPrefsToUserAsync(
+        Guid sourceUserId,
+        Guid targetUserId,
+        Instant updatedAt,
+        CancellationToken ct = default);
 }

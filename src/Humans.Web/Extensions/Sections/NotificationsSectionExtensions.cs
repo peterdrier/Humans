@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Notifications;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Notifications;
@@ -27,7 +28,9 @@ internal static class NotificationsSectionExtensions
         // pulled in by NotificationService, so no edge closes the cycle.
         services.AddScoped<INotificationEmitter, NotificationEmitter>();
         services.AddScoped<INotificationRecipientResolver, NotificationRecipientResolver>();
-        services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<NotificationService>();
+        services.AddScoped<INotificationService>(sp => sp.GetRequiredService<NotificationService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<NotificationService>());
 
         services.AddScoped<NotificationInboxService>();
         services.AddScoped<INotificationInboxService>(sp => sp.GetRequiredService<NotificationInboxService>());

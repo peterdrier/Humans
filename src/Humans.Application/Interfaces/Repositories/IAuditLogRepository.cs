@@ -58,6 +58,16 @@ public interface IAuditLogRepository
     Task<IReadOnlyList<AuditLogEntry>> GetGoogleSyncByUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
+    /// Multi-id overload of <see cref="GetGoogleSyncByUserAsync"/> used by the
+    /// service-layer chain-follow read path so a target's history transparently
+    /// includes rows that stayed attributed to merged-source tombstones.
+    /// Returns rows where <c>RelatedEntityId</c> is in
+    /// <paramref name="userIds"/>, newest first, capped at 200.
+    /// </summary>
+    Task<IReadOnlyList<AuditLogEntry>> GetGoogleSyncByUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the most recent audit entries, ordered newest first.
     /// </summary>
     Task<IReadOnlyList<AuditLogEntry>> GetRecentAsync(int count, CancellationToken ct = default);
@@ -75,13 +85,29 @@ public interface IAuditLogRepository
     Task<IReadOnlyList<AuditLogEntry>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default);
 
     /// <summary>
+    /// Multi-id overload of <see cref="GetByUserAsync"/> used by the
+    /// service-layer chain-follow read path so a target's history transparently
+    /// includes rows that stayed attributed to merged-source tombstones.
+    /// Returns audit entries where the entry references any user id in
+    /// <paramref name="userIds"/> as primary subject (EntityType=User,
+    /// EntityId in userIds) or related entity (RelatedEntityId in userIds).
+    /// </summary>
+    Task<IReadOnlyList<AuditLogEntry>> GetByUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, int count, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns audit entries matching flexible filter criteria. Used by the
-    /// shared AuditLog ViewComponent.
+    /// shared AuditLog ViewComponent. The <paramref name="userIds"/> filter
+    /// (when non-empty) matches an entry whose <c>ActorUserId</c>,
+    /// <c>RelatedEntityId</c>, or (<c>EntityType=User</c>, <c>EntityId</c>)
+    /// is contained in the set — so the service-layer chain-follow read
+    /// path can pass {target ∪ merged-source ids} to surface fold-target
+    /// history transparently.
     /// </summary>
     Task<IReadOnlyList<AuditLogEntry>> GetFilteredEntriesAsync(
         string? entityType,
         Guid? entityId,
-        Guid? userId,
+        IReadOnlyCollection<Guid>? userIds,
         IReadOnlyList<AuditAction>? actions,
         int limit,
         CancellationToken ct = default);
@@ -92,6 +118,15 @@ public interface IAuditLogRepository
     /// the GDPR export contributor.
     /// </summary>
     Task<IReadOnlyList<AuditLogEntry>> GetAllForUserContributorAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Multi-id overload of <see cref="GetAllForUserContributorAsync"/> used
+    /// by the service-layer chain-follow read path so a fold-target's GDPR
+    /// export transparently includes rows that stayed attributed to merged
+    /// source tombstones.
+    /// </summary>
+    Task<IReadOnlyList<AuditLogEntry>> GetAllForUserIdsContributorAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     // ==========================================================================
     // Cross-table display lookups (read-only)
@@ -119,5 +154,17 @@ public interface IAuditLogRepository
         NodaTime.Instant windowStart,
         NodaTime.Instant windowEnd,
         AuditAction action,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the distinct set of <see cref="AuditLogEntry.EntityId"/> values
+    /// across all-time audit rows whose
+    /// <see cref="AuditLogEntry.EntityType"/> matches <paramref name="entityType"/>
+    /// and whose <see cref="AuditLogEntry.Action"/> is one of
+    /// <paramref name="actions"/>. Read-only.
+    /// </summary>
+    Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
+        string entityType,
+        IReadOnlyList<AuditAction> actions,
         CancellationToken ct = default);
 }

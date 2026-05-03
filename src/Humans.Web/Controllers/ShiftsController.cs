@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Constants;
@@ -22,6 +23,7 @@ public class ShiftsController : HumansControllerBase
     private readonly IShiftSignupService _signupService;
     private readonly IGeneralAvailabilityService _availabilityService;
     private readonly ITeamService _teamService;
+    private readonly IAuditLogService _auditLogService;
     private readonly IClock _clock;
     private readonly ILogger<ShiftsController> _logger;
 
@@ -30,6 +32,7 @@ public class ShiftsController : HumansControllerBase
         IShiftSignupService signupService,
         IGeneralAvailabilityService availabilityService,
         ITeamService teamService,
+        IAuditLogService auditLogService,
         UserManager<User> userManager,
         IClock clock,
         ILogger<ShiftsController> logger)
@@ -39,12 +42,13 @@ public class ShiftsController : HumansControllerBase
         _signupService = signupService;
         _availabilityService = availabilityService;
         _teamService = teamService;
+        _auditLogService = auditLogService;
         _clock = clock;
         _logger = logger;
     }
 
     [HttpGet("")]
-    public async Task<IActionResult> Index(Guid? departmentId, string? fromDate, string? toDate, string? period, bool showFull = false, [FromQuery(Name = "tags")] List<Guid>? tagIds = null, string? sort = null)
+    public async Task<IActionResult> Index(Guid? departmentId, string? fromDate, string? toDate, string? period, bool showFull = false, [FromQuery(Name = "tags")] List<Guid>? tagIds = null, string? sort = null, [FromQuery(Name = "periods")] List<string>? periods = null)
     {
         var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
         if (currentUserNotFound is not null)
@@ -79,28 +83,60 @@ public class ShiftsController : HumansControllerBase
         if ((!string.IsNullOrEmpty(fromDate) || !string.IsNullOrEmpty(toDate)) && !string.IsNullOrEmpty(period))
             period = null;
 
-        // Apply period filter — compute date boundaries from EventSettings offsets
-        if (!string.IsNullOrEmpty(period) && Enum.TryParse<ShiftPeriod>(period, true, out var parsedPeriod))
+        // Multiselect period support: if specific periods are provided, compute the union date range.
+        // When all 3 are selected (or none), treat as "no filter" — same as legacy single-period "All".
+        var activePeriods = (periods ?? [])
+            .Where(p => Enum.TryParse<ShiftPeriod>(p, true, out _))
+            .Select(p => Enum.Parse<ShiftPeriod>(p, true))
+            .Distinct()
+            .ToList();
+        var allPeriodsSelected = activePeriods.Count == 3 ||
+            (activePeriods.Count == 0 && string.IsNullOrEmpty(period));
+
+        // Legacy single-period param: fold into activePeriods for unified handling
+        if (activePeriods.Count == 0 && !string.IsNullOrEmpty(period) &&
+            Enum.TryParse<ShiftPeriod>(period, true, out var parsedPeriod))
         {
-            var (periodFrom, periodTo) = GetPeriodDateRange(es, parsedPeriod);
-            filterFromDate ??= periodFrom;
-            filterToDate ??= periodTo;
+            activePeriods = [parsedPeriod];
+        }
+
+        // Apply period filter — for single contiguous period, use date range query.
+        // For multi-period or non-contiguous, fetch all and post-filter by shift period.
+        var postFilterByPeriod = false;
+        if (activePeriods.Count > 0 && !allPeriodsSelected)
+        {
+            if (activePeriods.Count == 1)
+            {
+                // Single period: use efficient date range query
+                var (periodFrom, periodTo) = GetPeriodDateRange(es, activePeriods[0]);
+                filterFromDate ??= periodFrom;
+                filterToDate ??= periodTo;
+            }
+            else
+            {
+                // Multiple non-contiguous periods (e.g., Build + Strike): fetch all, filter after
+                postFilterByPeriod = true;
+            }
         }
 
         // Build the browse view — show all active shifts, hide AdminOnly from regular volunteers.
-        // includeSignups is unconditionally true while signup lists are public (matches ShowSignups
-        // below). Flip back to `includeSignups: isPrivileged` if/when ShowSignups is reverted.
+        // Signups are loaded unconditionally so the public avatar-chip column has data.
         var urgentShifts = await _shiftMgmt.GetBrowseShiftsAsync(
             es.Id, departmentId: departmentId,
             fromDate: filterFromDate, toDate: filterToDate,
             includeAdminOnly: isPrivileged, includeSignups: true,
             includeHidden: isPrivileged);
 
+        // Post-filter by period when multiple non-contiguous periods are selected (e.g., Build + Strike)
+        var periodFilteredShifts = postFilterByPeriod
+            ? urgentShifts.Where(u => activePeriods.Contains(u.Shift.GetShiftPeriod(es))).ToList()
+            : (IReadOnlyList<UrgentShift>)urgentShifts;
+
         // Apply tag filter — keep only shifts whose rota has at least one of the selected tags
         var activeTagFilter = tagIds?.Where(id => id != Guid.Empty).ToList() ?? [];
         var filteredShifts = activeTagFilter.Count > 0
-            ? urgentShifts.Where(u => u.Shift.Rota.Tags.Any(t => activeTagFilter.Contains(t.Id))).ToList()
-            : urgentShifts;
+            ? periodFilteredShifts.Where(u => u.Shift.Rota.Tags.Any(t => activeTagFilter.Contains(t.Id))).ToList()
+            : periodFilteredShifts;
 
         // Resolve team name/slug cross-section (Shifts doesn't own Team data).
         var shiftTeamIds = filteredShifts.Select(u => u.Shift.Rota.TeamId).Distinct().ToList();
@@ -159,6 +195,7 @@ public class ShiftsController : HumansControllerBase
                 {
                     TeamId = firstShift.Rota.TeamId,
                     TeamName = deptName,
+                    TeamDescription = team?.Description,
                     TeamSlug = deptSlug,
                     Rotas = deptGroup
                         .GroupBy(u => u.Shift.RotaId)
@@ -170,8 +207,8 @@ public class ShiftsController : HumansControllerBase
             .OrderBy(d => d.TeamName, StringComparer.Ordinal)
             .ToList();
 
-        // Build urgency-ranked flat rota list (used when sort=urgency)
-        var isUrgencySort = string.Equals(sort, "urgency", StringComparison.OrdinalIgnoreCase);
+        // Build urgency-ranked flat rota list — default sort is now "urgency" (most needed first)
+        var isUrgencySort = !string.Equals(sort, "department", StringComparison.OrdinalIgnoreCase);
         var urgencyRankedRotas = isUrgencySort
             ? departments.SelectMany(d => d.Rotas)
                 .OrderByDescending(r => r.MaxUrgencyScore)
@@ -205,6 +242,7 @@ public class ShiftsController : HumansControllerBase
             FilterFromDate = fromDate,
             FilterToDate = toDate,
             FilterPeriod = period,
+            FilterPeriods = activePeriods.Select(p => p.ToString()).ToList(),
             ShowFullShifts = showFull,
             UserSignupShiftIds = userSignupShiftIds,
             UserSignupStatuses = userSignupStatuses,
@@ -213,11 +251,12 @@ public class ShiftsController : HumansControllerBase
             // Temporarily public — signups list visible to all browsers. Keep the isPrivileged
             // computation in place so we can flip back to `ShowSignups = isPrivileged` if folks object.
             ShowSignups = true,
-            Sort = isUrgencySort ? "urgency" : null,
+            Sort = isUrgencySort ? "urgency" : "department",
             UrgencyRankedRotas = urgencyRankedRotas,
             AllTags = allTags.ToList(),
             FilterTagIds = activeTagFilter,
-            UserPreferredTagIds = userPreferredTags.Select(t => t.Id).ToHashSet()
+            UserPreferredTagIds = userPreferredTags.Select(t => t.Id).ToHashSet(),
+            MySignupCount = userSignups.Count(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
         };
 
         return View(model);
@@ -225,7 +264,7 @@ public class ShiftsController : HumansControllerBase
 
     [HttpPost("SignUp")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SignUp(Guid shiftId, Guid? departmentId, string? fromDate, string? toDate, string? period, [FromForm(Name = "tags")] List<Guid>? tagIds)
+    public async Task<IActionResult> SignUp(Guid shiftId, Guid? departmentId, string? fromDate, string? toDate, string? period, [FromForm(Name = "tags")] List<Guid>? tagIds, [FromForm(Name = "periods")] List<string>? periods = null, string? sort = null)
     {
         var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
         if (currentUserNotFound is not null)
@@ -239,19 +278,19 @@ public class ShiftsController : HumansControllerBase
         if (!result.Success)
         {
             SetError(result.Error ?? "Shift signup failed.");
-            return RedirectToAction(nameof(Index), BuildFilterRouteValues(departmentId, fromDate, toDate, period, tagIds));
+            return RedirectToAction(nameof(Index), BuildFilterRouteValues(departmentId, fromDate, toDate, period, tagIds, sort: sort, periods: periods));
         }
 
         SetSuccess(result.Warning is not null
             ? $"Signed up successfully. Note: {result.Warning}"
             : "Signed up successfully!");
 
-        return RedirectToAction(nameof(Index), BuildFilterRouteValues(departmentId, fromDate, toDate, period, tagIds));
+        return RedirectToAction(nameof(Index), BuildFilterRouteValues(departmentId, fromDate, toDate, period, tagIds, sort: sort, periods: periods));
     }
 
     [HttpPost("SignUpRange")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SignUpRange(Guid rotaId, int startDayOffset, int endDayOffset, Guid? departmentId, string? fromDate, string? toDate, string? period, [FromForm(Name = "tags")] List<Guid>? tagIds)
+    public async Task<IActionResult> SignUpRange(Guid rotaId, int startDayOffset, int endDayOffset, Guid? departmentId, string? fromDate, string? toDate, string? period, [FromForm(Name = "tags")] List<Guid>? tagIds, [FromForm(Name = "periods")] List<string>? periods = null, string? sort = null)
     {
         var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
         if (currentUserNotFound is not null)
@@ -265,17 +304,17 @@ public class ShiftsController : HumansControllerBase
         if (!result.Success)
         {
             SetError(result.Error ?? "Shift range signup failed.");
-            return RedirectToAction(nameof(Index), BuildFilterRouteValues(departmentId, fromDate, toDate, period, tagIds));
+            return RedirectToAction(nameof(Index), BuildFilterRouteValues(departmentId, fromDate, toDate, period, tagIds, sort: sort, periods: periods));
         }
 
         SetSuccess(result.Warning is not null
             ? $"Signed up for date range. Note: {result.Warning}"
             : "Signed up for date range!");
 
-        return RedirectToAction(nameof(Index), BuildFilterRouteValues(departmentId, fromDate, toDate, period, tagIds));
+        return RedirectToAction(nameof(Index), BuildFilterRouteValues(departmentId, fromDate, toDate, period, tagIds, sort: sort, periods: periods));
     }
 
-    private static RouteValueDictionary BuildFilterRouteValues(Guid? departmentId, string? fromDate, string? toDate, string? period, List<Guid>? tagIds, string? sort = null)
+    private static RouteValueDictionary BuildFilterRouteValues(Guid? departmentId, string? fromDate, string? toDate, string? period, List<Guid>? tagIds, string? sort = null, List<string>? periods = null)
     {
         var rv = new RouteValueDictionary();
         if (departmentId.HasValue) rv["departmentId"] = departmentId.Value;
@@ -286,6 +325,9 @@ public class ShiftsController : HumansControllerBase
         if (tagIds is { Count: > 0 })
             for (var i = 0; i < tagIds.Count; i++)
                 rv[$"tags[{i}]"] = tagIds[i];
+        if (periods is { Count: > 0 })
+            for (var i = 0; i < periods.Count; i++)
+                rv[$"periods[{i}]"] = periods[i];
         return rv;
     }
 
@@ -611,4 +653,100 @@ public class ShiftsController : HumansControllerBase
                 es.GateOpeningDate.PlusDays(es.StrikeEndOffset))
         };
     }
+
+    // ==========================================================================
+    // Orphan-signup reconciliation (admin diagnostic)
+    // ==========================================================================
+    //
+    // Surfaces ShiftSignups whose Id has no audit row tying the signup to a
+    // creation-or-confirmation moment (ShiftSignupCreated, ShiftSignupVoluntold,
+    // or ShiftSignupConfirmed). These are the rows behind the "user bailed
+    // from a shift they never signed up for" support thread.
+    //
+    // ShiftSignupConfirmed is included so legacy data isn't falsely flagged:
+    // pre-change, auto-confirmed self-signups wrote ShiftSignupConfirmed at
+    // creation time, and Pending → Confirmed transitions also write it. In
+    // both cases the human has a verifiable trail, even if the original
+    // Pending creation moment was never audited (the bug we're hunting). A
+    // true orphan is a signup with NONE of {Created, Voluntold, Confirmed}
+    // — i.e. a legacy Pending self-signup that went straight to
+    // Bailed/Refused/Cancelled without ever passing through Confirm.
+
+    [HttpGet("OrphanSignups")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    public async Task<IActionResult> OrphanSignups(CancellationToken ct)
+    {
+        var allSignups = await _signupService.GetAllForOrphanScanAsync(ct);
+        var auditedIds = await _auditLogService.GetEntityIdsForEntityTypeActionsAsync(
+            nameof(ShiftSignup),
+            [
+                AuditAction.ShiftSignupCreated,
+                AuditAction.ShiftSignupVoluntold,
+                AuditAction.ShiftSignupConfirmed,
+            ],
+            ct);
+
+        var orphans = allSignups
+            .Where(s => !auditedIds.Contains(s.Id))
+            .ToList();
+
+        var userIds = orphans
+            .SelectMany(s => new[] { s.UserId, s.ReviewedByUserId, s.EnrolledByUserId })
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+
+        var userDisplayNames = await _auditLogService.GetUserDisplayNamesAsync(userIds, ct);
+
+        var rows = orphans
+            .Select(s => new OrphanSignupRow(
+                SignupId: s.Id,
+                UserId: s.UserId,
+                UserDisplayName: userDisplayNames.GetValueOrDefault(s.UserId) ?? s.UserId.ToString(),
+                RotaName: s.Shift.Rota.Name,
+                ShiftDate: s.Shift.Rota.EventSettings.GateOpeningDate.PlusDays(s.Shift.DayOffset),
+                Status: s.Status,
+                CreatedAt: s.CreatedAt,
+                ReviewedByUserId: s.ReviewedByUserId,
+                ReviewedByDisplayName: s.ReviewedByUserId.HasValue
+                    ? userDisplayNames.GetValueOrDefault(s.ReviewedByUserId.Value)
+                    : null,
+                EnrolledByUserId: s.EnrolledByUserId,
+                EnrolledByDisplayName: s.EnrolledByUserId.HasValue
+                    ? userDisplayNames.GetValueOrDefault(s.EnrolledByUserId.Value)
+                    : null,
+                SignupBlockId: s.SignupBlockId))
+            .OrderBy(r => r.UserDisplayName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(r => r.CreatedAt)
+            .ToList();
+
+        var vm = new OrphanSignupsViewModel(
+            TotalSignups: allSignups.Count,
+            OrphanCount: rows.Count,
+            UniqueUsers: rows.Select(r => r.UserId).Distinct().Count(),
+            Rows: rows);
+
+        return View(vm);
+    }
 }
+
+public record OrphanSignupRow(
+    Guid SignupId,
+    Guid UserId,
+    string UserDisplayName,
+    string RotaName,
+    LocalDate ShiftDate,
+    SignupStatus Status,
+    Instant CreatedAt,
+    Guid? ReviewedByUserId,
+    string? ReviewedByDisplayName,
+    Guid? EnrolledByUserId,
+    string? EnrolledByDisplayName,
+    Guid? SignupBlockId);
+
+public record OrphanSignupsViewModel(
+    int TotalSignups,
+    int OrphanCount,
+    int UniqueUsers,
+    IReadOnlyList<OrphanSignupRow> Rows);

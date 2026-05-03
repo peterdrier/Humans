@@ -151,6 +151,7 @@ Colaborador and Asociado memberships have 2-year synchronized terms expiring Dec
 - A renewal reminder email + in-app notification is dispatched 90 days before term expiry (`TermRenewalReminderJob`, `NotificationSource.TermRenewalReminder`).
 - On term expiry without renewal: the next `SystemTeamSyncJob` removes the human from the Colaboradors / Asociados system team (driven by `HasActiveApprovedTierAsync`). The profile's `MembershipTier` field is **not** automatically reset — it remains set until a new approval changes it.
 - After every write, `ApplicationDecisionService` invalidates `INavBadgeCacheInvalidator` and `INotificationMeterCacheInvalidator`; on approve/reject it also invalidates each affected voter's `IVotingBadgeCacheInvalidator` entry; on Board-vote upsert it invalidates the voter's `IVotingBadgeCacheInvalidator` entry.
+- When an account merge accepts, `IApplicationDecisionService.ReassignApplicationsToUserAsync` re-FKs `Application.UserId` (the applicant) from source to target. `BoardVote.BoardMemberUserId` is not re-FK'd because votes are transient and deleted on finalization. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
 
 ## Cross-Section Dependencies
 
@@ -159,6 +160,7 @@ Colaborador and Asociado memberships have 2-year synchronized terms expiring Dec
 - **Onboarding:** Tier applications are a separate, optional path — never block Volunteer onboarding.
 - **Legal & Consent:** Consent checks are reviewed alongside (but independently of) tier applications.
 - **Users/Identity:** `IUserService.GetByIdsAsync` — display data for applicant/reviewer/voter, stitched into DTOs.
+- **Profiles:** Called by `IAccountMergeService` (Profiles section) — `IApplicationDecisionService.ReassignApplicationsToUserAsync` re-FKs `Application.UserId` during account merge fold.
 
 ## Architecture
 

@@ -10,6 +10,12 @@ public class FeedbackApiSettings
     public string ApiKey { get; set; } = string.Empty;
 }
 
+public class IssuesApiSettings
+{
+    public const string SectionName = "IssuesApi";
+    public string ApiKey { get; set; } = string.Empty;
+}
+
 public class LogApiSettings
 {
     public string ApiKey { get; set; } = string.Empty;
@@ -42,6 +48,9 @@ public abstract class ApiKeyAuthFilterBase : IAuthorizationFilter
 }
 
 public class ApiKeyAuthFilter(IOptions<FeedbackApiSettings> settings)
+    : ApiKeyAuthFilterBase(settings.Value.ApiKey);
+
+public class IssuesApiKeyAuthFilter(IOptions<IssuesApiSettings> settings)
     : ApiKeyAuthFilterBase(settings.Value.ApiKey);
 
 public class LogApiKeyAuthFilter(IOptions<LogApiSettings> settings)

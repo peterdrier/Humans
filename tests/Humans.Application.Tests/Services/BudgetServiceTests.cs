@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -35,11 +36,15 @@ public class BudgetServiceTests : IAsyncLifetime
         _factory = _provider.GetRequiredService<IDbContextFactory<HumansDbContext>>();
         _repository = new BudgetRepository(_factory, NullLogger<BudgetRepository>.Instance);
         _teamService = Substitute.For<ITeamService>();
+        var userService = Substitute.For<IUserService>();
+        userService.GetMergedSourceIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlySet<Guid>)new HashSet<Guid>());
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 31, 12, 0));
 
         _service = new BudgetServiceImpl(
             _repository,
             _teamService,
+            userService,
             _clock,
             NullLogger<BudgetServiceImpl>.Instance);
     }

@@ -44,4 +44,13 @@ public interface INotificationService : INotificationEmitter
         string? actionUrl = null,
         string? actionLabel = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Evicts the per-user notification badge cache for each id in
+    /// <paramref name="userIds"/>. Called post-commit by
+    /// <c>AccountMergeService.AcceptAsync</c> after a fold so the next
+    /// badge read for source/target re-derives unread counts from the
+    /// committed <c>NotificationRecipient</c> state.
+    /// </summary>
+    void InvalidateBadgeCachesForUsers(IEnumerable<Guid> userIds);
 }

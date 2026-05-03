@@ -12,6 +12,9 @@ public static class SectionHelpContent
     public static string? GetGlossary(string section) =>
         Glossaries.GetValueOrDefault(section);
 
+    public static IEnumerable<(string Section, string Body)> AllGlossaries() =>
+        Glossaries.Select(kv => (Section: kv.Key, Body: kv.Value));
+
     private static readonly Dictionary<string, string> Guides = new(StringComparer.Ordinal)
     {
         ["Teams"] = """

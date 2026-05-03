@@ -21,7 +21,7 @@ For each issue in the work order (sequentially, never parallel):
 
 1. Read the issue spec carefully. Identify every acceptance criterion and behavioral requirement.
 2. Explore the codebase to understand existing patterns and relevant files.
-3. Implement the feature/fix. Follow all project coding rules (`docs/architecture/coding-rules.md`).
+3. Implement the feature/fix. Follow all project rules — scan `memory/INDEX.md` and read any atom whose description matches the change you're making. The architecture story is in `docs/architecture/design-rules.md`.
 4. Run `dotnet build Humans.slnx` — fix any build errors before proceeding.
 5. Commit the implementation with a message referencing the issue number.
 

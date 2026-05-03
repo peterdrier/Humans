@@ -73,7 +73,7 @@ public sealed class TicketRepository : ITicketRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Set<UserEmail>()
             .AsNoTracking()
-            .Select(ue => new UserEmailLookupEntry(ue.Email, ue.UserId, ue.IsOAuth))
+            .Select(ue => new UserEmailLookupEntry(ue.Email, ue.UserId, ue.IsGoogle))
             .ToListAsync(ct);
     }
 
@@ -462,21 +462,20 @@ public sealed class TicketRepository : ITicketRepository
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
-        var ticketsSold = await ctx.TicketAttendees
-            .AsNoTracking()
-            .CountAsync(a =>
-                a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn, ct);
-
         var paidOrders = ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid);
 
+        var ticketsSold = await ctx.TicketAttendees
+            .AsNoTracking()
+            .CountAsync(a =>
+                (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn)
+                && a.TicketOrder.PaymentStatus == TicketPaymentStatus.Paid, ct);
+
         var revenue = await paidOrders.SumAsync(o => o.TotalAmount, ct);
         var totalStripeFees = await paidOrders.SumAsync(o => o.StripeFee ?? 0m, ct);
         var totalAppFees = await paidOrders.SumAsync(o => o.ApplicationFee ?? 0m, ct);
-        var unmatchedCount = await ctx.TicketOrders
-            .AsNoTracking()
-            .CountAsync(o => o.MatchedUserId == null, ct);
+        var unmatchedCount = await paidOrders.CountAsync(o => o.MatchedUserId == null, ct);
 
         return new TicketDashboardTotals
         {
@@ -512,10 +511,12 @@ public sealed class TicketRepository : ITicketRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.TicketOrders
             .AsNoTracking()
+            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
             .Select(o => new OrderDateAndCount
             {
                 PurchasedAt = o.PurchasedAt,
-                AttendeeCount = o.Attendees.Count,
+                AttendeeCount = o.Attendees.Count(a =>
+                    a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn),
             })
             .ToListAsync(ct);
     }
@@ -537,6 +538,7 @@ public sealed class TicketRepository : ITicketRepository
                 Currency = o.Currency,
                 PurchasedAt = o.PurchasedAt,
                 IsMatched = o.MatchedUserId != null,
+                PaymentStatus = o.PaymentStatus,
             })
             .ToListAsync(ct);
     }
@@ -840,6 +842,45 @@ public sealed class TicketRepository : ITicketRepository
 
         ctx.Entry(state).State = EntityState.Detached;
         return state;
+    }
+
+    // ==========================================================================
+    // Account-merge fold
+    // ==========================================================================
+
+    public async Task<int> ReassignToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default)
+    {
+        // updatedAt is part of the standard fold signature but unused here:
+        // neither TicketOrder nor TicketAttendee carries a generic UpdatedAt
+        // column (only SyncedAt, owned by the vendor-sync pipeline). Tickets
+        // are unique per purchase, so the conflict rule is plain re-FK — no
+        // dedup needed.
+        _ = updatedAt;
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        var orders = await ctx.TicketOrders
+            .Where(o => o.MatchedUserId == sourceUserId)
+            .ToListAsync(ct);
+        foreach (var order in orders)
+        {
+            order.MatchedUserId = targetUserId;
+        }
+
+        var attendees = await ctx.TicketAttendees
+            .Where(a => a.MatchedUserId == sourceUserId)
+            .ToListAsync(ct);
+        foreach (var attendee in attendees)
+        {
+            attendee.MatchedUserId = targetUserId;
+        }
+
+        await ctx.SaveChangesAsync(ct);
+
+        return await ctx.TicketAttendees
+            .CountAsync(a => a.MatchedUserId == targetUserId, ct);
     }
 
     // ==========================================================================

@@ -50,7 +50,7 @@ public class CampAdminController : HumansControllerBase
         {
             var settings = await _campService.GetSettingsAsync();
             var registrationInfo = await _cityPlanningService.GetRegistrationInfoAsync();
-            var allCamps = await _campService.GetAllCampsForYearAsync(settings.PublicYear);
+            var allCamps = await _campService.GetCampsForYearAsync(settings.PublicYear);
             var pendingSeasons = await _campService.GetPendingSeasonsAsync();
 
             var nameLockDates = settings.OpenSeasons.Count > 0

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -160,6 +161,40 @@ public sealed class FeedbackRepository : IFeedbackRepository
         ctx.Attach(report);
         ctx.Entry(report).State = EntityState.Modified;
         ctx.FeedbackMessages.Add(message);
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    // ==========================================================================
+    // Account-merge fold
+    // ==========================================================================
+
+    public async Task ReassignToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default)
+    {
+        // Plain re-FK on both Feedback-owned tables in a single SaveChanges.
+        // Reports and messages are unique events — no dedup. Both UserId and
+        // SenderUserId are init-only on the entities, so we mutate via
+        // EF's Entry().Property().CurrentValue to bypass the init setter.
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        var reports = await ctx.FeedbackReports
+            .Where(r => r.UserId == sourceUserId)
+            .ToListAsync(ct);
+        foreach (var r in reports)
+        {
+            ctx.Entry(r).Property(nameof(FeedbackReport.UserId)).CurrentValue = targetUserId;
+            r.UpdatedAt = updatedAt;
+        }
+
+        var messages = await ctx.FeedbackMessages
+            .Where(m => m.SenderUserId == sourceUserId)
+            .ToListAsync(ct);
+        foreach (var m in messages)
+        {
+            ctx.Entry(m).Property(nameof(FeedbackMessage.SenderUserId)).CurrentValue = targetUserId;
+        }
+
         await ctx.SaveChangesAsync(ct);
     }
 }

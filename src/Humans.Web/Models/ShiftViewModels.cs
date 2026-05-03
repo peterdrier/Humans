@@ -140,6 +140,13 @@ public class ShiftBrowseViewModel
     public string? FilterFromDate { get; set; }
     public string? FilterToDate { get; set; }
     public string? FilterPeriod { get; set; }
+
+    /// <summary>
+    /// Active period filters for multiselect phase cards (Build, Event, Strike).
+    /// When all three are selected (or none explicitly set), no period filtering is applied.
+    /// </summary>
+    public List<string> FilterPeriods { get; set; } = [];
+
     public bool ShowFullShifts { get; set; }
     public HashSet<Guid> UserSignupShiftIds { get; set; } = [];
     public Dictionary<Guid, SignupStatus> UserSignupStatuses { get; set; } = new();
@@ -169,6 +176,11 @@ public class ShiftBrowseViewModel
     /// Tag IDs the current volunteer has selected as preferences (for highlighting).
     /// </summary>
     public HashSet<Guid> UserPreferredTagIds { get; set; } = [];
+
+    /// <summary>
+    /// Count of the current user's active signups (confirmed + pending), shown as badge on "My Shifts" tab.
+    /// </summary>
+    public int MySignupCount { get; set; }
 }
 
 public class DepartmentOption
@@ -181,6 +193,7 @@ public class DepartmentShiftGroup
 {
     public Guid TeamId { get; set; }
     public string TeamName { get; set; } = string.Empty;
+    public string? TeamDescription { get; set; }
     public string TeamSlug { get; set; } = string.Empty;
     public List<RotaShiftGroup> Rotas { get; set; } = [];
 }
@@ -528,7 +541,9 @@ public class BuildStrikeRotaTableViewModel
     public string? FilterFromDate { get; set; }
     public string? FilterToDate { get; set; }
     public string? FilterPeriod { get; set; }
+    public List<string> FilterPeriods { get; set; } = [];
     public List<Guid> FilterTagIds { get; set; } = [];
+    public string? Sort { get; set; }
 }
 
 public class EventRotaTableViewModel
@@ -542,7 +557,9 @@ public class EventRotaTableViewModel
     public string? FilterFromDate { get; set; }
     public string? FilterToDate { get; set; }
     public string? FilterPeriod { get; set; }
+    public List<string> FilterPeriods { get; set; } = [];
     public List<Guid> FilterTagIds { get; set; } = [];
+    public string? Sort { get; set; }
 }
 
 // === No-Show History ===

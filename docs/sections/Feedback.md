@@ -117,6 +117,7 @@ Cross-domain nav `FeedbackMessage.SenderUser` is `[Obsolete]`-marked — senders
 
 - When an admin posts a message on a report, the reporter's effective notification email is resolved via `IUserEmailService.GetNotificationTargetEmailsAsync` and a localized response email is queued via `IEmailService.SendFeedbackResponseAsync`. After the message is persisted, an in-app `NotificationSource.FeedbackResponse` notification is also dispatched.
 - When a report is created or any message is posted (admin or reporter), the nav-badge cache is invalidated via `INavBadgeCacheInvalidator`.
+- When an account merge accepts, `IFeedbackService.ReassignToUserAsync` re-FKs `FeedbackReport.UserId` / `AssignedToUserId` / `ResolvedByUserId` and `FeedbackMessage.SenderUserId` from source to target. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
 
 ## Cross-Section Dependencies
 
@@ -130,6 +131,7 @@ Cross-domain nav `FeedbackMessage.SenderUser` is `[Obsolete]`-marked — senders
 - **GDPR:** implements `IUserDataContributor` to export the reporter's feedback reports and message contents under `GdprExportSections.FeedbackReports`.
 - **Admin:** GitHub issue linking connects feedback reports to the external issue tracker.
 - **Onboarding:** Feedback submission is available during onboarding, before the human is an active member.
+- **Profiles:** Called by `IAccountMergeService` (Profiles section) — `IFeedbackService.ReassignToUserAsync` re-FKs feedback report and message authorship from source to target during account merge fold.
 
 ## Architecture
 

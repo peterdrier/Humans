@@ -113,15 +113,6 @@ public static class RoleChecks
         return IsAdmin(user) || user.IsInRole(RoleNames.VolunteerCoordinator);
     }
 
-    /// <summary>
-    /// Nav-level access to the volunteer management section.
-    /// Broader than IsVolunteerManager: includes Board and TeamsAdmin for visibility.
-    /// </summary>
-    public static bool CanAccessVolunteers(ClaimsPrincipal user)
-    {
-        return IsTeamsAdminBoardOrAdmin(user) || user.IsInRole(RoleNames.VolunteerCoordinator);
-    }
-
     public static bool CanManageRole(ClaimsPrincipal user, string roleName)
     {
         if (IsAdmin(user))

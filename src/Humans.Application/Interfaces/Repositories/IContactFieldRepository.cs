@@ -1,5 +1,6 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -43,5 +44,21 @@ public interface IContactFieldRepository
         IReadOnlyList<ContactField> toAdd,
         IReadOnlyList<ContactField> toUpdate,
         IReadOnlyList<ContactField> toRemove,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Bulk-moves <c>contact_fields</c> rows from <paramref name="sourceUserId"/>'s
+    /// profile to <paramref name="targetUserId"/>'s profile for the
+    /// account-merge fold flow. Conflict rule per the fold spec: when source
+    /// and target both have a row with the same <c>(FieldType, Value)</c>
+    /// (case-insensitive on <c>Value</c>), the source row is dropped — target's
+    /// row wins on collision. Surviving source rows are re-FK'd to the target's
+    /// profile. <c>UpdatedAt</c> is stamped to <paramref name="updatedAt"/> on
+    /// every row touched. Returns the count of <c>contact_fields</c> rows
+    /// ultimately attributed to <paramref name="targetUserId"/>'s profile.
+    /// Returns 0 if either user has no profile.
+    /// </summary>
+    Task<int> ReassignToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default);
 }

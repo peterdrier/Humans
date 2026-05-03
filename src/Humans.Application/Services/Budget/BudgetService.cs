@@ -5,6 +5,7 @@ using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
@@ -35,17 +36,20 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
 {
     private readonly IBudgetRepository _repository;
     private readonly ITeamService _teamService;
+    private readonly IUserService _userService;
     private readonly IClock _clock;
     private readonly ILogger<BudgetService> _logger;
 
     public BudgetService(
         IBudgetRepository repository,
         ITeamService teamService,
+        IUserService userService,
         IClock clock,
         ILogger<BudgetService> logger)
     {
         _repository = repository;
         _teamService = teamService;
+        _userService = userService;
         _clock = clock;
         _logger = logger;
     }
@@ -713,7 +717,23 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var entries = await _repository.GetAuditLogEntriesForUserAsync(userId, ct);
+        // Chain-follow merge tombstones so a fold-target's GDPR export
+        // transparently includes BudgetAuditLog entries that stayed
+        // attributed to merged source ids. budget_audit_logs is append-only
+        // (§12) so source's rows remain at source after the fold.
+        var sourceIds = await _userService.GetMergedSourceIdsAsync(userId, ct);
+        IReadOnlyList<BudgetAuditLog> entries;
+        if (sourceIds.Count == 0)
+        {
+            entries = await _repository.GetAuditLogEntriesForUserAsync(userId, ct);
+        }
+        else
+        {
+            var allIds = new List<Guid>(sourceIds.Count + 1);
+            allIds.AddRange(sourceIds);
+            allIds.Add(userId);
+            entries = await _repository.GetAuditLogEntriesForUserIdsAsync(allIds, ct);
+        }
 
         var shaped = entries.Select(bal => new
         {

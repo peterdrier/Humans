@@ -228,7 +228,7 @@
                         @if (Model.UnmatchedOrderCount > 0)
                         {
                             <li class="mb-2">
-                                <a asp-action="Orders" asp-route-filterMatched="false">
+                                <a asp-action="Orders" asp-route-filterMatched="false" asp-route-filterPaymentStatus="Paid">
                                     <span class="badge bg-warning text-dark">@Model.UnmatchedOrderCount</span>
                                     orders from non-humans
                                 </a>
@@ -273,6 +273,7 @@
                                 <th>Purchaser</th>
                                 <th>Tickets</th>
                                 <th>Amount</th>
+                                <th>Status</th>
                                 <th>Matched</th>
                             </tr>
                         </thead>
@@ -284,6 +285,19 @@
                                     <td>@order.BuyerName</td>
                                     <td>@order.TicketCount</td>
                                     <td>@order.Currency @order.Amount.ToString("N0")</td>
+                                    <td>
+                                        @{
+                                            var statusBadgeClass = order.PaymentStatus switch
+                                            {
+                                                TicketPaymentStatus.Paid => "bg-success",
+                                                TicketPaymentStatus.Pending => "bg-warning text-dark",
+                                                TicketPaymentStatus.Refunded => "bg-secondary",
+                                                TicketPaymentStatus.Cancelled => "bg-danger",
+                                                _ => "bg-secondary",
+                                            };
+                                        }
+                                        <span class="badge @statusBadgeClass">@order.PaymentStatus</span>
+                                    </td>
                                     <td>
                                         @if (order.IsMatched)
                                         {
@@ -298,7 +312,7 @@
                             }
                             @if (Model.RecentOrders.Count == 0)
                             {
-                                <tr><td colspan="5" class="text-muted text-center">No orders synced yet</td></tr>
+                                <tr><td colspan="6" class="text-muted text-center">No orders synced yet</td></tr>
                             }
                         </tbody>
                     </table>

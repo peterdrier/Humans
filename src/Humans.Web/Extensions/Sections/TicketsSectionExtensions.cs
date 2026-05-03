@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
 using TicketsTicketSyncService = Humans.Application.Services.Tickets.TicketSyncService;
@@ -18,7 +19,9 @@ internal static class TicketsSectionExtensions
         // and consumes ITicketVendorService (Infrastructure connector) for vendor API calls.
         // Repository is Singleton (IDbContextFactory-based) per design-rules §15b.
         services.AddSingleton<ITicketRepository, TicketRepository>();
-        services.AddScoped<ITicketSyncService, TicketsTicketSyncService>();
+        services.AddScoped<TicketsTicketSyncService>();
+        services.AddScoped<ITicketSyncService>(sp => sp.GetRequiredService<TicketsTicketSyncService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<TicketsTicketSyncService>());
 
         // Application-layer TicketQueryService (no caching decorator yet —
         // reads are not hot-path enough to justify one at our scale).

@@ -142,6 +142,52 @@ public class ShiftSignupServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task SignUp_AllDayShiftAfterPriorNightWatch_DoesNotFalselyConflict()
+    {
+        // Regression: a night watch ending at 02:00 used to collide with the next day's
+        // all-day shift because all-day was modeled as 00:00-24:00. GetAbsoluteStart/End
+        // now short-circuit to 08:00/18:00 for IsAllDay rows, so the overnight shift
+        // ending at 02:00 no longer overlaps with the 08:00 start.
+        var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
+        rota.Period = RotaPeriod.Strike;
+        // Night watch: day 0, 22:00-02:00 (next day) — 4h
+        var nightWatch = SeedShift(rota, dayOffset: 0, startHour: 22, durationHours: 4);
+        // All-day strike shift on the following day; stored as midnight/24h sentinel (don't-care)
+        var allDay = SeedAllDayShift(rota, dayOffset: 1);
+        var userId = Guid.NewGuid();
+        SeedSignup(userId, nightWatch.Id, SignupStatus.Confirmed);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.SignUpAsync(userId, allDay.Id);
+
+        result.Success.Should().BeTrue();
+        result.Error.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task SignUp_SameDayEarlyShiftBeforeAllDay_DoesNotFalselyConflict()
+    {
+        // Symmetric regression: an early-morning shift (03:00-07:00) on the same day
+        // as an all-day shift must be allowed. Before the fix, all-day was 00:00-24:00
+        // which would overlap with any shift on the same calendar day. After the fix,
+        // all-day starts at 08:00, so a 03:00-07:00 shift has no overlap.
+        var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
+        rota.Period = RotaPeriod.Strike;
+        // Early shift: day 0, 03:00-07:00 — ends one hour before all-day window starts
+        var earlyShift = SeedShift(rota, dayOffset: 0, startHour: 3, durationHours: 4);
+        // All-day shift on the same day (08:00-18:00 computed)
+        var allDay = SeedAllDayShift(rota, dayOffset: 0);
+        var userId = Guid.NewGuid();
+        SeedSignup(userId, allDay.Id, SignupStatus.Confirmed);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.SignUpAsync(userId, earlyShift.Id);
+
+        result.Success.Should().BeTrue();
+        result.Error.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task SignUp_SystemClosed_RegularVolunteer_ReturnsError()
     {
         var (es, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
@@ -483,6 +529,105 @@ public class ShiftSignupServiceTests : IDisposable
     }
 
     // ============================================================
+    // Audit completeness — ShiftSignupCreated
+    // ============================================================
+
+    [HumansFact]
+    public async Task SignUp_PublicPolicy_WritesShiftSignupCreatedAudit()
+    {
+        var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var userId = Guid.NewGuid();
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.SignUpAsync(userId, shift.Id);
+
+        result.Success.Should().BeTrue();
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.ShiftSignupCreated, nameof(ShiftSignup), result.Signup!.Id,
+            Arg.Is<string>(s => s.Contains("(confirmed)")),
+            userId,
+            userId, nameof(User));
+    }
+
+    [HumansFact]
+    public async Task SignUp_RequireApprovalPolicy_WritesShiftSignupCreatedAudit()
+    {
+        var (_, _, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        var userId = Guid.NewGuid();
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.SignUpAsync(userId, shift.Id);
+
+        result.Success.Should().BeTrue();
+        result.Signup!.Status.Should().Be(SignupStatus.Pending);
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.ShiftSignupCreated, nameof(ShiftSignup), result.Signup.Id,
+            Arg.Is<string>(s => s.Contains("(pending)")),
+            userId,
+            userId, nameof(User));
+    }
+
+    [HumansFact]
+    public async Task SignUpRange_RequireApproval_WritesShiftSignupCreatedPerSignup()
+    {
+        var (_, rota, _) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        rota.Period = RotaPeriod.Build;
+        for (var day = -3; day <= -1; day++)
+            SeedAllDayShift(rota, day);
+        var userId = Guid.NewGuid();
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.SignUpRangeAsync(userId, rota.Id, -3, -1);
+
+        result.Success.Should().BeTrue();
+        await _auditLog.Received(3).LogAsync(
+            AuditAction.ShiftSignupCreated, nameof(ShiftSignup), Arg.Any<Guid>(),
+            Arg.Is<string>(s => s.Contains("(range, pending)")),
+            userId,
+            userId, nameof(User));
+    }
+
+    // ============================================================
+    // Account-merge fold — ShiftSignupReassigned
+    // ============================================================
+
+    [HumansFact]
+    public async Task Reassign_WhenSourceHasSignups_WritesShiftSignupReassignedOnce()
+    {
+        var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var sourceUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+        var actorUserId = Guid.NewGuid();
+        SeedSignup(sourceUserId, shift.Id, SignupStatus.Confirmed);
+        await _dbContext.SaveChangesAsync();
+
+        await _service.ReassignAsync(sourceUserId, targetUserId, actorUserId, TestNow, default);
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.ShiftSignupReassigned, nameof(User), targetUserId,
+            Arg.Is<string>(s => s.Contains("Reassigned 1")),
+            actorUserId,
+            targetUserId, nameof(User));
+    }
+
+    [HumansFact]
+    public async Task Reassign_WhenSourceHasNoSignups_DoesNotWriteAudit()
+    {
+        SeedShiftScenario(SignupPolicy.Public);
+        var sourceUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+        var actorUserId = Guid.NewGuid();
+        await _dbContext.SaveChangesAsync();
+
+        await _service.ReassignAsync(sourceUserId, targetUserId, actorUserId, TestNow, default);
+
+        await _auditLog.DidNotReceive().LogAsync(
+            AuditAction.ShiftSignupReassigned, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    // ============================================================
     // Helpers
     // ============================================================
 
@@ -566,7 +711,8 @@ public class ShiftSignupServiceTests : IDisposable
             RotaId = rota.Id,
             DayOffset = dayOffset,
             IsAllDay = true,
-            StartTime = new LocalTime(0, 0),
+            // StartTime/Duration are don't-care for IsAllDay rows; store midnight/24h sentinel.
+            StartTime = LocalTime.Midnight,
             Duration = Duration.FromHours(24),
             MinVolunteers = 2,
             MaxVolunteers = 5,

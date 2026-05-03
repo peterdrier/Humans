@@ -88,5 +88,17 @@ public enum NotificationSource
     CampMembershipSeasonClosed = 27,
 
     /// <summary>A camp role was assigned to a human (in-app + email if subscribed).</summary>
-    CampRoleAssigned = 28
+    CampRoleAssigned = 28,
+
+    /// <summary>A new comment was posted on an issue the user is involved in.</summary>
+    IssueComment = 29,
+
+    /// <summary>An issue's status changed (notifies reporter + assignee).</summary>
+    IssueStatusChanged = 30,
+
+    /// <summary>An issue was assigned to a user (notifies the new assignee).</summary>
+    IssueAssigned = 31,
+
+    /// <summary>A new issue was submitted (notifies admins + section role-holders).</summary>
+    IssueSubmitted = 32
 }

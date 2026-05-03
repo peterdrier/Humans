@@ -46,7 +46,12 @@ public class ProfileServiceTests : IDisposable
     private readonly ICampaignService _campaignService = Substitute.For<ICampaignService>();
     private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
     private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();
-    private readonly InMemoryProfilePictureStore _profilePictureStore = new();
+    private readonly InMemoryFileStorage _fileStorage = new();
+
+    // Delegate to the production helper (made internal for test access)
+    // so the test can't drift from the real key construction.
+    private static string PicKey(Guid profileId, string contentType) =>
+        ProfileService.ProfilePictureKey(profileId, contentType);
 
     public ProfileServiceTests()
     {
@@ -71,7 +76,7 @@ public class ProfileServiceTests : IDisposable
             _membershipCalculator, _consentService, _ticketQueryService,
             _applicationDecisionService, _campaignService,
             _roleAssignmentService, _accountDeletionService,
-            _profilePictureStore,
+            _fileStorage,
             _clock,
             NullLogger<ProfileService>.Instance);
 
@@ -205,10 +210,10 @@ public class ProfileServiceTests : IDisposable
         // DB was written
         profile.ProfilePictureData.Should().BeEquivalentTo(payload);
         profile.ProfilePictureContentType.Should().Be("image/jpeg");
-        // Filesystem was written with the same bytes, keyed by profile id
-        _profilePictureStore.Files.Should().ContainKey(profile.Id);
-        _profilePictureStore.Files[profile.Id].Data.Should().BeEquivalentTo(payload);
-        _profilePictureStore.Files[profile.Id].ContentType.Should().Be("image/jpeg");
+        // Filesystem was written with the same bytes, keyed under uploads/profile-pictures/
+        var key = PicKey(profile.Id, "image/jpeg");
+        _fileStorage.Files.Should().ContainKey(key);
+        _fileStorage.Files[key].Should().BeEquivalentTo(payload);
     }
 
     [HumansFact]
@@ -216,8 +221,10 @@ public class ProfileServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var profileId = await SeedUserWithProfileAsync(userId, withPicture: true);
-        // Pre-seed the filesystem side so we can assert deletion.
-        await _profilePictureStore.WriteAsync(profileId, new byte[] { 1 }, "image/jpeg");
+        // Pre-seed the filesystem side at the same content-type the seeded
+        // profile uses (image/png — see SeedUserWithProfileAsync) so we can
+        // assert deletion.
+        await _fileStorage.SaveAsync(PicKey(profileId, "image/png"), new byte[] { 1 });
 
         var request = MakeRequest(removeProfilePicture: true);
         await _service.SaveProfileAsync(userId, "Test", request, "en");
@@ -225,7 +232,7 @@ public class ProfileServiceTests : IDisposable
         var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.ProfilePictureData.Should().BeNull();
         profile.ProfilePictureContentType.Should().BeNull();
-        _profilePictureStore.Files.Should().NotContainKey(profile.Id);
+        _fileStorage.Files.Should().NotContainKey(PicKey(profile.Id, "image/png"));
     }
 
     [HumansFact]
@@ -460,7 +467,7 @@ public class ProfileServiceTests : IDisposable
         var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
 
         var fsPayload = new byte[] { 9, 9, 9, 9 };
-        await _profilePictureStore.WriteAsync(profile.Id, fsPayload, "image/png");
+        await _fileStorage.SaveAsync(PicKey(profile.Id, "image/png"), fsPayload);
 
         var result = await _service.GetProfilePictureAsync(profile.Id);
 
@@ -480,7 +487,7 @@ public class ProfileServiceTests : IDisposable
         await SeedUserWithProfileAsync(userId, withPicture: true);
         var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
 
-        _profilePictureStore.Files.ContainsKey(profile.Id).Should().BeFalse();
+        _fileStorage.Files.ContainsKey(PicKey(profile.Id, "image/png")).Should().BeFalse();
 
         var result = await _service.GetProfilePictureAsync(profile.Id);
 
@@ -488,10 +495,9 @@ public class ProfileServiceTests : IDisposable
         result!.Value.Data.Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
         result.Value.ContentType.Should().Be("image/png");
 
-        // Migrate-on-read should have populated the store.
-        _profilePictureStore.Files.TryGetValue(profile.Id, out var stored).Should().BeTrue();
-        stored.Data.Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
-        stored.ContentType.Should().Be("image/png");
+        // Migrate-on-read should have populated the store under the content-typed key.
+        _fileStorage.Files.TryGetValue(PicKey(profile.Id, "image/png"), out var stored).Should().BeTrue();
+        stored.Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
     }
 
     [HumansFact]
@@ -506,7 +512,7 @@ public class ProfileServiceTests : IDisposable
         var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
 
         // Seed a stale on-disk file as if a prior anonymization left it behind.
-        await _profilePictureStore.WriteAsync(profile.Id, new byte[] { 7, 7, 7 }, "image/png");
+        await _fileStorage.SaveAsync(PicKey(profile.Id, "image/png"), new byte[] { 7, 7, 7 });
 
         // Now anonymize via the service and force the FS delete to fail by
         // pre-removing the entry, then re-add it AFTER the anonymize call.
@@ -517,7 +523,7 @@ public class ProfileServiceTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         // Confirm the stale file is still on disk to make the gate meaningful.
-        _profilePictureStore.Files.ContainsKey(profile.Id).Should().BeTrue();
+        _fileStorage.Files.ContainsKey(PicKey(profile.Id, "image/png")).Should().BeTrue();
 
         var result = await _service.GetProfilePictureAsync(profile.Id);
 
@@ -544,6 +550,33 @@ public class ProfileServiceTests : IDisposable
 
         colaboradorCount.Should().Be(1);
         asociadoCount.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task GetActiveApprovedCountAsync_ReturnsOnlyApprovedAndNotSuspended()
+    {
+        // 3 approved-active, 1 approved-but-suspended, 1 unapproved
+        var u1 = Guid.NewGuid();
+        var u2 = Guid.NewGuid();
+        var u3 = Guid.NewGuid();
+        var u4 = Guid.NewGuid();
+        var u5 = Guid.NewGuid();
+        await SeedUserAsync(u1);
+        await SeedUserAsync(u2);
+        await SeedUserAsync(u3);
+        await SeedUserAsync(u4);
+        await SeedUserAsync(u5);
+        await _dbContext.Profiles.AddRangeAsync(
+            MakeProfile(u1, isApproved: true, isSuspended: false), // counted
+            MakeProfile(u2, isApproved: true, isSuspended: false), // counted
+            MakeProfile(u3, isApproved: true, isSuspended: false), // counted
+            MakeProfile(u4, isApproved: true, isSuspended: true),  // excluded: suspended
+            MakeProfile(u5, isApproved: false, isSuspended: false)); // excluded: unapproved
+        await _dbContext.SaveChangesAsync();
+
+        var count = await _service.GetActiveApprovedCountAsync();
+
+        count.Should().Be(3);
     }
 
     // --- Index/edit data ---
@@ -1052,7 +1085,6 @@ public class ProfileServiceTests : IDisposable
             UserId = userId,
             Email = "test@test.com",
             VerificationSentAt = _clock.GetCurrentInstant() - Duration.FromMinutes(2),
-            DisplayOrder = 0
         });
         await _dbContext.SaveChangesAsync();
 
@@ -1075,7 +1107,6 @@ public class ProfileServiceTests : IDisposable
             UserId = userId,
             Email = "test@test.com",
             VerificationSentAt = _clock.GetCurrentInstant() - Duration.FromMinutes(6),
-            DisplayOrder = 0
         });
         await _dbContext.SaveChangesAsync();
 
@@ -1098,7 +1129,6 @@ public class ProfileServiceTests : IDisposable
             UserId = userId,
             Email = "test@test.com",
             VerificationSentAt = null,
-            DisplayOrder = 0
         });
         await _dbContext.SaveChangesAsync();
 
@@ -1445,8 +1475,7 @@ public class ProfileServiceTests : IDisposable
             UserId = userId,
             Email = "notify@example.com",
             IsVerified = true,
-            IsNotificationTarget = true,
-            DisplayOrder = 0
+            IsPrimary = true,
         });
         await _dbContext.SaveChangesAsync();
 
@@ -1524,7 +1553,7 @@ public class ProfileServiceTests : IDisposable
         _membershipCalculator, _consentService, _ticketQueryService,
         _applicationDecisionService, _campaignService,
         _roleAssignmentService, _accountDeletionService,
-        _profilePictureStore,
+        _fileStorage,
         _clock,
         NullLogger<ProfileService>.Instance);
 
@@ -1637,5 +1666,46 @@ public class ProfileServiceTests : IDisposable
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant()
         };
+    }
+
+    [HumansFact]
+    public async Task ContributeForUserAsync_EmitsIsOAuthKey_SourcedFromProviderColumn()
+    {
+        // The JSON key stays "IsOAuth" per memory/code/no-rename-serialized-fields.md
+        // (exports are JSON files users download). The value sources from
+        // (Provider != null) — pre-PR-4 semantics meaning "this row has an OAuth
+        // login attached". The PR 4 spec's Task 17 swapped both the JSON key and
+        // the value source (e.IsGoogle); both have been reverted so the export
+        // emits identical bytes for the same row data as before PR 4.
+        //
+        // This row has Provider="Google" and IsGoogle=false to pin the source:
+        // under the reverted (Provider != null) projection it emits IsOAuth=true,
+        // which proves the source is Provider, not IsGoogle.
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId);
+        _dbContext.UserEmails.Add(new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "g@example.com",
+            IsVerified = true,
+            IsPrimary = true,
+            Provider = "Google",
+            ProviderKey = "sub-1",
+            IsGoogle = false,
+        });
+        await _dbContext.SaveChangesAsync();
+
+        var slices = await _service.ContributeForUserAsync(userId, CancellationToken.None);
+
+        var userEmailsSlice = slices.Single(s =>
+            string.Equals(s.SectionName, Humans.Application.Interfaces.Gdpr.GdprExportSections.UserEmails, StringComparison.Ordinal));
+        var json = System.Text.Json.JsonSerializer.Serialize(userEmailsSlice.Data);
+        json.Should().Contain("\"IsOAuth\":true");
+        // Legacy JSON key preserved for the C# IsPrimary rename
+        // (memory/code/no-rename-serialized-fields.md). Mirrors EF's HasColumnName pin on the
+        // renamed property — the GDPR export must keep emitting "IsNotificationTarget".
+        json.Should().Contain("\"IsNotificationTarget\":true");
+        json.Should().NotContain("\"IsPrimary\":");
     }
 }

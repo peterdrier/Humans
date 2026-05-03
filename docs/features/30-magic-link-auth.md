@@ -322,9 +322,7 @@ The user sits with `LastLoginAt == null`. When they authenticate by any method (
 
 **What we keep from Aaron's PR:**
 - `ContactSource` and `ExternalSourceId` on User (useful for tracking import origin)
-- Admin Contacts UI (filtered by `LastLoginAt == null && ContactSource != null`)
 - Communication preference migration (already handled by Feature 28)
-- The `IContactService` concept (simplified: just creates users, no merge)
 
 ## Related Features
 

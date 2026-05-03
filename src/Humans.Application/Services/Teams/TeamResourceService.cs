@@ -189,35 +189,12 @@ public sealed partial class TeamResourceService : ITeamResourceService
 
         var now = _clock.GetCurrentInstant();
         var inactive = await _repository.FindInactiveByGoogleIdAsync(teamId, folderId, GoogleResourceType.DriveFolder, ct);
-        GoogleResource resource;
-        if (inactive is not null)
-        {
-            var reactivated = await _repository.ReactivateAsync(
-                inactive.Id,
-                name: lookup.Item.FullPath,
-                url: lookup.Item.WebViewLink,
-                lastSyncedAt: now,
-                newGoogleId: null,
-                newPermissionLevel: permissionLevel,
-                ct);
-            if (reactivated is null)
-            {
-                _logger.LogWarning(
-                    "Inactive Drive folder row {ResourceId} disappeared during reactivation; falling back to insert.",
-                    inactive.Id);
-                resource = BuildDriveFolderResource(teamId, lookup.Item, permissionLevel, now);
-                await _repository.AddAsync(resource, ct);
-            }
-            else
-            {
-                resource = reactivated;
-            }
-        }
-        else
-        {
-            resource = BuildDriveFolderResource(teamId, lookup.Item, permissionLevel, now);
-            await _repository.AddAsync(resource, ct);
-        }
+        var resource = await ReactivateOrInsertAsync(
+            inactive,
+            () => BuildDriveFolderResource(teamId, lookup.Item, permissionLevel, now),
+            id => _repository.ReactivateAsync(id, lookup.Item.FullPath, lookup.Item.WebViewLink, now, null, permissionLevel, ct),
+            "Drive folder",
+            ct);
 
         _logger.LogInformation("Linked Drive folder {FolderId} ({FolderName}) to team {TeamId} with permission {Permission}",
             lookup.Item.Id, lookup.Item.Name, teamId, permissionLevel);
@@ -278,35 +255,12 @@ public sealed partial class TeamResourceService : ITeamResourceService
 
         var now = _clock.GetCurrentInstant();
         var inactive = await _repository.FindInactiveByGoogleIdAsync(teamId, fileId, GoogleResourceType.DriveFile, ct);
-        GoogleResource resource;
-        if (inactive is not null)
-        {
-            var reactivated = await _repository.ReactivateAsync(
-                inactive.Id,
-                name: lookup.Item.FullPath,
-                url: lookup.Item.WebViewLink,
-                lastSyncedAt: now,
-                newGoogleId: null,
-                newPermissionLevel: permissionLevel,
-                ct);
-            if (reactivated is null)
-            {
-                _logger.LogWarning(
-                    "Inactive Drive file row {ResourceId} disappeared during reactivation; falling back to insert.",
-                    inactive.Id);
-                resource = BuildDriveFileResource(teamId, lookup.Item, permissionLevel, now);
-                await _repository.AddAsync(resource, ct);
-            }
-            else
-            {
-                resource = reactivated;
-            }
-        }
-        else
-        {
-            resource = BuildDriveFileResource(teamId, lookup.Item, permissionLevel, now);
-            await _repository.AddAsync(resource, ct);
-        }
+        var resource = await ReactivateOrInsertAsync(
+            inactive,
+            () => BuildDriveFileResource(teamId, lookup.Item, permissionLevel, now),
+            id => _repository.ReactivateAsync(id, lookup.Item.FullPath, lookup.Item.WebViewLink, now, null, permissionLevel, ct),
+            "Drive file",
+            ct);
 
         _logger.LogInformation("Linked Drive file {FileId} ({FileName}) to team {TeamId} with permission {Permission}",
             lookup.Item.Id, lookup.Item.Name, teamId, permissionLevel);
@@ -392,35 +346,12 @@ public sealed partial class TeamResourceService : ITeamResourceService
             lookup.Group.NormalizedEmail,
             ct);
 
-        GoogleResource resource;
-        if (inactive is not null)
-        {
-            var reactivated = await _repository.ReactivateAsync(
-                inactive.Id,
-                name: lookup.Group.NormalizedEmail,
-                url: url,
-                lastSyncedAt: now,
-                newGoogleId: lookup.Group.NumericId,
-                newPermissionLevel: null,
-                ct);
-            if (reactivated is null)
-            {
-                _logger.LogWarning(
-                    "Inactive Group row {ResourceId} disappeared during reactivation; falling back to insert.",
-                    inactive.Id);
-                resource = BuildGroupResource(teamId, lookup.Group, url, now);
-                await _repository.AddAsync(resource, ct);
-            }
-            else
-            {
-                resource = reactivated;
-            }
-        }
-        else
-        {
-            resource = BuildGroupResource(teamId, lookup.Group, url, now);
-            await _repository.AddAsync(resource, ct);
-        }
+        var resource = await ReactivateOrInsertAsync(
+            inactive,
+            () => BuildGroupResource(teamId, lookup.Group, url, now),
+            id => _repository.ReactivateAsync(id, lookup.Group.NormalizedEmail, url, now, lookup.Group.NumericId, null, ct),
+            "Group",
+            ct);
 
         _logger.LogInformation("Linked Google Group {GroupEmail} ({GroupName}) to team {TeamId}",
             lookup.Group.NormalizedEmail, lookup.Group.DisplayName, teamId);
@@ -442,6 +373,29 @@ public sealed partial class TeamResourceService : ITeamResourceService
             IsActive = true,
         };
 
+    private async Task<GoogleResource> ReactivateOrInsertAsync(
+        GoogleResource? inactive,
+        Func<GoogleResource> buildFresh,
+        Func<Guid, Task<GoogleResource?>> reactivate,
+        string resourceTypeLabel,
+        CancellationToken ct)
+    {
+        if (inactive is not null)
+        {
+            var reactivated = await reactivate(inactive.Id);
+            if (reactivated is not null)
+                return reactivated;
+
+            _logger.LogWarning(
+                "Inactive {ResourceTypeLabel} row {ResourceId} disappeared during reactivation; falling back to insert.",
+                resourceTypeLabel, inactive.Id);
+        }
+
+        var fresh = buildFresh();
+        await _repository.AddAsync(fresh, ct);
+        return fresh;
+    }
+
     // ==========================================================================
     // Unlink / Deactivate
     // ==========================================================================
@@ -451,6 +405,7 @@ public sealed partial class TeamResourceService : ITeamResourceService
         var existing = await _repository.GetByIdAsync(resourceId, ct);
         if (existing is null)
         {
+            _logger.LogWarning("UnlinkResourceAsync: resource {ResourceId} not found", resourceId);
             return;
         }
 
@@ -495,6 +450,10 @@ public sealed partial class TeamResourceService : ITeamResourceService
         {
             _logger.LogInformation("Updated DrivePermissionLevel to {Level} for resource {ResourceId}", level, resourceId);
         }
+        else
+        {
+            _logger.LogWarning("UpdatePermissionLevelAsync: resource {ResourceId} not found", resourceId);
+        }
     }
 
     public async Task SetRestrictInheritedAccessAsync(Guid resourceId, bool restrict, CancellationToken ct = default)
@@ -502,6 +461,7 @@ public sealed partial class TeamResourceService : ITeamResourceService
         var existing = await _repository.GetByIdAsync(resourceId, ct);
         if (existing is null)
         {
+            _logger.LogWarning("SetRestrictInheritedAccessAsync: resource {ResourceId} not found", resourceId);
             return;
         }
 

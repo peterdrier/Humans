@@ -60,6 +60,7 @@ internal static class ConfigurationMetadataExtensions
 
             // Environment variable secrets
             configRegistry.RegisterEnvironmentVariable("FEEDBACK_API_KEY", "Feedback API", isSensitive: true);
+            configRegistry.RegisterEnvironmentVariable("ISSUES_API_KEY", "Issues API", isSensitive: true);
             configRegistry.RegisterEnvironmentVariable("TICKET_VENDOR_API_KEY", "Ticket Vendor", isSensitive: true,
                 importance: ConfigurationImportance.Recommended);
             configRegistry.RegisterEnvironmentVariable("LOG_API_KEY", "Log API", isSensitive: true);

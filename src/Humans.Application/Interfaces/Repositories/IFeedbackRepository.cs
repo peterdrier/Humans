@@ -1,5 +1,6 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -108,4 +109,26 @@ public interface IFeedbackRepository
     /// </summary>
     Task AddMessageAndSaveReportAsync(
         FeedbackMessage message, FeedbackReport report, CancellationToken ct = default);
+
+    // ==========================================================================
+    // Account-merge fold
+    // ==========================================================================
+
+    /// <summary>
+    /// Bulk-moves feedback authorship from <paramref name="sourceUserId"/> to
+    /// <paramref name="targetUserId"/> across both Feedback-owned tables in a
+    /// single transaction:
+    /// <list type="bullet">
+    ///   <item><c>feedback_reports.UserId</c> (reporter) — re-FK + stamp <c>UpdatedAt</c>.</item>
+    ///   <item><c>feedback_messages.SenderUserId</c> (message author) — re-FK only (no <c>UpdatedAt</c> column).</item>
+    /// </list>
+    /// Plain re-FK — reports and messages are unique events, no dedup. Returns
+    /// the total count of report + message rows attributed to
+    /// <paramref name="targetUserId"/> after the move.
+    /// </summary>
+    Task ReassignToUserAsync(
+        Guid sourceUserId,
+        Guid targetUserId,
+        Instant updatedAt,
+        CancellationToken ct = default);
 }

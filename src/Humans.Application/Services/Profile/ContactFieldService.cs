@@ -6,13 +6,14 @@ using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Profile;
 
 /// <summary>
 /// Service for managing contact fields with visibility controls.
 /// </summary>
-public sealed class ContactFieldService : IContactFieldService
+public sealed class ContactFieldService : IContactFieldService, IUserMerge
 {
     private readonly IContactFieldRepository _repository;
     private readonly IProfileRepository _profileRepository;
@@ -176,6 +177,10 @@ public sealed class ContactFieldService : IContactFieldService
 
         return ContactFieldVisibility.AllActiveProfiles;
     }
+
+    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+        CancellationToken cancellationToken)
+        => _repository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, cancellationToken);
 
     private static List<ContactFieldVisibility> GetAllowedVisibilities(ContactFieldVisibility accessLevel) =>
         accessLevel switch

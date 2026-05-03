@@ -461,7 +461,8 @@ public class TicketSyncServiceTests : IDisposable
             Id = Guid.NewGuid(),
             UserId = userId,
             Email = email,
-            IsOAuth = isOAuth,
+            Provider = isOAuth ? "Google" : null,
+            ProviderKey = isOAuth ? $"test-{Guid.NewGuid()}" : null,
             IsVerified = isVerified,
             CreatedAt = now,
             UpdatedAt = now

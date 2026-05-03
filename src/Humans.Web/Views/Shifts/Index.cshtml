@@ -5,34 +5,31 @@
     var es = Model.EventSettings;
     var isUrgencySort = string.Equals(Model.Sort, "urgency", StringComparison.OrdinalIgnoreCase);
 
-    // Compute date picker bounds — tighten to active period's range
-    var pickerMin = es.GateOpeningDate.PlusDays(es.BuildStartOffset);
-    var pickerMax = es.GateOpeningDate.PlusDays(es.StrikeEndOffset);
-    if (!string.IsNullOrEmpty(Model.FilterPeriod) && Enum.TryParse<ShiftPeriod>(Model.FilterPeriod, true, out var activePeriodEnum))
-    {
-        (pickerMin, pickerMax) = activePeriodEnum switch
-        {
-            ShiftPeriod.Build => (es.GateOpeningDate.PlusDays(es.BuildStartOffset), es.GateOpeningDate.PlusDays(-1)),
-            ShiftPeriod.Event => (es.GateOpeningDate, es.GateOpeningDate.PlusDays(es.EventEndOffset)),
-            ShiftPeriod.Strike => (es.GateOpeningDate.PlusDays(es.EventEndOffset + 1), es.GateOpeningDate.PlusDays(es.StrikeEndOffset)),
-            _ => (pickerMin, pickerMax)
-        };
-    }
+    // Phase date ranges for display on cards
+    var buildFrom = es.GateOpeningDate.PlusDays(es.BuildStartOffset);
+    var buildTo = es.GateOpeningDate.PlusDays(-1);
+    var eventFrom = es.GateOpeningDate;
+    var eventTo = es.GateOpeningDate.PlusDays(es.EventEndOffset);
+    var strikeFrom = es.GateOpeningDate.PlusDays(es.EventEndOffset + 1);
+    var strikeTo = es.GateOpeningDate.PlusDays(es.StrikeEndOffset);
+
+    // Multiselect phase state: default all selected (= no filter)
+    var activePeriods = Model.FilterPeriods;
+    var isBuildActive = activePeriods.Count == 0 || activePeriods.Contains("Build", StringComparer.OrdinalIgnoreCase);
+    var isEventActive = activePeriods.Count == 0 || activePeriods.Contains("Event", StringComparer.OrdinalIgnoreCase);
+    var isStrikeActive = activePeriods.Count == 0 || activePeriods.Contains("Strike", StringComparer.OrdinalIgnoreCase);
+    var allPhasesActive = isBuildActive && isEventActive && isStrikeActive;
 
     // Build sort toggle URLs preserving all current filters
     var sortBaseRoute = new Dictionary<string, string?>();
     if (Model.FilterDepartmentId.HasValue)
         sortBaseRoute["departmentId"] = Model.FilterDepartmentId.Value.ToString();
-    if (!string.IsNullOrEmpty(Model.FilterFromDate))
-        sortBaseRoute["fromDate"] = Model.FilterFromDate;
-    if (!string.IsNullOrEmpty(Model.FilterToDate))
-        sortBaseRoute["toDate"] = Model.FilterToDate;
-    if (!string.IsNullOrEmpty(Model.FilterPeriod))
-        sortBaseRoute["period"] = Model.FilterPeriod;
-    for (var i = 0; i < Model.FilterTagIds.Count; i++)
-        sortBaseRoute[$"tags[{i}]"] = Model.FilterTagIds[i].ToString();
+    for (var si = 0; si < Model.FilterTagIds.Count; si++)
+        sortBaseRoute[$"tags[{si}]"] = Model.FilterTagIds[si].ToString();
+    for (var si = 0; si < activePeriods.Count; si++)
+        sortBaseRoute[$"periods[{si}]"] = activePeriods[si];
     var urgencySortRoute = new Dictionary<string, string?>(sortBaseRoute) { ["sort"] = "urgency" };
-    var deptSortRoute = new Dictionary<string, string?>(sortBaseRoute);
+    var deptSortRoute = new Dictionary<string, string?>(sortBaseRoute) { ["sort"] = "department" };
 }
 
 <style>
@@ -44,19 +41,90 @@
     }
 </style>
 <div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>@Localizer["Shifts_BrowseTitle"]</h2>
+    @* === Tabs: Browse / My Shifts === *@
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <ul class="nav nav-tabs shifts-nav-tabs border-0" role="tablist">
+            <li class="nav-item" role="presentation">
+                <a class="nav-link active" asp-action="Index" role="tab" aria-selected="true" aria-current="page">@Localizer["Shifts_BrowseTitle"]</a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link" asp-action="Mine" role="tab" aria-selected="false">
+                    @Localizer["Shifts_MyShiftsTitle"]
+                    @if (Model.MySignupCount > 0)
+                    {
+                        <span class="badge bg-primary ms-1">@Model.MySignupCount</span>
+                    }
+                </a>
+            </li>
+        </ul>
         <div class="d-flex gap-2">
-            <vc:access-matrix section="Shifts" />
-            <a asp-controller="ShiftDashboard" asp-action="Index" class="btn btn-outline-warning" authorize-policy="ShiftDepartmentManager"><i class="fa-solid fa-gauge-high me-1"></i>Dashboard <i class="fa-solid fa-lock auth-lock-icon"></i></a>
-            <a asp-action="Settings" class="btn btn-outline-secondary" authorize-policy="AdminOnly"><i class="fa-solid fa-gear me-1"></i>Settings <i class="fa-solid fa-lock auth-lock-icon"></i></a>
-            <a asp-action="Mine" class="btn btn-outline-primary">@Localizer["Shifts_MyShiftsTitle"]</a>
+            @* Hide the info button but keep the modal in the DOM for the "Learn more" button *@
+            <span class="shifts-hidden-info-btn"><vc:access-matrix section="Shifts" /></span>
+            <a asp-controller="ShiftDashboard" asp-action="Index" class="btn btn-outline-warning btn-sm" authorize-policy="ShiftDepartmentManager"><i class="fa-solid fa-gauge-high me-1"></i>Dashboard <i class="fa-solid fa-lock auth-lock-icon"></i></a>
+            <a asp-action="Settings" class="btn btn-outline-secondary btn-sm" authorize-policy="AdminOnly"><i class="fa-solid fa-gear me-1"></i>Settings <i class="fa-solid fa-lock auth-lock-icon"></i></a>
         </div>
     </div>
 
-    <vc:temp-data-alerts />
+    @* Toast alerts — bottom-right, auto-dismiss *@
+    <div class="shifts-toast-container">
+        <vc:temp-data-alerts />
+    </div>
 
-    <form method="get" class="row g-2 mb-4 align-items-end">
+    @* === Hero Banner === *@
+    <div class="shifts-hero-banner mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <div class="shifts-hero-icon">
+                <i class="fa-solid fa-handshake-angle fa-2x"></i>
+            </div>
+            <div>
+                <strong>@Localizer["Shifts_HeroTitle"]</strong>
+                <p class="mb-0 small text-muted">@Localizer["Shifts_HeroSubtitle"]</p>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" data-bs-toggle="modal" data-bs-target="#sectionHelp-Shifts">
+                <i class="fa-solid fa-circle-info me-1"></i>@Localizer["Shifts_LearnMore"]
+            </button>
+        </div>
+    </div>
+
+    @* === Phase Multiselect Cards === *@
+    <div class="row g-2 mb-3">
+        <div class="col-md-4">
+            <div class="phase-card phase-card-build @(isBuildActive ? "phase-card-active" : "")" data-phase="Build">
+                <div class="form-check mb-0">
+                    <input class="form-check-input phase-check" type="checkbox" id="phase-build" value="Build" @(isBuildActive ? "checked" : "") />
+                    <label class="form-check-label" for="phase-build">
+                        <span class="fw-semibold">@Localizer["Shifts_SetUp"]</span>
+                        <br /><small class="text-muted">@buildFrom.ToDisplayShiftDate() — @buildTo.ToDisplayShiftDate()</small>
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="phase-card phase-card-event @(isEventActive ? "phase-card-active" : "")" data-phase="Event">
+                <div class="form-check mb-0">
+                    <input class="form-check-input phase-check" type="checkbox" id="phase-event" value="Event" @(isEventActive ? "checked" : "") />
+                    <label class="form-check-label" for="phase-event">
+                        <span class="fw-semibold">@Localizer["Shifts_Event"]</span>
+                        <br /><small class="text-muted">@eventFrom.ToDisplayShiftDate() — @eventTo.ToDisplayShiftDate()</small>
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="phase-card phase-card-strike @(isStrikeActive ? "phase-card-active" : "")" data-phase="Strike">
+                <div class="form-check mb-0">
+                    <input class="form-check-input phase-check" type="checkbox" id="phase-strike" value="Strike" @(isStrikeActive ? "checked" : "") />
+                    <label class="form-check-label" for="phase-strike">
+                        <span class="fw-semibold">@Localizer["Shifts_Strike"]</span>
+                        <br /><small class="text-muted">@strikeFrom.ToDisplayShiftDate() — @strikeTo.ToDisplayShiftDate()</small>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* === Filters Row: Department + Sort === *@
+    <form method="get" id="shifts-filter-form" class="row g-2 mb-3 align-items-end">
         <div class="col-auto">
             <label class="form-label mb-1">@Localizer["Shifts_Department"]</label>
             <select name="departmentId" class="form-select form-select-sm">
@@ -68,56 +136,35 @@
             </select>
         </div>
         <div class="col-auto">
-            <label class="form-label mb-1">@Localizer["Shifts_From"]</label>
-            <input type="date" name="fromDate" class="form-control form-control-sm" value="@Model.FilterFromDate"
-                   min="@pickerMin.ToString("yyyy-MM-dd", null)"
-                   max="@pickerMax.ToString("yyyy-MM-dd", null)" />
+            <div class="btn-group" role="group" aria-label="Sort order">
+                <a href="@Url.Action("Index", urgencySortRoute)"
+                   class="btn btn-sm @(isUrgencySort ? "btn-warning" : "btn-outline-warning")" title="@Localizer["Shifts_SortUrgencyHint"]">
+                    <i class="fa-solid fa-fire me-1"></i>@Localizer["Shifts_SortUrgency"]
+                </a>
+                <a href="@Url.Action("Index", deptSortRoute)"
+                   class="btn btn-sm @(!isUrgencySort ? "btn-warning" : "btn-outline-warning")" title="@Localizer["Shifts_SortDeptHint"]">
+                    <i class="fa-solid fa-building me-1"></i>@Localizer["Shifts_SortDept"]
+                </a>
+            </div>
         </div>
-        <div class="col-auto">
-            <label class="form-label mb-1">@Localizer["Shifts_To"]</label>
-            <input type="date" name="toDate" class="form-control form-control-sm" value="@Model.FilterToDate"
-                   min="@pickerMin.ToString("yyyy-MM-dd", null)"
-                   max="@pickerMax.ToString("yyyy-MM-dd", null)" />
-        </div>
-        @if (Model.FilterDepartmentId.HasValue || !string.IsNullOrEmpty(Model.FilterFromDate) || !string.IsNullOrEmpty(Model.FilterToDate) || !string.IsNullOrEmpty(Model.FilterPeriod) || Model.FilterTagIds.Count > 0 || !string.IsNullOrEmpty(Model.Sort))
+        @if (Model.FilterDepartmentId.HasValue || activePeriods.Count > 0 && !allPhasesActive || Model.FilterTagIds.Count > 0 || Model.Sort == "department")
         {
             <div class="col-auto">
                 <a asp-action="Index" class="btn btn-sm btn-outline-secondary">@Localizer["Shifts_ClearFilters"]</a>
             </div>
         }
-        <input type="hidden" name="period" value="@Model.FilterPeriod" />
         <input type="hidden" name="sort" value="@Model.Sort" />
         @foreach (var tagId in Model.FilterTagIds)
         {
             <input type="hidden" name="tags" value="@tagId" />
         }
+        @foreach (var p in activePeriods)
+        {
+            <input type="hidden" name="periods" value="@p" />
+        }
     </form>
-    @{
-        var activePeriod = Model.FilterPeriod ?? "";
-    }
-    <div class="d-flex flex-wrap gap-3 mb-3 align-items-center">
-        <div class="btn-group" role="group" aria-label="Period filter">
-            <a href="@Url.Action("Index", new { departmentId = Model.FilterDepartmentId, fromDate = Model.FilterFromDate, toDate = Model.FilterToDate, sort = Model.Sort })"
-               class="btn btn-sm @(string.IsNullOrEmpty(activePeriod) ? "btn-primary" : "btn-outline-primary")">@Localizer["Shifts_All"]</a>
-            <a href="@Url.Action("Index", new { departmentId = Model.FilterDepartmentId, period = "Build", sort = Model.Sort })"
-               class="btn btn-sm @(activePeriod == "Build" ? "btn-info" : "btn-outline-info")">@Localizer["Shifts_SetUp"]</a>
-            <a href="@Url.Action("Index", new { departmentId = Model.FilterDepartmentId, period = "Event", sort = Model.Sort })"
-               class="btn btn-sm @(activePeriod == "Event" ? "btn-success" : "btn-outline-success")">@Localizer["Shifts_Event"]</a>
-            <a href="@Url.Action("Index", new { departmentId = Model.FilterDepartmentId, period = "Strike", sort = Model.Sort })"
-               class="btn btn-sm @(activePeriod == "Strike" ? "btn-secondary" : "btn-outline-secondary")">@Localizer["Shifts_Strike"]</a>
-        </div>
-        <div class="btn-group" role="group" aria-label="Sort order">
-            <a href="@Url.Action("Index", urgencySortRoute)"
-               class="btn btn-sm @(isUrgencySort ? "btn-warning" : "btn-outline-warning")" title="@Localizer["Shifts_SortUrgencyHint"]">
-                <i class="fa-solid fa-fire me-1"></i>@Localizer["Shifts_SortUrgency"]
-            </a>
-            <a href="@Url.Action("Index", deptSortRoute)"
-               class="btn btn-sm @(!isUrgencySort ? "btn-warning" : "btn-outline-warning")" title="@Localizer["Shifts_SortDeptHint"]">
-                <i class="fa-solid fa-building me-1"></i>@Localizer["Shifts_SortDept"]
-            </a>
-        </div>
-    </div>
 
+    @* === Tag Filters with Preferences as Defaults === *@
     @if (Model.AllTags.Count > 0)
     {
         <div class="mb-3">
@@ -126,82 +173,115 @@
                 @foreach (var tag in Model.AllTags)
                 {
                     var isActive = Model.FilterTagIds.Contains(tag.Id);
+                    var isPreferred = Model.UserPreferredTagIds.Contains(tag.Id);
                     var newTagIds = isActive
                         ? Model.FilterTagIds.Where(id => id != tag.Id).ToList()
                         : Model.FilterTagIds.Concat(new[] { tag.Id }).ToList();
                     var routeValues = new Dictionary<string, string?>();
                     if (Model.FilterDepartmentId.HasValue)
                         routeValues["departmentId"] = Model.FilterDepartmentId.Value.ToString();
-                    if (!string.IsNullOrEmpty(Model.FilterFromDate))
-                        routeValues["fromDate"] = Model.FilterFromDate;
-                    if (!string.IsNullOrEmpty(Model.FilterToDate))
-                        routeValues["toDate"] = Model.FilterToDate;
-                    if (!string.IsNullOrEmpty(Model.FilterPeriod))
-                        routeValues["period"] = Model.FilterPeriod;
                     if (!string.IsNullOrEmpty(Model.Sort))
                         routeValues["sort"] = Model.Sort;
                     for (var i = 0; i < newTagIds.Count; i++)
                         routeValues[$"tags[{i}]"] = newTagIds[i].ToString();
+                    for (var i = 0; i < activePeriods.Count; i++)
+                        routeValues[$"periods[{i}]"] = activePeriods[i];
                     @if (isActive)
                     {
                         <a href="@Url.Action("Index", routeValues)" class="btn btn-sm btn-primary">
+                            @if (isPreferred) { <i class="fa-solid fa-star me-1"></i> }
                             @tag.Name <i class="fa-solid fa-xmark ms-1"></i>
                         </a>
                     }
                     else
                     {
-                        <a href="@Url.Action("Index", routeValues)" class="btn btn-sm btn-outline-primary">
+                        <a href="@Url.Action("Index", routeValues)" class="btn btn-sm btn-outline-primary @(isPreferred ? "shift-tag-preferred" : "")">
+                            @if (isPreferred) { <i class="fa-solid fa-star me-1 text-warning"></i> }
                             @tag.Name
                         </a>
                     }
                 }
             </div>
-        </div>
-    }
-
-    @if (Model.AllTags.Count > 0)
-    {
-        <div class="mb-3">
-            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#tag-preferences-panel">
-                <i class="fa-solid fa-sliders me-1"></i>@Localizer["Shifts_SetPreferences"]
-                @if (Model.UserPreferredTagIds.Count > 0)
-                {
-                    <span class="badge bg-primary ms-1">@Model.UserPreferredTagIds.Count</span>
-                }
-            </button>
-            <div class="collapse @(Model.UserPreferredTagIds.Count == 0 ? "" : "")" id="tag-preferences-panel">
-                <div class="card card-body mt-2">
-                    <p class="small text-muted mb-2">@Localizer["Shifts_PreferencesHelp"] <i class="fa-solid fa-star text-warning"></i></p>
-                    <form asp-action="SaveTagPreferences" method="post">
-                        @Html.AntiForgeryToken()
-                        <div class="d-flex flex-wrap gap-2 mb-2">
-                            @foreach (var tag in Model.AllTags)
-                            {
-                                var isPreferred = Model.UserPreferredTagIds.Contains(tag.Id);
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="tagIds" value="@tag.Id" id="pref-@tag.Id.ToString("N")"
-                                           @if (isPreferred) { <text>checked</text> } />
-                                    <label class="form-check-label" for="pref-@tag.Id.ToString("N")">@tag.Name</label>
-                                </div>
-                            }
-                        </div>
-                        <button type="submit" class="btn btn-sm btn-primary">@Localizer["Shifts_SavePreferences"]</button>
-                    </form>
+            <div class="mt-2">
+                <button class="btn btn-sm btn-link text-muted p-0" type="button" data-bs-toggle="collapse" data-bs-target="#tag-preferences-panel">
+                    <i class="fa-solid fa-sliders me-1"></i>@Localizer["Shifts_EditPreferences"]
+                </button>
+                <div class="collapse" id="tag-preferences-panel">
+                    <div class="card card-body mt-2">
+                        <p class="small text-muted mb-2">@Localizer["Shifts_PreferencesHelp"] <i class="fa-solid fa-star text-warning"></i></p>
+                        <form asp-action="SaveTagPreferences" method="post">
+                            @Html.AntiForgeryToken()
+                            <div class="d-flex flex-wrap gap-2 mb-2">
+                                @foreach (var tag in Model.AllTags)
+                                {
+                                    var isPreferred = Model.UserPreferredTagIds.Contains(tag.Id);
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="tagIds" value="@tag.Id" id="pref-@tag.Id.ToString("N")"
+                                               @if (isPreferred) { <text>checked</text> } />
+                                        <label class="form-check-label" for="pref-@tag.Id.ToString("N")">@tag.Name</label>
+                                    </div>
+                                }
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-primary">@Localizer["Shifts_SavePreferences"]</button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
     }
 
     <script>
+        // Department dropdown auto-submit
         document.querySelectorAll('[name="departmentId"]').forEach(function(el) {
             el.addEventListener('change', function() { this.form.submit(); });
         });
-        document.querySelectorAll('[name="fromDate"], [name="toDate"]').forEach(function(el) {
-            el.addEventListener('change', function() {
-                // Dates take precedence — clear the period tab so results aren't constrained
-                this.form.querySelector('[name="period"]').value = '';
-                this.form.submit();
+
+        // Phase multiselect: toggle checkboxes and navigate
+        document.querySelectorAll('.phase-check').forEach(function(cb) {
+            cb.addEventListener('change', function() {
+                var checked = Array.from(document.querySelectorAll('.phase-check:checked')).map(function(c) { return c.value; });
+                // If all unchecked, re-select all (= no filter)
+                if (checked.length === 0) {
+                    document.querySelectorAll('.phase-check').forEach(function(c) { c.checked = true; });
+                    checked = ['Build', 'Event', 'Strike'];
+                }
+                // Build URL with current filters
+                var params = new URLSearchParams();
+                @if (Model.FilterDepartmentId.HasValue) {
+                    <text>params.set('departmentId', '@Model.FilterDepartmentId.Value');</text>
+                }
+                @if (!string.IsNullOrEmpty(Model.Sort)) {
+                    <text>params.set('sort', '@Model.Sort');</text>
+                }
+                // Only add periods if not all 3 are selected
+                if (checked.length < 3) {
+                    checked.forEach(function(p) { params.append('periods', p); });
+                }
+                @foreach (var tagId in Model.FilterTagIds) {
+                    <text>params.append('tags', '@tagId');</text>
+                }
+                var url = '@Url.Action("Index")' + '?' + params.toString();
+                window.location.href = url;
             });
+        });
+
+        // Clicking on phase card toggles its checkbox
+        document.querySelectorAll('.phase-card').forEach(function(card) {
+            card.addEventListener('click', function(e) {
+                // Let native checkbox/label behavior handle clicks on the input or its label
+                if (e.target.closest('.form-check-input, .form-check-label')) return;
+                var cb = this.querySelector('.phase-check');
+                cb.checked = !cb.checked;
+                cb.dispatchEvent(new Event('change'));
+            });
+        });
+
+        // Auto-dismiss toast alerts after 4 seconds
+        document.querySelectorAll('.shifts-toast-container .alert').forEach(function(alert) {
+            setTimeout(function() {
+                var bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+                bsAlert.close();
+            }, 4000);
         });
     </script>
 
@@ -263,13 +343,13 @@
                             <small class="text-muted text-nowrap">@rotaGroup.TotalConfirmed/@rotaGroup.TotalSlots</small>
                         </div>
                     </div>
+                    @if (!string.IsNullOrEmpty(rotaGroup.Rota.Description))
+                    {
+                        <div class="text-muted small mt-1">@Html.SanitizedMarkdown(rotaGroup.Rota.Description)</div>
+                    }
                 </div>
                 <div class="collapse" id="@urgRotaId">
                     <div class="card-body pt-2">
-                        @if (!string.IsNullOrEmpty(rotaGroup.Rota.Description))
-                        {
-                            <div class="text-muted small mb-2">@Html.SanitizedMarkdown(rotaGroup.Rota.Description)</div>
-                        }
                         @if (!string.IsNullOrEmpty(rotaGroup.Rota.PracticalInfo))
                         {
                             <div class="text-muted small mb-2"><i class="fa-solid fa-circle-info me-1"></i>@Html.SanitizedMarkdown(rotaGroup.Rota.PracticalInfo)</div>
@@ -291,7 +371,9 @@
                                 FilterFromDate = Model.FilterFromDate,
                                 FilterToDate = Model.FilterToDate,
                                 FilterPeriod = Model.FilterPeriod,
-                                FilterTagIds = Model.FilterTagIds
+                                FilterPeriods = Model.FilterPeriods,
+                                FilterTagIds = Model.FilterTagIds,
+                                Sort = Model.Sort
                             })
                         }
                         @if (!isBuildStrike || hasTimedShifts)
@@ -308,7 +390,9 @@
                                 FilterFromDate = Model.FilterFromDate,
                                 FilterToDate = Model.FilterToDate,
                                 FilterPeriod = Model.FilterPeriod,
-                                FilterTagIds = Model.FilterTagIds
+                                FilterPeriods = Model.FilterPeriods,
+                                FilterTagIds = Model.FilterTagIds,
+                                Sort = Model.Sort
                             })
                         }
                     </div>
@@ -347,6 +431,10 @@
                             <small class="text-muted text-nowrap">@deptTotalConfirmed/@deptTotalSlots</small>
                         </div>
                     </div>
+                    @if (!string.IsNullOrEmpty(dept.TeamDescription))
+                    {
+                        <div class="text-muted small mt-1">@Html.SanitizedMarkdown(dept.TeamDescription)</div>
+                    }
                 </div>
                 <div class="collapse @(deptExpanded ? "show" : "")" id="@deptId">
                     <div class="card-body pt-2">
@@ -404,13 +492,13 @@
                                                 <small class="text-muted text-nowrap">@rotaGroup.TotalConfirmed/@rotaGroup.TotalSlots</small>
                                             </div>
                                         </div>
+                                        @if (!string.IsNullOrEmpty(rotaGroup.Rota.Description))
+                                        {
+                                            <div class="text-muted small mt-1">@Html.SanitizedMarkdown(rotaGroup.Rota.Description)</div>
+                                        }
                                     </div>
                                     <div class="collapse" id="@rotaId">
                                         <div class="card-body pt-2">
-                                            @if (!string.IsNullOrEmpty(rotaGroup.Rota.Description))
-                                            {
-                                                <div class="text-muted small mb-2">@Html.SanitizedMarkdown(rotaGroup.Rota.Description)</div>
-                                            }
                                             @if (!string.IsNullOrEmpty(rotaGroup.Rota.PracticalInfo))
                                             {
                                                 <div class="text-muted small mb-2"><i class="fa-solid fa-circle-info me-1"></i>@Html.SanitizedMarkdown(rotaGroup.Rota.PracticalInfo)</div>
@@ -432,7 +520,9 @@
                                                     FilterFromDate = Model.FilterFromDate,
                                                     FilterToDate = Model.FilterToDate,
                                                     FilterPeriod = Model.FilterPeriod,
-                                                    FilterTagIds = Model.FilterTagIds
+                                                    FilterPeriods = Model.FilterPeriods,
+                                                    FilterTagIds = Model.FilterTagIds,
+                                                    Sort = Model.Sort
                                                 })
                                             }
                                             @if (!isBuildStrike || hasTimedShifts)
@@ -449,7 +539,9 @@
                                                     FilterFromDate = Model.FilterFromDate,
                                                     FilterToDate = Model.FilterToDate,
                                                     FilterPeriod = Model.FilterPeriod,
-                                                    FilterTagIds = Model.FilterTagIds
+                                                    FilterPeriods = Model.FilterPeriods,
+                                                    FilterTagIds = Model.FilterTagIds,
+                                                    Sort = Model.Sort
                                                 })
                                             }
                                         </div>

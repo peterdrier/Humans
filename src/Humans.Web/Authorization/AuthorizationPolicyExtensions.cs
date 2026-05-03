@@ -1,5 +1,6 @@
 using Humans.Application.Authorization;
 using Humans.Domain.Constants;
+using Humans.Web.Authorization.Handlers;
 using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
 
@@ -20,19 +21,40 @@ public static class AuthorizationPolicyExtensions
         services.AddSingleton<IAuthorizationHandler, HumanAdminOnlyHandler>();
 
         // Resource-based authorization handlers (scoped — they depend on scoped services)
+        services.AddScoped<IAuthorizationHandler, AgentRateLimitHandler>();
         services.AddScoped<IAuthorizationHandler, BudgetAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, CampAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, ContainerAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, TeamAuthorizationHandler>();
+        services.AddSingleton<IAuthorizationHandler, IssuesAuthorizationHandler>();
 
         // Service-layer enforcement handlers (singleton — no scoped dependencies)
         services.AddSingleton<IAuthorizationHandler, RoleAssignmentAuthorizationHandler>();
+        services.AddSingleton<IAuthorizationHandler, UserEmailAuthorizationHandler>();
 
         services.AddAuthorization(options =>
         {
             // Simple role-based policies
             options.AddPolicy(PolicyNames.AdminOnly, policy =>
                 policy.RequireRole(RoleNames.Admin));
+
+            // AnyAdminRole gates the admin-shell entry point (/Admin). The 11 roles
+            // mirror the composite OR-chain in _Layout.cshtml that decides whether
+            // to show the "Admin" top-nav link. Sidebar items inside /Admin are
+            // filtered per-item, so each role only sees what they can act on.
+            options.AddPolicy(PolicyNames.AnyAdminRole, policy =>
+                policy.RequireRole(
+                    RoleNames.Admin,
+                    RoleNames.Board,
+                    RoleNames.HumanAdmin,
+                    RoleNames.TeamsAdmin,
+                    RoleNames.CampAdmin,
+                    RoleNames.TicketAdmin,
+                    RoleNames.FeedbackAdmin,
+                    RoleNames.FinanceAdmin,
+                    RoleNames.NoInfoAdmin,
+                    RoleNames.VolunteerCoordinator,
+                    RoleNames.ConsentCoordinator));
 
             options.AddPolicy(PolicyNames.BoardOnly, policy =>
                 policy.RequireRole(RoleNames.Board));
@@ -86,12 +108,12 @@ public static class AuthorizationPolicyExtensions
             options.AddPolicy(PolicyNames.VolunteerManager, policy =>
                 policy.RequireRole(RoleNames.Admin, RoleNames.VolunteerCoordinator));
 
-            options.AddPolicy(PolicyNames.VolunteerSectionAccess, policy =>
-                policy.RequireRole(RoleNames.TeamsAdmin, RoleNames.Board, RoleNames.Admin,
-                    RoleNames.VolunteerCoordinator));
-
             options.AddPolicy(PolicyNames.MedicalDataViewer, policy =>
                 policy.RequireRole(RoleNames.Admin, RoleNames.NoInfoAdmin));
+
+            // Agent rate-limit policy
+            options.AddPolicy(PolicyNames.AgentRateLimit, policy =>
+                policy.AddRequirements(new AgentRateLimitRequirement()));
 
             // Composite policies using custom requirements
             options.AddPolicy(PolicyNames.ActiveMemberOrShiftAccess, policy =>

@@ -9,7 +9,7 @@ namespace Humans.Application.DTOs;
 /// uses to match vendor buyer/attendee emails to users.
 /// Read-only projection owned by <c>ITicketRepository</c>.
 /// </summary>
-public record UserEmailLookupEntry(string Email, Guid UserId, bool IsOAuth);
+public record UserEmailLookupEntry(string Email, Guid UserId, bool IsGoogle);
 
 /// <summary>
 /// An attendee row projected for the event-participation reconciliation pass.

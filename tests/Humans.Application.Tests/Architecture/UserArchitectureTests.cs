@@ -1,3 +1,4 @@
+using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
@@ -213,5 +214,44 @@ public class UserArchitectureTests
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(IUserRepository));
+    }
+
+    // ── UserEmail surface — Provider-parameterized naming (PR 4) ────────────
+
+    [HumansFact]
+    public void NoOAuthTokenInUserEmailServiceOrRepositoryMethodNames()
+    {
+        var offenders = new List<string>();
+
+        // Tests project already references Humans.Infrastructure (csproj), so use
+        // typeof(...) for compile-time checking. A future rename of UserEmailRepository
+        // breaks the test build loudly instead of silently passing.
+        var typesToScan = new[]
+        {
+            typeof(Humans.Application.Interfaces.Profiles.IUserEmailService),
+            typeof(Humans.Infrastructure.Repositories.Profiles.UserEmailRepository),
+            typeof(Humans.Application.Interfaces.Repositories.IUserEmailRepository),
+        };
+
+        foreach (var t in typesToScan)
+        {
+            foreach (var m in t.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            {
+                if (m.Name.Contains("OAuth", StringComparison.OrdinalIgnoreCase))
+                    offenders.Add($"{t.Name}.{m.Name} (method)");
+            }
+            foreach (var p in t.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            {
+                if (p.Name.Contains("OAuth", StringComparison.OrdinalIgnoreCase))
+                    offenders.Add($"{t.Name}.{p.Name} (property)");
+            }
+        }
+
+        offenders.Should().BeEmpty(
+            because: "PR 4 of the email-identity-decoupling spec drops the 'OAuth' token from " +
+                     "IUserEmailService / UserEmailRepository method/property names. " +
+                     "Provider-specific operations are parameterized via a Provider arg. " +
+                     "Offenders: {0}",
+            string.Join("; ", offenders));
     }
 }

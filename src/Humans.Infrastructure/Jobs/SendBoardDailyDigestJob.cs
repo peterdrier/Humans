@@ -137,8 +137,8 @@ public class SendBoardDailyDigestJob : IRecurringJob
             var teamJoinRequestCount = await _teamService.GetTotalPendingJoinRequestCountAsync(cancellationToken);
 
             // Pending consents (same logic as Admin digest).
-            var allUserIds = await _userService.GetAllUserIdsAsync(cancellationToken);
-            var allUserIdsList = allUserIds.ToList();
+            var allUsers = await _userService.GetAllUsersAsync(cancellationToken);
+            var allUserIdsList = allUsers.Select(u => u.Id).ToList();
             var usersWithAllConsents = await _membershipCalculator
                 .GetUsersWithAllRequiredConsentsAsync(allUserIdsList, cancellationToken);
 
@@ -154,7 +154,8 @@ public class SendBoardDailyDigestJob : IRecurringJob
                 !usersWithAllConsents.Contains(id) ||
                 (leadSet.Contains(id) && !leadsWithAllConsents.Contains(id)));
 
-            var pendingDeletionsCount = await _userService.GetPendingDeletionCountAsync(cancellationToken);
+            // Pending deletions count derived from already-loaded user list.
+            var pendingDeletionsCount = allUsers.Count(u => u.DeletionRequestedAt != null);
 
             // Only skip if both no approvals AND all counts are zero.
             var hasOutstandingItems = onboardingReviewCount > 0 || stillOnboardingCount > 0

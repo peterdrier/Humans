@@ -345,4 +345,50 @@ public sealed class CampaignRepository : ICampaignRepository
                 cg.LatestEmailStatus))
             .ToListAsync(ct);
     }
+
+    // ==========================================================================
+    // Account-merge fold
+    // ==========================================================================
+
+    public async Task<int> ReassignGrantsToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default)
+    {
+        _ = updatedAt; // CampaignGrant has no UpdatedAt; arg kept for signature parity.
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        var sourceRows = await ctx.CampaignGrants
+            .Where(g => g.UserId == sourceUserId)
+            .ToListAsync(ct);
+
+        var targetCampaignIds = await ctx.CampaignGrants
+            .Where(g => g.UserId == targetUserId)
+            .Select(g => g.CampaignId)
+            .ToListAsync(ct);
+        var targetCampaignIdSet = new HashSet<Guid>(targetCampaignIds);
+
+        foreach (var src in sourceRows)
+        {
+            if (targetCampaignIdSet.Contains(src.CampaignId))
+            {
+                // Target already has a grant on this campaign — target wins.
+                ctx.CampaignGrants.Remove(src);
+            }
+            else
+            {
+                src.UserId = targetUserId;
+                // Track this campaign so a hypothetical second source row on the
+                // same campaign also drops (defensive — current schema has no
+                // unique index, but the service contract is one grant per user
+                // per campaign).
+                targetCampaignIdSet.Add(src.CampaignId);
+            }
+        }
+
+        await ctx.SaveChangesAsync(ct);
+
+        return await ctx.CampaignGrants
+            .CountAsync(g => g.UserId == targetUserId, ct);
+    }
 }

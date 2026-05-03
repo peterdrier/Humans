@@ -66,6 +66,8 @@
   <data name="Nav_Admin" xml:space="preserve"><value>Admin</value></data>
   <data name="Nav_OnboardingReview" xml:space="preserve"><value>Coda di revisione</value></data>
   <data name="Nav_MyFeedback" xml:space="preserve"><value>Il mio feedback</value></data>
+  <data name="Nav_Issues" xml:space="preserve"><value>Segnalazioni</value></data>
+  <data name="Issue_Unavailable" xml:space="preserve"><value>Questa segnalazione non è disponibile — potrebbe essere stata rimossa, o non hai accesso ad essa.</value></data>
 
 
   <!-- ======================== -->
@@ -531,10 +533,6 @@
   <data name="Teams_NotOnAnyTeam" xml:space="preserve"><value>Non ha ancora aderito a nessun team.</value></data>
   <data name="Teams_NoOtherTeams" xml:space="preserve"><value>Nessun altro team disponibile.</value></data>
   <data name="Teams_System" xml:space="preserve"><value>Sistema</value></data>
-
-  <!-- Vol/Teams landing: Browse Shifts CTA (#534) -->
-  <data name="VolTeams_BrowseShiftsBanner" xml:space="preserve"><value>Cerchi turni? Guardali tutti qui, o scegli una squadra qui sotto.</value></data>
-  <data name="VolTeams_BrowseShiftsButton" xml:space="preserve"><value>Vedi turni</value></data>
 
   <!-- Team Detail View -->
   <data name="TeamDetail_NoDescription" xml:space="preserve"><value>Nessuna descrizione fornita.</value></data>
@@ -1285,6 +1283,17 @@
 &lt;p&gt;Grazie per aiutarci a migliorare!&lt;/p&gt;
 &lt;p&gt;Il team Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = original description, {2} = response message</comment></data>
 
+  <!-- Issue Comment Email -->
+  <data name="Email_IssueComment_Subject" xml:space="preserve"><value>Nuovo commento sulla tua issue: {0}</value></data>
+  <data name="Email_IssueComment_Body" xml:space="preserve"><value>&lt;h2&gt;Nuovo commento sulla tua issue&lt;/h2&gt;
+&lt;p&gt;Ciao {0},&lt;/p&gt;
+&lt;p&gt;C'è un nuovo commento sulla tua issue:&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Issue:&lt;/strong&gt; {1}&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Commento:&lt;/strong&gt;&lt;/p&gt;
+&lt;blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #666;"&gt;{2}&lt;/blockquote&gt;
+&lt;p&gt;&lt;a href="{3}"&gt;Apri issue&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;— Il team Humans&lt;/p&gt;</value><comment>{0} = display name, {1} = issue title, {2} = comment HTML, {3} = issue URL</comment></data>
+
   <!-- Feedback Widget -->
   <data name="Feedback_Button" xml:space="preserve"><value>Feedback</value></data>
   <data name="Feedback_Title" xml:space="preserve"><value>Invia Feedback</value></data>
@@ -1638,7 +1647,6 @@
   <data name="Emails_Header_Status" xml:space="preserve"><value>Stato</value></data>
   <data name="Emails_Header_Notifications" xml:space="preserve"><value>Notifiche</value></data>
   <data name="Emails_Header_Visibility" xml:space="preserve"><value>Visibilità profilo</value></data>
-  <data name="Emails_SignIn" xml:space="preserve"><value>Accesso</value></data>
   <data name="Emails_MergePending" xml:space="preserve"><value>Unione in sospeso</value></data>
   <data name="Emails_Verified" xml:space="preserve"><value>Verificata</value></data>
   <data name="Emails_StatusPending" xml:space="preserve"><value>In sospeso</value></data>
@@ -1690,6 +1698,10 @@
   <data name="Shifts_SetPreferences" xml:space="preserve"><value>Imposta le tue preferenze</value></data>
   <data name="Shifts_PreferencesHelp" xml:space="preserve"><value>Seleziona i tag che corrispondono al tipo di lavoro che ti piace. I turni corrispondenti saranno evidenziati con una stella.</value></data>
   <data name="Shifts_SavePreferences" xml:space="preserve"><value>Salva preferenze</value></data>
+  <data name="Shifts_HeroTitle" xml:space="preserve"><value>Trova il tuo turno perfetto</value></data>
+  <data name="Shifts_HeroSubtitle" xml:space="preserve"><value>Esplora le opzioni di volontariato, filtra per fase o reparto e iscriviti ai turni più adatti a te.</value></data>
+  <data name="Shifts_LearnMore" xml:space="preserve"><value>Scopri di più</value></data>
+  <data name="Shifts_EditPreferences" xml:space="preserve"><value>Modifica preferenze</value></data>
   <data name="Shifts_NotOpenYet" xml:space="preserve"><value>I turni non sono ancora aperti. Solo coordinatori e admin possono vedere questa pagina.</value></data>
   <data name="Shifts_NoShiftsAvailable" xml:space="preserve"><value>Nessun turno disponibile al momento.</value></data>
   <data name="Shifts_AllShiftsFull" xml:space="preserve"><value>Tutti i turni di {0} sono completi.</value><comment>{0} = period name</comment></data>
@@ -1745,6 +1757,7 @@
   <data name="Shifts_GeneralAvailability" xml:space="preserve"><value>Disponibilità generale</value></data>
   <data name="Shifts_AvailabilityHelp" xml:space="preserve"><value>Segna i giorni in cui sei disponibile. I coordinatori possono vedere chi è disponibile quando assegnano i turni.</value></data>
   <data name="Shifts_SaveAvailability" xml:space="preserve"><value>Salva disponibilità</value></data>
+  <data name="Shifts_DaysSelected" xml:space="preserve"><value>giorni selezionati</value></data>
   <data name="Shifts_SlotsFull" xml:space="preserve"><value>Alcuni giorni hanno ancora bisogno di aiuto, ma tutti i posti disponibili sono al completo. Riprova più tardi nel caso si liberino dei posti.</value></data>
 
   <data name="ShiftDash_Title" xml:space="preserve"><value>Dashboard turni</value></data>
@@ -1846,6 +1859,23 @@
   <data name="Privacy_ContactBody" xml:space="preserve"><value>Per domande o dubbi su questa politica, contatta il nostro Responsabile della Protezione dei Dati a {0}.</value><comment>{0} = DPO email</comment></data>
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>Se non sei soddisfatto della nostra risposta, hai il diritto di presentare un reclamo all'Agenzia Spagnola per la Protezione dei Dati (AEPD) a {0}.</value><comment>{0} = AEPD URL</comment></data>
 
+  <!-- Agent Widget -->
+  <data name="Agent_ConsentPrompt" xml:space="preserve"><value>Prima di usare l'assistente, accetta le condizioni.</value></data>
+  <data name="Agent_ConsentReviewButton" xml:space="preserve"><value>Vedi le condizioni</value></data>
+  <data name="Agent_HistoryActions" xml:space="preserve"><value>Azioni</value></data>
+  <data name="Agent_HistoryDelete" xml:space="preserve"><value>Elimina</value></data>
+  <data name="Agent_HistoryEmpty" xml:space="preserve"><value>Nessuna conversazione.</value></data>
+  <data name="Agent_HistoryLastMessage" xml:space="preserve"><value>Ultimo messaggio</value></data>
+  <data name="Agent_HistoryMessages" xml:space="preserve"><value>Messaggi</value></data>
+  <data name="Agent_HistoryStarted" xml:space="preserve"><value>Inizio</value></data>
+  <data name="Agent_HistoryTitle" xml:space="preserve"><value>Assistente — Le mie conversazioni</value></data>
+  <data name="Agent_InputPlaceholder" xml:space="preserve"><value>Chiedi come funziona il sistema…</value></data>
+  <data name="Agent_PanelTitle" xml:space="preserve"><value>Assistente</value></data>
+  <data name="Agent_ViewHistory" xml:space="preserve"><value>Cronologia</value></data>
+  <data name="Agent_Send" xml:space="preserve"><value>Invia</value></data>
+  <data name="Agent_WidgetButton" xml:space="preserve"><value>Apri l'assistente</value></data>
+  <data name="Nav_Agent" xml:space="preserve"><value>Assistente</value></data>
+
 
   <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Posti coperti</value></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Con biglietto</value></data>
@@ -1900,5 +1930,108 @@
   <data name="ShiftDash_Status_AtRisk" xml:space="preserve"><value>A rischio</value></data>
   <data name="ShiftDash_Status_BelowTarget" xml:space="preserve"><value>Sotto obiettivo</value></data>
   <data name="ShiftDash_Coordinators_StaleLabel" xml:space="preserve"><value>Inattivo da più di 7 giorni</value></data>
+  <data name="EmailGrid_AdminContextBanner" xml:space="preserve"><value>Gestione delle email di un altro utente</value></data>
+  <data name="EmailGrid_AdminContextBannerNamed" xml:space="preserve"><value>Gestione delle email di {0}</value><comment>{0} = target user display name</comment></data>
+  <data name="EmailGrid_AdminUnknownTarget" xml:space="preserve"><value>un altro utente</value></data>
+  <data name="Emails_AdminUnknownTarget" xml:space="preserve"><value>un altro utente</value></data>
+  <data name="EmailGrid_Email" xml:space="preserve"><value>Email</value></data>
+  <data name="EmailGrid_Status" xml:space="preserve"><value>Stato</value></data>
+  <data name="EmailGrid_Primary" xml:space="preserve"><value>Principale</value></data>
+  <data name="EmailGrid_Google" xml:space="preserve"><value>Google</value></data>
+  <data name="EmailGrid_GoogleColumnTooltip" xml:space="preserve"><value>Email usata per la sincronizzazione con Google Workspace.</value></data>
+  <data name="EmailGrid_WorkspaceLockedHelp" xml:space="preserve"><value>Principale e Google sono gestiti da Google Workspace finché il tuo indirizzo @nobodies.team è presente.</value></data>
+  <data name="EmailGrid_VerificationPendingTitle" xml:space="preserve"><value>Verifica dell’email in sospeso</value></data>
+  <data name="EmailGrid_VerificationPendingBody" xml:space="preserve"><value>Controlla la tua casella di posta e fai clic sul link nell’email di verifica per confermare il tuo indirizzo.</value></data>
+  <data name="EmailGrid_Visibility" xml:space="preserve"><value>Visibilità</value></data>
+  <data name="EmailGrid_Actions" xml:space="preserve"><value>Azioni</value></data>
+  <data name="EmailGrid_StatusMergePending" xml:space="preserve"><value>Unione in sospeso</value></data>
+  <data name="EmailGrid_StatusVerified" xml:space="preserve"><value>Verificata</value></data>
+  <data name="EmailGrid_StatusPending" xml:space="preserve"><value>In sospeso</value></data>
+  <data name="EmailGrid_PrimarySelected" xml:space="preserve"><value>Principale</value></data>
+  <data name="EmailGrid_LinkGoogleAccount" xml:space="preserve"><value>Collega account Google</value></data>
+  <data name="EmailGrid_LinkGoogleHelp" xml:space="preserve"><value>Accedi con Google per collegare un altro account Google al tuo profilo.</value></data>
+  <data name="EmailGrid_BackToAdminDetail" xml:space="preserve"><value>Torna al dettaglio utente</value></data>
+  <data name="EmailGrid_Unlink" xml:space="preserve"><value>Scollega</value></data>
+  <data name="EmailGrid_ConfirmUnlink" xml:space="preserve"><value>Scollegare questo account Google?</value></data>
+  <data name="EmailGrid_SetGoogleRejected" xml:space="preserve"><value>Impossibile impostare l'email di servizio Google — riga sconosciuta o non verificata.</value></data>
+  <data name="EmailGrid_UnlinkRejected" xml:space="preserve"><value>Impossibile scollegare — riga sconosciuta o senza provider di accesso.</value></data>
+  <data name="EmailGrid_GoogleServiceUpdated" xml:space="preserve"><value>Email di servizio Google aggiornata. La sincronizzazione verrà riprovata con la nuova email.</value></data>
+  <data name="EmailGrid_UnlinkSuccess" xml:space="preserve"><value>Provider di accesso scollegato.</value></data>
+  <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve"><value>Questa email è collegata a un provider di accesso. Usa Scollega invece.</value></data>
+  <data name="EmailGrid_AdminAddSentVerification" xml:space="preserve"><value>Email di verifica inviata all'utente.</value></data>
+  <data name="EmailGrid_LinkFailed" xml:space="preserve"><value>Non siamo riusciti a collegare questo account Google. Riprova.</value></data>
+  <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>Gestisci email</value></data>
+
+  <!-- Issues section -->
+  <data name="Issue_PageTitle" xml:space="preserve"><value>Segnalazioni</value></data>
+  <data name="Issue_New" xml:space="preserve"><value>Nuova segnalazione</value></data>
+  <data name="Issue_New_Title" xml:space="preserve"><value>Apri una nuova segnalazione</value></data>
+  <data name="Issue_BackToList" xml:space="preserve"><value>Torna all'elenco</value></data>
+  <data name="Issue_All" xml:space="preserve"><value>Tutte</value></data>
+  <data name="Issue_Open" xml:space="preserve"><value>Aperte</value></data>
+  <data name="Issue_Mine" xml:space="preserve"><value>Le mie</value></data>
+  <data name="Issue_Closed" xml:space="preserve"><value>Chiuse</value></data>
+  <data name="Issue_AllCategories" xml:space="preserve"><value>Tutti i tipi</value></data>
+  <data name="Issue_AllAreas" xml:space="preserve"><value>Tutte le aree</value></data>
+  <data name="Issue_AllReporters" xml:space="preserve"><value>Tutti i segnalatori</value></data>
+  <data name="Issue_SearchPlaceholder" xml:space="preserve"><value>Cerca titolo o descrizione…</value></data>
+  <data name="Issue_Apply" xml:space="preserve"><value>Applica</value></data>
+  <data name="Issue_Clear" xml:space="preserve"><value>Pulisci</value></data>
+  <data name="Issue_NoneFound" xml:space="preserve"><value>Nessuna segnalazione corrisponde ai filtri attuali.</value></data>
+  <data name="Issue_AssignedTo" xml:space="preserve"><value>assegnata a</value></data>
+  <data name="Issue_SelectOne" xml:space="preserve"><value>Seleziona una segnalazione dall'elenco per vedere i dettagli.</value></data>
+  <data name="Issue_Detail_Heading" xml:space="preserve"><value>Segnalazione</value></data>
+  <data name="Issue_OpenedBy" xml:space="preserve"><value>Aperta da</value></data>
+  <data name="Issue_Screenshot" xml:space="preserve"><value>Schermata</value></data>
+  <data name="Issue_Thread" xml:space="preserve"><value>Conversazione</value></data>
+  <data name="Issue_NoActivity" xml:space="preserve"><value>Ancora nessuna attività.</value></data>
+  <data name="Issue_Reporter" xml:space="preserve"><value>Segnalatore</value></data>
+  <data name="Issue_ComposerPlaceholder" xml:space="preserve"><value>Aggiungi un commento…</value></data>
+  <data name="Issue_Comment" xml:space="preserve"><value>Commenta</value></data>
+  <data name="Issue_CommentAndResolve" xml:space="preserve"><value>Commenta e segna come risolta</value></data>
+  <data name="Issue_ReopenByCommenting" xml:space="preserve"><value>Pubblicare un commento riaprirà questa segnalazione.</value></data>
+  <data name="Issue_Details" xml:space="preserve"><value>Dettagli</value></data>
+  <data name="Issue_Status" xml:space="preserve"><value>Stato</value></data>
+  <data name="Issue_Type" xml:space="preserve"><value>Tipo</value></data>
+  <data name="Issue_Area" xml:space="preserve"><value>Area</value></data>
+  <data name="Issue_Unspecified" xml:space="preserve"><value>Non specificata</value></data>
+  <data name="Issue_Assignee" xml:space="preserve"><value>Assegnataria</value></data>
+  <data name="Issue_Unassigned" xml:space="preserve"><value>Non assegnata</value></data>
+  <data name="Issue_GitHub" xml:space="preserve"><value>GitHub</value></data>
+  <data name="Issue_Opened" xml:space="preserve"><value>Aperta</value></data>
+  <data name="Issue_LastUpdate" xml:space="preserve"><value>Ultimo aggiornamento</value></data>
+  <data name="Issue_Due" xml:space="preserve"><value>Scadenza</value></data>
+  <data name="Issue_Resolved" xml:space="preserve"><value>Risolta</value></data>
+  <data name="Issue_ResolvedBy" xml:space="preserve"><value>da</value></data>
+  <data name="Issue_Title" xml:space="preserve"><value>Titolo</value></data>
+  <data name="Issue_Area_Auto" xml:space="preserve"><value>Rileva automaticamente</value></data>
+  <data name="Issue_Area_Hint" xml:space="preserve"><value>Lascia vuoto per rilevare l'area dalla pagina corrente.</value></data>
+  <data name="Issue_Description" xml:space="preserve"><value>Descrizione</value></data>
+  <data name="Issue_Description_Placeholder" xml:space="preserve"><value>Cosa è successo? Cosa ti aspettavi?</value></data>
+  <data name="Issue_Attachment" xml:space="preserve"><value>Schermata (opzionale)</value></data>
+  <data name="Issue_Attachment_Hint" xml:space="preserve"><value>PNG o JPEG, max 5 MB.</value></data>
+  <data name="Issue_FileIssue" xml:space="preserve"><value>Invia segnalazione</value></data>
+  <data name="Issue_FileAnIssue" xml:space="preserve"><value>Segnala un problema</value></data>
+  <data name="Issue_Cancel" xml:space="preserve"><value>Annulla</value></data>
+  <data name="Issue_Widget_ToastSuccess" xml:space="preserve"><value>Grazie! Segnalazione registrata. Vedila qui: {0}</value><comment>{0} = absolute URL path of the new issue</comment></data>
+  <data name="Issue_Widget_ToastValidationFailed" xml:space="preserve"><value>Impossibile inviare la segnalazione. Controlla i campi obbligatori e riprova.</value></data>
+  <data name="Issue_Widget_ToastNetworkError" xml:space="preserve"><value>Qualcosa è andato storto. Riprova.</value></data>
+  <data name="Issue_Tips_Title" xml:space="preserve"><value>Consigli per una buona segnalazione</value></data>
+  <data name="Issue_Tips_Bullet1" xml:space="preserve"><value>Descrivi cosa stavi cercando di fare.</value></data>
+  <data name="Issue_Tips_Bullet2" xml:space="preserve"><value>Descrivi cosa è successo e cosa ti aspettavi.</value></data>
+  <data name="Issue_Tips_Bullet3" xml:space="preserve"><value>Includi una schermata se aiuta a spiegare.</value></data>
+  <data name="Issue_Tips_Bullet4" xml:space="preserve"><value>Una segnalazione per report — problemi diversi vanno in segnalazioni separate.</value></data>
+  <data name="Issue_NotEmail_Notice" xml:space="preserve"><value>Questa non è un'email — le risposte avvengono qui, nella conversazione della segnalazione.</value></data>
+
+  <!-- Issues — messaggi di stato del controller (TempData) -->
+  <data name="Issue_Submitted" xml:space="preserve"><value>Segnalazione inviata. Grazie!</value></data>
+  <data name="Issue_Error" xml:space="preserve"><value>Qualcosa è andato storto. Riprova.</value></data>
+  <data name="Issue_Comment_Posted" xml:space="preserve"><value>Commento pubblicato.</value></data>
+  <data name="Issue_Comment_Reopened" xml:space="preserve"><value>Segnalazione riaperta.</value></data>
+  <data name="Issue_Comment_PostFailed" xml:space="preserve"><value>Impossibile pubblicare il commento.</value></data>
+  <data name="Issue_Status_Updated" xml:space="preserve"><value>Stato aggiornato.</value></data>
+  <data name="Issue_Assignee_Updated" xml:space="preserve"><value>Assegnataria aggiornata.</value></data>
+  <data name="Issue_Section_Updated" xml:space="preserve"><value>Sezione aggiornata.</value></data>
+  <data name="Issue_GitHub_Linked" xml:space="preserve"><value>Collegata a GitHub.</value></data>
 
 </root>

@@ -56,7 +56,7 @@ namespace Humans.Application.Services.Teams;
 /// §15 Profile migration established.
 /// </para>
 /// </summary>
-public sealed class TeamService : ITeamService, IUserDataContributor
+public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
 {
     private readonly ITeamRepository _repo;
     private readonly IAuditLogService _auditLogService;
@@ -219,9 +219,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor
     public Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default) =>
         _repo.GetAllActiveAsync(cancellationToken);
 
-    public Task<IReadOnlyList<Team>> GetUserCreatedTeamsAsync(CancellationToken cancellationToken = default) =>
-        _repo.GetAllActiveUserCreatedAsync(cancellationToken);
-
     public Task<IReadOnlyList<TeamOptionDto>> GetActiveTeamOptionsAsync(CancellationToken cancellationToken = default) =>
         _repo.GetActiveOptionsAsync(cancellationToken);
 
@@ -279,7 +276,8 @@ public sealed class TeamService : ITeamService, IUserDataContributor
                 CanCreateTeam: false,
                 MyTeams: [],
                 Departments: publicDepartments,
-                SystemTeams: []);
+                SystemTeams: [],
+                HiddenTeams: []);
         }
 
         var isBoardMember = await RoleAssignmentService.IsUserBoardMemberAsync(userId.Value, cancellationToken);
@@ -305,13 +303,18 @@ public sealed class TeamService : ITeamService, IUserDataContributor
             .ToList();
 
         var departments = summaries
-            .Where(t => !t.IsCurrentUserMember && !t.IsSystemTeam)
+            .Where(t => !t.IsCurrentUserMember && !t.IsSystemTeam && !t.IsHidden)
             .OrderBy(t => t.SortKey, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var systemTeams = summaries
-            .Where(t => !t.IsCurrentUserMember && t.IsSystemTeam)
+            .Where(t => !t.IsCurrentUserMember && t.IsSystemTeam && !t.IsHidden)
             .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var hiddenTeams = summaries
+            .Where(t => !t.IsCurrentUserMember && t.IsHidden)
+            .OrderBy(t => t.SortKey, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         return new TeamDirectoryResult(
@@ -319,7 +322,8 @@ public sealed class TeamService : ITeamService, IUserDataContributor
             CanCreateTeam: canCreateTeam,
             MyTeams: myTeams,
             Departments: departments,
-            SystemTeams: systemTeams);
+            SystemTeams: systemTeams,
+            HiddenTeams: hiddenTeams);
     }
 
     public async Task<TeamDetailResult?> GetTeamDetailAsync(
@@ -1257,12 +1261,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor
         if (team.IsSystemTeam)
             throw new InvalidOperationException("Cannot add role definitions to system teams");
 
-        if (slotCount < 1)
-            throw new InvalidOperationException("Slot count must be at least 1");
-
-        if (priorities.Count != slotCount)
-            throw new InvalidOperationException($"Priorities count ({priorities.Count}) must match slot count ({slotCount})");
-
+        ValidateSlotCountAndPriorities(slotCount, priorities);
         ValidateRoleName(name);
 
         var lowerName = name.ToLowerInvariant();
@@ -1314,11 +1313,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor
         if (!canManage)
             throw new InvalidOperationException("User does not have permission to manage role definitions for this team");
 
-        if (slotCount < 1)
-            throw new InvalidOperationException("Slot count must be at least 1");
-
-        if (priorities.Count != slotCount)
-            throw new InvalidOperationException($"Priorities count ({priorities.Count}) must match slot count ({slotCount})");
+        ValidateSlotCountAndPriorities(slotCount, priorities);
 
         if (slotCount < definition.Assignments.Count)
             throw new InvalidOperationException(
@@ -1512,18 +1507,20 @@ public sealed class TeamService : ITeamService, IUserDataContributor
             }
         }
 
+        IEnumerable<TeamRosterSlotSummary> filtered = slots;
+
         if (!string.IsNullOrEmpty(priority))
-            slots = slots.Where(s => string.Equals(s.Priority, priority, StringComparison.OrdinalIgnoreCase)).ToList();
+            filtered = filtered.Where(s => string.Equals(s.Priority, priority, StringComparison.OrdinalIgnoreCase));
 
         if (string.Equals(status, "Open", StringComparison.OrdinalIgnoreCase))
-            slots = slots.Where(s => !s.IsFilled).ToList();
+            filtered = filtered.Where(s => !s.IsFilled);
         else if (string.Equals(status, "Filled", StringComparison.OrdinalIgnoreCase))
-            slots = slots.Where(s => s.IsFilled).ToList();
+            filtered = filtered.Where(s => s.IsFilled);
 
         if (!string.IsNullOrEmpty(period))
-            slots = slots.Where(s => string.Equals(s.Period, period, StringComparison.OrdinalIgnoreCase)).ToList();
+            filtered = filtered.Where(s => string.Equals(s.Period, period, StringComparison.OrdinalIgnoreCase));
 
-        return slots
+        return filtered
             .OrderBy(slot => slot.Priority switch
             {
                 nameof(SlotPriority.Critical) => 0,
@@ -1872,6 +1869,39 @@ public sealed class TeamService : ITeamService, IUserDataContributor
         return count;
     }
 
+    public async Task ReassignAsync(
+        Guid sourceUserId,
+        Guid targetUserId,
+        Guid actorUserId,
+        Instant updatedAt,
+        CancellationToken cancellationToken)
+    {
+        // 1. TeamMember fold. System teams are reconciled by SystemTeamSyncJob;
+        //    skip them here. Compose AddMemberToTeamAsync / RemoveMemberAsync
+        //    so audit log + Google-sync outbox + cache mutations all fire as
+        //    they would for any normal membership change.
+        var sourceMemberships = await GetUserTeamsAsync(sourceUserId, cancellationToken);
+        var targetMemberships = await GetUserTeamsAsync(targetUserId, cancellationToken);
+        var targetTeamIds = targetMemberships.Select(m => m.TeamId).ToHashSet();
+
+        foreach (var membership in sourceMemberships)
+        {
+            if (membership.Team.IsSystemTeam)
+                continue;
+
+            if (!targetTeamIds.Contains(membership.TeamId))
+            {
+                await AddMemberToTeamAsync(membership.TeamId, targetUserId, actorUserId, cancellationToken);
+            }
+
+            await RemoveMemberAsync(membership.TeamId, sourceUserId, actorUserId, cancellationToken);
+        }
+
+        // 2. TeamJoinRequest fold. Re-FK source's rows to target except where
+        //    target already has an active pending request for the same team.
+        await _repo.ReassignActiveJoinRequestsAsync(sourceUserId, targetUserId, cancellationToken);
+    }
+
     // ==========================================================================
     // GDPR export
     // ==========================================================================
@@ -2038,7 +2068,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor
             return;
 
         var userIds = list.Select(m => m.UserId).Distinct().ToList();
-        var users = await UserService.GetByIdsAsync(userIds, ct);
+        var users = await UserService.GetByIdsWithEmailsAsync(userIds, ct);
 
         foreach (var member in list)
         {
@@ -2262,6 +2292,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor
             team.Slug,
             team.Members.Count,
             team.IsSystemTeam,
+            team.IsHidden,
             team.RequiresApproval,
             team.IsPublicPage,
             isCurrentUserMember,
@@ -2296,6 +2327,15 @@ public sealed class TeamService : ITeamService, IUserDataContributor
 
         if (name.Length > 100)
             throw new InvalidOperationException("Role name cannot exceed 100 characters");
+    }
+
+    private static void ValidateSlotCountAndPriorities(int slotCount, List<SlotPriority> priorities)
+    {
+        if (slotCount < 1)
+            throw new InvalidOperationException("Slot count must be at least 1");
+
+        if (priorities.Count != slotCount)
+            throw new InvalidOperationException($"Priorities count ({priorities.Count}) must match slot count ({slotCount})");
     }
 
     // ==========================================================================

@@ -69,28 +69,12 @@ public sealed class UserRepository : IUserRepository
 
     public async Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default)
     {
+        // Include UserEmails so callers reading User.Email get the override's
+        // computed value rather than null. Cheap at ~500-user scale.
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Users
             .AsNoTracking()
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<User>> GetUsersWithoutUserEmailRowAsync(
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Users
-            .AsNoTracking()
-            .Where(u => !ctx.UserEmails.Any(ue => ue.UserId == u.Id))
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<Guid>> GetAllUserIdsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Users
-            .AsNoTracking()
-            .Select(u => u.Id)
+            .Include(u => u.UserEmails)
             .ToListAsync(ct);
     }
 
@@ -116,34 +100,57 @@ public sealed class UserRepository : IUserRepository
     public async Task<User?> GetByEmailOrAlternateAsync(
         string normalizedEmail, string? alternateEmail, CancellationToken ct = default)
     {
-        // ILIKE without escape treats '_' and '%' in the input as wildcards,
-        // so alex_smith@example.com would also match alexXsmith@example.com.
-        // Escape the pattern and pass '\' as the explicit escape character for
-        // literal (case-insensitive) matching.
+        // Verified email lookups route through user_emails; the legacy
+        // GoogleEmail shadow column survives on disk and is matched as a
+        // fallback via EF.Property until the column is dropped. ILIKE without
+        // escape treats '_' / '%' in the input as wildcards, so
+        // alex_smith@example.com would also match alexXsmith@example.com —
+        // escape the pattern with '\'.
         var escapedEmail = EscapeLikePattern(normalizedEmail);
         var escapedAlternate = alternateEmail is null ? null : EscapeLikePattern(alternateEmail);
 
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
+        // Step 1: look up by verified UserEmail (canonical email source).
+        var userIdByEmail = escapedAlternate is null
+            ? await ctx.UserEmails
+                .Where(e => e.IsVerified && EF.Functions.ILike(e.Email, escapedEmail, "\\"))
+                .Select(e => (Guid?)e.UserId)
+                .FirstOrDefaultAsync(ct)
+            : await ctx.UserEmails
+                .Where(e => e.IsVerified && (
+                    EF.Functions.ILike(e.Email, escapedEmail, "\\") ||
+                    EF.Functions.ILike(e.Email, escapedAlternate, "\\")))
+                .Select(e => (Guid?)e.UserId)
+                .FirstOrDefaultAsync(ct);
+
+        if (userIdByEmail is not null)
+        {
+            return await ctx.Users
+                .AsNoTracking()
+                .Include(u => u.UserEmails)
+                .FirstOrDefaultAsync(u => u.Id == userIdByEmail.Value, ct);
+        }
+
+        // Step 2: fall back to the legacy GoogleEmail shadow column.
         if (escapedAlternate is null)
         {
             return await ctx.Users
                 .AsNoTracking()
+                .Include(u => u.UserEmails)
                 .FirstOrDefaultAsync(u =>
-                    (u.Email != null && EF.Functions.ILike(u.Email, escapedEmail, "\\")) ||
-                    (u.GoogleEmail != null && EF.Functions.ILike(u.GoogleEmail, escapedEmail, "\\")),
+                    EF.Property<string?>(u, "GoogleEmail") != null
+                    && EF.Functions.ILike(EF.Property<string?>(u, "GoogleEmail")!, escapedEmail, "\\"),
                     ct);
         }
 
         return await ctx.Users
             .AsNoTracking()
+            .Include(u => u.UserEmails)
             .FirstOrDefaultAsync(u =>
-                (u.Email != null && (
-                    EF.Functions.ILike(u.Email, escapedEmail, "\\") ||
-                    EF.Functions.ILike(u.Email, escapedAlternate, "\\"))) ||
-                (u.GoogleEmail != null && (
-                    EF.Functions.ILike(u.GoogleEmail, escapedEmail, "\\") ||
-                    EF.Functions.ILike(u.GoogleEmail, escapedAlternate, "\\"))),
+                EF.Property<string?>(u, "GoogleEmail") != null && (
+                    EF.Functions.ILike(EF.Property<string?>(u, "GoogleEmail")!, escapedEmail, "\\") ||
+                    EF.Functions.ILike(EF.Property<string?>(u, "GoogleEmail")!, escapedAlternate, "\\")),
                 ct);
     }
 
@@ -152,39 +159,6 @@ public sealed class UserRepository : IUserRepository
             .Replace("\\", "\\\\")
             .Replace("%", "\\%")
             .Replace("_", "\\_");
-
-    public async Task<User?> GetByNormalizedEmailAsync(
-        string? normalizedEmail, CancellationToken ct = default)
-    {
-        if (normalizedEmail is null)
-            return null;
-
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail, ct);
-    }
-
-    public async Task<IReadOnlyList<User>> GetContactUsersAsync(
-        string? search, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var query = ctx.Users
-            .AsNoTracking()
-            .Where(u => u.ContactSource != null && u.LastLoginAt == null);
-
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            var pattern = $"%{search}%";
-            query = query.Where(u =>
-                EF.Functions.ILike(u.DisplayName, pattern) ||
-                (u.Email != null && EF.Functions.ILike(u.Email, pattern)));
-        }
-
-        return await query
-            .OrderByDescending(u => u.CreatedAt)
-            .ToListAsync(ct);
-    }
 
     public async Task<IReadOnlyList<Instant>> GetLoginTimestampsInWindowAsync(
         Instant fromInclusive, Instant toExclusive, CancellationToken ct = default)
@@ -205,11 +179,28 @@ public sealed class UserRepository : IUserRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Users
             .AsNoTracking()
-            .Where(u => u.GoogleEmail != null
-                        && EF.Functions.ILike(u.GoogleEmail, email)
+            .Where(u => EF.Property<string?>(u, "GoogleEmail") != null
+                        && EF.Functions.ILike(EF.Property<string?>(u, "GoogleEmail")!, email)
                         && u.Id != excludeUserId)
             .Select(u => (Guid?)u.Id)
             .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, string>> GetLegacyGoogleEmailsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<Guid, string>();
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var rows = await ctx.Users
+            .AsNoTracking()
+            .Where(u => userIds.Contains(u.Id))
+            .Select(u => new { u.Id, GoogleEmail = EF.Property<string?>(u, "GoogleEmail") })
+            .Where(x => x.GoogleEmail != null)
+            .ToListAsync(ct);
+
+        return rows.ToDictionary(x => x.Id, x => x.GoogleEmail!);
     }
 
     // ==========================================================================
@@ -234,10 +225,14 @@ public sealed class UserRepository : IUserRepository
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([userId], ct);
-        if (user is null || user.GoogleEmail is not null)
+        if (user is null)
             return false;
 
-        user.GoogleEmail = email;
+        var entry = ctx.Entry(user).Property<string?>("GoogleEmail");
+        if (entry.CurrentValue is not null)
+            return false;
+
+        entry.CurrentValue = email;
         await ctx.SaveChangesAsync(ct);
         return true;
     }
@@ -250,7 +245,7 @@ public sealed class UserRepository : IUserRepository
         if (user is null)
             return false;
 
-        user.GoogleEmail = email;
+        ctx.Entry(user).Property<string?>("GoogleEmail").CurrentValue = email;
         user.GoogleEmailStatus = GoogleEmailStatus.Unknown;
         await ctx.SaveChangesAsync(ct);
         return true;
@@ -275,18 +270,22 @@ public sealed class UserRepository : IUserRepository
     public async Task<(bool Updated, string? OldEmail)> RewritePrimaryEmailAsync(
         Guid userId, string newEmail, CancellationToken ct = default)
     {
+        // The email rename is applied to the UserEmail row by the admin flow's
+        // call to IUserEmailService.RewriteEmailAddressAsync; this method only
+        // returns the previous value for audit logging. With Identity-column
+        // writes removed (PR 2), base.Email is null for users created post-PR 1
+        // — pull the old email from UserEmails so the audit log records a real
+        // address. Falls back to base.Email for legacy pre-PR 1 users (column
+        // still populated) so the audit remains accurate during the transition.
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var user = await ctx.Users.FindAsync([userId], ct);
+        var user = await ctx.Users
+            .AsNoTracking()
+            .Include(u => u.UserEmails)
+            .FirstOrDefaultAsync(u => u.Id == userId, ct);
         if (user is null)
             return (false, null);
 
-        var oldEmail = user.Email;
-        user.Email = newEmail;
-        user.UserName = newEmail;
-        user.NormalizedEmail = newEmail.ToUpperInvariant();
-        user.NormalizedUserName = newEmail.ToUpperInvariant();
-        await ctx.SaveChangesAsync(ct);
-        return (true, oldEmail);
+        return (true, user.Email);
     }
 
     public async Task<bool> SetDeletionPendingAsync(
@@ -317,20 +316,20 @@ public sealed class UserRepository : IUserRepository
         return true;
     }
 
-    public async Task<bool> AnonymizeForMergeAsync(Guid userId, CancellationToken ct = default)
+    public async Task<bool> AnonymizeForMergeAsync(
+        Guid sourceUserId, Guid targetUserId, Instant now,
+        CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var user = await ctx.Users.FindAsync([userId], ct);
+        var user = await ctx.Users.FindAsync([sourceUserId], ct);
         if (user is null)
             return false;
 
-        var anonymizedId = $"merged-{user.Id:N}";
+        // Tombstone fields — point this row at its target, stamp the time.
+        user.MergedToUserId = targetUserId;
+        user.MergedAt = now;
 
         user.DisplayName = "Merged User";
-        user.Email = $"{anonymizedId}@merged.local";
-        user.NormalizedEmail = user.Email.ToUpperInvariant();
-        user.UserName = anonymizedId;
-        user.NormalizedUserName = anonymizedId.ToUpperInvariant();
         user.ProfilePictureUrl = null;
         user.PhoneNumber = null;
         user.PhoneNumberConfirmed = false;
@@ -353,6 +352,17 @@ public sealed class UserRepository : IUserRepository
         return true;
     }
 
+    public async Task<IReadOnlyList<Guid>> GetMergedSourceIdsAsync(
+        Guid targetUserId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Users
+            .AsNoTracking()
+            .Where(u => u.MergedToUserId == targetUserId)
+            .Select(u => u.Id)
+            .ToListAsync(ct);
+    }
+
     public async Task<bool> SetContactSourceIfNullAsync(
         Guid userId, ContactSource source, CancellationToken ct = default)
     {
@@ -366,21 +376,7 @@ public sealed class UserRepository : IUserRepository
         return true;
     }
 
-    public async Task RemoveExternalLoginsAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var logins = await ctx.Set<IdentityUserLogin<Guid>>()
-            .Where(l => l.UserId == userId)
-            .ToListAsync(ct);
-
-        if (logins.Count == 0)
-            return;
-
-        ctx.Set<IdentityUserLogin<Guid>>().RemoveRange(logins);
-        await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task MigrateExternalLoginsAsync(
+    public async Task<int> ReassignLoginsToUserAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -389,33 +385,99 @@ public sealed class UserRepository : IUserRepository
             .Where(l => l.UserId == sourceUserId)
             .ToListAsync(ct);
 
-        if (sourceLogins.Count == 0)
-            return;
-
-        var targetProviders = await ctx.Set<IdentityUserLogin<Guid>>()
-            .Where(l => l.UserId == targetUserId)
-            .Select(l => l.LoginProvider)
-            .ToListAsync(ct);
-        var targetProviderSet = targetProviders.ToHashSet(StringComparer.Ordinal);
-
+        // No dedup needed: IdentityUserLogin<Guid>'s PK is
+        // (LoginProvider, ProviderKey), so two users cannot already share a
+        // row at the DB level. We re-FK every source row onto target.
+        //
+        // Two-pass Remove+Add is required because EF's identity map keys on
+        // the composite PK — Remove(source) and Add(target) with the same
+        // (LoginProvider, ProviderKey) in the same DbContext otherwise
+        // throws "another instance with the same key value is already being
+        // tracked". The intermediate SaveChanges flushes the deletes first.
         foreach (var login in sourceLogins)
         {
             ctx.Set<IdentityUserLogin<Guid>>().Remove(login);
+        }
 
-            if (!targetProviderSet.Contains(login.LoginProvider))
+        if (sourceLogins.Count > 0)
+        {
+            await ctx.SaveChangesAsync(ct);
+        }
+
+        foreach (var login in sourceLogins)
+        {
+            ctx.Set<IdentityUserLogin<Guid>>().Add(new IdentityUserLogin<Guid>
             {
-                ctx.Set<IdentityUserLogin<Guid>>().Add(new IdentityUserLogin<Guid>
-                {
-                    LoginProvider = login.LoginProvider,
-                    ProviderKey = login.ProviderKey,
-                    ProviderDisplayName = login.ProviderDisplayName,
-                    UserId = targetUserId
-                });
+                LoginProvider = login.LoginProvider,
+                ProviderKey = login.ProviderKey,
+                ProviderDisplayName = login.ProviderDisplayName,
+                UserId = targetUserId
+            });
+        }
+
+        if (sourceLogins.Count > 0)
+        {
+            await ctx.SaveChangesAsync(ct);
+        }
+
+        return await ctx.Set<IdentityUserLogin<Guid>>()
+            .CountAsync(l => l.UserId == targetUserId, ct);
+    }
+
+    public async Task<int> ReassignEventParticipationToUserAsync(
+        Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        // Load both sides' rows in a single round-trip; resolve collisions
+        // (Year, UserId) by keeping the highest-precedence ParticipationStatus.
+        var rows = await ctx.EventParticipations
+            .Where(ep => ep.UserId == sourceUserId || ep.UserId == targetUserId)
+            .ToListAsync(ct);
+
+        var byYear = rows.GroupBy(ep => ep.Year);
+
+        foreach (var group in byYear)
+        {
+            var sourceRow = group.FirstOrDefault(ep => ep.UserId == sourceUserId);
+            if (sourceRow is null)
+                continue;
+
+            var targetRow = group.FirstOrDefault(ep => ep.UserId == targetUserId);
+            if (targetRow is null)
+            {
+                // No collision — re-FK the source row onto target.
+                sourceRow.UserId = targetUserId;
+                continue;
             }
+
+            // Collision — keep highest precedence status; drop the loser.
+            if (StatusPrecedence(sourceRow.Status) > StatusPrecedence(targetRow.Status))
+            {
+                // Source wins: copy its status/source/declaredAt onto target,
+                // then drop the source row.
+                targetRow.Status = sourceRow.Status;
+                targetRow.Source = sourceRow.Source;
+                targetRow.DeclaredAt = sourceRow.DeclaredAt;
+            }
+            // Target wins (or tie): keep target as-is.
+            ctx.EventParticipations.Remove(sourceRow);
         }
 
         await ctx.SaveChangesAsync(ct);
+
+        return await ctx.EventParticipations
+            .CountAsync(ep => ep.UserId == targetUserId, ct);
     }
+
+    private static int StatusPrecedence(ParticipationStatus status) => status switch
+    {
+        ParticipationStatus.Attended => 4,
+        ParticipationStatus.Ticketed => 3,
+        ParticipationStatus.NoShow => 2,
+        ParticipationStatus.NotAttending => 1,
+        _ => 0
+    };
 
     public async Task<string?> PurgeAsync(Guid userId, CancellationToken ct = default)
     {
@@ -427,15 +489,10 @@ public sealed class UserRepository : IUserRepository
         var displayName = user.DisplayName;
 
         // Remove UserEmails so the unique index doesn't block the new account
+        // and the computed User.Email becomes null.
         var userEmails = await ctx.UserEmails.Where(e => e.UserId == userId).ToListAsync(ct);
         ctx.UserEmails.RemoveRange(userEmails);
 
-        // Change email so email-based lookup won't match
-        var purgedEmail = $"purged-{Guid.NewGuid()}@deleted.local";
-        user.Email = purgedEmail;
-        user.NormalizedEmail = purgedEmail.ToUpperInvariant();
-        user.UserName = purgedEmail;
-        user.NormalizedUserName = purgedEmail.ToUpperInvariant();
         user.DisplayName = $"Purged ({displayName})";
 
         // Lock out the account permanently
@@ -444,12 +501,6 @@ public sealed class UserRepository : IUserRepository
 
         await ctx.SaveChangesAsync(ct);
         return displayName;
-    }
-
-    public async Task<int> GetPendingDeletionCountAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Users.CountAsync(u => u.DeletionRequestedAt != null, ct);
     }
 
     public async Task SetLastConsentReminderSentAsync(
@@ -498,15 +549,7 @@ public sealed class UserRepository : IUserRepository
         var originalDisplayName = user.DisplayName;
         var preferredLanguage = user.PreferredLanguage;
 
-        // Synthetic anonymized identifier derived from the user id so the
-        // collision surface for the sentinel email is zero (one per user).
-        var anonymizedId = $"deleted-{user.Id:N}";
-
         user.DisplayName = "Deleted User";
-        user.Email = $"{anonymizedId}@deleted.local";
-        user.NormalizedEmail = user.Email.ToUpperInvariant();
-        user.UserName = anonymizedId;
-        user.NormalizedUserName = anonymizedId.ToUpperInvariant();
         user.ProfilePictureUrl = null;
         user.PhoneNumber = null;
         user.PhoneNumberConfirmed = false;
@@ -680,42 +723,4 @@ public sealed class UserRepository : IUserRepository
         return count;
     }
 
-    public async Task<IReadOnlyList<(Guid UserId, string DisplayName, string GoogleEmail)>>
-        BackfillNobodiesTeamGoogleEmailsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-
-        var usersToFix = await ctx.Users
-            .Where(u => u.GoogleEmail == null
-                && ctx.UserEmails.Any(ue =>
-                    ue.UserId == u.Id
-                    && ue.IsVerified
-                    && EF.Functions.ILike(ue.Email, "%@nobodies.team")))
-            .ToListAsync(ct);
-
-        var result = new List<(Guid UserId, string DisplayName, string GoogleEmail)>(usersToFix.Count);
-
-        foreach (var user in usersToFix)
-        {
-            var nobodiesEmail = await ctx.UserEmails
-                .Where(ue => ue.UserId == user.Id
-                    && ue.IsVerified
-                    && EF.Functions.ILike(ue.Email, "%@nobodies.team"))
-                .Select(ue => ue.Email)
-                .FirstOrDefaultAsync(ct);
-
-            if (nobodiesEmail is not null)
-            {
-                user.GoogleEmail = nobodiesEmail;
-                result.Add((user.Id, user.DisplayName, nobodiesEmail));
-            }
-        }
-
-        if (result.Count > 0)
-        {
-            await ctx.SaveChangesAsync(ct);
-        }
-
-        return result;
-    }
 }

@@ -9,6 +9,7 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Profile;
 
@@ -26,6 +27,7 @@ namespace Humans.Application.Services.Profile;
 public sealed class DuplicateAccountService : IDuplicateAccountService
 {
     private readonly IUserRepository _userRepository;
+    private readonly IUserService _userService;
     private readonly IUserEmailRepository _userEmailRepository;
     private readonly IProfileRepository _profileRepository;
     private readonly IAuditLogService _auditLogService;
@@ -37,6 +39,7 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
 
     public DuplicateAccountService(
         IUserRepository userRepository,
+        IUserService userService,
         IUserEmailRepository userEmailRepository,
         IProfileRepository profileRepository,
         IAuditLogService auditLogService,
@@ -47,6 +50,7 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
         IClock clock)
     {
         _userRepository = userRepository;
+        _userService = userService;
         _userEmailRepository = userEmailRepository;
         _profileRepository = profileRepository;
         _auditLogService = auditLogService;
@@ -91,8 +95,8 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
                 emailToUsers[normalized] = list;
             }
             var verifiedTag = ue.IsVerified ? "verified" : "unverified";
-            var oauthTag = ue.IsOAuth ? ", OAuth" : "";
-            list.Add((ue.UserId, $"UserEmail ({ue.Email}, {verifiedTag}{oauthTag})"));
+            var googleTag = ue.IsGoogle ? ", Google" : "";
+            list.Add((ue.UserId, $"UserEmail ({ue.Email}, {verifiedTag}{googleTag})"));
         }
 
         // Find emails that appear on more than one distinct user
@@ -219,9 +223,13 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
                 new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
                 TransactionScopeAsyncFlowOption.Enabled))
             {
-                // 1. Re-link external logins from source to target (same-provider
-                //    dupes are dropped rather than duplicated).
-                await _userRepository.MigrateExternalLoginsAsync(sourceUserId, targetUserId, ct);
+                // 1. Re-link external logins from source to target. Same
+                //    composite-key (LoginProvider, ProviderKey) dupes are
+                //    dropped rather than duplicated. Routed through the
+                //    repo directly because duplicate-resolve is not the
+                //    full account-merge fold flow — it only wants the
+                //    logins move, not the IUserMerge fan-out.
+                await _userRepository.ReassignLoginsToUserAsync(sourceUserId, targetUserId, ct);
 
                 // 2. Add target to any non-system teams the source is in, preserving
                 //    coordinator role from the source membership.
@@ -271,9 +279,20 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
                 // 5. Delete source's email rows
                 await _userEmailRepository.RemoveAllForUserAndSaveAsync(sourceUserId, ct);
 
-                // 6. Anonymize the source account
+                // 6. Anonymize the source account (set MergedToUserId/MergedAt
+                //    + identity tombstone fields). Routed through IUserService
+                //    so the FullProfile cache for the source is invalidated.
+                //
+                // NOTE: this path does NOT migrate VolunteerHistory/Languages
+                // from source to target. AccountMergeService.AcceptAsync (the
+                // merge-fold flow) does, via
+                // IProfileService.ReassignSubAggregatesToUserAsync. Pre-existing
+                // asymmetry — duplicate-resolve is a different flow with
+                // different completeness guarantees, called from a different
+                // admin surface. Track separately if it becomes a problem;
+                // not in scope for the account-merge fold redesign PR.
                 await _profileRepository.AnonymizeForMergeByUserIdAsync(sourceUserId, ct);
-                await _userRepository.AnonymizeForMergeAsync(sourceUserId, ct);
+                await _userService.AnonymizeForMergeAsync(sourceUserId, targetUserId, now, ct);
 
                 // 7. Audit inside the same scope so a rolled-back merge doesn't
                 //    leave a ghost audit row.

@@ -164,6 +164,7 @@ Stored as string via `HasConversion<string>()`.
 - When a member is added to a team, Google resource sync (Drive folder permissions, Group memberships) runs inline against the Google APIs (and rolls up to the parent department's resources for sub-team adds). Per-user removals are deferred to the daily reconciliation job rather than running inline. Failed sync calls fall through to the Google sync outbox, processed by `process-google-sync-outbox`.
 - When a department coordinator role assignment changes, the Coordinators system team membership is recalculated for the affected human. Sub-team manager changes do not affect the Coordinators system team.
 - The system team sync job runs hourly (Hangfire `Cron.Hourly` recurring job `system-team-sync`), reconciling system team membership for Volunteers (consent compliance), Coordinators (department-level management role assignments), Board (active Board role assignments), Asociados/Colaboradors (approved tier applications with active terms), and Barrio Leads (active camp lead assignments). The job also reconciles `TeamMember.Role` against `IsManagement` role assignments and backfills `User.GoogleEmail` for verified `@nobodies.team` accounts.
+- When an account merge accepts, `ITeamService.ReassignToUserAsync` re-FKs `TeamMember` and `TeamJoinRequest` rows from source to target, collapsing duplicates so the same target doesn't end up with two memberships of the same team. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
 
 ## Cross-Section Dependencies
 
@@ -174,6 +175,7 @@ Stored as string via `HasConversion<string>()`.
 - **Governance:** Colaborador/Asociado approval or expiry adds/removes humans from the respective system teams.
 - **Camps:** Active camp lead assignments feed the Barrio Leads system team via `ICampRepository.GetActiveLeadUserIdsAsync` / `IsLeadAnywhereAsync`.
 - **Users/Identity:** `IUserService.GetByIdsAsync` — display data stitching for nav-stripped sections.
+- **Profiles:** Called by `IAccountMergeService` (Profiles section) — `ITeamService.ReassignToUserAsync` re-FKs `TeamMember` and `TeamJoinRequest` from source to target during account merge fold.
 
 ## Architecture
 
@@ -198,6 +200,6 @@ Stored as string via `HasConversion<string>()`.
 
 ### Post-migration follow-ups
 
-- **Nav-strip (design-rules §6c).** `TeamMember.User`, `TeamJoinRequest.User`, `TeamJoinRequest.ReviewedByUser`, `TeamRoleAssignment.AssignedByUser`, and `TeamJoinRequestStateHistory.ChangedByUser` are `[Obsolete]`-marked and populated in memory by `TeamService` via `IUserService.GetByIdsAsync` before the entity graph leaves the service. Razor views and controllers still read through these navs under file-wide `#pragma warning disable CS0618` blocks (`TeamAdminController`, `TeamController`, `VolController`, `TeamViewModels`, `Views/Vol/ChildTeamDetail.cshtml`, `TeamServiceTests`). The pragmas are cleared when the consumers migrate to service-layer DTOs — tracked as the User-entity nav-strip follow-up alongside Shifts / GoogleWorkspaceSync / SystemTeamSyncJob.
+- **Nav-strip (design-rules §6c).** `TeamMember.User`, `TeamJoinRequest.User`, `TeamJoinRequest.ReviewedByUser`, `TeamRoleAssignment.AssignedByUser`, and `TeamJoinRequestStateHistory.ChangedByUser` are `[Obsolete]`-marked and populated in memory by `TeamService` via `IUserService.GetByIdsAsync` before the entity graph leaves the service. Razor views and controllers still read through these navs under file-wide `#pragma warning disable CS0618` blocks (`TeamAdminController`, `TeamController`, `TeamViewModels`, `TeamServiceTests`). The pragmas are cleared when the consumers migrate to service-layer DTOs — tracked as the User-entity nav-strip follow-up alongside Shifts / GoogleWorkspaceSync / SystemTeamSyncJob.
 - **Decorator split (§15 Part 2 candidate).** `TeamService` keeps the active-teams projection in an `IMemoryCache` entry at `CacheKeys.ActiveTeams` (10-minute TTL, in-service — same precedent as Camps per §15f / §15i Camps entry). A Singleton `CachingTeamService` decorator + `ITeamMembershipInvalidator` can replace this later if profiling shows it matters; the `ITeamService` surface does not need to change.
 - **Infrastructure-side callers (`SystemTeamSyncJob`, `GoogleWorkspaceSyncService`).** Both still live in Infrastructure and still read `TeamMember.User` directly via EF `Include`; they are covered by file-wide CS0618 pragmas pending their own Application-layer migrations (tracked in §15i).

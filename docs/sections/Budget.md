@@ -50,6 +50,8 @@ Second-level grouping within a year.
 
 Flag `IsTicketingGroup` determines the 1:0..1 `TicketingProjection` linkage and restricts visibility to FinanceAdmin/Admin.
 
+`Slug` is the Holded-tag-safe identifier (lowercase, no accents/spaces/symbols), unique within `(BudgetYearId, Slug)`. Used by Finance to compose `{group-slug}-{category-slug}` tag matching against incoming Holded purchase docs. Auto-populated from `Name` on create; editable with a warning that existing Holded tags using the old slug will go to the unmatched queue.
+
 **Aggregate-local navs:** `BudgetGroup.BudgetYear`, `BudgetGroup.Categories`, `BudgetGroup.TicketingProjection`.
 
 ### BudgetCategory
@@ -59,6 +61,8 @@ Third-level category holding the allocated amount.
 **Table:** `budget_categories`
 
 Cross-domain nav `BudgetCategory.Team` → `BudgetCategory.TeamId` only (Teams domain) — nav is `[Obsolete]`-marked.
+
+`Slug` is the Holded-tag-safe identifier (lowercase, no accents/spaces/symbols), unique within `(BudgetGroupId, Slug)`. Used by Finance to compose `{group-slug}-{category-slug}` tag matching. Auto-populated from `Name` on create; editable with a warning. Referenced by `HoldedTransaction.BudgetCategoryId` (FK from Finance section).
 
 **Aggregate-local navs:** `BudgetCategory.BudgetGroup`, `BudgetCategory.LineItems`.
 
@@ -143,12 +147,13 @@ Stored as string via `HasConversion<string>()`.
 ## Triggers
 
 - Every mutation to budget groups, categories, or line items generates an append-only `BudgetAuditLog` entry.
+- `BudgetService.ContributeForUserAsync` (GDPR contributor) chain-follows merge tombstones via `IUserService.GetMergedSourceIdsAsync` so `BudgetAuditLog` entries written under a now-merged source `ActorUserId` surface for the fold target. `BudgetAuditLog` is append-only (§12) and stays attributed to the source User row by design.
 
 ## Cross-Section Dependencies
 
 - **Teams:** `ITeamService.GetBudgetableTeamsAsync` / `ITeamService.GetEffectiveBudgetCoordinatorTeamIdsAsync` — narrow cross-section reads for team lookups and coordinator-scope resolution.
 - **Tickets:** `ITicketingBudgetRepository` (Tickets-owned, added for PR #545b) — paid-order lookups for ticketing budget projections. Budget no longer has a code path that reads Tickets tables directly.
-- **Users/Identity:** `IUserService.GetByIdsAsync` — actor display names for audit log.
+- **Users/Identity:** `IUserService.GetByIdsAsync` — actor display names for audit log. `IUserService.GetMergedSourceIdsAsync` — chain-follow merge tombstones on `BudgetAuditLog` GDPR export so source-attributed entries surface for the fold target.
 - **Admin:** Budget year lifecycle management is restricted to FinanceAdmin and Admin.
 
 ## Architecture

@@ -71,6 +71,10 @@ file sealed class StubAuditLog : IAuditLogService
     public Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
         Instant windowStart, Instant windowEnd, AuditAction action, CancellationToken ct = default) =>
         Task.FromResult((IReadOnlyList<Guid>)Array.Empty<Guid>());
+
+    public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
+        string entityType, IReadOnlyList<AuditAction> actions, CancellationToken ct = default) =>
+        Task.FromResult((IReadOnlySet<Guid>)new HashSet<Guid>());
 }
 
 /// <summary>
@@ -100,8 +104,7 @@ public class AccountProvisioningServiceTests
         {
             foreach (var user in _users.Values)
             {
-                if (Matches(user.Email, normalizedEmail, alternateEmail) ||
-                    Matches(user.GoogleEmail, normalizedEmail, alternateEmail))
+                if (Matches(user.Email, normalizedEmail, alternateEmail))
                 {
                     return Task.FromResult<User?>(user);
                 }
@@ -109,6 +112,10 @@ public class AccountProvisioningServiceTests
 
             return Task.FromResult<User?>(null);
         }
+
+        public Task<IReadOnlyDictionary<Guid, string>> GetLegacyGoogleEmailsAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyDictionary<Guid, string>>(new Dictionary<Guid, string>());
 
         public Task<bool> SetContactSourceIfNullAsync(
             Guid userId, ContactSource source, CancellationToken ct = default)
@@ -140,8 +147,6 @@ public class AccountProvisioningServiceTests
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<IReadOnlyList<User>> GetUsersWithoutUserEmailRowAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<User?> GetByNormalizedEmailAsync(string? normalizedEmail, CancellationToken ct = default) =>
             throw new NotSupportedException();
@@ -176,11 +181,13 @@ public class AccountProvisioningServiceTests
             int year, IReadOnlyList<(Guid UserId, ParticipationStatus Status)> entries,
             CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<bool> AnonymizeForMergeAsync(Guid userId, CancellationToken ct = default) =>
+        public Task<bool> AnonymizeForMergeAsync(
+            Guid sourceUserId, Guid targetUserId, Instant now, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task RemoveExternalLoginsAsync(Guid userId, CancellationToken ct = default) =>
+        public Task<int> ReassignLoginsToUserAsync(
+            Guid sourceUserId, Guid targetUserId, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task MigrateExternalLoginsAsync(
+        public Task<int> ReassignEventParticipationToUserAsync(
             Guid sourceUserId, Guid targetUserId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
@@ -192,15 +199,11 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<(bool Updated, string? OldEmail)> RewritePrimaryEmailAsync(Guid userId, string newEmail, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<Guid>> GetAllUserIdsAsync(CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<IReadOnlyList<(string Language, int Count)>>
             GetLanguageDistributionForUserIdsAsync(
                 IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<string?> PurgeAsync(Guid userId, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<int> GetPendingDeletionCountAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task SetLastConsentReminderSentAsync(Guid userId, Instant sentAt, CancellationToken ct = default) =>
             throw new NotSupportedException();
@@ -210,8 +213,8 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<(Guid UserId, string DisplayName, string GoogleEmail)>>
-            BackfillNobodiesTeamGoogleEmailsAsync(CancellationToken ct = default) =>
+        public Task<IReadOnlyList<Guid>> GetMergedSourceIdsAsync(
+            Guid targetUserId, CancellationToken ct = default) =>
             throw new NotSupportedException();
     }
 
@@ -257,10 +260,11 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<UserEmail?> GetConflictingVerifiedEmailAsync(Guid excludeEmailId, string normalizedEmail, string? alternateEmail, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<int> GetMaxDisplayOrderAsync(Guid userId, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<IReadOnlyList<UserEmail>> GetAllVerifiedNobodiesTeamEmailsAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task<IReadOnlyList<Humans.Application.DTOs.UserEmailLegacyBackfillSnapshot>>
+            GetLegacyBackfillSnapshotsByUserIdAsync(Guid userId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<Humans.Application.DTOs.UserEmailLegacyBackfillSnapshot>>([]);
         public Task<Dictionary<Guid, string>> GetAllNotificationTargetEmailsAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<string?> GetVerifiedEmailAddressAsync(Guid userId, Guid emailId, CancellationToken ct = default) =>
@@ -274,6 +278,8 @@ public class AccountProvisioningServiceTests
         public Task UpdateAsync(UserEmail email, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task UpdateBatchAsync(IReadOnlyList<UserEmail> emails, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task SetGoogleExclusiveAsync(Guid userId, Guid userEmailId, Instant updatedAt, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
         public Task<Guid?> GetUserIdByVerifiedEmailAsync(string email, CancellationToken ct = default) =>
             throw new NotSupportedException();
@@ -296,10 +302,17 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<bool> AnyWithEmailAsync(string email, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<bool> RewriteOAuthEmailAsync(Guid userId, string newEmail, CancellationToken ct = default) =>
+        public Task<bool> RewriteLinkedEmailAsync(Guid userId, string newEmail, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<bool> RewriteEmailAddressAsync(
             Guid userId, string oldEmail, string newEmail, Instant now, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyList<UserEmail>> FindAllByProviderKeyAsync(
+            string provider, string providerKey, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<int> ReassignToUserAsync(
+            Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+            CancellationToken ct = default) =>
             throw new NotSupportedException();
     }
 
@@ -357,7 +370,7 @@ public class AccountProvisioningServiceTests
         var userEmail = _userEmailRepo.All.FirstOrDefault(ue => ue.UserId == result.User.Id);
         userEmail.Should().NotBeNull();
         userEmail!.Email.Should().Be("alice@example.com");
-        userEmail.IsNotificationTarget.Should().BeTrue();
+        userEmail.IsPrimary.Should().BeTrue();
         userEmail.IsVerified.Should().BeTrue();
     }
 
@@ -382,9 +395,8 @@ public class AccountProvisioningServiceTests
             Id = Guid.NewGuid(),
             UserId = existingUser.Id,
             Email = "bob@example.com",
-            IsOAuth = true,
             IsVerified = true,
-            IsNotificationTarget = true,
+            IsPrimary = true,
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant(),
         });
@@ -416,9 +428,8 @@ public class AccountProvisioningServiceTests
             Id = Guid.NewGuid(),
             UserId = existingUser.Id,
             Email = "carol@primary.com",
-            IsOAuth = true,
             IsVerified = true,
-            IsNotificationTarget = true,
+            IsPrimary = true,
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant(),
         });
@@ -427,9 +438,8 @@ public class AccountProvisioningServiceTests
             Id = Guid.NewGuid(),
             UserId = existingUser.Id,
             Email = "carol@secondary.com",
-            IsOAuth = false,
             IsVerified = true,
-            IsNotificationTarget = false,
+            IsPrimary = false,
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant(),
         });
@@ -500,9 +510,8 @@ public class AccountProvisioningServiceTests
             Id = Guid.NewGuid(),
             UserId = existingUser.Id,
             Email = "frank@example.com",
-            IsOAuth = true,
             IsVerified = true,
-            IsNotificationTarget = true,
+            IsPrimary = true,
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant(),
         });

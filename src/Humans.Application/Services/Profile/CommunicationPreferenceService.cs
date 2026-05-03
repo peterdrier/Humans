@@ -14,7 +14,7 @@ namespace Humans.Application.Services.Profile;
 /// Token generation and URL building are delegated to
 /// <see cref="IUnsubscribeTokenProvider"/> (Infrastructure concern).
 /// </summary>
-public sealed class CommunicationPreferenceService : ICommunicationPreferenceService
+public sealed class CommunicationPreferenceService : ICommunicationPreferenceService, IUserMerge
 {
     private static readonly Dictionary<MessageCategory, bool> DefaultOptedOut = new()
     {
@@ -225,4 +225,8 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
 
     public string GenerateBrowserUnsubscribeUrl(Guid userId, MessageCategory category) =>
         _tokenProvider.GenerateBrowserUnsubscribeUrl(userId, category);
+
+    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+        CancellationToken cancellationToken)
+        => _repository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, cancellationToken);
 }

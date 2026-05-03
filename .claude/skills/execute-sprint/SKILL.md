@@ -134,8 +134,9 @@ Follow the batch worker process documented in `.claude/agents/batch-worker.md`.
 ## Project context
 
 Read these files before starting:
-- `CLAUDE.md` — project rules and architecture
-- `docs/architecture/coding-rules.md` — mandatory coding rules
+- `CLAUDE.md` — project orientation and architecture overview
+- `memory/INDEX.md` — atomic project rules catalog (fetch any atom whose description matches your task)
+- `docs/architecture/design-rules.md` — architecture story / constitution
 - `docs/architecture/code-review-rules.md` — code review checklist
 - `docs/architecture/data-model.md` — data model reference
 

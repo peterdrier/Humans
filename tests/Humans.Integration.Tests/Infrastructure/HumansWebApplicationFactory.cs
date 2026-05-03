@@ -16,6 +16,7 @@ using NSubstitute;
 using Testcontainers.PostgreSql;
 using Xunit;
 using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Integration.Tests.Infrastructure;
 
@@ -145,11 +146,13 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var email = $"dev-{slug}@localhost";
-        var user = await db.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Email == email)
+        var userEmailService = scope.ServiceProvider.GetRequiredService<IUserEmailService>();
+        var userId = await userEmailService.GetUserIdByVerifiedEmailAsync(email)
             ?? throw new InvalidOperationException(
                 $"Persona '{slug}' was not found after dev login (email {email}).");
+        var user = await db.Users
+            .AsNoTracking()
+            .FirstAsync(u => u.Id == userId);
 
         // 3) Seed ConsentRecord for every current required document version the
         //    user hasn't already consented to. ConsentRecord is append-only

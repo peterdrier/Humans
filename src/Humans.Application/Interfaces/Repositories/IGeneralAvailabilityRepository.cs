@@ -63,4 +63,20 @@ public interface IGeneralAvailabilityRepository
     /// </summary>
     Task DeleteAsync(
         Guid userId, Guid eventSettingsId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Account-merge fold: re-FKs <c>general_availability</c> rows from
+    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
+    /// Resolves the unique <c>(UserId, EventSettingsId)</c> conflict
+    /// target-wins — when target already has a row for the same
+    /// <c>EventSettingsId</c>, the source row is dropped. Stamps
+    /// <paramref name="updatedAt"/> on every re-FK'd row. Single
+    /// <c>SaveChanges</c>. Returns the count of rows attributed to target
+    /// after the move.
+    /// </summary>
+    Task<int> ReassignToUserAsync(
+        Guid sourceUserId,
+        Guid targetUserId,
+        NodaTime.Instant updatedAt,
+        CancellationToken ct = default);
 }

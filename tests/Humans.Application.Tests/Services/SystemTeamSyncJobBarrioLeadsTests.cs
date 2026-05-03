@@ -40,6 +40,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 15, 12, 0));
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ICampRepository _campRepository = Substitute.For<ICampRepository>();
     private readonly IGoogleSyncService _googleSyncService = Substitute.For<IGoogleSyncService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
@@ -56,6 +57,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
         return new SystemTeamSyncJob(
             _teamService,
             _userService,
+            _userEmailService,
             _campRepository,
             provider,
             _googleSyncService,

@@ -97,16 +97,6 @@ public interface IRoleAssignmentRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the distinct set of user IDs with an active assignment to
-    /// <paramref name="roleName"/> at <paramref name="now"/>. Used by
-    /// role-targeted notification dispatch.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetActiveUserIdsForRoleAsync(
-        string roleName,
-        Instant now,
-        CancellationToken ct = default);
-
-    /// <summary>
     /// All currently-active assignments for the user for mutation via
     /// <see cref="UpdateManyAsync"/>. Used by <c>RevokeAllActiveAsync</c> to
     /// stamp <c>ValidTo</c> on each.
@@ -146,4 +136,20 @@ public interface IRoleAssignmentRepository
     /// transaction. No-op when the list is empty.
     /// </summary>
     Task UpdateManyAsync(IReadOnlyList<RoleAssignment> assignments, CancellationToken ct = default);
+
+    /// <summary>
+    /// Account-merge fold: bulk-moves rows from <paramref name="sourceUserId"/>
+    /// to <paramref name="targetUserId"/>. When source has an assignment that
+    /// is active at <paramref name="updatedAt"/> for a role that target also
+    /// has active at the same instant, the source row is dropped (target's
+    /// existing row wins). All other source rows (inactive / historical, or
+    /// active but no conflicting active target row) are re-FK'd to target so
+    /// history is preserved. Single SaveChanges. Returns the count of rows
+    /// attributed to target after the move.
+    /// </summary>
+    Task<int> ReassignToUserAsync(
+        Guid sourceUserId,
+        Guid targetUserId,
+        Instant updatedAt,
+        CancellationToken ct = default);
 }

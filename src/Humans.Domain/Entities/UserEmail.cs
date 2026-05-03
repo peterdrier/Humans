@@ -30,14 +30,37 @@ public class UserEmail
     public bool IsVerified { get; set; }
 
     /// <summary>
-    /// Whether this is the OAuth login email (cannot be deleted).
+    /// OAuth provider that owns this email row, when the user is signed in via OIDC.
+    /// "Google" today; future "Apple", "Microsoft". Null when no OAuth identity is
+    /// linked to this row. Single-row-per-(Provider, ProviderKey) is service-enforced
+    /// inside <c>UserEmailService</c> per <c>feedback_db_enforcement_minimal</c>.
     /// </summary>
-    public bool IsOAuth { get; set; }
+    public string? Provider { get; set; }
 
     /// <summary>
-    /// Whether this email is the notification target (exactly one per user must be true).
+    /// OAuth subject/key (OIDC <c>sub</c>) for the linked OAuth identity. Stable
+    /// across Google Workspace email renames — the OAuth callback compares the
+    /// row's Email to the incoming claim email and updates the row when they
+    /// diverge.
     /// </summary>
-    public bool IsNotificationTarget { get; set; }
+    public string? ProviderKey { get; set; }
+
+    /// <summary>
+    /// True when this is the user's canonical Google Workspace identity (used by
+    /// Google sync and Workspace admin operations). User-controlled in the
+    /// Profile email grid (PR 4); never auto-derived. At-most-one-true-per-UserId
+    /// is service-enforced inside <c>UserEmailService</c> per
+    /// <c>feedback_db_enforcement_minimal</c>.
+    /// </summary>
+    public bool IsGoogle { get; set; }
+
+    /// <summary>
+    /// True when this row is the canonical recipient for system notifications
+    /// to this user. Exactly-one-true-per-UserId is service-enforced inside
+    /// UserEmailService — no DB partial unique index per
+    /// feedback_db_enforcement_minimal.
+    /// </summary>
+    public bool IsPrimary { get; set; }
 
     /// <summary>
     /// Profile visibility for this email. Null means hidden from profile.
@@ -48,11 +71,6 @@ public class UserEmail
     /// When the last verification email was sent (for rate limiting).
     /// </summary>
     public Instant? VerificationSentAt { get; set; }
-
-    /// <summary>
-    /// Display order for sorting emails in the UI.
-    /// </summary>
-    public int DisplayOrder { get; set; }
 
     /// <summary>
     /// When this email record was created.

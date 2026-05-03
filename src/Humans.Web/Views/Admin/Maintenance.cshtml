@@ -1,0 +1,27 @@
+@{
+    ViewData["Title"] = "Maintenance";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Maintenance</h1>
+</div>
+
+<vc:temp-data-alerts />
+
+<div class="card mb-4">
+    <div class="card-header">Hangfire</div>
+    <div class="card-body">
+        <p class="text-muted">
+            Clears every distributed lock held by Hangfire. Use this only when a job has crashed
+            mid-execution and its lock is preventing later runs. You may need to restart the app
+            after running.
+        </p>
+        <form asp-action="ClearHangfireLocks" method="post">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline-warning"
+                    data-confirm="Clear all Hangfire locks? You may need to restart the app afterwards.">
+                <i class="fa-solid fa-unlock me-1"></i> Clear Hangfire Locks
+            </button>
+        </form>
+    </div>
+</div>

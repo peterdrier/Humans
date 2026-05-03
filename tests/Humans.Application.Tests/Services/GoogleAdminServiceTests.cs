@@ -80,7 +80,7 @@ public class GoogleAdminServiceTests
                 new UserEmailMatch(
                     "alice@nobodies.team",
                     userId,
-                    IsNotificationTarget: true,
+                    IsPrimary: true,
                     IsVerified: true,
                     UpdatedAt: NodaTime.SystemClock.Instance.GetCurrentInstant())
             ]);
@@ -127,12 +127,12 @@ public class GoogleAdminServiceTests
                 // Unverified row is newer but must lose to the verified row.
                 new UserEmailMatch(
                     "dup@nobodies.team", unverifiedUserId,
-                    IsNotificationTarget: false,
+                    IsPrimary: false,
                     IsVerified: false,
                     UpdatedAt: now),
                 new UserEmailMatch(
                     "dup@nobodies.team", verifiedUserId,
-                    IsNotificationTarget: true,
+                    IsPrimary: true,
                     IsVerified: true,
                     UpdatedAt: now - NodaTime.Duration.FromHours(1)),
             ]);
@@ -225,7 +225,7 @@ public class GoogleAdminServiceTests
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
         await _auditLogService.DidNotReceive().LogAsync(
-            Arg.Any<Domain.Enums.AuditAction>(),
+            Arg.Any<Humans.Domain.Enums.AuditAction>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -245,7 +245,6 @@ public class GoogleAdminServiceTests
                 Id = ownerId,
                 Email = "x@example.com",
                 DisplayName = "X",
-                GoogleEmail = "test@nobodies.team",
             });
 
         var result = await _service.ProvisionStandaloneAccountAsync(

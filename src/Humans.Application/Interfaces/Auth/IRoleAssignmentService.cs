@@ -84,4 +84,26 @@ public interface IRoleAssignmentService
     /// </summary>
     Task<IReadOnlyList<Guid>> GetActiveUserIdsInRoleAsync(
         string roleName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Evicts the cached claims for <paramref name="userId"/> so the next
+    /// request re-derives roles from <c>role_assignments</c>. Called
+    /// post-commit by <c>AccountMergeService.AcceptAsync</c> after a fold,
+    /// since the fold can change either user's effective role set.
+    /// </summary>
+    void InvalidateClaimsCacheForUser(Guid userId);
+
+    /// <summary>
+    /// Bumps the global nav-badge cache so governance role lists (Board,
+    /// Coordinators, etc.) re-derive on the next badge read. Called
+    /// post-commit by <c>AccountMergeService.AcceptAsync</c> after a fold.
+    /// </summary>
+    void InvalidateNavBadgeCache();
+
+    /// <summary>
+    /// Returns all currently active role assignments for the user
+    /// (ValidFrom &lt;= now and ValidTo is null or in the future).
+    /// Used by the agent snapshot provider.
+    /// </summary>
+    Task<IReadOnlyList<RoleAssignment>> GetActiveForUserAsync(Guid userId, CancellationToken ct = default);
 }

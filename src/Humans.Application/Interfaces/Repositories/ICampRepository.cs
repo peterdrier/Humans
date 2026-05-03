@@ -39,15 +39,9 @@ public interface ICampRepository
     Task<Camp?> GetByIdAsync(Guid campId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns camps whose seasons for the year have status Active or Full,
-    /// with seasons (year-filtered), images (sort-ordered), and historical
-    /// names included. Read-only.
-    /// </summary>
-    Task<IReadOnlyList<Camp>> GetPublicCampsForYearAsync(int year, CancellationToken ct = default);
-
-    /// <summary>
     /// Returns every camp that has any season for the year, with seasons
-    /// (year-filtered), images and historical names included. Admin-only.
+    /// (year-filtered), images and historical names included. Read-only.
+    /// Caller-side filter via <c>Camp.HasPublicSeasonForYear(year)</c> for the public subset.
     /// </summary>
     Task<IReadOnlyList<Camp>> GetAllCampsForYearAsync(int year, CancellationToken ct = default);
 
@@ -199,21 +193,8 @@ public interface ICampRepository
     // Cross-service queries (CampSeason by id)
     // ==========================================================================
 
-    /// <summary>
-    /// Returns the sound zone of the given season, read-only.
-    /// </summary>
-    Task<SoundZone?> GetSeasonSoundZoneAsync(Guid campSeasonId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the name of the given season, read-only.
-    /// </summary>
-    Task<string?> GetSeasonNameAsync(Guid campSeasonId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns core (CampSeasonId, CampId, Year) info, read-only.
-    /// </summary>
-    Task<(Guid CampSeasonId, Guid CampId, int Year)?> GetSeasonInfoAsync(
-        Guid campSeasonId, CancellationToken ct = default);
+    /// <summary>Read-only fetch by id; null if not found.</summary>
+    Task<CampSeason?> GetSeasonByIdAsync(Guid campSeasonId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns a tuple-shaped dictionary keyed by season id for seasons in the
@@ -447,6 +428,28 @@ public interface ICampRepository
     /// <summary>Returns (CampSeasonId, UserId, Status) for the member, or null if not found. Read-only.</summary>
     Task<(Guid CampSeasonId, Guid UserId, CampMemberStatus Status)?> GetMemberLookupAsync(
         Guid campMemberId, CancellationToken ct = default);
+
+    // ==========================================================================
+    // Account-merge fold
+    // ==========================================================================
+
+    /// <summary>
+    /// Account-merge fold: bulk-moves <c>CampLead</c> rows from
+    /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/> in
+    /// a single save. Conflict on the active <c>(CampId, UserId)</c> unique
+    /// index is resolved target-wins: if target already has an active lead
+    /// row for the same camp, the source row is dropped; otherwise the
+    /// source row is re-FK'd to target. <c>CampLead</c> has no
+    /// <c>UpdatedAt</c>, so <paramref name="updatedAt"/> is unused for this
+    /// table and accepted for caller-side symmetry. Returns the count of
+    /// CampLead rows attributed to <paramref name="targetUserId"/> after the
+    /// move (active + closed combined).
+    /// </summary>
+    Task<int> ReassignLeadsToUserAsync(
+        Guid sourceUserId,
+        Guid targetUserId,
+        Instant updatedAt,
+        CancellationToken ct = default);
 }
 
 /// <summary>

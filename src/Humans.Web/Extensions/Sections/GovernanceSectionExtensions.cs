@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Governance;
@@ -29,6 +30,7 @@ internal static class GovernanceSectionExtensions
         services.AddScoped<GovernanceApplicationDecisionService>();
         services.AddScoped<IApplicationDecisionService>(sp => sp.GetRequiredService<GovernanceApplicationDecisionService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<GovernanceApplicationDecisionService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<GovernanceApplicationDecisionService>());
 
         // Onboarding — orchestrator only (owns no tables). Lives in Humans.Application
         // per design-rules §2b; routes all reads/writes through owning-section

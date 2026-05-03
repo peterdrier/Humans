@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Humans.Application.Configuration;
 using Humans.Application.Extensions;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Infrastructure.Configuration;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -46,6 +47,7 @@ public class DevLoginController : Controller
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
     private readonly HumansDbContext _db;
+    private readonly IUserEmailService _userEmailService;
     private readonly IClock _clock;
     private readonly IWebHostEnvironment _env;
     private readonly IConfiguration _config;
@@ -58,6 +60,7 @@ public class DevLoginController : Controller
         UserManager<User> userManager,
         SignInManager<User> signInManager,
         HumansDbContext db,
+        IUserEmailService userEmailService,
         IClock clock,
         IWebHostEnvironment env,
         IConfiguration config,
@@ -69,6 +72,7 @@ public class DevLoginController : Controller
         _userManager = userManager;
         _signInManager = signInManager;
         _db = db;
+        _userEmailService = userEmailService;
         _clock = clock;
         _env = env;
         _config = config;
@@ -82,7 +86,7 @@ public class DevLoginController : Controller
     /// Signs in as a dev persona by slug (e.g., "admin", "noinfo-admin", "volunteer").
     /// </summary>
     [HttpGet("{persona}")]
-    public async Task<IActionResult> SignIn(string persona)
+    public async Task<IActionResult> SignIn(string persona, string? returnUrl = null)
     {
         if (!IsDevAuthEnabled())
             return NotFound();
@@ -112,8 +116,13 @@ public class DevLoginController : Controller
         }
 
         var email = $"dev-{info.Slug}@localhost";
-        var user = await _userManager.FindByIdAsync(resolvedUserId.ToString())
-                   ?? await _userManager.FindByEmailAsync(email);
+        var user = await _userManager.FindByIdAsync(resolvedUserId.ToString());
+        if (user is null)
+        {
+            var byEmailUserId = await _userEmailService.GetUserIdByVerifiedEmailAsync(email);
+            if (byEmailUserId is not null)
+                user = await _userManager.FindByIdAsync(byEmailUserId.Value.ToString());
+        }
         if (user is null)
         {
             _logger.LogError("Dev persona {Slug} ({Id}) not found after seeding", info.Slug, resolvedUserId);
@@ -123,7 +132,7 @@ public class DevLoginController : Controller
         await _signInManager.SignInAsync(user, isPersistent: false);
         _logger.LogWarning("DEV LOGIN: signed in as {Email} ({Id})", user.Email, user.Id);
 
-        return RedirectToAction(nameof(HomeController.Index), "Home");
+        return RedirectToLocalOrHome(returnUrl);
     }
 
     /// <summary>
@@ -131,7 +140,7 @@ public class DevLoginController : Controller
     /// Useful in preview environments with cloned production-like data.
     /// </summary>
     [HttpGet("users")]
-    public async Task<IActionResult> Users()
+    public async Task<IActionResult> Users(string? returnUrl = null)
     {
         if (!IsDevAuthEnabled())
             return NotFound();
@@ -142,6 +151,7 @@ public class DevLoginController : Controller
             .Take(100)
             .ToListAsync();
 
+        ViewData["ReturnUrl"] = returnUrl;
         return View(users.Select(u => (u.Id, u.DisplayName ?? u.Email ?? "Unknown", u.Email ?? "")).ToList());
     }
 
@@ -149,7 +159,7 @@ public class DevLoginController : Controller
     /// Signs in as any user by ID. Used by the user chooser.
     /// </summary>
     [HttpGet("users/{id:guid}")]
-    public async Task<IActionResult> SignInAsUser(Guid id)
+    public async Task<IActionResult> SignInAsUser(Guid id, string? returnUrl = null)
     {
         if (!IsDevAuthEnabled())
             return NotFound();
@@ -161,8 +171,13 @@ public class DevLoginController : Controller
         await _signInManager.SignInAsync(user, isPersistent: false);
         _logger.LogWarning("DEV LOGIN: signed in as {Email} ({Id})", user.Email, user.Id);
 
-        return RedirectToAction(nameof(HomeController.Index), "Home");
+        return RedirectToLocalOrHome(returnUrl);
     }
+
+    private IActionResult RedirectToLocalOrHome(string? returnUrl) =>
+        Url.IsLocalUrl(returnUrl)
+            ? LocalRedirect(returnUrl!)
+            : RedirectToAction(nameof(HomeController.Index), "Home");
 
     private bool IsDevAuthEnabled()
     {
@@ -181,12 +196,12 @@ public class DevLoginController : Controller
 
         var email = $"dev-{info.Slug}@localhost";
 
-        // Legacy personas may exist with old hardcoded GUIDs — reuse them
-        var byEmail = await _userManager.FindByEmailAsync(email);
-        if (byEmail is not null)
+        // Legacy personas may exist with old hardcoded GUIDs — reuse them.
+        var byEmailUserId = await _userEmailService.GetUserIdByVerifiedEmailAsync(email);
+        if (byEmailUserId is not null)
         {
-            _logger.LogInformation("DEV: found legacy persona {Email} ({OldId}), reusing", email, byEmail.Id);
-            return byEmail.Id;
+            _logger.LogInformation("DEV: found legacy persona {Email} ({OldId}), reusing", email, byEmailUserId.Value);
+            return byEmailUserId.Value;
         }
 
         var now = _clock.GetCurrentInstant();
@@ -218,9 +233,6 @@ public class DevLoginController : Controller
         var user = new User
         {
             Id = id,
-            UserName = email,
-            Email = email,
-            EmailConfirmed = true,
             DisplayName = displayName,
             CreatedAt = now,
             LastLoginAt = now
@@ -239,11 +251,11 @@ public class DevLoginController : Controller
             Id = Guid.NewGuid(),
             UserId = id,
             Email = email,
-            IsOAuth = true,
+            Provider = "Google",
+            ProviderKey = $"dev-{id}",
             IsVerified = true,
-            IsNotificationTarget = true,
+            IsPrimary = true,
             Visibility = ContactFieldVisibility.BoardOnly,
-            DisplayOrder = 0,
             CreatedAt = now,
             UpdatedAt = now
         });
@@ -573,9 +585,6 @@ public class DevLoginController : Controller
         var user = new User
         {
             Id = id,
-            UserName = email,
-            Email = email,
-            EmailConfirmed = true,
             DisplayName = displayName,
             CreatedAt = now,
             LastLoginAt = now
@@ -594,11 +603,11 @@ public class DevLoginController : Controller
             Id = Guid.NewGuid(),
             UserId = id,
             Email = email,
-            IsOAuth = true,
+            Provider = "Google",
+            ProviderKey = $"dev-{id}",
             IsVerified = true,
-            IsNotificationTarget = true,
+            IsPrimary = true,
             Visibility = ContactFieldVisibility.BoardOnly,
-            DisplayOrder = 0,
             CreatedAt = now,
             UpdatedAt = now
         });

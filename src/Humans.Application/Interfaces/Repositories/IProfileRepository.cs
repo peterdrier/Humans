@@ -93,6 +93,12 @@ public interface IProfileRepository
     Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Returns the count of profiles that are approved and not suspended.
+    /// Used by the admin dashboard "Active humans" stat tile.
+    /// </summary>
+    Task<int> CountActiveApprovedAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Returns profiles that are in the onboarding review queue: not approved
     /// and not rejected. Ordered by <c>CreatedAt</c> ascending. Read-only.
     /// Used by the onboarding review queue.
@@ -208,6 +214,44 @@ public interface IProfileRepository
             IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
             Instant now,
             CancellationToken ct = default);
+
+    /// <summary>
+    /// Account-merge fold: bulk-moves the source profile's
+    /// <see cref="VolunteerHistoryEntry"/> and <see cref="ProfileLanguage"/>
+    /// rows onto the target profile, anonymizes the source profile's
+    /// identifying scalar fields in the same save (rolling in the work of
+    /// <see cref="AnonymizeForMergeByUserIdAsync"/>), and stamps
+    /// <see cref="Profile.UpdatedAt"/> on the source.
+    /// </summary>
+    /// <remarks>
+    /// Conflict rules per the fold spec:
+    /// <list type="bullet">
+    ///   <item><see cref="VolunteerHistoryEntry"/>: dedup on
+    ///   (<see cref="VolunteerHistoryEntry.Date"/> year,
+    ///   <see cref="VolunteerHistoryEntry.EventName"/>) — if target already
+    ///   has the same key, drop source's row. Surviving rows are re-FK'd to
+    ///   the target's <c>ProfileId</c>.</item>
+    ///   <item><see cref="ProfileLanguage"/>: dedup on
+    ///   <see cref="ProfileLanguage.LanguageCode"/> — keep highest
+    ///   <see cref="ProfileLanguage.Proficiency"/> (target wins on tie).
+    ///   Surviving source rows are re-FK'd to the target's <c>ProfileId</c>.</item>
+    /// </list>
+    /// The source <see cref="Profile"/> row is left in place (tombstone
+    /// counterpart to <c>User.MergedToUserId</c>) but its identifying scalars
+    /// (name → "Merged"/"User", picture, location, bio, emergency contact,
+    /// pronouns, birthday, admin notes, contribution interests, board notes)
+    /// are cleared. <see cref="ContactField"/> rows are owned by the
+    /// ContactFields section (<c>IContactFieldService</c>) and are re-FK'd
+    /// separately by the merge orchestrator's
+    /// <c>ContactFieldService.ReassignAsync</c> call — this method does not
+    /// touch <c>ContactField</c> rows.
+    /// Returns the post-move count of (VolunteerHistory + Languages) rows
+    /// attributed to the target profile, for caller diagnostics.
+    /// No-op (returns 0) if the source has no profile.
+    /// </remarks>
+    Task<int> ReassignSubAggregatesToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Reconciles the CV-entry collection for the given profile with the

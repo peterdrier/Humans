@@ -41,6 +41,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
 {
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
+    private readonly IUserEmailService _userEmailService;
     private readonly ICampRepository _campRepository;
     // IApplicationDecisionService, IRoleAssignmentService, IProfileService,
     // ITeamResourceService, and IMembershipCalculator are resolved lazily via
@@ -63,6 +64,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
     public SystemTeamSyncJob(
         ITeamService teamService,
         IUserService userService,
+        IUserEmailService userEmailService,
         ICampRepository campRepository,
         IServiceProvider serviceProvider,
         IGoogleSyncService googleSyncService,
@@ -75,6 +77,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
     {
         _teamService = teamService;
         _userService = userService;
+        _userEmailService = userEmailService;
         _campRepository = campRepository;
         _serviceProvider = serviceProvider;
         _googleSyncService = googleSyncService;
@@ -234,15 +237,27 @@ public class SystemTeamSyncJob : ISystemTeamSync
             return;
         }
 
-        // All users with profiles that are approved and not suspended.
-        var allApprovedIds = await ProfileService.GetActiveApprovedUserIdsAsync(cancellationToken);
+        // Volunteers admission no longer requires Profile.IsApproved (CC clearance) —
+        // any human with a profile, not suspended, not flagged, not rejected, and
+        // with all required consents signed is admitted. Profile.IsApproved is
+        // maintained as the CC's audit annotation but is not consulted here. The
+        // Flagged + RejectedAt exclusions preserve the CC's existing kick-out
+        // levers (FlagConsentCheckAsync and RejectSignupAsync set those fields
+        // before calling DeprovisionApprovalGatedSystemTeamsAsync).
+        var allUsers = await _userService.GetAllUsersAsync(cancellationToken);
+        var allUserIds = allUsers.Select(u => u.Id).ToList();
+        var profiles = await ProfileService.GetByUserIdsAsync(allUserIds, cancellationToken);
+        var candidateIds = allUserIds
+            .Where(id => profiles.TryGetValue(id, out var p)
+                && !p.IsSuspended
+                && p.ConsentCheckStatus != ConsentCheckStatus.Flagged
+                && p.RejectedAt is null)
+            .ToList();
 
-        // Use shared partition to determine eligibility (Active = approved +
-        // not suspended + all consents signed).
-        var partition = await MembershipCalculator.PartitionUsersAsync(allApprovedIds, cancellationToken);
-        var eligibleUserIds = partition.Active.ToList();
+        var eligibleSet = await MembershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
+            candidateIds, SystemTeamIds.Volunteers, cancellationToken);
 
-        await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, step: step);
+        await SyncTeamMembershipAsync(team, eligibleSet.ToList(), cancellationToken, step: step);
         report?.Steps.Add(step);
     }
 
@@ -396,7 +411,14 @@ public class SystemTeamSyncJob : ISystemTeamSync
         var profiles = await ProfileService.GetByUserIdsAsync([userId], cancellationToken);
         profiles.TryGetValue(userId, out var profile);
 
-        var isEligible = profile is { IsApproved: true, IsSuspended: false }
+        // Volunteers admission no longer requires Profile.IsApproved (CC clearance).
+        // Profile.IsApproved is tracked as the CC's audit annotation but is not
+        // consulted for team admission. Flagged consent checks and rejected
+        // signups remain excluded so DeprovisionApprovalGatedSystemTeamsAsync
+        // (called from FlagConsentCheckAsync / RejectSignupAsync after those
+        // mutations) actually removes the user from Volunteers.
+        var isEligible = profile is { IsSuspended: false, RejectedAt: null }
+            && profile.ConsentCheckStatus != ConsentCheckStatus.Flagged
             && await MembershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, cancellationToken);
 
         // Build a single-user eligible list and let the existing sync logic handle add/remove
@@ -526,16 +548,35 @@ public class SystemTeamSyncJob : ISystemTeamSync
     /// Backfills User.GoogleEmail for users who have a verified @nobodies.team email
     /// but a null GoogleEmail. This ensures Google Group sync uses the correct address.
     /// </summary>
+    /// <remarks>
+    /// Bulk-fetches the <c>@nobodies.team</c> map once via
+    /// <see cref="IUserEmailService.GetNobodiesTeamEmailsByUserIdsAsync"/>,
+    /// then iterates the user list calling
+    /// <see cref="IUserService.TrySetGoogleEmailAsync"/> (a no-op when
+    /// <c>GoogleEmail</c> is already set). One scan of <c>user_emails</c>
+    /// per sync pass instead of N.
+    /// </remarks>
     private async Task BackfillGoogleEmailsAsync(SyncReport? report = null, CancellationToken cancellationToken = default)
     {
         var step = new SyncStepResult("Google Email Backfill");
 
-        var backfilled = await _userService.BackfillNobodiesTeamGoogleEmailsAsync(cancellationToken);
-        foreach (var (userId, displayName, googleEmail) in backfilled)
+        var allUsers = await _userService.GetAllUsersAsync(cancellationToken);
+        var nobodiesEmailByUser = await _userEmailService.GetNobodiesTeamEmailsByUserIdsAsync(
+            allUsers.Select(u => u.Id), cancellationToken);
+
+        foreach (var user in allUsers)
         {
-            step.Fixed(userId, displayName, $"Set GoogleEmail to {googleEmail}");
+            if (!nobodiesEmailByUser.TryGetValue(user.Id, out var nobodiesEmail))
+                continue;
+
+            var backfilled = await _userService.TrySetGoogleEmailAsync(
+                user.Id, nobodiesEmail, cancellationToken);
+            if (!backfilled)
+                continue;
+
+            step.Fixed(user.Id, user.DisplayName, $"Set GoogleEmail to {nobodiesEmail}");
             _logger.LogInformation(
-                "Backfilled GoogleEmail for {User} to {Email}", displayName, googleEmail);
+                "Backfilled GoogleEmail for {User} to {Email}", user.DisplayName, nobodiesEmail);
         }
 
         report?.Steps.Add(step);

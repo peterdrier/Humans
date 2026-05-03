@@ -278,4 +278,19 @@ public class StubEmailService : IEmailService
             request.RecipientEmail, request.RecipientName, request.CampaignGrantId);
         return Task.CompletedTask;
     }
+
+    public Task SendIssueCommentAsync(
+        string to,
+        string displayName,
+        string issueTitle,
+        string commentContent,
+        string issueLink,
+        string preferredLanguage,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation(
+            "[STUB] Would send issue comment email to {Email} ({Name}) [Lang: {Lang}] for issue {Title} link {Link}",
+            to, displayName, preferredLanguage, issueTitle, issueLink);
+        return Task.CompletedTask;
+    }
 }

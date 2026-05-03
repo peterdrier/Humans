@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Auth;
@@ -33,7 +32,6 @@ public sealed class MagicLinkService : IMagicLinkService
 
     private readonly UserManager<User> _userManager;
     private readonly IUserEmailService _userEmailService;
-    private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
     private readonly IMagicLinkUrlBuilder _urlBuilder;
     private readonly IMagicLinkRateLimiter _rateLimiter;
@@ -43,7 +41,6 @@ public sealed class MagicLinkService : IMagicLinkService
     public MagicLinkService(
         UserManager<User> userManager,
         IUserEmailService userEmailService,
-        IUserRepository userRepository,
         IEmailService emailService,
         IMagicLinkUrlBuilder urlBuilder,
         IMagicLinkRateLimiter rateLimiter,
@@ -52,7 +49,6 @@ public sealed class MagicLinkService : IMagicLinkService
     {
         _userManager = userManager;
         _userEmailService = userEmailService;
-        _userRepository = userRepository;
         _emailService = emailService;
         _urlBuilder = urlBuilder;
         _rateLimiter = rateLimiter;
@@ -62,9 +58,7 @@ public sealed class MagicLinkService : IMagicLinkService
 
     public async Task SendMagicLinkAsync(string email, string? returnUrl, CancellationToken ct = default)
     {
-        // 1. Look up by verified UserEmail first (supports all verified addresses)
         var userEmail = await _userEmailService.FindVerifiedEmailWithUserAsync(email, ct);
-
         if (userEmail is not null)
         {
             var ownerUser = await _userManager.FindByIdAsync(userEmail.UserId.ToString());
@@ -75,15 +69,7 @@ public sealed class MagicLinkService : IMagicLinkService
             }
         }
 
-        // 2. Fallback: check User.NormalizedEmail (edge case: user exists but UserEmail row missing)
-        var user = await _userManager.FindByEmailAsync(email);
-        if (user is not null)
-        {
-            await SendLoginLinkAsync(user, user.Email!, returnUrl, ct);
-            return;
-        }
-
-        // 3. No match — send signup link (with rate limiting)
+        // No match — send signup link (with rate limiting).
         await SendSignupLinkAsync(email, returnUrl, ct);
     }
 
@@ -135,31 +121,10 @@ public sealed class MagicLinkService : IMagicLinkService
     public async Task<User?> FindUserByVerifiedEmailAsync(string email, CancellationToken ct = default)
     {
         var userEmail = await _userEmailService.FindVerifiedEmailWithUserAsync(email, ct);
-        if (userEmail is not null)
-        {
-            return await _userManager.FindByIdAsync(userEmail.UserId.ToString());
-        }
+        if (userEmail is null)
+            return null;
 
-        return await _userManager.FindByEmailAsync(email);
-    }
-
-    public async Task<User?> FindUserByAnyEmailAsync(string email, CancellationToken ct = default)
-    {
-        // 1. Check verified UserEmails first (strongest match)
-        var verified = await FindUserByVerifiedEmailAsync(email, ct);
-        if (verified is not null)
-            return verified;
-
-        // 2. Check User.Email on other accounts (the account's identity email).
-        // We intentionally skip unverified UserEmail rows — those are in a "pending
-        // verification/merge review" state and auto-linking would bypass the
-        // AccountMergeRequest admin review gate.
-        //
-        // The Application layer does not reference EF Core, so the async query
-        // runs through IUserRepository (which threads the cancellation token);
-        // this replaces a blocking synchronous IQueryable.FirstOrDefault().
-        var normalizedEmail = _userManager.NormalizeEmail(email);
-        return await _userRepository.GetByNormalizedEmailAsync(normalizedEmail, ct);
+        return await _userManager.FindByIdAsync(userEmail.UserId.ToString());
     }
 
     private async Task SendLoginLinkAsync(User user, string sendToEmail, string? returnUrl, CancellationToken ct)

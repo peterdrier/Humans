@@ -39,7 +39,7 @@ namespace Humans.Application.Services.Shifts;
 /// (design-rules §6b).
 /// </para>
 /// </summary>
-public sealed class ShiftManagementService : IShiftManagementService, IShiftAuthorizationInvalidator
+public sealed class ShiftManagementService : IShiftManagementService, IShiftAuthorizationInvalidator, IUserMerge
 {
     private static readonly TimeSpan AuthCacheDuration = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan DashboardCacheTtl = TimeSpan.FromMinutes(5);
@@ -101,16 +101,6 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         // Parent department coordinators can manage child teams
         var team = await TeamService.GetTeamByIdAsync(departmentTeamId);
         return team?.ParentTeamId is not null && teamIds.Contains(team.ParentTeamId.Value);
-    }
-
-    public async Task<bool> CanManageShiftsAsync(Guid userId, Guid departmentTeamId)
-    {
-        // Admin and VolunteerCoordinator can manage all shifts system-wide; NoInfoAdmin CANNOT
-        if (await HasActiveRoleAsync(userId, RoleNames.Admin) ||
-            await HasActiveRoleAsync(userId, RoleNames.VolunteerCoordinator))
-            return true;
-
-        return await IsDeptCoordinatorAsync(userId, departmentTeamId);
     }
 
     public async Task<bool> CanApproveSignupsAsync(Guid userId, Guid departmentTeamId)
@@ -303,6 +293,18 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     // Bulk Shift Creation
     // ============================================================
 
+    /// <summary>
+    /// Re-export of <see cref="Shift.AllDayWindowStart"/> for callers in the Application
+    /// layer that do not reference the Domain entity directly.
+    /// </summary>
+    public static LocalTime AllDayShiftStartTime => Shift.AllDayWindowStart;
+
+    /// <summary>
+    /// Re-export of <see cref="Shift.AllDayWindowEnd"/> for callers in the Application
+    /// layer that do not reference the Domain entity directly.
+    /// </summary>
+    public static LocalTime AllDayShiftEndTime => Shift.AllDayWindowEnd;
+
     public async Task CreateBuildStrikeShiftsAsync(Guid rotaId, Dictionary<int, (int Min, int Max)> dailyStaffing)
     {
         var rota = await _repo.GetRotaWithEventSettingsAsync(rotaId);
@@ -335,7 +337,9 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
                 RotaId = rotaId,
                 IsAllDay = true,
                 DayOffset = dayOffset,
-                StartTime = new LocalTime(0, 0),
+                // StartTime and Duration are don't-care for IsAllDay rows; GetAbsoluteStart/End
+                // short-circuit to AllDayWindowStart/End. Store midnight/24h as a neutral sentinel.
+                StartTime = LocalTime.Midnight,
                 Duration = Duration.FromHours(24),
                 MinVolunteers = staffing.Min,
                 MaxVolunteers = staffing.Max,
@@ -729,7 +733,9 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
             foreach (var shift in overlapping)
             {
-                var hours = shift.IsAllDay ? 8.0 : shift.Duration.TotalHours;
+                var hours = shift.IsAllDay
+                    ? Duration.FromTicks(Shift.AllDayWindowEnd.TickOfDay - Shift.AllDayWindowStart.TickOfDay).TotalHours
+                    : shift.Duration.TotalHours;
                 var totalHours = hours * shift.MaxVolunteers;
 
                 switch (shift.Rota.Priority)
@@ -1447,6 +1453,25 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         return new CoverageHeatmap(days, rows);
     }
 
+    public async Task<(int Filled, int Total, double Ratio)> GetOverallCoverageAsync(CancellationToken ct = default)
+    {
+        var es = await _repo.GetActiveEventSettingsAsync(ct);
+        if (es is null) return (0, 0, 0d);
+
+        var allShifts = await _repo.GetVisibleShiftsForEventAsync(es.Id, ct);
+        if (allShifts.Count == 0) return (0, 0, 0d);
+
+        var shiftIds = allShifts.Select(s => s.Id).ToList();
+        var confirmedCounts = await _repo.GetConfirmedSignupCountsByShiftAsync(shiftIds, ct);
+
+        var total = allShifts.Sum(s => s.MaxVolunteers);
+        var filled = allShifts.Sum(s =>
+            Math.Min(confirmedCounts.TryGetValue(s.Id, out var c) ? c : 0, s.MaxVolunteers));
+
+        var ratio = total == 0 ? 0d : (double)filled / total;
+        return (filled, total, ratio);
+    }
+
     public async Task<IReadOnlyList<ShiftDurationBreakdownRow>> GetShiftDurationBreakdownAsync(
         Guid eventSettingsId, ShiftPeriod? period)
     {
@@ -1574,4 +1599,8 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     public Task<int> DeleteShiftProfilesForUserAsync(
         Guid userId, CancellationToken ct = default) =>
         _repo.DeleteVolunteerEventProfilesForUserAsync(userId, ct);
+
+    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+        CancellationToken ct) =>
+        _repo.ReassignProfilesAndTagPrefsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 }

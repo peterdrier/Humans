@@ -71,12 +71,17 @@
                     <div class="d-flex gap-2 justify-content-center flex-wrap mb-3">
                         @foreach (var persona in Humans.Web.Controllers.DevLoginController.AllPersonas)
                         {
-                            <a href="/dev/login/@persona.Slug" class="btn btn-sm btn-outline-secondary">
+                            <a asp-controller="DevLogin" asp-action="SignIn"
+                               asp-route-persona="@persona.Slug"
+                               asp-route-returnUrl="@ViewData["ReturnUrl"]"
+                               class="btn btn-sm btn-outline-secondary">
                                 @persona.DisplayName
                             </a>
                         }
                     </div>
-                    <a asp-controller="DevLogin" asp-action="Users" class="btn btn-sm btn-outline-warning">
+                    <a asp-controller="DevLogin" asp-action="Users"
+                       asp-route-returnUrl="@ViewData["ReturnUrl"]"
+                       class="btn btn-sm btn-outline-warning">
                         Choose any user...
                     </a>
                 </div>

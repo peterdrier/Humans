@@ -112,13 +112,14 @@ public class ShiftManagementServiceTests : IDisposable
         // Act
         await _service.CreateBuildStrikeShiftsAsync(rota.Id, staffing);
 
-        // Assert: 3 shifts created, all IsAllDay=true, correct DayOffsets
+        // Assert: 3 shifts created, all IsAllDay=true, correct DayOffsets.
+        // StartTime/Duration are stored as the midnight/24h sentinel (don't-care for IsAllDay rows).
         var shifts = await _dbContext.Shifts.Where(s => s.RotaId == rota.Id).ToListAsync();
         shifts.Should().HaveCount(3);
         shifts.Should().AllSatisfy(s =>
         {
             s.IsAllDay.Should().BeTrue();
-            s.StartTime.Should().Be(new LocalTime(0, 0));
+            s.StartTime.Should().Be(LocalTime.Midnight);
             s.Duration.Should().Be(Duration.FromHours(24));
         });
         shifts.Select(s => s.DayOffset).Should().BeEquivalentTo(new[] { -3, -2, -1 });
@@ -502,5 +503,70 @@ public class ShiftManagementServiceTests : IDisposable
         var result = await _service.IsDeptCoordinatorAsync(userId, subTeamId);
 
         result.Should().BeTrue();
+    }
+
+    // ============================================================
+    // GetOverallCoverageAsync
+    // ============================================================
+
+    [HumansFact]
+    public async Task GetOverallCoverageAsync_ReturnsCorrectFilledTotalRatio()
+    {
+        // Arrange: active event with 10 slots across 10 shifts, 7 confirmed signups
+        var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
+
+        var shifts = Enumerable.Range(0, 10).Select(_ => new Shift
+        {
+            Id = Guid.NewGuid(),
+            RotaId = rota.Id,
+            DayOffset = 0,
+            StartTime = new LocalTime(8, 0),
+            Duration = Duration.FromHours(4),
+            MinVolunteers = 0,
+            MaxVolunteers = 1,
+            AdminOnly = false,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        }).ToList();
+        _dbContext.Shifts.AddRange(shifts);
+
+        // 7 confirmed signups on the first 7 shifts
+        var userId = Guid.NewGuid();
+        for (var i = 0; i < 7; i++)
+        {
+            _dbContext.ShiftSignups.Add(new ShiftSignup
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                ShiftId = shifts[i].Id,
+                Status = SignupStatus.Confirmed,
+                CreatedAt = TestNow,
+                UpdatedAt = TestNow
+            });
+        }
+
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var (filled, total, ratio) = await _service.GetOverallCoverageAsync();
+
+        // Assert
+        filled.Should().Be(7);
+        total.Should().Be(10);
+        ratio.Should().Be(0.7);
+    }
+
+    [HumansFact]
+    public async Task GetOverallCoverageAsync_ReturnsZero_WhenNoActiveEvent()
+    {
+        // Arrange: no event settings seeded → no active event
+
+        // Act
+        var (filled, total, ratio) = await _service.GetOverallCoverageAsync();
+
+        // Assert
+        filled.Should().Be(0);
+        total.Should().Be(0);
+        ratio.Should().Be(0d);
     }
 }

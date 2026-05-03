@@ -57,8 +57,27 @@ public class Shift
     public bool AdminOnly { get; set; }
 
     /// <summary>
-    /// Whether this is an all-day shift (build/strike). All-day shifts store
-    /// StartTime=00:00, Duration=24h but UI ignores these values.
+    /// The standard work-block start for all-day shifts (08:00 local). When
+    /// <see cref="IsAllDay"/> is <c>true</c>, <see cref="GetAbsoluteStart"/> uses this
+    /// value regardless of the stored <see cref="StartTime"/>.
+    /// </summary>
+    public static readonly LocalTime AllDayWindowStart = new(8, 0);
+
+    /// <summary>
+    /// The standard work-block end for all-day shifts (18:00 local). When
+    /// <see cref="IsAllDay"/> is <c>true</c>, <see cref="GetAbsoluteEnd"/> uses this
+    /// value to compute the absolute end instant.
+    /// </summary>
+    public static readonly LocalTime AllDayWindowEnd = new(18, 0);
+
+    /// <summary>
+    /// Whether this is an all-day shift (build/strike). When <c>true</c>,
+    /// <see cref="StartTime"/> and <see cref="Duration"/> on this row are don't-care —
+    /// the absolute start/end are computed from <see cref="AllDayWindowStart"/> /
+    /// <see cref="AllDayWindowEnd"/>. Existing all-day rows created before this policy
+    /// was enforced may store any StartTime/Duration; readers must use
+    /// <see cref="GetAbsoluteStart"/> / <see cref="GetAbsoluteEnd"/> rather than the
+    /// raw fields whenever <c>IsAllDay = true</c>.
     /// </summary>
     public bool IsAllDay { get; set; }
 
@@ -84,20 +103,33 @@ public class Shift
 
     /// <summary>
     /// Resolves the absolute start instant using event settings timezone and gate opening date.
-    /// Uses InZoneLeniently for DST safety.
+    /// Uses InZoneLeniently for DST safety. When <see cref="IsAllDay"/> is <c>true</c>,
+    /// always returns the date at <see cref="AllDayWindowStart"/> (08:00), ignoring the
+    /// stored <see cref="StartTime"/>.
     /// </summary>
     public Instant GetAbsoluteStart(EventSettings eventSettings)
     {
         var tz = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
         var date = eventSettings.GateOpeningDate.PlusDays(DayOffset);
-        return date.At(StartTime).InZoneLeniently(tz).ToInstant();
+        var wallTime = IsAllDay ? AllDayWindowStart : StartTime;
+        return date.At(wallTime).InZoneLeniently(tz).ToInstant();
     }
 
     /// <summary>
-    /// Resolves the absolute end instant (start + duration).
+    /// Resolves the absolute end instant. When <see cref="IsAllDay"/> is <c>true</c>,
+    /// returns the date at <see cref="AllDayWindowEnd"/> (18:00), ignoring the stored
+    /// <see cref="Duration"/>. When <c>false</c>, returns start + duration.
     /// </summary>
-    public Instant GetAbsoluteEnd(EventSettings eventSettings) =>
-        GetAbsoluteStart(eventSettings).Plus(Duration);
+    public Instant GetAbsoluteEnd(EventSettings eventSettings)
+    {
+        if (IsAllDay)
+        {
+            var tz = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
+            var date = eventSettings.GateOpeningDate.PlusDays(DayOffset);
+            return date.At(AllDayWindowEnd).InZoneLeniently(tz).ToInstant();
+        }
+        return GetAbsoluteStart(eventSettings).Plus(Duration);
+    }
 
     /// <summary>
     /// Whether this shift falls in the build period (before gate opening).

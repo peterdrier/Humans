@@ -20,10 +20,10 @@ Pure orchestrator over Profiles, Legal & Consent, Teams, and Governance. Owns no
 
 ## Concepts
 
-- **Onboarding** is the process a new human goes through to become an active Volunteer: sign up via Google OAuth, complete their profile, consent to all required legal documents, and pass a profile review by a Consent Coordinator. The last two steps can happen in any order.
+- **Onboarding** is the process a new human goes through to become an active Volunteer: sign up via Google OAuth, complete their profile, and consent to all required legal documents. Once both are done, admission to the Volunteers team is automatic — no Consent Coordinator approval is required for entry.
 - The **Membership Gate** restricts most of the application to active Volunteers. Humans still onboarding are limited to their profile, consent, feedback, legal documents, camps (public), and the home dashboard. All admin and coordinator roles bypass this gate entirely.
 - **Profileless accounts** are authenticated users with no Profile record (e.g., ticket holders, newsletter subscribers created by imports). They are redirected to the Guest dashboard instead of the Home dashboard and see a reduced nav: Guest Dashboard, Camps, Teams (public), Calendar, Legal. They can create a profile to enter the standard onboarding flow.
-- The **Profile Review** (consent check) and **Legal Document Signing** are independent, parallel tracks. A Consent Coordinator can clear the profile review before or after legal documents are signed. Admission to the Volunteers team only happens when both are complete.
+- The **Consent Coordinator review** (`Profile.ConsentCheckStatus`) is an audit/annotation track that runs in parallel with admission. When all required consents are signed, `ConsentCheckStatus` flips to `Pending` and the human appears in the CC review queue. CC actions (Clear / Flag / Reject) maintain the audit annotation and still flip `Profile.IsApproved`, but admission to the Volunteers team is decoupled from CC review — admission happens on profile-complete + consents-complete regardless of `IsApproved`.
 
 ## Data Model
 
@@ -43,9 +43,10 @@ The only onboarding-specific value type is the narrow `IOnboardingEligibilityQue
 
 ## Invariants
 
-- Onboarding steps: (1) complete profile, (2a) consent to all required global legal documents, (2b) profile review by a Consent Coordinator — these two can happen in any order, (3) auto-approval as Volunteer when both 2a and 2b are complete.
+- Onboarding steps: (1) complete profile, (2) consent to all required global legal documents, (3) automatic admission to the Volunteers system team. CC review of the consent check is an independent audit track that runs in parallel — it does not gate admission.
 - Volunteer onboarding is never blocked by tier applications — they are separate, parallel paths.
 - The ActiveMember status is derived from membership in the Volunteers system team.
+- Volunteers admission is `!IsSuspended && ConsentCheckStatus != Flagged && RejectedAt is null && HasAllRequiredConsentsForTeam(Volunteers)`. `Profile.IsApproved` is the CC's audit annotation and is NOT consulted for admission. The `Flagged` and `RejectedAt` exclusions preserve the CC's kick-out levers — `FlagConsentCheckAsync` and `RejectSignupAsync` set those fields before calling `DeprovisionApprovalGatedSystemTeamsAsync`, so the deprovision actually removes the user from Volunteers.
 - All admin and coordinator roles bypass the membership gate entirely — they can access the full application regardless of membership status.
 - OAuth login checks verified UserEmails, unverified UserEmails, and User.Email before creating a new account — preventing duplicate accounts when the same email exists on another user in any form.
 - `OnboardingService` depends only on interfaces (plus `IClock`) — no `DbContext`, `IDbContextFactory`, `DbSet<T>`, `IMemoryCache`, `IFullProfileInvalidator`, or repository. Enforced by `OnboardingArchitectureTests`.
@@ -60,9 +61,9 @@ The only onboarding-specific value type is the narrow `IOnboardingEligibilityQue
 
 ## Triggers
 
-- When a human completes their profile and signs all required documents: `OnboardingService.SetConsentCheckPendingIfEligibleAsync` flips `Profile.ConsentCheckStatus` to `Pending` (only if not already approved and `IMembershipCalculator.HasAllRequiredConsentsForTeamAsync(Volunteers)` returns true), and notifies the ConsentCoordinator role.
-- When a profile review is cleared: `Profile.IsApproved` is set to true and `ConsentCheckStatus = Cleared`. `ISystemTeamSync.SyncVolunteersMembershipForUserAsync` runs — it adds the user to the Volunteers system team only if `IsApproved && !IsSuspended && HasAllRequiredConsentsForTeam(Volunteers)` is true, so admission happens whenever the last condition is met (cleared first then last consent signed, or all consents signed first then cleared). If the user already has approved Colaborador/Asociado tiers, those team syncs run too. No email is sent on this auto-approval path.
-- When a legal document is signed: `ConsentService.SubmitConsentAsync` calls `SetConsentCheckPendingIfEligibleAsync` (flipping the consent check to Pending if all consents are now in) and `SyncVolunteersMembershipForUserAsync` (which admits the user iff `IsApproved` is also true).
+- When a human completes their profile and signs all required documents: `OnboardingService.SetConsentCheckPendingIfEligibleAsync` flips `Profile.ConsentCheckStatus` to `Pending` (only if not already approved and `IMembershipCalculator.HasAllRequiredConsentsForTeamAsync(Volunteers)` returns true), and notifies the ConsentCoordinator role. This is the audit/annotation track — admission to Volunteers happens automatically and does not depend on this flow.
+- When a legal document is signed: `ConsentService.SubmitConsentAsync` calls `SetConsentCheckPendingIfEligibleAsync` (flipping the consent check to Pending if all consents are now in) and `SyncVolunteersMembershipForUserAsync`, which admits the user to the Volunteers system team if `!IsSuspended && ConsentCheckStatus != Flagged && RejectedAt is null && HasAllRequiredConsentsForTeam(Volunteers)`. `Profile.IsApproved` is not consulted.
+- When a profile review is cleared by a CC: `Profile.IsApproved` is set to true and `ConsentCheckStatus = Cleared`. `ISystemTeamSync.SyncVolunteersMembershipForUserAsync` runs but is a no-op for admission if the user is already a Volunteer team member. No email is sent on this audit-track path.
 - When a consent check is flagged: `Profile.IsApproved` is set to false, `ConsentCheckStatus = Flagged`, and Volunteers / Colaborador / Asociado memberships are de-provisioned via `DeprovisionApprovalGatedSystemTeamsAsync`. Board or Admin must resolve via `ProfileController.ApproveVolunteer` (manual override).
 - When a signup is rejected: `Profile.RejectedAt`, `RejectionReason`, and `RejectedByUserId` are recorded; `IsApproved` is set to false; system team memberships are de-provisioned; a `SignupRejected` email and `ProfileRejected` notification are dispatched. (`Profile` has no `IsRejected` boolean — rejection is detected by `RejectedAt is not null`.)
 - When a Board+Admin manually `ApproveVolunteerAsync` (override path used after a flag is resolved): `IsApproved` is set to true, Volunteers team sync runs, and a `VolunteerApproved` notification ("Welcome! You have been approved") is dispatched.

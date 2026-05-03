@@ -11,6 +11,7 @@ using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
@@ -52,6 +53,7 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
     private readonly INotificationInboxService _notificationInboxService;
     private readonly ISystemTeamSync _syncJob;
     private readonly IProfileService _profileService;
+    private readonly IUserService _userService;
     private readonly IServiceProvider _serviceProvider;
     private readonly IHumansMetrics _metrics;
     private readonly IClock _clock;
@@ -64,6 +66,7 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         INotificationInboxService notificationInboxService,
         ISystemTeamSync syncJob,
         IProfileService profileService,
+        IUserService userService,
         IServiceProvider serviceProvider,
         IHumansMetrics metrics,
         IClock clock,
@@ -75,10 +78,30 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         _notificationInboxService = notificationInboxService;
         _syncJob = syncJob;
         _profileService = profileService;
+        _userService = userService;
         _serviceProvider = serviceProvider;
         _metrics = metrics;
         _clock = clock;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Returns <paramref name="userId"/> by itself, or <c>{merged-source-ids ∪
+    /// userId}</c> when <paramref name="userId"/> is a fold target. Used by
+    /// the per-user chain-follow read path so consent records that stayed
+    /// attributed to merged-source tombstones surface for the fold target.
+    /// </summary>
+    private async Task<IReadOnlyCollection<Guid>?> GetChainFollowIdsAsync(
+        Guid userId, CancellationToken ct)
+    {
+        var sourceIds = await _userService.GetMergedSourceIdsAsync(userId, ct);
+        if (sourceIds.Count == 0)
+            return null;
+
+        var allIds = new List<Guid>(sourceIds.Count + 1);
+        allIds.AddRange(sourceIds);
+        allIds.Add(userId);
+        return allIds;
     }
 
     public async Task<(List<(Team Team, List<(DocumentVersion Version, ConsentRecord? Consent)> Documents)> Groups,
@@ -96,7 +119,12 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         // ILegalDocumentSyncService today.
         var documents = await _legalDocumentSyncService.GetActiveRequiredDocumentsForTeamsAsync(userTeamIds, ct);
 
-        var userConsents = await _repo.GetAllForUserAsync(userId, ct);
+        // Chain-follow merge tombstones so a fold-target's consent dashboard
+        // transparently surfaces records still attributed to merged source ids.
+        var chainIds = await GetChainFollowIdsAsync(userId, ct);
+        var userConsents = chainIds is null
+            ? await _repo.GetAllForUserAsync(userId, ct)
+            : await _repo.GetAllForUserIdsAsync(chainIds, ct);
 
         var groups = documents
             .GroupBy(d => d.TeamId)
@@ -133,7 +161,13 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         if (version is null)
             return (null, null, null);
 
-        var consentRecord = await _repo.GetByUserAndVersionAsync(userId, documentVersionId, ct);
+        // Chain-follow merge tombstones so a fold-target's review detail
+        // transparently surfaces a consent record still attributed to a
+        // merged source id.
+        var chainIds = await GetChainFollowIdsAsync(userId, ct);
+        var consentRecord = chainIds is null
+            ? await _repo.GetByUserAndVersionAsync(userId, documentVersionId, ct)
+            : await _repo.GetByUserIdsAndVersionAsync(chainIds, documentVersionId, ct);
 
         // Cross-section lookup: profile is owned by Profiles section. Route
         // through IProfileService rather than querying _dbContext.Profiles.
@@ -151,7 +185,13 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         if (version is null)
             return new ConsentSubmitResult(false, ErrorKey: "NotFound");
 
-        var alreadyConsented = await _repo.ExistsForUserAndVersionAsync(userId, documentVersionId, ct);
+        // Chain-follow merge tombstones so a fold-target re-submitting a
+        // consent already given by a merged source short-circuits with
+        // AlreadyConsented rather than appending a duplicate.
+        var chainIds = await GetChainFollowIdsAsync(userId, ct);
+        var alreadyConsented = chainIds is null
+            ? await _repo.ExistsForUserAndVersionAsync(userId, documentVersionId, ct)
+            : await _repo.ExistsForUserIdsAndVersionAsync(chainIds, documentVersionId, ct);
 
         if (alreadyConsented)
             return new ConsentSubmitResult(false, ErrorKey: "AlreadyConsented");
@@ -201,20 +241,132 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         return new ConsentSubmitResult(true, DocumentName: version.LegalDocument.Name);
     }
 
-    public Task<IReadOnlyList<ConsentRecord>> GetUserConsentRecordsAsync(
-        Guid userId, CancellationToken ct = default) =>
-        _repo.GetAllForUserAsync(userId, ct);
+    public async Task<IReadOnlyList<ConsentRecord>> GetUserConsentRecordsAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        // Chain-follow merge tombstones so a fold-target's history transparently
+        // surfaces records still attributed to merged source ids.
+        var chainIds = await GetChainFollowIdsAsync(userId, ct);
+        return chainIds is null
+            ? await _repo.GetAllForUserAsync(userId, ct)
+            : await _repo.GetAllForUserIdsAsync(chainIds, ct);
+    }
 
-    public Task<int> GetConsentRecordCountAsync(Guid userId, CancellationToken ct = default) =>
-        _repo.GetCountForUserAsync(userId, ct);
+    public async Task<int> GetConsentRecordCountAsync(Guid userId, CancellationToken ct = default)
+    {
+        // Chain-follow merge tombstones so a fold-target's count transparently
+        // includes records still attributed to merged source ids.
+        var chainIds = await GetChainFollowIdsAsync(userId, ct);
+        return chainIds is null
+            ? await _repo.GetCountForUserAsync(userId, ct)
+            : await _repo.GetCountForUserIdsAsync(chainIds, ct);
+    }
 
-    public Task<IReadOnlySet<Guid>> GetConsentedVersionIdsAsync(
-        Guid userId, CancellationToken ct = default) =>
-        _repo.GetExplicitlyConsentedVersionIdsAsync(userId, ct);
+    public async Task<IReadOnlySet<Guid>> GetConsentedVersionIdsAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        // Chain-follow merge tombstones so a fold-target's consented-version
+        // set transparently includes versions explicitly consented to by
+        // merged source ids.
+        var chainIds = await GetChainFollowIdsAsync(userId, ct);
+        return chainIds is null
+            ? await _repo.GetExplicitlyConsentedVersionIdsAsync(userId, ct)
+            : await _repo.GetExplicitlyConsentedVersionIdsForUserIdsAsync(chainIds, ct);
+    }
 
-    public Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetConsentMapForUsersAsync(
-        IReadOnlyList<Guid> userIds, CancellationToken ct = default) =>
-        _repo.GetExplicitlyConsentedVersionIdsForUsersAsync(userIds, ct);
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetConsentMapForUsersAsync(
+        IReadOnlyList<Guid> userIds, CancellationToken ct = default)
+    {
+        // Chain-follow merge tombstones per input id so each fold-target's
+        // entry transparently includes versions explicitly consented to by
+        // its merged source ids. Source ids never appear as keys; only the
+        // input ids do.
+        if (userIds.Count == 0)
+            return new Dictionary<Guid, IReadOnlySet<Guid>>();
+
+        // Fetch source-id mappings once per input id.
+        // TODO(perf): a future batch primitive
+        // IUserService.GetAllMergedSourceIdsByTargetsAsync(IReadOnlyCollection<Guid>)
+        // doing a single `WHERE MergedToUserId IN (...)` query would reduce
+        // this loop's N round-trips to 1. Negligible at 500-user scale per
+        // CLAUDE.md "Scale and Deployment Context" — deferred.
+        var sourcesByTarget = new Dictionary<Guid, IReadOnlySet<Guid>>(userIds.Count);
+        foreach (var userId in userIds)
+        {
+            sourcesByTarget[userId] = await _userService.GetMergedSourceIdsAsync(userId, ct);
+        }
+
+        var hasAnySources = sourcesByTarget.Values.Any(s => s.Count > 0);
+        if (!hasAnySources)
+        {
+            // Common case: no merged sources — single repo call, no remap.
+            // Dedup defensively: callers (e.g., admin/all-user partition
+            // paths) may pass overlapping ids.
+            var distinctInputs = userIds.Distinct().ToList();
+            return await _repo.GetExplicitlyConsentedVersionIdsForUsersAsync(distinctInputs, ct);
+        }
+
+        // Build a flattened set of {target ∪ all source ids} for the repo
+        // batch, plus a reverse map source-id → target-id so we can re-key
+        // source-attributed rows under their target. Dedup is required:
+        // callers may pass both a source tombstone id and its target in the
+        // same input list, and the source is also appended below — without
+        // dedup the repo's ToDictionary call throws ArgumentException on
+        // duplicate keys.
+        var allIdsSet = new HashSet<Guid>(userIds);
+        var sourceToTarget = new Dictionary<Guid, Guid>();
+        foreach (var userId in userIds)
+        {
+            foreach (var sourceId in sourcesByTarget[userId])
+            {
+                allIdsSet.Add(sourceId);
+                // If a source already maps to a target, keep the first
+                // mapping; chain-follow is a 1:N target→sources fan-out, so
+                // each source has exactly one target.
+                sourceToTarget[sourceId] = userId;
+            }
+        }
+
+        var raw = await _repo.GetExplicitlyConsentedVersionIdsForUsersAsync(allIdsSet.ToList(), ct);
+
+        // Re-key: every input id gets a HashSet seeded from its own row, then
+        // unioned with each source row that maps back to it.
+        var result = new Dictionary<Guid, IReadOnlySet<Guid>>(userIds.Count);
+        foreach (var userId in userIds)
+        {
+            var merged = new HashSet<Guid>(raw[userId]);
+            foreach (var (sourceId, targetId) in sourceToTarget)
+            {
+                if (targetId == userId && raw.TryGetValue(sourceId, out var sourceVersions))
+                {
+                    foreach (var versionId in sourceVersions)
+                        merged.Add(versionId);
+                }
+            }
+            result[userId] = merged;
+        }
+
+        return result;
+    }
+
+    public async Task<IReadOnlyList<string>> GetPendingDocumentNamesAsync(Guid userId, CancellationToken ct = default)
+    {
+        var membershipCalculator = _serviceProvider.GetRequiredService<IMembershipCalculator>();
+        var missingVersionIds = await membershipCalculator.GetMissingConsentVersionsAsync(userId, ct);
+
+        if (missingVersionIds.Count == 0)
+            return Array.Empty<string>();
+
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var versionId in missingVersionIds)
+        {
+            var version = await _legalDocumentSyncService.GetVersionByIdAsync(versionId, ct);
+            if (version?.LegalDocument is { } doc)
+                names.Add(doc.Name);
+        }
+
+        return names.OrderBy(n => n, StringComparer.Ordinal).ToList();
+    }
 
     private static string ComputeContentHash(string content)
     {
@@ -224,7 +376,14 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var consents = await _repo.GetAllForUserAsync(userId, ct);
+        // Chain-follow merge tombstones so a fold-target's GDPR export
+        // transparently includes consent records that stayed attributed to
+        // merged source ids. Source User rows are anonymized by
+        // AnonymizeForMergeAsync, so the records carry no source-actor PII.
+        var chainIds = await GetChainFollowIdsAsync(userId, ct);
+        var consents = chainIds is null
+            ? await _repo.GetAllForUserAsync(userId, ct)
+            : await _repo.GetAllForUserIdsAsync(chainIds, ct);
 
         var shaped = consents.Select(c => new
         {

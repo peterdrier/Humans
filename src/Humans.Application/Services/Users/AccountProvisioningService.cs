@@ -89,42 +89,17 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
             }
         }
 
-        // 2. Also check User.Email directly (in case UserEmail record is missing)
-        var matchingUser = await _userRepository.GetByEmailOrAlternateAsync(
-            normalizedEmail, alternateEmail, ct);
-
-        if (matchingUser is not null)
-        {
-            _logger.LogDebug(
-                "Found existing account {UserId} via User.Email match for {Email} (source: {Source})",
-                matchingUser.Id, email, source);
-
-            if (matchingUser.ContactSource is null)
-            {
-                await _userRepository.SetContactSourceIfNullAsync(matchingUser.Id, source, ct);
-                matchingUser.ContactSource = source;
-            }
-
-            return new AccountProvisioningResult(matchingUser, Created: false);
-        }
-
-        // 3. No match found — create new User + UserEmail
+        // No match found — create new User + UserEmail.
         var resolvedDisplayName = string.IsNullOrWhiteSpace(displayName)
             ? email.Split('@')[0]
             : displayName;
 
         var now = _clock.GetCurrentInstant();
 
-        // Identity-column writes decoupled per email-identity-decoupling spec PR 1
-        // (docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md).
-        // The UserEmail row created below is the source of truth for the user's
-        // email; UserName is the User.Id GUID so Identity has a unique non-empty
-        // UserName but the value carries no semantic meaning.
         var newUserId = Guid.NewGuid();
         var newUser = new User
         {
             Id = newUserId,
-            UserName = newUserId.ToString(),
             DisplayName = resolvedDisplayName,
             ContactSource = source,
             CreatedAt = now,
@@ -143,11 +118,9 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
             Id = Guid.NewGuid(),
             UserId = newUser.Id,
             Email = email,
-            IsOAuth = false,
             IsVerified = true,
-            IsNotificationTarget = true,
+            IsPrimary = true,
             Visibility = null,
-            DisplayOrder = 0,
             CreatedAt = now,
             UpdatedAt = now,
         };

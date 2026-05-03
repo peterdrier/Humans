@@ -1,0 +1,125 @@
+@model string
+@{
+    var pagePath = Model ?? string.Empty;
+    var toastSuccessTemplate = Localizer["Issue_Widget_ToastSuccess"].Value;
+    var toastValidationFailed = Localizer["Issue_Widget_ToastValidationFailed"].Value;
+    var toastNetworkError = Localizer["Issue_Widget_ToastNetworkError"].Value;
+}
+
+<!-- Floating "file an issue" button -->
+<button type="button" class="btn btn-primary rounded-circle shadow position-fixed"
+        style="bottom: 24px; right: 24px; width: 56px; height: 56px; z-index: 1050;"
+        data-bs-toggle="modal" data-bs-target="#issuesWidgetModal"
+        title="@Localizer["Issue_FileAnIssue"]">
+    <i class="fa-solid fa-circle-exclamation fa-lg"></i>
+</button>
+
+<!-- Issue submission modal -->
+<div class="modal fade" id="issuesWidgetModal" tabindex="-1" aria-labelledby="issuesWidgetModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="issuesWidgetForm" asp-controller="Issues" asp-action="Submit" method="post" enctype="multipart/form-data"
+                  data-toast-success="@toastSuccessTemplate"
+                  data-toast-validation-failed="@toastValidationFailed"
+                  data-toast-network-error="@toastNetworkError">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title" id="issuesWidgetModalLabel">@Localizer["Issue_FileAnIssue"]</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["Issue_Title"]</label>
+                        <input type="text" name="Title" class="form-control" required maxlength="200" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["Issue_Type"]</label>
+                        <select name="Category" class="form-select" required>
+                            @foreach (var c in Enum.GetValues<IssueCategory>())
+                            {
+                                <option value="@c">@IssuePresentation.CategoryEmoji(c) @c</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["Issue_Description"]</label>
+                        <textarea name="Description" class="form-control" rows="5" required maxlength="5000"
+                                  placeholder="@Localizer["Issue_Description_Placeholder"]"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["Issue_Attachment"]</label>
+                        <input type="file" name="Screenshot" class="form-control" accept="image/*" />
+                    </div>
+                    <input type="hidden" name="PageUrl" id="issuesWidgetPageUrl" value="@pagePath" />
+                    <input type="hidden" name="UserAgent" id="issuesWidgetUserAgent" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Localizer["Issue_Cancel"]</button>
+                    <button type="submit" class="btn btn-primary">@Localizer["Issue_FileIssue"]</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        var modalEl = document.getElementById('issuesWidgetModal');
+        if (!modalEl) return;
+
+        modalEl.addEventListener('show.bs.modal', function () {
+            document.getElementById('issuesWidgetPageUrl').value = window.location.pathname + window.location.search;
+            document.getElementById('issuesWidgetUserAgent').value = navigator.userAgent;
+        });
+
+        var form = document.getElementById('issuesWidgetForm');
+        if (!form) return;
+
+        var toastSuccessTemplate = form.getAttribute('data-toast-success') || '';
+        var toastValidationFailed = form.getAttribute('data-toast-validation-failed') || '';
+        var toastNetworkError = form.getAttribute('data-toast-network-error') || '';
+
+        function show(msg, kind) {
+            if (typeof showToast === 'function') {
+                showToast(msg, kind);
+            } else {
+                alert(msg);
+            }
+        }
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+
+            var formData = new FormData(form);
+            fetch(form.action, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            })
+            .then(function (r) {
+                if (r.status === 200) {
+                    return r.json().then(function (data) { return { ok: true, data: data }; });
+                }
+                return r.text().then(function (txt) { return { ok: false, status: r.status, body: txt }; });
+            })
+            .then(function (result) {
+                if (result.ok && result.data && result.data.id) {
+                    form.reset();
+                    var modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                    show(toastSuccessTemplate.replace('{0}', '/Issues/' + result.data.id), 'success');
+                } else {
+                    show(toastValidationFailed, 'danger');
+                }
+            })
+            .catch(function () {
+                show(toastNetworkError, 'danger');
+            })
+            .finally(function () {
+                if (submitBtn) submitBtn.disabled = false;
+            });
+        });
+    })();
+</script>

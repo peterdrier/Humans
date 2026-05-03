@@ -63,7 +63,7 @@ public class CampContactServiceTests : IDisposable
             "alice@example.com");
 
         await _auditLogService.Received(1).LogAsync(
-            Arg.Any<Domain.Enums.AuditAction>(),
+            Arg.Any<Humans.Domain.Enums.AuditAction>(),
             Arg.Any<string>(),
             _campId,
             Arg.Any<string>(),

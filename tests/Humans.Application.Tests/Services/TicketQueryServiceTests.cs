@@ -522,9 +522,8 @@ public sealed class TicketQueryServiceTests : IDisposable
             Id = Guid.NewGuid(),
             UserId = userId,
             Email = email,
-            IsOAuth = true,
             IsVerified = true,
-            IsNotificationTarget = true,
+            IsPrimary = true,
         });
         return user;
     }

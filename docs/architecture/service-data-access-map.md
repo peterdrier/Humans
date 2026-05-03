@@ -153,7 +153,7 @@ Repositories: `IAccountMergeRepository`, `IProfileRepository`,
 | UserEmails | R/W |
 | Users | R/W |
 | EventParticipations | R/W (via `IUserRepository`) |
-| IdentityUserLogins | R/W (via `IUserRepository.MigrateExternalLoginsAsync`) |
+| IdentityUserLogins | R/W (via `IUserRepository.ReassignLoginsToUserAsync`) |
 
 **Cross-section table writes (design-rule violations):** `Users`,
 `EventParticipations`, `IdentityUserLogins` are owned by the User section
@@ -199,7 +199,7 @@ Repositories: `IUserRepository`, `IUserEmailRepository`.
 | Users | R/W |
 | UserEmails | R |
 | EventParticipations | R/W |
-| IdentityUserLogins | R/W (via `IUserRepository.RemoveExternalLoginsAsync` / `MigrateExternalLoginsAsync`) |
+| IdentityUserLogins | R/W (via `IUserRepository.ReassignLoginsToUserAsync`) |
 
 Cross-section calls via `IProfileService`, `IShiftManagementService`,
 `IShiftSignupService`, `IRoleAssignmentService`, `ITeamService`. Cache
@@ -511,7 +511,7 @@ Repository: `ICampRepository`.
 | `NavBadge:CampLeadJoinRequests:{userId}` (`ICampLeadJoinRequestsBadgeCacheInvalidator`) | 2 min | | | yes (per lead) |
 
 Cross-section calls via `IUserService`, `ISystemTeamSync`,
-`IAuditLogService`, `ICampImageStorage`. Implements
+`IAuditLogService`, `IFileStorage`. Implements
 `IUserDataContributor` for GDPR exports.
 
 ### CampContactService (Scoped)
@@ -1027,7 +1027,7 @@ boundaries directly. These are the remaining design-rule violations.
 | **Users** | Users | Profile (`AccountMergeService`, `DuplicateAccountService` via `IUserRepository`), GoogleIntegration (`GoogleAdminService` via `IUserRepository`), Auth (`MagicLinkService` via `IUserRepository`), AuditLog (display lookup), Google (`DriveActivityMonitorRepository`) |
 | **UserEmails** | Profile | GoogleIntegration (`GoogleAdminService` via `IUserEmailRepository`), Tickets (`TicketRepository` via `Set<UserEmail>` for attendee email lookup), Auth (`MagicLinkService` reads `UserEmail` via `IUserRepository`), Profile (`AccountMergeService`/`DuplicateAccountService` via `IUserEmailRepository`) |
 | **EventParticipations** | Users | Profile (`AccountMergeService`, `DuplicateAccountService` via `IUserRepository`) |
-| **IdentityUserLogins** | Auth/Identity | Profile (`AccountMergeService`, `DuplicateAccountService` via `IUserRepository.MigrateExternalLoginsAsync`/`RemoveExternalLoginsAsync`), GoogleIntegration (`DriveActivityMonitorRepository`) |
+| **IdentityUserLogins** | Auth/Identity | Profile (`AccountMergeService`, `DuplicateAccountService` via `IUserRepository.ReassignLoginsToUserAsync`), GoogleIntegration (`DriveActivityMonitorRepository`) |
 | **AuditLogEntries** | AuditLog | GoogleIntegration (`DriveActivityMonitorRepository`) |
 | **GoogleSyncOutboxEvents** | GoogleIntegration | Teams (`TeamRepository` writes outbox events on team mutations) |
 | **GeneralAvailability** | Shifts (GeneralAvailabilityService) | Shifts (`ShiftSignupRepository` reads it for conflict checks) |

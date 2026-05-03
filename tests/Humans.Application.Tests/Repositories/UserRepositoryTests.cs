@@ -42,11 +42,20 @@ public sealed class UserRepositoryTests : IDisposable
             Email = $"user-{Guid.NewGuid():N}@example.com",
             DisplayName = "Seeded User",
             CreatedAt = _clock.GetCurrentInstant(),
-            GoogleEmail = googleEmail,
         };
         _dbContext.Users.Add(user);
+        if (googleEmail is not null)
+        {
+            _dbContext.Entry(user).Property<string?>("GoogleEmail").CurrentValue = googleEmail;
+        }
         await _dbContext.SaveChangesAsync();
         return user;
+    }
+
+    private async Task<string?> ReadLegacyGoogleEmailAsync(Guid userId)
+    {
+        var lookup = await _repo.GetLegacyGoogleEmailsAsync([userId], default);
+        return lookup.TryGetValue(userId, out var v) ? v : null;
     }
 
     // ==========================================================================
@@ -70,8 +79,7 @@ public sealed class UserRepositoryTests : IDisposable
         var result = await _repo.TrySetGoogleEmailAsync(user.Id, "new@nobodies.team", default);
 
         result.Should().BeTrue();
-        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id);
-        reloaded.GoogleEmail.Should().Be("new@nobodies.team");
+        (await ReadLegacyGoogleEmailAsync(user.Id)).Should().Be("new@nobodies.team");
     }
 
     [HumansFact]
@@ -82,8 +90,7 @@ public sealed class UserRepositoryTests : IDisposable
         var result = await _repo.TrySetGoogleEmailAsync(user.Id, "new@nobodies.team", default);
 
         result.Should().BeFalse();
-        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id);
-        reloaded.GoogleEmail.Should().Be("existing@nobodies.team");
+        (await ReadLegacyGoogleEmailAsync(user.Id)).Should().Be("existing@nobodies.team");
     }
 
     // ==========================================================================
@@ -356,4 +363,59 @@ public sealed class UserRepositoryTests : IDisposable
     // evaluate against the InMemory provider. Behavior is verified end-to-end
     // in preview/QA against Postgres. The alternate-email computation (gmail
     // ↔ googlemail) is in UserService and is tested there.
+
+    // ==========================================================================
+    // GetMergedSourceIdsAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task GetMergedSourceIdsAsync_ReturnsEmpty_WhenNoTombstones()
+    {
+        var target = await SeedUserAsync();
+
+        var result = await _repo.GetMergedSourceIdsAsync(target.Id, default);
+
+        result.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetMergedSourceIdsAsync_ReturnsAllSources_WhenMergedToTarget()
+    {
+        var target = await SeedUserAsync();
+        var source1 = await SeedUserAsync();
+        var source2 = await SeedUserAsync();
+        var unrelated = await SeedUserAsync();
+
+        source1.MergedToUserId = target.Id;
+        source1.MergedAt = _clock.GetCurrentInstant();
+        source2.MergedToUserId = target.Id;
+        source2.MergedAt = _clock.GetCurrentInstant();
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _repo.GetMergedSourceIdsAsync(target.Id, default);
+
+        result.Should().BeEquivalentTo(new[] { source1.Id, source2.Id });
+        result.Should().NotContain(unrelated.Id);
+    }
+
+    [HumansFact]
+    public async Task GetMergedSourceIdsAsync_ReturnsOnlyDirectSources_NotChainedAncestors()
+    {
+        // A → B → C: GetMergedSourceIdsAsync(C) returns [B], not [A, B].
+        // The chain-follow primitive is one hop — callers don't recurse, since
+        // tombstones cannot themselves be merge targets in practice.
+        var c = await SeedUserAsync();
+        var b = await SeedUserAsync();
+        var a = await SeedUserAsync();
+
+        b.MergedToUserId = c.Id;
+        b.MergedAt = _clock.GetCurrentInstant();
+        a.MergedToUserId = b.Id;
+        a.MergedAt = _clock.GetCurrentInstant();
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _repo.GetMergedSourceIdsAsync(c.Id, default);
+
+        result.Should().BeEquivalentTo(new[] { b.Id });
+    }
 }

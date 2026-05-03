@@ -2,6 +2,7 @@ using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
@@ -41,15 +42,18 @@ namespace Humans.Application.Services.AuditLog;
 public sealed class AuditLogService : IAuditLogService, IUserDataContributor
 {
     private readonly IAuditLogRepository _repo;
+    private readonly IUserService _userService;
     private readonly IClock _clock;
     private readonly ILogger<AuditLogService> _logger;
 
     public AuditLogService(
         IAuditLogRepository repo,
+        IUserService userService,
         IClock clock,
         ILogger<AuditLogService> logger)
     {
         _repo = repo;
+        _userService = userService;
         _clock = clock;
         _logger = logger;
     }
@@ -164,8 +168,19 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
         _repo.GetByResourceAsync(resourceId);
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<AuditLogEntry>> GetGoogleSyncByUserAsync(Guid userId) =>
-        _repo.GetGoogleSyncByUserAsync(userId);
+    public async Task<IReadOnlyList<AuditLogEntry>> GetGoogleSyncByUserAsync(Guid userId)
+    {
+        // Chain-follow merge tombstones so a fold-target's Google sync history
+        // transparently surfaces rows still attributed to merged source ids.
+        var sourceIds = await _userService.GetMergedSourceIdsAsync(userId);
+        if (sourceIds.Count == 0)
+            return await _repo.GetGoogleSyncByUserAsync(userId);
+
+        var allIds = new List<Guid>(sourceIds.Count + 1);
+        allIds.AddRange(sourceIds);
+        allIds.Add(userId);
+        return await _repo.GetGoogleSyncByUserIdsAsync(allIds);
+    }
 
     /// <inheritdoc />
     public Task<IReadOnlyList<AuditLogEntry>> GetRecentAsync(int count, CancellationToken ct = default) =>
@@ -186,18 +201,51 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
     }
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<AuditLogEntry>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default) =>
-        _repo.GetByUserAsync(userId, count, ct);
+    public async Task<IReadOnlyList<AuditLogEntry>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default)
+    {
+        // Chain-follow merge tombstones so a fold-target's audit history
+        // transparently surfaces rows still attributed to merged source ids.
+        var sourceIds = await _userService.GetMergedSourceIdsAsync(userId, ct);
+        if (sourceIds.Count == 0)
+            return await _repo.GetByUserAsync(userId, count, ct);
+
+        var allIds = new List<Guid>(sourceIds.Count + 1);
+        allIds.AddRange(sourceIds);
+        allIds.Add(userId);
+        return await _repo.GetByUserIdsAsync(allIds, count, ct);
+    }
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<AuditLogEntry>> GetFilteredEntriesAsync(
+    public async Task<IReadOnlyList<AuditLogEntry>> GetFilteredEntriesAsync(
         string? entityType = null,
         Guid? entityId = null,
         Guid? userId = null,
         IReadOnlyList<AuditAction>? actions = null,
         int limit = 20,
-        CancellationToken ct = default) =>
-        _repo.GetFilteredEntriesAsync(entityType, entityId, userId, actions, limit, ct);
+        CancellationToken ct = default)
+    {
+        // Chain-follow merge tombstones when a userId filter is supplied so a
+        // fold-target's history transparently surfaces rows still attributed
+        // to merged source ids.
+        IReadOnlyCollection<Guid>? userIds = null;
+        if (userId.HasValue)
+        {
+            var sourceIds = await _userService.GetMergedSourceIdsAsync(userId.Value, ct);
+            if (sourceIds.Count == 0)
+            {
+                userIds = new[] { userId.Value };
+            }
+            else
+            {
+                var combined = new List<Guid>(sourceIds.Count + 1);
+                combined.AddRange(sourceIds);
+                combined.Add(userId.Value);
+                userIds = combined;
+            }
+        }
+
+        return await _repo.GetFilteredEntriesAsync(entityType, entityId, userIds, actions, limit, ct);
+    }
 
     /// <inheritdoc />
     public async Task<AuditLogPageResult> GetAuditLogPageAsync(
@@ -249,8 +297,28 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var entries = await _repo.GetAllForUserContributorAsync(userId, ct);
+        // Chain-follow merge tombstones so a fold-target's GDPR export
+        // transparently includes rows still attributed to merged source ids.
+        var sourceIds = await _userService.GetMergedSourceIdsAsync(userId, ct);
+        IReadOnlyList<AuditLogEntry> entries;
+        if (sourceIds.Count == 0)
+        {
+            entries = await _repo.GetAllForUserContributorAsync(userId, ct);
+        }
+        else
+        {
+            var allIds = new List<Guid>(sourceIds.Count + 1);
+            allIds.AddRange(sourceIds);
+            allIds.Add(userId);
+            entries = await _repo.GetAllForUserIdsContributorAsync(allIds, ct);
+        }
 
+        // The "Actor" role attribution is preserved against the target id.
+        // Source-tombstone rows where ActorUserId is one of the source ids
+        // are surfaced as Subject rows for the target — which is the correct
+        // export semantic post-merge: the target now owns the source's
+        // history and the per-row actor context is anonymized along with
+        // the source User row by AnonymizeForMergeAsync.
         var shaped = entries.Select(a => new
         {
             a.Action,
@@ -268,4 +336,10 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
         AuditAction action,
         CancellationToken ct = default) =>
         _repo.GetEntityIdsForActionInWindowAsync(windowStart, windowEnd, action, ct);
+
+    public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
+        string entityType,
+        IReadOnlyList<AuditAction> actions,
+        CancellationToken ct = default) =>
+        _repo.GetEntityIdsForEntityTypeActionsAsync(entityType, actions, ct);
 }

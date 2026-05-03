@@ -20,7 +20,12 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.ProfilePictureUrl)
             .HasMaxLength(2048);
 
-        builder.Property(u => u.GoogleEmail)
+        // GoogleEmail column is kept on disk as an EF shadow property; the C#
+        // property has been deleted. Column drop happens in a deferred PR
+        // after end-to-end prod verification per
+        // architecture_no_drops_until_prod_verified.
+        builder.Property<string?>("GoogleEmail")
+            .HasColumnName("GoogleEmail")
             .HasMaxLength(256);
 
         builder.Property(u => u.GoogleEmailStatus)
@@ -92,6 +97,17 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.HasIndex(u => new { u.ContactSource, u.ExternalSourceId })
             .HasFilter("\"ExternalSourceId\" IS NOT NULL");
+
+        // Account-merge tombstone marker. Self-referential FK with no cascade
+        // — deleting the target must not cascade-delete the source tombstone.
+        // Filtered index because the column is null for live users.
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(u => u.MergedToUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(u => u.MergedToUserId)
+            .HasFilter("\"MergedToUserId\" IS NOT NULL");
 
         // Ignore GetEffectiveEmail (method, not property - EF won't map it, but defensive)
     }

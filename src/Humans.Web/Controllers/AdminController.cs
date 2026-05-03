@@ -4,6 +4,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Feedback;
+using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Infrastructure.Data;
@@ -23,7 +28,7 @@ public class AdminController : HumansControllerBase
     private readonly ConfigurationRegistry _configRegistry;
     private readonly QueryStatistics _queryStatistics;
     private readonly ICacheStatsProvider _cacheStatsProvider;
-    private readonly IUserEmailBackfillService _userEmailBackfillService;
+    private readonly IUserEmailProviderBackfillService _userEmailProviderBackfillService;
 
     public AdminController(
         HumansDbContext dbContext,
@@ -34,7 +39,7 @@ public class AdminController : HumansControllerBase
         ConfigurationRegistry configRegistry,
         QueryStatistics queryStatistics,
         ICacheStatsProvider cacheStatsProvider,
-        IUserEmailBackfillService userEmailBackfillService)
+        IUserEmailProviderBackfillService userEmailProviderBackfillService)
         : base(userManager)
     {
         _dbContext = dbContext;
@@ -45,14 +50,41 @@ public class AdminController : HumansControllerBase
         _configRegistry = configRegistry;
         _queryStatistics = queryStatistics;
         _cacheStatsProvider = cacheStatsProvider;
-        _userEmailBackfillService = userEmailBackfillService;
+        _userEmailProviderBackfillService = userEmailProviderBackfillService;
     }
 
+    // Dashboard is reachable by any admin-shaped role (FinanceAdmin etc.) so the
+    // top-nav "Admin" link doesn't dead-end at 403. Sidebar items inside still
+    // filter per-item, and all dashboard tiles are aggregate counts that are
+    // safe across roles. Other AdminController actions remain AdminOnly.
     [HttpGet("")]
-    [Authorize(Policy = PolicyNames.AdminOnly)]
-    public IActionResult Index()
+    [Authorize(Policy = PolicyNames.AnyAdminRole)]
+    public async Task<IActionResult> Index(
+        [FromServices] IProfileService profileService,
+        [FromServices] IShiftManagementService shifts,
+        [FromServices] IFeedbackService feedback,
+        [FromServices] IAuditLogService auditLog,
+        CancellationToken ct)
     {
-        return View();
+        var firstName = User.Identity?.Name?.Split(' ').FirstOrDefault() ?? "";
+        var activeHumans = await profileService.GetActiveApprovedCountAsync(ct);
+        var (filled, total, ratio) = await shifts.GetOverallCoverageAsync(ct);
+        var openFeedback = await feedback.GetActionableCountAsync(ct);
+        var recent = (await auditLog.GetRecentAsync(8, ct))
+            .Select(e => new DashboardActivityRow(e.Action, e.Description, e.OccurredAt))
+            .ToArray();
+        var staffing = Array.Empty<DepartmentCoverage>();
+
+        var vm = new AdminDashboardViewModel(
+            GreetingFirstName: firstName,
+            ActiveHumans: activeHumans,
+            ShiftCoveragePercent: total > 0 ? (int)Math.Round(ratio * 100) : 0,
+            ShiftFilledOf: total > 0 ? filled : null,
+            ShiftTotalOf: total > 0 ? total : null,
+            OpenFeedback: openFeedback,
+            StaffingByDepartment: staffing,
+            RecentActivity: recent);
+        return View(vm);
     }
 
     [HttpPost("Humans/{id}/Purge")]
@@ -112,6 +144,10 @@ public class AdminController : HumansControllerBase
         ViewBag.LifetimeCounts = sink.GetLifetimeCounts();
         return View(events);
     }
+
+    [HttpGet("Maintenance")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    public IActionResult Maintenance() => View();
 
     [HttpGet("Configuration")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
@@ -239,52 +275,57 @@ public class AdminController : HumansControllerBase
 
         _logger.LogWarning("Admin cleared {Count} stale Hangfire locks", deleted);
         SetSuccess($"Cleared {deleted} Hangfire lock(s). Restart the app to re-register recurring jobs.");
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Maintenance));
     }
 
     /// <summary>
-    /// One-shot backfill of <c>UserEmail</c> rows for any orphan Users (Users
-    /// with no <c>user_emails</c> row). Idempotent — safe to re-run. Recommended
-    /// before PR 2 of the email-identity-decoupling spec deploys so any humans
-    /// needing manual triage (no <c>User.Email</c> to backfill from) are flagged
-    /// ahead of the column-drop migration. The PR 2 migration also runs an
-    /// idempotent defensive backfill before the drop. See
-    /// <c>docs/superpowers/specs/2026-04-27-email-and-oauth-decoupling-design.md</c>.
+    /// One-shot backfill of <c>UserEmail.Provider</c> / <c>UserEmail.ProviderKey</c>
+    /// / <c>UserEmail.IsGoogle</c> from existing <c>AspNetUserLogins</c> rows and
+    /// the legacy <c>User.GoogleEmail</c> field. PR 3 of the
+    /// email-identity-decoupling spec. Idempotent — safe to re-run. Operator
+    /// runs once on QA (verifies the result counters), once on production
+    /// (verifies again), then PR 7 ships the legacy column drops.
     /// </summary>
-    [HttpGet("BackfillUserEmails")]
+    [HttpGet("BackfillUserEmailProviders")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
-    public IActionResult BackfillUserEmails()
+    public IActionResult BackfillUserEmailProviders()
     {
-        return View(new BackfillUserEmailsViewModel(
+        return View(new BackfillUserEmailProvidersViewModel(
             HasRun: false,
-            OrphansFound: 0,
-            RowsInserted: 0,
-            SkippedUserIds: Array.Empty<Guid>()));
+            UsersProcessed: 0,
+            ProviderRowsUpdated: 0,
+            IsGoogleRowsUpdated: 0,
+            AmbiguousMatchesWarned: 0,
+            Warnings: Array.Empty<string>()));
     }
 
-    [HttpPost("BackfillUserEmails")]
+    [HttpPost("BackfillUserEmailProviders")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> BackfillUserEmailsRun(CancellationToken ct)
+    public async Task<IActionResult> BackfillUserEmailProvidersRun(CancellationToken ct)
     {
         var currentUser = await GetCurrentUserAsync();
         _logger.LogInformation(
-            "Admin {AdminId} running UserEmail backfill",
+            "Admin {AdminId} running UserEmail Provider/IsGoogle backfill",
             currentUser?.Id);
 
-        var result = await _userEmailBackfillService.BackfillAsync(ct);
+        var result = await _userEmailProviderBackfillService.RunAsync(ct);
 
-        var msg = result.SkippedUserIds.Count == 0
-            ? $"Backfill complete. Orphans found: {result.OrphansFound}. Rows inserted: {result.RowsInserted}."
-            : $"Backfill complete. Orphans found: {result.OrphansFound}. Rows inserted: {result.RowsInserted}. " +
-              $"{result.SkippedUserIds.Count} user(s) skipped (no User.Email to backfill from) — see view for IDs.";
+        var msg =
+            $"Provider/IsGoogle backfill complete. Users processed: {result.UsersProcessed}. " +
+            $"Provider rows updated: {result.ProviderRowsUpdated}. " +
+            $"IsGoogle rows updated: {result.IsGoogleRowsUpdated}.";
+        if (result.AmbiguousMatchesWarned > 0)
+            msg += $" {result.AmbiguousMatchesWarned} user(s) with ambiguous AspNetUserLogins matches — see view for details.";
         SetSuccess(msg);
 
-        return View(nameof(BackfillUserEmails), new BackfillUserEmailsViewModel(
+        return View(nameof(BackfillUserEmailProviders), new BackfillUserEmailProvidersViewModel(
             HasRun: true,
-            OrphansFound: result.OrphansFound,
-            RowsInserted: result.RowsInserted,
-            SkippedUserIds: result.SkippedUserIds));
+            UsersProcessed: result.UsersProcessed,
+            ProviderRowsUpdated: result.ProviderRowsUpdated,
+            IsGoogleRowsUpdated: result.IsGoogleRowsUpdated,
+            AmbiguousMatchesWarned: result.AmbiguousMatchesWarned,
+            Warnings: result.Warnings));
     }
 
     [HttpGet("CacheStats")]

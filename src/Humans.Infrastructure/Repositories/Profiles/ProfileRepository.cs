@@ -166,6 +166,13 @@ public sealed class ProfileRepository : IProfileRepository
             .ToListAsync(ct);
     }
 
+    public async Task<int> CountActiveApprovedAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Profiles
+            .CountAsync(p => p.IsApproved && !p.IsSuspended, ct);
+    }
+
     public async Task<int> GetConsentReviewPendingCountAsync(CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -294,6 +301,115 @@ public sealed class ProfileRepository : IProfileRepository
         }
 
         return result;
+    }
+
+    public async Task<int> ReassignSubAggregatesToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        var sourceProfile = await ctx.Profiles
+            .FirstOrDefaultAsync(p => p.UserId == sourceUserId, ct);
+        if (sourceProfile is null)
+            return 0;
+
+        var targetProfile = await ctx.Profiles
+            .FirstOrDefaultAsync(p => p.UserId == targetUserId, ct);
+        if (targetProfile is null)
+            return 0;
+
+        var sourceVolunteerHistory = await ctx.VolunteerHistoryEntries
+            .Where(v => v.ProfileId == sourceProfile.Id)
+            .ToListAsync(ct);
+        var targetVolunteerHistory = await ctx.VolunteerHistoryEntries
+            .Where(v => v.ProfileId == targetProfile.Id)
+            .ToListAsync(ct);
+
+        var sourceLanguages = await ctx.ProfileLanguages
+            .Where(l => l.ProfileId == sourceProfile.Id)
+            .ToListAsync(ct);
+        var targetLanguages = await ctx.ProfileLanguages
+            .Where(l => l.ProfileId == targetProfile.Id)
+            .ToListAsync(ct);
+
+        // VolunteerHistory: dedup on (year, EventName) — drop source rows with
+        // a key that already exists on target, re-FK survivors. EventName
+        // comparison is case-sensitive (matches today's CV reconciliation).
+        var targetVolunteerKeys = new HashSet<(int Year, string EventName)>(
+            targetVolunteerHistory.Select(v => (v.Date.Year, v.EventName)));
+        foreach (var src in sourceVolunteerHistory)
+        {
+            var key = (src.Date.Year, src.EventName);
+            if (targetVolunteerKeys.Contains(key))
+            {
+                ctx.VolunteerHistoryEntries.Remove(src);
+            }
+            else
+            {
+                ctx.Entry(src).Property(nameof(VolunteerHistoryEntry.ProfileId)).CurrentValue = targetProfile.Id;
+                src.UpdatedAt = updatedAt;
+                targetVolunteerKeys.Add(key);
+            }
+        }
+
+        // Languages: dedup on LanguageCode. If both have the same code, keep
+        // the higher Proficiency (target wins on tie); drop the source row
+        // unconditionally after potentially upgrading target's proficiency.
+        var targetLanguageByCode = targetLanguages
+            .ToDictionary(l => l.LanguageCode, StringComparer.OrdinalIgnoreCase);
+        foreach (var src in sourceLanguages)
+        {
+            if (targetLanguageByCode.TryGetValue(src.LanguageCode, out var tgt))
+            {
+                if (src.Proficiency > tgt.Proficiency)
+                {
+                    tgt.Proficiency = src.Proficiency;
+                }
+                ctx.ProfileLanguages.Remove(src);
+            }
+            else
+            {
+                ctx.Entry(src).Property(nameof(ProfileLanguage.ProfileId)).CurrentValue = targetProfile.Id;
+                targetLanguageByCode[src.LanguageCode] = src;
+            }
+        }
+
+        // Anonymize the source profile in place (rolls in the work of
+        // AnonymizeForMergeByUserIdAsync). The row is kept as a tombstone
+        // counterpart to User.MergedToUserId; only identifying scalars are
+        // cleared. ContactField rows belong to the ContactFields section
+        // (IContactFieldService) and are re-FK'd by the merge orchestrator's
+        // separate ContactFieldService.ReassignToUserAsync call.
+        sourceProfile.FirstName = "Merged";
+        sourceProfile.LastName = "User";
+        sourceProfile.BurnerName = string.Empty;
+        sourceProfile.Bio = null;
+        sourceProfile.City = null;
+        sourceProfile.CountryCode = null;
+        sourceProfile.Latitude = null;
+        sourceProfile.Longitude = null;
+        sourceProfile.PlaceId = null;
+        sourceProfile.AdminNotes = null;
+        sourceProfile.Pronouns = null;
+        sourceProfile.DateOfBirth = null;
+        sourceProfile.ProfilePictureData = null;
+        sourceProfile.ProfilePictureContentType = null;
+        sourceProfile.EmergencyContactName = null;
+        sourceProfile.EmergencyContactPhone = null;
+        sourceProfile.EmergencyContactRelationship = null;
+        sourceProfile.ContributionInterests = null;
+        sourceProfile.BoardNotes = null;
+        sourceProfile.UpdatedAt = updatedAt;
+
+        await ctx.SaveChangesAsync(ct);
+
+        var volunteerHistoryCount = await ctx.VolunteerHistoryEntries
+            .CountAsync(v => v.ProfileId == targetProfile.Id, ct);
+        var languageCount = await ctx.ProfileLanguages
+            .CountAsync(l => l.ProfileId == targetProfile.Id, ct);
+
+        return volunteerHistoryCount + languageCount;
     }
 
     private async Task<bool> AnonymizeProfileInternalAsync(

@@ -83,8 +83,7 @@ public class SendAdminDailyDigestJob : IRecurringJob
 
         try
         {
-            // Pending deletions / consent reviews / onboarding / voting.
-            var pendingDeletionsCount = await _userService.GetPendingDeletionCountAsync(cancellationToken);
+            // Consent reviews / onboarding / voting.
             var onboardingReviewCount = await _profileService.GetConsentReviewPendingCountAsync(cancellationToken);
             var totalNotApproved = await _profileService.GetNotApprovedAndNotSuspendedCountAsync(cancellationToken);
             var stillOnboardingCount = Math.Max(0, totalNotApproved - onboardingReviewCount);
@@ -93,8 +92,11 @@ public class SendAdminDailyDigestJob : IRecurringJob
 
             // Pending consents calculation — reuses the same inputs the Admin
             // dashboard does so the numbers match.
-            var allUserIds = await _userService.GetAllUserIdsAsync(cancellationToken);
-            var allUserIdsList = allUserIds.ToList();
+            var allUsers = await _userService.GetAllUsersAsync(cancellationToken);
+            var allUserIdsList = allUsers.Select(u => u.Id).ToList();
+
+            // Pending deletions count derived from already-loaded user list.
+            var pendingDeletionsCount = allUsers.Count(u => u.DeletionRequestedAt != null);
             var usersWithAllConsents = await _membershipCalculator
                 .GetUsersWithAllRequiredConsentsAsync(allUserIdsList, cancellationToken);
 

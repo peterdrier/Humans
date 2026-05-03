@@ -9,7 +9,6 @@
   src/Humans.Infrastructure/Data/Configurations/Profiles/**
   src/Humans.Web/Controllers/ProfileController.cs
   src/Humans.Web/Controllers/ProfileApiController.cs
-  src/Humans.Web/Controllers/ContactsController.cs
   src/Humans.Web/Controllers/AdminDuplicateAccountsController.cs
   src/Humans.Web/Controllers/AdminMergeController.cs
   src/Humans.Web/Views/Profile/**
@@ -323,8 +322,6 @@ All profile-related functionality lives under `/Profile`:
 | `/Profile/Picture` | Profile picture endpoint |
 | `/api/profiles/search` | API search endpoint |
 
-External contacts (pre-provisioned Identity users imported from MailerLite/TicketTailor/etc.) are managed separately at `/Contacts` (`ContactsController`, `PolicyNames.HumanAdminBoardOrAdmin`).
-
 Admin-only flows for the section's cross-account hygiene:
 
 | Route | Purpose |
@@ -361,6 +358,7 @@ Admin-only flows for the section's cross-account hygiene:
 - Purging a human permanently deletes the account and all associated data, including severing the OAuth link so the next Google login creates a fresh account. Purge is disabled in production environments. No one can purge their own account.
 - Duplicate account detection applies gmail/googlemail equivalence when scanning for address collisions.
 - `AccountMergeService` writes and `DuplicateAccountService` reads go through the Profile section's repositories and `IUserService` — never through cross-section `DbSet` reads.
+- `AccountMergeService.AcceptAsync` is the **fold-into-target** orchestrator: it re-FKs every owning section's user-scoped rows from source to target via per-section `Reassign…ToUserAsync` methods, then tombstones the source User row (sets `MergedToUserId` + `MergedAt` via `IUserService.AnonymizeForMergeAsync`) — it does NOT delete or wipe the source. Append-only history (audit log, consent records, budget audit log) stays at source by design and is surfaced via chain-follow reads.
 
 ## Negative Access Rules
 
@@ -377,7 +375,7 @@ Admin-only flows for the section's cross-account hygiene:
 - When consent check status is Cleared, the human is auto-approved as a Volunteer and added to the Volunteers system team.
 - When a human requests account deletion, team memberships and governance roles are revoked immediately and `User.DeletionScheduledFor` is set to `now + 30 days`. `ProcessAccountDeletionsJob` runs the actual anonymisation via `IUserService.AnonymizeExpiredAccountAsync` after the scheduled date passes.
 - When a human verifies a pending email that already exists as a verified address on another account, `UserEmailService` creates an `AccountMergeRequest` (status `Pending`) for admin review.
-- When an `AccountMergeRequest` is accepted, all rows from the source user (emails, contact fields, CV entries, role assignments, memberships) are reassigned to the target user via the Profile section's owning services; the source user is archived.
+- When an `AccountMergeRequest` is accepted, `IAccountMergeService.AcceptAsync` orchestrates a **fold-into-target** inside one ambient `TransactionScope`: it calls `Reassign…ToUserAsync` on every section that owns user-FK'd rows (UserEmail / Profile sub-aggregates / ContactField / CommunicationPreference within Profiles; `IUserService` for AspNetUserLogins + EventParticipation; `ITicketSyncService`, `IRoleAssignmentService`, `ITeamService`, `IShiftSignupService`, `IShiftManagementService`, `IGeneralAvailabilityService`, `INotificationService`, `ICampaignService`, `ICampService`, `IApplicationDecisionService`, `IFeedbackService` cross-section), verifies the pending email on the target, then calls `IUserService.AnonymizeForMergeAsync` to tombstone the source User row (sets `MergedToUserId` + `MergedAt`, locks out login). The source row is **not** deleted — it stays as a redirect for chain-follow reads on append-only history.
 - When `DuplicateAccountService` flags a candidate, an audit entry is written via `IAuditLogService`.
 - When a profile field changes through any owning service, `CachingProfileService` reloads the affected `FullProfile` dict entry from the section's repositories.
 
@@ -387,11 +385,12 @@ Admin-only flows for the section's cross-account hygiene:
 - **Teams:** `ITeamService` — active membership equals membership in the Volunteers system team. Profile activation triggers addition.
 - **Onboarding:** `IOnboardingEligibilityQuery.SetConsentCheckPendingIfEligibleAsync` — Profile calls back into Onboarding to trigger the consent-check gate, using a narrow interface to avoid a DI cycle with `IOnboardingService`.
 - **Google Integration:** `IGoogleWorkspaceUserService` / `IGoogleSyncService` — a human's Google service email determines which email is used for Google Groups and Drive sync.
-- **Users/Identity:** `IUserService.GetByIdsAsync` — display data for cross-domain nav stitching.
+- **Users/Identity:** `IUserService.GetByIdsAsync` — display data for cross-domain nav stitching. `IUserService.ReassignLoginsToUserAsync` / `ReassignEventParticipationToUserAsync` / `AnonymizeForMergeAsync` — invoked by `AccountMergeService.AcceptAsync` during fold.
+- **Account merge fold fan-out:** `IAccountMergeService.AcceptAsync` calls `Reassign…ToUserAsync` on `ITicketSyncService`, `IRoleAssignmentService`, `ITeamService`, `IShiftSignupService`, `IShiftManagementService`, `IGeneralAvailabilityService`, `INotificationService`, `ICampaignService`, `ICampService`, `IApplicationDecisionService`, and `IFeedbackService` to re-FK each owning section's user-scoped rows from source to target. Inside Profiles it also calls `IUserEmailService`, `IProfileService`, `IContactFieldService`, and `ICommunicationPreferenceService` for the section's own sub-aggregates.
 
 ## Architecture
 
-**Owning services:** `ProfileService`, `ContactFieldService`, `ContactService`, `UserEmailService`, `CommunicationPreferenceService`, `AccountMergeService`, `DuplicateAccountService`
+**Owning services:** `ProfileService`, `ContactFieldService`, `UserEmailService`, `CommunicationPreferenceService`, `AccountMergeService`, `DuplicateAccountService`
 **Owned tables:** `profiles`, `contact_fields`, `user_emails`, `communication_preferences`, `volunteer_history_entries`, `profile_languages`, `account_merge_requests`
 **Status:** (A) Migrated — canonical §15 reference implementation (peterdrier/Humans PR #235, 2026-04-20). `AccountMergeService` / `DuplicateAccountService` moved into `Humans.Application/Services/Profile/` after the original migration (they now live alongside the other Profile-section services in the code tree; design-rules §8 ownership updated accordingly).
 

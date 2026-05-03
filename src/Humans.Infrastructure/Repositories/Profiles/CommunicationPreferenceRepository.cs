@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -130,5 +131,50 @@ public sealed class CommunicationPreferenceRepository : ICommunicationPreference
         ctx.Attach(preference);
         ctx.Entry(preference).State = EntityState.Modified;
         await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<int> ReassignToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        var sourceRows = await ctx.CommunicationPreferences
+            .Where(cp => cp.UserId == sourceUserId)
+            .ToListAsync(ct);
+        var targetRows = await ctx.CommunicationPreferences
+            .Where(cp => cp.UserId == targetUserId)
+            .ToListAsync(ct);
+
+        var targetByCategory = targetRows.ToDictionary(cp => cp.Category);
+
+        foreach (var src in sourceRows)
+        {
+            if (targetByCategory.TryGetValue(src.Category, out var tgt))
+            {
+                // Same category on both sides — collapse onto target row.
+                // Most-recent UpdatedAt wins. If source is newer, copy its
+                // values onto the target row before deleting source.
+                if (src.UpdatedAt > tgt.UpdatedAt)
+                {
+                    tgt.OptedOut = src.OptedOut;
+                    tgt.InboxEnabled = src.InboxEnabled;
+                    tgt.UpdateSource = src.UpdateSource;
+                }
+                tgt.UpdatedAt = updatedAt;
+                ctx.CommunicationPreferences.Remove(src);
+            }
+            else
+            {
+                // Re-FK to target — no conflict.
+                ctx.Entry(src).Property(nameof(CommunicationPreference.UserId)).CurrentValue = targetUserId;
+                src.UpdatedAt = updatedAt;
+            }
+        }
+
+        await ctx.SaveChangesAsync(ct);
+
+        return await ctx.CommunicationPreferences
+            .CountAsync(cp => cp.UserId == targetUserId, ct);
     }
 }

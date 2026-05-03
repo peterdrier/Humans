@@ -27,7 +27,9 @@
                                     <td>@user.DisplayName</td>
                                     <td class="text-muted">@user.Email</td>
                                     <td>
-                                        <a asp-controller="DevLogin" asp-action="SignInAsUser" asp-route-id="@user.Id"
+                                        <a asp-controller="DevLogin" asp-action="SignInAsUser"
+                                           asp-route-id="@user.Id"
+                                           asp-route-returnUrl="@ViewData["ReturnUrl"]"
                                            class="btn btn-sm btn-outline-primary">Sign in</a>
                                     </td>
                                 </tr>

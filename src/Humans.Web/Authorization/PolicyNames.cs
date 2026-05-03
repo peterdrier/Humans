@@ -7,6 +7,7 @@ namespace Humans.Web.Authorization;
 /// </summary>
 public static class PolicyNames
 {
+    public const string AgentRateLimit = nameof(AgentRateLimit);
     public const string AdminOnly = nameof(AdminOnly);
     public const string BoardOrAdmin = nameof(BoardOrAdmin);
     public const string HumanAdminBoardOrAdmin = nameof(HumanAdminBoardOrAdmin);
@@ -23,7 +24,6 @@ public static class PolicyNames
     public const string ShiftDepartmentManager = nameof(ShiftDepartmentManager);
     public const string PrivilegedSignupApprover = nameof(PrivilegedSignupApprover);
     public const string VolunteerManager = nameof(VolunteerManager);
-    public const string VolunteerSectionAccess = nameof(VolunteerSectionAccess);
     public const string MedicalDataViewer = nameof(MedicalDataViewer);
 
     /// <summary>
@@ -49,4 +49,14 @@ public static class PolicyNames
     /// Board member (standalone). Used rarely — most Board gates also include Admin.
     /// </summary>
     public const string BoardOnly = nameof(BoardOnly);
+
+    /// <summary>
+    /// Any admin-shaped role: Admin, Board, HumanAdmin, TeamsAdmin, CampAdmin,
+    /// TicketAdmin, FeedbackAdmin, FinanceAdmin, NoInfoAdmin, VolunteerCoordinator,
+    /// or ConsentCoordinator. Gates the admin-shell entry point (/Admin) so domain
+    /// admins (e.g. FinanceAdmin) can reach the dashboard and see only the sidebar
+    /// items their per-item authorization permits. The dashboard tiles themselves
+    /// are aggregate counts that are safe across all admin roles.
+    /// </summary>
+    public const string AnyAdminRole = nameof(AnyAdminRole);
 }

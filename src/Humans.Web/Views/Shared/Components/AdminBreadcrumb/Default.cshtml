@@ -1,0 +1,11 @@
+@model Humans.Web.ViewComponents.AdminBreadcrumbViewModel
+<a asp-controller="Admin" asp-action="Index">Admin</a>
+@if (Model.GroupLabel is not null)
+{
+    <span class="sep">/</span><span>@Model.GroupLabel</span>
+    <span class="sep">/</span><span class="here">@Model.ItemLabel</span>
+}
+else if (!string.IsNullOrEmpty(Model.FallbackTitle))
+{
+    <span class="sep">/</span><span class="here">@Model.FallbackTitle</span>
+}

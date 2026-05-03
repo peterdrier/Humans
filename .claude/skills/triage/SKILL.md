@@ -1,27 +1,27 @@
 ---
 name: triage
-description: "Triage pending feedback from the Humans app — respond to reporters, create GitHub issues, update status — AND review open issues to close ones already shipped to production — AND review in-memory log events for errors/warnings that need fixing. Use when /whats shows pending feedback, when you want to process community reports, when you want to clean up shipped issues, or when you want to check application logs for problems."
-argument-hint: "[qa] [all] [close] [open] [logs [PR#]]"
+description: "Triage in-memory log events for errors/warnings that need fixing — AND review open issues to close ones already shipped to production — AND triage pending feedback from the Humans app (respond to reporters, create GitHub issues, update status). Use when /whats shows pending feedback, when you want to check application logs for problems, when you want to clean up shipped issues, or when you want to process community reports."
+argument-hint: "[qa] [all] [logs [PR#]] [close] [open]"
 ---
 
-# Feedback & Log Triage
+# Log, Close & Feedback Triage
 
-Full-lifecycle triage of feedback, GitHub issues, and application logs for the Humans app. Three phases run by default:
+Full-lifecycle triage of application logs, GitHub issues, and feedback for the Humans app. Three phases run by default, **in priority order**:
 
-1. **Close phase** — find open GitHub issues whose fixes have shipped to production, close them, and notify any linked feedback reporters
-2. **Open phase** — triage new feedback reports into GitHub issues
-3. **Logs phase** — pull recent log events and triage errors/warnings into issues
+1. **Logs phase** — pull recent log events and triage errors/warnings into issues
+2. **Close phase** — find open GitHub issues whose fixes have shipped to production, close them, and notify any linked feedback reporters
+3. **Open phase** — triage new feedback reports into GitHub issues
 
-Running all phases each time keeps the issue tracker honest: shipped work gets closed, new feedback gets opened, and application errors get caught before users report them.
+**Logs come first.** Production health is the highest priority: live errors and warnings affect every user simultaneously, while a feedback report affects one. Catch and surface log problems before sinking attention into individual reports. Close phase comes next as cleanup — it removes already-shipped noise from the tracker before new feedback gets added on top. Feedback triage runs last.
 
 ## Arguments
 
-- *(none)* — full triage: close shipped issues, triage feedback, then review logs (all from production)
-- `close` — only run the close phase
-- `open` — only run the open phase (feedback only)
+- *(none)* — full triage in priority order: logs → close → feedback (all from production)
 - `logs` — only run the logs phase (from production)
 - `logs <PR#>` — only run the logs phase, targeting a PR preview environment (e.g., `logs 45` → `https://45.n.burn.camp`)
-- `qa` — triage feedback AND logs from QA instance
+- `close` — only run the close phase
+- `open` — only run the open phase (feedback only)
+- `qa` — triage logs AND feedback from QA instance
 - `all` — include Acknowledged reports in the open phase (for re-triage / follow-up)
 
 Arguments can be combined: `open all` includes Acknowledged reports; `logs qa` pulls logs from QA.
@@ -52,13 +52,211 @@ Feedback reports come from external users — people who are not `peterdrier` an
 
 ---
 
-# Phase 1: Close Shipped Issues
+# Phase 1: Log Triage
 
-Skip this phase if `open` or `logs` is in arguments.
+Skip this phase if `close` or `open` is in arguments (without `logs`).
 
-The goal: find open GitHub issues that have already been fixed in production, close them, and notify any feedback reporters who originally reported the problem. This is the "shipped but not closed" cleanup.
+The goal: pull recent application log events and identify errors, exceptions, and actionable warnings that need fixes. This catches problems before users report them — and it runs first because a single live error can be affecting every user right now while you sink attention into individual feedback reports.
 
-## Step 1.1: Identify shipped issues
+## Step 1.1: Determine target environment
+
+Resolve the base URL and API key for logs:
+
+| Arguments | Base URL | API Key |
+|-----------|----------|---------|
+| *(none)* or `logs` | `$HUMANS_API_URL` | `$HUMANS_LOG_API_KEY` or `$HUMANS_API_KEY` |
+| `qa` or `logs qa` | `$HUMANS_QA_API_URL` | `$HUMANS_QA_LOG_API_KEY` or `$HUMANS_QA_API_KEY` |
+| `logs <PR#>` | `https://<PR#>.n.burn.camp` | `$HUMANS_QA_LOG_API_KEY` or `$HUMANS_QA_API_KEY` |
+
+For API key resolution: try the `LOG_API_KEY` variant first, fall back to the general `API_KEY`. They're often the same value.
+
+Note the environment in output so the user always knows what they're looking at (e.g., "Logs from **production**" or "Logs from **PR #45** (`45.n.burn.camp`)").
+
+## Step 1.2: Fetch log events
+
+Pull the full buffer — errors first, then warnings:
+
+```bash
+# Errors and fatal (always actionable)
+curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/logs?count=200&minLevel=Error"
+
+# Warnings (need classification)
+curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/logs?count=200&minLevel=Warning"
+```
+
+The warning response includes errors too, so deduplicate: use the error response as the definitive error set, then subtract those from the warning response to get warnings-only.
+
+Parse the JSON arrays. Each entry has: `timestamp`, `level`, `message`, `exception` (nullable).
+
+If both are empty: "No log events found." and move on to the next phase.
+
+## Step 1.3: Classify log events
+
+Not every log event is a bug. The classification depends on the environment and the nature of the event.
+
+### Errors and Exceptions (any environment) — always actionable
+
+Every Error or Fatal log entry represents something that went wrong in code. These are always worth investigating:
+- Unhandled exceptions (stack traces in the `exception` field)
+- Failed API calls, database errors, service failures
+- Null reference exceptions, invalid operations
+
+### Warnings — almost always actionable
+
+The default stance on warnings is: **if it's in the logs, it's noise, and noise should be fixed.** Warnings exist to surface problems. If a warning fires repeatedly and nobody acts on it, it trains everyone to ignore warnings — and real problems hide in the noise.
+
+**Actionable warnings (fix the root cause or handle the condition correctly):**
+- Failed external API calls (Google, email, Stripe)
+- Database query issues, missing value comparers, migration problems
+- Configuration warnings (missing env vars, port overrides, startup noise)
+- Serialization/deserialization failures
+- Background job failures
+- Authorization failures on API endpoints
+- EF Core advisories (value comparers, query warnings) — these are fixable
+- Infrastructure/startup warnings — configure correctly
+
+**The only warnings to skip** are those caused by a user's own action where the system correctly handled it AND the warning serves as a useful audit trail. For example, "User X attempted to access resource they don't own → 403 returned" is the system working as designed and the log entry has diagnostic value. Even here, **keep the Warning severity** — see "What 'fixing' means" below. Do not downgrade to Information: in production, Information-level logs do NOT appear in the log viewer, so a downgrade is effectively the same as deletion.
+
+The rule of thumb: **can this warning be eliminated by making the code handle the condition correctly or adjusting config?** If yes, it's actionable. "Pre-existing" and "normal" are not reasons to skip — they're reasons it should have been fixed already.
+
+### What "fixing" a log message actually means
+
+This is the most commonly misunderstood part of log triage, and getting it wrong is worse than leaving the warning alone. When you propose a fix in the issue you create, be explicit about the goal so that whoever (or whatever) picks up the issue doesn't take the shortcut of deleting the log call or downgrading it into invisibility.
+
+**The goal of fixing a log message is to turn an *unknown* problem into a *known, handled* problem — not to silence the problem.** We always want a record when something goes wrong. That record is how we spot regressions, detect abuse, and understand usage patterns. Deleting a log line throws away that signal. **So does downgrading it to Information in production**, because the production log viewer only shows Warning and above — an Information-level log is effectively invisible there.
+
+**What fixing looks like in practice:**
+
+1. **Identify the condition** that's triggering the log. Is it a user-driven validation failure? A guardrail hit? A cancelled request? A genuine bug? A flaky external service?
+2. **Decide whether it's expected or not.** "Expected" means: this happens in the normal course of operation, nothing is actually broken, the system handled it correctly.
+3. **Rewrite the call site — keep it at Warning, drop the exception object:**
+   - **Expected, user-driven, or guardrail** → wrap the throwing call in a `try/catch` for the *specific* expected exception type. Keep the log call at `LogWarning` so it remains visible in the production log viewer, but **drop the exception argument** so the stack trace doesn't spam the error channel. Use the message / reason as a structured property instead. Example: `_logger.LogWarning("Rejected email add for user {UserId}: {Reason}", user.Id, ex.Message);` instead of `_logger.LogWarning(ex, "Failed to add email...", user.Id);` — same severity, same visibility, no stack trace, better structured context.
+   - **Bug** → fix the bug. The log call stays as-is (or escalates to Error) because we still want to know if the bug recurs.
+   - **Flaky external service** → catch the specific exception, log at `Warning` with structured context about what was attempted, and retry or fall back per business requirements.
+4. **The only acceptable way to remove a log call entirely** is if the *code path itself* is being removed (dead code cleanup) or if the condition is literally impossible after a structural fix (e.g., the call site is gone because the whole method was replaced). Never delete a log call just because the event is "expected."
+5. **Never downgrade to `LogInformation` or `LogDebug` as the fix.** That's equivalent to deletion in production because those levels don't render in the prod log viewer. Stay at Warning.
+
+**Anti-patterns to refuse when writing proposed-fix text:**
+- ❌ "Remove the `LogWarning` wrapping X" — ambiguous, will be read as delete-the-line
+- ❌ "Downgrade to Information" — effectively invisible in prod
+- ❌ "Stop logging this" — destroys the signal
+- ✅ "Convert the catch block around X to `LogWarning` *without* the exception object, using structured `{Reason}` instead of `{Exception}`."
+- ✅ "Catch `OperationCanceledException` in X and `LogWarning` the cancellation without the exception object."
+
+Be prescriptive: name the severity (Warning), specify that the `ex` argument comes out of the log call, and give the replacement message template.
+
+## Step 1.4: Research and group
+
+For each actionable log event (or cluster of related events):
+
+1. **Extract the code location** from the message and exception. Stack traces contain file paths and line numbers — use these to find the relevant code.
+2. **Check for related open issues** — the error message or exception type may already be tracked.
+3. **Form a diagnosis** — what's the root cause? Is this a new bug, a regression, or a known issue?
+4. **Group related events** — multiple log entries often share a root cause. An exception in `TeamService.SyncAsync` appearing 5 times in the last hour is one issue, not five. Group by: same exception type + same method, or same error message pattern.
+
+Use subagents for parallel research when there are 3+ actionable events.
+
+## Step 1.5: Present findings
+
+Present the classified results:
+
+```
+## Log Triage — {environment}
+Pulled {total} events ({error_count} errors, {warning_count} warnings)
+
+### Errors ({count} actionable)
+
+#### Error #1: {Exception type or error summary}
+**Level:** Error | **Count:** {N occurrences} | **Last seen:** {timestamp}
+**Message:** {rendered message}
+**Exception:** {first ~5 lines of stack trace, if present}
+**Analysis:** {Your diagnosis — root cause, relevant code}
+**Related issues:** {existing issues or "none"}
+**Proposed action:** Create issue / Already tracked in #{N} / Skip
+
+---
+
+### Warnings ({count})
+
+#### Warning #1: {Summary}
+...
+```
+
+Then present the action menu via `AskUserQuestion`:
+
+| Option | Label | Description |
+|--------|-------|-------------|
+| 1 | Create issues for all | Create GitHub issues for all actionable findings |
+| 2 | Review individually | Go through each finding for individual decisions |
+| 3 | Skip logs phase | No action needed |
+
+## Step 1.6: Execute actions
+
+For each finding the user approves:
+
+**Create a GitHub issue** using the same quality standards as feedback issues, but adapted for log events:
+
+```markdown
+## Context
+{Analysis of the error — what's happening, when, how often}
+
+## Log evidence
+```
+{Level}: {message}
+{exception stack trace if present}
+```
+**Environment:** {production/QA/PR#}
+**Occurrences:** {count} in recent buffer
+**Last seen:** {timestamp}
+
+## Proposed fix
+{Specific files, methods, what to change}
+
+## Acceptance criteria
+- [ ] {Error no longer appears in logs under the same conditions}
+- [ ] {Any other verifiable condition}
+
+## Sprint Metadata
+- **Size:** {XS|S|M|L|XL}
+- **Tier:** {direct|lightweight|standard|thorough}
+- **Area:** {area}
+- **Key files:** `{file1}`, `{file2}`
+- **Migration:** no
+```
+
+```bash
+gh issue create --repo nobodies-collective/Humans \
+  --title "Fix: {concise error description}" \
+  --label "bug" \
+  --label "size:<XS|S|M|L|XL>" \
+  --label "tier:<direct|lightweight|standard|thorough>" \
+  --label "section:<area>" \
+  --label "db:<yes|no|maybe>" \
+  --body "<body>"
+```
+
+For findings that are duplicates of existing issues, just note it: "Already tracked in #{N}" — don't create duplicates.
+
+## Step 1.7: Logs phase summary
+
+```
+Logs phase complete: {total} events reviewed ({environment})
+- Errors: {count}
+- Warnings: {count}
+- Issues created: {count}
+- Already tracked: {count}
+- Skipped (user-action audit trails): {count}
+```
+
+---
+
+# Phase 2: Close Shipped Issues
+
+Skip this phase if `open` or `logs` is in arguments (without other phases).
+
+The goal: find open GitHub issues that have already been fixed in production, close them, and notify any feedback reporters who originally reported the problem. This is the "shipped but not closed" cleanup — running it before feedback triage keeps the open-issue list honest so duplicate-detection in Phase 3 doesn't get confused by stale entries.
+
+## Step 2.1: Identify shipped issues
 
 Run these in parallel:
 
@@ -76,9 +274,9 @@ git log upstream/main --oneline | grep -oP '#\d+' | sort -un
 
 Intersect the two sets: any open issue whose number appears in upstream/main commit messages is a candidate for closure. These are issues where the fix has shipped but the issue was never closed (common when batch PRs don't include `Closes #N` for every issue).
 
-If no candidates are found, report "No shipped issues to close." and move to Phase 2.
+If no candidates are found, report "No shipped issues to close." and move to Phase 3.
 
-## Step 1.2: Cross-reference with feedback
+## Step 2.2: Cross-reference with feedback
 
 Determine base URL and API key:
 - If `qa` in arguments: use `$HUMANS_QA_API_URL` and `$HUMANS_QA_API_KEY`
@@ -93,7 +291,7 @@ Build a lookup: `gitHubIssueNumber` → feedback report(s). For each candidate i
 
 Also scan issue bodies for `fb:` feedback IDs as a fallback — some issues may have feedback links documented in the body but not formally linked via the API.
 
-## Step 1.3: Present shipped issues
+## Step 2.3: Present shipped issues
 
 Present the candidates as a batch table:
 
@@ -124,7 +322,7 @@ Then present the action menu via `AskUserQuestion`:
 
 If the user picks "Close all", proceed to execute. If "Review individually", present each candidate one at a time with options: Close (+ Notify), Skip.
 
-## Step 1.4: Execute closures
+## Step 2.4: Execute closures
 
 For each issue being closed:
 
@@ -154,7 +352,7 @@ gh issue close <number> --repo nobodies-collective/Humans \
      "$BASE_URL/api/feedback/{id}/status"
    ```
 
-## Step 1.5: Close phase summary
+## Step 2.5: Close phase summary
 
 ```
 Close phase complete: {total} shipped issues reviewed
@@ -165,13 +363,13 @@ Close phase complete: {total} shipped issues reviewed
 
 ---
 
-# Phase 2: Triage New Feedback
+# Phase 3: Triage New Feedback
 
-Skip this phase if `close` or `logs` is in arguments.
+Skip this phase if `close` or `logs` is in arguments (without other phases).
 
-This is the "open" side — turning incoming feedback into actionable GitHub issues.
+This is the "open" side — turning incoming feedback into actionable GitHub issues. Runs last because logs and shipped-issue cleanup should both be done first; that way feedback triage operates against an accurate open-issue list and the user's attention isn't pulled into per-report work while live problems sit unaddressed.
 
-## Step 2.1: Fetch pending feedback
+## Step 3.1: Fetch pending feedback
 
 Determine base URL and API key:
 - If `qa` in arguments: use `$HUMANS_QA_API_URL` and `$HUMANS_QA_API_KEY`
@@ -193,7 +391,7 @@ Sort by CreatedAt ascending (oldest first).
 
 **Feedback ID:** Each report has a `Id` field (Guid). Use the first 8 characters as the short feedback ID (e.g., `fb:a1b2c3d4`). This ID is critical — it's the link back to the reporter so they can be notified when the fix ships.
 
-## Step 2.2: Research all reports (batch, upfront)
+## Step 3.2: Research all reports (batch, upfront)
 
 Before presenting anything to the user, research ALL reports in parallel. The goal is to arrive at each report with a proposed diagnosis and action so the user only needs to confirm or correct — not wait while you investigate.
 
@@ -213,7 +411,7 @@ After research, identify reports that should be fixed together — reports touch
 
 When presenting to the user, flag groups explicitly: "Reports #2 and #4 both relate to the Profile page and could be fixed in one PR."
 
-## Step 2.3: Present and triage (rapid-fire)
+## Step 3.3: Present and triage (rapid-fire)
 
 Present all reports to the user in sequence, with your pre-researched analysis already included. The user's job is to confirm your assessment, correct it where you're wrong, and pick an action — not to wait for research.
 
@@ -248,7 +446,7 @@ Present the action menu via `AskUserQuestion`:
 
 The user may also provide corrections to your analysis ("actually that's a caching issue, not a permissions issue") or additional context. Incorporate this into the issue.
 
-## Step 2.4: Execute actions
+## Step 3.4: Execute actions
 
 **JSON encoding rule:** When sending text to the feedback API, ALWAYS use `jq` to construct the JSON body. Never inline message text in a bash `-d '...'` string — special characters (em dashes, curly quotes, etc.) break JSON encoding. Pattern:
 ```bash
@@ -377,7 +575,7 @@ curl -sf -X PATCH -H "X-Api-Key: $API_KEY" -H "Content-Type: application/json" \
 
 Move to next report. No API calls.
 
-## Step 2.5: Open phase summary
+## Step 3.5: Open phase summary
 
 ```
 Open phase complete: {total} reports processed
@@ -396,210 +594,16 @@ If reports were grouped into shared issues, note the groupings.
 
 ---
 
-# Phase 3: Log Triage
-
-Skip this phase if `close` or `open` is in arguments (without `logs`).
-
-The goal: pull recent application log events and identify errors, exceptions, and actionable warnings that need fixes. This catches problems before users report them.
-
-## Step 3.1: Determine target environment
-
-Resolve the base URL and API key for logs:
-
-| Arguments | Base URL | API Key |
-|-----------|----------|---------|
-| *(none)* or `logs` | `$HUMANS_API_URL` | `$HUMANS_LOG_API_KEY` or `$HUMANS_API_KEY` |
-| `qa` or `logs qa` | `$HUMANS_QA_API_URL` | `$HUMANS_QA_LOG_API_KEY` or `$HUMANS_QA_API_KEY` |
-| `logs <PR#>` | `https://<PR#>.n.burn.camp` | `$HUMANS_QA_LOG_API_KEY` or `$HUMANS_QA_API_KEY` |
-
-For API key resolution: try the `LOG_API_KEY` variant first, fall back to the general `API_KEY`. They're often the same value.
-
-Note the environment in output so the user always knows what they're looking at (e.g., "Logs from **production**" or "Logs from **PR #45** (`45.n.burn.camp`)").
-
-## Step 3.2: Fetch log events
-
-Pull the full buffer — errors first, then warnings:
-
-```bash
-# Errors and fatal (always actionable)
-curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/logs?count=200&minLevel=Error"
-
-# Warnings (need classification)
-curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/logs?count=200&minLevel=Warning"
-```
-
-The warning response includes errors too, so deduplicate: use the error response as the definitive error set, then subtract those from the warning response to get warnings-only.
-
-Parse the JSON arrays. Each entry has: `timestamp`, `level`, `message`, `exception` (nullable).
-
-If both are empty: "No log events found." and move on.
-
-## Step 3.3: Classify log events
-
-Not every log event is a bug. The classification depends on the environment and the nature of the event.
-
-### Errors and Exceptions (any environment) — always actionable
-
-Every Error or Fatal log entry represents something that went wrong in code. These are always worth investigating:
-- Unhandled exceptions (stack traces in the `exception` field)
-- Failed API calls, database errors, service failures
-- Null reference exceptions, invalid operations
-
-### Warnings — almost always actionable
-
-The default stance on warnings is: **if it's in the logs, it's noise, and noise should be fixed.** Warnings exist to surface problems. If a warning fires repeatedly and nobody acts on it, it trains everyone to ignore warnings — and real problems hide in the noise.
-
-**Actionable warnings (fix the root cause or handle the condition correctly):**
-- Failed external API calls (Google, email, Stripe)
-- Database query issues, missing value comparers, migration problems
-- Configuration warnings (missing env vars, port overrides, startup noise)
-- Serialization/deserialization failures
-- Background job failures
-- Authorization failures on API endpoints
-- EF Core advisories (value comparers, query warnings) — these are fixable
-- Infrastructure/startup warnings — configure correctly
-
-**The only warnings to skip** are those caused by a user's own action where the system correctly handled it AND the warning serves as a useful audit trail. For example, "User X attempted to access resource they don't own → 403 returned" is the system working as designed and the log entry has diagnostic value. Even here, **keep the Warning severity** — see "What 'fixing' means" below. Do not downgrade to Information: in production, Information-level logs do NOT appear in the log viewer, so a downgrade is effectively the same as deletion.
-
-The rule of thumb: **can this warning be eliminated by making the code handle the condition correctly or adjusting config?** If yes, it's actionable. "Pre-existing" and "normal" are not reasons to skip — they're reasons it should have been fixed already.
-
-### What "fixing" a log message actually means
-
-This is the most commonly misunderstood part of log triage, and getting it wrong is worse than leaving the warning alone. When you propose a fix in the issue you create, be explicit about the goal so that whoever (or whatever) picks up the issue doesn't take the shortcut of deleting the log call or downgrading it into invisibility.
-
-**The goal of fixing a log message is to turn an *unknown* problem into a *known, handled* problem — not to silence the problem.** We always want a record when something goes wrong. That record is how we spot regressions, detect abuse, and understand usage patterns. Deleting a log line throws away that signal. **So does downgrading it to Information in production**, because the production log viewer only shows Warning and above — an Information-level log is effectively invisible there.
-
-**What fixing looks like in practice:**
-
-1. **Identify the condition** that's triggering the log. Is it a user-driven validation failure? A guardrail hit? A cancelled request? A genuine bug? A flaky external service?
-2. **Decide whether it's expected or not.** "Expected" means: this happens in the normal course of operation, nothing is actually broken, the system handled it correctly.
-3. **Rewrite the call site — keep it at Warning, drop the exception object:**
-   - **Expected, user-driven, or guardrail** → wrap the throwing call in a `try/catch` for the *specific* expected exception type. Keep the log call at `LogWarning` so it remains visible in the production log viewer, but **drop the exception argument** so the stack trace doesn't spam the error channel. Use the message / reason as a structured property instead. Example: `_logger.LogWarning("Rejected email add for user {UserId}: {Reason}", user.Id, ex.Message);` instead of `_logger.LogWarning(ex, "Failed to add email...", user.Id);` — same severity, same visibility, no stack trace, better structured context.
-   - **Bug** → fix the bug. The log call stays as-is (or escalates to Error) because we still want to know if the bug recurs.
-   - **Flaky external service** → catch the specific exception, log at `Warning` with structured context about what was attempted, and retry or fall back per business requirements.
-4. **The only acceptable way to remove a log call entirely** is if the *code path itself* is being removed (dead code cleanup) or if the condition is literally impossible after a structural fix (e.g., the call site is gone because the whole method was replaced). Never delete a log call just because the event is "expected."
-5. **Never downgrade to `LogInformation` or `LogDebug` as the fix.** That's equivalent to deletion in production because those levels don't render in the prod log viewer. Stay at Warning.
-
-**Anti-patterns to refuse when writing proposed-fix text:**
-- ❌ "Remove the `LogWarning` wrapping X" — ambiguous, will be read as delete-the-line
-- ❌ "Downgrade to Information" — effectively invisible in prod
-- ❌ "Stop logging this" — destroys the signal
-- ✅ "Convert the catch block around X to `LogWarning` *without* the exception object, using structured `{Reason}` instead of `{Exception}`."
-- ✅ "Catch `OperationCanceledException` in X and `LogWarning` the cancellation without the exception object."
-
-Be prescriptive: name the severity (Warning), specify that the `ex` argument comes out of the log call, and give the replacement message template.
-
-## Step 3.4: Research and group
-
-For each actionable log event (or cluster of related events):
-
-1. **Extract the code location** from the message and exception. Stack traces contain file paths and line numbers — use these to find the relevant code.
-2. **Check for related open issues** — the error message or exception type may already be tracked.
-3. **Form a diagnosis** — what's the root cause? Is this a new bug, a regression, or a known issue?
-4. **Group related events** — multiple log entries often share a root cause. An exception in `TeamService.SyncAsync` appearing 5 times in the last hour is one issue, not five. Group by: same exception type + same method, or same error message pattern.
-
-Use subagents for parallel research when there are 3+ actionable events.
-
-## Step 3.5: Present findings
-
-Present the classified results:
-
-```
-## Log Triage — {environment}
-Pulled {total} events ({error_count} errors, {warning_count} warnings)
-
-### Errors ({count} actionable)
-
-#### Error #1: {Exception type or error summary}
-**Level:** Error | **Count:** {N occurrences} | **Last seen:** {timestamp}
-**Message:** {rendered message}
-**Exception:** {first ~5 lines of stack trace, if present}
-**Analysis:** {Your diagnosis — root cause, relevant code}
-**Related issues:** {existing issues or "none"}
-**Proposed action:** Create issue / Already tracked in #{N} / Skip
-
----
-
-### Warnings ({count})
-
-#### Warning #1: {Summary}
-...
-```
-
-Then present the action menu via `AskUserQuestion`:
-
-| Option | Label | Description |
-|--------|-------|-------------|
-| 1 | Create issues for all | Create GitHub issues for all actionable findings |
-| 2 | Review individually | Go through each finding for individual decisions |
-| 3 | Skip logs phase | No action needed |
-
-## Step 3.6: Execute actions
-
-For each finding the user approves:
-
-**Create a GitHub issue** using the same quality standards as feedback issues, but adapted for log events:
-
-```markdown
-## Context
-{Analysis of the error — what's happening, when, how often}
-
-## Log evidence
-```
-{Level}: {message}
-{exception stack trace if present}
-```
-**Environment:** {production/QA/PR#}
-**Occurrences:** {count} in recent buffer
-**Last seen:** {timestamp}
-
-## Proposed fix
-{Specific files, methods, what to change}
-
-## Acceptance criteria
-- [ ] {Error no longer appears in logs under the same conditions}
-- [ ] {Any other verifiable condition}
-
-## Sprint Metadata
-- **Size:** {XS|S|M|L|XL}
-- **Tier:** {direct|lightweight|standard|thorough}
-- **Area:** {area}
-- **Key files:** `{file1}`, `{file2}`
-- **Migration:** no
-```
-
-```bash
-gh issue create --repo nobodies-collective/Humans \
-  --title "Fix: {concise error description}" \
-  --label "bug" \
-  --label "size:<XS|S|M|L|XL>" \
-  --label "tier:<direct|lightweight|standard|thorough>" \
-  --label "section:<area>" \
-  --label "db:<yes|no|maybe>" \
-  --body "<body>"
-```
-
-For findings that are duplicates of existing issues, just note it: "Already tracked in #{N}" — don't create duplicates.
-
-## Step 3.7: Logs phase summary
-
-```
-Logs phase complete: {total} events reviewed ({environment})
-- Errors: {count}
-- Warnings: {count}
-- Issues created: {count}
-- Already tracked: {count}
-- Skipped (user-action audit trails): {count}
-```
-
----
-
 # Final Summary
 
-After all phases complete, print a combined summary:
+After all phases complete, print a combined summary in the same priority order the phases ran:
 
 ```
 ## Triage Summary
+
+### Logs ({environment})
+- {count} issues created from {error_count} errors and {warning_count} warnings
+- {count} already tracked
 
 ### Closed (shipped)
 - {count} issues closed, {count} reporters notified
@@ -607,8 +611,4 @@ After all phases complete, print a combined summary:
 ### Opened (new feedback)
 - {count} issues created from {count} feedback reports
 - {count} responses sent, {count} skipped
-
-### Logs ({environment})
-- {count} issues created from {error_count} errors and {warning_count} warnings
-- {count} already tracked
 ```

@@ -30,15 +30,8 @@ public interface IMagicLinkService
     string? VerifySignupToken(string token, string? expectedEmail = null);
 
     /// <summary>
-    /// Finds a user by checking verified UserEmails first, then User.NormalizedEmail.
-    /// Used for account linking (OAuth callback) and signup double-click protection.
+    /// Finds a user by verified <see cref="Domain.Entities.UserEmail"/>. Used
+    /// for account linking (OAuth callback) and signup double-click protection.
     /// </summary>
     Task<User?> FindUserByVerifiedEmailAsync(string email, CancellationToken ct = default);
-
-    /// <summary>
-    /// Finds a user by checking ANY UserEmail (including unverified) and User.Email/NormalizedEmail.
-    /// Used to prevent duplicate account creation during OAuth login when the email exists
-    /// as an unverified UserEmail on another account.
-    /// </summary>
-    Task<User?> FindUserByAnyEmailAsync(string email, CancellationToken ct = default);
 }

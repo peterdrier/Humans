@@ -1,0 +1,61 @@
+@using Humans.Web.Extensions
+@model Humans.Web.Controllers.AdminAgentConversationDetail
+@{ ViewData["Title"] = "Conversation Detail"; var conv = Model.Conversation; }
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Conversation</h2>
+    <div class="d-flex gap-2">
+        <a asp-action="ConversationPrompt" asp-route-id="@conv.Id" class="btn btn-outline-info btn-sm">
+            Show what would be sent to Anthropic
+        </a>
+        <a asp-action="Conversations" class="btn btn-outline-secondary btn-sm">Back to list</a>
+    </div>
+</div>
+
+<dl class="row mb-4">
+    <dt class="col-sm-3">ID</dt>
+    <dd class="col-sm-9"><code>@conv.Id</code></dd>
+    <dt class="col-sm-3">Human</dt>
+    <dd class="col-sm-9"><human-link user-id="@conv.UserId" display-name="@Model.DisplayName" admin="true" /></dd>
+    <dt class="col-sm-3">Started</dt>
+    <dd class="col-sm-9">@conv.StartedAt.ToAuditTimestamp() UTC</dd>
+    <dt class="col-sm-3">Last message</dt>
+    <dd class="col-sm-9">@conv.LastMessageAt.ToAuditTimestamp() UTC</dd>
+    <dt class="col-sm-3">Locale</dt>
+    <dd class="col-sm-9">@conv.Locale</dd>
+    <dt class="col-sm-3">Message count</dt>
+    <dd class="col-sm-9">@conv.MessageCount</dd>
+</dl>
+
+@if (conv.Messages.Any())
+{
+    <h4>Messages</h4>
+    @foreach (var msg in conv.Messages.OrderBy(m => m.CreatedAt))
+    {
+        <div class="card mb-2 @(msg.Role == Humans.Domain.Enums.AgentRole.User ? "border-primary" : "border-secondary")">
+            <div class="card-header d-flex justify-content-between">
+                <span><strong>@msg.Role</strong></span>
+                <span class="text-muted small">@msg.CreatedAt.ToAuditTimestamp() UTC</span>
+            </div>
+            <div class="card-body">
+                <p class="mb-1" style="white-space: pre-wrap;">@msg.Content</p>
+                @if (!string.IsNullOrEmpty(msg.RefusalReason))
+                {
+                    <div class="alert alert-warning mt-2 mb-0 py-1">Refusal: @msg.RefusalReason</div>
+                }
+                @if (msg.HandedOffToFeedbackId.HasValue)
+                {
+                    <div class="alert alert-info mt-2 mb-0 py-1">Handed off to feedback: <code>@msg.HandedOffToFeedbackId</code></div>
+                }
+                <div class="text-muted small mt-2">
+                    Prompt: @msg.PromptTokens tok | Output: @msg.OutputTokens tok | Cached: @msg.CachedTokens tok | @msg.DurationMs ms
+                    @if (!string.IsNullOrEmpty(msg.Model)) { <span> | @msg.Model</span> }
+                </div>
+            </div>
+        </div>
+    }
+}
+else
+{
+    <p class="text-muted">No messages loaded.</p>
+}

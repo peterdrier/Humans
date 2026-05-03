@@ -1,0 +1,144 @@
+@model Humans.Web.Controllers.OrphanSignupsViewModel
+@using Humans.Domain.Enums
+@using Humans.Web.Extensions
+
+@{
+    ViewData["Title"] = "Orphan shift signups";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid py-3">
+    <h1 class="h3 mb-3">Orphan shift signups</h1>
+
+    <p class="text-muted mb-3">
+        ShiftSignups whose <code>Id</code> has no audit row tying the signup
+        to a creation-or-confirmation moment (<code>ShiftSignupCreated</code>,
+        <code>ShiftSignupVoluntold</code>, or <code>ShiftSignupConfirmed</code>).
+        <code>ShiftSignupConfirmed</code> is included so legacy auto-confirmed
+        self-signups (which pre-fix wrote only <code>ShiftSignupConfirmed</code>
+        at creation time) and Pending → Confirmed transitions both count as
+        sufficient trail. A true orphan is a signup that went Pending →
+        Bailed / Refused / Cancelled without ever passing through Confirm —
+        the case behind the "I never signed up for this" support thread.
+    </p>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="text-muted small">Total signups</div>
+                    <div class="h4 mb-0">@Model.TotalSignups.ToString("N0")</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card @(Model.OrphanCount == 0 ? "border-success" : "border-warning")">
+                <div class="card-body">
+                    <div class="text-muted small">Orphans</div>
+                    <div class="h4 mb-0">@Model.OrphanCount.ToString("N0")</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="text-muted small">Unique humans affected</div>
+                    <div class="h4 mb-0">@Model.UniqueUsers.ToString("N0")</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.Rows.Count == 0)
+    {
+        <div class="alert alert-success">
+            No orphan signups — every ShiftSignup has a creation-event audit row.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle">
+                <thead>
+                    <tr>
+                        <th>Human</th>
+                        <th>Rota</th>
+                        <th>Shift date</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Reviewed by</th>
+                        <th>Enrolled by</th>
+                        <th>Block</th>
+                        <th>Signup id</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var row in Model.Rows)
+                {
+                    <tr>
+                        <td>
+                            <a asp-controller="Profile" asp-action="ViewProfile" asp-route-id="@row.UserId">
+                                @row.UserDisplayName
+                            </a>
+                        </td>
+                        <td>@row.RotaName</td>
+                        <td>@row.ShiftDate.ToDisplayShiftDate()</td>
+                        <td>
+                            <span class="badge @(row.Status switch
+                            {
+                                SignupStatus.Confirmed => "bg-success",
+                                SignupStatus.Pending => "bg-warning text-dark",
+                                SignupStatus.Bailed => "bg-secondary",
+                                SignupStatus.Refused => "bg-danger",
+                                SignupStatus.Cancelled => "bg-dark",
+                                SignupStatus.NoShow => "bg-danger",
+                                _ => "bg-light text-dark"
+                            })">@row.Status</span>
+                        </td>
+                        <td>
+                            <time datetime="@row.CreatedAt.ToString()">
+                                @row.CreatedAt.ToString()
+                            </time>
+                        </td>
+                        <td>
+                            @if (row.ReviewedByUserId.HasValue)
+                            {
+                                <a asp-controller="Profile" asp-action="ViewProfile" asp-route-id="@row.ReviewedByUserId">
+                                    @(row.ReviewedByDisplayName ?? row.ReviewedByUserId.Value.ToString())
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+                        <td>
+                            @if (row.EnrolledByUserId.HasValue)
+                            {
+                                <a asp-controller="Profile" asp-action="ViewProfile" asp-route-id="@row.EnrolledByUserId">
+                                    @(row.EnrolledByDisplayName ?? row.EnrolledByUserId.Value.ToString())
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+                        <td>
+                            @if (row.SignupBlockId.HasValue)
+                            {
+                                <code class="small">@row.SignupBlockId.Value.ToString()[..8]</code>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+                        <td><code class="small">@row.SignupId.ToString()[..8]</code></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

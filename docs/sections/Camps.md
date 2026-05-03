@@ -61,7 +61,7 @@ Cross-domain nav `CampLead.User` is **stripped** (PR for issue nobodies-collecti
 
 ### CampImage
 
-Image metadata; files are stored on disk via `ICampImageStorage` (Application interface). Display order is tracked per camp.
+Image metadata; files are stored on disk via the shared `IFileStorage` abstraction (key `uploads/camps/{campId}/{guid}{.ext}`, served as static files at `/uploads/camps/...`). Display order is tracked per camp.
 
 **Table:** `camp_images`
 
@@ -153,6 +153,34 @@ Aggregate-local navs: `CampRoleAssignment.CampSeason`, `CampRoleAssignment.Defin
 
 All stored as strings via `HasConversion<string>()`. `Vibes` stored as jsonb array.
 
+## Routing
+
+Three controllers serve this section. The MVC URL surface is dual-routed under `/Camps/*` (English) and `/Barrios/*` (Spanish); the API surface is dual-routed under `/api/camps/*` and `/api/barrios/*`. The dual-route alias is governed by an invariant below — no other section may add aliases.
+
+| Route | Controller | Purpose |
+|-------|------------|---------|
+| `/Camps` | `CampController` | Public directory |
+| `/Camps/{slug}` | `CampController` | Camp detail (current season, leads, images, history) |
+| `/Camps/{slug}/Season/{year}` | `CampController` | Past-season detail |
+| `/Camps/{slug}/Contact` | `CampController` | Facilitated message to camp leads |
+| `/Camps/{slug}/Edit` | `CampController` | Lead-only edit of season copy / images / leads |
+| `/Camps/Register` | `CampController` | New camp registration |
+| `/Camps/{slug}/OptIn/{year}`, `.../Withdraw/{seasonId}`, `.../Rejoin/{seasonId}` | `CampController` | Per-season participation toggles |
+| `/Camps/{slug}/Leads/*` | `CampController` | Lead add/remove |
+| `/Camps/{slug}/Members/*` | `CampController` | Member request/approve/reject/remove/leave |
+| `/Camps/{slug}/Roles/*` | `CampController` | Per-camp role assignment/unassignment |
+| `/Camps/{slug}/Images/*` | `CampController` | Image upload/delete/reorder |
+| `/Camps/{slug}/HistoricalNames/*` | `CampController` | Historical-name add/remove |
+| `/Camps/Admin` | `CampAdminController` | CampAdmin-only directory + season management |
+| `/Camps/Admin/Roles/*` | `CampAdminController` | `CampRoleDefinition` CRUD |
+| `/Camps/Admin/Compliance` | `CampAdminController` | Per-season role compliance report |
+| `/Camps/Admin/Export` | `CampAdminController` | CSV export |
+| `/Camps/Admin/{Approve,Reject,OpenSeason,CloseSeason,SetPublicYear,SetNameLockDate,Reactivate,UpdateRegistrationInfo,Delete}/...` | `CampAdminController` | Season lifecycle actions |
+| `/api/camps/{year}` | `CampApiController` | Year directory JSON |
+| `/api/camps/{year}/placement` | `CampApiController` | Placement-data JSON |
+
+Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/architecture/design-rules.md` § "Admin is not a section": `/Admin/*` is a nav holder for actions whose services live in their owning sections).
+
 ## Actors & Roles
 
 | Actor | Capabilities |
@@ -168,7 +196,7 @@ All stored as strings via `HasConversion<string>()`. `Vibes` stored as jsonb arr
 - Each camp has a unique slug used for URL routing.
 - Camp season status follows: Pending then Active, Full, Rejected, or Withdrawn. Only CampAdmin can approve or reject a season.
 - Only camp leads or CampAdmin can edit a camp.
-- Camp images are stored on disk via `ICampImageStorage`; metadata and display order are tracked per camp.
+- Camp images are stored on disk via the shared `IFileStorage` abstraction (key prefix `uploads/camps/{campId}/`); metadata and display order are tracked per camp.
 - Historical names are recorded when a camp is renamed.
 - Camp settings control which year is shown publicly and which seasons accept registrations.
 - Resource-based authorization per design-rules §11: `CampAuthorizationHandler` + `CampOperationRequirement` gate all admin writes.
@@ -180,6 +208,7 @@ All stored as strings via `HasConversion<string>()`. `Vibes` stored as jsonb arr
 - All role-assignment data is private (no anonymous render). The public Camp Details page does not expose role assignments.
 - Leave/Withdraw/Remove cascades clear role assignments via `ICampRoleService.RemoveAllForMemberAsync` before the soft-delete. Hard-delete of a `CampMember` row cascades through the FK directly.
 - Camp Lead authz remains on the `CampLead` entity until the follow-up issue retires it. The "Camp Lead" role is **not** a `CampRoleDefinition` row in this PR.
+- The `/Camps ↔ /Barrios` and `/api/camps ↔ /api/barrios` dual-route aliases are the **only sanctioned URL aliases in the codebase**. No other section may add URL aliases without explicit owner approval.
 
 ## Negative Access Rules
 
@@ -205,6 +234,7 @@ All stored as strings via `HasConversion<string>()`. `Vibes` stored as jsonb arr
 - When a lead uses the "add active member" shortcut at `/Camps/{slug}/Members/Add`, `ICampService.AddCampMemberAsLeadAsync` creates `CampMember(Status=Active)` directly and writes a `CampMemberAddedByLead` audit entry.
 - Assigning a per-camp role writes a `CampRoleAssigned` audit entry and sends a best-effort `CampRoleAssigned` notification to the assignee. Unassign writes `CampRoleUnassigned` and does **not** notify.
 - Definition CRUD (`CampRoleDefinitionCreated` / `Updated` / `Deactivated` / `Reactivated`) writes audit entries; ordering is `repo.Add` then `SaveChangesAsync` then `auditLog.LogAsync`.
+- When an account merge accepts, `ICampService.ReassignAssignmentsToUserAsync` re-FKs `CampLead.UserId` and `CampRoleAssignment.AssignedByUserId` from source to target. Called only by `IAccountMergeService.AcceptAsync` (Profiles section). **Known gap:** `CampMember.UserId` is **not** currently folded — `CampMember` rows attached to a source remain attributed to the tombstoned source after merge.
 
 ## Cross-Section Dependencies
 
@@ -215,6 +245,7 @@ All stored as strings via `HasConversion<string>()`. `Vibes` stored as jsonb arr
 - **Camps internal — `CampRoleService` ↔ `CampService`:** `CampRoleService` calls `ICampService` for camp/season lookup and active-membership verification, and is called back by `ICampService` from the Leave/Withdraw/Remove paths via `ICampRoleService.RemoveAllForMemberAsync`. Both services live within the Camps section.
 - **Audit Log:** `IAuditLogService` — definition CRUD, role assign/unassign, and `CampMemberAddedByLead` actions.
 - **Notifications:** `INotificationService` — `CampRoleAssigned` notification on assign (best-effort, try/catch in controller).
+- **Profiles:** Called by `IAccountMergeService` (Profiles section) — `ICampService.ReassignAssignmentsToUserAsync` re-FKs `CampLead` and `CampRoleAssignment` user references during account merge fold. `CampMember` is **not** folded (known gap).
 
 ## Architecture
 
@@ -228,7 +259,7 @@ All stored as strings via `HasConversion<string>()`. `Vibes` stored as jsonb arr
 - `CampService` lives in `Humans.Application.Services.Camps.CampService` and goes through `ICampRepository` (`Humans.Application.Interfaces.Repositories`) for all data access. It never imports `Microsoft.EntityFrameworkCore` — enforced at compile time by `Humans.Application.csproj`'s reference graph.
 - `CampRepository` lives in `Humans.Infrastructure.Repositories`, uses `IDbContextFactory<HumansDbContext>`, and is registered as Singleton.
 - **Decorator decision — no caching decorator.** The ~100-row camp list uses short-TTL `IMemoryCache` inside the service for `camps-for-year` and `camp-settings` (~5 min) per design-rules §15f. These are request-acceleration caches, not canonical domain data caches.
-- Filesystem I/O for camp images is abstracted behind `ICampImageStorage` (Application interface + `CampImageStorage` implementation in `Humans.Infrastructure`); the service never touches `System.IO`.
+- Filesystem I/O for camp images is abstracted behind the shared `IFileStorage` abstraction (Application interface + `FileSystemFileStorage` implementation in `Humans.Infrastructure`, rooted at `wwwroot/`); the service never touches `System.IO`.
 - **Cross-domain navs stripped:** `CampLead.User` (issue nobodies-collective/Humans#542) — consumers route through `IUserService.GetByIdsAsync(...)`.
 - `CampContactService` has no owned DB tables and does not inject `HumansDbContext`; it retains its `IMemoryCache` rate-limit usage since that's a request-acceleration cache, not canonical domain data.
 - `CampRoleService` lives in `Humans.Application.Services.Camps.CampRoleService` and goes through `ICampRoleRepository` (`Humans.Application.Interfaces.Repositories`) for all data access. It owns `camp_role_definitions` and `camp_role_assignments` and never imports `Microsoft.EntityFrameworkCore`. Display-name stitching for `AssignedByUserId` routes through `IUserService.GetByIdsAsync`. Plain pass-through (no caching decorator); add `IMemoryCache` later if list-of-definitions reads dominate.

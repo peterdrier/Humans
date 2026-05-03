@@ -12,6 +12,7 @@ using Xunit;
 using ContactFieldService = Humans.Application.Services.Profile.ContactFieldService;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Infrastructure.Repositories.Profiles;
 
 namespace Humans.Application.Tests.Services;
@@ -41,7 +42,8 @@ public class ContactFieldServiceTests : IDisposable
         _profileRepository = new ProfileRepository(factory, _clock);
 
         _service = new ContactFieldService(
-            repository, _profileRepository, _teamService, _roleAssignmentService, _clock);
+            repository, _profileRepository, _teamService, _roleAssignmentService,
+            _clock);
     }
 
     public void Dispose()
