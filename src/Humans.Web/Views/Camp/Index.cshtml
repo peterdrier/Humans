@@ -89,7 +89,7 @@
 
 @if (Model.Camps.Any())
 {
-    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    <div id="camp-directory" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
         @foreach (var camp in Model.Camps)
         {
             @await Html.PartialAsync("_CampCard", camp)
@@ -108,9 +108,13 @@ else
         (function () {
             var input = document.getElementById('camp-name-search');
             var emptyMsg = document.getElementById('camp-search-empty');
-            if (!input) return;
+            var directory = document.getElementById('camp-directory');
+            if (!input || !directory) return;
 
-            var cards = Array.prototype.slice.call(document.querySelectorAll('.camp-card'));
+            // Scope to directory cards only — the "My Camps (pending approval)"
+            // section also renders _CampCard, and the search filter must not
+            // hide the user's own pending entries.
+            var cards = Array.prototype.slice.call(directory.querySelectorAll('.camp-card'));
             var debounceTimer = null;
 
             function applyFilter() {
