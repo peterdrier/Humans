@@ -508,6 +508,43 @@ The Sprint Metadata section saves `/sprint` from re-analyzing each issue. Assess
 
 **Obscure GUIDs in URLs.** Page URLs often contain GUIDs (e.g., `/Teams/00000000-0000-0000-0001-000000000002/Edit`). Replace GUIDs with `{id}` in the issue body (e.g., `/Teams/{id}/Edit`) — this keeps the URL readable and avoids leaking internal IDs into public GitHub issues. Preserve slugs and other human-readable path segments as-is.
 
+### Action: Surface to Peter (option 6 — spec / privilege changes)
+
+For reports classified as spec / policy / capability change OR privilege / permission change, do NOT use the standard "Action: Create Issue" template above. Use this stripped template instead. The whole point is to hand a verbatim, un-prescribed report to Peter so he sets the spec — never to laundry-launder a user's request into a clean spec the autonomous pipeline can pick up.
+
+**Surface-to-Peter issue template:**
+
+```markdown
+## Context
+{Brief framing: what surface area the report touches, what the user appears to want. Do NOT propose a fix or design.}
+
+## Original report
+> {Description — the EXACT text from the feedback, blockquoted verbatim.}
+
+— **{ReporterName}**, {CreatedAt}
+**Page:** {PageUrl with GUIDs obscured}
+**Category:** {Category}
+**Feedback ID:** `fb:{first 8 chars of Id}`
+
+## Why this needs owner review
+{One or two sentences: which classification fired (spec change / privilege change) and why. E.g. "Privilege change — would grant move/delete on shared Drive content to all team members." or "Spec change — adds a new public endpoint exposing aggregate stats."}
+
+## Awaiting direction
+- [ ] Peter to set spec / decide whether to proceed
+- [ ] Reporter notification deferred until direction is set (feedback `fb:{shortId}`)
+```
+
+Required label on the GitHub issue: `needs-owner-review` (privilege changes) OR `blocked:needs-design` (broader spec changes). Pass via `gh issue create --label`.
+
+**Explicitly omitted from this template:**
+- `## Proposed fix` — the whole point is that the fix is undecided
+- `## Acceptance criteria` — there's no spec yet to test against
+- `## Sprint Metadata` — sizing/tier/area come AFTER Peter sets the spec
+
+If a triage agent finds itself wanting to add any of these sections "to be helpful", that's the laundering pattern to resist.
+
+For option 6 + Respond, the response to the reporter should acknowledge receipt and note that the request is being routed to project owners for direction — not promise a specific fix.
+
 The `Feedback ID` line is essential — it's how we find the reporter to notify them when the fix ships.
 
 **For grouped reports**, create one issue that addresses all related reports. List each feedback ID so all reporters can be notified:

@@ -70,11 +70,15 @@ Extract acceptance criteria from each issue body. Store as structured data to pa
 
 ## Step 2.5: Privilege / spec-change pre-flight (HARD GATE)
 
-For each issue spec fetched in Step 2, scan the body for privilege/spec-change signals before any agent is launched:
+For each issue spec fetched in Step 2, scan it for privilege/spec-change signals before any agent is launched. ANY of the following triggers the gate:
 
+- **Label check (highest signal):** if the issue carries `needs-owner-review` or `blocked:needs-design`, treat it as gated regardless of body content. Triage already classified this issue as needing Peter's direction; the label is the canonical signal — keyword greps below are belt-and-suspenders for issues that bypassed triage classification.
 - **Keyword grep on the spec body:** `permission`, `privilege`, `role`, `scope`, `allowlist`, `CORS`, `[Authorize]`, `Admin` (as a grant), `default.*level`, `fileOrganizer`, `ContentManager`, `writer`, `Contributor`, `bypass`, `override.*auth`, `AllowAnonymous`
+- **Spec-change body keywords (broader than privilege):** `eligibility`, `workflow step`, `consent step`, `new endpoint`, `public api`, `who can`, `policy change`, `default behavior` — these can flag spec changes the privilege list misses
 - **Author check:** if `.author.login != "peterdrier"`, raise the bar further — the spec was authored by triage or a teammate, not Peter
 - **Source check:** if the issue body links to a feedback ID (pattern `fb:[a-f0-9]+`), raise the bar further — this originated from a user request
+
+When fetching specs in Step 2, request `labels` alongside `title,body,author,comments` so the label check can run here without a second `gh` call.
 
 If ANY issue hits the privilege filter:
 
