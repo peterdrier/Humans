@@ -556,7 +556,14 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 .FirstOrDefault();
         if (googleEmail is null)
         {
-            _logger.LogWarning("User {UserId} not found or has no email", userId);
+            if (user is null)
+            {
+                _logger.LogWarning("Skipped Google provisioning for {UserId}: user no longer exists (likely deleted between outbox enqueue and dequeue)", userId);
+            }
+            else
+            {
+                _logger.LogWarning("Skipped Google provisioning for {UserId}: user exists but has no verified email", userId);
+            }
             return;
         }
 
