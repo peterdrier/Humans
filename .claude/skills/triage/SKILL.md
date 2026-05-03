@@ -400,8 +400,9 @@ For each report, use the project context to investigate:
 1. **Identify the relevant code area** — use the PageUrl and description to find the controller, view, or service involved. A quick grep/glob is usually enough.
 2. **Check for related open issues** — `gh issue list --repo nobodies-collective/Humans --search "{keywords}" --limit 5`. Note any that overlap.
 3. **Form a diagnosis** — based on the code and the symptom, what's likely going on? Is this a real bug, a misunderstanding, a missing feature, or a duplicate of something already tracked?
-4. **Draft a proposed fix** — for bugs, what would the fix look like? For features, what's the right approach? Be specific enough that someone picking up the issue can start immediately.
-5. **Estimate significance** — is this a quick one-liner, a moderate change, or something that needs proper design?
+4. **CLASSIFY before drafting any fix.** Apply the same classification used in Step 3.3 (mechanical fix / spec change / privilege change — see Step 3.3 for definitions). This MUST happen before step 5. If the report is a spec change OR privilege change, **do NOT draft a proposed fix**. The whole point of the gate is that the spec is undecided — drafting a prescriptive fix here would re-laundry the user's request into a clean spec, which is the failure mode the rule prevents. Record the classification on the report so Step 3.3 can suppress the `Proposed fix` field for these reports.
+5. **Draft a proposed fix (mechanical reports only)** — for bugs, what would the fix look like? For features, what's the right approach? Be specific enough that someone picking up the issue can start immediately. Skip this step entirely for spec/privilege reports.
+6. **Estimate significance** — is this a quick one-liner, a moderate change, or something that needs proper design? For spec/privilege reports, the answer is always "needs Peter's direction"; do not size further.
 
 Use subagents (Agent tool) to research multiple reports in parallel when there are 3+ reports. Each subagent should investigate one report and return: relevant file paths, related issues, proposed diagnosis, and suggested fix approach.
 
@@ -422,25 +423,30 @@ For each report (or group of related reports), display:
 **Reporter:** {ReporterName}
 **Page:** {PageUrl with GUIDs replaced by {id}}
 **Submitted:** {CreatedAt}
+**Classification:** {mechanical fix | spec change | privilege change}
 
 **Original report:**
 > {Description — exact verbatim text}
 
-**Analysis:** {Your diagnosis — what you found in the code, what's likely wrong}
-**Proposed fix:** {What the fix would look like, which files, how significant}
+**Analysis:** {Your diagnosis — what you found in the code, what's likely going on}
+{IF classification == "mechanical fix"}**Proposed fix:** {What the fix would look like, which files, how significant}{ELSE}**Proposed fix:** _suppressed — {classification} requires Peter's direction; not pre-spec'd to avoid laundering the user's request_{ENDIF}
 **Related issues:** {Any existing issues that overlap, or "none found"}
 **Group:** {If grouped with other reports, note which ones and why}
 ```
 
+The `Proposed fix` field is intentionally suppressed for spec / privilege reports. Showing a pre-cooked fix biases Peter toward the agent's framing and re-creates the laundering pattern even though Step 3.4's Surface-to-Peter template omits it from the issue body. The display and the issue must both refrain from prescribing.
+
 If the report has a ScreenshotUrl, note: "Screenshot: {BASE_URL}{ScreenshotUrl}"
 
-**Classification — fires before action menu.** Read the original report verbatim and tag the request:
+**Classification — was set in Step 3.2 step 4, before any fix was drafted.** Definitions (canonical — Step 3.2 references this list):
 
-- **Mechanical fix** — improves an existing experience without changing what the system *does* or *allows*: typos, broken links, error-message wording, layout glitches, hidden stack traces, missing icons. Treat normally; the action menu's standard options apply.
-- **Spec / policy / capability change** — alters what the system does, who can do it, what data is shown/collected, or what policy applies: capability grants, default permission/tier changes, role/scope additions, allowlist expansions, new public endpoints, eligibility changes, removed/added workflow steps. Per `memory/process/user-feedback-spec-changes-need-review.md`, these MUST NOT auto-promote into a clean bug-style issue with a prescribed fix. Default to "Surface to Peter" (option 6 below); if Peter confirms an issue should be created, label it `blocked:needs-design` and do NOT write a `## Proposed fix` section that prescribes a behavioral change. Sprint metadata is omitted — Peter sets it after review.
-- **Privilege / permission change** — strict subset of spec change. Per `memory/process/privilege-changes-need-explicit-approval.md`, force the "Surface to Peter" path. If an issue is created, label it `needs-owner-review` and leave the spec body unprescribed. NEVER auto-create with a tier or proposed fix.
+- **Mechanical fix** — improves an existing experience without changing what the system *does* or *allows*: typos, broken links, error-message wording, layout glitches, hidden stack traces, missing icons. Treat normally; the action menu's standard options apply, `Proposed fix` is shown.
+- **Spec / policy / capability change** — alters what the system does, who can do it, what data is shown/collected, or what policy applies: capability grants, default permission/tier changes, role/scope additions, allowlist expansions, new public endpoints, eligibility changes, removed/added workflow steps. Per `memory/process/user-feedback-spec-changes-need-review.md`, these MUST NOT auto-promote into a clean bug-style issue with a prescribed fix. Default to "Surface to Peter" (option 6 below); if Peter confirms an issue should be created, label it `blocked:needs-design` and do NOT write a `## Proposed fix` section that prescribes a behavioral change. Sprint metadata is omitted — Peter sets it after review. `Proposed fix` field in the display is suppressed.
+- **Privilege / permission change** — strict subset of spec change. Per `memory/process/privilege-changes-need-explicit-approval.md`, force the "Surface to Peter" path. If an issue is created, label it `needs-owner-review` and leave the spec body unprescribed. NEVER auto-create with a tier or proposed fix. `Proposed fix` field in the display is suppressed.
 
 If unsure between mechanical and spec change, treat as spec change. If unsure whether a spec change is privilege-bearing, treat as privilege.
+
+If you find yourself reaching Step 3.3 with a `Proposed fix` already drafted for what you now realize is a spec/privilege report, do NOT just hide it from the display — go back, discard it, and do not let the prescription influence the rest of the triage. The drafted-but-suppressed fix is still in your context and will bias your framing.
 
 Present the action menu via `AskUserQuestion`:
 
