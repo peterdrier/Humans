@@ -16,6 +16,12 @@ namespace Humans.Web.Filters;
 /// </summary>
 public class AuthorizationPillFilter : IActionFilter
 {
+    // Synthetic pill label for users granted access via the IsAnyTeamCoordinator
+    // requirement (department coordinator or sub-team manager). Not a real Identity
+    // role — only used for the pill's display string. Listed in PolicyRoles below
+    // alongside the role-based admins for any policy that admits team coordinators.
+    private const string TeamCoordinatorPillLabel = "TeamCoordinator";
+
     // Map raw role names to user-friendly display labels
     private static readonly Dictionary<string, string> RoleDisplayNames = new(StringComparer.Ordinal)
     {
@@ -29,7 +35,8 @@ public class AuthorizationPillFilter : IActionFilter
         [RoleNames.NoInfoAdmin] = "NoInfo Admin",
         [RoleNames.FeedbackAdmin] = "Feedback Admin",
         [RoleNames.HumanAdmin] = "Human Admin",
-        [RoleNames.FinanceAdmin] = "Finance Admin"
+        [RoleNames.FinanceAdmin] = "Finance Admin",
+        [TeamCoordinatorPillLabel] = "Team Coordinator"
     };
 
     // Map policy names to their constituent roles for pill display
@@ -49,7 +56,10 @@ public class AuthorizationPillFilter : IActionFilter
         [PolicyNames.ReviewQueueAccess] = [RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator, RoleNames.Board, RoleNames.Admin],
         [PolicyNames.ConsentCoordinatorBoardOrAdmin] = [RoleNames.ConsentCoordinator, RoleNames.Board, RoleNames.Admin],
         [PolicyNames.ShiftDashboardAccess] = [RoleNames.Admin, RoleNames.NoInfoAdmin, RoleNames.VolunteerCoordinator],
-        [PolicyNames.ShiftDepartmentManager] = [RoleNames.Admin, RoleNames.NoInfoAdmin, RoleNames.VolunteerCoordinator],
+        // ShiftDepartmentManager admits the same admins PLUS any team coordinator /
+        // sub-team manager via IsAnyTeamCoordinatorRequirement. The pill shows the
+        // full universe of accessors, not just admin roles.
+        [PolicyNames.ShiftDepartmentManager] = [RoleNames.Admin, RoleNames.NoInfoAdmin, RoleNames.VolunteerCoordinator, TeamCoordinatorPillLabel],
         [PolicyNames.PrivilegedSignupApprover] = [RoleNames.Admin, RoleNames.NoInfoAdmin],
         [PolicyNames.VolunteerManager] = [RoleNames.Admin, RoleNames.VolunteerCoordinator],
         [PolicyNames.MedicalDataViewer] = [RoleNames.Admin, RoleNames.NoInfoAdmin],
