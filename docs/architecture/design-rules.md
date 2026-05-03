@@ -246,7 +246,8 @@ Each section's service owns these tables. Cross-service access goes through the 
 | **Governance** | `ApplicationDecisionService` | `applications`, `application_state_histories`, `board_votes` |
 | **Legal & Consent** | `LegalDocumentService`, `AdminLegalDocumentService`, `LegalDocumentSyncService`, `ConsentService` | `legal_documents`, `document_versions`, `consent_records` |
 | **Onboarding** | `OnboardingService` | *(no owned tables — orchestrates Profiles, Legal, Teams, Governance)* |
-| **Camps** | `CampService`, `CampContactService` | `camps`, `camp_seasons`, `camp_leads`, `camp_images`, `camp_historical_names`, `camp_settings` |
+| **Camps** | `CampService`, `CampContactService`, `CampRoleService` | `camps`, `camp_seasons`, `camp_leads`, `camp_members`, `camp_images`, `camp_historical_names`, `camp_settings`, `camp_role_definitions`, `camp_role_assignments` |
+| **Containers** | `ContainerService` | `containers` |
 | **City Planning** | `CityPlanningService` | `city_planning_settings`, `camp_polygons`, `camp_polygon_histories` |
 | **Calendar** | `CalendarService` | `calendar_events`, `calendar_event_exceptions` |
 | **Shifts** | `ShiftManagementService`, `ShiftSignupService`, `GeneralAvailabilityService` | `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availabilities`, `volunteer_event_profiles`, `shift_tags`, `volunteer_tag_preferences` |

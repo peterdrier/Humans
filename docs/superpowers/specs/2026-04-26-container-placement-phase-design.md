@@ -1,7 +1,7 @@
 # Container Placement Phase — Design Spec
 
 **Date:** 2026-04-26
-**Status:** Approved
+**Status:** Implemented in PR peterdrier/Humans#389 — see also `docs/sections/Containers.md` and `docs/sections/CityPlanning.md` for the section invariants.
 
 ## Overview
 
@@ -55,17 +55,17 @@ Used only to show/hide the "placement closed" notice. The existing `CanManage` f
 **`CityPlanningController`** — two new POST actions mirroring the existing placement toggle:
 
 ```
-POST CityPlanning/Admin/OpenContainerPlacement
-POST CityPlanning/Admin/CloseContainerPlacement
+POST CityPlanning/BarrioMap/Admin/OpenContainerPlacement
+POST CityPlanning/BarrioMap/Admin/CloseContainerPlacement
 ```
 
-Both require `IsMapAdminAsync`. On success, redirect to `OrgContainers` (the containers admin sub-page) with a success message.
+Both require `IsMapAdminAsync`. On success, redirect to `Containers` (the containers admin sub-page at `/CityPlanning/BarrioMap/Admin/Containers/{year}`) with a success message. (Route changed from spec — see containers-design.md "Decisions during implementation".)
 
 **`ContainerController`** — changes to `Index` and all write actions as described above. `ICityPlanningService` is already injected.
 
 ## UI Changes
 
-### `Admin/Containers/{year}` (OrgContainers view)
+### `/CityPlanning/BarrioMap/Admin/Containers/{year}` (Containers admin view)
 
 Status + toggle row at the top of the page (below the `<h1>`):
 

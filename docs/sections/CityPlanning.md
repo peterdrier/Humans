@@ -14,7 +14,7 @@
 
 # City Planning — Section Invariants
 
-Interactive map for camp barrio placement and container management: polygon editing, placement phase control, container placement phase control, append-only history.
+Interactive map surface with three screens: read-only overview, barrio polygon editing, and container placement. Owns placement phase control and append-only polygon history.
 
 ## Concepts
 
@@ -82,6 +82,25 @@ Append-only per design-rules §12. The repository exposes no `UpdateAsync` / `Re
 
 Cross-domain navs (`CampPolygon.CampSeason`, `CampPolygon.LastModifiedByUser`, `CampPolygonHistory.CampSeason`, `CampPolygonHistory.ModifiedByUser`) remain declared on the entities but are no longer read from this section's code. Stripping them at the entity boundary is a follow-up item consistent with §15i — new code must use `ICampService` / `IUserService` instead.
 
+## Routing
+
+Three distinct pages served by `CityPlanningController` (`[Route("CityPlanning")]`):
+
+| Route | Purpose | Access |
+|-------|---------|--------|
+| `/CityPlanning/` | Read-only overview map — all placed barrios, all placed containers for the year | Any authenticated human |
+| `/CityPlanning/BarrioMap` | Barrio polygon editing — draw/edit own polygon (leads) or any polygon (admins) | Camp leads + Map Admins |
+| `/CityPlanning/ContainerMap/{year}` | Container placement map — drag-to-place containers within the site boundary | Camp leads (phase open) + Map Admins |
+
+Admin sub-pages hosted on `CityPlanningController` under `/CityPlanning/BarrioMap/Admin/*`:
+
+| Route | Purpose |
+|-------|---------|
+| `/CityPlanning/BarrioMap/Admin` | Settings panel: toggle barrio placement, upload limit zone and official zones, set placement dates |
+| `/CityPlanning/BarrioMap/Admin/Containers/{year}` | Org-level + all-barrio container admin: CRUD, image management, container placement phase toggle |
+
+The container entity CRUD for barrio leads is served by `ContainerController` at `/Camp/{slug}/Season/{year}/Containers`. The placement API for all containers is served by `CityPlanningApiController` at `/api/city-planning/containers/*` — placement is a City Planning concern even though the container entity belongs to the Containers section.
+
 ## Actors & Roles
 
 | Actor | Capabilities |
@@ -118,7 +137,8 @@ Cross-domain navs (`CampPolygon.CampSeason`, `CampPolygon.LastModifiedByUser`, `
 
 ## Cross-Section Dependencies
 
-- **Camps:** `ICampService` — CampSeason is the anchor entity; CampLead determines who can edit which polygon.
+- **Camps:** `ICampService` — CampSeason is the anchor entity; CampLead determines who can edit which polygon; `GetCampLeadSeasonIdForYearAsync`, `GetCampSeasonDisplayDataForYearAsync`, `GetCampSeasonBriefsForYearAsync` used by container admin and map pages.
+- **Containers:** `IContainerService` — placement API and container admin pages (`CityPlanningApiController`, `CityPlanningController`) read and write container placement via `IContainerService.GetAllByYearAsync`, `SavePlacementAsync`, `ClearPlacementAsync`, and CRUD on org-level containers. City Planning hosts the placement API endpoints for an entity owned by the Containers section.
 - **Teams:** `ITeamService` — membership in the city-planning team (slug: `city-planning`) grants admin access.
 - **Profiles:** `IProfileService` — display data for polygon edit attribution.
 - **Users/Identity:** `IUserService.GetByIdsAsync` — `LastModifiedByUser` / `ModifiedByUser` display names (replaces prior cross-domain `.Include`).

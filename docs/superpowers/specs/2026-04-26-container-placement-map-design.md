@@ -1,7 +1,7 @@
 # Container Placement Map — Design Spec
 
 **Date:** 2026-04-26
-**Status:** Approved
+**Status:** Implemented in PR peterdrier/Humans#389 — see also `docs/sections/Containers.md` and `docs/sections/CityPlanning.md` for the section invariants.
 
 ## Overview
 

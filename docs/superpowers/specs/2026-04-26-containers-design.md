@@ -1,7 +1,7 @@
 # Containers Feature Design
 
 **Date:** 2026-04-26
-**Status:** Approved
+**Status:** Implemented in PR peterdrier/Humans#389 — see also `docs/sections/Containers.md` and `docs/sections/CityPlanning.md` for the section invariants.
 
 ## Overview
 
@@ -34,9 +34,11 @@ Table: `containers`
 | `ImageStoragePath` | `string?` | max 512; relative path from wwwroot |
 | `ImageContentType` | `string?` | max 64 |
 | `ImageFileName` | `string?` | max 256 |
-| `SortOrder` | `int` | display order within season or org group |
+| `LocationGeoJson` | `string?` | GeoJSON Feature; null = unplaced (added via `AddContainerPlacement` migration) |
 | `CreatedAt` | `Instant` (init) | |
 | `UpdatedAt` | `Instant` | |
+
+~~`SortOrder` (int) was added in the initial migration and dropped in `20260426140854_RemoveContainerSortOrder`. See "Decisions during implementation" below.~~
 
 Indexes:
 - `CampSeasonId` (non-unique, for barrio container lookups)
@@ -64,9 +66,9 @@ The EF migration that creates the `containers` table also performs a data migrat
    - Names: "Container #1", "Container #2", … "Container #N"
    - `CampSeasonId`: the season's id
    - `Year`: the season's year
-   - `SortOrder`: 1-based index
    - `Description`: `ContainerNotes` value on Container #1 only; null on the rest
    - `CreatedAt` / `UpdatedAt`: migration timestamp
+   (Note: `SortOrder` was in the initial migration but dropped by `20260426140854_RemoveContainerSortOrder`.)
 2. Drop `ContainerCount` and `ContainerNotes` columns from `camp_seasons`.
 
 ## Application Layer
@@ -83,7 +85,7 @@ public record ContainerDto(
     string? ImageStoragePath,
     string? ImageContentType,
     string? ImageFileName,
-    int SortOrder,
+    string? LocationGeoJson,  // added via placement phase
     Instant CreatedAt,
     Instant UpdatedAt
 );
@@ -92,9 +94,9 @@ public record ContainerData(
     Guid? CampSeasonId,
     int Year,
     string Name,
-    string? Description,
-    int SortOrder
+    string? Description
 );
+// Note: SortOrder was removed — see "Decisions during implementation".
 ```
 
 ### IContainerService
@@ -104,12 +106,15 @@ public interface IContainerService
 {
     Task<IReadOnlyList<ContainerDto>> GetBySeasonAsync(Guid campSeasonId, CancellationToken ct = default);
     Task<IReadOnlyList<ContainerDto>> GetOrgByYearAsync(int year, CancellationToken ct = default);
+    Task<IReadOnlyList<ContainerDto>> GetAllByYearAsync(int year, CancellationToken ct = default); // added
     Task<ContainerDto?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<ContainerDto> CreateAsync(ContainerData data, CancellationToken ct = default);
     Task<ContainerDto> UpdateAsync(Guid id, ContainerData data, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task UploadImageAsync(Guid id, Stream stream, string fileName, string contentType, long length, CancellationToken ct = default);
     Task DeleteImageAsync(Guid id, CancellationToken ct = default);
+    Task<ContainerDto> SavePlacementAsync(Guid id, string geoJson, CancellationToken ct = default); // added
+    Task ClearPlacementAsync(Guid id, CancellationToken ct = default); // added
 }
 ```
 
@@ -170,21 +175,28 @@ Nav link: added to the camp management page (the page where camp leads manage th
 
 ### Org-Level Containers — added to `CityPlanningController`
 
-Route prefix: `/CityPlanning/Admin/Containers`
+Route prefix: `/CityPlanning/BarrioMap/Admin/Containers` (changed from spec — see "Decisions during implementation")
 
 | Action | Method | Route | Description |
 |---|---|---|---|
-| `OrgContainers` | GET | `/CityPlanning/Admin/Containers/{year}` | List org containers for a year |
-| `CreateOrgContainer` | POST | `/CityPlanning/Admin/Containers/{year}/Create` | Add org container |
-| `EditOrgContainer` | POST | `/CityPlanning/Admin/Containers/{id}/Edit` | Update org container |
-| `DeleteOrgContainer` | POST | `/CityPlanning/Admin/Containers/{id}/Delete` | Delete org container |
-| `UploadOrgContainerImage` | POST | `/CityPlanning/Admin/Containers/{id}/Image/Upload` | Upload image |
-| `DeleteOrgContainerImage` | POST | `/CityPlanning/Admin/Containers/{id}/Image/Delete` | Remove image |
+| `Containers` | GET | `/CityPlanning/BarrioMap/Admin/Containers/{year}` | List org + all-barrio containers for a year |
+| `CreateOrgContainer` | POST | `/CityPlanning/BarrioMap/Admin/Containers/{year}/Create` | Add org container |
+| `CreateBarrioContainer` | POST | `/CityPlanning/BarrioMap/Admin/Containers/{year}/Barrios/{seasonId}/Create` | Add barrio container (admin) |
+| `EditOrgContainer` | POST | `/CityPlanning/BarrioMap/Admin/Containers/{id}/Edit` | Update org container |
+| `DeleteOrgContainer` | POST | `/CityPlanning/BarrioMap/Admin/Containers/{id}/Delete` | Delete org container |
+| `UploadOrgContainerImage` | POST | `/CityPlanning/BarrioMap/Admin/Containers/{id}/Image/Upload` | Upload image |
+| `DeleteOrgContainerImage` | POST | `/CityPlanning/BarrioMap/Admin/Containers/{id}/Image/Delete` | Remove image |
 
-Nav link: added to the City Planning admin page.
+Nav link: added to the City Planning BarrioMap admin page.
+
+## Decisions during implementation
+
+- **`SortOrder` removed.** The initial migration added `SortOrder int` to `containers` and used it for display ordering. Migration `20260426140854_RemoveContainerSortOrder` immediately dropped it — containers are sorted by `Name` in all queries and views instead. `ContainerData` and `ContainerDto` do not include `SortOrder`.
+- **`GetAllByYearAsync` added to `IContainerService`.** Not in this spec; added to support the City Planning container map and admin page loading all containers for a year regardless of barrio.
+- **Org-level admin route changed.** The spec listed `/CityPlanning/Admin/Containers/{year}` as the org-level admin route. The actual route implemented is `/CityPlanning/BarrioMap/Admin/Containers/{year}` — nested under the BarrioMap admin panel. All related POST actions (`Create`, `Edit`, `Delete`, `Image/Upload`, `Image/Delete`) also live under `/CityPlanning/BarrioMap/Admin/Containers/…`.
 
 ## Out of Scope (Phase 2)
 
-- Map placement: GeoJSON polygon/coordinates on the city planning map
+- Map placement: GeoJSON polygon/coordinates on the city planning map (implemented in PR peterdrier/Humans#389 via the container placement phase spec)
 - Public visibility of containers on the map
 - Container type/category classification
