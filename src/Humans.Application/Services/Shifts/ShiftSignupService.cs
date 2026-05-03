@@ -315,7 +315,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupVoluntold, nameof(ShiftSignup), signup.Id,
-            $"shift '{shift.Rota.Name}'",
+            $"shift '{shift.Rota.Name}' on {FormatShiftDate(es.GateOpeningDate.PlusDays(shift.DayOffset))}",
             enrollerUserId,
             userId, nameof(User));
 
@@ -442,7 +442,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         {
             await _auditLogService.LogAsync(
                 AuditAction.ShiftSignupVoluntold, nameof(ShiftSignup), auditedSignup.Id,
-                $"'{rota.Name}' day {dayOffset} (range)",
+                $"'{rota.Name}' on {FormatShiftDate(es.GateOpeningDate.PlusDays(dayOffset))} (range)",
                 enrollerUserId,
                 userId, nameof(User));
         }
