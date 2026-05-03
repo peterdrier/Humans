@@ -325,21 +325,10 @@ public sealed class GoogleAdminService : IGoogleAdminService
         string email, Guid actorUserId,
         CancellationToken ct = default)
     {
+        IReadOnlyList<string> codes;
         try
         {
-            var codes = await _workspaceUserService.GenerateBackupCodesAsync(email, ct);
-
-            await _auditLogService.LogAsync(
-                AuditAction.WorkspaceAccountBackupCodesGenerated,
-                "WorkspaceAccount", Guid.Empty,
-                $"Generated {codes.Count} backup code(s) for @{NobodiesTeamDomain} account: {email}",
-                actorUserId);
-
-            return new WorkspaceBackupCodesResult(
-                Success: true,
-                Email: email,
-                Codes: codes,
-                Message: $"Generated {codes.Count} backup code(s) for {email}. Deliver them securely — they cannot be retrieved again.");
+            codes = await _workspaceUserService.GenerateBackupCodesAsync(email, ct);
         }
         catch (Exception ex)
         {
@@ -349,6 +338,46 @@ public sealed class GoogleAdminService : IGoogleAdminService
                 Email: email,
                 ErrorMessage: $"Failed to generate backup codes for {email}. Check logs for details.");
         }
+
+        if (codes.Count == 0)
+        {
+            // Generate succeeded but List returned 0 — API hiccup or race.
+            // No codes to deliver and nothing to audit; surface a clear failure
+            // instead of recording "Generated 0 backup codes" in the audit log.
+            _logger.LogWarning(
+                "Backup-code generation for {Email} returned 0 codes; nothing to deliver",
+                email);
+            return new WorkspaceBackupCodesResult(
+                Success: false,
+                Email: email,
+                ErrorMessage: $"Backup codes were generated for {email} but none were returned. Check logs and try again.");
+        }
+
+        // Audit AFTER the Workspace-side rotation succeeds. If audit persistence
+        // throws we must still hand the codes back: Google has already
+        // invalidated any previously-issued set, so dropping the new ones
+        // locks the human out. Surface the audit failure loudly via a critical
+        // log so it can be reconciled out-of-band.
+        try
+        {
+            await _auditLogService.LogAsync(
+                AuditAction.WorkspaceAccountBackupCodesGenerated,
+                "WorkspaceAccount", Guid.Empty,
+                $"Generated {codes.Count} backup code(s) for @{NobodiesTeamDomain} account: {email}",
+                actorUserId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical(ex,
+                "Audit-log write failed AFTER backup codes were generated for {Email} by actor {ActorUserId}. Codes were delivered; reconcile audit trail manually.",
+                email, actorUserId);
+        }
+
+        return new WorkspaceBackupCodesResult(
+            Success: true,
+            Email: email,
+            Codes: codes,
+            Message: $"Generated {codes.Count} backup code(s) for {email}. Deliver them securely — they cannot be retrieved again.");
     }
 
     public async Task<WorkspaceAccountActionResult> InvalidateBackupCodesAsync(

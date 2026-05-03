@@ -98,12 +98,33 @@ public class GoogleAdminServiceTests
         result.SuspendedAccounts.Should().Be(1);
         result.LinkedAccounts.Should().Be(1);
         result.UnlinkedAccounts.Should().Be(1);
+        // Bob is unenrolled but suspended — suspended accounts are excluded
+        // from the missing-2FA count by design (they can't sign in anyway).
+        result.MissingTwoFactorCount.Should().Be(0);
         result.ErrorMessage.Should().BeNull();
 
         var alice = result.Accounts.Single(a =>
             string.Equals(a.PrimaryEmail, "alice@nobodies.team", StringComparison.OrdinalIgnoreCase));
         alice.MatchedUserId.Should().Be(userId);
         alice.IsUsedAsPrimary.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task GetWorkspaceAccountListAsync_CountsActiveUnenrolledTowardMissingTwoFactor()
+    {
+        _workspaceUserService.ListAccountsAsync(Arg.Any<CancellationToken>())
+            .Returns([
+                new WorkspaceUserAccount("alice@nobodies.team", "Alice", "Smith", false,
+                    DateTime.UtcNow, DateTime.UtcNow, IsEnrolledIn2Sv: true),
+                new WorkspaceUserAccount("carol@nobodies.team", "Carol", "Doe", false,
+                    DateTime.UtcNow, null, IsEnrolledIn2Sv: false),
+                new WorkspaceUserAccount("bob@nobodies.team", "Bob", "Jones", true,
+                    DateTime.UtcNow, null, IsEnrolledIn2Sv: false),
+            ]);
+
+        var result = await _service.GetWorkspaceAccountListAsync();
+
+        result.MissingTwoFactorCount.Should().Be(1);
     }
 
     [HumansFact]
@@ -344,6 +365,135 @@ public class GoogleAdminServiceTests
 
         await _workspaceUserService.Received(1)
             .ResetPasswordAsync("test@nobodies.team", Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    // --- GenerateBackupCodesAsync ---
+
+    [HumansFact]
+    public async Task GenerateBackupCodesAsync_ReturnsCodesAndAuditsOnSuccess()
+    {
+        IReadOnlyList<string> issued = ["aaaa-1111", "bbbb-2222", "cccc-3333"];
+        _workspaceUserService.GenerateBackupCodesAsync(
+                "alice@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(issued);
+
+        var result = await _service.GenerateBackupCodesAsync(
+            "alice@nobodies.team", _actorUserId);
+
+        result.Success.Should().BeTrue();
+        result.Email.Should().Be("alice@nobodies.team");
+        result.Codes.Should().BeEquivalentTo(issued);
+        result.Message.Should().Contain("Generated 3 backup code(s)");
+
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.WorkspaceAccountBackupCodesGenerated,
+            "WorkspaceAccount", Guid.Empty,
+            Arg.Is<string>(s => s.Contains("alice@nobodies.team") && s.Contains("3 backup code")),
+            _actorUserId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task GenerateBackupCodesAsync_ReturnsFailureAndDoesNotAuditOnEmptyList()
+    {
+        // Generate succeeded on Google's side but List returned 0 — we
+        // must not write a misleading "generated 0 codes" audit entry.
+        _workspaceUserService.GenerateBackupCodesAsync(
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<string>());
+
+        var result = await _service.GenerateBackupCodesAsync(
+            "alice@nobodies.team", _actorUserId);
+
+        result.Success.Should().BeFalse();
+        result.Codes.Should().BeNull();
+        result.ErrorMessage.Should().Contain("none were returned");
+
+        await _auditLogService.DidNotReceive().LogAsync(
+            AuditAction.WorkspaceAccountBackupCodesGenerated,
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task GenerateBackupCodesAsync_ReturnsErrorOnWorkspaceFailure()
+    {
+        _workspaceUserService.GenerateBackupCodesAsync(
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Google API error"));
+
+        var result = await _service.GenerateBackupCodesAsync(
+            "alice@nobodies.team", _actorUserId);
+
+        result.Success.Should().BeFalse();
+        result.Codes.Should().BeNull();
+        result.ErrorMessage.Should().Contain("Failed to generate backup codes");
+
+        await _auditLogService.DidNotReceive().LogAsync(
+            Arg.Any<AuditAction>(),
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task GenerateBackupCodesAsync_ReturnsCodesEvenWhenAuditWriteFails()
+    {
+        // Google has already invalidated the previously-issued set, so dropping
+        // the new codes locks the human out. The audit failure is logged loudly
+        // but the codes must still flow back to the admin.
+        IReadOnlyList<string> issued = ["aaaa-1111", "bbbb-2222"];
+        _workspaceUserService.GenerateBackupCodesAsync(
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(issued);
+        _auditLogService.LogAsync(
+                Arg.Any<AuditAction>(),
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<Guid?>(), Arg.Any<string?>())
+            .ThrowsAsync(new InvalidOperationException("Audit DB unavailable"));
+
+        var result = await _service.GenerateBackupCodesAsync(
+            "alice@nobodies.team", _actorUserId);
+
+        result.Success.Should().BeTrue();
+        result.Codes.Should().BeEquivalentTo(issued);
+    }
+
+    // --- InvalidateBackupCodesAsync ---
+
+    [HumansFact]
+    public async Task InvalidateBackupCodesAsync_InvalidatesAndAudits()
+    {
+        var result = await _service.InvalidateBackupCodesAsync(
+            "alice@nobodies.team", _actorUserId);
+
+        result.Success.Should().BeTrue();
+        result.Message.Should().Contain("invalidated");
+
+        await _workspaceUserService.Received(1)
+            .InvalidateBackupCodesAsync("alice@nobodies.team", Arg.Any<CancellationToken>());
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.WorkspaceAccountBackupCodesInvalidated,
+            "WorkspaceAccount", Guid.Empty,
+            Arg.Is<string>(s => s.Contains("alice@nobodies.team")),
+            _actorUserId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task InvalidateBackupCodesAsync_ReturnsErrorOnFailure()
+    {
+        _workspaceUserService.InvalidateBackupCodesAsync(
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("API error"));
+
+        var result = await _service.InvalidateBackupCodesAsync(
+            "alice@nobodies.team", _actorUserId);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Failed to invalidate");
     }
 
     // --- LinkAccountAsync ---
