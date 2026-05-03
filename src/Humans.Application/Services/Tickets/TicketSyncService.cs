@@ -373,9 +373,17 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
         var updated = new List<TicketOrder>(ordersToEnrich.Count);
         foreach (var order in ordersToEnrich)
         {
+            // Belt-and-suspenders: skip placeholder PaymentIntent ids the
+            // repository filter should already exclude.
+            if (string.IsNullOrEmpty(order.StripePaymentIntentId)
+                || string.Equals(order.StripePaymentIntentId, "--", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
             try
             {
-                var details = await _stripeService.GetPaymentDetailsAsync(order.StripePaymentIntentId!, ct);
+                var details = await _stripeService.GetPaymentDetailsAsync(order.StripePaymentIntentId, ct);
                 if (details is null) continue;
 
                 order.PaymentMethod = details.PaymentMethod;
@@ -386,9 +394,9 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex,
-                    "Failed to fetch Stripe data for order {OrderId} (PI: {PaymentIntentId})",
-                    order.VendorOrderId, order.StripePaymentIntentId);
+                _logger.LogWarning(
+                    "Failed to fetch Stripe data for order {OrderId} (PI: {PaymentIntentId}): {Reason}",
+                    order.VendorOrderId, order.StripePaymentIntentId, ex.Message);
             }
         }
 

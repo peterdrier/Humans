@@ -128,7 +128,9 @@ public sealed class TicketRepository : ITicketRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.TicketOrders
             .AsNoTracking()
-            .Where(o => o.StripePaymentIntentId != null && o.StripeFee == null)
+            .Where(o => o.StripePaymentIntentId != null
+                        && o.StripePaymentIntentId != "--"
+                        && o.StripeFee == null)
             .ToListAsync(ct);
     }
 
