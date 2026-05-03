@@ -38,8 +38,6 @@ Table: `containers`
 | `CreatedAt` | `Instant` (init) | |
 | `UpdatedAt` | `Instant` | |
 
-~~`SortOrder` (int) was added in the initial migration and dropped in `20260426140854_RemoveContainerSortOrder`. See "Decisions during implementation" below.~~
-
 Indexes:
 - `CampSeasonId` (non-unique, for barrio container lookups)
 - `Year` (for org-level year lookups)
@@ -68,7 +66,6 @@ The EF migration that creates the `containers` table also performs a data migrat
    - `Year`: the season's year
    - `Description`: `ContainerNotes` value on Container #1 only; null on the rest
    - `CreatedAt` / `UpdatedAt`: migration timestamp
-   (Note: `SortOrder` was in the initial migration but dropped by `20260426140854_RemoveContainerSortOrder`.)
 2. Drop `ContainerCount` and `ContainerNotes` columns from `camp_seasons`.
 
 ## Application Layer
@@ -96,7 +93,6 @@ public record ContainerData(
     string Name,
     string? Description
 );
-// Note: SortOrder was removed — see "Decisions during implementation".
 ```
 
 ### IContainerService
@@ -166,7 +162,7 @@ Route prefix: `/Camp/{slug}/Season/{year}/Containers`
 |---|---|---|---|
 | `Index` | GET | `/Camp/{slug}/Season/{year}/Containers` | List all containers for the season |
 | `Create` | POST | `/Camp/{slug}/Season/{year}/Containers/Create` | Add a new container |
-| `Edit` | POST | `/Camp/{slug}/Season/{year}/Containers/{id}/Edit` | Update name/description/sort order |
+| `Edit` | POST | `/Camp/{slug}/Season/{year}/Containers/{id}/Edit` | Update name/description |
 | `Delete` | POST | `/Camp/{slug}/Season/{year}/Containers/{id}/Delete` | Delete container (and image) |
 | `UploadImage` | POST | `/Camp/{slug}/Season/{year}/Containers/{id}/Image/Upload` | Upload or replace image |
 | `DeleteImage` | POST | `/Camp/{slug}/Season/{year}/Containers/{id}/Image/Delete` | Remove image |
@@ -175,7 +171,7 @@ Nav link: added to the camp management page (the page where camp leads manage th
 
 ### Org-Level Containers — added to `CityPlanningController`
 
-Route prefix: `/CityPlanning/BarrioMap/Admin/Containers` (changed from spec — see "Decisions during implementation")
+Route prefix: `/CityPlanning/BarrioMap/Admin/Containers`
 
 | Action | Method | Route | Description |
 |---|---|---|---|
@@ -191,9 +187,7 @@ Nav link: added to the City Planning BarrioMap admin page.
 
 ## Decisions during implementation
 
-- **`SortOrder` removed.** The initial migration added `SortOrder int` to `containers` and used it for display ordering. Migration `20260426140854_RemoveContainerSortOrder` immediately dropped it — containers are sorted by `Name` in all queries and views instead. `ContainerData` and `ContainerDto` do not include `SortOrder`.
 - **`GetAllByYearAsync` added to `IContainerService`.** Not in this spec; added to support the City Planning container map and admin page loading all containers for a year regardless of barrio.
-- **Org-level admin route changed.** The spec listed `/CityPlanning/Admin/Containers/{year}` as the org-level admin route. The actual route implemented is `/CityPlanning/BarrioMap/Admin/Containers/{year}` — nested under the BarrioMap admin panel. All related POST actions (`Create`, `Edit`, `Delete`, `Image/Upload`, `Image/Delete`) also live under `/CityPlanning/BarrioMap/Admin/Containers/…`.
 
 ## Out of Scope (Phase 2)
 
