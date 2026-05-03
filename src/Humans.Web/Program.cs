@@ -447,8 +447,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("BarriosPublic", policy =>
     {
-        policy.WithOrigins("https://nobodies.team", "https://www.nobodies.team")
-            .SetIsOriginAllowed(origin =>
+        // SetIsOriginAllowed is the sole origin gate — when set, ASP.NET's
+        // CorsService ignores the WithOrigins list entirely, so the lambda
+        // must cover all four allowed origins (prod + localhost dev).
+        policy.SetIsOriginAllowed(origin =>
                 origin.StartsWith("http://localhost:", StringComparison.Ordinal) ||
                 origin.StartsWith("http://127.0.0.1:", StringComparison.Ordinal) ||
                 string.Equals(origin, "https://nobodies.team", StringComparison.Ordinal) ||
