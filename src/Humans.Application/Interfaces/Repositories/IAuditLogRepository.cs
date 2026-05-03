@@ -155,4 +155,16 @@ public interface IAuditLogRepository
         NodaTime.Instant windowEnd,
         AuditAction action,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the distinct set of <see cref="AuditLogEntry.EntityId"/> values
+    /// across all-time audit rows whose
+    /// <see cref="AuditLogEntry.EntityType"/> matches <paramref name="entityType"/>
+    /// and whose <see cref="AuditLogEntry.Action"/> is one of
+    /// <paramref name="actions"/>. Read-only.
+    /// </summary>
+    Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
+        string entityType,
+        IReadOnlyList<AuditAction> actions,
+        CancellationToken ct = default);
 }

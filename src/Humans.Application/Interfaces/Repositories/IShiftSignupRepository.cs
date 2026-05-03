@@ -230,12 +230,19 @@ public interface IShiftSignupRepository
     /// unique constraint on <c>(UserId, ShiftId)</c>; the no-double-signup
     /// invariant is enforced at the service layer.) Stamps <c>UpdatedAt</c>
     /// with <paramref name="updatedAt"/> on every re-FK'd row. Single
-    /// <c>SaveChanges</c>. Returns the count of rows attributed to target
-    /// after the move.
+    /// <c>SaveChanges</c>. Returns the number of source rows touched
+    /// (re-FK'd plus dropped-as-duplicate) so the caller can audit the merge.
     /// </summary>
     Task<int> ReassignToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,
         Instant updatedAt,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Reads every <see cref="ShiftSignup"/> in the system with
+    /// <c>Shift.Rota.EventSettings</c> included, used by the orphan-signup
+    /// reconciliation screen. Read-only.
+    /// </summary>
+    Task<IReadOnlyList<ShiftSignup>> GetAllForOrphanScanAsync(CancellationToken ct = default);
 }

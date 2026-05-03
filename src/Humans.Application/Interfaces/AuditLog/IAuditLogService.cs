@@ -106,6 +106,20 @@ public interface IAuditLogService
         NodaTime.Instant windowEnd,
         AuditAction action,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the distinct set of <see cref="AuditLogEntry.EntityId"/> values
+    /// across all-time audit entries whose <see cref="AuditLogEntry.EntityType"/>
+    /// matches <paramref name="entityType"/> and whose
+    /// <see cref="AuditLogEntry.Action"/> is one of <paramref name="actions"/>.
+    /// Used by orphan-signup reconciliation to find ShiftSignups missing a
+    /// creation-event audit row without crossing the AuditLog section boundary
+    /// (design-rules §2c).
+    /// </summary>
+    Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
+        string entityType,
+        IReadOnlyList<AuditAction> actions,
+        CancellationToken ct = default);
 }
 
 /// <summary>

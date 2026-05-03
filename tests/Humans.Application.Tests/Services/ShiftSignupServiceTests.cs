@@ -529,6 +529,105 @@ public class ShiftSignupServiceTests : IDisposable
     }
 
     // ============================================================
+    // Audit completeness — ShiftSignupCreated
+    // ============================================================
+
+    [HumansFact]
+    public async Task SignUp_PublicPolicy_WritesShiftSignupCreatedAudit()
+    {
+        var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var userId = Guid.NewGuid();
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.SignUpAsync(userId, shift.Id);
+
+        result.Success.Should().BeTrue();
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.ShiftSignupCreated, nameof(ShiftSignup), result.Signup!.Id,
+            Arg.Is<string>(s => s.Contains("(confirmed)")),
+            userId,
+            userId, nameof(User));
+    }
+
+    [HumansFact]
+    public async Task SignUp_RequireApprovalPolicy_WritesShiftSignupCreatedAudit()
+    {
+        var (_, _, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        var userId = Guid.NewGuid();
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.SignUpAsync(userId, shift.Id);
+
+        result.Success.Should().BeTrue();
+        result.Signup!.Status.Should().Be(SignupStatus.Pending);
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.ShiftSignupCreated, nameof(ShiftSignup), result.Signup.Id,
+            Arg.Is<string>(s => s.Contains("(pending)")),
+            userId,
+            userId, nameof(User));
+    }
+
+    [HumansFact]
+    public async Task SignUpRange_RequireApproval_WritesShiftSignupCreatedPerSignup()
+    {
+        var (_, rota, _) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        rota.Period = RotaPeriod.Build;
+        for (var day = -3; day <= -1; day++)
+            SeedAllDayShift(rota, day);
+        var userId = Guid.NewGuid();
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.SignUpRangeAsync(userId, rota.Id, -3, -1);
+
+        result.Success.Should().BeTrue();
+        await _auditLog.Received(3).LogAsync(
+            AuditAction.ShiftSignupCreated, nameof(ShiftSignup), Arg.Any<Guid>(),
+            Arg.Is<string>(s => s.Contains("(range, pending)")),
+            userId,
+            userId, nameof(User));
+    }
+
+    // ============================================================
+    // Account-merge fold — ShiftSignupReassigned
+    // ============================================================
+
+    [HumansFact]
+    public async Task Reassign_WhenSourceHasSignups_WritesShiftSignupReassignedOnce()
+    {
+        var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var sourceUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+        var actorUserId = Guid.NewGuid();
+        SeedSignup(sourceUserId, shift.Id, SignupStatus.Confirmed);
+        await _dbContext.SaveChangesAsync();
+
+        await _service.ReassignAsync(sourceUserId, targetUserId, actorUserId, TestNow, default);
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.ShiftSignupReassigned, nameof(User), targetUserId,
+            Arg.Is<string>(s => s.Contains("Reassigned 1")),
+            actorUserId,
+            targetUserId, nameof(User));
+    }
+
+    [HumansFact]
+    public async Task Reassign_WhenSourceHasNoSignups_DoesNotWriteAudit()
+    {
+        SeedShiftScenario(SignupPolicy.Public);
+        var sourceUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+        var actorUserId = Guid.NewGuid();
+        await _dbContext.SaveChangesAsync();
+
+        await _service.ReassignAsync(sourceUserId, targetUserId, actorUserId, TestNow, default);
+
+        await _auditLog.DidNotReceive().LogAsync(
+            AuditAction.ShiftSignupReassigned, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    // ============================================================
     // Helpers
     // ============================================================
 

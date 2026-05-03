@@ -71,6 +71,10 @@ file sealed class StubAuditLog : IAuditLogService
     public Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
         Instant windowStart, Instant windowEnd, AuditAction action, CancellationToken ct = default) =>
         Task.FromResult((IReadOnlyList<Guid>)Array.Empty<Guid>());
+
+    public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
+        string entityType, IReadOnlyList<AuditAction> actions, CancellationToken ct = default) =>
+        Task.FromResult((IReadOnlySet<Guid>)new HashSet<Guid>());
 }
 
 /// <summary>

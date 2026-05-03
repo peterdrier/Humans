@@ -84,8 +84,8 @@ public class EnumStringStabilityTests
                 "CampSeasonWithdrawn", "CampSeasonStatusChanged", "CampNameChanged",
                 "CampLeadAdded", "CampLeadRemoved", "CampPrimaryLeadTransferred",
                 "CampImageUploaded", "CampImageDeleted",
-                "ShiftSignupConfirmed", "ShiftSignupRefused", "ShiftSignupVoluntold",
-                "ShiftSignupBailed", "ShiftSignupNoShow", "ShiftSignupCancelled"
+                "ShiftSignupCreated", "ShiftSignupConfirmed", "ShiftSignupRefused", "ShiftSignupVoluntold",
+                "ShiftSignupBailed", "ShiftSignupNoShow", "ShiftSignupCancelled", "ShiftSignupReassigned"
             }
         },
         {

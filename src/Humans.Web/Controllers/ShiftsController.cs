@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Constants;
@@ -22,6 +23,7 @@ public class ShiftsController : HumansControllerBase
     private readonly IShiftSignupService _signupService;
     private readonly IGeneralAvailabilityService _availabilityService;
     private readonly ITeamService _teamService;
+    private readonly IAuditLogService _auditLogService;
     private readonly IClock _clock;
     private readonly ILogger<ShiftsController> _logger;
 
@@ -30,6 +32,7 @@ public class ShiftsController : HumansControllerBase
         IShiftSignupService signupService,
         IGeneralAvailabilityService availabilityService,
         ITeamService teamService,
+        IAuditLogService auditLogService,
         UserManager<User> userManager,
         IClock clock,
         ILogger<ShiftsController> logger)
@@ -39,6 +42,7 @@ public class ShiftsController : HumansControllerBase
         _signupService = signupService;
         _availabilityService = availabilityService;
         _teamService = teamService;
+        _auditLogService = auditLogService;
         _clock = clock;
         _logger = logger;
     }
@@ -649,4 +653,89 @@ public class ShiftsController : HumansControllerBase
                 es.GateOpeningDate.PlusDays(es.StrikeEndOffset))
         };
     }
+
+    // ==========================================================================
+    // Orphan-signup reconciliation (admin diagnostic)
+    // ==========================================================================
+    //
+    // Surfaces ShiftSignups whose Id has no creation-event audit row
+    // (ShiftSignupCreated or ShiftSignupVoluntold). These are the rows behind
+    // the "user bailed from a shift they never signed up for" support thread:
+    // until ShiftSignupCreated was added, Pending self-signups were never
+    // audited, leaving only the eventual Bailed/Refused/Confirmed transition
+    // on the user's audit trail.
+
+    [HttpGet("OrphanSignups")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    public async Task<IActionResult> OrphanSignups(CancellationToken ct)
+    {
+        var allSignups = await _signupService.GetAllForOrphanScanAsync(ct);
+        var auditedIds = await _auditLogService.GetEntityIdsForEntityTypeActionsAsync(
+            nameof(ShiftSignup),
+            [AuditAction.ShiftSignupCreated, AuditAction.ShiftSignupVoluntold],
+            ct);
+
+        var orphans = allSignups
+            .Where(s => !auditedIds.Contains(s.Id))
+            .ToList();
+
+        var userIds = orphans
+            .SelectMany(s => new[] { s.UserId, s.ReviewedByUserId, s.EnrolledByUserId })
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+
+        var userDisplayNames = await _auditLogService.GetUserDisplayNamesAsync(userIds, ct);
+
+        var rows = orphans
+            .Select(s => new OrphanSignupRow(
+                SignupId: s.Id,
+                UserId: s.UserId,
+                UserDisplayName: userDisplayNames.GetValueOrDefault(s.UserId) ?? s.UserId.ToString(),
+                RotaName: s.Shift.Rota.Name,
+                ShiftDate: s.Shift.Rota.EventSettings.GateOpeningDate.PlusDays(s.Shift.DayOffset),
+                Status: s.Status,
+                CreatedAt: s.CreatedAt,
+                ReviewedByUserId: s.ReviewedByUserId,
+                ReviewedByDisplayName: s.ReviewedByUserId.HasValue
+                    ? userDisplayNames.GetValueOrDefault(s.ReviewedByUserId.Value)
+                    : null,
+                EnrolledByUserId: s.EnrolledByUserId,
+                EnrolledByDisplayName: s.EnrolledByUserId.HasValue
+                    ? userDisplayNames.GetValueOrDefault(s.EnrolledByUserId.Value)
+                    : null,
+                SignupBlockId: s.SignupBlockId))
+            .OrderBy(r => r.UserDisplayName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(r => r.CreatedAt)
+            .ToList();
+
+        var vm = new OrphanSignupsViewModel(
+            TotalSignups: allSignups.Count,
+            OrphanCount: rows.Count,
+            UniqueUsers: rows.Select(r => r.UserId).Distinct().Count(),
+            Rows: rows);
+
+        return View(vm);
+    }
 }
+
+public record OrphanSignupRow(
+    Guid SignupId,
+    Guid UserId,
+    string UserDisplayName,
+    string RotaName,
+    LocalDate ShiftDate,
+    SignupStatus Status,
+    Instant CreatedAt,
+    Guid? ReviewedByUserId,
+    string? ReviewedByDisplayName,
+    Guid? EnrolledByUserId,
+    string? EnrolledByDisplayName,
+    Guid? SignupBlockId);
+
+public record OrphanSignupsViewModel(
+    int TotalSignups,
+    int OrphanCount,
+    int UniqueUsers,
+    IReadOnlyList<OrphanSignupRow> Rows);

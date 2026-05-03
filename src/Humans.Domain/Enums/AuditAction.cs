@@ -106,4 +106,6 @@ public enum AuditAction
     UserEmailDeleted,
     UserEmailVisibilityChanged,
     UserEmailAdded,
+    ShiftSignupCreated,
+    ShiftSignupReassigned,
 }

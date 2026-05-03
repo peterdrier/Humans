@@ -336,4 +336,10 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
         AuditAction action,
         CancellationToken ct = default) =>
         _repo.GetEntityIdsForActionInWindowAsync(windowStart, windowEnd, action, ct);
+
+    public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
+        string entityType,
+        IReadOnlyList<AuditAction> actions,
+        CancellationToken ct = default) =>
+        _repo.GetEntityIdsForEntityTypeActionsAsync(entityType, actions, ct);
 }

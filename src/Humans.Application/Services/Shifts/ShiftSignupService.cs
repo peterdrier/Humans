@@ -145,14 +145,16 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         await _repo.SaveChangesAsync();
 
+        var shiftDate = FormatShiftDate(es.GateOpeningDate.PlusDays(shift.DayOffset));
+        var statusSuffix = autoConfirm ? "confirmed" : "pending";
+        await _auditLogService.LogAsync(
+            AuditAction.ShiftSignupCreated, nameof(ShiftSignup), signup.Id,
+            $"shift '{shift.Rota.Name}' on {shiftDate} ({statusSuffix})",
+            userId,
+            userId, nameof(User));
+
         if (autoConfirm)
         {
-            await _auditLogService.LogAsync(
-                AuditAction.ShiftSignupConfirmed, nameof(ShiftSignup), signup.Id,
-                $"shift '{shift.Rota.Name}'",
-                userId,
-                userId, nameof(User));
-
             await DispatchSignupChangeNotificationAsync(signup, shift,
                 $"New confirmed signup for '{shift.Rota.Name}' on day {shift.DayOffset}.");
         }
@@ -666,18 +668,19 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         await _repo.SaveChangesAsync();
 
+        var statusSuffix = autoConfirm ? "confirmed" : "pending";
+        foreach (var (auditedSignup, dayOffset) in rangeSignupsForAudit)
+        {
+            await _auditLogService.LogAsync(
+                AuditAction.ShiftSignupCreated,
+                nameof(ShiftSignup), auditedSignup.Id,
+                $"'{rota.Name}' on {FormatShiftDate(es.GateOpeningDate.PlusDays(dayOffset))} (range, {statusSuffix})",
+                userId,
+                userId, nameof(User));
+        }
+
         if (autoConfirm)
         {
-            foreach (var (auditedSignup, dayOffset) in rangeSignupsForAudit)
-            {
-                await _auditLogService.LogAsync(
-                    AuditAction.ShiftSignupConfirmed,
-                    nameof(ShiftSignup), auditedSignup.Id,
-                    $"'{rota.Name}' day {dayOffset} (range)",
-                    userId,
-                    userId, nameof(User));
-            }
-
             await DispatchSignupChangeNotificationAsync(lastSignup!, availableShifts[^1], rota,
                 $"Range signup for '{rota.Name}' ({shiftsInRange.Count} shifts, confirmed).");
         }
@@ -1092,7 +1095,21 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         Guid userId, string reason, CancellationToken ct = default) =>
         _repo.CancelActiveSignupsForUserAsync(userId, reason, ct);
 
-    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+    public Task<IReadOnlyList<ShiftSignup>> GetAllForOrphanScanAsync(CancellationToken ct = default) =>
+        _repo.GetAllForOrphanScanAsync(ct);
+
+    public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
-        => _repo.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+    {
+        var movedCount = await _repo.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+
+        if (movedCount > 0)
+        {
+            await _auditLogService.LogAsync(
+                AuditAction.ShiftSignupReassigned, nameof(User), targetUserId,
+                $"Reassigned {movedCount} shift signup(s) from merged source user {sourceUserId}",
+                actorUserId,
+                targetUserId, nameof(User));
+        }
+    }
 }

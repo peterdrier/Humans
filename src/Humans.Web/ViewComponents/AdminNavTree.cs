@@ -54,13 +54,14 @@ public static class AdminNavTree
         }),
         new("Diagnostics", new AdminNavItem[]
         {
-            new("Logs",          "Admin", "Logs",          null, null, "fa-solid fa-triangle-exclamation", PolicyNames.AdminOnly),
-            new("DB stats",      "Admin", "DbStats",       null, null, "fa-solid fa-database",            PolicyNames.AdminOnly),
-            new("Cache stats",   "Admin", "CacheStats",    null, null, "fa-solid fa-bolt",                PolicyNames.AdminOnly),
-            new("Configuration", "Admin", "Configuration", null, null, "fa-solid fa-gear",                PolicyNames.AdminOnly),
-            new("Maintenance",   "Admin", "Maintenance",   null, null, "fa-solid fa-screwdriver-wrench",  PolicyNames.AdminOnly),
-            new("Hangfire",      null, null, null, "/hangfire",      "fa-solid fa-clock-rotate-left", PolicyNames.AdminOnly),
-            new("Health",        null, null, null, "/health/ready",  "fa-solid fa-heart-pulse",       PolicyNames.AdminOnly),
+            new("Logs",            "Admin", "Logs",          null, null, "fa-solid fa-triangle-exclamation", PolicyNames.AdminOnly),
+            new("DB stats",        "Admin", "DbStats",       null, null, "fa-solid fa-database",            PolicyNames.AdminOnly),
+            new("Cache stats",     "Admin", "CacheStats",    null, null, "fa-solid fa-bolt",                PolicyNames.AdminOnly),
+            new("Configuration",   "Admin", "Configuration", null, null, "fa-solid fa-gear",                PolicyNames.AdminOnly),
+            new("Maintenance",     "Admin", "Maintenance",   null, null, "fa-solid fa-screwdriver-wrench",  PolicyNames.AdminOnly),
+            new("Orphan signups",  "Shifts", "OrphanSignups", null, null, "fa-solid fa-user-secret",        PolicyNames.AdminOnly),
+            new("Hangfire",        null, null, null, "/hangfire",      "fa-solid fa-clock-rotate-left", PolicyNames.AdminOnly),
+            new("Health",          null, null, null, "/health/ready",  "fa-solid fa-heart-pulse",       PolicyNames.AdminOnly),
         }),
         new("Dev", new AdminNavItem[]
         {

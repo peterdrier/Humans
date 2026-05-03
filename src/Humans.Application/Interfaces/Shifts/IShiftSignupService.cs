@@ -116,6 +116,13 @@ public interface IShiftSignupService
     /// </summary>
     Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
         Guid userId, string reason, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every <see cref="ShiftSignup"/> in the system, with
+    /// <c>Shift.Rota.EventSettings</c> included, for use by the
+    /// orphan-signup reconciliation screen. Admin-only diagnostic.
+    /// </summary>
+    Task<IReadOnlyList<ShiftSignup>> GetAllForOrphanScanAsync(CancellationToken ct = default);
 }
 
 /// <summary>

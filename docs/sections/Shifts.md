@@ -160,7 +160,7 @@ Stored as string via `HasConversion<string>()`.
 
 ## Triggers
 
-- Every signup state change (auto-confirm, approve, refuse, bail, voluntell, remove) writes an audit log entry (`AuditAction.ShiftSignupConfirmed/Refused/Bailed/Voluntold/Cancelled/NoShow`) and dispatches a `ShiftSignupChange` notification to the department's coordinators via `INotificationService`.
+- Every signup state change writes an audit log entry and dispatches a `ShiftSignupChange` notification to the department's coordinators via `INotificationService`. Action set: `AuditAction.ShiftSignup{Created,Confirmed,Refused,Voluntold,Bailed,Cancelled,NoShow,Reassigned}`. `ShiftSignupCreated` fires on every self-signup (Pending or Confirmed) so the creation moment is always traceable; `ShiftSignupConfirmed` fires only on the later Pending → Confirmed transition by an approver. `ShiftSignupReassigned` fires once per account-merge fold (re-FK of signups from source to target).
 - Voluntelling additionally fires a `ShiftAssigned` informational notification to the assigned volunteer (best-effort; failures logged but do not roll back the signup).
 - When a Bail or Remove drops the confirmed count below `MinVolunteers`, a `ShiftCoverageGap` actionable notification (priority High) is sent to the department's coordinators.
 - Range signup, range voluntell, range bail, range approve, and range refuse all use a shared `SignupBlockId` and operate on the entire block atomically (with per-shift filtering for capacity/conflicts on creation paths).

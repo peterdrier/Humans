@@ -279,7 +279,17 @@ public sealed class ShiftSignupRepository : IShiftSignupRepository
 
         await _dbContext.SaveChangesAsync(ct);
 
+        return sourceRows.Count;
+    }
+
+    public async Task<IReadOnlyList<ShiftSignup>> GetAllForOrphanScanAsync(CancellationToken ct = default)
+    {
         return await _dbContext.ShiftSignups
-            .CountAsync(s => s.UserId == targetUserId, ct);
+            .AsNoTracking()
+            .Include(s => s.Shift)
+                .ThenInclude(sh => sh.Rota)
+                    .ThenInclude(r => r.EventSettings)
+            .OrderBy(s => s.CreatedAt)
+            .ToListAsync(ct);
     }
 }
