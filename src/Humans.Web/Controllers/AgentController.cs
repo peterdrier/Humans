@@ -102,6 +102,7 @@ public class AgentController : HumansControllerBase
     }
 
     [HttpDelete("Conversation/{id:guid}")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteConversation(Guid id, CancellationToken cancellationToken)
     {
         var (missing, user) = await RequireCurrentUserAsync();
