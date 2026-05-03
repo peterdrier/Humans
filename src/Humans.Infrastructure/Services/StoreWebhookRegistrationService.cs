@@ -101,6 +101,18 @@ public class StoreWebhookRegistrationService : IHostedService
 
         var webhookUrl = $"{baseUrl.TrimEnd('/')}{WebhookPath}";
 
+        // Only auto-register on hosts we own. Dev (localhost / nuc.home) and any other
+        // unrecognized host should never register — Stripe couldn't reach it anyway, and
+        // the endpoint would just burn against the per-account quota.
+        if (!Uri.TryCreate(webhookUrl, UriKind.Absolute, out var webhookUri) ||
+            !webhookUri.Host.EndsWith(OwnedHostSuffix, StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogInformation(
+                "Store webhook auto-registration skipped: {Url} is not a recognized PR-preview host (must end in {Suffix}).",
+                webhookUrl, OwnedHostSuffix);
+            return;
+        }
+
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(RegistrationTimeout);
 
