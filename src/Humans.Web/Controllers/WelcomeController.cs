@@ -6,7 +6,7 @@ namespace Humans.Web.Controllers;
 [AllowAnonymous]
 public class WelcomeController : Controller
 {
-    [HttpGet("/welcome")]
+    [HttpGet("/Welcome")]
     public IActionResult Index()
     {
         // If user is already authenticated and an active member,
