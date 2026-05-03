@@ -10,22 +10,33 @@ name: Claude PR Review
 # between the two repos:
 #
 #   peterdrier/Humans
-#     Trigger: pull_request (same-repo PRs only).
-#     Auth:    OIDC → claude[bot] App token (default).
-#     Fork PRs to peterdrier/Humans are deliberately not reviewed; run
-#     `/pr-review <num>` locally instead.
+#     Trigger: pull_request for same-repo PRs (collaborator pushed branch
+#              directly to peterdrier/Humans), pull_request_target for
+#              fork PRs from trusted authors (OWNER/MEMBER/COLLABORATOR
+#              per GitHub's author_association). Random external forks
+#              are skipped — pull_request_target with a checkout of
+#              attacker-controlled code would be a "pwn-request" hole.
+#     Auth:    OIDC → claude[bot] App token on pull_request (default);
+#              workflow GITHUB_TOKEN on pull_request_target (see #713
+#              below).
 #
 #   nobodies-collective/Humans
 #     Trigger: pull_request_target, only when the head is peterdrier/Humans
 #              (the QA-promotion path). Random external forks are skipped —
-#              pull_request_target with a checkout of attacker-controlled
-#              code would be a "pwn-request" hole.
+#              same pwn-request reason.
 #     Auth:    Workflow GITHUB_TOKEN. Anthropic's OIDC → App-token exchange
 #              currently 401s on pull_request_target events
 #              (anthropics/claude-code-action#713); passing github_token
 #              tells the action to skip OIDC and post as github-actions[bot].
 #     Checkout: base ref (default), per the action's docs/security.md —
 #               do NOT check out the PR head into the workspace root.
+#
+# Why pull_request_target stays safe: the pwn-request hole only opens if
+# you `actions/checkout` the PR head and execute code from it (build,
+# test, install). This workflow checks out the BASE ref (default for
+# pull_request_target) and reads the PR diff via the GitHub API through
+# the action — fork code never runs locally. Do NOT add build/test steps
+# to this job.
 #
 # Setup (one-time, per repo):
 #   1. `claude setup-token` locally → copy the OAuth token.
@@ -46,6 +57,12 @@ jobs:
         (github.event_name == 'pull_request'
           && github.repository == 'peterdrier/Humans'
           && github.event.pull_request.head.repo.full_name == github.repository)
+        ||
+        (github.event_name == 'pull_request_target'
+          && github.repository == 'peterdrier/Humans'
+          && github.event.pull_request.head.repo.full_name != github.repository
+          && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
+                      github.event.pull_request.author_association))
         ||
         (github.event_name == 'pull_request_target'
           && github.repository == 'nobodies-collective/Humans'
