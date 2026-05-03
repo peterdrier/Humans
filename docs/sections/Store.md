@@ -218,17 +218,32 @@ Stored as int via `HasConversion<int>()`.
 
 ## Stripe Configuration
 
-Three env vars, **one key per Stripe account**:
+**One key per Stripe account / purpose.** Each key holds the minimum scope its job requires; production keys are Restricted API Keys (`rk_live_*`).
 
-| Env var | Account | Required scopes |
-|---|---|---|
-| `STRIPE_TICKETS_KEY` | Tickets | PaymentIntent + BalanceTransaction reads (fee enrichment on Tickets section). `STRIPE_API_KEY` is honored as a deprecated alias and emits a one-shot startup warning. |
-| `STRIPE_STORE_KEY` | Store | `checkout_session:write` (for Pay button). Production must use a Restricted API Key (`rk_live_*`) — never a full secret key. |
-| `STRIPE_STORE_WEBHOOK_SECRET` | Store | Webhook signing secret (`whsec_*`) for `/Store/StripeWebhook` signature verification. |
+| Env var | Account | Scope | Set in |
+|---|---|---|---|
+| `STRIPE_TICKETS_KEY` | Tickets | PaymentIntent + BalanceTransaction reads | dev / QA / prod |
+| `STRIPE_STORE_KEY` | Store | `checkout_session:write` only | dev / QA / prod |
+| `STRIPE_STORE_WEBHOOK_SECRET` | Store | Webhook signing secret (`whsec_*`) | QA / prod (manual); ephemeral (auto-set at boot) |
+| `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY` | Store | `webhook_endpoint:read` + `webhook_endpoint:write` | **PR-preview / ephemeral envs only** |
+
+`STRIPE_API_KEY` is honored as a deprecated alias for `STRIPE_TICKETS_KEY` and emits a one-shot startup warning.
 
 The Store key explicitly does NOT carry refund, payout, charge-modify, customer-write, or PaymentIntent-write scopes. **Refunds, payouts, and chargebacks remain manual via the Stripe dashboard** by policy — bookkeeping for refunds posts to Store as negative `StorePayment` rows via FinanceAdmin manual entry (Phase 5.3).
 
-Boot-time smoke probes (`StripeStartupSmokeService`) make one low-risk read against each configured key and log a warning if scopes are missing. Stripe does not expose programmatic introspection of RAK scopes, so the probe is positive-confirmation only — it cannot detect over-granted permissions.
+### Webhook auto-registration (ephemeral envs)
+
+PR-preview environments cannot reasonably create dashboard webhooks per-PR. `StoreWebhookRegistrationService` runs at boot iff `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY` is set, lists existing webhooks pointing at this env's URL (`{Email:BaseUrl}/Store/StripeWebhook`), deletes any stale ones, creates a fresh endpoint subscribed to `checkout.session.completed`, and stamps the returned `whsec_*` onto the in-memory `StripeSettings.StoreWebhookSecret` for the process lifetime.
+
+The registrar key is **deliberately separate** from `STRIPE_STORE_KEY` so PR-preview testing exercises the production-narrow `checkout_session:write`-only Store key — expanding `STRIPE_STORE_KEY`'s scope in dev would mask scope-related production failures.
+
+**Required deploy hooks:**
+- PR-preview Coolify env sets `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY`. QA and production do NOT set it.
+- The existing PR-close GitHub Action that drops the per-PR DB needs an extension to call Stripe's `DELETE /v1/webhook_endpoints/{id}` (look up by URL) — otherwise stale endpoints accumulate against Stripe's per-account quota (test mode caps at 16). **TODO: add this to the PR-close workflow.**
+
+### Smoke probe
+
+Boot-time `StripeStartupSmokeService` makes one low-risk read against each configured key (Tickets: PaymentIntents.list; Store: Checkout.Sessions.list). Logs warnings on missing scopes. Stripe does not expose programmatic introspection of RAK scopes, so the probe is positive-confirmation only — it cannot detect over-granted permissions.
 
 ## Architecture
 

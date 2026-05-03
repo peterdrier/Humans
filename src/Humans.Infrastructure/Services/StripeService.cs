@@ -20,6 +20,9 @@ public class StripeSettings
     /// <summary>Store-account webhook signing secret (whsec_*). Populated from STRIPE_STORE_WEBHOOK_SECRET.</summary>
     public string StoreWebhookSecret { get; set; } = string.Empty;
 
+    /// <summary>Store-account key with <c>webhook_endpoint:read/write</c> scope. Populated from STRIPE_STORE_WEBHOOK_REGISTRAR_KEY. Set ONLY in ephemeral environments (PR previews) where webhooks self-register at boot — never in QA or production. Kept separate from <see cref="StoreKey"/> so PR-preview testing exercises the production-scoped checkout path with the same scope production has.</summary>
+    public string WebhookRegistrarKey { get; set; } = string.Empty;
+
     /// <summary>True when the Tickets-account key is set (fee enrichment available).</summary>
     public bool IsConfigured => !string.IsNullOrEmpty(TicketsKey);
 
@@ -28,6 +31,9 @@ public class StripeSettings
 
     /// <summary>True when the Store webhook signing secret is set (webhook signature verification available).</summary>
     public bool IsStoreWebhookConfigured => !string.IsNullOrEmpty(StoreWebhookSecret);
+
+    /// <summary>True when the dedicated webhook-registrar key is set (auto-registration available — ephemeral envs only).</summary>
+    public bool IsWebhookRegistrarConfigured => !string.IsNullOrEmpty(WebhookRegistrarKey);
 
     /// <summary>True when TicketsKey was loaded from the deprecated STRIPE_API_KEY fallback rather than STRIPE_TICKETS_KEY. Triggers a one-shot startup warning.</summary>
     public bool TicketsKeyFromDeprecatedFallback { get; set; }
