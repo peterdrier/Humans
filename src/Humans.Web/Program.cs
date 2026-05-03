@@ -440,12 +440,19 @@ builder.Services.AddSession(options =>
 // Configure Localization
 builder.Services.AddLocalization();
 
-// CORS — allow the public nobodies.team website to fetch /api/barrios
+// CORS — allow the public nobodies.team website to fetch /api/barrios.
+// Localhost / 127.0.0.1 (any port) are allowed so devs working on the
+// public site locally can hit the deployed barrios API.
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("BarriosPublic", policy =>
     {
         policy.WithOrigins("https://nobodies.team", "https://www.nobodies.team")
+            .SetIsOriginAllowed(origin =>
+                origin.StartsWith("http://localhost:", StringComparison.Ordinal) ||
+                origin.StartsWith("http://127.0.0.1:", StringComparison.Ordinal) ||
+                string.Equals(origin, "https://nobodies.team", StringComparison.Ordinal) ||
+                string.Equals(origin, "https://www.nobodies.team", StringComparison.Ordinal))
             .WithMethods("GET")
             .WithHeaders("Content-Type", "Accept");
     });
