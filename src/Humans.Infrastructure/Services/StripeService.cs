@@ -35,6 +35,16 @@ public class StripeSettings
     /// <summary>True when the dedicated webhook-registrar key is set (auto-registration available — ephemeral envs only).</summary>
     public bool IsWebhookRegistrarConfigured => !string.IsNullOrEmpty(WebhookRegistrarKey);
 
+    /// <summary>GitHub owner (org/user) the webhook registrar queries for the open-PR list when sweeping stale endpoints. Populated from Stripe:WebhookCleanupOwner. Set only when STRIPE_STORE_WEBHOOK_REGISTRAR_KEY is set.</summary>
+    public string WebhookCleanupGitHubOwner { get; set; } = string.Empty;
+
+    /// <summary>GitHub repository the webhook registrar queries for the open-PR list. Populated from Stripe:WebhookCleanupRepository.</summary>
+    public string WebhookCleanupGitHubRepository { get; set; } = string.Empty;
+
+    /// <summary>True when both the cleanup owner and repository are configured (cross-PR sweep available).</summary>
+    public bool IsWebhookCleanupConfigured =>
+        !string.IsNullOrEmpty(WebhookCleanupGitHubOwner) && !string.IsNullOrEmpty(WebhookCleanupGitHubRepository);
+
     /// <summary>True when TicketsKey was loaded from the deprecated STRIPE_API_KEY fallback rather than STRIPE_TICKETS_KEY. Triggers a one-shot startup warning.</summary>
     public bool TicketsKeyFromDeprecatedFallback { get; set; }
 }

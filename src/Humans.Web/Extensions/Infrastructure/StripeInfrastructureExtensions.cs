@@ -6,7 +6,7 @@ namespace Humans.Web.Extensions.Infrastructure;
 
 internal static class StripeInfrastructureExtensions
 {
-    internal static IServiceCollection AddStripeInfrastructure(this IServiceCollection services)
+    internal static IServiceCollection AddStripeInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         // Stripe integration. One key per Stripe account / purpose; production keys must be Restricted API
         // Keys (rk_*) scoped to the minimum permissions used. Refunds/payouts/chargebacks remain dashboard-manual.
@@ -35,6 +35,8 @@ internal static class StripeInfrastructureExtensions
             opts.StoreKey = Environment.GetEnvironmentVariable("STRIPE_STORE_KEY") ?? string.Empty;
             opts.StoreWebhookSecret = Environment.GetEnvironmentVariable("STRIPE_STORE_WEBHOOK_SECRET") ?? string.Empty;
             opts.WebhookRegistrarKey = Environment.GetEnvironmentVariable("STRIPE_STORE_WEBHOOK_REGISTRAR_KEY") ?? string.Empty;
+            opts.WebhookCleanupGitHubOwner = configuration["Stripe:WebhookCleanupOwner"] ?? string.Empty;
+            opts.WebhookCleanupGitHubRepository = configuration["Stripe:WebhookCleanupRepository"] ?? string.Empty;
         });
         services.AddScoped<IStripeService, StripeService>();
         services.AddHostedService<StripeStartupSmokeService>();

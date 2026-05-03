@@ -20,7 +20,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddEmailInfrastructure(configuration, environment);
         services.AddGoogleWorkspaceInfrastructure(configuration, environment);
         services.AddTicketVendorInfrastructure(configuration, environment);
-        services.AddStripeInfrastructure();
+        services.AddStripeInfrastructure(configuration);
 
         // Single key-addressed file storage rooted at wwwroot. Camps,
         // profile pictures, and any future file-bearing section share this

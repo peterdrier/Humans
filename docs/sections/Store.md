@@ -226,6 +226,8 @@ Stored as int via `HasConversion<int>()`.
 | `STRIPE_STORE_KEY` | Store | `checkout_session:write` only | dev / QA / prod |
 | `STRIPE_STORE_WEBHOOK_SECRET` | Store | Webhook signing secret (`whsec_*`) | QA / prod (manual); ephemeral (auto-set at boot) |
 | `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY` | Store | `webhook_endpoint:read` + `webhook_endpoint:write` | **PR-preview / ephemeral envs only** |
+| `Stripe:WebhookCleanupOwner` (config) | — | n/a | PR-preview only — GitHub owner of the fork that produces previews (e.g. `peterdrier`) |
+| `Stripe:WebhookCleanupRepository` (config) | — | n/a | PR-preview only — repository name (e.g. `Humans`) |
 
 `STRIPE_API_KEY` is honored as a deprecated alias for `STRIPE_TICKETS_KEY` and emits a one-shot startup warning.
 
@@ -233,13 +235,21 @@ The Store key explicitly does NOT carry refund, payout, charge-modify, customer-
 
 ### Webhook auto-registration (ephemeral envs)
 
-PR-preview environments cannot reasonably create dashboard webhooks per-PR. `StoreWebhookRegistrationService` runs at boot iff `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY` is set, lists existing webhooks pointing at this env's URL (`{Email:BaseUrl}/Store/StripeWebhook`), deletes any stale ones, creates a fresh endpoint subscribed to `checkout.session.completed`, and stamps the returned `whsec_*` onto the in-memory `StripeSettings.StoreWebhookSecret` for the process lifetime.
+PR-preview environments cannot reasonably create dashboard webhooks per-PR. `StoreWebhookRegistrationService` runs at boot iff `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY` is set:
+
+1. **Cross-PR sweep.** Hits the GitHub API (`GET /repos/{owner}/{repo}/pulls?state=open`) using the existing `GitHub:AccessToken`, builds a set of currently-open PR numbers. Then lists Stripe webhooks owned by this account, filters to URLs matching `{N}.n.burn.camp/Store/StripeWebhook`, parses `{N}` from each host, and deletes any whose PR is no longer open. Idempotent — concurrent boots race harmlessly; 404s on already-deleted endpoints are swallowed.
+2. **Current-PR cleanup.** Deletes any webhook whose URL exactly matches this env's URL (handles the redeploy/restart case).
+3. **Register.** Creates a fresh endpoint subscribed to `checkout.session.completed`. Stamps the returned `whsec_*` onto the in-memory `StripeSettings.StoreWebhookSecret` for the process lifetime — Stripe only returns the secret at creation, never via fetch.
 
 The registrar key is **deliberately separate** from `STRIPE_STORE_KEY` so PR-preview testing exercises the production-narrow `checkout_session:write`-only Store key — expanding `STRIPE_STORE_KEY`'s scope in dev would mask scope-related production failures.
 
-**Required deploy hooks:**
-- PR-preview Coolify env sets `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY`. QA and production do NOT set it.
-- The existing PR-close GitHub Action that drops the per-PR DB needs an extension to call Stripe's `DELETE /v1/webhook_endpoints/{id}` (look up by URL) — otherwise stale endpoints accumulate against Stripe's per-account quota (test mode caps at 16). **TODO: add this to the PR-close workflow.**
+**PR-preview Coolify config (the only env that should set these):**
+- `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY=rk_test_...` (with `webhook_endpoint:read` + `webhook_endpoint:write`)
+- `Stripe:WebhookCleanupOwner=peterdrier`, `Stripe:WebhookCleanupRepository=Humans`
+
+QA and production deliberately do NOT set the registrar key and use a dashboard-configured webhook with a stable signing secret.
+
+The cross-PR sweep means closed-PR cleanup is **self-contained** — no extension to the PR-close GitHub Action is required. The next boot of any PR-preview env (or the same PR redeploying) reaps stale endpoints across the whole account.
 
 ### Smoke probe
 
