@@ -68,6 +68,26 @@ Extract acceptance criteria from each issue body. Store as structured data to pa
 
 **Do this BEFORE launching agents** — fetch once, pass to each agent. Don't make each agent fetch independently.
 
+## Step 2.5: Privilege / spec-change pre-flight (HARD GATE)
+
+For each issue spec fetched in Step 2, scan the body for privilege/spec-change signals before any agent is launched:
+
+- **Keyword grep on the spec body:** `permission`, `privilege`, `role`, `scope`, `allowlist`, `CORS`, `[Authorize]`, `Admin` (as a grant), `default.*level`, `fileOrganizer`, `ContentManager`, `writer`, `Contributor`, `bypass`, `override.*auth`, `AllowAnonymous`
+- **Author check:** if `.author.login != "peterdrier"`, raise the bar further — the spec was authored by triage or a teammate, not Peter
+- **Source check:** if the issue body links to a feedback ID (pattern `fb:[a-f0-9]+`), raise the bar further — this originated from a user request
+
+If ANY issue hits the privilege filter:
+
+1. STOP — do not dispatch any agents yet, do not enter Step 3
+2. Show Peter: the issue number, title, the matched signal(s), the issue's author login, any `fb:` feedback reference, and the first ~20 lines of the issue body
+3. Ask explicitly: "This issue would grant `<who>` the ability to `<what>`. Confirm before I dispatch a worker?"
+4. Wait for explicit "yes, proceed" — silence, a question, or "what do you think?" is NOT approval
+5. If Peter says no or wants to redirect, drop the issue from the batch and continue with the rest of the sprint
+
+This gate fires even when the sprint plan already labeled the issue with a tier — sprint planning is fallible. The worker prompt construction in Step 6 must NEVER include a privilege-change issue without this gate having fired and Peter having explicitly approved.
+
+Per `memory/process/privilege-changes-need-explicit-approval.md` and `memory/process/user-feedback-spec-changes-need-review.md`.
+
 ## Step 3: Determine execution plan
 
 Group batches into execution waves:

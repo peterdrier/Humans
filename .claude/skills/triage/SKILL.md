@@ -434,15 +434,24 @@ For each report (or group of related reports), display:
 
 If the report has a ScreenshotUrl, note: "Screenshot: {BASE_URL}{ScreenshotUrl}"
 
+**Classification — fires before action menu.** Read the original report verbatim and tag the request:
+
+- **Mechanical fix** — improves an existing experience without changing what the system *does* or *allows*: typos, broken links, error-message wording, layout glitches, hidden stack traces, missing icons. Treat normally; the action menu's standard options apply.
+- **Spec / policy / capability change** — alters what the system does, who can do it, what data is shown/collected, or what policy applies: capability grants, default permission/tier changes, role/scope additions, allowlist expansions, new public endpoints, eligibility changes, removed/added workflow steps. Per `memory/process/user-feedback-spec-changes-need-review.md`, these MUST NOT auto-promote into a clean bug-style issue with a prescribed fix. Default to "Surface to Peter" (option 6 below); if Peter confirms an issue should be created, label it `blocked:needs-design` and do NOT write a `## Proposed fix` section that prescribes a behavioral change. Sprint metadata is omitted — Peter sets it after review.
+- **Privilege / permission change** — strict subset of spec change. Per `memory/process/privilege-changes-need-explicit-approval.md`, force the "Surface to Peter" path. If an issue is created, label it `needs-owner-review` and leave the spec body unprescribed. NEVER auto-create with a tier or proposed fix.
+
+If unsure between mechanical and spec change, treat as spec change. If unsure whether a spec change is privilege-bearing, treat as privilege.
+
 Present the action menu via `AskUserQuestion`:
 
 | Option | Label | Description |
 |--------|-------|-------------|
-| 1 | Create Issue + Respond | Create a detailed issue, respond to the reporter (most common) |
-| 2 | Create Issue | Create a detailed issue without responding yet |
+| 1 | Create Issue + Respond | Create a detailed issue, respond to the reporter (most common, mechanical only) |
+| 2 | Create Issue | Create a detailed issue without responding yet (mechanical only) |
 | 3 | Respond & Resolve | Just respond and close — no issue needed (e.g., user error, already fixed) |
 | 4 | Won't Fix | Mark as Won't Fix (optionally with a response) |
 | 5 | Skip | Move to next report |
+| 6 | Surface to Peter | For spec/privilege changes — create issue with verbatim text + `needs-owner-review` (or `blocked:needs-design`) label, no Proposed fix, no sprint metadata. Pass to Peter for direction. |
 
 The user may also provide corrections to your analysis ("actually that's a caching issue, not a permissions issue") or additional context. Incorporate this into the issue.
 
