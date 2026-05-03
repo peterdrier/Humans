@@ -67,7 +67,16 @@ public class InterfaceMethodBudgetTests
         // 55→54: account-merge fold final consolidation — removed
         // ReassignAssignmentsToUserAsync from ICampService (moved to
         // IUserMerge.ReassignAsync, dispatched via fan-out).
-        [typeof(ICampService)] = 54,
+        // 54→51: barrio-mgmt-fixes audit (peterdrier#390). Net -3 after
+        // adding AddMemberAndAssignRoleAsync (+1) and removing 4 dead methods:
+        // GetCampDetailAsync (zero prod callers — controllers compose
+        // GetCampBySlugAsync + BuildCampDetailDataAsync directly; the two
+        // tests were repointed to the same composition);
+        // GetCampsByLeadUserIdAsync (zero callers — pure passthrough; the
+        // new lead-pin feature on this branch already calls the repo
+        // method directly); SetSeasonFullAsync and
+        // GetCampSeasonBriefsForYearAsync (both zero callers, zero tests).
+        [typeof(ICampService)] = 51,
         // +1: GetOverallCoverageAsync for admin dashboard shift-coverage tile (peterdrier#349).
         // 50→50: account-merge fold redesign Phase 3.2. Added
         // ReassignProfilesAndTagPrefsToUserAsync; removed CanManageShiftsAsync

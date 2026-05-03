@@ -178,21 +178,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     public Task<Camp?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
         _repo.GetBySlugAsync(slug, cancellationToken);
 
-    public async Task<CampDetailData?> GetCampDetailAsync(
-        string slug,
-        int? preferredYear = null,
-        bool fallbackToLatestSeason = true,
-        CancellationToken cancellationToken = default)
-    {
-        var camp = await _repo.GetBySlugAsync(slug, cancellationToken);
-        if (camp is null)
-        {
-            return null;
-        }
-
-        return await BuildCampDetailDataAsync(camp, preferredYear, fallbackToLatestSeason, cancellationToken);
-    }
-
     public async Task<CampDetailData?> BuildCampDetailDataAsync(
         Camp camp,
         int? preferredYear = null,
@@ -378,13 +363,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     {
         var camps = await _repo.GetCampsWithLeadsForYearAsync(
             year, statusFilter, cancellationToken);
-        return camps.ToList();
-    }
-
-    public async Task<List<Camp>> GetCampsByLeadUserIdAsync(
-        Guid userId, CancellationToken cancellationToken = default)
-    {
-        var camps = await _repo.GetCampsByLeadUserIdAsync(userId, cancellationToken);
         return camps.ToList();
     }
 
@@ -876,40 +854,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         }
     }
 
-    public async Task SetSeasonFullAsync(Guid seasonId, CancellationToken cancellationToken = default)
-    {
-        var now = _clock.GetCurrentInstant();
-        var year = 0;
-        var campId = Guid.Empty;
-
-        var found = await _repo.UpdateSeasonAsync(seasonId, season =>
-        {
-            if (season.Status != CampSeasonStatus.Active)
-            {
-                throw new InvalidOperationException($"Cannot set full on a season with status {season.Status}.");
-            }
-
-            season.Status = CampSeasonStatus.Full;
-            season.UpdatedAt = now;
-
-            year = season.Year;
-            campId = season.CampId;
-        }, cancellationToken);
-
-        if (!found)
-        {
-            throw new InvalidOperationException("Season not found.");
-        }
-
-        await _auditLog.LogAsync(
-            AuditAction.CampSeasonStatusChanged, nameof(CampSeason), seasonId,
-            $"Season {year} marked as full",
-            "CampService",
-            relatedEntityId: campId, relatedEntityType: nameof(Camp));
-
-        InvalidateCache(year);
-    }
-
     public async Task ReactivateSeasonAsync(Guid seasonId, CancellationToken cancellationToken = default)
     {
         var now = _clock.GetCurrentInstant();
@@ -1131,15 +1075,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
                 kv.Value.CampSlug,
                 kv.Value.SoundZone,
                 kv.Value.SpaceRequirement));
-    }
-
-    public async Task<IReadOnlyList<CampSeasonBrief>> GetCampSeasonBriefsForYearAsync(
-        int year, CancellationToken cancellationToken = default)
-    {
-        var rows = await _repo.GetSeasonBriefsForYearAsync(year, cancellationToken);
-        return rows
-            .Select(r => new CampSeasonBrief(r.Id, r.Name, r.CampSlug, r.SpaceRequirement))
-            .ToList();
     }
 
     public Task<Guid?> GetCampLeadSeasonIdForYearAsync(

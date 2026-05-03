@@ -473,7 +473,10 @@ public class CampServiceTests : IDisposable
         settings.PublicYear = 2027;
         await _dbContext.SaveChangesAsync();
 
-        var detail = await _service.GetCampDetailAsync(camp.Slug);
+        var fetchedCamp = await _service.GetCampBySlugAsync(camp.Slug);
+        var detail = fetchedCamp is null
+            ? null
+            : await _service.BuildCampDetailDataAsync(fetchedCamp);
 
         detail.Should().NotBeNull();
         detail!.Name.Should().Be("Fallback Camp");
@@ -508,10 +511,13 @@ public class CampServiceTests : IDisposable
 
         await ApproveLatestSeasonAsync(camp.Id);
 
-        var detail = await _service.GetCampDetailAsync(
-            camp.Slug,
-            preferredYear: 2027,
-            fallbackToLatestSeason: false);
+        var fetchedCamp = await _service.GetCampBySlugAsync(camp.Slug);
+        var detail = fetchedCamp is null
+            ? null
+            : await _service.BuildCampDetailDataAsync(
+                fetchedCamp,
+                preferredYear: 2027,
+                fallbackToLatestSeason: false);
 
         detail.Should().BeNull();
     }

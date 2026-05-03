@@ -25,11 +25,6 @@ public interface ICampService
 
     // Queries
     Task<Camp?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default);
-    Task<CampDetailData?> GetCampDetailAsync(
-        string slug,
-        int? preferredYear = null,
-        bool fallbackToLatestSeason = true,
-        CancellationToken cancellationToken = default);
     Task<CampDetailData?> BuildCampDetailDataAsync(
         Camp camp,
         int? preferredYear = null,
@@ -52,7 +47,6 @@ public interface ICampService
     /// Optionally filters to specific season statuses.
     /// </summary>
     Task<List<Camp>> GetCampsWithLeadsForYearAsync(int year, IReadOnlyList<CampSeasonStatus>? statusFilter = null, CancellationToken cancellationToken = default);
-    Task<List<Camp>> GetCampsByLeadUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<List<CampSeason>> GetPendingSeasonsAsync(CancellationToken cancellationToken = default);
 
     // Season management
@@ -61,7 +55,6 @@ public interface ICampService
     Task ApproveSeasonAsync(Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken = default);
     Task RejectSeasonAsync(Guid seasonId, Guid reviewedByUserId, string notes, CancellationToken cancellationToken = default);
     Task WithdrawSeasonAsync(Guid seasonId, CancellationToken cancellationToken = default);
-    Task SetSeasonFullAsync(Guid seasonId, CancellationToken cancellationToken = default);
     Task ReactivateSeasonAsync(Guid seasonId, CancellationToken cancellationToken = default);
     // Camp updates
     Task UpdateCampAsync(Guid campId, string contactEmail, string contactPhone,
@@ -81,7 +74,6 @@ public interface ICampService
     // Cross-service queries (used by CityPlanningService)
     Task<CampSeason?> GetCampSeasonByIdAsync(Guid campSeasonId, CancellationToken cancellationToken = default);
     Task<IReadOnlyDictionary<Guid, CampSeasonDisplayData>> GetCampSeasonDisplayDataForYearAsync(int year, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<CampSeasonBrief>> GetCampSeasonBriefsForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<Guid?> GetCampLeadSeasonIdForYearAsync(Guid userId, int year, CancellationToken cancellationToken = default);
 
     // Authorization checks
