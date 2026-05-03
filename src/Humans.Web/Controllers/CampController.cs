@@ -1104,21 +1104,19 @@ public class CampController : HumansCampControllerBase
             return RedirectToAction(nameof(Edit), new { slug });
         }
 
-        Guid campMemberId;
+        AssignCampRoleOutcome outcome;
         try
         {
-            // Idempotent: returns existing memberId if the human is already an active
-            // member, otherwise inserts them as Active.
-            campMemberId = await _campService.AddCampMemberAsLeadAsync(openSeason.Id, userId, user.Id, ct);
+            outcome = await _campService.AddMemberAndAssignRoleAsync(
+                openSeason.Id, roleDefinitionId, userId, user.Id, ct);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "AssignRoleByUser: AddCampMember failed for camp {CampSlug}, user {UserId}.", slug, userId);
-            SetError("Failed to add human to camp.");
+            _logger.LogError(ex, "AssignRoleByUser failed for camp {CampSlug}, user {UserId}.", slug, userId);
+            SetError("Failed to assign role.");
             return RedirectToAction(nameof(Edit), new { slug });
         }
 
-        var outcome = await _campRoleService.AssignAsync(openSeason.Id, roleDefinitionId, campMemberId, user.Id, ct);
         var message = outcome switch
         {
             AssignCampRoleOutcome.Assigned => "Role assigned.",

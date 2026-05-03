@@ -723,6 +723,12 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         return SearchHumansFromSnapshot(snapshot, query);
     }
 
+    public async Task<IReadOnlyList<HumanSearchResult>> SearchHumansByNameAsync(string query, CancellationToken ct = default)
+    {
+        var snapshot = await BuildFullProfileSnapshotAsync(ct);
+        return SearchHumansByNameFromSnapshot(snapshot, query);
+    }
+
     /// <summary>
     /// Searches all approved, non-suspended profiles from a pre-built <see cref="FullProfile"/>
     /// snapshot for users whose display name or notification email contains <paramref name="query"/>.
@@ -766,6 +772,29 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         return results
             .OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
             .Take(50)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Narrowed snapshot search for the typeahead picker — matches DisplayName
+    /// (covers first + last) and BurnerName only. Skips bio / city / interests /
+    /// pronouns / CV so callers like the camp role picker get a tight result list.
+    /// </summary>
+    public static IReadOnlyList<HumanSearchResult> SearchHumansByNameFromSnapshot(
+        IEnumerable<FullProfile> snapshot, string query)
+    {
+        return snapshot
+            .Where(p => p.IsApproved && !p.IsSuspended)
+            .Where(p =>
+                p.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                (p.BurnerName?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false))
+            .OrderBy(p => p.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .Take(50)
+            .Select(p => new HumanSearchResult(
+                p.UserId, p.DisplayName, p.BurnerName, p.City, p.Bio, p.ContributionInterests,
+                p.ProfilePictureUrl, p.HasCustomPicture, p.ProfileId, p.UpdatedAtTicks,
+                p.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase) ? "Name" : "Burner Name",
+                null))
             .ToList();
     }
 

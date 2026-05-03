@@ -1,3 +1,4 @@
+using Humans.Application.Services.Camps;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
@@ -126,6 +127,16 @@ public interface ICampService
 
     /// <summary>Bypasses the request/approve flow. Idempotent. Caller authorizes.</summary>
     Task<Guid> AddCampMemberAsLeadAsync(Guid campSeasonId, Guid userId, Guid actorUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Adds the human as an active member of the season (idempotent — no-op if
+    /// already active) and then assigns them the given camp role in a single
+    /// operation. Used by the camp-edit role picker so callers don't have to
+    /// orchestrate the two sub-mutations themselves. Caller authorizes.
+    /// </summary>
+    Task<AssignCampRoleOutcome> AddMemberAndAssignRoleAsync(
+        Guid campSeasonId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
+        CancellationToken cancellationToken = default);
 
     /// <summary>Throws if <paramref name="userId"/> is not the row's owner.</summary>
     Task WithdrawCampMembershipRequestAsync(

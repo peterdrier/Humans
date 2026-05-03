@@ -386,7 +386,15 @@
                 </div>
                 <div class="card-body d-grid gap-2">
                     <a asp-action="Edit" asp-route-slug="@Model.Slug" class="btn btn-outline-primary">
-                        <i class="fa-solid fa-pen-to-square me-1"></i> Edit @Localizer["Camp_Singular"]
+                        <i class="fa-solid fa-pen-to-square me-1"></i>
+                        @if (Model.IsCurrentUserLead)
+                        {
+                            <text>Edit @Localizer["Camp_Singular"] / Assign roles</text>
+                        }
+                        else
+                        {
+                            <text>Edit @Localizer["Camp_Singular"]</text>
+                        }
                     </a>
                     @if (Model.CurrentSeason != null)
                     {

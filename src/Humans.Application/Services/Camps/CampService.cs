@@ -1616,6 +1616,15 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         return result.MemberId;
     }
 
+    public async Task<AssignCampRoleOutcome> AddMemberAndAssignRoleAsync(
+        Guid campSeasonId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var memberId = await AddCampMemberAsLeadAsync(campSeasonId, userId, actorUserId, cancellationToken);
+        return await _campRoleService.Value.AssignAsync(
+            campSeasonId, roleDefinitionId, memberId, actorUserId, cancellationToken);
+    }
+
     public async Task WithdrawCampMembershipRequestAsync(
         Guid campMemberId, Guid userId, CancellationToken cancellationToken = default)
     {

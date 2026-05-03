@@ -261,7 +261,10 @@
                 <div class="card-body">
                     <form asp-action="AddMember" asp-route-slug="@Model.Slug" method="post" class="input-group">
                         @Html.AntiForgeryToken()
-                        <partial name="_HumanSearchInput" view-data='@(new ViewDataDictionary(ViewData) { { "FieldName", "userId" } })' />
+                        <partial name="_HumanSearchInput" view-data='@(new ViewDataDictionary(ViewData) {
+                            { "FieldName", "userId" },
+                            { "Scope", "name" }
+                        })' />
                         <button type="submit" class="btn btn-outline-success" title="Add active member">
                             <i class="fa-solid fa-user-plus"></i>
                         </button>
@@ -342,7 +345,8 @@
                                                 { "FieldName", "userId" },
                                                 { "InstanceKey", $"role-{role.DefinitionId:N}-slot-{i}" },
                                                 { "Placeholder", "Search humans…" },
-                                                { "ExcludeUserIds", alreadyInRole }
+                                                { "ExcludeUserIds", alreadyInRole },
+                                                { "Scope", "name" }
                                             })' />
                                             <button class="btn btn-sm btn-outline-primary" type="submit" title="Assign — adds to camp if not yet a member">
                                                 <i class="fa-solid fa-check"></i>

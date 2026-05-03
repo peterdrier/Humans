@@ -19,6 +19,11 @@
     var excludeIdsJson = excludeIds is null
         ? "[]"
         : System.Text.Json.JsonSerializer.Serialize(excludeIds.Select(g => g.ToString()).ToArray());
+    // Optional scope hint passed through to /api/profiles/search. "name" narrows
+    // matching to display name + burner name only. Default keeps the broad search
+    // (bio / city / interests / CV) so existing callers don't change behavior.
+    var scope = ViewData["Scope"] as string;
+    var scopeJson = System.Text.Json.JsonSerializer.Serialize(scope ?? "");
 }
 
 @*
@@ -50,6 +55,7 @@
     var debounceTimer = null;
     var isOpen = false;
     var excludeIds = @Html.Raw(excludeIdsJson);
+    var scopeArg = @Html.Raw(scopeJson);
 
     // Move dropdown to body once at init so no parent stacking/clip ever applies.
     if (dropdown.parentNode !== document.body) {
@@ -103,7 +109,9 @@
     });
 
     function fetchResults(q) {
-        fetch('/api/profiles/search?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+        var url = '/api/profiles/search?q=' + encodeURIComponent(q);
+        if (scopeArg) url += '&scope=' + encodeURIComponent(scopeArg);
+        fetch(url, { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (results) { renderDropdown(results); })
             .catch(function (err) {

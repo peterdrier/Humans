@@ -35,9 +35,10 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 
 **Acceptance Criteria:**
 - Public page showing all active camps as cards
-- Filter by vibe, sound zone, kids-friendly, accepting members
+- Filter by vibe, sound zone, kids-friendly, accepting members, and a free-text search box that matches camp name (server-side, composes with the other filters and persists across submissions)
+- Live client-side name filter on the rendered cards mirrors the server search for instant feedback as the visitor types
 - Each card shows name, short description, image, vibes, and status badges
-- Sorted alphabetically by name
+- Sorted alphabetically by name; **camps the signed-in user currently leads are pinned to the top of the list** (alphabetical within the pinned group, alphabetical for everyone else). Anonymous and non-lead users see the strict alphabetical order.
 - Clicking a card navigates to the camp detail page
 
 ### US-20.2: View Camp Details
@@ -165,11 +166,13 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 
 **Acceptance Criteria:**
 - CampAdmin can create, edit, deactivate, and reactivate role definitions at `/Camps/Admin/Roles`. Deactivated definitions are hidden from new-assignment UI but historical assignments stay intact.
-- Per-camp role assignments live on the Camp Edit page (`/Camps/{slug}/Edit`), one card per active role definition, ordered by `SortOrder`. Each card renders one row per slot up to `SlotCount`; filled slots show the assigned human plus an unassign button, empty slots show a `_HumanSearchInput` member picker.
-- Assigning a role requires the picked human to be an Active member of the **same camp-season**. Service rejects with `MemberNotActive` / `MemberSeasonMismatch` otherwise.
+- Per-camp role assignments live on the Camp Edit page (`/Camps/{slug}/Edit`), one card per active role definition, ordered by `SortOrder`. Each card renders one row per slot up to `SlotCount`; filled slots show the assigned human plus an unassign button, empty slots show a `_HumanSearchInput` typeahead picker (search-as-you-type, name + burner name only via `?scope=name`).
+- The picker excludes humans already filling the same role from its suggestions (`ExcludeUserIds`), so leads can't accidentally re-assign the same human.
+- Assigning a role: the picker posts to `/Camps/{slug}/Roles/AssignByUser` which adds the picked human as a CampMember (Active) if they're not already one and assigns the role in one step (`ICampService.AddMemberAndAssignRoleAsync`). Audited as `CampMemberAddedByLead` for the membership add. The legacy `/Roles/Assign` endpoint (taking a `campMemberId`) remains available for callers that already have a member id.
+- Service still rejects with `MemberNotActive` / `MemberSeasonMismatch` if a stale member id is submitted to the legacy endpoint, and with `AlreadyHoldsRole` if the same human is re-submitted before the page refreshes.
 - Soft-cap: the service rejects an assignment that would exceed `SlotCount`. If a CampAdmin reduces `SlotCount` below current usage, the card renders an "over capacity" indicator and a lead must unassign one to drop back into capacity.
 - A human cannot hold the same role twice in the same season (DB unique index + `AlreadyHoldsRole` outcome).
-- Lead-add-active-member shortcut: if the human a lead wants to assign isn't yet a CampMember, the lead can add them directly at `/Camps/{slug}/Members/Add` (creates `CampMember(Active)` without going through the request/approve flow). Audited as `CampMemberAddedByLead`.
+- Lead-add-active-member shortcut: leads can also add members without assigning a role at `/Camps/{slug}/Members/Add` (creates `CampMember(Active)` without going through the request/approve flow). Audited as `CampMemberAddedByLead`.
 - Compliance report at `/Camps/Admin/Compliance` lists camps where any required role's filled-slot count is below `MinimumRequired` for the chosen year (defaults to current public year).
 - All role visibility is **auth-gated**. The public Camp Details page does not render role assignments — only authenticated users see the roles section.
 - Removing a CampMember (Leave / Withdraw / Remove) clears any role assignments held by that member via `ICampRoleService.RemoveAllForMemberAsync`.
@@ -181,6 +184,8 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 
 **Acceptance Criteria:**
 - On a camp's detail page, an authenticated human with no existing membership sees a "Request to join for {year}" button (only when the camp has an Active or Full season for the public year).
+- Authenticated humans who are already a **lead** of the camp see a "You are a lead for {year}" info alert instead of the request button — leads are part of the camp by definition and shouldn't be prompted to request membership.
+- The Actions card on a camp lead's detail view labels the edit link as "Edit Barrio / Assign roles" so leads understand the same page covers role management; non-leads still see the plain "Edit Barrio" label.
 - Copy on the request card explicitly states that this does NOT join you to the camp — do that through the camp's own process first.
 - A pending request can be withdrawn by the requester; an active membership can be left by the member.
 - Membership state (Pending / Active) is never rendered on anonymous views.

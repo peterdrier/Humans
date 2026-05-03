@@ -336,6 +336,13 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
             ProfilesProfileService.SearchHumansFromSnapshot(_byUserId.Values, query));
     }
 
+    public Task<IReadOnlyList<HumanSearchResult>> SearchHumansByNameAsync(
+        string query, CancellationToken ct = default)
+    {
+        return Task.FromResult(
+            ProfilesProfileService.SearchHumansByNameFromSnapshot(_byUserId.Values, query));
+    }
+
     public async Task<IReadOnlyList<ProfileLanguage>> GetProfileLanguagesAsync(
         Guid profileId, CancellationToken ct = default)
     {

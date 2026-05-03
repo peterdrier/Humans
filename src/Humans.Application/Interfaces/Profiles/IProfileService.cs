@@ -129,6 +129,14 @@ public interface IProfileService : IUserMerge
     Task<IReadOnlyList<HumanSearchResult>> SearchHumansAsync(string query, CancellationToken ct = default);
 
     /// <summary>
+    /// Narrowed variant of <see cref="SearchHumansAsync"/> that matches only on
+    /// display name (first/last) and burner name. Used by the typeahead picker
+    /// where a tighter, less noisy result list is what callers want; the full
+    /// search page (bio / city / interests / CV) keeps using the broad method.
+    /// </summary>
+    Task<IReadOnlyList<HumanSearchResult>> SearchHumansByNameAsync(string query, CancellationToken ct = default);
+
+    /// <summary>
     /// Reconciles the user's CV entries (volunteer history) with the provided set.
     /// No-op if the user has no profile.
     /// </summary>
