@@ -658,12 +658,19 @@ public class ShiftsController : HumansControllerBase
     // Orphan-signup reconciliation (admin diagnostic)
     // ==========================================================================
     //
-    // Surfaces ShiftSignups whose Id has no creation-event audit row
-    // (ShiftSignupCreated or ShiftSignupVoluntold). These are the rows behind
-    // the "user bailed from a shift they never signed up for" support thread:
-    // until ShiftSignupCreated was added, Pending self-signups were never
-    // audited, leaving only the eventual Bailed/Refused/Confirmed transition
-    // on the user's audit trail.
+    // Surfaces ShiftSignups whose Id has no audit row tying the signup to a
+    // creation-or-confirmation moment (ShiftSignupCreated, ShiftSignupVoluntold,
+    // or ShiftSignupConfirmed). These are the rows behind the "user bailed
+    // from a shift they never signed up for" support thread.
+    //
+    // ShiftSignupConfirmed is included so legacy data isn't falsely flagged:
+    // pre-change, auto-confirmed self-signups wrote ShiftSignupConfirmed at
+    // creation time, and Pending → Confirmed transitions also write it. In
+    // both cases the human has a verifiable trail, even if the original
+    // Pending creation moment was never audited (the bug we're hunting). A
+    // true orphan is a signup with NONE of {Created, Voluntold, Confirmed}
+    // — i.e. a legacy Pending self-signup that went straight to
+    // Bailed/Refused/Cancelled without ever passing through Confirm.
 
     [HttpGet("OrphanSignups")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
@@ -672,7 +679,11 @@ public class ShiftsController : HumansControllerBase
         var allSignups = await _signupService.GetAllForOrphanScanAsync(ct);
         var auditedIds = await _auditLogService.GetEntityIdsForEntityTypeActionsAsync(
             nameof(ShiftSignup),
-            [AuditAction.ShiftSignupCreated, AuditAction.ShiftSignupVoluntold],
+            [
+                AuditAction.ShiftSignupCreated,
+                AuditAction.ShiftSignupVoluntold,
+                AuditAction.ShiftSignupConfirmed,
+            ],
             ct);
 
         var orphans = allSignups

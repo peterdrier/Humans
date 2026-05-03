@@ -11,12 +11,15 @@
     <h1 class="h3 mb-3">Orphan shift signups</h1>
 
     <p class="text-muted mb-3">
-        ShiftSignups whose <code>Id</code> has no creation-event audit row
-        (<code>ShiftSignupCreated</code> or <code>ShiftSignupVoluntold</code>).
-        Until <code>ShiftSignupCreated</code> was added, Pending self-signups
-        were not audited; only the eventual transition (Bailed, Refused, etc.)
-        appeared on the human's audit trail. These rows are the reconciliation
-        backlog from before the fix.
+        ShiftSignups whose <code>Id</code> has no audit row tying the signup
+        to a creation-or-confirmation moment (<code>ShiftSignupCreated</code>,
+        <code>ShiftSignupVoluntold</code>, or <code>ShiftSignupConfirmed</code>).
+        <code>ShiftSignupConfirmed</code> is included so legacy auto-confirmed
+        self-signups (which pre-fix wrote only <code>ShiftSignupConfirmed</code>
+        at creation time) and Pending → Confirmed transitions both count as
+        sufficient trail. A true orphan is a signup that went Pending →
+        Bailed / Refused / Cancelled without ever passing through Confirm —
+        the case behind the "I never signed up for this" support thread.
     </p>
 
     <div class="row mb-4">
