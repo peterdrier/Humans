@@ -121,7 +121,13 @@ public sealed class CalendarRepository : ICalendarRepository
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
+        // Bypass the soft-delete query filter on the existence lookup so that if
+        // the parent event was soft-deleted between the caller's pre-check and
+        // this upsert, an existing exception row for the same
+        // (EventId, OriginalOccurrenceStartUtc) is still found and updated
+        // instead of triggering a duplicate-insert against the unique index.
         var existing = await ctx.CalendarEventExceptions
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(
                 x => x.EventId == eventId && x.OriginalOccurrenceStartUtc == originalOccurrenceStartUtc,
                 ct);
