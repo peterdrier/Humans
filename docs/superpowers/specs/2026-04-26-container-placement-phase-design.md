@@ -74,12 +74,12 @@ Status + toggle row at the top of the page (below the `<h1>`):
 
 ### `Camp/{slug}/Season/{year}/Containers` (Container/Index view)
 
-When `CanManage == false` AND `!IsPlacementOpen`:
+When `CanManage == false` AND `!IsPlacementOpen` (i.e., the user is a lead and the phase is closed):
 
 - Show an info alert: *"Container placement is currently closed. Contact city planning to request changes."*
 - All add/edit/delete buttons are already hidden by `CanManage == false`.
 
-The notice appears for any user who cannot manage containers and the phase is closed — including regular volunteers viewing the page. It is not restricted to camp leads.
+The notice is shown only when the user would normally have manage rights (is a camp lead for this season) but the phase is closed. Non-leads are forbidden from the page entirely and never see the notice.
 
 ## Actors & Access
 

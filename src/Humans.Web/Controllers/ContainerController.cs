@@ -71,6 +71,8 @@ public class ContainerController : HumansControllerBase
         if (season is null) return NotFound();
 
         var canManage = await CanManageAsync(user.Id, camp, ct);
+        if (!canManage) return Forbid();
+
         var settings = await _cityPlanningService.GetSettingsAsync(ct);
         var isPrivileged = await IsPrivilegedAsync(user.Id, ct);
 
