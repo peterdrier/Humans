@@ -60,6 +60,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`after-prod-merge-reset`](process/after-prod-merge-reset.md) — after upstream PR lands: `git fetch upstream && git reset --hard upstream/main && git push origin main --force-with-lease`
 - [`discord-release-notes-format`](process/discord-release-notes-format.md) — audience-grouped (coordinators/volunteers/under-the-hood/known-issues), plain-language, no emojis
 - [`dotnet-verbosity-quiet`](process/dotnet-verbosity-quiet.md) — always `-v quiet` on `dotnet build`/`test`; never pipe through `tail`/`head`/`grep`
+- [`drive-by-fixes-ok`](process/drive-by-fixes-ok.md) — small unrelated fixes alongside in-scope work are fine in the same PR (Peter reviews end-to-end); surface them, don't auto-revert
 - [`ef-migration-review-gate`](process/ef-migration-review-gate.md) — MANDATORY. Run `.claude/agents/ef-migration-reviewer.md` before commit/PR
 - [`feature-spec-on-new-feature`](process/feature-spec-on-new-feature.md) — when implementing a non-trivial new feature, create `docs/features/<feature>.md` in the same PR (covers create-new; post-fix-doc-check covers update-existing)
 - [`issue-comments-mandatory`](process/issue-comments-mandatory.md) — HARD RULE (hook). Always fetch issues/PRs with comments; Peter's comments often flip OP intent
