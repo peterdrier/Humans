@@ -158,7 +158,7 @@ public sealed partial class TeamResourceService : ITeamResourceService
     public async Task<LinkResourceResult> LinkDriveFolderAsync(
         Guid teamId,
         string folderUrl,
-        DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor,
+        DrivePermissionLevel permissionLevel = DrivePermissionLevel.ContentManager,
         CancellationToken ct = default)
     {
         var folderId = ParseDriveFolderId(folderUrl);
@@ -224,7 +224,7 @@ public sealed partial class TeamResourceService : ITeamResourceService
     public async Task<LinkResourceResult> LinkDriveFileAsync(
         Guid teamId,
         string fileUrl,
-        DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor,
+        DrivePermissionLevel permissionLevel = DrivePermissionLevel.ContentManager,
         CancellationToken ct = default)
     {
         var fileId = ParseDriveFileId(fileUrl);
@@ -286,7 +286,7 @@ public sealed partial class TeamResourceService : ITeamResourceService
     public async Task<LinkResourceResult> LinkDriveResourceAsync(
         Guid teamId,
         string url,
-        DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor,
+        DrivePermissionLevel permissionLevel = DrivePermissionLevel.ContentManager,
         CancellationToken ct = default)
     {
         if (ParseDriveFolderId(url) is not null)

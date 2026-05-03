@@ -34,7 +34,7 @@ public class LinkDriveResourceModel
     [Required(ErrorMessage = "Please enter a Google Drive URL.")]
     public string ResourceUrl { get; set; } = string.Empty;
 
-    public DrivePermissionLevel PermissionLevel { get; set; } = DrivePermissionLevel.Contributor;
+    public DrivePermissionLevel PermissionLevel { get; set; } = DrivePermissionLevel.ContentManager;
 }
 
 public class LinkGroupModel
