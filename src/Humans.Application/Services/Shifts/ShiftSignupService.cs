@@ -1024,11 +1024,11 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
     }
 
     /// <summary>
-    /// Formats a LocalDate for display in shift messages (e.g., "Wed Jul 1").
+    /// Formats a LocalDate for display in shift messages (e.g., "Wed 1 Jul").
     /// Mirrors the Web-layer ToDisplayShiftDate() extension.
     /// </summary>
     private static string FormatShiftDate(LocalDate date) =>
-        date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
+        date.DayOfWeek.ToString()[..3] + " " + date.ToString("d MMM", null);
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {

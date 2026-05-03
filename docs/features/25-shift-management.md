@@ -213,6 +213,16 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 - **Departments table** — one row per parent team, sorted by ascending fill %. Clicking a row expands to either three period sub-rows (Build/Event/Strike) when the department has no subteams, or a subgroup table showing each subteam (plus a "Direct" row for rotas attached to the parent itself) with per-period fill % chips.
 - **Coordinator activity** — teams that have ≥1 pending signup, one row each listing coordinator names, oldest login across that team's coordinators (rendered red if > 7 days or never), and pending signup count. Hidden entirely if no team has pending signups.
 - **Trends chart** — line chart with three series (new signups, new ticket sales, distinct logins / DAU) over a selectable window (7/30/90 days, All). Window toggle re-renders via `asp-route-trendWindow=`. DAU series is dashed with a tooltip noting that only the last login per human is stored (older buckets undercount).
+- **Urgency accordion** — one collapsible item per (Rota, Department) summarising slot coverage across all matching shifts (total confirmed / min–max, day count, priority). Expand to see per-day rows; the per-row Voluntell action is gated by `ShiftDashboardAccess` so subteam managers (when the page is reached via the wider `ShiftDepartmentManager` policy) see the rows but no action column.
+
+**Filter (Period vs Date Range — mutually exclusive):**
+
+- **Period buttons** — All / Set-up (Build) / Event / Strike. When Set-up is selected, a second segmented row appears underneath: **All set-up / First crew / Set-up week / Pre-event week / Finishing weekend**, defaulting to "All set-up". Sub-period boundaries are configurable per event via four offset fields on `EventSettings` (`FirstCrewStartOffset`, `SetupWeekStartOffset`, `PreEventWeekStartOffset`, `FinishingWeekendStartOffset` — default `-25 / -16 / -9 / -4`).
+- **Date range** — start + end inputs. End-date input enforces `min = startDate` so the user cannot pick an end before the start. Either input can be left blank (start-only = "from this date onwards", end-only = "up to this date"). Active range is reflected in a "Showing DD MMM – DD MMM YYYY" banner under the form.
+- **Mutex semantics:**
+  - Picking a period or sub-period button **auto-populates the date inputs** with that range as a visual cue. The server still uses period+sub-period as the canonical filter; dates are display-only in this case.
+  - Manually editing a date input clears the period+sub-period hidden inputs (period/sub-period buttons revert to unselected). The date range becomes the active filter.
+  - Server defends the same mutex: when both a period and dates arrive on a single request, period wins for filtering and dates round-trip back to the inputs without being applied as bounds.
 
 **Metric definitions:**
 

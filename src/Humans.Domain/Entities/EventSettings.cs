@@ -48,6 +48,28 @@ public class EventSettings
     /// </summary>
     public int StrikeEndOffset { get; set; }
 
+    // ------------------------------------------------------------------
+    // Build-phase sub-period boundaries — the build period is split into
+    // four named sub-periods so the shift dashboard can filter per phase.
+    // Each offset is the inclusive start day of its sub-period; the end is
+    // the next sub-period's start (exclusive). All offsets are negative
+    // and ascending: BuildStartOffset ≤ FirstCrew ≤ SetupWeek ≤ PreEventWeek
+    // ≤ FinishingWeekend < 0. Coordinators reconfigure these per event so
+    // the absolute dates auto-shift with GateOpeningDate.
+    // ------------------------------------------------------------------
+
+    /// <summary>Inclusive start day of the "First crew" sub-period (default -25).</summary>
+    public int FirstCrewStartOffset { get; set; } = -25;
+
+    /// <summary>Inclusive start day of the "Set-up week" sub-period (default -16).</summary>
+    public int SetupWeekStartOffset { get; set; } = -16;
+
+    /// <summary>Inclusive start day of the "Pre-event week" sub-period (default -9).</summary>
+    public int PreEventWeekStartOffset { get; set; } = -9;
+
+    /// <summary>Inclusive start day of the "Finishing weekend" sub-period (default -4).</summary>
+    public int FinishingWeekendStartOffset { get; set; } = -4;
+
     /// <summary>
     /// Step function: DayOffset → cumulative EE capacity at that point.
     /// Keys are day offsets, values are total headcount allowed.

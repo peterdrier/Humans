@@ -10,6 +10,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.Helpers;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -450,14 +451,14 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     // Urgency
     // ============================================================
 
-    public async Task<IReadOnlyList<UrgentShift>> GetUrgentShiftsAsync(
-        Guid eventSettingsId, int? limit = null,
-        Guid? departmentId = null, LocalDate? date = null, ShiftPeriod? period = null)
+    /// <summary>
+    /// Resolves a (period, subPeriod) filter pair to the inclusive day-offset bounds
+    /// that the repo queries take. <paramref name="subPeriod"/> only narrows when
+    /// <paramref name="period"/> is Build (it's meaningless during Event/Strike).
+    /// </summary>
+    private static (int? MinDayOffset, int? MaxDayOffset) GetDayOffsetBounds(
+        ShiftPeriod? period, BuildSubPeriod? subPeriod, EventSettings es)
     {
-        var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
-        if (es is null) return [];
-
-        int? dayOffset = null;
         int? minDayOffset = null;
         int? maxDayOffset = null;
 
@@ -475,13 +476,52 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
                 break;
         }
 
-        if (date.HasValue)
+        if (period == ShiftPeriod.Build && subPeriod is not null)
         {
-            dayOffset = Period.Between(es.GateOpeningDate, date.Value, PeriodUnits.Days).Days;
+            var (start, end) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, es);
+            minDayOffset = start;
+            // BoundsFor returns half-open bounds (end is exclusive); the repo bounds
+            // are inclusive, so subtract one day.
+            maxDayOffset = end - 1;
+        }
+
+        return (minDayOffset, maxDayOffset);
+    }
+
+    public async Task<IReadOnlyList<UrgentShift>> GetUrgentShiftsAsync(
+        Guid eventSettingsId, int? limit = null,
+        Guid? departmentId = null,
+        LocalDate? startDate = null, LocalDate? endDate = null,
+        ShiftPeriod? period = null,
+        BuildSubPeriod? subPeriod = null)
+    {
+        var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
+        if (es is null) return [];
+
+        var (minDayOffset, maxDayOffset) = GetDayOffsetBounds(period, subPeriod, es);
+
+        // Date range overrides any period bounds — the dashboard's filter UI is mutually
+        // exclusive between period/subperiod buttons and the date pickers. If both end up
+        // set on a request (e.g. via crafted URL), the date range is the more specific
+        // signal and wins. Defensively swap if start > end.
+        if (startDate.HasValue || endDate.HasValue)
+        {
+            var s = startDate ?? endDate;
+            var e = endDate ?? startDate;
+            if (s.HasValue && e.HasValue && s.Value > e.Value)
+            {
+                (s, e) = (e, s);
+            }
+            minDayOffset = s.HasValue
+                ? Period.Between(es.GateOpeningDate, s.Value, PeriodUnits.Days).Days
+                : null;
+            maxDayOffset = e.HasValue
+                ? Period.Between(es.GateOpeningDate, e.Value, PeriodUnits.Days).Days
+                : null;
         }
 
         var shifts = await _repo.GetShiftsWithSignupsForUrgencyAsync(
-            eventSettingsId, departmentId, dayOffset, minDayOffset, maxDayOffset);
+            eventSettingsId, departmentId, minDayOffset, maxDayOffset);
 
         // Resolve team names in one batch (no cross-domain Include).
         var teamIds = shifts.Select(s => s.Rota.TeamId).Distinct().ToList();
@@ -641,7 +681,8 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     // ============================================================
 
     public async Task<IReadOnlyList<DailyStaffingData>> GetStaffingDataAsync(
-        Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null)
+        Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null,
+        BuildSubPeriod? subPeriod = null)
     {
         var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
         if (es is null) return [];
@@ -655,6 +696,13 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             for (var d = 0; d <= es.EventEndOffset; d++) dayOffsets.Add(d);
         if (period is null or ShiftPeriod.Strike)
             for (var d = es.EventEndOffset + 1; d <= es.StrikeEndOffset; d++) dayOffsets.Add(d);
+
+        // Narrow to sub-period bounds when set (only meaningful for Build).
+        if (period == ShiftPeriod.Build && subPeriod is not null)
+        {
+            var (start, end) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, es);
+            dayOffsets = dayOffsets.Where(d => d >= start && d < end).ToList();
+        }
 
         if (dayOffsets.Count == 0) return [];
 
@@ -672,7 +720,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             var dayStart = dayDate.AtStartOfDayInZone(tz).ToInstant();
             var dayEnd = dayDate.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
             var periodLabel = dayOffset < 0 ? "Set-up" : dayOffset <= es.EventEndOffset ? "Event" : "Strike";
-            var dateLabel = dayDate.DayOfWeek.ToString()[..3] + " " + dayDate.ToString("MMM d", null);
+            var dateLabel = dayDate.DayOfWeek.ToString()[..3] + " " + dayDate.ToString("d MMM", null);
 
             var overlapping = shifts.Where(s =>
             {
@@ -693,7 +741,8 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     }
 
     public async Task<IReadOnlyList<DailyStaffingHours>> GetStaffingHoursAsync(
-        Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null)
+        Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null,
+        BuildSubPeriod? subPeriod = null)
     {
         var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
         if (es is null) return [];
@@ -708,6 +757,12 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         if (period is null or ShiftPeriod.Strike)
             for (var d = es.EventEndOffset + 1; d <= es.StrikeEndOffset; d++) dayOffsets.Add(d);
 
+        if (period == ShiftPeriod.Build && subPeriod is not null)
+        {
+            var (start, end) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, es);
+            dayOffsets = dayOffsets.Where(d => d >= start && d < end).ToList();
+        }
+
         if (dayOffsets.Count == 0) return [];
 
         var shifts = await _repo.GetShiftsForEventAsync(eventSettingsId, departmentId);
@@ -718,7 +773,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             var dayDate = es.GateOpeningDate.PlusDays(dayOffset);
             var dayStart = dayDate.AtStartOfDayInZone(tz).ToInstant();
             var dayEnd = dayDate.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
-            var dateLabel = dayDate.DayOfWeek.ToString()[..3] + " " + dayDate.ToString("MMM d", null);
+            var dateLabel = dayDate.DayOfWeek.ToString()[..3] + " " + dayDate.ToString("d MMM", null);
 
             var overlapping = shifts.Where(s =>
             {
@@ -828,17 +883,22 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     internal static string TrendsCacheKey(Guid eventId, TrendWindow window, ShiftPeriod? period) =>
         $"dashboard-trends:{eventId}:{window}:{period?.ToString() ?? "all"}";
 
-    public async Task<DashboardOverview> GetDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period = null)
+    public async Task<DashboardOverview> GetDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null)
     {
+        // Sub-period results aren't cached (the cache key would multiply 4×) — they
+        // recompute on each call. The base period overview stays cached.
+        if (subPeriod is not null)
+            return await ComputeDashboardOverviewAsync(eventSettingsId, period, subPeriod);
+
         var cached = await _cache.GetOrCreateAsync(OverviewCacheKey(eventSettingsId, period), async entry =>
         {
             entry.SlidingExpiration = DashboardCacheTtl;
-            return await ComputeDashboardOverviewAsync(eventSettingsId, period);
+            return await ComputeDashboardOverviewAsync(eventSettingsId, period, subPeriod: null);
         });
         return cached!;
     }
 
-    private async Task<DashboardOverview> ComputeDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period)
+    private async Task<DashboardOverview> ComputeDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod)
     {
         var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
         if (es is null)
@@ -849,6 +909,12 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         var shifts = period is null
             ? (IReadOnlyList<Shift>)allShifts
             : allShifts.Where(s => s.GetShiftPeriod(es) == period.Value).ToList();
+
+        if (period == ShiftPeriod.Build && subPeriod is not null)
+        {
+            var (start, end) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, es);
+            shifts = shifts.Where(s => s.DayOffset >= start && s.DayOffset < end).ToList();
+        }
 
         var shiftIds = shifts.Select(s => s.Id).ToList();
         var confirmedCountsRo = await _repo.GetConfirmedSignupCountsByShiftAsync(shiftIds);
@@ -1039,17 +1105,21 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         return (total, filled, totalSlots, filledSlots, remaining, ToStaffing(ShiftPeriod.Build), ToStaffing(ShiftPeriod.Event), ToStaffing(ShiftPeriod.Strike));
     }
 
-    public async Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period = null)
+    public async Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null)
     {
+        // Sub-period bypasses cache (4× key fan-out not worth it for a side filter).
+        if (subPeriod is not null)
+            return await ComputeCoordinatorActivityAsync(eventSettingsId, period, subPeriod);
+
         var cached = await _cache.GetOrCreateAsync(CoordinatorActivityCacheKey(eventSettingsId, period), async entry =>
         {
             entry.SlidingExpiration = DashboardCacheTtl;
-            return await ComputeCoordinatorActivityAsync(eventSettingsId, period);
+            return await ComputeCoordinatorActivityAsync(eventSettingsId, period, subPeriod: null);
         });
         return cached!;
     }
 
-    private async Task<IReadOnlyList<CoordinatorActivityRow>> ComputeCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period)
+    private async Task<IReadOnlyList<CoordinatorActivityRow>> ComputeCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod)
     {
         int? minDayOffset = null;
         int? maxDayOffset = null;
@@ -1058,19 +1128,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         {
             var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
             if (es is null) return Array.Empty<CoordinatorActivityRow>();
-            switch (period.Value)
-            {
-                case ShiftPeriod.Build:
-                    maxDayOffset = -1;
-                    break;
-                case ShiftPeriod.Event:
-                    minDayOffset = 0;
-                    maxDayOffset = es.EventEndOffset;
-                    break;
-                case ShiftPeriod.Strike:
-                    minDayOffset = es.EventEndOffset + 1;
-                    break;
-            }
+            (minDayOffset, maxDayOffset) = GetDayOffsetBounds(period, subPeriod, es);
         }
 
         var pendingCounts = await _repo.GetPendingSignupCountsByTeamAsync(
@@ -1186,18 +1244,23 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     }
 
     public async Task<IReadOnlyList<DashboardTrendPoint>> GetDashboardTrendsAsync(
-        Guid eventSettingsId, TrendWindow window, ShiftPeriod? period = null)
+        Guid eventSettingsId, TrendWindow window, ShiftPeriod? period = null,
+        BuildSubPeriod? subPeriod = null)
     {
+        // Sub-period bypasses the cache (4× key fan-out isn't worth it for a side filter).
+        if (subPeriod is not null)
+            return await ComputeDashboardTrendsAsync(eventSettingsId, window, period, subPeriod);
+
         var cached = await _cache.GetOrCreateAsync(TrendsCacheKey(eventSettingsId, window, period), async entry =>
         {
             entry.SlidingExpiration = DashboardCacheTtl;
-            return await ComputeDashboardTrendsAsync(eventSettingsId, window, period);
+            return await ComputeDashboardTrendsAsync(eventSettingsId, window, period, subPeriod: null);
         });
         return cached!;
     }
 
     private async Task<IReadOnlyList<DashboardTrendPoint>> ComputeDashboardTrendsAsync(
-        Guid eventSettingsId, TrendWindow window, ShiftPeriod? period)
+        Guid eventSettingsId, TrendWindow window, ShiftPeriod? period, BuildSubPeriod? subPeriod)
     {
         var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
         if (es is null) return Array.Empty<DashboardTrendPoint>();
@@ -1220,21 +1283,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         var startInstant = start.AtStartOfDayInZone(tz).ToInstant();
         var endInstant = today.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
 
-        int? minDayOffset = null;
-        int? maxDayOffset = null;
-        switch (period)
-        {
-            case ShiftPeriod.Build:
-                maxDayOffset = -1;
-                break;
-            case ShiftPeriod.Event:
-                minDayOffset = 0;
-                maxDayOffset = es.EventEndOffset;
-                break;
-            case ShiftPeriod.Strike:
-                minDayOffset = es.EventEndOffset + 1;
-                break;
-        }
+        var (minDayOffset, maxDayOffset) = GetDayOffsetBounds(period, subPeriod, es);
 
         var signupsInWindow = await _repo.GetSignupCreatedAtsInWindowAsync(
             eventSettingsId, startInstant, endInstant, minDayOffset, maxDayOffset);
@@ -1263,7 +1312,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     }
 
     public async Task<IReadOnlyList<DailyDepartmentStaffing>> GetDailyDepartmentStaffingAsync(
-        Guid eventSettingsId, ShiftPeriod? period)
+        Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null)
     {
         // Only meaningful for Set-up (Build) and Strike. Event planning has a different
         // day-over-day dynamic (per-rota shift-time coverage), so we intentionally skip it.
@@ -1280,6 +1329,12 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             for (var d = es.BuildStartOffset; d < 0; d++) dayOffsets.Add(d);
         else
             for (var d = es.EventEndOffset + 1; d <= es.StrikeEndOffset; d++) dayOffsets.Add(d);
+
+        if (period == ShiftPeriod.Build && subPeriod is not null)
+        {
+            var (start, end) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, es);
+            dayOffsets = dayOffsets.Where(d => d >= start && d < end).ToList();
+        }
 
         if (dayOffsets.Count == 0) return Array.Empty<DailyDepartmentStaffing>();
 
@@ -1307,7 +1362,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             var dayDate = es.GateOpeningDate.PlusDays(dayOffset);
             var dayStart = dayDate.AtStartOfDayInZone(tz).ToInstant();
             var dayEnd = dayDate.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
-            var dateLabel = dayDate.DayOfWeek.ToString()[..3] + " " + dayDate.ToString("MMM d", null);
+            var dateLabel = dayDate.DayOfWeek.ToString()[..3] + " " + dayDate.ToString("d MMM", null);
 
             var overlapping = shifts.Where(s =>
             {
@@ -1338,7 +1393,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     }
 
     public async Task<CoverageHeatmap> GetCoverageHeatmapAsync(
-        Guid eventSettingsId, ShiftPeriod? period)
+        Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null)
     {
         var empty = new CoverageHeatmap(
             Array.Empty<CoverageHeatmapDay>(),
@@ -1357,6 +1412,12 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         if (period is null or ShiftPeriod.Strike)
             for (var d = es.EventEndOffset + 1; d <= es.StrikeEndOffset; d++) dayOffsets.Add(d);
 
+        if (period == ShiftPeriod.Build && subPeriod is not null)
+        {
+            var (start, end) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, es);
+            dayOffsets = dayOffsets.Where(d => d >= start && d < end).ToList();
+        }
+
         if (dayOffsets.Count == 0) return empty;
 
         var allShifts = await _repo.GetVisibleShiftsForEventAsync(eventSettingsId);
@@ -1372,7 +1433,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             .Select(off =>
             {
                 var date = es.GateOpeningDate.PlusDays(off);
-                var label = date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
+                var label = date.DayOfWeek.ToString()[..3] + " " + date.ToString("d MMM", null);
                 var dayPeriod = off < 0 ? ShiftPeriod.Build : off <= es.EventEndOffset ? ShiftPeriod.Event : ShiftPeriod.Strike;
                 return new CoverageHeatmapDay(off, date, label, dayPeriod);
             })
@@ -1473,7 +1534,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     }
 
     public async Task<IReadOnlyList<ShiftDurationBreakdownRow>> GetShiftDurationBreakdownAsync(
-        Guid eventSettingsId, ShiftPeriod? period)
+        Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null)
     {
         if (period is null) return Array.Empty<ShiftDurationBreakdownRow>();
 
@@ -1482,6 +1543,12 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         var allShifts = await _repo.GetVisibleShiftsForEventAsync(eventSettingsId);
         var periodShifts = allShifts.Where(s => s.GetShiftPeriod(es) == period.Value).ToList();
+
+        if (period == ShiftPeriod.Build && subPeriod is not null)
+        {
+            var (start, end) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, es);
+            periodShifts = periodShifts.Where(s => s.DayOffset >= start && s.DayOffset < end).ToList();
+        }
 
         var shiftIds = periodShifts.Select(s => s.Id).ToList();
         var confirmedCounts = await _repo.GetConfirmedSignupCountsByShiftAsync(shiftIds);

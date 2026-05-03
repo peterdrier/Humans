@@ -27,6 +27,12 @@ public class EventSettingsViewModel
     public int EventEndOffset { get; set; } = 6;
     public int StrikeEndOffset { get; set; } = 9;
 
+    // Build sub-period boundaries — defaults match the entity defaults set by EF config.
+    public int FirstCrewStartOffset { get; set; } = -25;
+    public int SetupWeekStartOffset { get; set; } = -16;
+    public int PreEventWeekStartOffset { get; set; } = -9;
+    public int FinishingWeekendStartOffset { get; set; } = -4;
+
     public string EarlyEntryCapacityJson { get; set; } = "{}";
     public string? BarriosEarlyEntryAllocationJson { get; set; }
 
@@ -454,8 +460,16 @@ public class ShiftDashboardViewModel
     public List<DepartmentOption> Departments { get; set; } = [];
     public Guid? SelectedDepartmentId { get; set; }
     public Guid? SelectedRotaId { get; set; }
-    public string? SelectedDate { get; set; }
+    /// <summary>ISO date string passed via query — round-trips through the form input.</summary>
+    public string? SelectedStartDate { get; set; }
+    /// <summary>ISO date string passed via query — round-trips through the form input.</summary>
+    public string? SelectedEndDate { get; set; }
+    /// <summary>Parsed start date if <see cref="SelectedStartDate"/> was a valid ISO date.</summary>
+    public LocalDate? FilterStartDate { get; set; }
+    /// <summary>Parsed end date if <see cref="SelectedEndDate"/> was a valid ISO date.</summary>
+    public LocalDate? FilterEndDate { get; set; }
     public ShiftPeriod? SelectedPeriod { get; set; }
+    public BuildSubPeriod? SelectedSubPeriod { get; set; }
     public EventSettings EventSettings { get; set; } = null!;
     public List<DailyStaffingData> StaffingData { get; set; } = [];
     public List<DailyStaffingHours> StaffingHours { get; set; } = [];

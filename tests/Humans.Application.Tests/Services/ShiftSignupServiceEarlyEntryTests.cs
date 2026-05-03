@@ -117,7 +117,7 @@ public class ShiftSignupServiceEarlyEntryTests : IDisposable
         var result = await _service.SignUpRangeAsync(Guid.NewGuid(), rota.Id, -3, -1);
 
         result.Success.Should().BeTrue();
-        result.Warning.Should().Contain("Tue Jun 30");
+        result.Warning.Should().Contain("Tue 30 Jun");
     }
 
     private (EventSettings eventSettings, Rota rota, Team team) SeedBuildScenario()

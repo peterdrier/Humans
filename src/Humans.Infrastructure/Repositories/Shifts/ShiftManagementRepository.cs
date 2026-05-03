@@ -388,7 +388,6 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
     public async Task<IReadOnlyList<Shift>> GetShiftsWithSignupsForUrgencyAsync(
         Guid eventSettingsId,
         Guid? departmentId,
-        int? dayOffset,
         int? minDayOffset,
         int? maxDayOffset,
         CancellationToken ct = default)
@@ -405,23 +404,15 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
         if (departmentId.HasValue)
             query = query.Where(s => s.Rota.TeamId == departmentId.Value);
 
-        if (dayOffset.HasValue)
+        if (minDayOffset.HasValue)
         {
-            var d = dayOffset.Value;
-            query = query.Where(s => s.DayOffset == d);
+            var minv = minDayOffset.Value;
+            query = query.Where(s => s.DayOffset >= minv);
         }
-        else
+        if (maxDayOffset.HasValue)
         {
-            if (minDayOffset.HasValue)
-            {
-                var minv = minDayOffset.Value;
-                query = query.Where(s => s.DayOffset >= minv);
-            }
-            if (maxDayOffset.HasValue)
-            {
-                var maxv = maxDayOffset.Value;
-                query = query.Where(s => s.DayOffset <= maxv);
-            }
+            var maxv = maxDayOffset.Value;
+            query = query.Where(s => s.DayOffset <= maxv);
         }
 
         return await query.ToListAsync(ct);

@@ -526,6 +526,10 @@ public class ShiftsController : HumansControllerBase
             model.BuildStartOffset = es.BuildStartOffset;
             model.EventEndOffset = es.EventEndOffset;
             model.StrikeEndOffset = es.StrikeEndOffset;
+            model.FirstCrewStartOffset = es.FirstCrewStartOffset;
+            model.SetupWeekStartOffset = es.SetupWeekStartOffset;
+            model.PreEventWeekStartOffset = es.PreEventWeekStartOffset;
+            model.FinishingWeekendStartOffset = es.FinishingWeekendStartOffset;
             model.EarlyEntryCapacityJson = JsonSerializer.Serialize(es.EarlyEntryCapacity);
             model.BarriosEarlyEntryAllocationJson = es.BarriosEarlyEntryAllocation is not null
                 ? JsonSerializer.Serialize(es.BarriosEarlyEntryAllocation)
@@ -596,6 +600,10 @@ public class ShiftsController : HumansControllerBase
             existing.BuildStartOffset = model.BuildStartOffset;
             existing.EventEndOffset = model.EventEndOffset;
             existing.StrikeEndOffset = model.StrikeEndOffset;
+            existing.FirstCrewStartOffset = model.FirstCrewStartOffset;
+            existing.SetupWeekStartOffset = model.SetupWeekStartOffset;
+            existing.PreEventWeekStartOffset = model.PreEventWeekStartOffset;
+            existing.FinishingWeekendStartOffset = model.FinishingWeekendStartOffset;
             existing.EarlyEntryCapacity = eeCapacity;
             existing.BarriosEarlyEntryAllocation = barriosAllocation;
             existing.EarlyEntryClose = earlyEntryClose;
@@ -617,6 +625,10 @@ public class ShiftsController : HumansControllerBase
                 BuildStartOffset = model.BuildStartOffset,
                 EventEndOffset = model.EventEndOffset,
                 StrikeEndOffset = model.StrikeEndOffset,
+                FirstCrewStartOffset = model.FirstCrewStartOffset,
+                SetupWeekStartOffset = model.SetupWeekStartOffset,
+                PreEventWeekStartOffset = model.PreEventWeekStartOffset,
+                FinishingWeekendStartOffset = model.FinishingWeekendStartOffset,
                 EarlyEntryCapacity = eeCapacity,
                 BarriosEarlyEntryAllocation = barriosAllocation,
                 EarlyEntryClose = earlyEntryClose,
