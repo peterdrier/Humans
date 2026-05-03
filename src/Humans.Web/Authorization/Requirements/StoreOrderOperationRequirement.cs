@@ -14,6 +14,8 @@ public sealed class StoreOrderOperationRequirement : IAuthorizationRequirement
     public static readonly StoreOrderOperationRequirement AddLine = new(nameof(AddLine));
     public static readonly StoreOrderOperationRequirement RemoveLine = new(nameof(RemoveLine));
     public static readonly StoreOrderOperationRequirement EditCounterparty = new(nameof(EditCounterparty));
+    /// <summary>Initiate Stripe Checkout to pay against the order. Allowed regardless of order state — payments continue after invoice issuance.</summary>
+    public static readonly StoreOrderOperationRequirement Pay = new(nameof(Pay));
 
     public string OperationName { get; }
 

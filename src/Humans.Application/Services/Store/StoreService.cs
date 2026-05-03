@@ -278,6 +278,34 @@ public class StoreService : IStoreService
     public Task RecordManualPaymentAsync(Guid orderId, decimal amountEur, StorePaymentMethod method, string? externalRef, string? notes, Guid actorUserId, CancellationToken ct = default)
         => throw new NotSupportedException("Phase 5");
 
+    public async Task RecordStripePaymentAsync(Guid orderId, string paymentIntentId, decimal amountEur, CancellationToken ct = default)
+    {
+        if (amountEur <= 0)
+            throw new ArgumentOutOfRangeException(nameof(amountEur), "Stripe payment amount must be positive.");
+        if (string.IsNullOrWhiteSpace(paymentIntentId))
+            throw new ArgumentException("PaymentIntent id is required.", nameof(paymentIntentId));
+
+        if (await _repo.StripePaymentIntentExistsAsync(paymentIntentId, ct))
+            return; // idempotent: duplicate Stripe webhook delivery
+
+        var payment = new StorePayment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = orderId,
+            AmountEur = amountEur,
+            Method = StorePaymentMethod.Stripe,
+            StripePaymentIntentId = paymentIntentId,
+            ReceivedAt = _clock.GetCurrentInstant(),
+            RecordedByUserId = null,
+        };
+        await _repo.AddPaymentAsync(payment, ct);
+        await _audit.LogAsync(
+            AuditAction.StorePaymentRecorded, nameof(StorePayment), payment.Id,
+            $"Recorded Stripe payment of EUR {amountEur:0.00} on order {orderId} (PI {paymentIntentId})",
+            "StripeWebhook",
+            orderId, nameof(StoreOrder));
+    }
+
     public Task IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
         => throw new NotSupportedException("Phase 5");
 

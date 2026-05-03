@@ -539,6 +539,77 @@ public class StoreServiceTests
     }
 
     // ==========================================================================
+    // RecordStripePaymentAsync (Phase 6.2 — Stripe webhook ingestion)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task RecordStripePaymentAsync_inserts_payment_when_payment_intent_id_is_new()
+    {
+        var orderId = Guid.NewGuid();
+        var paymentIntentId = "pi_test_abc123";
+        _repo.StripePaymentIntentExistsAsync(paymentIntentId, Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        await _service.RecordStripePaymentAsync(orderId, paymentIntentId, 42.50m);
+
+        await _repo.Received(1).AddPaymentAsync(
+            Arg.Is<StorePayment>(p =>
+                p.OrderId == orderId &&
+                p.AmountEur == 42.50m &&
+                p.Method == StorePaymentMethod.Stripe &&
+                p.StripePaymentIntentId == paymentIntentId &&
+                p.RecordedByUserId == null),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RecordStripePaymentAsync_no_ops_when_payment_intent_id_already_exists()
+    {
+        var orderId = Guid.NewGuid();
+        var paymentIntentId = "pi_test_dup";
+        _repo.StripePaymentIntentExistsAsync(paymentIntentId, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        await _service.RecordStripePaymentAsync(orderId, paymentIntentId, 42.50m);
+
+        await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<StorePayment>(), Arg.Any<CancellationToken>());
+        await _audit.DidNotReceive().LogAsync(
+            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task RecordStripePaymentAsync_emits_audit_log_with_job_actor()
+    {
+        var orderId = Guid.NewGuid();
+        _repo.StripePaymentIntentExistsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        await _service.RecordStripePaymentAsync(orderId, "pi_x", 10m);
+
+        await _audit.Received(1).LogAsync(
+            AuditAction.StorePaymentRecorded,
+            nameof(StorePayment),
+            Arg.Any<Guid>(),
+            Arg.Any<string>(),
+            "StripeWebhook",
+            orderId,
+            nameof(StoreOrder));
+    }
+
+    [HumansFact]
+    public async Task RecordStripePaymentAsync_rejects_non_positive_amounts()
+    {
+        var orderId = Guid.NewGuid();
+        _repo.StripePaymentIntentExistsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        Func<Task> act = () => _service.RecordStripePaymentAsync(orderId, "pi_x", 0m);
+        await act.Should().ThrowAsync<ArgumentOutOfRangeException>();
+    }
+
+    // ==========================================================================
     // Helpers
     // ==========================================================================
 

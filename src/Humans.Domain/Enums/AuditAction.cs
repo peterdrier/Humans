@@ -115,4 +115,5 @@ public enum AuditAction
     StoreProductCreated,
     StoreProductUpdated,
     StoreProductDeactivated,
+    StorePaymentRecorded,
 }

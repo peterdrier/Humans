@@ -15,13 +15,21 @@ using NodaTime;
 using NSubstitute;
 using Testcontainers.PostgreSql;
 using Xunit;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Infrastructure.Services;
 
 namespace Humans.Integration.Tests.Infrastructure;
 
 public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
+    /// <summary>Test-only Stripe Store webhook signing secret. Used by webhook integration tests to compute valid Stripe-Signature headers.</summary>
+    public const string TestStripeWebhookSecret = "whsec_test_humans_integration_secret_do_not_use_in_prod";
+
+    /// <summary>Stub IStripeService for integration tests (replaces real Stripe network calls).</summary>
+    public IStripeService StripeServiceStub { get; } = Substitute.For<IStripeService>();
+
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
         .Build();
 
@@ -71,6 +79,19 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
             {
                 options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
             });
+
+            // Provide a deterministic Stripe Store webhook secret so the integration
+            // tests can sign synthetic events. Production runs read this from an env var.
+            services.Configure<StripeSettings>(opts =>
+            {
+                opts.StoreWebhookSecret = TestStripeWebhookSecret;
+            });
+
+            // Replace IStripeService with a stub so integration tests don't hit
+            // api.stripe.com. Per-test setup configures behavior on StripeServiceStub.
+            var stripeDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IStripeService));
+            if (stripeDescriptor != null) services.Remove(stripeDescriptor);
+            services.AddScoped(_ => StripeServiceStub);
 
             RegisteredServices = services.ToList();
 

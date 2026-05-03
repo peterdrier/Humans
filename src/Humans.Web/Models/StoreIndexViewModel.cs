@@ -21,4 +21,8 @@ public sealed class StoreOrderViewModel
     public IReadOnlyList<ProductDto> Catalog { get; init; } = [];
     public string CampName { get; init; } = string.Empty;
     public bool CanEdit { get; init; }
+    /// <summary>True when the camp lead may initiate Stripe Checkout against this order (auth + balance > 0 + Stripe configured).</summary>
+    public bool CanPay { get; init; }
+    /// <summary>False when STRIPE_STORE_KEY is unset; suppresses the Pay button + shows a disabled tooltip.</summary>
+    public bool IsStripeConfigured { get; init; }
 }

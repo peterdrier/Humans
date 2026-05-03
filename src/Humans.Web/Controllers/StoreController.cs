@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Store;
@@ -22,6 +23,7 @@ public class StoreController : HumansControllerBase
     private readonly ICampService _campService;
     private readonly IShiftManagementService _shifts;
     private readonly IAuthorizationService _authService;
+    private readonly IStripeService _stripeService;
     private readonly IClock _clock;
     private readonly ILogger<StoreController> _logger;
 
@@ -30,6 +32,7 @@ public class StoreController : HumansControllerBase
         ICampService campService,
         IShiftManagementService shifts,
         IAuthorizationService authService,
+        IStripeService stripeService,
         IClock clock,
         UserManager<User> userManager,
         ILogger<StoreController> logger)
@@ -39,6 +42,7 @@ public class StoreController : HumansControllerBase
         _campService = campService;
         _shifts = shifts;
         _authService = authService;
+        _stripeService = stripeService;
         _clock = clock;
         _logger = logger;
     }
@@ -97,15 +101,75 @@ public class StoreController : HumansControllerBase
         var season = await _campService.GetCampSeasonByIdAsync(order.CampSeasonId, ct);
 
         var canEdit = (await _authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.AddLine)).Succeeded;
+        var canPay = (await _authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.Pay)).Succeeded
+                     && order.BalanceEur > 0;
 
         var model = new StoreOrderViewModel
         {
             Order = order,
             Catalog = catalog,
             CampName = season?.Name ?? "(unknown camp)",
-            CanEdit = canEdit
+            CanEdit = canEdit,
+            CanPay = canPay,
+            IsStripeConfigured = _stripeService.IsStoreCheckoutConfigured
         };
         return View(model);
+    }
+
+    [HttpPost("Order/{id:guid}/Pay")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Pay(Guid id, decimal amountEur, CancellationToken ct)
+    {
+        var (errorResult, _) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var order = await _storeService.GetOrderAsync(id, ct);
+        if (order is null) return NotFound();
+
+        var auth = await _authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.Pay);
+        if (!auth.Succeeded) return Forbid();
+
+        if (!_stripeService.IsStoreCheckoutConfigured)
+        {
+            SetError("Stripe is not configured for this environment. Contact an admin.");
+            return RedirectToAction(nameof(Order), new { id });
+        }
+
+        if (amountEur <= 0)
+        {
+            SetError("Payment amount must be greater than zero.");
+            return RedirectToAction(nameof(Order), new { id });
+        }
+
+        if (amountEur > order.BalanceEur)
+        {
+            SetError($"Payment amount cannot exceed the outstanding balance (EUR {order.BalanceEur:0.00}).");
+            return RedirectToAction(nameof(Order), new { id });
+        }
+
+        var orderUrl = Url.Action(nameof(Order), "Store", new { id }, Request.Scheme, Request.Host.Value)
+            ?? throw new InvalidOperationException("Failed to compute order URL.");
+        var description = $"Nobodies Collective — {order.CounterpartyName ?? "Camp order"}"
+            + (string.IsNullOrWhiteSpace(order.Label) ? string.Empty : $" ({order.Label})");
+
+        try
+        {
+            var sessionUrl = await _stripeService.CreateCheckoutSessionAsync(
+                storeOrderId: id,
+                amountEur: amountEur,
+                successUrl: orderUrl,
+                cancelUrl: orderUrl,
+                customerEmail: order.CounterpartyEmail,
+                lineItemDescription: description,
+                ct: ct);
+            return Redirect(sessionUrl);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Stripe Checkout Session creation failed for order {OrderId}", id);
+            SetError("Could not start Stripe checkout. Please try again or contact an admin.");
+            return RedirectToAction(nameof(Order), new { id });
+        }
     }
 
     [HttpPost("Order/Create/{campSeasonId:guid}")]

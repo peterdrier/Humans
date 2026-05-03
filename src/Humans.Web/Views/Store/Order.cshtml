@@ -165,7 +165,38 @@ else
 }
 
 <h2 class="h4 mb-3">Payments</h2>
-<p class="text-muted">Payments are recorded by the finance team. None are visible on this order yet.</p>
+@if (order.BalanceEur > 0 && Model.CanPay)
+{
+    if (Model.IsStripeConfigured)
+    {
+        <form asp-action="Pay" asp-route-id="@order.Id" method="post" class="row g-2 mb-3 align-items-end">
+            @Html.AntiForgeryToken()
+            <div class="col-md-4">
+                <label class="form-label">Amount to pay (EUR)</label>
+                <input type="number" name="amountEur" class="form-control"
+                       min="0.01" max="@order.BalanceEur.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
+                       step="0.01"
+                       value="@order.BalanceEur.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" required />
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary">Pay with Stripe</button>
+                <small class="form-text text-muted d-block">You'll be redirected to Stripe Checkout.</small>
+            </div>
+        </form>
+    }
+    else
+    {
+        <div class="alert alert-warning">Stripe checkout is not configured for this environment.</div>
+    }
+}
+else if (order.BalanceEur <= 0)
+{
+    <p class="text-muted">No outstanding balance.</p>
+}
+else
+{
+    <p class="text-muted">Payments are recorded by the finance team.</p>
+}
 
 @section Scripts {
     <script nonce="@Context.Items["CspNonce"]">

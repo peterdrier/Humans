@@ -64,7 +64,14 @@ internal static class ConfigurationMetadataExtensions
             configRegistry.RegisterEnvironmentVariable("TICKET_VENDOR_API_KEY", "Ticket Vendor", isSensitive: true,
                 importance: ConfigurationImportance.Recommended);
             configRegistry.RegisterEnvironmentVariable("LOG_API_KEY", "Log API", isSensitive: true);
-            configRegistry.RegisterEnvironmentVariable("STRIPE_API_KEY", "Stripe", isSensitive: true);
+            // Stripe — one key per account; production keys must be Restricted API Keys (rk_*).
+            configRegistry.RegisterEnvironmentVariable("STRIPE_TICKETS_KEY", "Stripe (Tickets)", isSensitive: true);
+            configRegistry.RegisterEnvironmentVariable("STRIPE_STORE_KEY", "Stripe (Store)", isSensitive: true,
+                importance: ConfigurationImportance.Recommended);
+            configRegistry.RegisterEnvironmentVariable("STRIPE_STORE_WEBHOOK_SECRET", "Stripe (Store)", isSensitive: true,
+                importance: ConfigurationImportance.Recommended);
+            // Deprecated — kept registered so the admin page surfaces it during the transition window.
+            configRegistry.RegisterEnvironmentVariable("STRIPE_API_KEY", "Stripe (deprecated alias for STRIPE_TICKETS_KEY)", isSensitive: true);
         }
 
         return services;

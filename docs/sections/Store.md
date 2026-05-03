@@ -2,15 +2,17 @@
   src/Humans.Application/Services/Store/**
   src/Humans.Application/Interfaces/Store/**
   src/Humans.Application/Interfaces/Repositories/IStoreRepository.cs
+  src/Humans.Application/Interfaces/IStripeService.cs
   src/Humans.Domain/Entities/Store*.cs
   src/Humans.Domain/Enums/Store*.cs
   src/Humans.Infrastructure/Data/Configurations/Store/**
   src/Humans.Infrastructure/Repositories/Store/**
+  src/Humans.Infrastructure/Services/StripeService.cs
   src/Humans.Web/Controllers/Store*.cs
   src/Humans.Web/Authorization/Requirements/StoreOrder*.cs
 -->
 <!-- freshness:flag-on-change
-  Store catalog editing, order lifecycle, OrderableUntil gate, invoice issuance idempotency, treasury sync matching, and resource-based authorization — review when Store services/entities/controllers/auth handlers change.
+  Store catalog editing, order lifecycle, OrderableUntil gate, invoice issuance idempotency, treasury sync matching, Stripe Checkout / webhook signature verification, and resource-based authorization — review when Store services/entities/controllers/auth handlers/Stripe surfaces change.
 -->
 
 # Store — Section Invariants
@@ -211,8 +213,22 @@ Stored as int via `HasConversion<int>()`.
 - **Shifts:** `IShiftManagementService.GetActiveAsync()` for the active event's `Year` and `TimeZoneId` — used to (a) resolve the active catalog year on `/Store` and `/Store/Admin/Catalog` and (b) compute "today in event time zone" for the `OrderableUntil` deadline gate.
 - **Auth/Roles:** `RoleNames.StoreAdmin` (this section), `RoleNames.FinanceAdmin`, `RoleNames.Admin`.
 - **Holded connector** (Infrastructure): `IHoldedClient` extended with `UpsertContactAsync`, `CreateInvoiceAsync`, `ListTreasuryEntriesAsync` in Phase 4.
-- **Stripe connector** (Infrastructure): `IStripeService.CreateCheckoutSessionAsync` added in Phase 6.
+- **Stripe connector** (Infrastructure): `IStripeService.CreateCheckoutSessionAsync` for camp-lead payments; `StoreStripeWebhookController` for `checkout.session.completed` ingestion.
 - **Audit Log:** `IAuditLogService` for every mutation.
+
+## Stripe Configuration
+
+Three env vars, **one key per Stripe account**:
+
+| Env var | Account | Required scopes |
+|---|---|---|
+| `STRIPE_TICKETS_KEY` | Tickets | PaymentIntent + BalanceTransaction reads (fee enrichment on Tickets section). `STRIPE_API_KEY` is honored as a deprecated alias and emits a one-shot startup warning. |
+| `STRIPE_STORE_KEY` | Store | `checkout_session:write` (for Pay button). Production must use a Restricted API Key (`rk_live_*`) — never a full secret key. |
+| `STRIPE_STORE_WEBHOOK_SECRET` | Store | Webhook signing secret (`whsec_*`) for `/Store/StripeWebhook` signature verification. |
+
+The Store key explicitly does NOT carry refund, payout, charge-modify, customer-write, or PaymentIntent-write scopes. **Refunds, payouts, and chargebacks remain manual via the Stripe dashboard** by policy — bookkeeping for refunds posts to Store as negative `StorePayment` rows via FinanceAdmin manual entry (Phase 5.3).
+
+Boot-time smoke probes (`StripeStartupSmokeService`) make one low-risk read against each configured key and log a warning if scopes are missing. Stripe does not expose programmatic introspection of RAK scopes, so the probe is positive-confirmation only — it cannot detect over-granted permissions.
 
 ## Architecture
 
