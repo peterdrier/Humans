@@ -1216,7 +1216,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 {
                     try
                     {
-                        var memberLevel = ParseApiRole(member.ExpectedRole) ?? DrivePermissionLevel.ContentManager;
+                        var memberLevel = ParseApiRole(member.ExpectedRole) ?? DrivePermissionLevel.Contributor;
                         await AddUserToDriveAsync(primary, member.Email, memberLevel, cancellationToken);
                     }
                     catch (Exception ex)
@@ -2008,7 +2008,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         var userTeams = await _teamService.GetUserTeamsAsync(userId, cancellationToken);
         var userTeamIds = userTeams.Where(tm => tm.LeftAt is null).Select(tm => tm.TeamId).ToHashSet();
         if (userTeamIds.Count == 0)
-            return DrivePermissionLevel.ContentManager;
+            return DrivePermissionLevel.Contributor;
 
         // Which of those teams have an active resource with this Google id?
         var resourcesByTeam = await _resourceRepository.GetActiveByTeamIdsAsync(userTeamIds.ToList(), cancellationToken);
@@ -2019,7 +2019,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             .Select(r => r.DrivePermissionLevel)
             .ToList();
 
-        return levels.Count == 0 ? DrivePermissionLevel.ContentManager : levels.Max();
+        return levels.Count == 0 ? DrivePermissionLevel.Contributor : levels.Max();
     }
 
     /// <summary>
