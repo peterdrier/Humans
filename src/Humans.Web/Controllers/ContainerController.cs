@@ -142,11 +142,11 @@ public class ContainerController : HumansControllerBase
         var entity = await GetContainerEntityAsync(id, ct);
         if (entity is null) return NotFound();
 
-        var authResult = await _authorizationService.AuthorizeAsync(User, entity, ContainerOperationRequirement.Manage);
-        if (!authResult.Succeeded) return Forbid();
-
         var (userError, user) = await RequireCurrentUserAsync();
         if (userError is not null) return userError;
+
+        var authResult = await _authorizationService.AuthorizeAsync(User, entity, ContainerOperationRequirement.Manage);
+        if (!authResult.Succeeded) return Forbid();
 
         var (blocked, blockResult) = await CheckPlacementPhaseAsync(user.Id, slug, year, ct);
         if (blocked) return blockResult!;
@@ -174,11 +174,11 @@ public class ContainerController : HumansControllerBase
         var entity = await GetContainerEntityAsync(id, ct);
         if (entity is null) return NotFound();
 
-        var authResult = await _authorizationService.AuthorizeAsync(User, entity, ContainerOperationRequirement.Manage);
-        if (!authResult.Succeeded) return Forbid();
-
         var (userError, user) = await RequireCurrentUserAsync();
         if (userError is not null) return userError;
+
+        var authResult = await _authorizationService.AuthorizeAsync(User, entity, ContainerOperationRequirement.Manage);
+        if (!authResult.Succeeded) return Forbid();
 
         var (blocked, blockResult) = await CheckPlacementPhaseAsync(user.Id, slug, year, ct);
         if (blocked) return blockResult!;
@@ -195,11 +195,11 @@ public class ContainerController : HumansControllerBase
         var entity = await GetContainerEntityAsync(id, ct);
         if (entity is null) return NotFound();
 
-        var authResult = await _authorizationService.AuthorizeAsync(User, entity, ContainerOperationRequirement.Manage);
-        if (!authResult.Succeeded) return Forbid();
-
         var (userError, user) = await RequireCurrentUserAsync();
         if (userError is not null) return userError;
+
+        var authResult = await _authorizationService.AuthorizeAsync(User, entity, ContainerOperationRequirement.Manage);
+        if (!authResult.Succeeded) return Forbid();
 
         var (blocked, blockResult) = await CheckPlacementPhaseAsync(user.Id, slug, year, ct);
         if (blocked) return blockResult!;
@@ -230,11 +230,11 @@ public class ContainerController : HumansControllerBase
         var entity = await GetContainerEntityAsync(id, ct);
         if (entity is null) return NotFound();
 
-        var authResult = await _authorizationService.AuthorizeAsync(User, entity, ContainerOperationRequirement.Manage);
-        if (!authResult.Succeeded) return Forbid();
-
         var (userError, user) = await RequireCurrentUserAsync();
         if (userError is not null) return userError;
+
+        var authResult = await _authorizationService.AuthorizeAsync(User, entity, ContainerOperationRequirement.Manage);
+        if (!authResult.Succeeded) return Forbid();
 
         var (blocked, blockResult) = await CheckPlacementPhaseAsync(user.Id, slug, year, ct);
         if (blocked) return blockResult!;
