@@ -52,7 +52,7 @@ public class ContainerAuthorizationHandler : AuthorizationHandler<ContainerOpera
         // Camp leads can manage barrio containers (not org-level)
         if (resource.CampSeasonId.HasValue)
         {
-            var seasonInfo = await _campService.GetCampSeasonInfoAsync(resource.CampSeasonId.Value);
+            var seasonInfo = await _campService.GetCampSeasonByIdAsync(resource.CampSeasonId.Value);
             if (seasonInfo is not null && await _campService.IsUserCampLeadAsync(userId, seasonInfo.CampId))
             {
                 context.Succeed(requirement);
