@@ -178,7 +178,10 @@
         }
     }
     <div class="row">
-        <div class="col-lg-6 d-flex flex-column">
+        @* Coordinator activity (pending signups review) is privileged — only the
+           narrower ShiftDashboardAccess role list sees it. Subteam managers who
+           reach the dashboard via the wider page policy don't get this column. *@
+        <div class="col-lg-6 d-flex flex-column" authorize-policy="ShiftDashboardAccess">
             @await Html.PartialAsync("_CoordinatorActivity", Model.CoordinatorActivity)
         </div>
         <div class="col-lg-6 d-flex flex-column">
@@ -208,7 +211,7 @@
                         <th>@Localizer["ShiftDash_DateTime"]</th>
                         <th>@Localizer["ShiftDash_Slots"]</th>
                         <th>@Localizer["ShiftDash_Priority"]</th>
-                        <th></th>
+                        <th authorize-policy="ShiftDashboardAccess"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -262,7 +265,11 @@
                                 <small class="text-muted">/ @shift.MinVolunteers–@shift.MaxVolunteers</small>
                             </td>
                             <td><span class="badge @priorityBadge">@priorityLabel</span></td>
-                            <td>
+                            @* Voluntell action is privileged — only the narrower
+                               ShiftDashboardAccess role list (Admin / NoInfoAdmin /
+                               VolunteerCoordinator) can assign humans to shifts. Subteam
+                               managers see the urgency rows but get no action column. *@
+                            <td authorize-policy="ShiftDashboardAccess">
                                 <button class="btn btn-sm btn-outline-primary"
                                         type="button"
                                         data-bs-toggle="collapse"
@@ -272,7 +279,7 @@
                                 </button>
                             </td>
                         </tr>
-                        <tr class="collapse" id="@collapseId">
+                        <tr class="collapse" id="@collapseId" authorize-policy="ShiftDashboardAccess">
                             <td colspan="6">
                                 <div class="p-3 bg-light rounded border">
                                     <label class="form-label fw-semibold">@string.Format(Localizer["ShiftDash_SearchHumans"].Value, shift.Rota.Name)</label>

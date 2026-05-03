@@ -25,6 +25,7 @@ public static class AuthorizationPolicyExtensions
         services.AddScoped<IAuthorizationHandler, BudgetAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, CampAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, TeamAuthorizationHandler>();
+        services.AddScoped<IAuthorizationHandler, IsAnyTeamCoordinatorHandler>();
         services.AddSingleton<IAuthorizationHandler, IssuesAuthorizationHandler>();
 
         // Service-layer enforcement handlers (singleton — no scoped dependencies)
@@ -92,14 +93,19 @@ public static class AuthorizationPolicyExtensions
             options.AddPolicy(PolicyNames.ConsentCoordinatorBoardOrAdmin, policy =>
                 policy.RequireRole(RoleNames.ConsentCoordinator, RoleNames.Board, RoleNames.Admin));
 
-            // ShiftDashboardAccess and ShiftDepartmentManager are intentionally identical today
-            // (both map to ShiftRoleChecks.CanManageDepartment). Kept separate so they can
-            // diverge when per-department manager roles are introduced.
+            // ShiftDashboardAccess stays narrow — gates the privileged sub-panels on the
+            // dashboard (coordinator activity, pending shifts, voluntell action). Only the
+            // role-based admins / volunteer coordinators see those.
             options.AddPolicy(PolicyNames.ShiftDashboardAccess, policy =>
                 policy.RequireRole(RoleNames.Admin, RoleNames.NoInfoAdmin, RoleNames.VolunteerCoordinator));
 
+            // ShiftDepartmentManager is wider: privileged dashboard roles OR anyone who is
+            // a coordinator / manager of any team or sub-team. Gates the dashboard page
+            // entry point and the "open dashboard" button on /Shifts. The role-OR-team-coord
+            // disjunction is encoded inside IsAnyTeamCoordinatorHandler so the policy stays
+            // a single requirement (multiple requirements on a policy AND together).
             options.AddPolicy(PolicyNames.ShiftDepartmentManager, policy =>
-                policy.RequireRole(RoleNames.Admin, RoleNames.NoInfoAdmin, RoleNames.VolunteerCoordinator));
+                policy.AddRequirements(new IsAnyTeamCoordinatorRequirement()));
 
             options.AddPolicy(PolicyNames.PrivilegedSignupApprover, policy =>
                 policy.RequireRole(RoleNames.Admin, RoleNames.NoInfoAdmin));
