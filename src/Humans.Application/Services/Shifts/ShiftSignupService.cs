@@ -559,11 +559,25 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         if (!isPrivileged && shiftsInRange.Any(s => s.AdminOnly))
             return SignupResult.Fail("One or more shifts in this range are restricted to coordinators and admins.");
 
-        // Duplicate signup check — reject if user already has Pending/Confirmed on any shift in range (Fix #1)
+        // Duplicate signup check — reject (or filter, if skipConflicts) if user already has Pending/Confirmed
         var shiftIdsInRange = shiftsInRange.Select(s => s.Id).ToHashSet();
         var activeShiftIds = await _repo.GetActiveShiftIdsForUserAsync(userId, shiftIdsInRange);
+        var skipMessages = new List<string>();
         if (activeShiftIds.Count > 0)
-            return SignupResult.Fail("Already signed up for one or more shifts in this range.");
+        {
+            if (!skipConflicts)
+                return SignupResult.Fail("Already signed up for one or more shifts in this range.");
+
+            var alreadySignedUpDays = shiftsInRange
+                .Where(s => activeShiftIds.Contains(s.Id))
+                .Select(s => s.DayOffset)
+                .ToList();
+            var dayList = string.Join(", ", alreadySignedUpDays.Select(offset =>
+                FormatShiftDate(es.GateOpeningDate.PlusDays(offset))));
+            skipMessages.Add($"Already signed up for day(s): {dayList}.");
+
+            shiftsInRange = shiftsInRange.Where(s => !activeShiftIds.Contains(s.Id)).ToList();
+        }
 
         // Check overlap for each day (include Pending signups too)
         var existingSignups = await _repo.GetActiveSignupsForUserAsync(userId);
@@ -596,7 +610,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         }
 
         // Capacity check — hard block: exclude full shifts from the range
-        string? warning = null;
+        string? warning = skipMessages.Count > 0 ? string.Join(" ", skipMessages) : null;
         var signupCounts = await _repo.GetConfirmedCountsByShiftAsync(shiftIdsInRange);
         var fullDays = shiftsInRange
             .Where(s => signupCounts.GetValueOrDefault(s.Id) >= s.MaxVolunteers)

@@ -420,6 +420,42 @@ public class ShiftSignupServiceTests : IDisposable
         result.Error.Should().Contain("Already signed up");
     }
 
+    [HumansFact]
+    public async Task SignUpRange_SkipConflicts_FiltersAlreadySignedUpDays()
+    {
+        // Arrange: rota with 3 all-day shifts; user already signed up to day -2 in same rota.
+        var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
+        rota.Period = RotaPeriod.Build;
+        for (var day = -3; day <= -1; day++)
+            SeedAllDayShift(rota, day);
+        var userId = Guid.NewGuid();
+        await _dbContext.SaveChangesAsync();
+
+        var dayMinus2Shift = await _dbContext.Shifts
+            .FirstAsync(s => s.RotaId == rota.Id && s.DayOffset == -2);
+        var existingSignup = SeedSignup(userId, dayMinus2Shift.Id, SignupStatus.Confirmed);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var result = await _service.SignUpRangeAsync(userId, rota.Id, -3, -1, skipConflicts: true);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        result.Warning.Should().NotBeNull();
+        result.Warning.Should().Contain("Already signed up");
+
+        var signups = await _dbContext.ShiftSignups
+            .Where(s => s.UserId == userId)
+            .ToListAsync();
+        signups.Should().HaveCount(3); // 1 pre-existing + 2 new
+        var newOffsets = signups
+            .Where(s => s.Id != existingSignup.Id)
+            .Join(_dbContext.Shifts, s => s.ShiftId, sh => sh.Id, (s, sh) => sh.DayOffset)
+            .OrderBy(o => o)
+            .ToList();
+        newOffsets.Should().Equal(-3, -1);
+    }
+
     // ============================================================
     // BailRange
     // ============================================================
