@@ -37,7 +37,7 @@ The full architecture spec lives at [`docs/superpowers/specs/2026-04-30-store-se
 
 **Acceptance Criteria:**
 - `/Store/Admin/Catalog` lists every product for the current event year (active and inactive) with name, description, unit price, VAT rate, optional deposit, OrderableUntil deadline, and IsActive state.
-- Create/edit share a single action at `/Store/Admin/Catalog/Edit` (no id = create, `/Store/Admin/Catalog/Edit/{id}` = edit). Submit posts to `/Store/Admin/Catalog/Save`. Trim+validate name (≤200), description (≤2000), non-negative numerics, VAT rate 0–100, OrderableUntil must be a future date.
+- Create/edit share a single action at `/Store/Admin/Catalog/Edit` (no id = create, `/Store/Admin/Catalog/Edit/{id}` = edit). Submit posts to `/Store/Admin/Catalog/Save`. Trim+validate name (≤200), description (≤2000), non-negative numerics, VAT rate 0–100. `OrderableUntil` accepts any date — past, present, or future. The runtime guard at `StoreService.AddLineAsync` rejects new lines once today's event-zone date has passed it, so a date in the past simply makes the product no longer orderable; admins can extend or shorten it freely.
 - "Deactivate" button performs a soft-deactivate (sets `IsActive = false`); never a hard delete. Deactivated products are hidden from the Camp Lead catalog view immediately, and `StoreService.AddLineAsync` rejects new lines against them with a clear error.
 - The active year is derived via `IShiftManagementService.GetActiveAsync()` (see Cross-Section Dependencies in `docs/sections/Store.md`).
 - Audit-logged: `StoreProductCreated`, `StoreProductUpdated`, `StoreProductDeactivated` with the actor user id.

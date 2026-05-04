@@ -110,7 +110,7 @@ else
                 <option value="">Choose a product…</option>
                 @foreach (var product in Model.Catalog)
                 {
-                    <option value="@product.Id">@product.Name — &euro;@product.UnitPriceEur.ToString("N2") (deadline @product.OrderableUntil)</option>
+                    <option value="@product.Id">@product.Name — &euro;@product.UnitPriceEur.ToString("N2") (deadline @product.OrderableUntil.ToDisplayDate())</option>
                 }
             </select>
         </div>

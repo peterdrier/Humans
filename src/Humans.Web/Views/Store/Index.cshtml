@@ -99,7 +99,7 @@ else
                     <td class="text-end">&euro;@product.UnitPriceEur.ToString("N2")</td>
                     <td class="text-end">@product.VatRatePercent.ToString("0.##")%</td>
                     <td class="text-end">@(product.DepositAmountEur.HasValue ? $"€{product.DepositAmountEur.Value:N2}" : "—")</td>
-                    <td>@product.OrderableUntil</td>
+                    <td>@product.OrderableUntil.ToDisplayDate()</td>
                 </tr>
             }
         </tbody>

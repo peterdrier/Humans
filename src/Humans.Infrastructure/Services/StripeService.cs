@@ -73,6 +73,8 @@ public class StripeService : IStripeService
 
     public bool IsStoreCheckoutConfigured => _settings.IsStoreCheckoutConfigured;
 
+    public bool IsStoreWebhookConfigured => _settings.IsStoreWebhookConfigured;
+
     /// <summary>
     /// EUR (decimal) → Stripe minor units (long, cents). Half-cent rounds away from zero.
     /// </summary>
@@ -194,5 +196,61 @@ public class StripeService : IStripeService
             PaymentMethodDetail: methodDetail,
             StripeFee: stripeFee,
             ApplicationFee: applicationFee);
+    }
+
+    public StoreCheckoutWebhookEvent? ParseStoreCheckoutEvent(string body, string signature)
+    {
+        if (!_settings.IsStoreWebhookConfigured)
+        {
+            _logger.LogWarning("Store webhook parse attempted while STRIPE_STORE_WEBHOOK_SECRET is unset.");
+            return null;
+        }
+
+        Event stripeEvent;
+        try
+        {
+            // throwOnApiVersionMismatch=false: webhook handlers parse only the fields they care about,
+            // and Stripe maintains backwards compatibility on the relevant event payload shapes.
+            stripeEvent = EventUtility.ConstructEvent(
+                body, signature, _settings.StoreWebhookSecret,
+                throwOnApiVersionMismatch: false);
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogWarning("Invalid Stripe webhook signature: {Message}", ex.Message);
+            return null;
+        }
+
+        var kind = stripeEvent.Type switch
+        {
+            EventTypes.CheckoutSessionCompleted => StoreCheckoutEventKind.CheckoutSessionCompleted,
+            EventTypes.CheckoutSessionAsyncPaymentSucceeded => StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded,
+            EventTypes.CheckoutSessionAsyncPaymentFailed => StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed,
+            EventTypes.CheckoutSessionExpired => StoreCheckoutEventKind.CheckoutSessionExpired,
+            _ => StoreCheckoutEventKind.Other,
+        };
+
+        StoreCheckoutSessionData? session = null;
+        if (stripeEvent.Data.Object is Session s)
+        {
+            Guid? orderId = null;
+            if (s.Metadata is not null &&
+                s.Metadata.TryGetValue("humans_store_order_id", out var orderIdStr) &&
+                Guid.TryParse(orderIdStr, out var parsed))
+            {
+                orderId = parsed;
+            }
+
+            // AmountTotal is in minor units (cents); convert back to EUR.
+            decimal? amountEur = s.AmountTotal.HasValue ? s.AmountTotal.Value / 100m : null;
+
+            session = new StoreCheckoutSessionData(
+                SessionId: s.Id,
+                OrderId: orderId,
+                PaymentIntentId: string.IsNullOrEmpty(s.PaymentIntentId) ? null : s.PaymentIntentId,
+                AmountEur: amountEur);
+        }
+
+        return new StoreCheckoutWebhookEvent(stripeEvent.Id, kind, session);
     }
 }

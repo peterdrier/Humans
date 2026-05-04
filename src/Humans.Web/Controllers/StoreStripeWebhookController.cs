@@ -1,16 +1,15 @@
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Store;
-using Humans.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
-using Stripe;
-using Stripe.Checkout;
 
 namespace Humans.Web.Controllers;
 
 /// <summary>
 /// Stripe Checkout webhook ingestion for the Store section. Anonymous endpoint;
-/// authentication is by signature verification against <c>STRIPE_STORE_WEBHOOK_SECRET</c>.
+/// authentication is by signature verification against <c>STRIPE_STORE_WEBHOOK_SECRET</c>,
+/// performed inside <see cref="IStripeService.ParseStoreCheckoutEvent"/> so the Web layer
+/// never imports Stripe SDK types (design-rules §15i — connector pattern).
 /// Handles <c>checkout.session.completed</c>; the other three <c>checkout.session.*</c>
 /// events (async_payment_succeeded / async_payment_failed / expired) are accepted with a
 /// 200 + Warning log until the async-payment state machine is built (see follow-up issue).
@@ -23,23 +22,23 @@ namespace Humans.Web.Controllers;
 public class StoreStripeWebhookController : ControllerBase
 {
     private readonly IStoreService _storeService;
-    private readonly StripeSettings _settings;
+    private readonly IStripeService _stripeService;
     private readonly ILogger<StoreStripeWebhookController> _logger;
 
     public StoreStripeWebhookController(
         IStoreService storeService,
-        IOptions<StripeSettings> settings,
+        IStripeService stripeService,
         ILogger<StoreStripeWebhookController> logger)
     {
         _storeService = storeService;
-        _settings = settings.Value;
+        _stripeService = stripeService;
         _logger = logger;
     }
 
     [HttpPost("")]
     public async Task<IActionResult> Receive(CancellationToken ct)
     {
-        if (!_settings.IsStoreWebhookConfigured)
+        if (!_stripeService.IsStoreWebhookConfigured)
         {
             _logger.LogWarning("Store Stripe webhook hit while STRIPE_STORE_WEBHOOK_SECRET is unset; rejecting.");
             return StatusCode(StatusCodes.Status503ServiceUnavailable);
@@ -53,59 +52,51 @@ public class StoreStripeWebhookController : ControllerBase
 
         var signature = Request.Headers["Stripe-Signature"].ToString();
 
-        Event stripeEvent;
-        try
+        var parsed = _stripeService.ParseStoreCheckoutEvent(body, signature);
+        if (parsed is null)
         {
-            // throwOnApiVersionMismatch=false: webhook handlers parse only the fields they care about,
-            // and Stripe maintains backwards compatibility on the relevant event payload shapes.
-            stripeEvent = EventUtility.ConstructEvent(
-                body, signature, _settings.StoreWebhookSecret,
-                throwOnApiVersionMismatch: false);
-        }
-        catch (StripeException ex)
-        {
-            _logger.LogWarning("Invalid Stripe webhook signature: {Message}", ex.Message);
+            // Service has already logged the reason (signature failure or secret unset).
             return BadRequest();
         }
 
-        if (string.Equals(stripeEvent.Type, EventTypes.CheckoutSessionCompleted, StringComparison.Ordinal))
+        switch (parsed.Kind)
         {
-            await HandleCheckoutSessionCompletedAsync(stripeEvent, ct);
-        }
-        else if (string.Equals(stripeEvent.Type, EventTypes.CheckoutSessionAsyncPaymentSucceeded, StringComparison.Ordinal) ||
-                 string.Equals(stripeEvent.Type, EventTypes.CheckoutSessionAsyncPaymentFailed, StringComparison.Ordinal) ||
-                 string.Equals(stripeEvent.Type, EventTypes.CheckoutSessionExpired, StringComparison.Ordinal))
-        {
-            // Subscribed to but not yet handled — async-payment state machine pending
-            // (nobodies-collective/Humans#638). Surface at Warning so prod ops notice
-            // if/when SEPA/Bizum activity starts arriving before the handler ships.
-            _logger.LogWarning(
-                "Stripe webhook event {Type} (id={EventId}) received but not yet handled — async-payment state machine pending (nobodies-collective/Humans#638).",
-                stripeEvent.Type, stripeEvent.Id);
-        }
-        else
-        {
-            _logger.LogDebug("Ignoring Stripe webhook event type {Type}", stripeEvent.Type);
+            case StoreCheckoutEventKind.CheckoutSessionCompleted:
+                await HandleCheckoutSessionCompletedAsync(parsed, ct);
+                break;
+
+            case StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded:
+            case StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed:
+            case StoreCheckoutEventKind.CheckoutSessionExpired:
+                // Subscribed to but not yet handled — async-payment state machine pending
+                // (nobodies-collective/Humans#638). Surface at Warning so prod ops notice
+                // if/when SEPA/Bizum activity starts arriving before the handler ships.
+                _logger.LogWarning(
+                    "Stripe webhook event {Kind} (id={EventId}) received but not yet handled — async-payment state machine pending (nobodies-collective/Humans#638).",
+                    parsed.Kind, parsed.EventId);
+                break;
+
+            default:
+                _logger.LogDebug("Ignoring Stripe webhook event {EventId} of unhandled kind {Kind}", parsed.EventId, parsed.Kind);
+                break;
         }
 
         return Ok();
     }
 
-    private async Task HandleCheckoutSessionCompletedAsync(Event stripeEvent, CancellationToken ct)
+    private async Task HandleCheckoutSessionCompletedAsync(StoreCheckoutWebhookEvent evt, CancellationToken ct)
     {
-        if (stripeEvent.Data.Object is not Session session)
+        if (evt.Session is not { } session)
         {
-            _logger.LogWarning("checkout.session.completed event {Id} did not contain a Session payload", stripeEvent.Id);
+            _logger.LogWarning("checkout.session.completed event {EventId} did not contain a Session payload", evt.EventId);
             return;
         }
 
-        if (session.Metadata is null ||
-            !session.Metadata.TryGetValue("humans_store_order_id", out var orderIdStr) ||
-            !Guid.TryParse(orderIdStr, out var orderId))
+        if (session.OrderId is not { } orderId)
         {
             _logger.LogWarning(
                 "Stripe Checkout Session {SessionId} has no humans_store_order_id metadata; skipping.",
-                session.Id);
+                session.SessionId);
             return;
         }
 
@@ -113,17 +104,15 @@ public class StoreStripeWebhookController : ControllerBase
         {
             _logger.LogWarning(
                 "Stripe Checkout Session {SessionId} has no PaymentIntentId; skipping.",
-                session.Id);
+                session.SessionId);
             return;
         }
 
-        // AmountTotal is in minor units (cents); convert back to EUR.
-        var amountEur = (session.AmountTotal ?? 0) / 100m;
-        if (amountEur <= 0)
+        if (session.AmountEur is not { } amountEur || amountEur <= 0)
         {
             _logger.LogWarning(
-                "Stripe Checkout Session {SessionId} has non-positive AmountTotal {Amount}; skipping.",
-                session.Id, session.AmountTotal);
+                "Stripe Checkout Session {SessionId} has non-positive AmountTotal; skipping.",
+                session.SessionId);
             return;
         }
 
@@ -132,7 +121,7 @@ public class StoreStripeWebhookController : ControllerBase
             await _storeService.RecordStripePaymentAsync(orderId, session.PaymentIntentId, amountEur, ct);
             _logger.LogInformation(
                 "Recorded Stripe payment for order {OrderId} (session {SessionId}, PI {PaymentIntentId}, EUR {Amount})",
-                orderId, session.Id, session.PaymentIntentId, amountEur);
+                orderId, session.SessionId, session.PaymentIntentId, amountEur);
         }
         catch (Exception ex)
         {
@@ -140,7 +129,7 @@ public class StoreStripeWebhookController : ControllerBase
             // cause endless retry storms. The dedup guard in RecordStripePaymentAsync handles double-deliveries.
             _logger.LogError(ex,
                 "Failed to record Stripe payment for order {OrderId} (session {SessionId})",
-                orderId, session.Id);
+                orderId, session.SessionId);
         }
     }
 }
