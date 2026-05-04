@@ -106,11 +106,22 @@ public class User : IdentityUser<Guid>
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Issue #635 (§15i): NormalizedEmail is shadow-populated by Identity but
+    /// is not the canonical read path. Application code should use
+    /// <see cref="Email"/> (overridden, computed from <see cref="UserEmails"/>)
+    /// or query <c>IUserEmailRepository</c> directly. The override exists
+    /// solely to attach the obsolete diagnostic; behavior is unchanged so
+    /// Identity machinery keeps working.
+    /// </remarks>
+#pragma warning disable CS0809 // Obsolete override of non-obsolete base — intentional: marks application reads as non-canonical.
+    [Obsolete("NormalizedEmail is shadow-populated by Identity. Use User.Email or IUserEmailRepository for canonical email lookup.", DiagnosticId = "HUM_USER_NORMALIZEDEMAIL", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/635")]
     public override string? NormalizedEmail
     {
         get => Email?.ToUpperInvariant();
         set => base.NormalizedEmail = value;
     }
+#pragma warning restore CS0809
 
     /// <inheritdoc />
     public override bool EmailConfirmed

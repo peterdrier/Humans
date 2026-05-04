@@ -101,9 +101,10 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         if (user is null) return null;
 
         var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
-        var notificationEmail = userEmails.FirstOrDefault(e => e.IsPrimary && e.IsVerified)?.Email ?? user.Email;
 
-        return FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), notificationEmail);
+        // Issue #635 (§15i): pass userEmails directly so PrimaryEmail /
+        // AllVerifiedEmails / GoogleEmail derive from already-loaded data.
+        return FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), userEmails);
     }
 
     public async Task<IReadOnlyDictionary<Guid, Domain.Entities.Profile>> GetByUserIdsAsync(
@@ -522,7 +523,13 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         var userIds = profiles.Select(p => p.UserId).ToList();
         var users = await _userService.GetByIdsAsync(userIds, ct);
 
-        var notificationEmails = await _userEmailRepository.GetAllNotificationTargetEmailsAsync(ct);
+        // Issue #635 (§15i): bulk-load every UserEmail so FullProfile.Create
+        // can populate PrimaryEmail / AllVerifiedEmails / GoogleEmail without
+        // per-user repo calls. Trivial at ~500-user scale.
+        var allUserEmails = await _userEmailRepository.GetAllAsync(ct);
+        var emailsByUserId = allUserEmails
+            .GroupBy(e => e.UserId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<UserEmail>)g.ToList());
 
         var result = new List<FullProfile>(profiles.Count);
         foreach (var profile in profiles)
@@ -530,8 +537,10 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             if (!users.TryGetValue(profile.UserId, out var user))
                 continue;
 
-            notificationEmails.TryGetValue(profile.UserId, out var notificationEmail);
-            result.Add(FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), notificationEmail));
+            var userEmails = emailsByUserId.TryGetValue(profile.UserId, out var list)
+                ? list
+                : Array.Empty<UserEmail>();
+            result.Add(FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), userEmails));
         }
 
         return result;

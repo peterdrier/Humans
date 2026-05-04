@@ -25,7 +25,13 @@
     <!-- MA0026: Fix TODO comment -->
     <!-- MA0051: Method is too long -->
     <!-- VSTHRD200: Async suffix not required for ASP.NET Core controller actions -->
-    <NoWarn>$(NoWarn);CS1591;MA0048;MA0016;MA0026;MA0051;VSTHRD200</NoWarn>
+    <!-- HUM_PROFILE_ISSUSPENDED: Profile.IsSuspended legacy reads remain valid; -->
+    <!--   Issue #635 §15i: arch test pins zero NEW writers; readers stay until -->
+    <!--   the lazy-State-backfill follow-up makes State the canonical read. -->
+    <!-- HUM_USER_NORMALIZEDEMAIL: User.NormalizedEmail is shadow-populated by -->
+    <!--   Identity; application-code reads are not canonical but a few legacy -->
+    <!--   reads remain. Issue #635 §15i. -->
+    <NoWarn>$(NoWarn);CS1591;MA0048;MA0016;MA0026;MA0051;VSTHRD200;HUM_PROFILE_ISSUSPENDED;HUM_USER_NORMALIZEDEMAIL</NoWarn>
   </PropertyGroup>
 
   <!-- Embed git commit hash into InformationalVersion at build time (skip when already set via -p:SourceRevisionId) -->

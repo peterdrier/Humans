@@ -51,6 +51,13 @@ public class ProfileConfiguration : IEntityTypeConfiguration<Profile>
             .HasDefaultValue(MembershipTier.Volunteer)
             .HasConversion<string>();
 
+        // Issue #635 (§15i): nullable string column. Existing rows hold NULL
+        // until CachingProfileService lazily computes and writes back. A
+        // follow-up PR promotes to NOT NULL after every row is populated.
+        builder.Property(p => p.State)
+            .HasConversion<string>()
+            .HasMaxLength(50);
+
         builder.Property(p => p.ConsentCheckStatus)
             .HasConversion<string>();
 

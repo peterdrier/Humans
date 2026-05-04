@@ -271,4 +271,20 @@ public interface IProfileRepository
         Guid profileId,
         IReadOnlyList<CVEntry> entries,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Issue #635 (§15i): lazy-write-back of the computed
+    /// <see cref="Profile.State"/> for a row whose persisted state is currently
+    /// <c>NULL</c>. Issues a single <c>UPDATE</c> conditional on
+    /// <c>State IS NULL</c> so concurrent writers (admin button bulk
+    /// backfill) do not stomp each other. Does NOT bump
+    /// <see cref="Profile.UpdatedAt"/> — lazy backfill should be invisible to
+    /// users.
+    /// </summary>
+    /// <returns>true if a row was updated; false if the row was missing or
+    /// already had a non-null State.</returns>
+    Task<bool> WriteBackStateIfNullAsync(
+        Guid userId,
+        ProfileState state,
+        CancellationToken ct = default);
 }
