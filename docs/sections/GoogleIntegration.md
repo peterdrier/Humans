@@ -107,6 +107,7 @@ Team-level resource linking stays at `/Teams/{slug}/Resources` in `TeamAdminCont
 - **Profiles:** `IUserEmailService` / `IGoogleServiceEmailResolver` — a human's Google service email determines the email address used for Google Groups and Drive access.
 - **Admin:** Sync settings management is Admin-only.
 - **Onboarding:** Volunteer activation triggers system team sync, which cascades to Google Group membership.
+- **Email:** `IGoogleRemovalNotificationService` (Application-layer, Google Integration-owned) calls `IEmailService.SendGoogle*Async` after every confirmed Google API delete in `RemoveUserFromGroupAsync` / `RemoveUserFromDriveAsync` (issue peterdrier/Humans#639). Variant 1 (loss-of-access) vs Variant 2 (secondary-email cleanup) is chosen by inspecting the recipient's `UserEmail` rows; messages are `MessageCategory.System` (no unsubscribe footer) and localized to `User.PreferredLanguage`. Email rotation in `AddUserToTeamResourcesAsync` passes `SyncRemovalReason.EmailRotation` to suppress the notification.
 
 ## Architecture
 

@@ -9,6 +9,7 @@ using GoogleWorkspaceUserService = Humans.Application.Services.GoogleIntegration
 using GoogleDriveActivityMonitorService = Humans.Application.Services.GoogleIntegration.DriveActivityMonitorService;
 using GoogleAdminService = Humans.Application.Services.GoogleIntegration.GoogleAdminService;
 using GoogleWorkspaceSyncService = Humans.Application.Services.GoogleIntegration.GoogleWorkspaceSyncService;
+using GoogleRemovalNotificationService = Humans.Application.Services.GoogleIntegration.GoogleRemovalNotificationService;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Teams;
 using Humans.Infrastructure.Repositories.GoogleIntegration;
@@ -112,6 +113,13 @@ internal static class GoogleWorkspaceInfrastructureExtensions
         }
 
         services.AddScoped<IGoogleAdminService, GoogleAdminService>();
+
+        // Issue peterdrier/Humans#639 — emit user-facing emails when Google
+        // sync removes a Group membership or Drive permission. Application-
+        // layer service; depends only on IUserService / IUserEmailService /
+        // IEmailService. Registered unconditionally because the no-op stub
+        // sync service does not call it.
+        services.AddScoped<IGoogleRemovalNotificationService, GoogleRemovalNotificationService>();
 
         services.AddScoped<GoogleResourceReconciliationJob>();
         services.AddScoped<DriveActivityMonitorJob>();

@@ -1999,4 +1999,29 @@
   <data name="Welcome_Footer" xml:space="preserve"><value>Schon ein Konto? Gleicher Button — melde dich an und du landest direkt bei den Schichten.</value></data>
   <data name="Welcome_Contact" xml:space="preserve"><value>Fragen? Schreib uns an</value></data>
 
+  <!-- Google sync removal notifications (issue peterdrier/Humans#639) -->
+  <data name="Email_GoogleGroupRemoval_LossOfAccess_Subject" xml:space="preserve"><value>Du wurdest aus der Gruppe {0} entfernt</value><comment>{0} = group email</comment></data>
+  <data name="Email_GoogleGroupRemoval_LossOfAccess_Body" xml:space="preserve"><value>&lt;h2&gt;Gruppenzugang entfernt&lt;/h2&gt;
+&lt;p&gt;Hallo {0},&lt;/p&gt;
+&lt;p&gt;Dein Zugang zur Google-Gruppe &lt;strong&gt;{1}&lt;/strong&gt; (&lt;code&gt;{2}&lt;/code&gt;) wurde entfernt.&lt;/p&gt;
+&lt;p&gt;Dies geschah automatisch auf Grundlage deiner aktuellen Team- und Rollenzuweisungen bei Nobodies. Nachrichten an diese Gruppe erhältst du ab sofort nicht mehr.&lt;/p&gt;
+&lt;p&gt;Falls dies ein Fehler ist, wende dich bitte an deine Team-Koordination.&lt;/p&gt;
+&lt;p&gt;Das Humans-Team&lt;/p&gt;</value><comment>{0} = user name, {1} = group display name, {2} = group email</comment></data>
+
+  <data name="Email_GoogleDriveRemoval_LossOfAccess_Subject" xml:space="preserve"><value>Dein Zugang zu {0} wurde entfernt</value><comment>{0} = folder name</comment></data>
+  <data name="Email_GoogleDriveRemoval_LossOfAccess_Body" xml:space="preserve"><value>&lt;h2&gt;Drive-Zugang entfernt&lt;/h2&gt;
+&lt;p&gt;Hallo {0},&lt;/p&gt;
+&lt;p&gt;Dein Zugang zum freigegebenen Ordner &lt;strong&gt;{1}&lt;/strong&gt; wurde entfernt.&lt;/p&gt;
+&lt;p&gt;Dies geschah automatisch auf Grundlage deiner aktuellen Team- und Rollenzuweisungen bei Nobodies.&lt;/p&gt;
+&lt;p&gt;Falls dies ein Fehler ist, wende dich bitte an deine Team-Koordination.&lt;/p&gt;
+&lt;p&gt;Das Humans-Team&lt;/p&gt;</value><comment>{0} = user name, {1} = folder name</comment></data>
+
+  <data name="Email_GoogleAccessRemoval_SecondaryCleanup_Subject" xml:space="preserve"><value>{0} hat keinen Zugang mehr zu den Nobodies-Gruppen</value><comment>{0} = removed email</comment></data>
+  <data name="Email_GoogleAccessRemoval_SecondaryCleanup_Body" xml:space="preserve"><value>&lt;h2&gt;Zweit-E-Mail aufgeräumt&lt;/h2&gt;
+&lt;p&gt;Hallo {0},&lt;/p&gt;
+&lt;p&gt;Die Adresse &lt;strong&gt;{1}&lt;/strong&gt; wurde aus den Nobodies-Gruppen und freigegebenen Ordnern entfernt.&lt;/p&gt;
+&lt;p&gt;Deine Haupt-E-Mail bei Nobodies ist jetzt &lt;strong&gt;{2}&lt;/strong&gt;, und dein Zugang zu Gruppen und freigegebenen Ordnern über diese Adresse bleibt unverändert. Diese Nachricht ist nur ein Hinweis darauf, welche Adresse aufgeräumt wurde.&lt;/p&gt;
+&lt;p&gt;Falls {1} weiterhin Zugang haben sollte, wende dich bitte an deine Team-Koordination.&lt;/p&gt;
+&lt;p&gt;Das Humans-Team&lt;/p&gt;</value><comment>{0} = user name, {1} = removed email, {2} = current Google email</comment></data>
+
 </root>

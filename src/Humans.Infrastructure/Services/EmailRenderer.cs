@@ -344,6 +344,35 @@ public class EmailRenderer : IEmailRenderer
         return System.Net.WebUtility.HtmlEncode(text);
     }
 
+    public EmailContent RenderGoogleGroupRemovalLossOfAccess(
+        string userName,
+        string groupName,
+        string groupEmail,
+        string? culture = null)
+        => RenderLocalized(culture, () => new EmailContent(
+            Lf("Email_GoogleGroupRemoval_LossOfAccess_Subject", HtmlEncode(groupEmail)),
+            Lf("Email_GoogleGroupRemoval_LossOfAccess_Body",
+                HtmlEncode(userName), HtmlEncode(groupName), HtmlEncode(groupEmail))));
+
+    public EmailContent RenderGoogleDriveRemovalLossOfAccess(
+        string userName,
+        string folderName,
+        string? culture = null)
+        => RenderLocalized(culture, () => new EmailContent(
+            Lf("Email_GoogleDriveRemoval_LossOfAccess_Subject", HtmlEncode(folderName)),
+            Lf("Email_GoogleDriveRemoval_LossOfAccess_Body",
+                HtmlEncode(userName), HtmlEncode(folderName))));
+
+    public EmailContent RenderGoogleAccessRemovalSecondaryCleanup(
+        string userName,
+        string removedEmail,
+        string currentGoogleEmail,
+        string? culture = null)
+        => RenderLocalized(culture, () => new EmailContent(
+            Lf("Email_GoogleAccessRemoval_SecondaryCleanup_Subject", HtmlEncode(removedEmail)),
+            Lf("Email_GoogleAccessRemoval_SecondaryCleanup_Body",
+                HtmlEncode(userName), HtmlEncode(removedEmail), HtmlEncode(currentGoogleEmail))));
+
     public EmailContent RenderCampaignCode(string subject, string markdownBody, string code, string recipientName)
     {
         // HTML-encode the substitutions so malicious codes/names cannot inject markup.
