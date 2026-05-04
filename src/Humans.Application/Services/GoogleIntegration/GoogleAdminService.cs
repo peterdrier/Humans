@@ -3,7 +3,6 @@ using Humans.Application.Helpers;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
@@ -30,7 +29,6 @@ public sealed class GoogleAdminService : IGoogleAdminService
     private readonly ITeamResourceService _teamResourceService;
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
-    private readonly IUserEmailRepository _userEmailRepository;
     private readonly IAuditLogService _auditLogService;
     private readonly ILogger<GoogleAdminService> _logger;
 
@@ -43,7 +41,6 @@ public sealed class GoogleAdminService : IGoogleAdminService
         ITeamResourceService teamResourceService,
         IUserService userService,
         IUserEmailService userEmailService,
-        IUserEmailRepository userEmailRepository,
         IAuditLogService auditLogService,
         ILogger<GoogleAdminService> logger)
     {
@@ -53,7 +50,6 @@ public sealed class GoogleAdminService : IGoogleAdminService
         _teamResourceService = teamResourceService;
         _userService = userService;
         _userEmailService = userEmailService;
-        _userEmailRepository = userEmailRepository;
         _auditLogService = auditLogService;
         _logger = logger;
     }
@@ -613,14 +609,13 @@ public sealed class GoogleAdminService : IGoogleAdminService
     {
         try
         {
-            // Issue #635 (§15i): read UserEmails through the section-owned
-            // repository instead of traversing user.UserEmails (cross-domain
-            // nav). Load all users + all UserEmails once and group in memory.
+            // Issue #635 (§15i): read UserEmails through the owning section
+            // service (design-rules §2c) instead of traversing user.UserEmails
+            // cross-domain. The service returns the entities so this caller
+            // can read per-row IsVerified / IsGoogle / Provider flags.
             var allUsers = await _userService.GetAllUsersAsync(ct);
-            var allUserEmails = await _userEmailRepository.GetAllAsync(ct);
-            var emailsByUserId = allUserEmails
-                .GroupBy(e => e.UserId)
-                .ToDictionary(g => g.Key, g => (IReadOnlyList<UserEmail>)g.ToList());
+            var allUserIds = allUsers.Select(u => u.Id).ToList();
+            var emailsByUserId = await _userEmailService.GetEntitiesByUserIdsAsync(allUserIds, ct);
 
             var nobodiesUsers = allUsers
                 .Select(u =>
@@ -722,15 +717,16 @@ public sealed class GoogleAdminService : IGoogleAdminService
     {
         try
         {
-            // Issue #635 (§15i): read UserEmails through the section-owned
-            // repository instead of traversing user.UserEmails (cross-domain nav).
+            // Issue #635 (§15i): read UserEmails through the owning section
+            // service (design-rules §2c) instead of traversing user.UserEmails
+            // cross-domain.
             var user = await _userService.GetByIdAsync(userId, ct);
             if (user is null)
             {
                 return new EmailRenameFixResult(false, ErrorMessage: "Human not found.");
             }
 
-            var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
+            var userEmails = await _userEmailService.GetEntitiesByUserIdAsync(userId, ct);
             var oldEmail = userEmails
                 .Where(e => e.IsVerified && e.IsGoogle)
                 .Select(e => e.Email)

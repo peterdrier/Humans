@@ -63,7 +63,6 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
-    private readonly IUserEmailRepository _userEmailRepository;
     private readonly IAuditLogService _auditLogService;
     private readonly ISyncSettingsService _syncSettingsService;
     private readonly IGoogleRemovalNotificationService _removalNotifications;
@@ -83,7 +82,6 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         ITeamService teamService,
         IUserService userService,
         IUserEmailService userEmailService,
-        IUserEmailRepository userEmailRepository,
         IAuditLogService auditLogService,
         ISyncSettingsService syncSettingsService,
         IGoogleRemovalNotificationService removalNotifications,
@@ -102,7 +100,6 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         _teamService = teamService;
         _userService = userService;
         _userEmailService = userEmailService;
-        _userEmailRepository = userEmailRepository;
         _auditLogService = auditLogService;
         _syncSettingsService = syncSettingsService;
         _removalNotifications = removalNotifications;
@@ -636,12 +633,13 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        // Issue #635 (§15i): read UserEmails through the section-owned
-        // repository instead of traversing user.UserEmails (cross-domain nav).
+        // Issue #635 (§15i): read UserEmails through the owning section
+        // service (design-rules §2c) instead of traversing user.UserEmails
+        // cross-domain.
         var user = await _userService.GetByIdAsync(userId, cancellationToken);
         var userEmails = user is null
-            ? Array.Empty<UserEmail>()
-            : (IReadOnlyList<UserEmail>)await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
+            ? (IReadOnlyList<UserEmail>)Array.Empty<UserEmail>()
+            : await _userEmailService.GetEntitiesByUserIdAsync(userId, cancellationToken);
 
         var googleEmail = userEmails
             .Where(e => e.IsVerified && e.IsGoogle)
@@ -2237,7 +2235,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     /// Gets the canonical Google Workspace email for a team member, returning
     /// null when the user's <c>GoogleEmailStatus</c> is Rejected or when the
     /// user has no Workspace identity at all. Issue #635 (§15i): UserEmails
-    /// are pre-fetched by the caller via <see cref="IUserEmailRepository"/>
+    /// are pre-fetched by the caller via <see cref="IUserEmailService.GetEntitiesByUserIdsAsync"/>
     /// and passed in as <paramref name="emailsByUserId"/> instead of being
     /// traversed through <c>tm.User.UserEmails</c>.
     /// </summary>
@@ -2272,23 +2270,16 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     /// Issue #635 (§15i): bulk-fetch UserEmails for a set of team members,
     /// grouped by userId. The Google sync hot-path calls this once per
     /// reconcile and passes the result into every <see cref="TryGetGoogleEmail"/>
-    /// call so we never traverse <c>user.UserEmails</c> cross-domain.
+    /// call so we never traverse <c>user.UserEmails</c> cross-domain. Routed
+    /// through the owning section service per design-rules §2c.
     /// </summary>
-    private async Task<IReadOnlyDictionary<Guid, IReadOnlyList<UserEmail>>>
+    private Task<IReadOnlyDictionary<Guid, IReadOnlyList<UserEmail>>>
         LoadEmailsForMembersAsync(
             IEnumerable<TeamMember> members,
             CancellationToken ct)
     {
         var userIds = members.Select(m => m.UserId).Distinct().ToList();
-        if (userIds.Count == 0)
-            return new Dictionary<Guid, IReadOnlyList<UserEmail>>();
-
-        var allEmails = await _userEmailRepository.GetAllAsync(ct);
-        var idSet = new HashSet<Guid>(userIds);
-        return allEmails
-            .Where(e => idSet.Contains(e.UserId))
-            .GroupBy(e => e.UserId)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<UserEmail>)g.ToList());
+        return _userEmailService.GetEntitiesByUserIdsAsync(userIds, ct);
     }
 
     private static string GetDisplayName(TeamMember tm)

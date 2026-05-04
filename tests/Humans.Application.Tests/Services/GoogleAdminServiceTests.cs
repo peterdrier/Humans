@@ -33,7 +33,6 @@ public class GoogleAdminServiceTests
     private readonly ITeamResourceService _teamResourceService;
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
-    private readonly IUserEmailRepository _userEmailRepository;
     private readonly IAuditLogService _auditLogService;
     private readonly GoogleAdminService _service;
 
@@ -47,7 +46,6 @@ public class GoogleAdminServiceTests
         _teamResourceService = Substitute.For<ITeamResourceService>();
         _userService = Substitute.For<IUserService>();
         _userEmailService = Substitute.For<IUserEmailService>();
-        _userEmailRepository = Substitute.For<IUserEmailRepository>();
         _auditLogService = Substitute.For<IAuditLogService>();
 
         _teamResourceService.GetActiveResourceCountsByTeamAsync(Arg.Any<CancellationToken>())
@@ -60,7 +58,6 @@ public class GoogleAdminServiceTests
             _teamResourceService,
             _userService,
             _userEmailService,
-            _userEmailRepository,
             _auditLogService,
             NullLogger<GoogleAdminService>.Instance);
     }
