@@ -240,12 +240,11 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
         // Match against verified user emails only (issue #645). Unverified emails
         // are not trustworthy enough to drive ticket → user matching, and the prior
         // IsGoogle tiebreak silently picked one identity over another for collisions
-        // that span verified rows. Verified-only collisions stay unmatched and
-        // warn once per email per sync (this method is called exactly once per
-        // sync from SyncOrdersAndAttendeesAsync, and each grouped email is
-        // processed exactly once below — so each colliding address logs at most
-        // one warning per cycle).
-        // Email is normalized so gmail/googlemail aliases resolve to the same human.
+        // that span verified rows. A normalized verified email is supposed to be
+        // owned by exactly one user — multiple-user collisions among verified rows
+        // are a data-integrity error, not an expected condition, so they leave the
+        // email unmatched and emit LogError. Email is normalized so gmail/googlemail
+        // aliases resolve to the same human.
         var entries = await _ticketRepository.GetAllUserEmailLookupEntriesAsync(ct);
 
         var lookup = new Dictionary<string, Guid>(NormalizingEmailComparer.Instance);
@@ -260,9 +259,9 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
             }
             else
             {
-                // Multiple verified users share this email — leave unmatched.
-                // Warning is structured (no Exception arg) per issue #645.
-                _logger.LogWarning(
+                // Multiple verified users share this email — should not happen.
+                // Log as error and leave unmatched so neither user gets the ticket.
+                _logger.LogError(
                     "Email {Email} verified by {Count} users, leaving unmatched",
                     group.Key, distinctUserIds.Count);
             }
