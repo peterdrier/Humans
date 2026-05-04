@@ -154,28 +154,7 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
 
         var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
 
-        // Issue #635 (§15i): lazy-compute Profile.State on read when persisted
-        // value is NULL, then write back via the conditional repo update.
-        // The in-memory profile entity is detached (read-only load) so we
-        // mutate its State for the FullProfile snapshot we cache and persist
-        // the same value via WriteBackStateIfNullAsync. The repo guard
-        // (State IS NULL) makes this idempotent for concurrent reads.
-        if (profile.State is null)
-        {
-            var computed = ComputeProfileState(profile);
-            try
-            {
-                await _profileRepository.WriteBackStateIfNullAsync(userId, computed, ct);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                // Lazy backfill is best-effort; the next read retries. Don't
-                // block FullProfile resolution on a write failure.
-                System.Diagnostics.Debug.WriteLine(
-                    $"CachingProfileService: lazy ProfileState write-back failed for {userId}: {ex.GetType().Name}");
-            }
-            profile.State = computed;
-        }
+        await PopulateStateIfNullAsync(profile, ct);
 
         // Issue #635 (§15i): pass userEmails directly so PrimaryEmail /
         // AllVerifiedEmails / GoogleEmail derive from already-loaded data
@@ -184,12 +163,45 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
     }
 
     /// <summary>
+    /// Issue #635 (§15i): if the loaded <paramref name="profile"/>'s State is
+    /// null, lazy-compute the canonical value and write it back via
+    /// <see cref="IProfileRepository.WriteBackStateIfNullAsync"/>. The repo
+    /// guard (State IS NULL) keeps this idempotent under concurrent reads.
+    /// Mutates the in-memory profile so the cached <see cref="FullProfile"/>
+    /// reflects the computed value even when the write-back is a no-op.
+    /// Best-effort: a write failure logs and proceeds — the next read retries.
+    /// Used by both <see cref="RefreshEntryAsync"/> (single-user path) and
+    /// <see cref="WarmAllAsync"/> (startup warmup) so legacy NULL rows are
+    /// populated regardless of how the FullProfile entry is built.
+    /// </summary>
+    private async Task PopulateStateIfNullAsync(Profile profile, CancellationToken ct)
+    {
+        if (profile.State is not null) return;
+
+        var computed = ComputeProfileState(profile);
+        try
+        {
+            await _profileRepository.WriteBackStateIfNullAsync(profile.UserId, computed, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Lazy backfill is best-effort; the next read retries. Don't
+            // block FullProfile resolution on a write failure.
+            System.Diagnostics.Debug.WriteLine(
+                $"CachingProfileService: lazy ProfileState write-back failed for {profile.UserId}: {ex.GetType().Name}");
+        }
+        profile.State = computed;
+    }
+
+    /// <summary>
     /// Issue #635 (§15i): computes the ProfileState that should be persisted
     /// for a row whose stored value is NULL, from <c>IsSuspended</c> +
     /// required-field presence. Suspended dominates; otherwise rows missing
-    /// any of (BurnerName, FirstName, LastName) are <see cref="ProfileState.Stub"/>;
-    /// rows with all three populated and not suspended are
-    /// <see cref="ProfileState.Active"/>.
+    /// (or whitespace-only on) any of (BurnerName, FirstName, LastName) are
+    /// <see cref="ProfileState.Stub"/>; rows with all three populated and not
+    /// suspended are <see cref="ProfileState.Active"/>. Uses
+    /// <c>IsNullOrWhiteSpace</c> to match the Stub→Active transition logic in
+    /// <c>ProfileService.SaveProfileAsync</c>.
     /// </summary>
     internal static ProfileState ComputeProfileState(Profile profile)
     {
@@ -198,9 +210,9 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
             return ProfileState.Suspended;
 #pragma warning restore HUM_PROFILE_ISSUSPENDED
 
-        if (string.IsNullOrEmpty(profile.BurnerName) ||
-            string.IsNullOrEmpty(profile.FirstName) ||
-            string.IsNullOrEmpty(profile.LastName))
+        if (string.IsNullOrWhiteSpace(profile.BurnerName) ||
+            string.IsNullOrWhiteSpace(profile.FirstName) ||
+            string.IsNullOrWhiteSpace(profile.LastName))
             return ProfileState.Stub;
 
         return ProfileState.Active;
@@ -247,6 +259,8 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         {
             if (!users.TryGetValue(profile.UserId, out var user))
                 continue;
+
+            await PopulateStateIfNullAsync(profile, ct);
 
             var userEmails = emailsByUserId.TryGetValue(profile.UserId, out var list)
                 ? list
@@ -502,6 +516,14 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         var navBadge = scope.ServiceProvider.GetRequiredService<INavBadgeCacheInvalidator>();
         await inner.SetMembershipTierAsync(userId, tier, ct);
         navBadge.Invalidate();
+        await RefreshEntryAsync(userId, ct);
+    }
+
+    public async Task EnsureStubProfileAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        await inner.EnsureStubProfileAsync(userId, ct);
         await RefreshEntryAsync(userId, ct);
     }
 

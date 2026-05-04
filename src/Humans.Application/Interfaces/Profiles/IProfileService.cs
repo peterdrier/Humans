@@ -31,6 +31,17 @@ public interface IProfileService : IUserMerge
         CancellationToken ct = default);
 
     /// <summary>
+    /// Issue #635 (§15i): idempotently materialize a <see cref="ProfileState.Stub"/>
+    /// Profile row for the given user. Called by User-creation paths
+    /// (<c>AccountController.ExternalLoginCallback</c>, <c>AccountController.CompleteSignup</c>,
+    /// <c>AccountProvisioningService.FindOrCreateUserByEmailAsync</c>) so cross-
+    /// section reads can rely on a non-null Profile pointer. No-op if a profile
+    /// already exists. The caching decorator refreshes the FullProfile entry
+    /// after the write so downstream reads see the new Stub immediately.
+    /// </summary>
+    Task EnsureStubProfileAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// Updates the profile's <see cref="Profile.MembershipTier"/> and
     /// <see cref="Profile.UpdatedAt"/>, persists, and invalidates the
     /// profile's cache entry. No-op with a warning log if the user has no
