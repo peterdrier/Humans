@@ -600,14 +600,15 @@ public class GoogleController : HumansControllerBase
             MissingTwoFactorCount = result.MissingTwoFactorCount
         };
 
-        // If a previous POST just generated backup codes, surface them once via a modal.
-        // TempData is single-use — once the page renders, the codes are gone.
-        if (TempData[TempDataKeys.WorkspaceBackupCodes] is string codesJson)
+        // If a previous POST just issued recovery credentials (password reset
+        // ± a 2FA backup code), surface them once via a modal. TempData is
+        // single-use — once the page renders, the secrets are gone.
+        if (TempData[TempDataKeys.WorkspaceRecoveryCredentials] is string credsJson)
         {
-            var codesVm = System.Text.Json.JsonSerializer.Deserialize<WorkspaceBackupCodesViewModel>(codesJson);
-            if (codesVm is not null)
+            var credsVm = System.Text.Json.JsonSerializer.Deserialize<WorkspaceRecoveryCredentialsViewModel>(credsJson);
+            if (credsVm is not null)
             {
-                ViewBag.GeneratedBackupCodes = codesVm;
+                ViewBag.RecoveryCredentials = credsVm;
             }
         }
 
@@ -706,18 +707,28 @@ public class GoogleController : HumansControllerBase
         var result = await _googleAdminService.ResetPasswordAsync(
             email, currentUser.Id);
 
-        if (result.Success)
-            SetSuccess(result.Message!);
+        if (result.Success && !string.IsNullOrEmpty(result.TemporaryPassword))
+        {
+            CarryRecoveryCredentials(new WorkspaceRecoveryCredentialsViewModel
+            {
+                Email = email,
+                TempPassword = result.TemporaryPassword,
+                BackupCode = null
+            });
+            SetSuccess($"Password reset for {email}. Deliver the new password securely.");
+        }
         else
-            SetError(result.ErrorMessage!);
+        {
+            SetError(result.ErrorMessage ?? $"Failed to reset password for {email}.");
+        }
 
         return RedirectToAction(nameof(Accounts));
     }
 
-    [HttpPost("Accounts/GenerateBackupCodes")]
+    [HttpPost("Accounts/ResetPasswordAndGenerate2Fa")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> GenerateBackupCodes(string email)
+    public async Task<IActionResult> ResetPasswordAndGenerate2Fa(string email)
     {
         if (string.IsNullOrWhiteSpace(email))
         {
@@ -727,50 +738,33 @@ public class GoogleController : HumansControllerBase
         var currentUser = await GetCurrentUserAsync();
         if (currentUser is null) return Unauthorized();
 
-        var result = await _googleAdminService.GenerateBackupCodesAsync(email, currentUser.Id);
+        var result = await _googleAdminService.ResetPasswordAndGenerate2FaAsync(
+            email, currentUser.Id);
 
-        if (result.Success && result.Codes is { Count: > 0 })
+        if (result.Success && !string.IsNullOrEmpty(result.TempPassword))
         {
-            // Carry codes across the PRG redirect via TempData. Single-use so a refresh
-            // of the Accounts page after dismissing the modal doesn't re-expose them.
-            var codesVm = new WorkspaceBackupCodesViewModel
+            CarryRecoveryCredentials(new WorkspaceRecoveryCredentialsViewModel
             {
                 Email = result.Email ?? email,
-                Codes = result.Codes.ToList()
-            };
-            TempData[TempDataKeys.WorkspaceBackupCodes] =
-                System.Text.Json.JsonSerializer.Serialize(codesVm);
-            SetSuccess(result.Message ?? $"Generated {result.Codes.Count} backup code(s) for {email}.");
+                TempPassword = result.TempPassword,
+                BackupCode = result.BackupCode
+            });
+            SetSuccess(result.Message ?? $"Recovery credentials issued for {email}. Deliver them securely.");
         }
         else
         {
-            SetError(result.ErrorMessage ?? $"Failed to generate backup codes for {email}.");
+            SetError(result.ErrorMessage ?? $"Failed to issue recovery credentials for {email}.");
         }
 
         return RedirectToAction(nameof(Accounts));
     }
 
-    [HttpPost("Accounts/InvalidateBackupCodes")]
-    [Authorize(Policy = PolicyNames.AdminOnly)]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> InvalidateBackupCodes(string email)
+    private void CarryRecoveryCredentials(WorkspaceRecoveryCredentialsViewModel vm)
     {
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            return BadRequest();
-        }
-
-        var currentUser = await GetCurrentUserAsync();
-        if (currentUser is null) return Unauthorized();
-
-        var result = await _googleAdminService.InvalidateBackupCodesAsync(email, currentUser.Id);
-
-        if (result.Success)
-            SetSuccess(result.Message!);
-        else
-            SetError(result.ErrorMessage!);
-
-        return RedirectToAction(nameof(Accounts));
+        // Single-use across the PRG redirect — a refresh of /Google/Accounts
+        // after dismissing the modal cannot re-expose the secrets.
+        TempData[TempDataKeys.WorkspaceRecoveryCredentials] =
+            System.Text.Json.JsonSerializer.Serialize(vm);
     }
 
     [HttpPost("Accounts/Link")]

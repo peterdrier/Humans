@@ -468,39 +468,78 @@ public class GoogleAdminServiceTests
         result.Codes.Should().BeEquivalentTo(issued);
     }
 
-    // --- InvalidateBackupCodesAsync ---
+    // --- ResetPasswordAndGenerate2FaAsync ---
 
     [HumansFact]
-    public async Task InvalidateBackupCodesAsync_InvalidatesAndAudits()
+    public async Task ResetPasswordAndGenerate2FaAsync_ReturnsBothCredentialsOnSuccess()
     {
-        var result = await _service.InvalidateBackupCodesAsync(
+        IReadOnlyList<string> issued = ["aaaa-1111", "bbbb-2222", "cccc-3333"];
+        _workspaceUserService.GenerateBackupCodesAsync(
+                "alice@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(issued);
+
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
             "alice@nobodies.team", _actorUserId);
 
         result.Success.Should().BeTrue();
-        result.Message.Should().Contain("invalidated");
+        result.Email.Should().Be("alice@nobodies.team");
+        result.TempPassword.Should().NotBeNullOrEmpty();
+        // The recovery flow uses one code, not the full set.
+        result.BackupCode.Should().Be("aaaa-1111");
 
-        await _workspaceUserService.Received(1)
-            .InvalidateBackupCodesAsync("alice@nobodies.team", Arg.Any<CancellationToken>());
+        await _workspaceUserService.Received(1).ResetPasswordAsync(
+            "alice@nobodies.team", Arg.Any<string>(), Arg.Any<CancellationToken>());
+
+        // Two audit entries — one for the password reset, one for the codes generation.
         await _auditLogService.Received(1).LogAsync(
-            AuditAction.WorkspaceAccountBackupCodesInvalidated,
+            AuditAction.WorkspaceAccountPasswordReset,
             "WorkspaceAccount", Guid.Empty,
-            Arg.Is<string>(s => s.Contains("alice@nobodies.team")),
-            _actorUserId,
+            Arg.Any<string>(), _actorUserId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.WorkspaceAccountBackupCodesGenerated,
+            "WorkspaceAccount", Guid.Empty,
+            Arg.Any<string>(), _actorUserId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
-    public async Task InvalidateBackupCodesAsync_ReturnsErrorOnFailure()
+    public async Task ResetPasswordAndGenerate2FaAsync_ReturnsFailureWhenPasswordResetFails()
     {
-        _workspaceUserService.InvalidateBackupCodesAsync(
-                Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("API error"));
+        _workspaceUserService.ResetPasswordAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Google API error"));
 
-        var result = await _service.InvalidateBackupCodesAsync(
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
             "alice@nobodies.team", _actorUserId);
 
         result.Success.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("Failed to invalidate");
+        result.TempPassword.Should().BeNull();
+        result.BackupCode.Should().BeNull();
+        result.ErrorMessage.Should().Contain("Failed to reset password");
+
+        // Backup-code generation must NOT be attempted when password reset failed.
+        await _workspaceUserService.DidNotReceive().GenerateBackupCodesAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ResetPasswordAndGenerate2FaAsync_ReturnsPasswordOnlyWhenBackupCodesFail()
+    {
+        // Password reset succeeds, but Google rejects the backup-code request.
+        // The admin still gets the password — partial success is more useful
+        // than asking them to retry from scratch (Google has already rotated).
+        _workspaceUserService.GenerateBackupCodesAsync(
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Google API error"));
+
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+            "alice@nobodies.team", _actorUserId);
+
+        result.Success.Should().BeTrue();
+        result.TempPassword.Should().NotBeNullOrEmpty();
+        result.BackupCode.Should().BeNull();
+        result.Message.Should().Contain("Backup-code generation failed");
     }
 
     // --- LinkAccountAsync ---

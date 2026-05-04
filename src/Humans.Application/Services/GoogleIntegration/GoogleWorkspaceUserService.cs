@@ -92,11 +92,4 @@ public sealed class GoogleWorkspaceUserService : IGoogleWorkspaceUserService
         return codes;
     }
 
-    public async Task InvalidateBackupCodesAsync(
-        string primaryEmail, CancellationToken ct = default)
-    {
-        await _client.InvalidateBackupCodesAsync(primaryEmail, ct);
-        _logger.LogInformation(
-            "Invalidated backup codes for workspace account: {Email}", primaryEmail);
-    }
 }

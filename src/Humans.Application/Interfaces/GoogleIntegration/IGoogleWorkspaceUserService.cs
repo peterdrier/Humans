@@ -52,20 +52,13 @@ public interface IGoogleWorkspaceUserService
     /// <summary>
     /// Generates a fresh set of backup verification codes for the account and returns them.
     /// Google reissues the full set on generate — any previously issued codes are invalidated.
-    /// The account must be enrolled in 2-Step Verification for generated codes to be usable.
+    /// Confirmed (2026-05-04) to work for accounts that have not yet enrolled in 2SV: the
+    /// admin can hand a single code + password to a locked-out human for first sign-in.
     /// </summary>
     /// <param name="primaryEmail">The @nobodies.team account to generate codes for.</param>
     /// <param name="ct">Cancellation token.</param>
-    /// <returns>The freshly issued backup codes (typically 10 codes).</returns>
+    /// <returns>The freshly issued backup codes (typically 10 codes; the recovery flow uses one).</returns>
     Task<IReadOnlyList<string>> GenerateBackupCodesAsync(
-        string primaryEmail,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Invalidates all backup verification codes for the account. Use when codes may
-    /// have leaked or to revoke previously issued codes without issuing new ones.
-    /// </summary>
-    Task InvalidateBackupCodesAsync(
         string primaryEmail,
         CancellationToken ct = default);
 }

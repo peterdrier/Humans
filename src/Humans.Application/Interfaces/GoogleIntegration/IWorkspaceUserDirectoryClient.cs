@@ -64,9 +64,4 @@ public interface IWorkspaceUserDirectoryClient
     /// previously issued codes are invalidated.
     /// </summary>
     Task<IReadOnlyList<string>> GenerateBackupCodesAsync(string primaryEmail, CancellationToken ct = default);
-
-    /// <summary>
-    /// Invalidates all backup verification codes for the account.
-    /// </summary>
-    Task InvalidateBackupCodesAsync(string primaryEmail, CancellationToken ct = default);
 }

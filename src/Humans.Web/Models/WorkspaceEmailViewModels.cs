@@ -58,13 +58,26 @@ public class WorkspaceEmailAccountViewModel
 }
 
 /// <summary>
-/// View model for the "codes generated" modal shown once after backup code generation.
-/// Codes are carried in TempData from GenerateBackupCodes POST → Accounts GET.
+/// One-shot recovery credentials shown to the admin in a modal after a
+/// password reset (and optionally a 2FA backup-code grab). Carried in
+/// TempData across the PRG redirect so a refresh after dismissal cannot
+/// re-expose the secret material.
 /// </summary>
-public class WorkspaceBackupCodesViewModel
+public class WorkspaceRecoveryCredentialsViewModel
 {
     public string Email { get; set; } = string.Empty;
-    public List<string> Codes { get; set; } = [];
+
+    /// <summary>
+    /// Freshly generated temporary password for the @nobodies.team account.
+    /// Always populated for both flows (reset-only and reset+2FA).
+    /// </summary>
+    public string TempPassword { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Single backup verification code, populated only when the admin
+    /// requested the combined "Reset + 2FA" flow. Null for password-only.
+    /// </summary>
+    public string? BackupCode { get; set; }
 }
 
 /// <summary>

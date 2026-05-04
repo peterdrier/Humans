@@ -197,13 +197,6 @@ public sealed class WorkspaceUserDirectoryClient : IWorkspaceUserDirectoryClient
         return codes;
     }
 
-    public async Task InvalidateBackupCodesAsync(
-        string primaryEmail, CancellationToken ct = default)
-    {
-        var service = await GetDirectoryServiceAsync();
-        await service.VerificationCodes.Invalidate(primaryEmail).ExecuteAsync(ct);
-    }
-
     private static WorkspaceUserAccount MapToAccount(User user)
     {
         return new WorkspaceUserAccount(

@@ -381,29 +381,46 @@ public sealed class GoogleAdminService : IGoogleAdminService
             Message: $"Generated {codes.Count} backup code(s) for {email}. Deliver them securely — they cannot be retrieved again.");
     }
 
-    public async Task<WorkspaceAccountActionResult> InvalidateBackupCodesAsync(
+    public async Task<WorkspaceRecoveryCredentialsResult> ResetPasswordAndGenerate2FaAsync(
         string email, Guid actorUserId,
         CancellationToken ct = default)
     {
-        try
+        // Step 1: reset the password. Audit + return on failure — there's
+        // no point grabbing a backup code if the human can't sign in anyway.
+        var resetResult = await ResetPasswordAsync(email, actorUserId, ct);
+        if (!resetResult.Success || resetResult.TemporaryPassword is null)
         {
-            await _workspaceUserService.InvalidateBackupCodesAsync(email, ct);
-
-            await _auditLogService.LogAsync(
-                AuditAction.WorkspaceAccountBackupCodesInvalidated,
-                "WorkspaceAccount", Guid.Empty,
-                $"Invalidated backup codes for @{NobodiesTeamDomain} account: {email}",
-                actorUserId);
-
-            return new WorkspaceAccountActionResult(true,
-                Message: $"Backup codes invalidated for {email}.");
+            return new WorkspaceRecoveryCredentialsResult(
+                Success: false,
+                Email: email,
+                ErrorMessage: resetResult.ErrorMessage
+                    ?? $"Failed to reset password for {email}. Check logs for details.");
         }
-        catch (Exception ex)
+
+        // Step 2: grab a backup code. If this fails, the password is still
+        // valid — return Success with just the password and an explanatory
+        // message so the admin can deliver what we have. (Google rotates
+        // codes destructively, so a partial success is better than re-asking
+        // the admin to start over.)
+        var codesResult = await GenerateBackupCodesAsync(email, actorUserId, ct);
+        if (!codesResult.Success || codesResult.Codes is not { Count: > 0 })
         {
-            _logger.LogError(ex, "Failed to invalidate backup codes for: {Email}", email);
-            return new WorkspaceAccountActionResult(false,
-                ErrorMessage: $"Failed to invalidate backup codes for {email}. Check logs for details.");
+            return new WorkspaceRecoveryCredentialsResult(
+                Success: true,
+                Email: email,
+                TempPassword: resetResult.TemporaryPassword,
+                BackupCode: null,
+                Message: $"Password reset for {email}. Backup-code generation failed — "
+                       + (codesResult.ErrorMessage
+                            ?? "deliver the password only and ask the human to re-attempt the 2FA request out-of-band."));
         }
+
+        return new WorkspaceRecoveryCredentialsResult(
+            Success: true,
+            Email: email,
+            TempPassword: resetResult.TemporaryPassword,
+            BackupCode: codesResult.Codes[0],
+            Message: $"Password reset and one backup code issued for {email}. Deliver both securely — neither can be retrieved again.");
     }
 
     public async Task<WorkspaceAccountActionResult> LinkAccountAsync(

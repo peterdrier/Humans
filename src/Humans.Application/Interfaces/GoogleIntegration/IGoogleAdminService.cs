@@ -45,18 +45,13 @@ public interface IGoogleAdminService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Generates a fresh set of backup verification codes for a @nobodies.team account.
-    /// Invalidates any previously issued codes. Writes an audit log entry.
+    /// Resets the password for a @nobodies.team account AND grabs a single
+    /// fresh backup verification code so the admin can hand both to a
+    /// locked-out human in one transaction (the user can sign in with the
+    /// temp password and the code regardless of 2FA-enrollment state).
+    /// Writes two audit entries (password reset + backup codes generated).
     /// </summary>
-    Task<WorkspaceBackupCodesResult> GenerateBackupCodesAsync(
-        string email, Guid actorUserId,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Invalidates all backup verification codes for a @nobodies.team account.
-    /// Writes an audit log entry.
-    /// </summary>
-    Task<WorkspaceAccountActionResult> InvalidateBackupCodesAsync(
+    Task<WorkspaceRecoveryCredentialsResult> ResetPasswordAndGenerate2FaAsync(
         string email, Guid actorUserId,
         CancellationToken ct = default);
 
@@ -152,6 +147,19 @@ public record WorkspaceBackupCodesResult(
     bool Success,
     string? Email = null,
     IReadOnlyList<string>? Codes = null,
+    string? Message = null,
+    string? ErrorMessage = null);
+
+/// <summary>
+/// Result of the combined password-reset + single-backup-code recovery flow.
+/// Both fields are one-shot — they can never be retrieved again after
+/// the admin closes the modal.
+/// </summary>
+public record WorkspaceRecoveryCredentialsResult(
+    bool Success,
+    string? Email = null,
+    string? TempPassword = null,
+    string? BackupCode = null,
     string? Message = null,
     string? ErrorMessage = null);
 

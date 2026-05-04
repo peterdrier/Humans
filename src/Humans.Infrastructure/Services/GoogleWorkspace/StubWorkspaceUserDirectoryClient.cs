@@ -101,12 +101,6 @@ public sealed class StubWorkspaceUserDirectoryClient : IWorkspaceUserDirectoryCl
         return Task.FromResult(codes);
     }
 
-    public Task InvalidateBackupCodesAsync(string primaryEmail, CancellationToken ct = default)
-    {
-        _logger.LogInformation("[Stub] Invalidated backup codes for fake account: {Email}", primaryEmail);
-        return Task.CompletedTask;
-    }
-
     private void ReplaceAccount(string email, Func<WorkspaceUserAccount, WorkspaceUserAccount> transform)
     {
         var index = _accounts.FindIndex(a =>
