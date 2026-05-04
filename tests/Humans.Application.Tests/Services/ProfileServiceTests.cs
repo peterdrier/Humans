@@ -127,6 +127,42 @@ public class ProfileServiceTests : IDisposable
         profile.LastName.Should().Be("Doe");
     }
 
+    /// <summary>
+    /// Issue #635 (§15i): the Stub → Active transition. SaveProfileAsync that
+    /// populates BurnerName / FirstName / LastName promotes a freshly created
+    /// Profile from <see cref="ProfileState.Stub"/> to
+    /// <see cref="ProfileState.Active"/>.
+    /// </summary>
+    [HumansFact(Timeout = 10000)]
+    public async Task ProfileService_UpdateProfileAsync_TransitionsStubToActive_WhenAllRequiredFieldsPopulated()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId);
+        var request = MakeRequest(burnerName: "Flame", firstName: "Jane", lastName: "Doe");
+
+        await _service.SaveProfileAsync(userId, "Jane Doe", request, "en");
+
+        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        profile.State.Should().Be(ProfileState.Active);
+    }
+
+    /// <summary>
+    /// Issue #635 (§15i): missing required fields keeps the Profile in Stub.
+    /// </summary>
+    [HumansFact(Timeout = 10000)]
+    public async Task ProfileService_UpdateProfileAsync_StaysStub_WhenRequiredFieldsBlank()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId);
+        // BurnerName/FirstName/LastName all empty — Stub state.
+        var request = MakeRequest(burnerName: "", firstName: "", lastName: "");
+
+        await _service.SaveProfileAsync(userId, "Stub", request, "en");
+
+        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        profile.State.Should().Be(ProfileState.Stub);
+    }
+
     [HumansFact]
     public async Task SaveProfileAsync_ExistingProfile_UpdatesFields()
     {
