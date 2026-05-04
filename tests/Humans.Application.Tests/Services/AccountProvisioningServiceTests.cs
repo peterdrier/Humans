@@ -286,6 +286,8 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<Guid?> GetUserIdByVerifiedEmailAsync(string email, CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task<IReadOnlyList<Guid>> GetDistinctUserIdsByVerifiedEmailAsync(string email, CancellationToken ct = default) =>
+            throw new NotSupportedException();
         public Task<IReadOnlyList<UserEmail>> GetAllAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task RemoveAllForUserAndSaveAsync(Guid userId, CancellationToken ct = default) =>

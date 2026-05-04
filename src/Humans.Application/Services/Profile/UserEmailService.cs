@@ -477,14 +477,12 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
 
     public async Task<Guid?> GetUserIdByExactEmailAsync(string email, CancellationToken ct = default)
     {
-        // Reuse the verified-email lookup. Ambiguous matches (multiple verified
-        // rows for the same address across users) are surfaced as null by the
-        // underlying repository which returns the first match; treat > 1 as
-        // ambiguous by checking via GetOtherUserId — but in practice the email
-        // uniqueness invariant means this should never happen. Unverified-only
-        // addresses return null (acceptable for recipient lookup: if someone's
-        // address isn't verified they cannot receive system mail anyway).
-        return await _repository.GetUserIdByVerifiedEmailAsync(email, ct);
+        // Returns null on zero matches (unverified-only or unknown address) and
+        // on ambiguous matches (the same verified address appears on more than one
+        // user — an invariant violation, but we treat it safely). Only returns a
+        // non-null id when exactly one distinct UserId owns the verified address.
+        var userIds = await _repository.GetDistinctUserIdsByVerifiedEmailAsync(email, ct);
+        return userIds.Count == 1 ? userIds[0] : (Guid?)null;
     }
 
     public async Task<string?> GetPrimaryEmailAsync(Guid userId, CancellationToken ct = default)
