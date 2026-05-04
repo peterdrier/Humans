@@ -270,6 +270,12 @@ public sealed class StubTicketVendorService : ITicketVendorService
         return hash;
     }
 
+    public Task<VoidIssuedTicketResult> VoidIssuedTicketAsync(string vendorTicketId, bool voidToHold, CancellationToken ct = default) =>
+        throw new NotSupportedException("Implemented in Phase 3 / Task 3.1");
+
+    public Task<VendorTicketDto> IssueTicketAsync(IssueTicketRequest request, CancellationToken ct = default) =>
+        throw new NotSupportedException("Implemented in Phase 3 / Task 3.1");
+
     private sealed record SampleData(
         IReadOnlyList<VendorOrderDto> Orders,
         IReadOnlyList<VendorTicketDto> Tickets);

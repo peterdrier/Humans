@@ -372,4 +372,10 @@ public class TicketTailorService : ITicketVendorService
     internal sealed record TtVoucherCode(
         [property: JsonPropertyName("code")] string? Code,
         [property: JsonPropertyName("times_used")] int? TimesUsed);
+
+    public Task<VoidIssuedTicketResult> VoidIssuedTicketAsync(string vendorTicketId, bool voidToHold, CancellationToken ct = default) =>
+        throw new NotSupportedException("Implemented in Phase 3 / Task 3.1");
+
+    public Task<VendorTicketDto> IssueTicketAsync(IssueTicketRequest request, CancellationToken ct = default) =>
+        throw new NotSupportedException("Implemented in Phase 3 / Task 3.1");
 }

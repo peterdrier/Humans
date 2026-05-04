@@ -47,3 +47,45 @@ public sealed record TicketTransferRowDto(
     string? AdminNotes,
     Instant RequestedAt,
     Instant? DecidedAt);
+
+/// <summary>Outcome of a TT void call.</summary>
+public sealed record VoidIssuedTicketResult(string VendorTicketId, string? HoldId);
+
+/// <summary>Payload for TT issue-ticket call. EventId+TicketTypeId XOR HoldId is required.</summary>
+public sealed record IssueTicketRequest(
+    string? EventId,
+    string? TicketTypeId,
+    string? HoldId,
+    string FullName,
+    string? Email,
+    bool SendEmail,
+    string? ExternalReference);
+
+/// <summary>Categorised vendor failure for Option-C fallback decisions in the service.</summary>
+public sealed class TicketVendorWriteException : Exception
+{
+    public TicketVendorWriteException() { }
+    public TicketVendorWriteException(string message) : base(message) { }
+    public TicketVendorWriteException(string message, Exception inner) : base(message, inner) { }
+
+    public TicketVendorWriteException(string message, TicketVendorFailureKind kind, Exception? inner = null)
+        : base(message, inner)
+    {
+        Kind = kind;
+    }
+    public TicketVendorFailureKind Kind { get; }
+}
+
+public enum TicketVendorFailureKind
+{
+    /// <summary>HTTP 400 / 422 — bad payload, sold out, seated ticket type. Do not retry.</summary>
+    Validation,
+    /// <summary>HTTP 401/403 — credential rotation problem. Do not retry.</summary>
+    AuthFailed,
+    /// <summary>HTTP 404 — ticket already voided or unknown. Treat per-call.</summary>
+    NotFound,
+    /// <summary>HTTP 429 — rate limited. Surface to user; do not auto-retry mid-request.</summary>
+    RateLimited,
+    /// <summary>HTTP 5xx or transport failure. May retry from admin UI.</summary>
+    Transient,
+}
