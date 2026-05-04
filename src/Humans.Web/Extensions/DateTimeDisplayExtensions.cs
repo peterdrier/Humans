@@ -166,10 +166,10 @@ public static class DateTimeDisplayExtensions
         value.InZone(GetCurrentUserTimeZone()).ToDateTimeUnspecified().ToDisplayCompactDayTime();
 
     public static string ToDisplayCompactDayTime(this DateTime value) =>
-        value.ToString("d MMM", CultureInfo.CurrentCulture) + " @ " + value.ToString("HH:mm", CultureInfo.InvariantCulture);
+        value.ToString("MMM d", CultureInfo.CurrentCulture) + " @ " + value.ToString("HH:mm", CultureInfo.InvariantCulture);
 
     public static string ToDisplayShiftDate(this LocalDate value) =>
-        value.DayOfWeek.ToString()[..3] + " " + value.ToString("d MMM", null);
+        value.DayOfWeek.ToString()[..3] + " " + value.ToString("MMM d", null);
 
     public static string ToDisplayMonthYear(this DateTime value) =>
         value.ToString("MMM yyyy", CultureInfo.CurrentCulture);

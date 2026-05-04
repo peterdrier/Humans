@@ -554,6 +554,15 @@ public class ShiftsController : HumansControllerBase
         if (!ModelState.IsValid)
             return View(model);
 
+        if (model.FirstCrewStartOffset >= model.SetupWeekStartOffset
+            || model.SetupWeekStartOffset >= model.PreEventWeekStartOffset
+            || model.PreEventWeekStartOffset >= model.FinishingWeekendStartOffset)
+        {
+            ModelState.AddModelError(string.Empty,
+                "Build sub-period offsets must be strictly ascending: First crew < Set-up week < Pre-event week < Finishing weekend.");
+            return View(model);
+        }
+
         if (DateTimeZoneProviders.Tzdb.GetZoneOrNull(model.TimeZoneId) is null)
         {
             ModelState.AddModelError(nameof(model.TimeZoneId), "Invalid IANA timezone ID.");

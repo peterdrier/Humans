@@ -61,4 +61,26 @@ public class BuildSubPeriodClassifierTests
         start.Should().Be(expectedStart);
         end.Should().Be(expectedEnd);
     }
+
+    [HumansFact]
+    public void BoundsFor_with_inverted_offsets_returns_empty_range_silently()
+    {
+        // Documents the silent failure mode: when sub-period offsets are mis-ordered
+        // (e.g. FirstCrewStartOffset > SetupWeekStartOffset), BoundsFor returns a
+        // degenerate range where StartInclusive >= EndExclusive. Callers that filter
+        // with d >= start && d < end will produce zero results. No exception is thrown.
+        // The ascending-order guard on EventSettingsViewModel prevents this at the UI
+        // layer, but the classifier itself has no guard — this test makes that visible.
+        var inverted = new EventSettings
+        {
+            BuildStartOffset = -25,
+            FirstCrewStartOffset = -10, // inverted: later than SetupWeekStartOffset
+            SetupWeekStartOffset = -16,
+            PreEventWeekStartOffset = -9,
+            FinishingWeekendStartOffset = -4,
+        };
+        var (start, end) = BuildSubPeriodClassifier.BoundsFor(BuildSubPeriod.FirstCrew, inverted);
+        // start (-10) >= end (-16) → the range is empty; callers get zero days.
+        start.Should().BeGreaterThanOrEqualTo(end);
+    }
 }

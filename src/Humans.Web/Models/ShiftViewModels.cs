@@ -28,9 +28,16 @@ public class EventSettingsViewModel
     public int StrikeEndOffset { get; set; } = 9;
 
     // Build sub-period boundaries — defaults match the entity defaults set by EF config.
+    [Range(int.MinValue, -1, ErrorMessage = "First crew start must be a negative offset relative to gate-opening day.")]
     public int FirstCrewStartOffset { get; set; } = -25;
+
+    [Range(int.MinValue, -1, ErrorMessage = "Set-up week start must be a negative offset relative to gate-opening day.")]
     public int SetupWeekStartOffset { get; set; } = -16;
+
+    [Range(int.MinValue, -1, ErrorMessage = "Pre-event week start must be a negative offset relative to gate-opening day.")]
     public int PreEventWeekStartOffset { get; set; } = -9;
+
+    [Range(int.MinValue, -1, ErrorMessage = "Finishing weekend start must be a negative offset relative to gate-opening day.")]
     public int FinishingWeekendStartOffset { get; set; } = -4;
 
     public string EarlyEntryCapacityJson { get; set; } = "{}";

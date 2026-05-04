@@ -175,6 +175,17 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         entity.UpdatedAt = _clock.GetCurrentInstant();
         await _repo.UpdateEventSettingsAsync(entity);
+
+        // EventSettings changes (offsets, gate-opening date, timezone) affect every
+        // dashboard aggregate — evict all cached period/trend-window combinations.
+        var periods = new ShiftPeriod?[] { null }.Concat(Enum.GetValues<ShiftPeriod>().Cast<ShiftPeriod?>());
+        foreach (var p in periods)
+        {
+            _cache.Remove(OverviewCacheKey(entity.Id, p));
+            _cache.Remove(CoordinatorActivityCacheKey(entity.Id, p));
+            foreach (var w in Enum.GetValues<TrendWindow>())
+                _cache.Remove(TrendsCacheKey(entity.Id, w, p));
+        }
     }
 
     public int GetAvailableEeSlots(EventSettings settings, int dayOffset)
@@ -689,6 +700,9 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         var tz = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
 
+        // TODO(consolidation): these 6 day-offset-list builders inline BoundsFor directly
+        // rather than going through GetDayOffsetBounds, because they need an explicit
+        // iteration list (not a min/max tuple). Unifying would require a new helper overload.
         var dayOffsets = new List<int>();
         if (period is null or ShiftPeriod.Build)
             for (var d = es.BuildStartOffset; d < 0; d++) dayOffsets.Add(d);
@@ -720,7 +734,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             var dayStart = dayDate.AtStartOfDayInZone(tz).ToInstant();
             var dayEnd = dayDate.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
             var periodLabel = dayOffset < 0 ? "Set-up" : dayOffset <= es.EventEndOffset ? "Event" : "Strike";
-            var dateLabel = dayDate.DayOfWeek.ToString()[..3] + " " + dayDate.ToString("d MMM", null);
+            var dateLabel = dayDate.DayOfWeek.ToString()[..3] + " " + dayDate.ToString("MMM d", null);
 
             var overlapping = shifts.Where(s =>
             {
@@ -773,7 +787,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             var dayDate = es.GateOpeningDate.PlusDays(dayOffset);
             var dayStart = dayDate.AtStartOfDayInZone(tz).ToInstant();
             var dayEnd = dayDate.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
-            var dateLabel = dayDate.DayOfWeek.ToString()[..3] + " " + dayDate.ToString("d MMM", null);
+            var dateLabel = dayDate.DayOfWeek.ToString()[..3] + " " + dayDate.ToString("MMM d", null);
 
             var overlapping = shifts.Where(s =>
             {
@@ -1362,7 +1376,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             var dayDate = es.GateOpeningDate.PlusDays(dayOffset);
             var dayStart = dayDate.AtStartOfDayInZone(tz).ToInstant();
             var dayEnd = dayDate.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
-            var dateLabel = dayDate.DayOfWeek.ToString()[..3] + " " + dayDate.ToString("d MMM", null);
+            var dateLabel = dayDate.DayOfWeek.ToString()[..3] + " " + dayDate.ToString("MMM d", null);
 
             var overlapping = shifts.Where(s =>
             {
@@ -1433,7 +1447,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             .Select(off =>
             {
                 var date = es.GateOpeningDate.PlusDays(off);
-                var label = date.DayOfWeek.ToString()[..3] + " " + date.ToString("d MMM", null);
+                var label = date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
                 var dayPeriod = off < 0 ? ShiftPeriod.Build : off <= es.EventEndOffset ? ShiftPeriod.Event : ShiftPeriod.Strike;
                 return new CoverageHeatmapDay(off, date, label, dayPeriod);
             })
