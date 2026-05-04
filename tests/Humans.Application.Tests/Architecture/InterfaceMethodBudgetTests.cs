@@ -107,7 +107,13 @@ public class InterfaceMethodBudgetTests
         // (takes a ConsentCheckStatus result; the system-driven
         // SetConsentCheckPendingAsync stays separate — different actor).
         // SuspendAsync + UnsuspendAsync → SetSuspendedAsync (takes a bool).
-        [typeof(IProfileService)] = 39,
+        // 39→40: §15i Stub Profile invariant (issue #635) — added
+        // EnsureStubProfileAsync. Required to satisfy design-rules §2a/§2c
+        // after Claude PR review (#403): AccountController and
+        // AccountProvisioningService must not inject IProfileRepository
+        // directly; cross-section stub-profile creation flows through the
+        // owning section's service.
+        [typeof(IProfileService)] = 40,
         // -1 for GetContactUsersAsync removal (/Contacts surface deleted in PR 2 of
         // email-identity-decoupling — only ContactService called it).
         // 31→31: account-merge fold redesign Phase 3.4. Added 3 fold primitives

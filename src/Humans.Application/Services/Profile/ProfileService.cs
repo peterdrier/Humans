@@ -129,6 +129,23 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         // Store update handled by CachingProfileService decorator
     }
 
+    public async Task EnsureStubProfileAsync(Guid userId, CancellationToken ct = default)
+    {
+        var existing = await _profileRepository.GetByUserIdAsync(userId, ct);
+        if (existing is not null) return;
+
+        var now = _clock.GetCurrentInstant();
+        var profile = new Domain.Entities.Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            CreatedAt = now,
+            UpdatedAt = now,
+            State = ProfileState.Stub,
+        };
+        await _profileRepository.AddAsync(profile, ct);
+    }
+
     public async Task SetProfilePictureAsync(
         Guid userId, byte[] pictureData, string contentType, CancellationToken ct = default)
     {
