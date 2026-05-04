@@ -143,7 +143,11 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             UpdatedAt = now,
             State = ProfileState.Stub,
         };
-        await _profileRepository.AddAsync(profile, ct);
+        // Use the idempotent insert: a concurrent caller (signup/login provisioning
+        // racing the admin backfill) may insert between our GetByUserId check and
+        // SaveChanges. The repo translates Postgres 23505 on profiles.UserId into
+        // a successful no-op so this method's "ensure exists" contract holds.
+        await _profileRepository.AddIfNotExistsByUserIdAsync(profile, ct);
     }
 
     public async Task SetProfilePictureAsync(
