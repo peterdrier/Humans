@@ -16,7 +16,7 @@ namespace Humans.Web.Filters;
 /// </summary>
 public class AuthorizationPillFilter : IActionFilter
 {
-    // Synthetic pill label for users granted access via the IsAnyTeamCoordinator
+    // Synthetic pill label for users granted access via the IsAnyTeamManagerOrCoordinator
     // requirement (department coordinator or sub-team manager). Not a real Identity
     // role — only used for the pill's display string. Listed in PolicyRoles below
     // alongside the role-based admins for any policy that admits team coordinators.
