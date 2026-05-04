@@ -152,10 +152,57 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         }
 
         var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
-        var notificationEmail = userEmails.FirstOrDefault(e => e.IsPrimary && e.IsVerified)?.Email
-                                ?? user.Email;
 
-        _byUserId[userId] = FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), notificationEmail);
+        // Issue #635 (§15i): lazy-compute Profile.State on read when persisted
+        // value is NULL, then write back via the conditional repo update.
+        // The in-memory profile entity is detached (read-only load) so we
+        // mutate its State for the FullProfile snapshot we cache and persist
+        // the same value via WriteBackStateIfNullAsync. The repo guard
+        // (State IS NULL) makes this idempotent for concurrent reads.
+        if (profile.State is null)
+        {
+            var computed = ComputeProfileState(profile);
+            try
+            {
+                await _profileRepository.WriteBackStateIfNullAsync(userId, computed, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // Lazy backfill is best-effort; the next read retries. Don't
+                // block FullProfile resolution on a write failure.
+                System.Diagnostics.Debug.WriteLine(
+                    $"CachingProfileService: lazy ProfileState write-back failed for {userId}: {ex.GetType().Name}");
+            }
+            profile.State = computed;
+        }
+
+        // Issue #635 (§15i): pass userEmails directly so PrimaryEmail /
+        // AllVerifiedEmails / GoogleEmail derive from already-loaded data
+        // without per-property repo calls.
+        _byUserId[userId] = FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), userEmails);
+    }
+
+    /// <summary>
+    /// Issue #635 (§15i): computes the ProfileState that should be persisted
+    /// for a row whose stored value is NULL, from <c>IsSuspended</c> +
+    /// required-field presence. Suspended dominates; otherwise rows missing
+    /// any of (BurnerName, FirstName, LastName) are <see cref="ProfileState.Stub"/>;
+    /// rows with all three populated and not suspended are
+    /// <see cref="ProfileState.Active"/>.
+    /// </summary>
+    internal static ProfileState ComputeProfileState(Profile profile)
+    {
+#pragma warning disable HUM_PROFILE_ISSUSPENDED
+        if (profile.IsSuspended)
+            return ProfileState.Suspended;
+#pragma warning restore HUM_PROFILE_ISSUSPENDED
+
+        if (string.IsNullOrEmpty(profile.BurnerName) ||
+            string.IsNullOrEmpty(profile.FirstName) ||
+            string.IsNullOrEmpty(profile.LastName))
+            return ProfileState.Stub;
+
+        return ProfileState.Active;
     }
 
     /// <summary>
@@ -186,16 +233,25 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
 
         var userIds = profiles.Select(p => p.UserId).ToList();
         var users = await userService.GetByIdsAsync(userIds, ct);
-        var notificationEmails = await _userEmailRepository.GetAllNotificationTargetEmailsAsync(ct);
+
+        // Issue #635 (§15i): bulk-load all UserEmails once, group by userId,
+        // and feed FullProfile.Create so PrimaryEmail / AllVerifiedEmails /
+        // GoogleEmail are populated without per-user repo calls.
+        var allUserEmails = await _userEmailRepository.GetAllAsync(ct);
+        var emailsByUserId = allUserEmails
+            .GroupBy(e => e.UserId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<UserEmail>)g.ToList());
 
         foreach (var profile in profiles)
         {
             if (!users.TryGetValue(profile.UserId, out var user))
                 continue;
 
-            notificationEmails.TryGetValue(profile.UserId, out var notificationEmail);
+            var userEmails = emailsByUserId.TryGetValue(profile.UserId, out var list)
+                ? list
+                : Array.Empty<UserEmail>();
             _byUserId[profile.UserId] =
-                FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), notificationEmail);
+                FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), userEmails);
         }
     }
 

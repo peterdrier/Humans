@@ -350,5 +350,5 @@ public class CachingProfileServiceTests
         BirthdayDay: null, BirthdayMonth: null,
         IsApproved: true, IsSuspended: false,
         CVEntries: Array.Empty<CVEntry>(),
-        NotificationEmail: null);
+        PrimaryEmail: null);
 }

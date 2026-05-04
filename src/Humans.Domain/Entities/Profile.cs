@@ -150,7 +150,24 @@ public class Profile
     /// <summary>
     /// Whether the member has been manually suspended.
     /// </summary>
+    /// <remarks>
+    /// Issue #635 (§15i): superseded by <see cref="State"/>. New write paths set
+    /// <c>State = ProfileState.Suspended</c>; reads should consult
+    /// <see cref="State"/> when present (it is the canonical lifecycle marker).
+    /// The underlying DB column stays per
+    /// <c>memory/architecture/no-drops-until-prod-verified.md</c> until a
+    /// follow-up PR drops it after prod soak.
+    /// </remarks>
+    [Obsolete("Use Profile.State (ProfileState.Suspended) for new writes. The DB column stays until a follow-up PR after prod soak.", DiagnosticId = "HUM_PROFILE_ISSUSPENDED", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/635")]
     public bool IsSuspended { get; set; }
+
+    /// <summary>
+    /// Lifecycle state — Stub / Active / Suspended. Issue #635 (§15i): nullable
+    /// while existing rows are lazily populated by
+    /// <c>CachingProfileService</c>. New rows are created with an explicit
+    /// <see cref="ProfileState.Stub"/> via the Stub Profile invariant.
+    /// </summary>
+    public ProfileState? State { get; set; }
 
     /// <summary>
     /// Whether the member has been approved for volunteer enrollment.

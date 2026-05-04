@@ -524,4 +524,20 @@ public sealed class ProfileRepository : IProfileRepository
 
         await ctx.SaveChangesAsync(ct);
     }
+
+    /// <inheritdoc />
+    public async Task<bool> WriteBackStateIfNullAsync(
+        Guid userId,
+        ProfileState state,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        // ExecuteUpdate with the State IS NULL guard is the lazy-write
+        // discipline: idempotent across concurrent backfill (admin button
+        // + lazy reads), zero impact on already-set rows, no UpdatedAt bump.
+        var rows = await ctx.Profiles
+            .Where(p => p.UserId == userId && p.State == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.State, state), ct);
+        return rows > 0;
+    }
 }
