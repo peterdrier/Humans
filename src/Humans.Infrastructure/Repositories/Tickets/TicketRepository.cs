@@ -126,10 +126,15 @@ public sealed class TicketRepository : ITicketRepository
         CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
+        // Exclude NULL / empty / placeholder ("--") / whitespace-only PI rows at the
+        // SQL layer so we don't drag them into memory and hit Stripe with bogus ids.
+        // LTRIM(RTRIM(...)) is the SQL-Server-friendly trim; it collapses any pure-whitespace
+        // value to '' and lets us catch the placeholder regardless of surrounding spaces.
         return await ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.StripePaymentIntentId != null
-                        && o.StripePaymentIntentId != "--"
+                        && o.StripePaymentIntentId.Trim() != ""
+                        && o.StripePaymentIntentId.Trim() != "--"
                         && o.StripeFee == null)
             .ToListAsync(ct);
     }
