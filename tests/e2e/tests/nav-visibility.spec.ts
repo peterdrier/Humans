@@ -16,20 +16,19 @@ import {
 } from '../helpers/auth';
 
 /**
- * Nav visibility matrix — verifies that each role sees exactly the correct
- * policy-gated nav items. This is the primary e2e coverage for the
- * authorization policy foundation (PR #125 / #366).
+ * Top-nav visibility matrix — verifies that each role sees exactly the correct
+ * policy-gated items in the top navbar.
  *
- * Nav items gated by authorize-policy in _Layout.cshtml:
+ * Post peterdrier/Humans#349 the 9 dark-orange admin items were collapsed into
+ * a single composite-gated `Admin` link that opens the admin shell at `/Admin`.
+ * Only two top-nav items are role/policy gated:
+ *
  *   Volunteer  → ActiveMemberOrShiftAccess
- *   Review     → ReviewQueueAccess
- *   Voting     → BoardOrAdmin
- *   Board      → BoardOrAdmin
- *   Humans     → HumanAdminOnly
- *   Admin      → AdminOnly
- *   Google     → AdminOnly
- *   Tickets    → TicketAdminBoardOrAdmin
- *   Finance    → FinanceAdminOrAdmin
+ *   Admin      → AnyAdminRole (composite: Admin, Board, HumanAdmin, TeamsAdmin,
+ *                CampAdmin, TicketAdmin, FeedbackAdmin, FinanceAdmin, StoreAdmin,
+ *                NoInfoAdmin, VolunteerCoordinator, ConsentCoordinator)
+ *
+ * Sidebar coverage for items inside `/Admin` lives in admin-shell.spec.ts.
  *
  * Note on "Volunteer" (Shifts) visibility:
  * ActiveMemberOrShiftAccess succeeds via ActiveMember claim (Volunteers team
@@ -40,23 +39,16 @@ import {
  * always seeded into the Volunteers team.
  */
 
-type NavItem = 'volunteer' | 'review' | 'voting' | 'board' | 'humans' | 'admin' | 'google' | 'tickets' | 'finance';
+type NavItem = 'volunteer' | 'admin';
 
-const ALL_NAV_ITEMS: NavItem[] = ['volunteer', 'review', 'voting', 'board', 'humans', 'admin', 'google', 'tickets', 'finance'];
+const ALL_NAV_ITEMS: NavItem[] = ['volunteer', 'admin'];
 
 function getNavLocators(nav: Locator): Record<NavItem, Locator> {
   // Scope to ul.navbar-nav to exclude the navbar brand (also named "Humans")
   const items = nav.locator('ul.navbar-nav');
   return {
     volunteer: items.getByRole('link', { name: 'Volunteer', exact: true }),
-    review: items.getByRole('link', { name: /^Review/ }),
-    voting: items.getByRole('link', { name: /^Voting/ }),
-    board: items.getByRole('link', { name: 'Board', exact: true }),
-    humans: items.getByRole('link', { name: 'Humans', exact: true }),
     admin: items.getByRole('link', { name: 'Admin', exact: true }),
-    google: items.getByRole('link', { name: 'Google', exact: true }),
-    tickets: items.getByRole('link', { name: 'Tickets', exact: true }),
-    finance: items.getByRole('link', { name: 'Finance', exact: true }),
   };
 }
 
@@ -66,15 +58,18 @@ interface RoleTest {
   visible: NavItem[];
 }
 
-// "Volunteer" (Shifts) visibility by role path:
-//   ActiveMember claim: volunteer, coordinator (always in Volunteers team)
+// Volunteer (Shifts) visibility by role path:
+//   ActiveMember claim: volunteer, coordinator (always seeded into Volunteers team)
 //   IsTeamsAdminBoardOrAdmin: admin, board, teamsAdmin
 //   ShiftRoleChecks.CanAccessDashboard: admin, noInfoAdmin, volunteerCoordinator
 //
-// Roles without a role-based path (humanAdmin, campAdmin, ticketAdmin,
-// consentCoordinator, feedbackAdmin, financeAdmin) only see "Volunteer" if
-// they happen to have ActiveMember claim — which is environment-dependent.
-// We omit "volunteer" from their visible list to avoid flaky assertions.
+// Admin top-nav link visibility (AnyAdminRole composite):
+//   admin, board, humanAdmin, teamsAdmin, campAdmin, ticketAdmin, feedbackAdmin,
+//   financeAdmin, noInfoAdmin, volunteerCoordinator, consentCoordinator
+//   (StoreAdmin is in the policy but no dev login helper exists for it.)
+//
+// Roles without a role-based "Volunteer" path only see it if they happen to have
+// ActiveMember claim — environment-dependent, so we omit it from those expectations.
 const roles: RoleTest[] = [
   {
     name: 'volunteer',
@@ -89,68 +84,67 @@ const roles: RoleTest[] = [
   {
     name: 'admin',
     login: loginAsAdmin,
-    visible: ['volunteer', 'review', 'voting', 'board', 'admin', 'google', 'tickets', 'finance'],
-    // 'humans' is NOT visible — HumanAdminOnly requires HumanAdmin AND NOT Admin
+    visible: ['volunteer', 'admin'],
   },
   {
     name: 'board',
     login: loginAsBoard,
-    visible: ['volunteer', 'review', 'voting', 'board', 'tickets'],
+    visible: ['volunteer', 'admin'],
   },
   {
     name: 'humanAdmin',
     login: loginAsHumanAdmin,
-    visible: ['humans'],
+    visible: ['admin'],
   },
   {
     name: 'teamsAdmin',
     login: loginAsTeamsAdmin,
-    visible: ['volunteer'],
+    visible: ['volunteer', 'admin'],
   },
   {
     name: 'ticketAdmin',
     login: loginAsTicketAdmin,
-    visible: ['tickets'],
+    visible: ['admin'],
   },
   {
     name: 'campAdmin',
     login: loginAsCampAdmin,
-    visible: [],
+    visible: ['admin'],
   },
   {
     name: 'consentCoordinator',
     login: loginAsConsentCoordinator,
-    visible: ['review'],
+    visible: ['admin'],
   },
   {
     name: 'feedbackAdmin',
     login: loginAsFeedbackAdmin,
-    visible: [],
+    visible: ['admin'],
   },
   {
     name: 'noInfoAdmin',
     login: loginAsNoInfoAdmin,
-    visible: ['volunteer'],
+    visible: ['volunteer', 'admin'],
   },
   {
     name: 'financeAdmin',
     login: loginAsFinanceAdmin,
-    visible: ['finance'],
+    visible: ['admin'],
   },
   {
     name: 'volunteerCoordinator',
     login: loginAsVolunteerCoordinator,
-    visible: ['volunteer', 'review'],
+    visible: ['volunteer', 'admin'],
   },
 ];
 
-test.describe('Nav visibility matrix (#366)', () => {
+test.describe('Top-nav visibility matrix (#604)', () => {
   for (const role of roles) {
-    test(`${role.name}: sees correct nav items`, async ({ page }) => {
+    test(`${role.name}: sees correct top-nav items`, async ({ page }) => {
       await role.login(page);
       await page.goto('/');
 
-      const nav = page.locator('nav');
+      const nav = page.locator('nav').first();
       const locators = getNavLocators(nav);
       const hidden = ALL_NAV_ITEMS.filter(item => !role.visible.includes(item));
 
