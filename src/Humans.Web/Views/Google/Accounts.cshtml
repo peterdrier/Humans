@@ -238,23 +238,23 @@
                                 @if (!account.IsSuspended)
                                 {
                                     <div class="d-inline-flex gap-1">
-                                        <form asp-action="ResetPassword" method="post" class="d-inline">
+                                        <form asp-action="ResetPassword" method="post" class="d-inline"
+                                              data-confirm="Reset the password for @account.PrimaryEmail? The new temporary password will be shown once.">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="email" value="@account.PrimaryEmail" />
                                             <button type="submit" class="btn btn-outline-warning btn-sm"
                                                     title="Issue a fresh temporary password — shown once after submit"
-                                                    data-bs-toggle="tooltip"
-                                                    data-confirm="Reset the password for @account.PrimaryEmail? The new temporary password will be shown once.">
+                                                    data-bs-toggle="tooltip">
                                                 <i class="fa-solid fa-key me-1"></i>@Localizer["GoogleAccounts_ResetPassword"]
                                             </button>
                                         </form>
-                                        <form asp-action="ResetPasswordAndGenerate2Fa" method="post" class="d-inline">
+                                        <form asp-action="ResetPasswordAndGenerate2Fa" method="post" class="d-inline"
+                                              data-confirm="Reset password and issue a backup verification code for @account.PrimaryEmail? Both will be shown once. Any previously-issued backup codes will be invalidated.">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="email" value="@account.PrimaryEmail" />
                                             <button type="submit" class="btn btn-outline-danger btn-sm"
                                                     title="Reset the password AND issue one backup code — for locked-out humans (any 2FA state)"
-                                                    data-bs-toggle="tooltip"
-                                                    data-confirm="Reset password and issue a backup verification code for @account.PrimaryEmail? Both will be shown once.">
+                                                    data-bs-toggle="tooltip">
                                                 <i class="fa-solid fa-key me-1"></i>Reset + 2FA
                                             </button>
                                         </form>

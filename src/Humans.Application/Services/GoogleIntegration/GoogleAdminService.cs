@@ -322,7 +322,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
         }
     }
 
-    public async Task<WorkspaceBackupCodesResult> GenerateBackupCodesAsync(
+    private async Task<WorkspaceBackupCodesResult> GenerateBackupCodesAsync(
         string email, Guid actorUserId,
         CancellationToken ct = default)
     {

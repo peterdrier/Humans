@@ -374,23 +374,24 @@ public class GoogleAdminServiceTests
             .ResetPasswordAsync("test@nobodies.team", Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
-    // --- GenerateBackupCodesAsync ---
+    // --- GenerateBackupCodesAsync (tested via ResetPasswordAndGenerate2FaAsync) ---
 
     [HumansFact]
     public async Task GenerateBackupCodesAsync_ReturnsCodesAndAuditsOnSuccess()
     {
+        // GenerateBackupCodesAsync is private; exercise it through the public combined method.
         IReadOnlyList<string> issued = ["aaaa-1111", "bbbb-2222", "cccc-3333"];
         _workspaceUserService.GenerateBackupCodesAsync(
                 "alice@nobodies.team", Arg.Any<CancellationToken>())
             .Returns(issued);
 
-        var result = await _service.GenerateBackupCodesAsync(
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
             "alice@nobodies.team", _actorUserId);
 
         result.Success.Should().BeTrue();
         result.Email.Should().Be("alice@nobodies.team");
-        result.Codes.Should().BeEquivalentTo(issued);
-        result.Message.Should().Contain("Generated 3 backup code(s)");
+        // The combined method exposes the first code as BackupCode.
+        result.BackupCode.Should().Be("aaaa-1111");
 
         await _auditLogService.Received(1).LogAsync(
             AuditAction.WorkspaceAccountBackupCodesGenerated,
@@ -409,12 +410,13 @@ public class GoogleAdminServiceTests
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<string>());
 
-        var result = await _service.GenerateBackupCodesAsync(
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
             "alice@nobodies.team", _actorUserId);
 
-        result.Success.Should().BeFalse();
-        result.Codes.Should().BeNull();
-        result.ErrorMessage.Should().Contain("none were returned");
+        // Combined method returns Success=true with password-only on backup-code failure.
+        result.Success.Should().BeTrue();
+        result.BackupCode.Should().BeNull();
+        result.Message.Should().Contain("none were returned");
 
         await _auditLogService.DidNotReceive().LogAsync(
             AuditAction.WorkspaceAccountBackupCodesGenerated,
@@ -430,15 +432,16 @@ public class GoogleAdminServiceTests
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Google API error"));
 
-        var result = await _service.GenerateBackupCodesAsync(
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
             "alice@nobodies.team", _actorUserId);
 
-        result.Success.Should().BeFalse();
-        result.Codes.Should().BeNull();
-        result.ErrorMessage.Should().Contain("Failed to generate backup codes");
+        // Combined method surfaces backup-code failure as Success=true, BackupCode=null.
+        result.Success.Should().BeTrue();
+        result.BackupCode.Should().BeNull();
+        result.Message.Should().Contain("Backup-code generation failed");
 
         await _auditLogService.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(),
+            AuditAction.WorkspaceAccountBackupCodesGenerated,
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -448,24 +451,26 @@ public class GoogleAdminServiceTests
     public async Task GenerateBackupCodesAsync_ReturnsCodesEvenWhenAuditWriteFails()
     {
         // Google has already invalidated the previously-issued set, so dropping
-        // the new codes locks the human out. The audit failure is logged loudly
-        // but the codes must still flow back to the admin.
+        // the new codes locks the human out. The audit failure for backup-code
+        // generation is logged loudly but the code must still flow back to the admin.
         IReadOnlyList<string> issued = ["aaaa-1111", "bbbb-2222"];
         _workspaceUserService.GenerateBackupCodesAsync(
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(issued);
+        // Only fail the backup-codes audit; let the password-reset audit succeed
+        // so the combined method reaches the backup-code path.
         _auditLogService.LogAsync(
-                Arg.Any<AuditAction>(),
+                AuditAction.WorkspaceAccountBackupCodesGenerated,
                 Arg.Any<string>(), Arg.Any<Guid>(),
                 Arg.Any<string>(), Arg.Any<Guid>(),
                 Arg.Any<Guid?>(), Arg.Any<string?>())
             .ThrowsAsync(new InvalidOperationException("Audit DB unavailable"));
 
-        var result = await _service.GenerateBackupCodesAsync(
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
             "alice@nobodies.team", _actorUserId);
 
         result.Success.Should().BeTrue();
-        result.Codes.Should().BeEquivalentTo(issued);
+        result.BackupCode.Should().Be("aaaa-1111");
     }
 
     // --- ResetPasswordAndGenerate2FaAsync ---

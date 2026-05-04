@@ -707,12 +707,12 @@ public class GoogleController : HumansControllerBase
         var result = await _googleAdminService.ResetPasswordAsync(
             email, currentUser.Id);
 
-        if (result.Success && !string.IsNullOrEmpty(result.TemporaryPassword))
+        if (result.Success)
         {
             CarryRecoveryCredentials(new WorkspaceRecoveryCredentialsViewModel
             {
                 Email = email,
-                TempPassword = result.TemporaryPassword,
+                TempPassword = result.TemporaryPassword!,
                 BackupCode = null
             });
             SetSuccess($"Password reset for {email}. Deliver the new password securely.");
@@ -749,7 +749,10 @@ public class GoogleController : HumansControllerBase
                 TempPassword = result.TempPassword,
                 BackupCode = result.BackupCode
             });
-            SetSuccess(result.Message ?? $"Recovery credentials issued for {email}. Deliver them securely.");
+            if (!string.IsNullOrEmpty(result.BackupCode))
+                SetSuccess(result.Message ?? $"Recovery credentials issued for {email}. Deliver them securely.");
+            else
+                SetError(result.Message ?? $"Password reset for {email}, but backup-code generation failed. Deliver the password and retry 2FA.");
         }
         else
         {
