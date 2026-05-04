@@ -123,9 +123,16 @@ public class RatchetTestRunnerTests : IDisposable
             if (Directory.Exists(_scratchDir) && !Directory.EnumerateFileSystemEntries(_scratchDir).Any())
                 Directory.Delete(_scratchDir);
         }
-        catch
+        catch (IOException)
         {
-            // Test cleanup, swallow.
+            // Test scratch cleanup is best-effort; concurrent test runs may
+            // collide on the directory delete and that's harmless. Production
+            // code logs; this is a per-test sentinel under obj/ which gets
+            // cleaned by `dotnet clean` regardless.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Same: scratch is gitignored, leaks fail loudly on next CI run.
         }
         GC.SuppressFinalize(this);
     }
