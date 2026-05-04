@@ -333,7 +333,22 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
             LastLoginAt = user.LastLoginAt.ToInvariantInstantString()
         };
 
-        return [new UserDataSlice(GdprExportSections.Account, shaped)];
+        var participations = await _repo.GetEventParticipationsByUserIdAsync(userId, ct);
+        var participationsShaped = participations
+            .Select(ep => new
+            {
+                ep.Year,
+                Status = ep.Status.ToString(),
+                Source = ep.Source.ToString(),
+                DeclaredAt = ep.DeclaredAt.ToInvariantInstantString()
+            })
+            .ToList();
+
+        return
+        [
+            new UserDataSlice(GdprExportSections.Account, shaped),
+            new UserDataSlice(GdprExportSections.EventParticipations, participationsShaped)
+        ];
     }
 
     private static string? GetAlternateEmail(string normalizedEmail)
