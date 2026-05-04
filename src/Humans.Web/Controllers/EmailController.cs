@@ -197,6 +197,15 @@ public class EmailController : HumansControllerBase
             var cMsg2 = renderer.RenderFacilitatedMessage(name, "Alex Firestone", "Hi! I'm organizing the next community event and would love your help. Let me know if you're interested!", false, null, culture);
             items.Add(new EmailPreviewItem { Id = "facilitated-message-anon", Name = "Facilitated Message (without contact info)", Recipient = email, Subject = cMsg2.Subject, Body = cMsg2.HtmlBody });
 
+            var cGroupRemoval = renderer.RenderGoogleGroupRemovalLossOfAccess(name, "Art Collective", "art-collective@nobodies.team", culture);
+            items.Add(new EmailPreviewItem { Id = "google-group-removal-loss", Name = "Google Group Removal — Loss of Access", Recipient = email, Subject = cGroupRemoval.Subject, Body = cGroupRemoval.HtmlBody });
+
+            var cDriveRemoval = renderer.RenderGoogleDriveRemovalLossOfAccess(name, "Art Collective Shared Drive", culture);
+            items.Add(new EmailPreviewItem { Id = "google-drive-removal-loss", Name = "Google Drive Removal — Loss of Access", Recipient = email, Subject = cDriveRemoval.Subject, Body = cDriveRemoval.HtmlBody });
+
+            var cSecondaryCleanup = renderer.RenderGoogleAccessRemovalSecondaryCleanup(name, "old-" + email, email, culture);
+            items.Add(new EmailPreviewItem { Id = "google-removal-secondary-cleanup", Name = "Google Access Removal — Secondary Email Cleanup", Recipient = "old-" + email, Subject = cSecondaryCleanup.Subject, Body = cSecondaryCleanup.HtmlBody });
+
             previews[culture] = items;
         }
 
