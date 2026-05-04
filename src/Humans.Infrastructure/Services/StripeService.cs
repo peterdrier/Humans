@@ -81,6 +81,9 @@ public class StripeService : IStripeService
     public static long ToStripeMinorUnits(decimal amountEur) =>
         (long)Math.Round(amountEur * 100m, MidpointRounding.AwayFromZero);
 
+    /// <summary>Stripe minor units (cents) → EUR (decimal). Inverse of <see cref="ToStripeMinorUnits"/>.</summary>
+    public static decimal FromStripeMinorUnits(long cents) => cents / 100m;
+
     public async Task<string> CreateCheckoutSessionAsync(
         Guid storeOrderId,
         decimal amountEur,
@@ -185,9 +188,9 @@ public class StripeService : IStripeService
             foreach (var fd in bt.FeeDetails)
             {
                 if (string.Equals(fd.Type, "stripe_fee", StringComparison.Ordinal))
-                    stripeFee += fd.Amount / 100m;
+                    stripeFee += FromStripeMinorUnits(fd.Amount);
                 else if (string.Equals(fd.Type, "application_fee", StringComparison.Ordinal))
-                    applicationFee += fd.Amount / 100m;
+                    applicationFee += FromStripeMinorUnits(fd.Amount);
             }
         }
 
@@ -241,8 +244,7 @@ public class StripeService : IStripeService
                 orderId = parsed;
             }
 
-            // AmountTotal is in minor units (cents); convert back to EUR.
-            decimal? amountEur = s.AmountTotal.HasValue ? s.AmountTotal.Value / 100m : null;
+            decimal? amountEur = s.AmountTotal.HasValue ? FromStripeMinorUnits(s.AmountTotal.Value) : null;
 
             session = new StoreCheckoutSessionData(
                 SessionId: s.Id,

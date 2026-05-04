@@ -100,7 +100,7 @@ public class StoreStripeWebhookController : ControllerBase
             return;
         }
 
-        if (string.IsNullOrEmpty(session.PaymentIntentId))
+        if (session.PaymentIntentId is not { } paymentIntentId)
         {
             _logger.LogWarning(
                 "Stripe Checkout Session {SessionId} has no PaymentIntentId; skipping.",
@@ -118,10 +118,10 @@ public class StoreStripeWebhookController : ControllerBase
 
         try
         {
-            await _storeService.RecordStripePaymentAsync(orderId, session.PaymentIntentId, amountEur, ct);
+            await _storeService.RecordStripePaymentAsync(orderId, paymentIntentId, amountEur, ct);
             _logger.LogInformation(
                 "Recorded Stripe payment for order {OrderId} (session {SessionId}, PI {PaymentIntentId}, EUR {Amount})",
-                orderId, session.SessionId, session.PaymentIntentId, amountEur);
+                orderId, session.SessionId, paymentIntentId, amountEur);
         }
         catch (Exception ex)
         {
