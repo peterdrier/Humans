@@ -1,5 +1,9 @@
-.agent-msg { padding: 0.5rem 0.75rem; margin-bottom: 0.5rem; border-radius: 8px; white-space: pre-wrap; }
-.agent-msg-user { background: #e9f1ff; align-self: flex-end; }
+.agent-msg { padding: 0.5rem 0.75rem; margin-bottom: 0.5rem; border-radius: 8px; }
+/* User messages are written via textContent and need pre-wrap to preserve
+   the user's own line breaks. Assistant messages render sanitized markdown
+   HTML (<p>, <br>, <ul>, …) and must NOT have pre-wrap, or the inter-block
+   whitespace from marked's output produces visible double spacing. */
+.agent-msg-user { background: #e9f1ff; align-self: flex-end; white-space: pre-wrap; }
 .agent-msg-assistant { background: #f4f4f4; }
 .agent-panel { display: flex; flex-direction: column; }
 @media (max-width: 576px) {
