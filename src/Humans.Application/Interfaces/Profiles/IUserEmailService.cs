@@ -36,13 +36,18 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Verifies an email address using a token.
-    /// If the email is already verified on another account, creates a merge request
-    /// instead of completing verification.
-    /// Returns a result indicating the email and whether a merge request was created.
+    /// Verifies an email address using a token. <paramref name="emailId"/>
+    /// identifies the specific pending row the verification link was issued
+    /// for — the token is bound to this row's Id via the token's purpose
+    /// suffix, so passing it here disambiguates when the same user has
+    /// multiple pending plain rows (issue nobodies-collective/Humans#611).
+    /// If the email is already verified on another account, creates a merge
+    /// request instead of completing verification. Returns a result
+    /// indicating the email and whether a merge request was created.
     /// </summary>
     Task<VerifyEmailResult> VerifyEmailAsync(
         Guid userId,
+        Guid emailId,
         string token,
         CancellationToken cancellationToken = default);
 

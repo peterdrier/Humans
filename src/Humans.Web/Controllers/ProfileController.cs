@@ -582,11 +582,12 @@ public class ProfileController : HumansControllerBase
         {
             var result = await _userEmailService.AddEmailAsync(user.Id, model.NewEmail);
 
-            // Build verification URL
+            // Build verification URL — emailId disambiguates when the user has
+            // multiple pending plain rows (issue nobodies-collective/Humans#611).
             var verificationUrl = Url.Action(
                 nameof(VerifyEmail),
                 "Profile",
-                new { userId = user.Id, token = HttpUtility.UrlEncode(result.Token) },
+                new { userId = user.Id, emailId = result.EmailId, token = HttpUtility.UrlEncode(result.Token) },
                 Request.Scheme);
 
             // Send verification email
@@ -624,9 +625,9 @@ public class ProfileController : HumansControllerBase
 
     [HttpGet("Me/Emails/Verify")]
     [AllowAnonymous]
-    public async Task<IActionResult> VerifyEmail(Guid userId, string token)
+    public async Task<IActionResult> VerifyEmail(Guid userId, Guid emailId, string token)
     {
-        if (string.IsNullOrEmpty(token))
+        if (string.IsNullOrEmpty(token) || emailId == Guid.Empty)
         {
             return VerifyEmailError(_localizer["Profile_InvalidVerificationLink"].Value);
         }
@@ -634,7 +635,7 @@ public class ProfileController : HumansControllerBase
         try
         {
             var decodedToken = HttpUtility.UrlDecode(token);
-            var result = await _userEmailService.VerifyEmailAsync(userId, decodedToken);
+            var result = await _userEmailService.VerifyEmailAsync(userId, emailId, decodedToken);
             _cache.InvalidateNobodiesTeamEmails();
 
             if (result.MergeRequestCreated)
@@ -1001,11 +1002,13 @@ public class ProfileController : HumansControllerBase
             // Verification email goes to the target user (the human whose row this is),
             // not to the admin. The admin can't verify on the user's behalf — that
             // defeats the purpose of verification. Mirrors the self AddEmail path.
-            // VerifyEmail still binds by query-string userId, so pass it explicitly.
+            // VerifyEmail still binds by query-string userId + emailId, so pass them
+            // explicitly. emailId disambiguates when the user has multiple pending
+            // plain rows (issue nobodies-collective/Humans#611).
             var verificationUrl = Url.Action(
                 nameof(VerifyEmail),
                 "Profile",
-                new { userId = id, token = HttpUtility.UrlEncode(result.Token) },
+                new { userId = id, emailId = result.EmailId, token = HttpUtility.UrlEncode(result.Token) },
                 Request.Scheme);
 
             await _emailService.SendEmailVerificationAsync(
