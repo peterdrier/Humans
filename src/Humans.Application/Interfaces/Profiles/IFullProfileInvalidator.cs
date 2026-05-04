@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace Humans.Application.Interfaces.Profiles;
 
 /// <summary>
@@ -11,5 +13,18 @@ namespace Humans.Application.Interfaces.Profiles;
 /// </summary>
 public interface IFullProfileInvalidator
 {
-    Task InvalidateAsync(Guid userId, CancellationToken ct = default);
+    /// <summary>
+    /// Invalidate (reload) the cached <see cref="FullProfile"/> for
+    /// <paramref name="userId"/>. The optional <paramref name="callerMember"/>
+    /// and <paramref name="callerFile"/> parameters are auto-supplied via
+    /// <see cref="CallerMemberNameAttribute"/> / <see cref="CallerFilePathAttribute"/>
+    /// and are emitted to the log in non-Production environments — issue #635
+    /// (§15i) makes this the canonical safety net for confirming every
+    /// Profile-affecting write hits the invalidator.
+    /// </summary>
+    Task InvalidateAsync(
+        Guid userId,
+        CancellationToken ct = default,
+        [CallerMemberName] string callerMember = "",
+        [CallerFilePath] string callerFile = "");
 }

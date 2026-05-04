@@ -8,6 +8,7 @@ using Humans.Domain.Enums;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Repositories;
 
 namespace Humans.Web.Controllers;
 
@@ -20,6 +21,7 @@ public class AccountController : HumansControllerBase
     private readonly IUserEmailService _userEmailService;
     private readonly IMagicLinkService _magicLinkService;
     private readonly IAuditLogService _auditLogService;
+    private readonly IProfileRepository _profileRepository;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
     public AccountController(
@@ -30,6 +32,7 @@ public class AccountController : HumansControllerBase
         IUserEmailService userEmailService,
         IMagicLinkService magicLinkService,
         IAuditLogService auditLogService,
+        IProfileRepository profileRepository,
         IStringLocalizer<SharedResource> localizer)
         : base(userManager)
     {
@@ -40,7 +43,29 @@ public class AccountController : HumansControllerBase
         _userEmailService = userEmailService;
         _magicLinkService = magicLinkService;
         _auditLogService = auditLogService;
+        _profileRepository = profileRepository;
         _localizer = localizer;
+    }
+
+    /// <summary>
+    /// Issue #635 (§15i): Stub Profile invariant. Idempotently materialize a
+    /// <see cref="ProfileState.Stub"/> profile row for a freshly created user
+    /// so cross-section reads can rely on a non-null Profile pointer.
+    /// </summary>
+    private async Task EnsureStubProfileAsync(Guid userId, Instant now)
+    {
+        var existing = await _profileRepository.GetByUserIdAsync(userId);
+        if (existing is not null) return;
+
+        var profile = new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            CreatedAt = now,
+            UpdatedAt = now,
+            State = ProfileState.Stub,
+        };
+        await _profileRepository.AddAsync(profile);
     }
 
     [HttpGet]
@@ -354,6 +379,9 @@ public class AccountController : HumansControllerBase
             return View(nameof(Login));
         }
 
+        // Issue #635 (§15i): Stub Profile invariant — every User has a Profile.
+        await EnsureStubProfileAsync(user.Id, _clock.GetCurrentInstant());
+
         await _signInManager.SignInAsync(user, isPersistent: false);
         _logger.LogInformation("User created an account using {Provider}", info.LoginProvider);
         return RedirectToLocal(returnUrl);
@@ -565,6 +593,9 @@ public class AccountController : HumansControllerBase
             }
             return View("MagicLinkError");
         }
+
+        // Issue #635 (§15i): Stub Profile invariant — every User has a Profile.
+        await EnsureStubProfileAsync(user.Id, now);
 
         await _signInManager.SignInAsync(user, isPersistent: false);
         _logger.LogInformation("Magic link signup: user {UserId} created account for {Email}", user.Id, email);

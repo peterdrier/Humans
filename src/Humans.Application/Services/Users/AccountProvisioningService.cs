@@ -29,6 +29,7 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
 {
     private readonly IUserRepository _userRepository;
     private readonly IUserEmailRepository _userEmailRepository;
+    private readonly IProfileRepository _profileRepository;
     private readonly UserManager<User> _userManager;
     private readonly IAuditLogService _auditLogService;
     private readonly IClock _clock;
@@ -37,6 +38,7 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
     public AccountProvisioningService(
         IUserRepository userRepository,
         IUserEmailRepository userEmailRepository,
+        IProfileRepository profileRepository,
         UserManager<User> userManager,
         IAuditLogService auditLogService,
         IClock clock,
@@ -44,6 +46,7 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
     {
         _userRepository = userRepository;
         _userEmailRepository = userEmailRepository;
+        _profileRepository = profileRepository;
         _userManager = userManager;
         _auditLogService = auditLogService;
         _clock = clock;
@@ -128,6 +131,13 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
         // (User + UserEmail) is complete before the audit-after-save log call.
         await _userEmailRepository.AddAsync(userEmail, ct);
 
+        // Issue #635 (§15i): Stub Profile invariant. Every newly provisioned
+        // user gets a Profile row in the Stub state so cross-section reads
+        // (Profile.PrimaryEmail, Profile.GoogleEmail, etc.) never have to
+        // null-check the Profile pointer. Transitions to Active happen
+        // when ProfileService.SaveProfileAsync sees required fields populate.
+        await CreateStubProfileAsync(newUser.Id, now, ct);
+
         await _auditLogService.LogAsync(
             AuditAction.ContactCreated,
             nameof(User), newUser.Id,
@@ -147,5 +157,27 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
             return $"{normalizedEmail[..^"@gmail.com".Length]}@googlemail.com";
 
         return null;
+    }
+
+    /// <summary>
+    /// Issue #635 (§15i): materialize a Stub Profile row for a freshly
+    /// created user. Idempotent — if a profile already exists (race with
+    /// ProfileService.SaveProfileAsync), the call is a no-op.
+    /// </summary>
+    private async Task CreateStubProfileAsync(Guid userId, Instant now, CancellationToken ct)
+    {
+        var existing = await _profileRepository.GetByUserIdAsync(userId, ct);
+        if (existing is not null)
+            return;
+
+        var profile = new Domain.Entities.Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            CreatedAt = now,
+            UpdatedAt = now,
+            State = ProfileState.Stub,
+        };
+        await _profileRepository.AddAsync(profile, ct);
     }
 }

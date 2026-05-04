@@ -252,6 +252,7 @@ public sealed class ProfileRepository : IProfileRepository
 
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var userIdList = userIds is IList<Guid> list ? list : userIds.ToList();
+#pragma warning disable HUM_PROFILE_ISSUSPENDED
         var profiles = await ctx.Profiles
             .Where(p => userIdList.Contains(p.UserId) && !p.IsSuspended)
             .ToListAsync(ct);
@@ -259,8 +260,12 @@ public sealed class ProfileRepository : IProfileRepository
         foreach (var profile in profiles)
         {
             profile.IsSuspended = true;
+            // Issue #635 (§15i): dual-write ProfileState alongside the legacy
+            // bool until the follow-up PR drops the IsSuspended column.
+            profile.State = ProfileState.Suspended;
             profile.UpdatedAt = now;
         }
+#pragma warning restore HUM_PROFILE_ISSUSPENDED
 
         if (profiles.Count > 0)
         {

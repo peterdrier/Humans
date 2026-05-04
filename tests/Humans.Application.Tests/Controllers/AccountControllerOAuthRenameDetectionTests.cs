@@ -74,6 +74,7 @@ public class AccountControllerOAuthRenameDetectionTests
             _userEmailService,
             _magicLinkService,
             _auditLogService,
+            Substitute.For<Humans.Application.Interfaces.Repositories.IProfileRepository>(),
             _localizer);
         _controller.Url = Substitute.For<IUrlHelper>();
         _controller.Url.IsLocalUrl(Arg.Any<string?>()).Returns(false);
