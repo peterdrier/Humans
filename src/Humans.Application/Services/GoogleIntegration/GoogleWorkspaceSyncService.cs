@@ -331,8 +331,10 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     /// Respects SyncSettings — skips if GoogleGroups mode is not AddAndRemove.
     /// Public callers default to <see cref="SyncRemovalReason.Reconciliation"/>;
     /// the internal email-rotation cleanup in <see cref="AddUserToTeamResourcesAsync"/>
-    /// passes <see cref="SyncRemovalReason.EmailRotation"/> via the private
-    /// overload to suppress the post-removal notification.
+    /// passes <see cref="SyncRemovalReason.EmailRotation"/> as advisory
+    /// telemetry — the post-removal notification fires either way (issue
+    /// peterdrier/Humans#639). The user receives a Variant 2 ("secondary
+    /// cleanup") email at the rotated-out address.
     /// </remarks>
     public Task RemoveUserFromGroupAsync(
         Guid groupResourceId,
@@ -471,9 +473,10 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     /// <summary>
     /// GATEWAY METHOD: the only path that removes a user from a Google Drive
     /// resource. Respects SyncSettings — skips if GoogleDrive mode is not
-    /// AddAndRemove. Reconciliation callers default to
-    /// <see cref="SyncRemovalReason.Reconciliation"/>; internal flows that
-    /// represent address rotation pass <see cref="SyncRemovalReason.EmailRotation"/>.
+    /// AddAndRemove. The <paramref name="reason"/> defaults to
+    /// <see cref="SyncRemovalReason.Reconciliation"/> and is forwarded to
+    /// the notification service for audit / telemetry; it does not
+    /// currently drive suppression (issue peterdrier/Humans#639).
     /// </summary>
     private async Task RemoveUserFromDriveAsync(
         GoogleResource resource,
@@ -678,8 +681,9 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 await AddUserToGroupAsync(resource.Id, googleEmail, cancellationToken);
                 if (previousEmail is not null)
                 {
-                    // Suppress the removal notification: this is address rotation,
-                    // not actual loss of access (issue peterdrier/Humans#639).
+                    // Tag the removal as EmailRotation for audit; the recipient
+                    // still gets a Variant 2 ("secondary cleanup") email
+                    // (issue peterdrier/Humans#639).
                     await RemoveUserFromGroupAsync(
                         resource.Id, previousEmail, SyncRemovalReason.EmailRotation, cancellationToken);
                 }

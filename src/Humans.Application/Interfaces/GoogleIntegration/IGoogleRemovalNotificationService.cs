@@ -31,10 +31,11 @@ namespace Humans.Application.Interfaces.GoogleIntegration;
 /// </list>
 /// <para>
 /// Lookup by removed address yielding no <c>UserEmail</c> row is a no-op
-/// (orphan / deleted human / email-rotation rewrite). Suppression for
-/// known internal flows (e.g. address rotation in
-/// <c>AddUserToTeamResourcesAsync</c>) is enforced by the caller passing
-/// <see cref="SyncRemovalReason.EmailRotation"/>.
+/// (orphan / deleted human / OAuth-rename-in-place case). The
+/// <see cref="SyncRemovalReason"/> value is plumbed through for audit /
+/// telemetry purposes but does not currently drive suppression — Workspace
+/// identity rotation produces a Variant 2 ("secondary cleanup") email,
+/// which is the desired behavior.
 /// </para>
 /// </remarks>
 public interface IGoogleRemovalNotificationService
@@ -64,8 +65,8 @@ public interface IGoogleRemovalNotificationService
     /// for Group removals.
     /// </param>
     /// <param name="reason">
-    /// Why the removal happened. <see cref="SyncRemovalReason.EmailRotation"/>
-    /// is suppressed (no email sent).
+    /// Why the removal happened. Currently advisory only — flows through to
+    /// logs / audit but does not drive suppression (issue peterdrier/Humans#639).
     /// </param>
     Task NotifyRemovalAsync(
         string removedEmail,
@@ -77,22 +78,22 @@ public interface IGoogleRemovalNotificationService
 }
 
 /// <summary>
-/// Why a sync removal happened. Drives notification suppression — see
-/// <see cref="IGoogleRemovalNotificationService"/>.
+/// Why a sync removal happened. Plumbed through for audit / telemetry —
+/// see <see cref="IGoogleRemovalNotificationService"/>.
 /// </summary>
 public enum SyncRemovalReason
 {
     /// <summary>
     /// Reconciliation removed the address because the membership/permission
-    /// no longer matches expected team state. Notify the user.
+    /// no longer matches expected team state.
     /// </summary>
     Reconciliation = 0,
 
     /// <summary>
     /// The user's <c>IsGoogle</c> identity rotated from one address to
     /// another, and the old address was cleaned up immediately after the
-    /// new one was granted. The user is not losing access — suppress the
-    /// notification.
+    /// new one was granted. The recipient still gets a Variant 2 ("secondary
+    /// cleanup") email confirming which address was tidied up.
     /// </summary>
     EmailRotation = 1
 }

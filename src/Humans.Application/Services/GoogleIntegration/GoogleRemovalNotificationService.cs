@@ -19,8 +19,6 @@ namespace Humans.Application.Services.GoogleIntegration;
 /// <remarks>
 /// Suppression cases honored here (issue peterdrier/Humans#639):
 /// <list type="bullet">
-///   <item><description><b>Email rotation</b> — caller passes
-///   <see cref="SyncRemovalReason.EmailRotation"/>; no email sent.</description></item>
 ///   <item><description><b>Orphan address</b> — no <c>UserEmail</c> row
 ///   matches the removed address; happens when the user was deleted /
 ///   anonymized (their <c>user_emails</c> rows were removed) or when an
@@ -29,6 +27,13 @@ namespace Humans.Application.Services.GoogleIntegration;
 ///   — same as orphan: the <c>UserEmail</c> row was deleted by the unlink
 ///   flow before sync removed the Google permission.</description></item>
 /// </list>
+/// <para>
+/// <see cref="SyncRemovalReason.EmailRotation"/> is plumbed through for
+/// audit/telemetry but does NOT suppress here — when a Workspace identity
+/// rotates from address A to B, the user gets a Variant 2 ("secondary
+/// cleanup") email at A confirming the rotation. The OAuth-rename-in-place
+/// case is captured by orphan suppression.
+/// </para>
 /// </remarks>
 public sealed class GoogleRemovalNotificationService : IGoogleRemovalNotificationService
 {
@@ -60,13 +65,6 @@ public sealed class GoogleRemovalNotificationService : IGoogleRemovalNotificatio
     {
         if (string.IsNullOrWhiteSpace(removedEmail))
         {
-            return;
-        }
-
-        if (reason == SyncRemovalReason.EmailRotation)
-        {
-            _logger.LogDebug(
-                "Suppressing Google removal notification for {Email} — email rotation", removedEmail);
             return;
         }
 

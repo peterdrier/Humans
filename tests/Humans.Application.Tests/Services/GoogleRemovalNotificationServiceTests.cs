@@ -60,11 +60,28 @@ public sealed class GoogleRemovalNotificationServiceTests
     }
 
     [HumansFact]
-    public async Task NotifyRemovalAsync_EmailRotation_DoesNotSendEmail()
+    public async Task NotifyRemovalAsync_EmailRotation_StillSendsVariant2()
     {
-        // Caller signals an internal address rotation — suppress regardless
-        // of whether the address resolves to a user. The lookup must NOT
-        // happen at all (suppression decision is local and cheap).
+        // Workspace identity rotated from old@ → new@. Caller passes
+        // EmailRotation as advisory telemetry but the recipient still gets
+        // a Variant 2 ("secondary cleanup") email confirming the rotation
+        // (issue peterdrier/Humans#639 — suppression-on-rotation removed
+        // because the user wants visibility into which address was tidied).
+        var userId = Guid.NewGuid();
+        var user = BuildUserWithEmails(
+            userId,
+            "Alice",
+            "en",
+            ("old@nobodies.team", verified: true, isGoogle: false),
+            ("new@nobodies.team", verified: true, isGoogle: true));
+
+        _userEmailService.GetUserIdByVerifiedEmailAsync("old@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(userId);
+        _userService.GetByIdsWithEmailsAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User> { [userId] = user });
+
         await _service.NotifyRemovalAsync(
             "old@nobodies.team",
             GoogleResourceType.Group,
@@ -72,13 +89,14 @@ public sealed class GoogleRemovalNotificationServiceTests
             "some-group@nobodies.team",
             SyncRemovalReason.EmailRotation);
 
-        await _userEmailService.DidNotReceiveWithAnyArgs()
-            .GetUserIdByVerifiedEmailAsync(default!, Arg.Any<CancellationToken>());
+        await _emailService.Received(1).SendGoogleAccessRemovalSecondaryCleanupAsync(
+            "old@nobodies.team",
+            "Alice",
+            "new@nobodies.team",
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
         await _emailService.DidNotReceive().SendGoogleGroupRemovalLossOfAccessAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>());
-        await _emailService.DidNotReceive().SendGoogleAccessRemovalSecondaryCleanupAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
