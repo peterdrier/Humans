@@ -9,7 +9,7 @@
   src/Humans.Infrastructure/Services/GoogleWorkspace/**
 -->
 <!-- freshness:flag-on-change
-  Provisioning step ordering, recovery email handling, credentials email template, or admin/HumanAdmin authorization may have changed.
+  Provisioning step ordering, recovery email handling, credentials email template, admin/HumanAdmin authorization, or post-provisioning account management (2FA status, backup-code generation/invalidation, recovery-email visibility on `/Google/Accounts`) may have changed.
 -->
 
 # Workspace Account Provisioning
@@ -57,6 +57,62 @@ Nobodies Collective uses Google Workspace for organizational email (@nobodies.te
 - Linking creates a verified `UserEmail` and sets `GoogleEmail` on the user
 - Audit trail recorded (`WorkspaceAccountLinked`)
 - No credentials email sent (user already has access)
+
+### US-32.4: Surface 2FA Enrollment State
+**As an** admin
+**I want to** see which @nobodies.team accounts have completed 2-Step Verification enrollment
+**So that** I can spot broken accounts before the human reports being locked out
+
+**Acceptance Criteria:**
+- `/Google/Accounts` table shows a per-row 2FA chip: green "2FA ready" (enrolled) or red "2FA not set up" (unenrolled)
+- Summary counter at the top: "X accounts missing 2FA setup" — counts active unenrolled accounts only (suspended accounts are excluded since they can't sign in anyway)
+- Alert banner + client-side filter toggle to show only the unenrolled set
+- Backed by `WorkspaceUserAccount.IsEnrolledIn2Sv`, sourced from the Directory API `users.get` `isEnrolledIn2Sv` field
+
+### US-32.5: Surface Recovery Email
+**As an** admin
+**I want to** see the personal recovery email Google has on file for each account
+**So that** I can validate the recovery channel before the human is locked out
+
+**Acceptance Criteria:**
+- `/Google/Accounts` table shows a "Recovery Email" column per row
+- Accounts with no recovery email show a yellow "None" badge with explanatory tooltip
+- Backed by `WorkspaceUserAccount.RecoveryEmail`, sourced from the Directory API `users.get` `recoveryEmail` field
+
+### US-32.6: Issue Backup Verification Codes
+**As an** admin
+**I want to** generate one-time backup codes for a @nobodies.team account from inside Humans
+**So that** I can recover locked-out humans without leaving the app
+
+**Acceptance Criteria:**
+- "Generate" button per row, Admin-only, CSRF-protected, available for **both enrolled and unenrolled accounts**
+- Confirm-before-post copy adapts: "invalidates any previously issued codes" for enrolled accounts; "Google may reject this for never-enrolled accounts" for unenrolled
+- Calls Google Admin SDK `verificationCodes.generate` then `verificationCodes.list` to return the freshly issued set
+- Generated codes appear once in a modal with copy-to-clipboard and an "I've delivered these securely" acknowledgement gate; codes are cleared from the DOM on close so a refresh can't re-expose them (TempData single-use)
+- If the Google API rejects the call (e.g., for an account where Google requires prior enrollment), the admin sees a graceful flash error rather than a hung page
+- Audit trail recorded (`WorkspaceAccountBackupCodesGenerated`) — see invariant below on audit-vs-delivery ordering
+- Requires the `admin.directory.user.security` scope on the service account credential
+
+### US-32.7: Invalidate Backup Verification Codes
+**As an** admin
+**I want to** invalidate all backup codes for an account
+**So that** leaked codes can be revoked without issuing replacements
+
+**Acceptance Criteria:**
+- "Invalidate" button per row, Admin-only, CSRF-protected, **only available for enrolled accounts** (no codes to invalidate otherwise)
+- Confirm-before-post warns about immediate invalidation
+- Calls Google Admin SDK `verificationCodes.invalidate`
+- Audit trail recorded (`WorkspaceAccountBackupCodesInvalidated`)
+
+## Account-Management Invariants
+
+### Backup-codes audit ordering
+`GenerateBackupCodesAsync` writes the audit entry **after** Google has rotated the codes and before returning them to the admin, with two safety guards:
+
+1. **Empty-list guard** — if Google's `Generate` succeeds but the subsequent `List` returns 0 codes, no audit entry is written and the method returns `Success: false` with an explanatory message. We never record "generated 0 codes" in the audit log.
+2. **Audit-failure preservation** — if the audit `LogAsync` throws after Google has issued the new set, the codes are still returned to the admin (audit failure is logged at `LogCritical` for out-of-band reconciliation). Google has already invalidated the previously-issued set, so dropping the new codes would lock the human out — account recovery is real-time, audit reconciliation is operational.
+
+`InvalidateBackupCodesAsync` follows the standard audit-after-success pattern; an audit failure surfaces as `Success: false` and the admin is expected to retry (idempotent on the Google side).
 
 ## Provisioning Flow
 
@@ -118,6 +174,9 @@ Ambiguous characters (0, O, l, 1, I) are excluded for readability.
 |--------|---------------|
 | Provision account | HumanAdmin, Admin |
 | Link existing account | Admin |
+| View `/Google/Accounts` (2FA status, recovery email, etc.) | Admin |
+| Generate backup codes | Admin |
+| Invalidate backup codes | Admin |
 
 ## Routes
 
@@ -125,7 +184,9 @@ Ambiguous characters (0, O, l, 1, I) are excluded for readability.
 |-------|--------|--------|
 | `/Human/{id}/Admin` | GET | Human admin page (shows provisioning form) |
 | `/Human/{id}/Admin/ProvisionEmail` | POST | Provision and link @nobodies.team account |
-| `/Admin/Email` | GET | List all @nobodies.team accounts, link orphans |
+| `/Google/Accounts` | GET | List all @nobodies.team accounts with 2FA status, recovery email, link orphans (replaces the legacy `/Admin/Email` route) |
+| `/Google/Accounts/GenerateBackupCodes` | POST | Generate backup verification codes for an account |
+| `/Google/Accounts/InvalidateBackupCodes` | POST | Invalidate all backup verification codes for an account |
 
 ## Service Interfaces
 
@@ -144,8 +205,17 @@ Task<WorkspaceUserAccount?> GetAccountAsync(string email, CancellationToken ct);
 
 // Suspend/restore accounts
 Task SuspendAccountAsync(string email, CancellationToken ct);
-Task RestoreAccountAsync(string email, CancellationToken ct);
+Task ReactivateAccountAsync(string email, CancellationToken ct);
+
+// Reset password (admin-initiated)
+Task ResetPasswordAsync(string email, string newPassword, CancellationToken ct);
+
+// Backup verification codes (post-provisioning recovery surface)
+Task<IReadOnlyList<string>> GenerateBackupCodesAsync(string email, CancellationToken ct);
+Task InvalidateBackupCodesAsync(string email, CancellationToken ct);
 ```
+
+`WorkspaceUserAccount` carries the post-provisioning visibility fields used by the admin surface: `IsEnrolledIn2Sv` (from Directory API `isEnrolledIn2Sv`) and `RecoveryEmail` (from `recoveryEmail`).
 
 ### IEmailService (credentials notification)
 ```csharp
