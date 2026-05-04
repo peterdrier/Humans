@@ -242,9 +242,6 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         var signup = await _repo.GetByIdForMutationAsync(signupId);
         if (signup is null) return SignupResult.Fail("Signup not found.");
 
-        if (signup.Status == SignupStatus.Bailed)
-            return SignupResult.Fail("This signup has already been bailed.");
-
         var es = signup.Shift.Rota.EventSettings;
         var now = _clock.GetCurrentInstant();
         var isOwner = signup.UserId == actorUserId;
@@ -253,6 +250,12 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         // Authorization: must be signup owner or privileged (dept coordinator/NoInfoAdmin/Admin)
         if (!isOwner && !isPrivileged)
             return SignupResult.Fail("Not authorized to bail this signup.");
+
+        if (signup.Status == SignupStatus.Bailed)
+        {
+            _logger.LogWarning("Bail attempted on already-bailed signup {SignupId} by actor {ActorUserId}", signupId, actorUserId);
+            return SignupResult.Fail("This signup has already been bailed.");
+        }
 
         // EE freeze check for build shifts
         if (signup.Shift.IsEarlyEntry && es.EarlyEntryClose.HasValue && now >= es.EarlyEntryClose.Value && !isPrivileged)
