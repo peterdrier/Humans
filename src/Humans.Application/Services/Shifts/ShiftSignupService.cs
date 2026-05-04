@@ -628,7 +628,8 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         {
             var dayList = string.Join(", ", fullDays.Select(offset =>
                 FormatShiftDate(es.GateOpeningDate.PlusDays(offset))));
-            warning = $"Day(s) {dayList} are at capacity.";
+            var capacityWarning = $"Day(s) {dayList} are at capacity.";
+            warning = warning is null ? capacityWarning : $"{warning} {capacityWarning}";
         }
 
         // EE cap check for build shifts

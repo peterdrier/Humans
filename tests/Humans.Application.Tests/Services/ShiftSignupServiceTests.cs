@@ -456,6 +456,47 @@ public class ShiftSignupServiceTests : IDisposable
         newOffsets.Should().Equal(-3, -1);
     }
 
+    [HumansFact]
+    public async Task SignUpRange_SkipConflicts_PreservesBothSkipAndCapacityWarnings()
+    {
+        // Arrange: rota with 4 all-day shifts (days -4 to -1).
+        // User is already signed up to day -3 (skipConflicts case).
+        // Day -2 is at capacity from other users (capacity-warning case).
+        var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
+        rota.Period = RotaPeriod.Build;
+        for (var day = -4; day <= -1; day++)
+            SeedAllDayShift(rota, day);
+        var userId = Guid.NewGuid();
+        await _dbContext.SaveChangesAsync();
+
+        var dayMinus3Shift = await _dbContext.Shifts
+            .FirstAsync(s => s.RotaId == rota.Id && s.DayOffset == -3);
+        SeedSignup(userId, dayMinus3Shift.Id, SignupStatus.Confirmed);
+
+        var dayMinus2Shift = await _dbContext.Shifts
+            .FirstAsync(s => s.RotaId == rota.Id && s.DayOffset == -2);
+        // SeedAllDayShift sets MaxVolunteers = 5; fill day -2 with 5 distinct other users.
+        for (var i = 0; i < dayMinus2Shift.MaxVolunteers; i++)
+            SeedSignup(Guid.NewGuid(), dayMinus2Shift.Id, SignupStatus.Confirmed);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var result = await _service.SignUpRangeAsync(userId, rota.Id, -4, -1, skipConflicts: true);
+
+        // Assert: both warnings preserved, exactly 2 new signups (offsets -4 and -1).
+        result.Success.Should().BeTrue();
+        result.Warning.Should().NotBeNull();
+        result.Warning.Should().Contain("Already signed up");
+        result.Warning.Should().Contain("at capacity");
+
+        var newSignups = await _dbContext.ShiftSignups
+            .Where(s => s.UserId == userId && s.SignupBlockId != null)
+            .Join(_dbContext.Shifts, s => s.ShiftId, sh => sh.Id, (s, sh) => sh.DayOffset)
+            .OrderBy(o => o)
+            .ToListAsync();
+        newSignups.Should().Equal(-4, -1);
+    }
+
     // ============================================================
     // BailRange
     // ============================================================
