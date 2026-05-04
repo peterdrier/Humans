@@ -486,6 +486,24 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             .ToList();
     }
 
+    public async Task<IReadOnlyList<UserEmail>> GetEntitiesByUserIdAsync(
+        Guid userId, CancellationToken cancellationToken = default) =>
+        await _repository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
+
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<UserEmail>>> GetEntitiesByUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<Guid, IReadOnlyList<UserEmail>>();
+
+        var allEmails = await _repository.GetAllAsync(cancellationToken);
+        var idSet = new HashSet<Guid>(userIds);
+        return allEmails
+            .Where(e => idSet.Contains(e.UserId))
+            .GroupBy(e => e.UserId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<UserEmail>)g.ToList());
+    }
+
     public async Task<IReadOnlyDictionary<Guid, string>> GetNotificationEmailsByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default)
     {
