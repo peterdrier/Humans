@@ -41,6 +41,21 @@ public class HomeController : HumansControllerBase
 
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
+        try
+        {
+            return await IndexCore(cancellationToken);
+        }
+        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            // Client aborted the request mid-read. Don't surface as 500/Error;
+            // log at Warning without the exception object.
+            _logger.LogWarning("Request aborted while rendering home dashboard");
+            return new EmptyResult();
+        }
+    }
+
+    private async Task<IActionResult> IndexCore(CancellationToken cancellationToken)
+    {
         if (!User.Identity?.IsAuthenticated ?? true)
         {
             return View();

@@ -1381,13 +1381,24 @@ public class ProfileController : HumansControllerBase
         // store directly — IProfileService owns the FS-first / DB-fallback /
         // migrate-on-read orchestration AND the anonymization gate (issue
         // nobodies-collective/Humans#527).
-        var result = await _profileService.GetProfilePictureAsync(id, ct);
-        if (result is null)
+        try
         {
-            return NotFound();
-        }
+            var result = await _profileService.GetProfilePictureAsync(id, ct);
+            if (result is null)
+            {
+                return NotFound();
+            }
 
-        return File(result.Value.Data, result.Value.ContentType);
+            return File(result.Value.Data, result.Value.ContentType);
+        }
+        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            // Client aborted the request mid-read. Don't surface as 500/Error;
+            // log at Warning without the exception object so the prod log viewer
+            // still sees the event but the stack-trace noise is dropped.
+            _logger.LogWarning("Request aborted while reading profile picture for {ProfileId}", id);
+            return new EmptyResult();
+        }
     }
 
     [HttpPost("Me/ImportGooglePhoto")]
@@ -1584,33 +1595,43 @@ public class ProfileController : HumansControllerBase
     [HttpGet("{id:guid}/Popover")]
     public async Task<IActionResult> Popover(Guid id, CancellationToken ct)
     {
-        var profile = await _profileService.GetProfileAsync(id, ct);
-        if (profile is null) return NotFound();
-
-        var popoverUser = await _userService.GetByIdAsync(id, ct);
-        var teams = await _teamService.GetActiveTeamNamesForUserAsync(id, ct);
-
-        var effectivePictureUrl = profile.HasCustomProfilePicture
-            ? Url.Action(nameof(Picture), "Profile",
-                new { id = profile.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
-            : popoverUser?.ProfilePictureUrl;
-
-        var vm = new ProfileSummaryViewModel
+        try
         {
-            UserId = id,
-            DisplayName = popoverUser?.DisplayName ?? "Unknown",
-            Email = popoverUser?.Email,
-            ProfilePictureUrl = effectivePictureUrl,
-            MembershipTier = profile.MembershipTier.ToString(),
-            MembershipStatus = profile.IsSuspended ? "Suspended"
-                : profile.IsApproved ? "Active" : "Pending",
-            City = profile.City,
-            CountryCode = profile.CountryCode,
-            IsSuspended = profile.IsSuspended,
-            Teams = teams.ToList()
-        };
+            var profile = await _profileService.GetProfileAsync(id, ct);
+            if (profile is null) return NotFound();
 
-        return PartialView("_HumanPopover", vm);
+            var popoverUser = await _userService.GetByIdAsync(id, ct);
+            var teams = await _teamService.GetActiveTeamNamesForUserAsync(id, ct);
+
+            var effectivePictureUrl = profile.HasCustomProfilePicture
+                ? Url.Action(nameof(Picture), "Profile",
+                    new { id = profile.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
+                : popoverUser?.ProfilePictureUrl;
+
+            var vm = new ProfileSummaryViewModel
+            {
+                UserId = id,
+                DisplayName = popoverUser?.DisplayName ?? "Unknown",
+                Email = popoverUser?.Email,
+                ProfilePictureUrl = effectivePictureUrl,
+                MembershipTier = profile.MembershipTier.ToString(),
+                MembershipStatus = profile.IsSuspended ? "Suspended"
+                    : profile.IsApproved ? "Active" : "Pending",
+                City = profile.City,
+                CountryCode = profile.CountryCode,
+                IsSuspended = profile.IsSuspended,
+                Teams = teams.ToList()
+            };
+
+            return PartialView("_HumanPopover", vm);
+        }
+        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            // Client aborted the request mid-read. Don't surface as 500/Error;
+            // log at Warning without the exception object.
+            _logger.LogWarning("Request aborted while loading popover for {ProfileId}", id);
+            return new EmptyResult();
+        }
     }
 
     [HttpGet("{id:guid}/SendMessage")]
