@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application;
 using Humans.Application.DTOs;
@@ -447,8 +448,40 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
     // ==========================================================================
 
     /// <inheritdoc cref="IFullProfileInvalidator.InvalidateAsync"/>
-    public Task InvalidateAsync(Guid userId, CancellationToken ct = default) =>
-        RefreshEntryAsync(userId, ct);
+    public Task InvalidateAsync(
+        Guid userId,
+        CancellationToken ct = default,
+        [System.Runtime.CompilerServices.CallerMemberName] string callerMember = "",
+        [System.Runtime.CompilerServices.CallerFilePath] string callerFile = "")
+    {
+        // Issue #635 (§15i): dev-mode caller log. Cheap StringComparison
+        // against ASPNETCORE_ENVIRONMENT keeps the call free of an
+        // IHostEnvironment dependency on this Singleton (the existing
+        // service-locator pattern in this file already keeps everything
+        // resolvable per-call). The log is the canonical way to verify
+        // every Profile-affecting write hits the invalidator during
+        // exploratory testing on the preview environment.
+        var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        if (!string.Equals(env, "Production", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var logger = scope.ServiceProvider.GetService<ILogger<CachingProfileService>>();
+                logger?.LogDebug(
+                    "FullProfile invalidate userId={UserId} caller={CallerMember} file={CallerFile}",
+                    userId, callerMember, System.IO.Path.GetFileName(callerFile));
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // Logging is best-effort; never block the invalidation on it.
+                System.Diagnostics.Debug.WriteLine(
+                    $"CachingProfileService: invalidate caller-log failed: {ex.GetType().Name}");
+            }
+        }
+
+        return RefreshEntryAsync(userId, ct);
+    }
 
     // ==========================================================================
     // Writes — delegate then invalidate

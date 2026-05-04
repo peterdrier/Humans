@@ -269,12 +269,18 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
         if (profile is null)
         {
+            // Issue #635 (§15i): newly created profiles always start as Stub.
+            // Transitions to Active happen below once required fields are
+            // populated (BurnerName/FirstName/LastName), giving the
+            // ProfileService_UpdateProfileAsync_TransitionsStubToActive
+            // behavior contract a single home.
             profile = new Domain.Entities.Profile
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
                 CreatedAt = now,
-                UpdatedAt = now
+                UpdatedAt = now,
+                State = ProfileState.Stub,
             };
             await _profileRepository.AddAsync(profile, ct);
         }
@@ -407,6 +413,17 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
                         language, ct);
                 }
             }
+        }
+
+        // Issue #635 (§15i): Stub → Active transition. When all required
+        // fields (BurnerName / FirstName / LastName) are populated and the
+        // profile is not Suspended, promote the lifecycle marker.
+        if (profile.State != ProfileState.Suspended)
+        {
+            var requiredPresent = !string.IsNullOrWhiteSpace(profile.BurnerName)
+                && !string.IsNullOrWhiteSpace(profile.FirstName)
+                && !string.IsNullOrWhiteSpace(profile.LastName);
+            profile.State = requiredPresent ? ProfileState.Active : ProfileState.Stub;
         }
 
         await _profileRepository.UpdateAsync(profile, ct);
@@ -1064,7 +1081,26 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         if (profile is null)
             return new OnboardingResult(false, "NotFound");
 
+#pragma warning disable HUM_PROFILE_ISSUSPENDED
         profile.IsSuspended = suspended;
+#pragma warning restore HUM_PROFILE_ISSUSPENDED
+
+        // Issue #635 (§15i): mirror the bool into ProfileState. New write paths
+        // go through State; the bool write above is kept dual until the
+        // separate follow-up PR drops the column after prod soak.
+        if (suspended)
+        {
+            profile.State = ProfileState.Suspended;
+        }
+        else
+        {
+            // Re-derive Active vs Stub from required-field presence.
+            var requiredPresent = !string.IsNullOrWhiteSpace(profile.BurnerName)
+                && !string.IsNullOrWhiteSpace(profile.FirstName)
+                && !string.IsNullOrWhiteSpace(profile.LastName);
+            profile.State = requiredPresent ? ProfileState.Active : ProfileState.Stub;
+        }
+
         if (suspended)
             profile.AdminNotes = notes;
         profile.UpdatedAt = _clock.GetCurrentInstant();

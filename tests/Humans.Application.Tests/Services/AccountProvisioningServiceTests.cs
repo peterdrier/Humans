@@ -347,6 +347,7 @@ public class AccountProvisioningServiceTests
         _service = new AccountProvisioningService(
             _userRepo,
             _userEmailRepo,
+            Substitute.For<IProfileRepository>(),
             _userManager,
             new StubAuditLog(),
             _clock,
