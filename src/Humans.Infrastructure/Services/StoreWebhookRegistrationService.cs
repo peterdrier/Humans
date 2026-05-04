@@ -33,9 +33,13 @@ namespace Humans.Infrastructure.Services;
 /// secret at creation time; there is no fetch path.
 /// </para>
 /// <para>
-/// Cross-PR cleanup of stale endpoints (PR closes, env disappears) is the job
-/// of the existing PR-close GitHub Action, not this service. See
-/// <c>docs/sections/Store.md</c> "Stripe Configuration".
+/// Same boot also runs a cross-PR sweep (<see cref="SweepStaleEndpointsAsync"/>):
+/// lists every <c>n.burn.camp</c> endpoint on the account, parses the leading
+/// PR-id off the host, queries GitHub for currently-open PRs on the configured
+/// fork, and deletes endpoints whose PR is no longer open. Self-gated on
+/// <see cref="StripeSettings.IsWebhookCleanupConfigured"/> + a GitHub access
+/// token; no separate GH Action is involved. See <c>docs/sections/Store.md</c>
+/// "Stripe Configuration" for the env-var contract.
 /// </para>
 /// <para>
 /// Failures are logged as warnings and do not block boot. If registration

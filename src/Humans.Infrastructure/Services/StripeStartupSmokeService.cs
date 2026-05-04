@@ -59,15 +59,9 @@ public class StripeStartupSmokeService : IHostedService
         if (!_settings.IsStoreWebhookConfigured)
             _logger.LogInformation("Stripe Store webhook secret not set — Store webhook will reject all requests.");
 
-        try
-        {
-            await Task.WhenAll(probes);
-        }
-        catch
-        {
-            // Individual probes log their own errors; this guard is just so a single failure
-            // doesn't dim other probes' completion.
-        }
+        // Each probe catches comprehensively (StripeException, OperationCanceledException,
+        // Exception) and logs its own outcome, so WhenAll cannot observe an unhandled fault.
+        await Task.WhenAll(probes);
     }
 
     private async Task ProbeTicketsKeyAsync(CancellationToken ct)

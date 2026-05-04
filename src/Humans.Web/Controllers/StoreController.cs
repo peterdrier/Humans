@@ -219,7 +219,7 @@ public class StoreController : HumansControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogInformation(ex, "AddLine rejected for order {OrderId}", id);
+            _logger.LogWarning("AddLine rejected for order {OrderId}: {Reason}", id, ex.Message);
             SetError(ex.Message);
             return RedirectToAction(nameof(Order), new { id });
         }
@@ -246,7 +246,7 @@ public class StoreController : HumansControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogInformation(ex, "RemoveLine rejected for line {LineId}", lineId);
+            _logger.LogWarning("RemoveLine rejected for line {LineId}: {Reason}", lineId, ex.Message);
             SetError(ex.Message);
         }
         return RedirectToAction(nameof(Order), new { id });
@@ -275,7 +275,7 @@ public class StoreController : HumansControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogInformation(ex, "UpdateCounterparty rejected for order {OrderId}", id);
+            _logger.LogWarning("UpdateCounterparty rejected for order {OrderId}: {Reason}", id, ex.Message);
             SetError(ex.Message);
         }
         return RedirectToAction(nameof(Order), new { id });

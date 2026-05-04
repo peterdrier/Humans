@@ -123,13 +123,13 @@ public class StoreAdminController : HumansControllerBase
         }
         catch (ArgumentException ex)
         {
-            _logger.LogInformation(ex, "Store catalog Save validation failed");
+            _logger.LogWarning("Store catalog Save validation failed: {Reason}", ex.Message);
             ModelState.AddModelError(string.Empty, ex.Message);
             return View("CatalogEdit", input);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogInformation(ex, "Store catalog Save rejected");
+            _logger.LogWarning("Store catalog Save rejected: {Reason}", ex.Message);
             ModelState.AddModelError(string.Empty, ex.Message);
             return View("CatalogEdit", input);
         }
@@ -151,7 +151,7 @@ public class StoreAdminController : HumansControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogInformation(ex, "Store catalog deactivate rejected");
+            _logger.LogWarning("Store catalog deactivate rejected: {Reason}", ex.Message);
             SetError(ex.Message);
         }
         return RedirectToAction(nameof(Catalog));
