@@ -612,7 +612,9 @@ public class ProfileController : HumansControllerBase
         }
         catch (ValidationException ex)
         {
-            _logger.LogWarning("Rejected email add for user {UserId}: {Reason}", user.Id, ex.Message);
+            _logger.LogWarning(
+                "Rejected email add for user {UserId} ({Email}): {Reason}",
+                user.Id, model.NewEmail, ex.Message);
             ModelState.AddModelError(nameof(model.NewEmail), ex.Message);
             return View(nameof(Emails), await BuildEmailsViewModelAsync(user));
         }
@@ -1033,7 +1035,10 @@ public class ProfileController : HumansControllerBase
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Admin failed to add email for user {UserId}: {Reason}", id, ex.Message);
+            _logger.LogWarning(
+                ex,
+                "Admin failed to add email for user {UserId} ({Email}): {Reason}",
+                id, email, ex.Message);
             SetError(ex.Message);
         }
 
