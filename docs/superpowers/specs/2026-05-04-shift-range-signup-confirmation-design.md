@@ -218,7 +218,7 @@ Unit tests on `ShiftSignupService` (in the existing `Humans.Tests` project — v
 
 ### `BuildStrikeRotaTableViewModel`
 
-Two new properties: `UserSignupsInEvent`, `RotaShiftWindowsByDayOffset`.
+Two new properties: `UserActiveSignups` (`IReadOnlyList<UserSignupConflictItem>`) and `RotaWindowsByDayOffset` (`IReadOnlyDictionary<int, ShiftWindow>`). Plus the two record types `UserSignupConflictItem` and `ShiftWindow` if not already present in the file.
 
 ### Controller — `ShiftsController.Index`
 
@@ -276,7 +276,7 @@ Spanish translations follow the same structure — done at implementation time, 
 | File | Change |
 |---|---|
 | `src/Humans.Web/Views/Shared/_BuildStrikeRotaTable.cshtml` | Button + modal + inline data blobs + show.bs.modal handler. ~70 lines added. |
-| `src/Humans.Web/Models/BuildStrikeRotaTableViewModel.cs` (locate via grep at impl time) | Three new properties: `UserActiveSignups`, `RotaWindowsByDayOffset`, plus the two record types if they don't exist yet. |
+| `src/Humans.Web/Models/ShiftViewModels.cs` (`BuildStrikeRotaTableViewModel` lives there at line 548 alongside the other shift VMs) | Two new properties (`UserActiveSignups`, `RotaWindowsByDayOffset`) plus the two record types `UserSignupConflictItem` and `ShiftWindow`. |
 | `src/Humans.Web/Controllers/ShiftsController.cs` (`Index` action; line 302 for the `SignUpRange` POST) | Populate new VM properties via `IShiftSignupRepository.GetActiveSignupsForUserAsync`; pass `skipConflicts: true` from `SignUpRange`. |
 | `src/Humans.Application/Services/Shifts/ShiftSignupService.cs` | Add `bool skipConflicts = false` to `SignUpRangeAsync`; rework duplicate + overlap checks per "Server-side enforcement". |
 | `src/Humans.Web/Resources/SharedResource.{resx,de.resx,es.resx,ca.resx,fr.resx,it.resx}` | Add new localizer keys (all six locales). |
@@ -301,9 +301,8 @@ No browser-automated test in this spec — the existing test infrastructure for 
 
 The following are genuine verify-against-code items (not design holes — design decisions all made above):
 
-1. The exact filename of `BuildStrikeRotaTableViewModel` (probably under `src/Humans.Web/Models/`) — confirm via grep before editing.
-2. The `Humans.Tests` test project layout for `ShiftSignupService` — confirm fixture / setup conventions before adding new tests.
-3. The de/ca/fr/it locale stub maintenance pattern (machine-translated, hand-edited, or marked `<!-- TODO -->`) — match what's already in those files.
+1. The `Humans.Tests` test project layout for `ShiftSignupService` — confirm fixture / setup conventions before adding new tests.
+2. The de/ca/fr/it locale stub maintenance pattern (machine-translated, hand-edited, or marked `<!-- TODO -->`) — match what's already in those files.
 
 ## Decisions log (from brainstorm)
 
