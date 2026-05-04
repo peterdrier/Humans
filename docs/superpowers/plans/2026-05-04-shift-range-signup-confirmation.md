@@ -56,15 +56,23 @@ No new files. No DB migrations. No new routes. No new repository or service meth
 - `src/Humans.Application/Services/Shifts/ShiftSignupService.cs:526-700` — current `SignUpRangeAsync` body
 - `src/Humans.Application/Interfaces/Shifts/IShiftSignupService.cs:59` — current signature
 - `src/Humans.Domain/Entities/Shift.cs:64-132` — `AllDayWindow*` constants and `GetAbsoluteStart/End` methods
-- `tests/Humans.Application.Tests/Services/ShiftSignupServiceTests.cs:371-535` — existing `SignUpRange` tests for fixture / setup conventions
+- `tests/Humans.Application.Tests/Services/ShiftSignupServiceTests.cs:371-535` (existing `SignUpRange` tests) and `:630-740` (helper methods)
 
-- [ ] **Step 1: Read the four files above and note**
+- [ ] **Step 1: Read the four files above and note these conventions** (every test snippet in this chunk uses these — do not invent new helpers or fixture names):
 
-  - The exact method signature on line 526.
-  - The duplicate-signup check at lines 556-560 (currently rejects whole range).
-  - The overlap check at lines 562-590 (currently rejects whole range with `Time conflict on day(s)`).
-  - The capacity-check `warning` plumbing at lines 593-612 (this is the existing pattern for "soft" skips with a warning — we're matching it).
-  - The test class fixture pattern: `IDisposable`, `_service`, `_db`, helper methods like `CreateRotaWithShiftsAsync`. Use the same.
+  - **Test attribute:** `[HumansFact]` (NOT `[Fact]`). Used on every test in this file.
+  - **DbContext field:** `_dbContext` (NOT `_db`).
+  - **Clock:** `TestNow` static `Instant` field (= `2026-06-15 12:00 UTC`). Use `TestNow` for `CreatedAt` / `UpdatedAt`, NOT `_clock.GetCurrentInstant()`.
+  - **Assertions:** AwesomeAssertions `.Should().Be(...)`, `.Should().Contain(...)`, `.Should().HaveCount(...)`. NOT `Assert.*`.
+  - **Existing helpers in the same test class** (lines 634-740):
+    - `(EventSettings es, Rota rota, Shift shift) SeedShiftScenario(SignupPolicy policy, ShiftPriority priority = ShiftPriority.Normal)` — creates an EventSettings (Madrid TZ, gate opens 2026-07-01, browsing open), a Team, a Rota (period defaults to `Event` — the new tests reassign to `Build`), and one Shift (day 1, 10:00, 4h). Sets `rota.EventSettings = es` for in-memory provider.
+    - `Shift SeedShift(Rota rota, int dayOffset, int startHour, double durationHours)` — adds a timed shift; sets `shift.Rota = rota`.
+    - `Shift SeedAllDayShift(Rota rota, int dayOffset)` — adds an all-day shift; sets `shift.Rota = rota`.
+    - `ShiftSignup SeedSignup(Guid userId, Guid shiftId, SignupStatus status)` — adds a signup with `TestNow` timestamps.
+  - **Service-side context:**
+    - The duplicate-signup check at lines 556-560 (currently rejects whole range).
+    - The overlap check at lines 562-590 (currently rejects whole range with `Time conflict on day(s)`).
+    - The capacity-check `warning` plumbing at lines 593-612 (existing pattern for "soft" skips with a warning — we're matching it).
 
   No commit needed — this is orientation only.
 
@@ -120,62 +128,63 @@ No new files. No DB migrations. No new routes. No new repository or service meth
 ### Task 1.3: Test — `skipConflicts: true` skips already-signed-up days
 
 **Files:**
-- Modify: `tests/Humans.Application.Tests/Services/ShiftSignupServiceTests.cs` (append to `// SignUpRange` region around line 371)
+- Modify: `tests/Humans.Application.Tests/Services/ShiftSignupServiceTests.cs` (append to the `// SignUpRange` region after the existing `SignUpRange_BlocksIfAnyDayOverlaps` test, ~line 421)
 
 - [ ] **Step 1: Write failing test for partial-overlap-with-existing-signup-in-range case**
 
-  Append after the existing `SignUpRange_BlocksIfAnyDayOverlaps` test:
+  Use the existing `SeedShiftScenario` / `SeedAllDayShift` / `SeedSignup` helpers — copy the imperative pattern from `SignUpRange_BlocksIfAnyDayOverlaps` (lines 399-421).
 
   ```csharp
-  [Fact]
+  [HumansFact]
   public async Task SignUpRange_SkipConflicts_FiltersAlreadySignedUpDays()
   {
-      // Arrange: user already signed up to day -2 in same rota
-      var (rota, userId, _) = await CreateRotaWithShiftsAsync(
-          period: RotaPeriod.Build,
-          dayOffsets: new[] { -3, -2, -1 });
+      // Arrange: rota with 3 all-day shifts; user already signed up to day -2 in same rota.
+      var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
+      rota.Period = RotaPeriod.Build;
+      for (var day = -3; day <= -1; day++)
+          SeedAllDayShift(rota, day);
+      var userId = Guid.NewGuid();
+      await _dbContext.SaveChangesAsync();
 
-      var existingSignup = new ShiftSignup
-      {
-          Id = Guid.NewGuid(),
-          UserId = userId,
-          ShiftId = rota.Shifts.First(s => s.DayOffset == -2).Id,
-          Status = SignupStatus.Confirmed,
-          CreatedAt = _clock.GetCurrentInstant(),
-          UpdatedAt = _clock.GetCurrentInstant()
-      };
-      _db.ShiftSignups.Add(existingSignup);
-      await _db.SaveChangesAsync();
+      var dayMinus2Shift = await _dbContext.Shifts
+          .FirstAsync(s => s.RotaId == rota.Id && s.DayOffset == -2);
+      var existingSignup = SeedSignup(userId, dayMinus2Shift.Id, SignupStatus.Confirmed);
+      await _dbContext.SaveChangesAsync();
 
       // Act
       var result = await _service.SignUpRangeAsync(userId, rota.Id, -3, -1, skipConflicts: true);
 
-      // Assert: signups created for the two free days; warning mentions skipped day
-      Assert.True(result.Success);
-      Assert.NotNull(result.Warning);
-      Assert.Contains("already signed up", result.Warning, StringComparison.OrdinalIgnoreCase);
+      // Assert
+      result.Success.Should().BeTrue();
+      result.Warning.Should().NotBeNull();
+      result.Warning.Should().Contain("Already signed up");
 
-      var signups = await _db.ShiftSignups.Where(s => s.UserId == userId).ToListAsync();
-      Assert.Equal(3, signups.Count); // 1 pre-existing + 2 new
-      var newOffsets = signups.Where(s => s.Id != existingSignup.Id)
-          .Select(s => rota.Shifts.First(sh => sh.Id == s.ShiftId).DayOffset)
+      var signups = await _dbContext.ShiftSignups
+          .Where(s => s.UserId == userId)
+          .ToListAsync();
+      signups.Should().HaveCount(3); // 1 pre-existing + 2 new
+      var newOffsets = signups
+          .Where(s => s.Id != existingSignup.Id)
+          .Join(_dbContext.Shifts, s => s.ShiftId, sh => sh.Id, (s, sh) => sh.DayOffset)
           .OrderBy(o => o)
           .ToList();
-      Assert.Equal(new[] { -3, -1 }, newOffsets);
+      newOffsets.Should().Equal(-3, -1);
   }
   ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
   Run: `dotnet test Humans.slnx -v quiet --filter "FullyQualifiedName~SignUpRange_SkipConflicts_FiltersAlreadySignedUpDays"`
-  Expected: FAIL — current body still rejects the whole range with "Already signed up for one or more shifts in this range."
+  Expected: FAIL — current body still rejects the whole range with `"Already signed up for one or more shifts in this range."`. The new assertion `result.Success.Should().BeTrue()` is the one that fails.
 
 ### Task 1.4: Implement skip-already-signed-up branch
 
 **Files:**
 - Modify: `src/Humans.Application/Services/Shifts/ShiftSignupService.cs:556-560`
 
-- [ ] **Step 1: Replace the duplicate-signup hard-fail with a conditional filter**
+This task introduces both `alreadySignedUpDays` and `skipMessages` in their **final** positions — Task 1.6 then only adds to them. No move/refactor between tasks.
+
+- [ ] **Step 1: Replace the duplicate-signup hard-fail with a conditional filter, and prepare the skip-summary list at the same time**
 
   Change lines 556-560 from:
   ```csharp
@@ -190,70 +199,45 @@ No new files. No DB migrations. No new routes. No new repository or service meth
   // Duplicate signup check — reject (or filter, if skipConflicts) if user already has Pending/Confirmed
   var shiftIdsInRange = shiftsInRange.Select(s => s.Id).ToHashSet();
   var activeShiftIds = await _repo.GetActiveShiftIdsForUserAsync(userId, shiftIdsInRange);
-  var alreadySignedUpDays = new List<int>();
+  var skipMessages = new List<string>();
   if (activeShiftIds.Count > 0)
   {
       if (!skipConflicts)
           return SignupResult.Fail("Already signed up for one or more shifts in this range.");
 
-      alreadySignedUpDays = shiftsInRange
+      var alreadySignedUpDays = shiftsInRange
           .Where(s => activeShiftIds.Contains(s.Id))
           .Select(s => s.DayOffset)
           .ToList();
+      var dayList = string.Join(", ", alreadySignedUpDays.Select(offset =>
+          FormatShiftDate(es.GateOpeningDate.PlusDays(offset))));
+      skipMessages.Add($"Already signed up for day(s): {dayList}.");
+
       shiftsInRange = shiftsInRange.Where(s => !activeShiftIds.Contains(s.Id)).ToList();
   }
   ```
 
-  Note: `shiftsInRange` was previously declared `var ... = ...ToList()` (line 547). It is reassigned here, so confirm the original declaration is `var` — if it's typed `List<Shift>` instead, no change to declaration is needed since `Where(...).ToList()` returns the same. If the build complains about reassignment of an implicitly-typed local, change line 547 to `List<Shift> shiftsInRange = ...`.
+  Reassigning a `var`-typed local (`shiftsInRange`) to the same `List<Shift>` type is legal C#; no declaration change to line 547 needed.
 
-- [ ] **Step 2: Re-run the new test**
+- [ ] **Step 2: Change the existing `string? warning = null;` declaration (currently line 593) to consume `skipMessages`**
 
-  Run: `dotnet test Humans.slnx -v quiet --filter "FullyQualifiedName~SignUpRange_SkipConflicts_FiltersAlreadySignedUpDays"`
-  Expected: still FAIL — but now on the warning-summary assertion, because we haven't appended the skipped days to `warning` yet. (Service now creates the two correct signups but doesn't return a warning.)
-
-- [ ] **Step 3: Append already-signed-up summary to the warning string**
-
-  Find the existing `string? warning = null;` declaration (currently line 593) and convert it to a block that builds the warning from multiple sources. The cleanest spot is right before the `// Capacity check` comment:
-
-  ```csharp
-  // Skip summary — built from already-signed-up + (later) time-conflict days
-  var skipMessages = new List<string>();
-  if (alreadySignedUpDays.Count > 0)
-  {
-      var dayList = string.Join(", ", alreadySignedUpDays.Select(offset =>
-          FormatShiftDate(es.GateOpeningDate.PlusDays(offset))));
-      skipMessages.Add($"Already signed up for day(s): {dayList}.");
-  }
-  ```
-
-  Then change the existing `string? warning = null;` line to:
   ```csharp
   string? warning = skipMessages.Count > 0 ? string.Join(" ", skipMessages) : null;
   ```
 
-  And later (capacity check, EE cap check) keep using the existing `warning = warning is null ? msg : $"{warning} {msg}";` pattern.
+  Existing capacity-check / EE-cap-check code below it already uses the `warning = warning is null ? msg : $"{warning} {msg}";` pattern — no change there.
 
-  Also handle the case where filtering empties the range. After the filter block but before the capacity check, add:
-
-  ```csharp
-  if (shiftsInRange.Count == 0)
-      return SignupResult.Fail(
-          skipMessages.Count > 0
-              ? string.Join(" ", skipMessages) + " Nothing to add."
-              : "No shifts found in the specified date range.");
-  ```
-
-- [ ] **Step 4: Re-run the new test**
+- [ ] **Step 3: Re-run the new test**
 
   Run: `dotnet test Humans.slnx -v quiet --filter "FullyQualifiedName~SignUpRange_SkipConflicts_FiltersAlreadySignedUpDays"`
   Expected: PASS.
 
-- [ ] **Step 5: Run all existing SignUpRange tests to confirm strict path unchanged**
+- [ ] **Step 4: Run all existing SignUpRange tests to confirm strict path unchanged**
 
   Run: `dotnet test Humans.slnx -v quiet --filter "FullyQualifiedName~SignUpRange"`
   Expected: all green (the original `SignUpRange_BlocksIfAnyDayOverlaps` still passes because `skipConflicts` defaults false).
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
   ```bash
   git add src/Humans.Application/Services/Shifts/ShiftSignupService.cs tests/Humans.Application.Tests/Services/ShiftSignupServiceTests.cs
@@ -276,16 +260,19 @@ No new files. No DB migrations. No new routes. No new repository or service meth
 
 - [ ] **Step 1: Write failing test for cross-rota time overlap**
 
-  Append after the previous test:
+  Note: the existing `SeedAllDayShift` helper produces all-day shifts whose absolute window is `08:00–18:00` event-local (per `Shift.AllDayWindowStart/End`). A 12:00–14:00 timed shift on the same day clearly overlaps.
+
+  Critical detail (per chunk-1 review): manually-constructed `Rota` and `Shift` entities **must** have their nav properties set (`shift.Rota = ...`, `rota.EventSettings = ...`) for the in-memory provider to return them on subsequent reads — see how `SeedShift` does it at line 701, and `SeedShiftScenario` at line 681.
 
   ```csharp
-  [Fact]
+  [HumansFact]
   public async Task SignUpRange_SkipConflicts_FiltersTimeOverlappingDays()
   {
-      // Arrange: user has a 12:00-14:00 timed shift in another rota on day -2
-      var (buildRota, userId, es) = await CreateRotaWithShiftsAsync(
-          period: RotaPeriod.Build,
-          dayOffsets: new[] { -3, -2, -1 });
+      // Arrange: Build rota + a separate Event rota with a 12:00-14:00 shift on day -2.
+      var (es, buildRota, _) = SeedShiftScenario(SignupPolicy.Public);
+      buildRota.Period = RotaPeriod.Build;
+      for (var day = -3; day <= -1; day++)
+          SeedAllDayShift(buildRota, day);
 
       var otherRota = new Rota
       {
@@ -295,9 +282,12 @@ No new files. No DB migrations. No new routes. No new repository or service meth
           Period = RotaPeriod.Event,
           Policy = SignupPolicy.Public,
           TeamId = buildRota.TeamId,
-          CreatedAt = _clock.GetCurrentInstant(),
-          UpdatedAt = _clock.GetCurrentInstant()
+          CreatedAt = TestNow,
+          UpdatedAt = TestNow
       };
+      otherRota.EventSettings = es; // nav property for in-memory provider
+      _dbContext.Rotas.Add(otherRota);
+
       var conflictingShift = new Shift
       {
           Id = Guid.NewGuid(),
@@ -308,57 +298,48 @@ No new files. No DB migrations. No new routes. No new repository or service meth
           MinVolunteers = 1,
           MaxVolunteers = 5,
           IsAllDay = false,
-          CreatedAt = _clock.GetCurrentInstant(),
-          UpdatedAt = _clock.GetCurrentInstant()
+          CreatedAt = TestNow,
+          UpdatedAt = TestNow
       };
-      _db.Rotas.Add(otherRota);
-      _db.Shifts.Add(conflictingShift);
-      _db.ShiftSignups.Add(new ShiftSignup
-      {
-          Id = Guid.NewGuid(),
-          UserId = userId,
-          ShiftId = conflictingShift.Id,
-          Status = SignupStatus.Confirmed,
-          CreatedAt = _clock.GetCurrentInstant(),
-          UpdatedAt = _clock.GetCurrentInstant()
-      });
-      await _db.SaveChangesAsync();
+      conflictingShift.Rota = otherRota; // nav property for in-memory provider
+      _dbContext.Shifts.Add(conflictingShift);
+
+      var userId = Guid.NewGuid();
+      SeedSignup(userId, conflictingShift.Id, SignupStatus.Confirmed);
+      await _dbContext.SaveChangesAsync();
 
       // Act
       var result = await _service.SignUpRangeAsync(userId, buildRota.Id, -3, -1, skipConflicts: true);
 
-      // Assert: signups created for days -3 and -1; warning mentions day -2 conflict
-      Assert.True(result.Success);
-      Assert.NotNull(result.Warning);
-      Assert.Contains("conflict", result.Warning, StringComparison.OrdinalIgnoreCase);
+      // Assert
+      result.Success.Should().BeTrue();
+      result.Warning.Should().NotBeNull();
+      result.Warning.Should().Contain("Time conflict");
 
-      var newSignups = await _db.ShiftSignups
+      var newOffsets = await _dbContext.ShiftSignups
           .Where(s => s.UserId == userId && s.Shift!.RotaId == buildRota.Id)
-          .ToListAsync();
-      Assert.Equal(2, newSignups.Count);
-      var newOffsets = newSignups
-          .Select(s => buildRota.Shifts.First(sh => sh.Id == s.ShiftId).DayOffset)
+          .Join(_dbContext.Shifts, s => s.ShiftId, sh => sh.Id, (s, sh) => sh.DayOffset)
           .OrderBy(o => o)
-          .ToList();
-      Assert.Equal(new[] { -3, -1 }, newOffsets);
+          .ToListAsync();
+      newOffsets.Should().Equal(-3, -1);
   }
   ```
-
-  Note: this test pattern depends on `CreateRotaWithShiftsAsync` returning the EventSettings — confirm the helper signature when copying. If it doesn't, adapt by loading `es` separately. Don't invent fields the helper doesn't have.
 
 - [ ] **Step 2: Run test to verify it fails**
 
   Run: `dotnet test Humans.slnx -v quiet --filter "FullyQualifiedName~SignUpRange_SkipConflicts_FiltersTimeOverlappingDays"`
-  Expected: FAIL — service still hard-fails at the time-conflict check (lines 585-590).
+  Expected: FAIL — service still hard-fails at the time-conflict check (lines 585-590) with `"Time conflict on day(s): ..."`. The new assertion `result.Success.Should().BeTrue()` is the one that fails.
 
-### Task 1.6: Implement skip-time-conflict branch
+### Task 1.6: Implement skip-time-conflict branch + empty-range guard
 
 **Files:**
-- Modify: `src/Humans.Application/Services/Shifts/ShiftSignupService.cs:562-590`
+- Modify: `src/Humans.Application/Services/Shifts/ShiftSignupService.cs:585-590`
+
+`skipMessages` is already declared in its final position by Task 1.4 (right after the duplicate-signup filter). This task only adds to it.
 
 - [ ] **Step 1: Replace the time-conflict hard-fail with a conditional filter**
 
-  Change lines 585-590 (currently `if (conflictingDays.Count > 0) { ... return SignupResult.Fail(...); }`) to:
+  Change the existing `if (conflictingDays.Count > 0) { ... return SignupResult.Fail(...); }` block (currently lines 585-590) to:
 
   ```csharp
   if (conflictingDays.Count > 0)
@@ -372,11 +353,17 @@ No new files. No DB migrations. No new routes. No new repository or service meth
       skipMessages.Add($"Time conflict on day(s): {dayList}.");
       shiftsInRange = shiftsInRange.Where(s => !conflictingDays.Contains(s.DayOffset)).ToList();
   }
+
+  // Empty-range guard — covers both "filtered everything out" and "range was always empty"
+  if (shiftsInRange.Count == 0)
+  {
+      return skipMessages.Count > 0
+          ? SignupResult.Fail(string.Join(" ", skipMessages) + " Nothing to add.")
+          : SignupResult.Fail("No shifts found in the specified date range.");
+  }
   ```
 
-  This requires `skipMessages` to be visible at this point. Since the previous task placed `skipMessages` declaration just before the capacity check, **move it earlier** — right after the `var alreadySignedUpDays = new List<int>();` declaration (i.e., before the time-conflict loop). Then the previous warning-construction line stays where it is.
-
-  Move the `if (shiftsInRange.Count == 0)` empty-range check to **after** the time-conflict filter, replacing both prior empty-range checks (the new one is the union of "everything got filtered for any reason").
+  The new empty-range guard supersedes the original `if (shiftsInRange.Count == 0) return SignupResult.Fail("No shifts found...");` check at line 549-550 — **delete that earlier check**, since the same condition is now caught after filtering.
 
 - [ ] **Step 2: Re-run the new test**
 
@@ -405,51 +392,44 @@ No new files. No DB migrations. No new routes. No new repository or service meth
 **Files:**
 - Modify: `tests/Humans.Application.Tests/Services/ShiftSignupServiceTests.cs`
 
-- [ ] **Step 1: Write failing test for full-block case**
+- [ ] **Step 1: Write the test**
 
   ```csharp
-  [Fact]
+  [HumansFact]
   public async Task SignUpRange_SkipConflicts_AllDaysConflict_ReturnsFailWithSummary()
   {
-      // Arrange: user already signed up to ALL three days in the range
-      var (rota, userId, _) = await CreateRotaWithShiftsAsync(
-          period: RotaPeriod.Build,
-          dayOffsets: new[] { -3, -2, -1 });
+      // Arrange: rota with 3 all-day shifts, user already signed up to ALL three.
+      var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
+      rota.Period = RotaPeriod.Build;
+      var userId = Guid.NewGuid();
+      var shifts = new List<Shift>();
+      for (var day = -3; day <= -1; day++)
+          shifts.Add(SeedAllDayShift(rota, day));
+      await _dbContext.SaveChangesAsync();
 
-      foreach (var shift in rota.Shifts)
-      {
-          _db.ShiftSignups.Add(new ShiftSignup
-          {
-              Id = Guid.NewGuid(),
-              UserId = userId,
-              ShiftId = shift.Id,
-              Status = SignupStatus.Confirmed,
-              CreatedAt = _clock.GetCurrentInstant(),
-              UpdatedAt = _clock.GetCurrentInstant()
-          });
-      }
-      await _db.SaveChangesAsync();
+      foreach (var shift in shifts)
+          SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
+      await _dbContext.SaveChangesAsync();
 
       // Act
       var result = await _service.SignUpRangeAsync(userId, rota.Id, -3, -1, skipConflicts: true);
 
       // Assert
-      Assert.False(result.Success);
-      Assert.NotNull(result.Error);
-      Assert.Contains("Nothing to add", result.Error, StringComparison.OrdinalIgnoreCase);
+      result.Success.Should().BeFalse();
+      result.Error.Should().NotBeNull();
+      result.Error.Should().Contain("Nothing to add");
 
-      // No new signups created (only the 3 pre-existing)
-      var totalSignups = await _db.ShiftSignups.CountAsync(s => s.UserId == userId);
-      Assert.Equal(3, totalSignups);
+      var totalSignups = await _dbContext.ShiftSignups.CountAsync(s => s.UserId == userId);
+      totalSignups.Should().Be(3); // only the 3 pre-existing
   }
   ```
 
 - [ ] **Step 2: Run — expect PASS already**
 
   Run: `dotnet test Humans.slnx -v quiet --filter "FullyQualifiedName~SignUpRange_SkipConflicts_AllDaysConflict"`
-  Expected: PASS — the empty-range guard added in Task 1.4 / refined in 1.6 already covers this case.
+  Expected: PASS — the empty-range guard added in Task 1.6 already covers this case.
 
-  If it fails, the most likely cause is the `Nothing to add` substring not making it into the error — verify the error-construction code path covers the alreadySignedUp-only branch as well.
+  If it fails, the most likely cause is the `Nothing to add` substring not making it into the error — verify the error-construction code path covers the already-signed-up-only branch (no time-conflict step needed).
 
 - [ ] **Step 3: Commit**
 
@@ -463,42 +443,172 @@ No new files. No DB migrations. No new routes. No new repository or service meth
   )"
   ```
 
+### Task 1.7b: Test — mixed already-signed-up + time-conflict + free → free days get signed up
+
+**Why this exists:** spec line 203 explicitly calls for this case. Easy to miss with two separate skip kinds; needs its own assertion that **both** skip kinds appear distinctly in the warning string.
+
+**Files:**
+- Modify: `tests/Humans.Application.Tests/Services/ShiftSignupServiceTests.cs`
+
+- [ ] **Step 1: Write the test**
+
+  ```csharp
+  [HumansFact]
+  public async Task SignUpRange_SkipConflicts_MixedKinds_AddsFreeDaysWithBothWarnings()
+  {
+      // Arrange: range -4..-1.
+      //   day -4: free
+      //   day -3: already signed up to this same Build rota
+      //   day -2: cross-rota 12:00-14:00 conflict
+      //   day -1: free
+      var (es, buildRota, _) = SeedShiftScenario(SignupPolicy.Public);
+      buildRota.Period = RotaPeriod.Build;
+      for (var day = -4; day <= -1; day++)
+          SeedAllDayShift(buildRota, day);
+
+      var otherRota = new Rota
+      {
+          Id = Guid.NewGuid(),
+          Name = "Kitchen",
+          EventSettingsId = es.Id,
+          Period = RotaPeriod.Event,
+          Policy = SignupPolicy.Public,
+          TeamId = buildRota.TeamId,
+          CreatedAt = TestNow,
+          UpdatedAt = TestNow
+      };
+      otherRota.EventSettings = es;
+      _dbContext.Rotas.Add(otherRota);
+
+      var crossRotaShift = new Shift
+      {
+          Id = Guid.NewGuid(),
+          RotaId = otherRota.Id,
+          DayOffset = -2,
+          StartTime = new LocalTime(12, 0),
+          Duration = Duration.FromHours(2),
+          MinVolunteers = 1,
+          MaxVolunteers = 5,
+          IsAllDay = false,
+          CreatedAt = TestNow,
+          UpdatedAt = TestNow
+      };
+      crossRotaShift.Rota = otherRota;
+      _dbContext.Shifts.Add(crossRotaShift);
+
+      var userId = Guid.NewGuid();
+      await _dbContext.SaveChangesAsync();
+
+      var dayMinus3Shift = await _dbContext.Shifts
+          .FirstAsync(s => s.RotaId == buildRota.Id && s.DayOffset == -3);
+      SeedSignup(userId, dayMinus3Shift.Id, SignupStatus.Confirmed);  // already-signed-up case
+      SeedSignup(userId, crossRotaShift.Id, SignupStatus.Confirmed);  // time-conflict case
+      await _dbContext.SaveChangesAsync();
+
+      // Act
+      var result = await _service.SignUpRangeAsync(userId, buildRota.Id, -4, -1, skipConflicts: true);
+
+      // Assert: -4 and -1 added; both warning kinds present
+      result.Success.Should().BeTrue();
+      result.Warning.Should().NotBeNull();
+      result.Warning.Should().Contain("Already signed up");
+      result.Warning.Should().Contain("Time conflict");
+
+      var newOffsets = await _dbContext.ShiftSignups
+          .Where(s => s.UserId == userId && s.Shift!.RotaId == buildRota.Id && s.ShiftId != dayMinus3Shift.Id)
+          .Join(_dbContext.Shifts, s => s.ShiftId, sh => sh.Id, (s, sh) => sh.DayOffset)
+          .OrderBy(o => o)
+          .ToListAsync();
+      newOffsets.Should().Equal(-4, -1);
+  }
+  ```
+
+- [ ] **Step 2: Run**
+
+  Run: `dotnet test Humans.slnx -v quiet --filter "FullyQualifiedName~SignUpRange_SkipConflicts_MixedKinds"`
+  Expected: PASS — the implementation in 1.4 + 1.6 already supports this; this test pins it.
+
+- [ ] **Step 3: Commit**
+
+  ```bash
+  git add tests/Humans.Application.Tests/Services/ShiftSignupServiceTests.cs
+  git commit -m "$(cat <<'EOF'
+  test(shifts): pin SignUpRangeAsync skipConflicts mixed-kinds behaviour
+
+  Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+  EOF
+  )"
+  ```
+
 ### Task 1.8: Test — strict mode (skipConflicts: false) preserves error path
 
 **Files:**
 - Modify: `tests/Humans.Application.Tests/Services/ShiftSignupServiceTests.cs`
 
+The existing `SignUpRange_BlocksIfAnyDayOverlaps` test (line 399-421) already pins strict-mode behaviour for the duplicate-signup path. This task adds the equivalent pin for the **time-conflict** path (which the existing tests don't cover).
+
 - [ ] **Step 1: Write the test (no production change expected)**
 
   ```csharp
-  [Fact]
+  [HumansFact]
   public async Task SignUpRange_StrictMode_TimeOverlap_PreservesHardFail()
   {
-      // Arrange: same setup as the time-overlap test above
-      var (buildRota, userId, es) = await CreateRotaWithShiftsAsync(
-          period: RotaPeriod.Build,
-          dayOffsets: new[] { -3, -2, -1 });
+      // Arrange: cross-rota time conflict on day -2 (same shape as Task 1.5).
+      var (es, buildRota, _) = SeedShiftScenario(SignupPolicy.Public);
+      buildRota.Period = RotaPeriod.Build;
+      for (var day = -3; day <= -1; day++)
+          SeedAllDayShift(buildRota, day);
 
-      var otherRota = new Rota { /* ...same as Task 1.5 setup... */ };
-      var conflictingShift = new Shift { /* ...same as Task 1.5 setup... */ };
-      // ...add to _db, save...
+      var otherRota = new Rota
+      {
+          Id = Guid.NewGuid(),
+          Name = "Kitchen",
+          EventSettingsId = es.Id,
+          Period = RotaPeriod.Event,
+          Policy = SignupPolicy.Public,
+          TeamId = buildRota.TeamId,
+          CreatedAt = TestNow,
+          UpdatedAt = TestNow
+      };
+      otherRota.EventSettings = es;
+      _dbContext.Rotas.Add(otherRota);
 
-      // Act — note: no skipConflicts argument, defaults to false
+      var conflictingShift = new Shift
+      {
+          Id = Guid.NewGuid(),
+          RotaId = otherRota.Id,
+          DayOffset = -2,
+          StartTime = new LocalTime(12, 0),
+          Duration = Duration.FromHours(2),
+          MinVolunteers = 1,
+          MaxVolunteers = 5,
+          IsAllDay = false,
+          CreatedAt = TestNow,
+          UpdatedAt = TestNow
+      };
+      conflictingShift.Rota = otherRota;
+      _dbContext.Shifts.Add(conflictingShift);
+
+      var userId = Guid.NewGuid();
+      SeedSignup(userId, conflictingShift.Id, SignupStatus.Confirmed);
+      await _dbContext.SaveChangesAsync();
+
+      // Act — no skipConflicts argument; defaults to false.
       var result = await _service.SignUpRangeAsync(userId, buildRota.Id, -3, -1);
 
-      // Assert: hard-fails with the legacy error message
-      Assert.False(result.Success);
-      Assert.NotNull(result.Error);
-      Assert.Contains("Time conflict", result.Error, StringComparison.Ordinal);
+      // Assert: hard-fails with the legacy error message; nothing new written.
+      result.Success.Should().BeFalse();
+      result.Error.Should().NotBeNull();
+      result.Error.Should().Contain("Time conflict");
 
-      var newSignups = await _db.ShiftSignups
+      var newSignupCount = await _dbContext.ShiftSignups
           .Where(s => s.UserId == userId && s.Shift!.RotaId == buildRota.Id)
           .CountAsync();
-      Assert.Equal(0, newSignups);
+      newSignupCount.Should().Be(0);
   }
   ```
 
-  Refactoring tip: if Tasks 1.5 and 1.8 share enough setup, extract a `private async Task<(Rota, Guid, EventSettings, Shift)> CreateBuildRotaWithCrossRotaConflictAsync()` helper. Don't over-extract — only if the duplication is real.
+  Refactoring tip: tasks 1.5, 1.7b, and 1.8 share the cross-rota-conflict-shift setup. After committing, if the duplication smells real, extract a private helper `(Rota Other, Shift ConflictingShift) SeedCrossRotaConflict(EventSettings es, Rota buildRota, int dayOffset)`. Don't over-extract — only if it cleans up.
 
 - [ ] **Step 2: Run — expect PASS**
 
@@ -510,7 +620,7 @@ No new files. No DB migrations. No new routes. No new repository or service meth
   ```bash
   git add tests/Humans.Application.Tests/Services/ShiftSignupServiceTests.cs
   git commit -m "$(cat <<'EOF'
-  test(shifts): pin SignUpRangeAsync strict-mode hard-fail behaviour
+  test(shifts): pin SignUpRangeAsync strict-mode time-conflict hard-fail
 
   Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
   EOF
@@ -535,7 +645,11 @@ No new files. No DB migrations. No new routes. No new repository or service meth
 ### Task 2.1: Add record types and view-model fields
 
 **Files:**
-- Modify: `src/Humans.Web/Models/ShiftViewModels.cs:548` (`BuildStrikeRotaTableViewModel`)
+- Modify: `src/Humans.Web/Models/ShiftViewModels.cs` (insert before line 548 where `BuildStrikeRotaTableViewModel` lives)
+
+**Note on `set;` vs `init;`:** the spec showed `{ get; init; }` for the new properties. The plan uses `{ get; set; }` to match the existing pattern across `BuildStrikeRotaTableViewModel` (verified: lines 548-561 are all `set;`). This is an intentional consistency choice over the spec's prose example.
+
+**Note on `ShiftName`:** the spec hinted at "Kitchen Lunch"-style shift names in conflict-row copy. The `Shift` entity has no `Name` property — only an optional markdown `Description`. Including markdown in a tooltip-style row is messy; the `/Shifts/Mine` page just displays `Rota.Name` (e.g., "Kitchen") + the time range, which is unambiguous within a rota. **The plan drops `ShiftName` and uses just `RotaName` + display times.** The localizer key `Shifts_ConfirmSignup_Conflicts_Row` is updated accordingly in Chunk 4.
 
 - [ ] **Step 1: Define record types and add fields**
 
@@ -544,7 +658,6 @@ No new files. No DB migrations. No new routes. No new repository or service meth
   ```csharp
   public record UserSignupConflictItem(
       LocalDate Date,
-      string ShiftName,
       string RotaName,
       Instant AbsoluteStart,
       Instant AbsoluteEnd,
@@ -596,19 +709,32 @@ No new files. No DB migrations. No new routes. No new repository or service meth
 ### Task 2.2: Load active signups in `ShiftsController.Index`
 
 **Files:**
+- Modify: `src/Humans.Application/Interfaces/Shifts/IShiftSignupService.cs` (add passthrough signature)
+- Modify: `src/Humans.Application/Services/Shifts/ShiftSignupService.cs` (add passthrough body)
 - Modify: `src/Humans.Web/Controllers/ShiftsController.cs` (around lines 65 and 238-260)
 
-- [ ] **Step 1: Locate dependencies**
+**Verified:** `IShiftSignupService` does NOT currently expose `GetActiveSignupsForUserAsync` — only the repository does. We add a passthrough on the service (same shape as `GetByUserAsync` at `ShiftSignupService.cs:867-868`) so the controller doesn't need a new constructor dependency.
 
-  Confirm `ShiftsController` has access to either `_signupService` (already does — line 276) or `IShiftSignupRepository`. Prefer using the existing `_signupService` to avoid adding a new constructor dependency. The repository method is `GetActiveSignupsForUserAsync`; if it's not exposed via the service, add a passthrough method on `IShiftSignupService`/`ShiftSignupService`:
+- [ ] **Step 1: Add passthrough to `IShiftSignupService`**
+
+  In `src/Humans.Application/Interfaces/Shifts/IShiftSignupService.cs`, after the existing `GetByUserAsync` declaration, add:
 
   ```csharp
-  Task<IReadOnlyList<ShiftSignup>> GetActiveSignupsForUserAsync(Guid userId);
+  Task<IReadOnlyList<ShiftSignup>> GetActiveSignupsForUserAsync(Guid userId, CancellationToken ct = default);
   ```
 
-  with implementation `=> _repo.GetActiveSignupsForUserAsync(userId);`. Mirror the existing passthrough pattern at line 867-868.
+  Place it next to `GetByUserAsync` to match the existing organisation.
 
-- [ ] **Step 2: In `Index`, after the existing `var userSignups = ...` line (line 65), add cross-event load**
+- [ ] **Step 2: Add passthrough to `ShiftSignupService`**
+
+  In `src/Humans.Application/Services/Shifts/ShiftSignupService.cs`, near line 867-868 (the existing `GetByUserAsync` passthrough), add:
+
+  ```csharp
+  public Task<IReadOnlyList<ShiftSignup>> GetActiveSignupsForUserAsync(Guid userId, CancellationToken ct = default) =>
+      _repo.GetActiveSignupsForUserAsync(userId, ct);
+  ```
+
+- [ ] **Step 3: In `ShiftsController.Index`, after the existing `var userSignups = ...` line (line 65), add cross-event load**
 
   ```csharp
   var allActiveSignups = await _signupService.GetActiveSignupsForUserAsync(user.Id);
@@ -625,40 +751,39 @@ No new files. No DB migrations. No new routes. No new repository or service meth
           var localEnd = absEnd.InZone(tz).LocalDateTime;
           return new UserSignupConflictItem(
               Date: localStart.Date,
-              ShiftName: s.Shift.Rota.Name + (s.Shift.IsAllDay ? "" : ""),
               RotaName: s.Shift.Rota.Name,
               AbsoluteStart: absStart,
               AbsoluteEnd: absEnd,
-              DisplayStart: localStart.TimeOfDay.ToString("HH:mm", null),
-              DisplayEnd: localEnd.TimeOfDay.ToString("HH:mm", null));
+              DisplayStart: localStart.TimeOfDay.ToString("HH:mm", CultureInfo.InvariantCulture),
+              DisplayEnd: localEnd.TimeOfDay.ToString("HH:mm", CultureInfo.InvariantCulture));
       })
       .ToList();
   ```
 
-  Add `using NodaTime;` to the controller's usings if not present.
+  Add `using NodaTime;` and `using System.Globalization;` to the controller's usings if not present.
 
-- [ ] **Step 3: Add `UserActiveSignups = userActiveSignupsForUi` to the model construction at line 238-260**
+- [ ] **Step 4: Add `UserActiveSignups = userActiveSignupsForUi` to the model construction at line 238-260**
 
   ```csharp
   UserActiveSignups = userActiveSignupsForUi,
   ```
 
-- [ ] **Step 4: Build to confirm compiles**
+- [ ] **Step 5: Build to confirm compiles**
 
   Run: `dotnet build Humans.slnx -v quiet`
   Expected: build succeeds.
 
-- [ ] **Step 5: Run tests to confirm nothing broke**
+- [ ] **Step 6: Run tests to confirm nothing broke**
 
   Run: `dotnet test Humans.slnx -v quiet`
   Expected: all green.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
   ```bash
   git add src/Humans.Web/Controllers/ShiftsController.cs src/Humans.Application/Services/Shifts/ShiftSignupService.cs src/Humans.Application/Interfaces/Shifts/IShiftSignupService.cs
   git commit -m "$(cat <<'EOF'
-  feat(shifts): load user's cross-event active signups for dashboard conflict modal
+  feat(shifts): expose GetActiveSignupsForUserAsync via service + load for dashboard
 
   Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
   EOF
@@ -680,10 +805,12 @@ No new files. No DB migrations. No new routes. No new repository or service meth
       .Where(s => s.Shift.IsAllDay)
       .ToDictionary(
           s => s.Shift.DayOffset,
-          s => new ShiftWindow(s.Shift.GetAbsoluteStart(es), s.Shift.GetAbsoluteEnd(es)))
+          s => new ShiftWindow(s.AbsoluteStart, s.AbsoluteEnd))
   ```
 
-  Note: `rotaGroup` and `es` are already in scope at both sites; verify by reading line 360-377 first. The second site at line ~513 may use a different inner-scope variable name — adapt to whatever's there. Don't blindly substitute.
+  `ShiftDisplayItem` (defined at `ShiftViewModels.cs:230`) already carries pre-computed `AbsoluteStart` / `AbsoluteEnd` — reuse those instead of recomputing via `GetAbsoluteStart(es)`.
+
+  Note: `rotaGroup` is already in scope at both sites; verify by reading line 360-377 first. The second site at line ~513 may use a different inner-scope variable name — adapt to whatever's there. Don't blindly substitute.
 
 - [ ] **Step 2: Add necessary `@using` directives at the top of `Index.cshtml`**
 
@@ -878,7 +1005,6 @@ No new files. No DB migrations. No new routes. No new repository or service meth
       @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
           Model.UserActiveSignups.Select(u => new {
               date = u.Date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
-              shift = u.ShiftName,
               rota = u.RotaName,
               absStart = u.AbsoluteStart.ToString(),
               absEnd = u.AbsoluteEnd.ToString(),
@@ -939,6 +1065,14 @@ No new files. No DB migrations. No new routes. No new repository or service meth
       var startSel = form.querySelector('select[name="startDayOffset"]');
       var endSel = form.querySelector('select[name="endDayOffset"]');
 
+      function fmt(tpl, args) {
+          // Replace ALL occurrences of {0}, {1}, ... — guards future translations
+          // that might repeat a placeholder. JS String.replace replaces first only.
+          return Object.keys(args).reduce(function (s, k) {
+              return s.split('{' + k + '}').join(String(args[k]));
+          }, tpl);
+      }
+
       function offsetsBetween(a, b) {
           var lo = Math.min(a, b), hi = Math.max(a, b), out = [];
           for (var i = lo; i <= hi; i++) out.push(i);
@@ -974,13 +1108,13 @@ No new files. No DB migrations. No new routes. No new repository or service meth
           var rangeTpl = modalEl.getAttribute('data-range-tpl-multi') || '{0} – {1} ({2} days)';
           var singleTpl = modalEl.getAttribute('data-range-tpl-single') || '{0} (1 day)';
           var rangeLine = days === 1
-              ? singleTpl.replace('{0}', startDate)
-              : rangeTpl.replace('{0}', startDate).replace('{1}', endDate).replace('{2}', String(days));
+              ? fmt(singleTpl, { 0: startDate })
+              : fmt(rangeTpl, { 0: startDate, 1: endDate, 2: days });
           modalEl.querySelector('.js-range-line').textContent = rangeLine;
 
           // Arrival callout
           var arriveTpl = modalEl.getAttribute('data-arrive-tpl') || "You'll be expected on site by {0}.";
-          modalEl.querySelector('.js-arrive-by-line').textContent = arriveTpl.replace('{0}', arriveBy);
+          modalEl.querySelector('.js-arrive-by-line').textContent = fmt(arriveTpl, { 0: arriveBy });
 
           // Compute conflicts
           var allConflicts = [];
@@ -1014,7 +1148,7 @@ No new files. No DB migrations. No new routes. No new repository or service meth
                   if (findConflictsForOffset(off2).length > 0) conflictedOffsets.add(off2);
               }
               var rowTpl = modalEl.getAttribute('data-conflict-row-tpl')
-                  || '{0} — already signed up for {1} ({2}, {3}–{4})';
+                  || '{0} — already signed up for {1} ({2}–{3})';
 
               if (conflictedOffsets.size === days) {
                   allBlockedAlert.classList.remove('d-none');
@@ -1022,12 +1156,12 @@ No new files. No DB migrations. No new routes. No new repository or service meth
               } else {
                   allConflicts.forEach(function (c) {
                       var li = document.createElement('li');
-                      li.textContent = rowTpl
-                          .replace('{0}', c.date)
-                          .replace('{1}', c.conflict.shift)
-                          .replace('{2}', c.conflict.rota)
-                          .replace('{3}', c.conflict.displayStart)
-                          .replace('{4}', c.conflict.displayEnd);
+                      li.textContent = fmt(rowTpl, {
+                          0: c.date,
+                          1: c.conflict.rota,
+                          2: c.conflict.displayStart,
+                          3: c.conflict.displayEnd
+                      });
                       list.appendChild(li);
                   });
                   partialAlert.classList.remove('d-none');
@@ -1144,7 +1278,7 @@ No new files. No DB migrations. No new routes. No new repository or service meth
   | `Shifts_ConfirmSignup_Prompt` | `Is this the period you intended to sign up for?` |
   | `Shifts_ConfirmSignup_Confirm` | `Confirm sign-up` |
   | `Shifts_ConfirmSignup_Conflicts_Heading` | `Some days in this range conflict with shifts you're already signed up for:` |
-  | `Shifts_ConfirmSignup_Conflicts_Row` | `{0} — already signed up for {1} ({2}, {3}–{4})` |
+  | `Shifts_ConfirmSignup_Conflicts_Row` | `{0} — already signed up for {1} ({2}–{3})` |
   | `Shifts_ConfirmSignup_Conflicts_PartialNote` | `Sign-up will only add days that don't conflict.` |
   | `Shifts_ConfirmSignup_Conflicts_AllBlocked` | `Every day in this range conflicts with existing signups — nothing to add.` |
 
@@ -1188,7 +1322,7 @@ No new files. No DB migrations. No new routes. No new repository or service meth
   | `Shifts_ConfirmSignup_Prompt` | `¿Es este el periodo en el que querías inscribirte?` |
   | `Shifts_ConfirmSignup_Confirm` | `Confirmar inscripción` |
   | `Shifts_ConfirmSignup_Conflicts_Heading` | `Algunos días de este rango entran en conflicto con turnos en los que ya estás inscrito/a:` |
-  | `Shifts_ConfirmSignup_Conflicts_Row` | `{0} — ya inscrito/a en {1} ({2}, {3}–{4})` |
+  | `Shifts_ConfirmSignup_Conflicts_Row` | `{0} — ya inscrito/a en {1} ({2}–{3})` |
   | `Shifts_ConfirmSignup_Conflicts_PartialNote` | `Solo se añadirán los días que no entren en conflicto.` |
   | `Shifts_ConfirmSignup_Conflicts_AllBlocked` | `Todos los días de este rango entran en conflicto con inscripciones existentes — no hay nada que añadir.` |
 
@@ -1209,28 +1343,52 @@ No new files. No DB migrations. No new routes. No new repository or service meth
   )"
   ```
 
-### Task 4.4: Add stubbed translations for de/ca/fr/it
+### Task 4.4: Add translations for de/ca/fr/it
 
 **Files:**
 - Modify: `SharedResource.de.resx`, `SharedResource.ca.resx`, `SharedResource.fr.resx`, `SharedResource.it.resx`
 
-- [ ] **Step 1: For each locale, add the eleven keys**
+**Existing pattern (verified):** all four files contain hand-translated values for the `Shifts_*` keys — no English fallbacks, no `<!-- TODO -->` markers. Match that pattern: provide a credible best-effort translation per locale rather than English fallbacks. Don't agonise; strings are short and easy to refine in a follow-up i18n pass if needed.
 
-  Use the pattern observed in Task 4.1 (machine-translated, English fallback, or `<!-- TODO -->`-marked). If the existing pattern is "English fallback for missing translations," use the English text from Task 4.2 for now — a follow-up i18n pass can refine.
+- [ ] **Step 1: Add the eleven keys to `SharedResource.de.resx` (German)**
 
-  If the existing pattern is "machine-translated and committed," provide a credible best-effort translation for each. Don't agonise; the strings are short and easy to refine.
+  Provide hand-written German translations following the existing tone in the file. Build after editing this single file:
 
-- [ ] **Step 2: Build**
+  ```bash
+  dotnet build Humans.slnx -v quiet
+  ```
+  Expected: build succeeds (catches resx XML schema errors per-file rather than after all four).
 
-  Run: `dotnet build Humans.slnx -v quiet`
+- [ ] **Step 2: Add the eleven keys to `SharedResource.ca.resx` (Catalan)**
+
+  Build after editing:
+  ```bash
+  dotnet build Humans.slnx -v quiet
+  ```
   Expected: build succeeds.
 
-- [ ] **Step 3: Commit (one commit covering all four files)**
+- [ ] **Step 3: Add the eleven keys to `SharedResource.fr.resx` (French)**
+
+  Build:
+  ```bash
+  dotnet build Humans.slnx -v quiet
+  ```
+  Expected: build succeeds.
+
+- [ ] **Step 4: Add the eleven keys to `SharedResource.it.resx` (Italian)**
+
+  Build:
+  ```bash
+  dotnet build Humans.slnx -v quiet
+  ```
+  Expected: build succeeds.
+
+- [ ] **Step 5: Commit (one commit covering all four files)**
 
   ```bash
   git add src/Humans.Web/Resources/SharedResource.de.resx src/Humans.Web/Resources/SharedResource.ca.resx src/Humans.Web/Resources/SharedResource.fr.resx src/Humans.Web/Resources/SharedResource.it.resx
   git commit -m "$(cat <<'EOF'
-  i18n(shifts): add ConfirmSignup_* keys (de, ca, fr, it stubs)
+  i18n(shifts): add ConfirmSignup_* keys (de, ca, fr, it)
 
   Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
   EOF
