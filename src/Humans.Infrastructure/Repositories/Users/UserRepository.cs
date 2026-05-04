@@ -608,7 +608,6 @@ public sealed class UserRepository : IUserRepository
         return await ctx.EventParticipations
             .AsNoTracking()
             .Where(ep => ep.UserId == userId)
-            .OrderBy(ep => ep.Year)
             .ToListAsync(ct);
     }
 
