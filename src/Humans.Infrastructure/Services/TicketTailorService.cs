@@ -373,9 +373,58 @@ public class TicketTailorService : ITicketVendorService
         [property: JsonPropertyName("code")] string? Code,
         [property: JsonPropertyName("times_used")] int? TimesUsed);
 
-    public Task<VoidIssuedTicketResult> VoidIssuedTicketAsync(string vendorTicketId, bool voidToHold, CancellationToken ct = default) =>
-        throw new NotSupportedException("Implemented in Phase 3 / Task 3.1");
+    public async Task<VoidIssuedTicketResult> VoidIssuedTicketAsync(
+        string vendorTicketId, bool voidToHold, CancellationToken ct = default)
+    {
+        var url = $"{BaseUrl}/issued_tickets/{vendorTicketId}/void";
+        using var content = new FormUrlEncodedContent(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["void_to_hold"] = voidToHold ? "true" : "false",
+        });
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.PostAsync(url, content, ct);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new TicketVendorWriteException(
+                $"TicketTailor void transport failure: {ex.Message}",
+                TicketVendorFailureKind.Transient, ex);
+        }
+
+        if (!response.IsSuccessStatusCode)
+            throw await BuildVendorWriteExceptionAsync(response, "void", vendorTicketId, ct);
+
+        var body = await response.Content.ReadFromJsonAsync<TtVoidResponse>(JsonOptions, ct);
+        return new VoidIssuedTicketResult(
+            VendorTicketId: body?.Id ?? vendorTicketId,
+            HoldId: body?.HoldId);
+    }
 
     public Task<VendorTicketDto> IssueTicketAsync(IssueTicketRequest request, CancellationToken ct = default) =>
         throw new NotSupportedException("Implemented in Phase 3 / Task 3.1");
+
+    internal sealed record TtVoidResponse(
+        [property: JsonPropertyName("id")] string? Id,
+        [property: JsonPropertyName("hold_id")] string? HoldId,
+        [property: JsonPropertyName("voided")] string? Voided);
+
+    private static async Task<TicketVendorWriteException> BuildVendorWriteExceptionAsync(
+        HttpResponseMessage response, string op, string subject, CancellationToken ct)
+    {
+        var body = await response.Content.ReadAsStringAsync(ct);
+        var kind = (int)response.StatusCode switch
+        {
+            400 or 422 => TicketVendorFailureKind.Validation,
+            401 or 403 => TicketVendorFailureKind.AuthFailed,
+            404 => TicketVendorFailureKind.NotFound,
+            429 => TicketVendorFailureKind.RateLimited,
+            >= 500 => TicketVendorFailureKind.Transient,
+            _ => TicketVendorFailureKind.Transient,
+        };
+        return new TicketVendorWriteException(
+            $"TicketTailor {op} {subject} returned {(int)response.StatusCode}: {body}", kind);
+    }
 }
