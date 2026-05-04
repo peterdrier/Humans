@@ -187,7 +187,7 @@ public class SendBoardDailyDigestJob : IRecurringJob
             var sentCount = 0;
             foreach (var member in boardMembers.Values)
             {
-                var email = member.GetEffectiveEmail();
+                var email = member.Email;
                 if (email is null)
                 {
                     _logger.LogWarning(

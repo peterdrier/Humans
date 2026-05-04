@@ -3,6 +3,7 @@ using Humans.Application.Helpers;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
@@ -29,6 +30,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
     private readonly ITeamResourceService _teamResourceService;
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
+    private readonly IUserEmailRepository _userEmailRepository;
     private readonly IAuditLogService _auditLogService;
     private readonly ILogger<GoogleAdminService> _logger;
 
@@ -41,6 +43,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
         ITeamResourceService teamResourceService,
         IUserService userService,
         IUserEmailService userEmailService,
+        IUserEmailRepository userEmailRepository,
         IAuditLogService auditLogService,
         ILogger<GoogleAdminService> logger)
     {
@@ -50,6 +53,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
         _teamResourceService = teamResourceService;
         _userService = userService;
         _userEmailService = userEmailService;
+        _userEmailRepository = userEmailRepository;
         _auditLogService = auditLogService;
         _logger = logger;
     }
@@ -501,25 +505,31 @@ public sealed class GoogleAdminService : IGoogleAdminService
     {
         try
         {
-            // Load all users (UserEmails included by GetAllUsersAsync), then
-            // filter to those whose canonical IsGoogle Workspace identity is
-            // a @nobodies.team address.
+            // Issue #635 (§15i): read UserEmails through the section-owned
+            // repository instead of traversing user.UserEmails (cross-domain
+            // nav). Load all users + all UserEmails once and group in memory.
             var allUsers = await _userService.GetAllUsersAsync(ct);
+            var allUserEmails = await _userEmailRepository.GetAllAsync(ct);
+            var emailsByUserId = allUserEmails
+                .GroupBy(e => e.UserId)
+                .ToDictionary(g => g.Key, g => (IReadOnlyList<UserEmail>)g.ToList());
 
             var nobodiesUsers = allUsers
-                .Select(u => new
+                .Select(u =>
                 {
-                    u.Id,
-                    u.DisplayName,
-                    GoogleEmail = u.UserEmails
+                    var emails = emailsByUserId.TryGetValue(u.Id, out var list)
+                        ? list
+                        : Array.Empty<UserEmail>();
+                    var googleEmail = emails
                         .Where(e => e.IsVerified && e.IsGoogle)
                         .Select(e => e.Email)
                         .FirstOrDefault()
-                        ?? u.UserEmails
+                        ?? emails
                             .Where(e => e.IsVerified && e.Provider != null)
                             .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
                             .Select(e => e.Email)
-                            .FirstOrDefault()
+                            .FirstOrDefault();
+                    return new { u.Id, u.DisplayName, GoogleEmail = googleEmail };
                 })
                 .Where(x => x.GoogleEmail is not null &&
                     x.GoogleEmail.EndsWith($"@{NobodiesTeamDomain}", StringComparison.OrdinalIgnoreCase))
@@ -604,19 +614,20 @@ public sealed class GoogleAdminService : IGoogleAdminService
     {
         try
         {
-            // GetByIdsWithEmailsAsync so the canonical IsGoogle UserEmail row
-            // resolves below — singular GetByIdAsync does not load UserEmails.
-            var usersById = await _userService.GetByIdsWithEmailsAsync([userId], ct);
-            if (!usersById.TryGetValue(userId, out var user))
+            // Issue #635 (§15i): read UserEmails through the section-owned
+            // repository instead of traversing user.UserEmails (cross-domain nav).
+            var user = await _userService.GetByIdAsync(userId, ct);
+            if (user is null)
             {
                 return new EmailRenameFixResult(false, ErrorMessage: "Human not found.");
             }
 
-            var oldEmail = user.UserEmails
+            var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
+            var oldEmail = userEmails
                 .Where(e => e.IsVerified && e.IsGoogle)
                 .Select(e => e.Email)
                 .FirstOrDefault()
-                ?? user.UserEmails
+                ?? userEmails
                     .Where(e => e.IsVerified && e.Provider != null)
                     .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
                     .Select(e => e.Email)

@@ -545,7 +545,7 @@ public sealed class UserRepository : IUserRepository
         if (user is null)
             return null;
 
-        var originalEmail = user.GetEffectiveEmail();
+        var originalEmail = user.Email;
         var originalDisplayName = user.DisplayName;
         var preferredLanguage = user.PreferredLanguage;
 

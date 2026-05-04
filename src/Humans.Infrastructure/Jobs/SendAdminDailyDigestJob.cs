@@ -158,7 +158,7 @@ public class SendAdminDailyDigestJob : IRecurringJob
             var sentCount = 0;
             foreach (var admin in admins.Values)
             {
-                var email = admin.GetEffectiveEmail();
+                var email = admin.Email;
                 if (email is null)
                 {
                     _logger.LogWarning("Admin {UserId} ({Name}) has no effective email, skipping digest",
