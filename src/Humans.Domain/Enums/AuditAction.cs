@@ -120,4 +120,8 @@ public enum AuditAction
     StoreProductUpdated,
     StoreProductDeactivated,
     StorePaymentRecorded,
+    TicketTransferRequested,
+    TicketTransferApproved,
+    TicketTransferRejected,
+    TicketTransferCancelled,
 }
