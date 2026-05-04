@@ -1609,6 +1609,7 @@ public class ProfileController : HumansControllerBase
 
             var popoverUser = await _userService.GetByIdAsync(id, ct);
             var teams = await _teamService.GetActiveTeamNamesForUserAsync(id, ct);
+            var profileLanguages = await _profileService.GetProfileLanguagesAsync(profile.Id, ct);
 
             var effectivePictureUrl = profile.HasCustomProfilePicture
                 ? Url.Action(nameof(Picture), "Profile",
@@ -1621,13 +1622,20 @@ public class ProfileController : HumansControllerBase
                 DisplayName = popoverUser?.DisplayName ?? "Unknown",
                 Email = popoverUser?.Email,
                 ProfilePictureUrl = effectivePictureUrl,
+                PreferredLanguage = popoverUser?.PreferredLanguage,
                 MembershipTier = profile.MembershipTier.ToString(),
                 MembershipStatus = profile.IsSuspended ? "Suspended"
                     : profile.IsApproved ? "Active" : "Pending",
                 City = profile.City,
                 CountryCode = profile.CountryCode,
                 IsSuspended = profile.IsSuspended,
-                Teams = teams.ToList()
+                Teams = teams.ToList(),
+                Languages = profileLanguages.Select(pl => new ProfileLanguageDisplayViewModel
+                {
+                    LanguageCode = pl.LanguageCode,
+                    LanguageName = Helpers.LanguageCatalog.GetDisplayName(pl.LanguageCode),
+                    Proficiency = pl.Proficiency
+                }).ToList()
             };
 
             return PartialView("_HumanPopover", vm);
