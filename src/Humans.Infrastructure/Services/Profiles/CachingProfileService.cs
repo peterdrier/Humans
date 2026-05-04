@@ -448,29 +448,32 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
     // ==========================================================================
 
     /// <inheritdoc cref="IFullProfileInvalidator.InvalidateAsync"/>
-    public Task InvalidateAsync(
-        Guid userId,
-        CancellationToken ct = default,
-        [System.Runtime.CompilerServices.CallerMemberName] string callerMember = "",
-        [System.Runtime.CompilerServices.CallerFilePath] string callerFile = "")
+    public Task InvalidateAsync(Guid userId, CancellationToken ct = default)
     {
-        // Issue #635 (§15i): dev-mode caller log. Cheap StringComparison
-        // against ASPNETCORE_ENVIRONMENT keeps the call free of an
-        // IHostEnvironment dependency on this Singleton (the existing
-        // service-locator pattern in this file already keeps everything
-        // resolvable per-call). The log is the canonical way to verify
-        // every Profile-affecting write hits the invalidator during
-        // exploratory testing on the preview environment.
+        // Issue #635 (§15i): dev-mode caller log via a single stack-frame
+        // walk. Cheap StringComparison against ASPNETCORE_ENVIRONMENT keeps
+        // the call free of an IHostEnvironment dependency on this Singleton.
+        // The log is the canonical way to verify every Profile-affecting
+        // write hits the invalidator during exploratory testing on the
+        // preview environment. The stack walk only fires off-Production so
+        // no perf cost in production.
         var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
         if (!string.Equals(env, "Production", StringComparison.OrdinalIgnoreCase))
         {
             try
             {
+                var frame = new System.Diagnostics.StackTrace(skipFrames: 1, fNeedFileInfo: true)
+                    .GetFrame(0);
+                var callerMember = frame?.GetMethod()?.Name ?? "(unknown)";
+                var callerFile = frame?.GetFileName() is { } file
+                    ? System.IO.Path.GetFileName(file)
+                    : "(unknown)";
+
                 using var scope = _scopeFactory.CreateScope();
                 var logger = scope.ServiceProvider.GetService<ILogger<CachingProfileService>>();
                 logger?.LogDebug(
                     "FullProfile invalidate userId={UserId} caller={CallerMember} file={CallerFile}",
-                    userId, callerMember, System.IO.Path.GetFileName(callerFile));
+                    userId, callerMember, callerFile);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {

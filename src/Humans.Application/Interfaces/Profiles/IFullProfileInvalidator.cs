@@ -1,5 +1,3 @@
-using System.Runtime.CompilerServices;
-
 namespace Humans.Application.Interfaces.Profiles;
 
 /// <summary>
@@ -11,20 +9,14 @@ namespace Humans.Application.Interfaces.Profiles;
 /// preserving the fully-warm invariant (removes only when the user's profile
 /// no longer exists).
 /// </summary>
+/// <remarks>
+/// Issue #635 (§15i): in non-Production environments the implementation logs
+/// the calling member + file via a stack-walk so every Profile-affecting
+/// write that hits the invalidator is visible during preview-environment
+/// exploratory testing. The interface signature stays narrow so test mocks
+/// don't have to pre-fill caller-info params.
+/// </remarks>
 public interface IFullProfileInvalidator
 {
-    /// <summary>
-    /// Invalidate (reload) the cached <see cref="FullProfile"/> for
-    /// <paramref name="userId"/>. The optional <paramref name="callerMember"/>
-    /// and <paramref name="callerFile"/> parameters are auto-supplied via
-    /// <see cref="CallerMemberNameAttribute"/> / <see cref="CallerFilePathAttribute"/>
-    /// and are emitted to the log in non-Production environments — issue #635
-    /// (§15i) makes this the canonical safety net for confirming every
-    /// Profile-affecting write hits the invalidator.
-    /// </summary>
-    Task InvalidateAsync(
-        Guid userId,
-        CancellationToken ct = default,
-        [CallerMemberName] string callerMember = "",
-        [CallerFilePath] string callerFile = "");
+    Task InvalidateAsync(Guid userId, CancellationToken ct = default);
 }
