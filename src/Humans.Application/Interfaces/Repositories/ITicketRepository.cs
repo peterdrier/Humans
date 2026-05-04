@@ -128,6 +128,15 @@ public interface ITicketRepository
     // ── TicketAttendee reads ─────────────────────────────────────────────────
 
     /// <summary>
+    /// Returns a single <see cref="TicketAttendee"/> with its parent
+    /// <see cref="TicketOrder"/> eagerly loaded (required by callers that need
+    /// <c>TicketOrder.MatchedUserId</c>). Returns <c>null</c> when not found.
+    /// Used by the transfer-request flow so it can validate ownership without
+    /// loading the full attendee set.
+    /// </summary>
+    Task<TicketAttendee?> GetAttendeeByIdAsync(Guid attendeeId, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns matched-attendee rows (MatchedUserId non-null) for a single
     /// vendor event. Read-only projection used by the event-participation
     /// reconciliation pass.
@@ -151,6 +160,9 @@ public interface ITicketRepository
     /// <c>SaveChanges</c>.
     /// </summary>
     Task UpsertAttendeesAsync(IReadOnlyList<TicketAttendee> attendees, CancellationToken ct = default);
+
+    /// <summary>Insert or update a single TicketAttendee row. Used when the Tickets section creates an attendee outside the sync loop (e.g. on approved transfer reissue).</summary>
+    Task UpsertAttendeeAsync(TicketAttendee attendee, CancellationToken ct = default);
 
     /// <summary>
     /// Persists <c>VatAmount</c> updates for the given orders in a single

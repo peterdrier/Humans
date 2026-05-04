@@ -162,6 +162,15 @@ public sealed class TicketRepository : ITicketRepository
 
     // ── TicketAttendee reads (detached) ──────────────────────────────────────
 
+    public async Task<TicketAttendee?> GetAttendeeByIdAsync(Guid attendeeId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.TicketAttendees
+            .AsNoTracking()
+            .Include(a => a.TicketOrder)
+            .FirstOrDefaultAsync(a => a.Id == attendeeId, ct);
+    }
+
     public async Task<IReadOnlyList<MatchedAttendeeRow>> GetMatchedAttendeesForEventAsync(
         string vendorEventId,
         CancellationToken ct = default)
@@ -249,6 +258,18 @@ public sealed class TicketRepository : ITicketRepository
             }
         }
 
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task UpsertAttendeeAsync(TicketAttendee attendee, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var existing = await ctx.TicketAttendees
+            .FirstOrDefaultAsync(a => a.VendorTicketId == attendee.VendorTicketId, ct);
+        if (existing is null)
+            ctx.TicketAttendees.Add(attendee);
+        else
+            ctx.Entry(existing).CurrentValues.SetValues(attendee);
         await ctx.SaveChangesAsync(ct);
     }
 

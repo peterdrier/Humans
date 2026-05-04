@@ -774,6 +774,20 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         return SearchHumansByNameFromSnapshot(snapshot, query);
     }
 
+    public async Task<IReadOnlyList<HumanSearchResult>> SearchByBurnerNameAsync(string query, int maxResults, CancellationToken ct = default)
+    {
+        var snapshot = await BuildFullProfileSnapshotAsync(ct);
+        return snapshot
+            .Where(p => p.BurnerName?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
+            .OrderBy(p => p.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .Take(maxResults)
+            .Select(p => new HumanSearchResult(
+                p.UserId, p.DisplayName, p.BurnerName, p.City, p.Bio, p.ContributionInterests,
+                p.ProfilePictureUrl, p.HasCustomPicture, p.ProfileId, p.UpdatedAtTicks,
+                "BurnerName", p.BurnerName))
+            .ToList();
+    }
+
     /// <summary>
     /// Searches all approved, non-suspended profiles from a pre-built <see cref="FullProfile"/>
     /// snapshot for users whose display name or notification email contains <paramref name="query"/>.
