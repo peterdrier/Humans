@@ -33,9 +33,15 @@ public record UserEmailEditDto(
 /// <summary>
 /// Result of adding an email address.
 /// </summary>
+/// <param name="EmailId">The new <see cref="Domain.Entities.UserEmail"/> row's
+/// Id. The verification token is bound to this Id via the token's purpose
+/// suffix, so the verification URL must round-trip this Id back to
+/// <see cref="Humans.Application.Interfaces.Profiles.IUserEmailService.VerifyEmailAsync"/>
+/// to disambiguate when the same user has multiple pending plain rows
+/// (issue nobodies-collective/Humans#611).</param>
 /// <param name="Token">Verification token for building the confirmation URL.</param>
 /// <param name="IsConflict">True if the email is already verified on another account (merge flow).</param>
-public record AddEmailResult(string Token, bool IsConflict);
+public record AddEmailResult(Guid EmailId, string Token, bool IsConflict);
 
 /// <summary>
 /// Result of verifying an email address.

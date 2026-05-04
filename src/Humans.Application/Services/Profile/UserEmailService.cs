@@ -156,27 +156,26 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             TokenOptions.DefaultEmailProvider,
             $"{EmailVerificationTokenPurpose}:{userEmail.Id}");
 
-        return new AddEmailResult(token, isConflict);
+        return new AddEmailResult(userEmail.Id, token, isConflict);
     }
 
     public async Task<VerifyEmailResult> VerifyEmailAsync(
-        Guid userId, string token, CancellationToken cancellationToken = default)
+        Guid userId, Guid emailId, string token, CancellationToken cancellationToken = default)
     {
         var user = await _userService.GetByIdAsync(userId, cancellationToken)
             ?? throw new InvalidOperationException("User not found.");
 
-        var userEmails = await _repository.GetByUserIdForMutationAsync(userId, cancellationToken);
-        // TODO(nobodies-collective#611): VerifyEmailAsync uses FirstOrDefault on
-        // (!IsVerified && Provider == null), which is ambiguous when multiple pending
-        // plain rows exist for the same user. The token IS bound to a specific row Id
-        // (purpose = "{EmailVerificationTokenPurpose}:{pendingEmail.Id}"), so a row
-        // mismatch causes token validation to fail against the wrong row, surfacing as
-        // a confusing user error even when the token is valid for ANOTHER pending row.
-        // Surfaced during PR 4 review (peterdrier/Humans#376) — AdminAddEmail amplifies
-        // the multi-pending-row scenario. Fix: load the row by the Id embedded in the
-        // token's purpose suffix, not via FirstOrDefault.
-        var pendingEmail = userEmails.FirstOrDefault(e => !e.IsVerified && e.Provider == null)
-            ?? throw new ValidationException("No email pending verification.");
+        // Issue nobodies-collective/Humans#611: load the specific pending row
+        // the verification link was issued for, not "any non-verified plain
+        // row". The token is bound to this row's Id via the purpose suffix
+        // ("{EmailVerificationTokenPurpose}:{emailId}"), so picking a
+        // different row would cause token validation to fail against the
+        // wrong row even when the token is valid.
+        var pendingEmail = await _repository.GetByIdAndUserIdAsync(emailId, userId, cancellationToken);
+        if (pendingEmail is null || pendingEmail.IsVerified || pendingEmail.Provider is not null)
+        {
+            throw new ValidationException("No email pending verification.");
+        }
 
         var isValid = await _userManager.VerifyUserTokenAsync(
             user,
