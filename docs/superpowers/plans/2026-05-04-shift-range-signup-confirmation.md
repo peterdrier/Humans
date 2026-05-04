@@ -1229,7 +1229,7 @@ The existing `SignUpRange_BlocksIfAnyDayOverlaps` test (line 399-421) already pi
 
 ## Chunk 4: Localization
 
-**Goal:** Add the new `Shifts_ConfirmSignup_*` keys (and `Common_Cancel` if missing) to all six locale resx files. Spanish hand-translated; others stubbed.
+**Goal:** Add the new `Shifts_ConfirmSignup_*` keys (and `Common_Cancel` if missing) to all six locale resx files. All six locales hand-translated to match the existing pattern in this codebase.
 
 ### Task 4.1: Inventory existing keys and pattern
 
@@ -1257,7 +1257,7 @@ The existing `SignUpRange_BlocksIfAnyDayOverlaps` test (line 399-421) already pi
 
   Insert in alphabetical-by-key order if the file appears alphabetised; otherwise append before `</root>`. Match what's already there.
 
-  Locale stub pattern: scan `de.resx` and `ca.resx` for an existing `Shifts_*` key — see whether the value is hand-translated, machine-translated, or `<!-- TODO -->`-marked. Match.
+  Locale pattern (verified at first-pass review): all four non-default locales (de, ca, fr, it) hand-translate their `Shifts_*` keys. No English fallbacks, no `<!-- TODO -->` markers. Task 4.4 follows that pattern.
 
   No commit — orientation only.
 
@@ -1348,18 +1348,22 @@ The existing `SignUpRange_BlocksIfAnyDayOverlaps` test (line 399-421) already pi
 **Files:**
 - Modify: `SharedResource.de.resx`, `SharedResource.ca.resx`, `SharedResource.fr.resx`, `SharedResource.it.resx`
 
-**Existing pattern (verified):** all four files contain hand-translated values for the `Shifts_*` keys — no English fallbacks, no `<!-- TODO -->` markers. Match that pattern: provide a credible best-effort translation per locale rather than English fallbacks. Don't agonise; strings are short and easy to refine in a follow-up i18n pass if needed.
+**Existing pattern (verified):** all four files contain hand-translated values for the `Shifts_*` keys — no English fallbacks, no `<!-- TODO -->` markers. Match that pattern: provide a credible best-effort hand-translation per locale. Don't agonise; strings are short and easy to refine in a follow-up i18n pass if needed.
 
-- [ ] **Step 1: Add the eleven keys to `SharedResource.de.resx` (German)**
+**Translator notes for every step in this task:**
+- Preserve every `{0}`, `{1}`, etc. placeholder verbatim — they are runtime arguments. Do not translate or remove them.
+- Match the lower-case `montaje`/`desmontaje`-style noun usage if mirroring Spanish; for the other languages use whatever existing pattern is in place.
 
-  Provide hand-written German translations following the existing tone in the file. Build after editing this single file:
+- [ ] **Step 1: Add the eleven hand-translated keys to `SharedResource.de.resx` (German)**
+
+  Build after editing this single file:
 
   ```bash
   dotnet build Humans.slnx -v quiet
   ```
   Expected: build succeeds (catches resx XML schema errors per-file rather than after all four).
 
-- [ ] **Step 2: Add the eleven keys to `SharedResource.ca.resx` (Catalan)**
+- [ ] **Step 2: Add the eleven hand-translated keys to `SharedResource.ca.resx` (Catalan)**
 
   Build after editing:
   ```bash
@@ -1367,7 +1371,7 @@ The existing `SignUpRange_BlocksIfAnyDayOverlaps` test (line 399-421) already pi
   ```
   Expected: build succeeds.
 
-- [ ] **Step 3: Add the eleven keys to `SharedResource.fr.resx` (French)**
+- [ ] **Step 3: Add the eleven hand-translated keys to `SharedResource.fr.resx` (French)**
 
   Build:
   ```bash
@@ -1375,7 +1379,7 @@ The existing `SignUpRange_BlocksIfAnyDayOverlaps` test (line 399-421) already pi
   ```
   Expected: build succeeds.
 
-- [ ] **Step 4: Add the eleven keys to `SharedResource.it.resx` (Italian)**
+- [ ] **Step 4: Add the eleven hand-translated keys to `SharedResource.it.resx` (Italian)**
 
   Build:
   ```bash
