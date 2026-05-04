@@ -139,7 +139,7 @@ Singleton cursor row (`Id = 1`).
 |----------|------|-------|
 | Id | int | Always 1 |
 | LastSyncAt | Instant? | Cursor for next poll |
-| SyncStatus | string(20) | Idle / Running / Error |
+| SyncStatus | StoreTreasurySyncStatus (int) | Idle (0) / Running (1) / Failed (2) |
 | LastError | string(2000)? | Last error message |
 
 ### StoreOrderState

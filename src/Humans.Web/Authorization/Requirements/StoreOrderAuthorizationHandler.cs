@@ -13,10 +13,11 @@ namespace Humans.Web.Authorization.Requirements;
 /// View/AddLine/RemoveLine/EditCounterparty and <see cref="StoreOrderCreateContext"/>
 /// resources for Create):
 /// - Admin or FinanceAdmin: allow any operation regardless of order state.
-/// - Camp lead/co-lead of the camp owning the resource's CampSeason: allow,
-///   except EditCounterparty is gated on order being Open (per Store invariant:
-///   "Counterparty fields are editable only while the order is Open (Camp Lead)
-///   or by FinanceAdmin/Admin always").
+/// - Camp lead/co-lead of the camp owning the resource's CampSeason: allow.
+///   Mutating operations (AddLine, RemoveLine, EditCounterparty) are gated on
+///   order being Open (per Store invariant: "A Camp Lead cannot edit lines or
+///   counterparty on an order in InvoiceIssued state"). View and Pay carry no
+///   state gate — payments continue after invoice issuance.
 /// - Everyone else: deny.
 /// </summary>
 public class StoreOrderAuthorizationHandler : IAuthorizationHandler
@@ -61,8 +62,12 @@ public class StoreOrderAuthorizationHandler : IAuthorizationHandler
 
         foreach (var req in pending)
         {
-            if (req == StoreOrderOperationRequirement.EditCounterparty
-                && orderState is not null and not StoreOrderState.Open)
+            // Camp Leads cannot mutate orders past Open state. Pay is exempt — payments
+            // continue after invoice issuance. View has no state gate.
+            var isMutating = req == StoreOrderOperationRequirement.AddLine
+                || req == StoreOrderOperationRequirement.RemoveLine
+                || req == StoreOrderOperationRequirement.EditCounterparty;
+            if (isMutating && orderState is not null and not StoreOrderState.Open)
             {
                 continue;
             }

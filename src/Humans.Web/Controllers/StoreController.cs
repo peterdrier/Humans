@@ -57,17 +57,18 @@ public class StoreController : HumansControllerBase
         var catalog = await _storeService.GetActiveCatalogAsync(year, ct);
 
         var isPrivilegedReader = User.IsInRole(RoleNames.Admin)
-            || User.IsInRole(RoleNames.FinanceAdmin)
-            || User.IsInRole(RoleNames.StoreAdmin);
+            || User.IsInRole(RoleNames.FinanceAdmin);
 
-        var leadCamps = await _campService.GetCampsByLeadUserIdAsync(user.Id, ct);
         var sections = new List<StoreCampSeasonOrders>();
-        foreach (var camp in leadCamps)
+        var leadSeasonId = await _campService.GetCampLeadSeasonIdForYearAsync(user.Id, year, ct);
+        if (leadSeasonId is { } seasonId)
         {
-            var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
-            if (season is null) continue;
-            var orders = await _storeService.GetOrdersForCampSeasonAsync(season.Id, ct);
-            sections.Add(new StoreCampSeasonOrders(season.Id, season.Name, year, orders));
+            var season = await _campService.GetCampSeasonByIdAsync(seasonId, ct);
+            if (season is not null)
+            {
+                var orders = await _storeService.GetOrdersForCampSeasonAsync(season.Id, ct);
+                sections.Add(new StoreCampSeasonOrders(season.Id, season.Name, year, orders));
+            }
         }
 
         if (sections.Count == 0 && !isPrivilegedReader)
