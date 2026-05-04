@@ -222,7 +222,7 @@ Stored as string via `HasConversion<string>()`.
 - **Within-section cross-service direct DbContext reads:**
   - `ShiftSignupService` reads `_dbContext.Rotas` (`:326, 510`), `_dbContext.Shifts` (`:55, 257`), and `_dbContext.EventSettings` (via `.Include` chains) — all owned by `ShiftManagementService` per §8. Acceptable once both are behind repos and the dependency is expressed as `IShiftManagementRepository` → `IShiftSignupRepository`.
 - **Inline `IMemoryCache` usage in service methods:**
-  - `ShiftManagementService.cs:97` — `_cache.GetOrCreateAsync(CacheKeys.ShiftAuthorization(userId), ...)` wrapping `TeamService.GetUserCoordinatedTeamIdsAsync(userId)`. Per §4/§5 this cache belongs in the Teams caching decorator, not here. Drop the `shift-auth` cache and let Teams own the result.
+  - `ShiftManagementService.cs:97` — `_cache.GetOrCreateAsync(CacheKeys.ShiftAuthorization(userId), ...)` wrapping `TeamService.GetUserCoordinatedTeamIdsAsync(userId)`. Per §4/§5 this cache belongs in the Teams caching decorator, not here. Drop the `shift-auth` cache and let Teams own the result. (The `IsAnyTeamManagerOrCoordinatorHandler` for `ShiftDepartmentManager` reuses this same cached path through `IShiftManagementService.GetCoordinatorTeamIdsAsync` — when the cache moves into Teams, the handler should be re-pointed at the Teams-owned cached method.)
   - No `_cache.` references in `ShiftSignupService` or `GeneralAvailabilityService`.
 - **Cross-domain nav properties on this section's entities:** all deleted 2026-04-25 (#541 final pass). FKs stay wired in EF via the typed-FK form (`HasOne<Team>().WithMany().HasForeignKey(...)`).
   - ~~`Rota.Team`~~ — deleted 2026-04-25.

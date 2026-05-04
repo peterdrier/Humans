@@ -25,7 +25,7 @@ public static class AuthorizationPolicyExtensions
         services.AddScoped<IAuthorizationHandler, BudgetAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, CampAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, TeamAuthorizationHandler>();
-        services.AddScoped<IAuthorizationHandler, IsAnyTeamCoordinatorHandler>();
+        services.AddScoped<IAuthorizationHandler, IsAnyTeamManagerOrCoordinatorHandler>();
         services.AddSingleton<IAuthorizationHandler, IssuesAuthorizationHandler>();
 
         // Service-layer enforcement handlers (singleton — no scoped dependencies)
@@ -102,10 +102,10 @@ public static class AuthorizationPolicyExtensions
             // ShiftDepartmentManager is wider: privileged dashboard roles OR anyone who is
             // a coordinator / manager of any team or sub-team. Gates the dashboard page
             // entry point and the "open dashboard" button on /Shifts. The role-OR-team-coord
-            // disjunction is encoded inside IsAnyTeamCoordinatorHandler so the policy stays
-            // a single requirement (multiple requirements on a policy AND together).
+            // disjunction is encoded inside IsAnyTeamManagerOrCoordinatorHandler so the policy
+            // stays a single requirement (multiple requirements on a policy AND together).
             options.AddPolicy(PolicyNames.ShiftDepartmentManager, policy =>
-                policy.AddRequirements(new IsAnyTeamCoordinatorRequirement()));
+                policy.AddRequirements(new IsAnyTeamManagerOrCoordinatorRequirement()));
 
             options.AddPolicy(PolicyNames.PrivilegedSignupApprover, policy =>
                 policy.RequireRole(RoleNames.Admin, RoleNames.NoInfoAdmin));

@@ -3,6 +3,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Stores;
 using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Constants;
@@ -24,6 +25,7 @@ public class AuthorizationPolicyTests : IDisposable
 {
     private readonly ServiceProvider _serviceProvider;
     private readonly IAuthorizationService _authorizationService;
+    private readonly IShiftManagementService _shiftManagement;
 
     public AuthorizationPolicyTests()
     {
@@ -35,6 +37,11 @@ public class AuthorizationPolicyTests : IDisposable
         services.AddScoped(_ => Substitute.For<ITeamService>());
         services.AddScoped(_ => Substitute.For<IAgentRateLimitStore>());
         services.AddScoped(_ => Substitute.For<IAgentSettingsService>());
+        // IsAnyTeamManagerOrCoordinatorHandler reads team-coord ids through this service
+        // (cached path); register a single shared substitute so per-test setups stick.
+        _shiftManagement = Substitute.For<IShiftManagementService>();
+        _shiftManagement.GetCoordinatorTeamIdsAsync(Arg.Any<Guid>()).Returns(Array.Empty<Guid>());
+        services.AddSingleton(_shiftManagement);
         services.AddSingleton<IClock>(SystemClock.Instance);
         services.AddHumansAuthorizationPolicies();
         _serviceProvider = services.BuildServiceProvider();
@@ -300,6 +307,44 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().Be(expected);
     }
 
+    [HumansFact]
+    public async Task ShiftDepartmentManager_AllowsUserWithCoordinatedTeams()
+    {
+        var userId = Guid.NewGuid();
+        _shiftManagement.GetCoordinatorTeamIdsAsync(userId).Returns(new[] { Guid.NewGuid() });
+
+        var user = CreateUserWithIdAndRoles(userId, "SomeNonAdminRole");
+        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.ShiftDepartmentManager);
+
+        result.Succeeded.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task ShiftDepartmentManager_DeniesUserWithNoRoleAndNoCoordinatedTeams()
+    {
+        var userId = Guid.NewGuid();
+        _shiftManagement.GetCoordinatorTeamIdsAsync(userId).Returns(Array.Empty<Guid>());
+
+        var user = CreateUserWithIdAndRoles(userId, "SomeNonAdminRole");
+        var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.ShiftDepartmentManager);
+
+        result.Succeeded.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task ShiftDepartmentManager_PrivilegedRole_ShortCircuitsWithoutCallingShiftService()
+    {
+        // Privileged-role short-circuit must not consult the team-coord lookup —
+        // that would defeat the cache-first design and add a needless DB round-trip
+        // for the common admin path.
+        _shiftManagement.ClearReceivedCalls();
+
+        var result = await AuthorizeAsync(PolicyNames.ShiftDepartmentManager, RoleNames.Admin);
+
+        result.Succeeded.Should().BeTrue();
+        await _shiftManagement.DidNotReceive().GetCoordinatorTeamIdsAsync(Arg.Any<Guid>());
+    }
+
     // --- PrivilegedSignupApprover ---
 
     [HumansTheory]
@@ -481,11 +526,14 @@ public class AuthorizationPolicyTests : IDisposable
         return await _authorizationService.AuthorizeAsync(user, policyName);
     }
 
-    private static ClaimsPrincipal CreateUserWithRoles(params string[] roles)
+    private static ClaimsPrincipal CreateUserWithRoles(params string[] roles) =>
+        CreateUserWithIdAndRoles(Guid.NewGuid(), roles);
+
+    private static ClaimsPrincipal CreateUserWithIdAndRoles(Guid userId, params string[] roles)
     {
         var claims = new List<Claim>
         {
-            new(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
+            new(ClaimTypes.NameIdentifier, userId.ToString()),
             new(ClaimTypes.Name, "testuser@example.com")
         };
         foreach (var role in roles)
