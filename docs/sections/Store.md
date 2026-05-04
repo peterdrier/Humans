@@ -239,7 +239,7 @@ PR-preview environments cannot reasonably create dashboard webhooks per-PR. `Sto
 
 1. **Cross-PR sweep.** Hits the GitHub API (`GET /repos/{owner}/{repo}/pulls?state=open`) using the existing `GitHub:AccessToken`, builds a set of currently-open PR numbers. Then lists Stripe webhooks owned by this account, filters to URLs matching `{N}.n.burn.camp/Store/StripeWebhook`, parses `{N}` from each host, and deletes any whose PR is no longer open. Idempotent — concurrent boots race harmlessly; 404s on already-deleted endpoints are swallowed.
 2. **Current-PR cleanup.** Deletes any webhook whose URL exactly matches this env's URL (handles the redeploy/restart case).
-3. **Register.** Creates a fresh endpoint subscribed to `checkout.session.completed`. Stamps the returned `whsec_*` onto the in-memory `StripeSettings.StoreWebhookSecret` for the process lifetime — Stripe only returns the secret at creation, never via fetch.
+3. **Register.** Creates a fresh endpoint subscribed to all four `checkout.session.*` events (`completed`, `async_payment_succeeded`, `async_payment_failed`, `expired`) so PR-preview matches QA/prod's manual subscription. Today the controller acts only on `completed`; the other three log at Warning until the async-payment state machine ships. Stamps the returned `whsec_*` onto the in-memory `StripeSettings.StoreWebhookSecret` for the process lifetime — Stripe only returns the secret at creation, never via fetch.
 
 The registrar key is **deliberately separate** from `STRIPE_STORE_KEY` so PR-preview testing exercises the production-narrow `checkout_session:write`-only Store key — expanding `STRIPE_STORE_KEY`'s scope in dev would mask scope-related production failures.
 

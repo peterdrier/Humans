@@ -11,8 +11,10 @@ namespace Humans.Web.Controllers;
 /// <summary>
 /// Stripe Checkout webhook ingestion for the Store section. Anonymous endpoint;
 /// authentication is by signature verification against <c>STRIPE_STORE_WEBHOOK_SECRET</c>.
-/// Handles <c>checkout.session.completed</c>; everything else is a 200 no-op so Stripe
-/// stops retrying. Idempotency is enforced downstream by
+/// Handles <c>checkout.session.completed</c>; the other three <c>checkout.session.*</c>
+/// events (async_payment_succeeded / async_payment_failed / expired) are accepted with a
+/// 200 + Warning log until the async-payment state machine is built (see follow-up issue).
+/// Unrelated event types log at Debug. Idempotency is enforced downstream by
 /// <see cref="IStoreService.RecordStripePaymentAsync"/>.
 /// </summary>
 [ApiController]
@@ -69,6 +71,17 @@ public class StoreStripeWebhookController : ControllerBase
         if (string.Equals(stripeEvent.Type, EventTypes.CheckoutSessionCompleted, StringComparison.Ordinal))
         {
             await HandleCheckoutSessionCompletedAsync(stripeEvent, ct);
+        }
+        else if (string.Equals(stripeEvent.Type, EventTypes.CheckoutSessionAsyncPaymentSucceeded, StringComparison.Ordinal) ||
+                 string.Equals(stripeEvent.Type, EventTypes.CheckoutSessionAsyncPaymentFailed, StringComparison.Ordinal) ||
+                 string.Equals(stripeEvent.Type, EventTypes.CheckoutSessionExpired, StringComparison.Ordinal))
+        {
+            // Subscribed to but not yet handled — async-payment state machine pending
+            // (nobodies-collective/Humans#638). Surface at Warning so prod ops notice
+            // if/when SEPA/Bizum activity starts arriving before the handler ships.
+            _logger.LogWarning(
+                "Stripe webhook event {Type} (id={EventId}) received but not yet handled — async-payment state machine pending (nobodies-collective/Humans#638).",
+                stripeEvent.Type, stripeEvent.Id);
         }
         else
         {

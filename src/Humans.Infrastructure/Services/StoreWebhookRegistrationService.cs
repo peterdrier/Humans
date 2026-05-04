@@ -51,6 +51,20 @@ public class StoreWebhookRegistrationService : IHostedService
 {
     private static readonly TimeSpan RegistrationTimeout = TimeSpan.FromSeconds(15);
     private const string EventCheckoutSessionCompleted = "checkout.session.completed";
+    private const string EventCheckoutSessionAsyncPaymentSucceeded = "checkout.session.async_payment_succeeded";
+    private const string EventCheckoutSessionAsyncPaymentFailed = "checkout.session.async_payment_failed";
+    private const string EventCheckoutSessionExpired = "checkout.session.expired";
+
+    // PR-preview subscribes to the same 4 events QA/prod register manually so async-payment
+    // behavior is observable end-to-end. Today the controller only acts on `completed`; the
+    // other three log at Warning until the async-payment state machine is built.
+    private static readonly IReadOnlyList<string> SubscribedEvents =
+    [
+        EventCheckoutSessionCompleted,
+        EventCheckoutSessionAsyncPaymentSucceeded,
+        EventCheckoutSessionAsyncPaymentFailed,
+        EventCheckoutSessionExpired,
+    ];
     private const string WebhookPath = "/Store/StripeWebhook";
     private const string OwnedHostSuffix = ".n.burn.camp";
 
@@ -136,7 +150,7 @@ public class StoreWebhookRegistrationService : IHostedService
             var created = await service.CreateAsync(new WebhookEndpointCreateOptions
             {
                 Url = webhookUrl,
-                EnabledEvents = [EventCheckoutSessionCompleted],
+                EnabledEvents = [.. SubscribedEvents],
                 Description = "Humans Store — auto-registered (ephemeral env)",
             }, cancellationToken: cts.Token);
 
@@ -151,7 +165,7 @@ public class StoreWebhookRegistrationService : IHostedService
             settings.StoreWebhookSecret = created.Secret;
             _logger.LogWarning(
                 "Auto-registered Stripe webhook {EndpointId} at {Url} (events: {Events}); STRIPE_STORE_WEBHOOK_SECRET stamped in-memory.",
-                created.Id, webhookUrl, EventCheckoutSessionCompleted);
+                created.Id, webhookUrl, string.Join(", ", SubscribedEvents));
         }
         catch (StripeException ex) when (StripeStartupSmokeService.IsPermissionError(ex))
         {
