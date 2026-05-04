@@ -403,8 +403,63 @@ public class TicketTailorService : ITicketVendorService
             HoldId: body?.HoldId);
     }
 
-    public Task<VendorTicketDto> IssueTicketAsync(IssueTicketRequest request, CancellationToken ct = default) =>
-        throw new NotSupportedException("Implemented in Phase 3 / Task 3.1");
+    public async Task<VendorTicketDto> IssueTicketAsync(
+        IssueTicketRequest request, CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(request.HoldId) &&
+            (string.IsNullOrEmpty(request.EventId) || string.IsNullOrEmpty(request.TicketTypeId)))
+        {
+            throw new ArgumentException(
+                "IssueTicketRequest requires either HoldId or both EventId and TicketTypeId.",
+                nameof(request));
+        }
+
+        var form = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["full_name"] = request.FullName,
+            ["send_email"] = request.SendEmail ? "true" : "false",
+        };
+        if (!string.IsNullOrEmpty(request.HoldId))
+            form["hold_id"] = request.HoldId;
+        else
+        {
+            form["event_id"] = request.EventId!;
+            form["ticket_type_id"] = request.TicketTypeId!;
+        }
+        if (!string.IsNullOrEmpty(request.Email)) form["email"] = request.Email;
+        if (!string.IsNullOrEmpty(request.ExternalReference)) form["reference"] = request.ExternalReference;
+
+        using var content = new FormUrlEncodedContent(form);
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.PostAsync($"{BaseUrl}/issued_tickets", content, ct);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new TicketVendorWriteException(
+                $"TicketTailor issue transport failure: {ex.Message}",
+                TicketVendorFailureKind.Transient, ex);
+        }
+
+        if (!response.IsSuccessStatusCode)
+            throw await BuildVendorWriteExceptionAsync(response, "issue", request.FullName, ct);
+
+        var body = await response.Content.ReadFromJsonAsync<TtIssuedTicket>(JsonOptions, ct)
+            ?? throw new TicketVendorWriteException(
+                "TicketTailor issue returned 2xx with empty body",
+                TicketVendorFailureKind.Transient);
+
+        return new VendorTicketDto(
+            VendorTicketId: body.Id,
+            VendorOrderId: body.OrderId ?? string.Empty, // null for API-issued tickets — sync fix in Phase 4 handles this
+            AttendeeName: body.FullName ?? $"{body.FirstName} {body.LastName}".Trim(),
+            AttendeeEmail: body.Email,
+            TicketTypeName: body.Description ?? "Unknown",
+            Price: (body.ListedPrice ?? 0) / 100m,
+            Status: body.Status ?? "valid");
+    }
 
     internal sealed record TtVoidResponse(
         [property: JsonPropertyName("id")] string? Id,
