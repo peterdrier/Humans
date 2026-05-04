@@ -62,6 +62,7 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 - Revocation logged for audit
 - Works even if user account is disabled
 - Only direct permissions are removed (inherited Shared Drive permissions are not touched)
+- Affected user is notified by email — see [`41-google-removal-notifications.md`](41-google-removal-notifications.md) for variant logic, suppression cases, and localization.
 
 ### US-7.4: Resource Sync Status & Drift Detection
 **As an** administrator

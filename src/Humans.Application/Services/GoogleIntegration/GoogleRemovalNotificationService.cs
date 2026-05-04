@@ -74,7 +74,11 @@ public sealed class GoogleRemovalNotificationService : IGoogleRemovalNotificatio
         var userId = await _userEmailService.GetUserIdByVerifiedEmailAsync(removedEmail, cancellationToken);
         if (userId is null)
         {
-            _logger.LogDebug(
+            // Expected condition (deleted user, anonymized human, self-unlink,
+            // OAuth-rename-in-place) but visible-in-prod-log per
+            // memory/code/always-log-problems.md — incident investigation
+            // needs to see suppressed notifications.
+            _logger.LogWarning(
                 "Suppressing Google removal notification for {Email} — no UserEmail row matches " +
                 "(orphan, deleted user, or self-unlink)", removedEmail);
             return;

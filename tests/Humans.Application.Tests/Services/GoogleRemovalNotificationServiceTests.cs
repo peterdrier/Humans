@@ -103,22 +103,11 @@ public sealed class GoogleRemovalNotificationServiceTests
     [HumansFact]
     public async Task NotifyRemovalAsync_SecondaryCleanup_SendsVariant2()
     {
-        // User has TWO verified IsGoogle UserEmails — old@ and new@.
-        // We are removing old@; new@ is the surviving primary.
+        // Variant 2 fixture: the removed address has IsGoogle=true, AND a
+        // sibling row also has IsGoogle=true that is not being removed.
+        // The selector picks the sibling as the surviving primary.
         var userId = Guid.NewGuid();
         var user = BuildUserWithEmails(
-            userId,
-            "Alice",
-            "fr",
-            ("old@nobodies.team", verified: true, isGoogle: false), // historical OAuth row, no longer the IsGoogle flag
-            ("new@nobodies.team", verified: true, isGoogle: true));
-
-        // Critical Variant 2 case: the row being removed is the only one with
-        // IsGoogle=true, but ANOTHER verified IsGoogle row exists. We need to
-        // express the spec's intent: "user has another UserEmail with IsGoogle=true
-        // that is NOT also being removed". Adjust fixture: removed address has IsGoogle=true,
-        // and a sibling also has IsGoogle=true.
-        user = BuildUserWithEmails(
             userId,
             "Alice",
             "fr",
