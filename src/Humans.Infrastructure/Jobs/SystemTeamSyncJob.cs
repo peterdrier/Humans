@@ -686,9 +686,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
                 try
                 {
-#pragma warning disable CS0618 // User.GetEffectiveEmail() cross-domain nav — covered by §15i follow-up.
-                    var email = user.GetEffectiveEmail() ?? user.Email!;
-#pragma warning restore CS0618
+                    var email = user.Email!;
                     await _emailService.SendAddedToTeamAsync(
                         email, user.DisplayName, team.Name, team.Slug,
                         resourceTuples, user.PreferredLanguage, cancellationToken);

@@ -11,6 +11,7 @@ using Humans.Web.Constants;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 
@@ -806,23 +807,26 @@ public class GoogleController : HumansControllerBase
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SyncOutbox(
         [FromServices] IUserService userService,
-        [FromServices] ITeamService teamService)
+        [FromServices] ITeamService teamService,
+        [FromServices] IProfileService profileService)
     {
         var events = (await _googleSyncService.GetRecentOutboxEventsAsync(200)).ToList();
 
         // Resolve display info for events via section-owned services (§15 Part 2c,
         // design-rules §2a — controllers go through service interfaces, not repos).
+        // Issue #635 (§15i): GoogleEmail derives from FullProfile.GoogleEmail
+        // (which reads the IsGoogle UserEmail row); fall back to user.Email
+        // (the canonical primary, computed via the override) when no
+        // IsGoogle row is set.
         var userIds = events.Select(e => e.UserId).Distinct().ToList();
         var teamIds = events.Select(e => e.TeamId).Distinct().ToList();
         var users = await userService.GetByIdsWithEmailsAsync(userIds);
-        var googleEmailLookup = users.ToDictionary(
-            kvp => kvp.Key,
-            kvp => kvp.Value.UserEmails
-                .Where(e => e.IsVerified && e.IsGoogle)
-                .Select(e => e.Email)
-                .FirstOrDefault()
-                ?? kvp.Value.Email
-                ?? "unknown");
+        var googleEmailLookup = new Dictionary<Guid, string>();
+        foreach (var (userId, user) in users)
+        {
+            var fullProfile = await profileService.GetFullProfileAsync(userId);
+            googleEmailLookup[userId] = fullProfile?.GoogleEmail ?? user.Email ?? "unknown";
+        }
         var displayNameLookup = users.ToDictionary(
             kvp => kvp.Key, kvp => kvp.Value.DisplayName);
         var teamLookup = (await teamService.GetTeamNamesByIdsAsync(teamIds))

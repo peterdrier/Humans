@@ -135,7 +135,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                 }
 
                 // 1. Send email notification
-                var effectiveEmail = user.GetEffectiveEmail();
+                var effectiveEmail = user.Email;
                 if (effectiveEmail is not null)
                 {
                     try

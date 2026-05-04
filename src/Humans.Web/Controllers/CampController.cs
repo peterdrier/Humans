@@ -225,7 +225,7 @@ public class CampController : HumansCampControllerBase
         var campDisplayName = camp.Seasons
             .OrderByDescending(s => s.Year)
             .FirstOrDefault()?.Name ?? slug;
-        var senderEmail = currentUser.GetEffectiveEmail() ?? currentUser.Email!;
+        var senderEmail = currentUser.Email!;
 
         try
         {

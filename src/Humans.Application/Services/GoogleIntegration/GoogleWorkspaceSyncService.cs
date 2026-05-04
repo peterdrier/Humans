@@ -63,6 +63,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
+    private readonly IUserEmailRepository _userEmailRepository;
     private readonly IAuditLogService _auditLogService;
     private readonly ISyncSettingsService _syncSettingsService;
     private readonly IGoogleRemovalNotificationService _removalNotifications;
@@ -82,6 +83,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         ITeamService teamService,
         IUserService userService,
         IUserEmailService userEmailService,
+        IUserEmailRepository userEmailRepository,
         IAuditLogService auditLogService,
         ISyncSettingsService syncSettingsService,
         IGoogleRemovalNotificationService removalNotifications,
@@ -100,6 +102,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         _teamService = teamService;
         _userService = userService;
         _userEmailService = userEmailService;
+        _userEmailRepository = userEmailRepository;
         _auditLogService = auditLogService;
         _syncSettingsService = syncSettingsService;
         _removalNotifications = removalNotifications;
@@ -632,16 +635,18 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        // GetByIdsWithEmailsAsync so the canonical IsGoogle UserEmail row
-        // resolves below — singular GetByIdAsync does not load UserEmails.
-        var usersById = await _userService.GetByIdsWithEmailsAsync([userId], cancellationToken);
-        usersById.TryGetValue(userId, out var user);
+        // Issue #635 (§15i): read UserEmails through the section-owned
+        // repository instead of traversing user.UserEmails (cross-domain nav).
+        var user = await _userService.GetByIdAsync(userId, cancellationToken);
+        var userEmails = user is null
+            ? Array.Empty<UserEmail>()
+            : (IReadOnlyList<UserEmail>)await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
 
-        var googleEmail = user?.UserEmails
+        var googleEmail = userEmails
             .Where(e => e.IsVerified && e.IsGoogle)
             .Select(e => e.Email)
             .FirstOrDefault()
-            ?? user?.UserEmails
+            ?? userEmails
                 .Where(e => e.IsVerified && e.Provider != null)
                 .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
                 .Select(e => e.Email)

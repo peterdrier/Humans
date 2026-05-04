@@ -1653,10 +1653,12 @@ public class ProfileController : HumansControllerBase
         if (currentUser.Id == id)
             return RedirectToAction(nameof(ViewProfile), new { id });
 
-        var targetUser = await _userManager.Users
-            .Include(u => u.UserEmails)
-            .FirstOrDefaultAsync(u => u.Id == id);
-        if (targetUser is null)
+        // Issue #635 (§15i): bulk-fetch sender + recipient with UserEmails
+        // hydrated through the section-owned service instead of a raw
+        // `.Include(u => u.UserEmails)` over the cross-domain nav.
+        var participants = await _userService.GetByIdsWithEmailsAsync(
+            new[] { id, currentUser.Id });
+        if (!participants.TryGetValue(id, out var targetUser))
             return NotFound();
 
         if (!await _commPrefService.AcceptsFacilitatedMessagesAsync(id))
@@ -1676,18 +1678,17 @@ public class ProfileController : HumansControllerBase
             model.Message, "<[^>]+>", "", System.Text.RegularExpressions.RegexOptions.None,
             TimeSpan.FromSeconds(1));
 
-        var sender = await _userManager.Users
-            .Include(u => u.UserEmails)
-            .FirstAsync(u => u.Id == currentUser.Id);
+        if (!participants.TryGetValue(currentUser.Id, out var sender))
+            return NotFound();
 
-        var recipientEmail = targetUser.GetEffectiveEmail() ?? targetUser.Email;
+        var recipientEmail = targetUser.Email;
         if (string.IsNullOrWhiteSpace(recipientEmail))
         {
             ModelState.AddModelError(string.Empty, _localizer["Common_Error"].Value);
             return View(model);
         }
 
-        var senderEmail = sender.GetEffectiveEmail() ?? sender.Email;
+        var senderEmail = sender.Email;
         if (string.IsNullOrWhiteSpace(senderEmail))
         {
             ModelState.AddModelError(string.Empty, _localizer["Common_Error"].Value);
