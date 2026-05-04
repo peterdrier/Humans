@@ -42,7 +42,8 @@ public class CachingProfileServiceTests
         services.AddScoped(_ => _navBadge);
         services.AddScoped(_ => _notificationMeter);
         var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
-        return new CachingProfileService(_profileRepository, _userEmailRepository, scopeFactory);
+        var logger = Substitute.For<Microsoft.Extensions.Logging.ILogger<CachingProfileService>>();
+        return new CachingProfileService(_profileRepository, _userEmailRepository, scopeFactory, logger);
     }
 
     [HumansFact]
