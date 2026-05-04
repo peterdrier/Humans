@@ -482,10 +482,18 @@ public sealed class TicketQueryServiceTests : IDisposable
                 SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(userIds);
 
+        var profilesByUserId = users
+            .Select(u => (UserId: u.Id, Profile: new Profile
+            {
+                Id = Guid.NewGuid(),
+                UserId = u.Id,
+                MembershipTier = MembershipTier.Volunteer,
+            }))
+            .ToDictionary(t => t.UserId, t => t.Profile);
+
         _profileService.GetByUserIdsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(users.Where(u => u.Profile is not null)
-                .ToDictionary(u => u.Id, u => u.Profile!));
+            .Returns(profilesByUserId);
 
         _userEmailService.GetNotificationEmailsByUserIdsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -510,12 +518,6 @@ public sealed class TicketQueryServiceTests : IDisposable
             UserName = email,
             NormalizedEmail = email.ToUpperInvariant(),
             NormalizedUserName = email.ToUpperInvariant(),
-            Profile = new Profile
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                MembershipTier = MembershipTier.Volunteer,
-            }
         };
         user.UserEmails.Add(new UserEmail
         {
