@@ -85,6 +85,29 @@ public class EndpointAuthorizationTests
         AssertHasPolicy(typeof(FinanceController), null, "FinanceAdminOrAdmin");
     }
 
+    // --- Shift dashboard endpoints ---
+
+    // Page entry uses the WIDER policy so any team coordinator / sub-team manager
+    // can land on the dashboard. Privileged actions (Voluntell / SearchVolunteers)
+    // override at the action level with the NARROWER ShiftDashboardAccess.
+    [HumansFact]
+    public void ShiftDashboardController_RequiresShiftDepartmentManager()
+    {
+        AssertHasPolicy(typeof(ShiftDashboardController), null, "ShiftDepartmentManager");
+    }
+
+    [HumansFact]
+    public void ShiftDashboardController_SearchVolunteers_RequiresShiftDashboardAccess()
+    {
+        AssertHasPolicy(typeof(ShiftDashboardController), "SearchVolunteers", "ShiftDashboardAccess");
+    }
+
+    [HumansFact]
+    public void ShiftDashboardController_Voluntell_RequiresShiftDashboardAccess()
+    {
+        AssertHasPolicy(typeof(ShiftDashboardController), "Voluntell", "ShiftDashboardAccess");
+    }
+
     // --- POST actions must have ValidateAntiForgeryToken ---
 
     [HumansFact]
