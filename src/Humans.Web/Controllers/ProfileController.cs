@@ -1036,7 +1036,6 @@ public class ProfileController : HumansControllerBase
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
             _logger.LogWarning(
-                ex,
                 "Admin failed to add email for user {UserId} ({Email}): {Reason}",
                 id, email, ex.Message);
             SetError(ex.Message);
