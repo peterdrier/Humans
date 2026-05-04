@@ -83,60 +83,81 @@ The codebase has a generic browser-`confirm()`-based `data-confirm` attribute pa
 
 ### Definition
 
-A **conflict** is when, for a calendar date inside the chosen `[startDayOffset, endDayOffset]` range, the user is already signed up to a shift (in *any* rota of the same Event) whose **time window overlaps** the Build/Strike day's time window.
+A **conflict** is when, for a calendar date inside the chosen `[startDayOffset, endDayOffset]` range, the user is already signed up to an active shift whose **absolute time window overlaps** the Build/Strike day's absolute time window.
 
-Overlap rule: `existing.Start < buildStrikeDay.End AND existing.End > buildStrikeDay.Start`.
+Scope: **all of the user's active signups across all events**, matching the existing server-side check in `ShiftSignupService.SignUpRangeAsync` (lines 562-583), which uses `IShiftSignupRepository.GetActiveSignupsForUserAsync(userId)` and compares per-shift `GetAbsoluteStart` / `GetAbsoluteEnd` `Instant`s. The modal previews exactly what the service will check, so cross-event signups are included. (In practice the user is generally only active in one Event at a time, but matching the service's scope avoids divergence.)
 
-A 09:00–11:00 morning shift on the same calendar date as a 13:00–22:00 Strike day is **not** a conflict. A 12:00–14:00 lunch shift inside an all-day 08:00–22:00 Setup window **is** a conflict.
+Overlap rule: `existing.AbsoluteStart < buildStrikeDay.AbsoluteEnd AND existing.AbsoluteEnd > buildStrikeDay.AbsoluteStart` (using NodaTime `Instant`s, not wall-clock `LocalTime`s — DST-safe and matches the service).
+
+All-day Build/Strike shifts use the canonical `Shift.AllDayWindowStart` (08:00) and `Shift.AllDayWindowEnd` (18:00) constants on the day's calendar date in the Event's time zone, via `Shift.GetAbsoluteStart` / `GetAbsoluteEnd` (`src/Humans.Domain/Entities/Shift.cs:64,71,110-132`). A 12:00–14:00 lunch shift inside an 08:00–18:00 Setup day is a conflict; an 18:30–20:30 dinner shift on the same date is not.
+
+### Distinguishing the two skip-kinds
+
+There are two reasons a day inside the chosen range may be skipped, and they are surfaced separately:
+
+1. **Already signed up in *this* rota.** Already filtered out of the dropdown options' `availableShifts` list (line 6 of the partial), so it can't be an endpoint — but the range can still span over such a day. These are **silently skipped** at the day level by the service today (the duplicate-check at `ShiftSignupService.cs:556-560` blocks a range from running at all if any day in range is already taken — this also needs revisiting in "Server-side enforcement" below).
+2. **Time-overlap with a signup in another rota or event.** This is the cross-rota conflict the modal foregrounds.
+
+Modal copy treats the two together for the user ("days you can't add to this range") but the server logic distinguishes them.
 
 ### Server-side data
 
 `BuildStrikeRotaTableViewModel` grows two new properties:
 
 ```csharp
-public IReadOnlyList<UserSignupConflictItem> UserSignupsInEvent { get; init; }
-public IReadOnlyDictionary<int, ShiftWindow> RotaShiftWindowsByDayOffset { get; init; }
+public IReadOnlyList<UserSignupConflictItem> UserActiveSignups { get; init; }
+public ShiftWindow RotaAllDayWindow { get; init; }
 
 public record UserSignupConflictItem(
-    LocalDate Date,
+    LocalDate Date,           // event-local calendar date of existing signup
     string ShiftName,
     string RotaName,
-    LocalTime Start,
-    LocalTime End);
+    Instant AbsoluteStart,    // matches service comparison semantics
+    Instant AbsoluteEnd,
+    string DisplayStart,      // pre-formatted wall-clock for UI ("12:00")
+    string DisplayEnd);       // pre-formatted wall-clock for UI ("14:00")
 
-public record ShiftWindow(LocalTime Start, LocalTime End);
+public record ShiftWindow(Instant AbsoluteStart, Instant AbsoluteEnd);
+// Per-rota; one window per (rota, dayOffset) — but since this rota is all-day-only,
+// we store it as a per-day-offset map: Dictionary<int, ShiftWindow>.
+public IReadOnlyDictionary<int, ShiftWindow> RotaWindowsByDayOffset { get; init; }
 ```
 
-Built by the controller action that renders the dashboard partial. Loads the current user's signups across all rotas of the active Event (single query through whatever store/service exposes it — confirmed at implementation time, likely `IShiftSignupService.GetSignupsForUserInEventAsync` or equivalent), projected to the DTO. The Build/Strike rota's per-`DayOffset` time windows come from the rota's existing shift list.
+The window per-day-offset is needed because each day's absolute Instant differs (different calendar dates). The wall-clock window (08:00–18:00) is identical across days for an all-day rota, but the absolute Instants are not.
+
+Built by the controller action that renders the dashboard partial (`ShiftsController.Index`). Loads the current user's active signups via the existing `IShiftSignupRepository.GetActiveSignupsForUserAsync(userId)` (already used by the service — same data, no new repo method). For each existing signup, computes the absolute window using the existing `Shift.GetAbsoluteStart` / `GetAbsoluteEnd` and the signup's own `Rota.EventSettings`.
 
 ### View emission
 
-The partial emits two pieces of data inside the form:
+The partial emits two pieces of data inside the form. Instants are serialized as ISO-8601 UTC strings (`"2026-05-06T10:00:00Z"`) — `Date` and string comparison work for the overlap check since both sides are UTC strings of the same format.
 
 ```html
-<script type="application/json" class="js-user-signups-in-event">
-[{"date":"2026-05-06","shift":"Kitchen Lunch","rota":"Event","start":"12:00","end":"14:00"}]
+<script type="application/json" class="js-user-signups">
+[{"date":"2026-05-06","shift":"Kitchen Lunch","rota":"Event",
+  "absStart":"2026-05-06T10:00:00Z","absEnd":"2026-05-06T12:00:00Z",
+  "displayStart":"12:00","displayEnd":"14:00"}]
 </script>
 
 <script type="application/json" class="js-rota-windows">
-{"5":{"start":"08:00","end":"22:00"},"6":{"start":"08:00","end":"22:00"}}
+{"5":{"absStart":"2026-05-06T06:00:00Z","absEnd":"2026-05-06T16:00:00Z"},
+ "6":{"absStart":"2026-05-07T06:00:00Z","absEnd":"2026-05-07T16:00:00Z"}}
 </script>
 ```
 
 The data is per-rota, so it lives inside the per-rota form scope and there's no cross-form bleed.
 
-The start `<option>`s additionally carry `data-arrive-by="{startDate − 1 day, formatted}"` so JS doesn't do client-side date arithmetic for the arrival callout.
+Each `<option>` in **both** selects gains `data-date="{dayOffset → calendar date, formatted with ToDisplayShiftDate()}"`. Start `<option>`s additionally carry `data-arrive-by="{startDate − 1 day, formatted}"` so JS doesn't do client-side date arithmetic for the arrival callout.
 
 ### Client-side computation (small inline `<script>` in the partial)
 
 On `show.bs.modal`:
-1. Read selected `startDayOffset` and `endDayOffset` integer values and option text (already-formatted dates).
+1. Read selected `startDayOffset` and `endDayOffset` integer values and the selected `<option>`s' `data-date`.
 2. Compute `days = endDayOffset − startDayOffset + 1`.
 3. Read `data-arrive-by` from the selected start option.
 4. For each `offset` in `[start..end]`:
-   a. Look up the Build/Strike day window from `js-rota-windows`.
-   b. Look up the calendar date for that offset (option text from a hidden lookup, or rebuild from the `js-rota-windows` map keyed by offset+date — TBD at implementation, simplest is to add `data-date` to each option).
-   c. Filter `js-user-signups-in-event` to entries whose `date` matches AND whose time window overlaps.
+   a. Look up the Build/Strike day's `{absStart, absEnd}` from `js-rota-windows`.
+   b. Look up the calendar date for that offset from the corresponding option's `data-date` (build a one-time map at modal-init from the start `<select>`).
+   c. Filter `js-user-signups` to entries whose `absStart`/`absEnd` overlap the day's window using the rule above (string comparison on UTC ISO-8601 strings is correct here).
 5. Render the conflicts section based on three states (below).
 6. Inject `startDate`, `endDate`, `days`, `arriveBy` into modal template spans.
 
@@ -151,16 +172,36 @@ On `show.bs.modal`:
 
 If the user changes the dropdowns and reopens the modal, recomputation happens on the next `show.bs.modal` — Bootstrap fires `show` every time, so close-and-reopen always refreshes. We don't try to live-sync while open.
 
-## Server-side enforcement
+## Server-side enforcement (concrete change required)
 
-Client-side filtering is display only. `SignupService.SignUpRangeAsync` must be the source of truth and **must skip days where the user already has a time-overlapping signup** rather than creating duplicates or failing the entire range. At implementation time:
+Today's behaviour, confirmed at `src/Humans.Application/Services/Shifts/ShiftSignupService.cs:556-590`:
 
-1. Read the current behaviour of `SignUpRangeAsync`.
-2. If it already silently skips overlapping days → confirm with a unit/integration test, document, done.
-3. If it errors on overlap → grow it with a `skipConflicts: true`-style code path that returns a summary of skipped days, and surface that summary in the post-redirect toast.
-4. If it has neither behaviour → add overlap-skip logic with the same time-window rule the modal uses.
+- If any day in the range is already signed up by this user (any rota, any event), the entire range fails with `SignupResult.Fail("Already signed up for one or more shifts in this range.")`.
+- If any day in the range time-overlaps with another active signup, the entire range fails with `SignupResult.Fail($"Time conflict on day(s): {dayList}.")`.
 
-This is a **pre-implementation verification step** captured here so it isn't forgotten — the modal's "Sign-up will only add days that don't conflict" copy depends on the service guaranteeing that promise.
+This is incompatible with the modal's "Sign-up will only add days that don't conflict" promise. The service must change.
+
+### Required change
+
+Add a `bool skipConflicts = false` parameter to `ShiftSignupService.SignUpRangeAsync`. When `true`:
+
+1. The duplicate-signup check (lines 557-560) **filters** rather than rejects: drop already-signed-up shifts from `shiftsInRange` and append them to a "skipped: already signed up" list.
+2. The overlap check (lines 562-590) **filters** rather than rejects: drop overlapping days from `shiftsInRange` and append them to a "skipped: time conflict" list.
+3. If after filtering `shiftsInRange.Count == 0`, return `SignupResult.Fail` with the existing-signup / conflict summary — there's nothing to add.
+4. Otherwise proceed with the existing capacity check and signup creation, and merge the skip summary into `SignupResult.Warning` so the controller's existing toast surfacing (`ShiftsController.cs:310-312`) shows it.
+
+The default `skipConflicts: false` preserves the strict behaviour for any existing internal callers (none in current code, but the flag keeps the option open).
+
+`ShiftsController.SignUpRange` passes `skipConflicts: true` so the user-initiated dashboard flow matches the modal's promise.
+
+### Test coverage
+
+Unit tests on `ShiftSignupService` (in the existing `Humans.Tests` project — verify project layout at implementation time):
+- `skipConflicts: true`, no conflicts → unchanged behaviour, no warning.
+- `skipConflicts: true`, partial overlap (some days conflict) → signups created for non-conflicting days, warning summarises skipped days.
+- `skipConflicts: true`, every day conflicts → `Fail` with summary, no signups created.
+- `skipConflicts: true`, mixed already-signed-up + time-conflict + free → free days get signed up; warning lists the two skip kinds distinctly.
+- `skipConflicts: false` (existing internal callers) → unchanged behaviour, all original failure paths preserved.
 
 ## Markup changes
 
@@ -179,20 +220,26 @@ This is a **pre-implementation verification step** captured here so it isn't for
 
 Two new properties: `UserSignupsInEvent`, `RotaShiftWindowsByDayOffset`.
 
-### Controller (`ShiftsController.Dashboard` or whatever loads the partial)
+### Controller — `ShiftsController.Index`
 
-Populate the two new view-model properties from the existing services/stores. No new endpoint.
+Populate the new view-model properties (`UserActiveSignups`, `RotaWindowsByDayOffset`) by calling `IShiftSignupRepository.GetActiveSignupsForUserAsync(userId)` and projecting. Pass `skipConflicts: true` from `ShiftsController.SignUpRange` (line 302) into the service call.
 
-### `SignupService.SignUpRangeAsync`
+### `ShiftSignupService.SignUpRangeAsync`
 
-Verify and, if needed, extend to skip conflicts (see "Server-side enforcement").
+Add `bool skipConflicts = false` parameter. See "Server-side enforcement" for behaviour.
 
 ### Resource files
 
-- `src/Humans.Web/Resources/SharedResource.resx` (English)
-- `src/Humans.Web/Resources/SharedResource.es.resx` (Spanish)
+`Shifts_*` keys live in `src/Humans.Web/Resources/SharedResource.resx` (confirmed: `Shifts_Start`, `Shifts_SignUpForDates`, `Common_Cancel` are all present). New keys go there plus the five locale siblings:
 
-(Or wherever `Shifts_*` keys currently live — TBD at implementation by grep.)
+- `SharedResource.resx` (English — default)
+- `SharedResource.de.resx`
+- `SharedResource.es.resx`
+- `SharedResource.ca.resx`
+- `SharedResource.fr.resx`
+- `SharedResource.it.resx`
+
+All six locales are required (matches existing pattern). Spanish is the highest-quality non-English translation; others can be machine-translated stubs (matching how the rest of the resx is maintained).
 
 ## New localizer keys
 
@@ -216,26 +263,26 @@ Spanish translations follow the same structure — done at implementation time, 
 ## Edge cases
 
 - **`days = 1`** (start == end): use `Shifts_ConfirmSignup_Range_Single`.
-- **All-day Build/Strike day** vs short existing shift: handled by the overlap rule (12:00–14:00 inside 08:00–22:00 = conflict).
+- **All-day Build/Strike day** vs short existing shift: handled by the overlap rule (12:00–14:00 inside 08:00–18:00 = conflict).
 - **Two existing shifts on the same conflict date:** list both rows.
-- **Time zones:** display strings are server-side-formatted; JS doesn't do TZ math. Times in the JSON blob are wall-clock event-local times, same as elsewhere on the dashboard.
+- **Time zones / DST:** display strings are server-side-formatted; JS doesn't do TZ or DST math. Overlap math is on UTC ISO-8601 strings emitted from server-side `Instant`s, so all DST / TZ resolution happens once on the server via the existing `GetAbsoluteStart` / `GetAbsoluteEnd` paths.
 - **Multiple rotas on the page** (e.g. Setup and Strike both shown): per-rota modal ids prevent collision.
 - **No JavaScript:** site already requires JS for other features. Don't add a `<noscript>` fallback — accept the current site-wide assumption.
-- **User with no other signups in the event:** `UserSignupsInEvent` is empty → conflicts section never shows. Cheap.
-- **Rendering perf:** the user's signups-in-event list is small (one user, one event). Inline JSON is fine; no new endpoint needed.
+- **User with no other active signups:** `UserActiveSignups` is empty → conflicts section never shows. Cheap.
+- **Rendering perf:** the user's active-signup list is small (one user, generally a handful of shifts). Inline JSON is fine; no new endpoint needed.
 
 ## Files touched
 
 | File | Change |
 |---|---|
-| `src/Humans.Web/Views/Shared/_BuildStrikeRotaTable.cshtml` | Button + modal + inline data + show.bs.modal handler. ~70 lines added. |
-| `src/Humans.Web/Models/BuildStrikeRotaTableViewModel.cs` *(or wherever defined)* | Two new properties. |
-| `src/Humans.Web/Controllers/ShiftsController.cs` *(or whichever action renders the partial)* | Populate new VM properties. |
-| `src/Humans.Application/...SignupService.cs` *(name TBD)* | Verify / extend `SignUpRangeAsync` to skip overlapping days. |
-| `src/Humans.Web/Resources/SharedResource.resx` + `.es.resx` *(path TBD)* | New localizer keys. |
+| `src/Humans.Web/Views/Shared/_BuildStrikeRotaTable.cshtml` | Button + modal + inline data blobs + show.bs.modal handler. ~70 lines added. |
+| `src/Humans.Web/Models/BuildStrikeRotaTableViewModel.cs` (locate via grep at impl time) | Three new properties: `UserActiveSignups`, `RotaWindowsByDayOffset`, plus the two record types if they don't exist yet. |
+| `src/Humans.Web/Controllers/ShiftsController.cs` (`Index` action; line 302 for the `SignUpRange` POST) | Populate new VM properties via `IShiftSignupRepository.GetActiveSignupsForUserAsync`; pass `skipConflicts: true` from `SignUpRange`. |
+| `src/Humans.Application/Services/Shifts/ShiftSignupService.cs` | Add `bool skipConflicts = false` to `SignUpRangeAsync`; rework duplicate + overlap checks per "Server-side enforcement". |
+| `src/Humans.Web/Resources/SharedResource.{resx,de.resx,es.resx,ca.resx,fr.resx,it.resx}` | Add new localizer keys (all six locales). |
 | (Optional) `src/Humans.Web/wwwroot/js/shifts-range-confirm.js` | If the inline script grows past ~50 lines, extract here. |
 
-No DB changes. No migrations. No new routes.
+No DB changes. No migrations. No new routes. No new service interfaces.
 
 ## Testing
 
@@ -252,14 +299,11 @@ No browser-automated test in this spec — the existing test infrastructure for 
 
 ## Implementation-time verification checklist
 
-These items are deliberately not finalised here; they get answered during the implementation plan, not the spec:
+The following are genuine verify-against-code items (not design holes — design decisions all made above):
 
-1. `Shift` time-field shape: `LocalTime`, `TimeOnly`, derived? (Affects DTO + JSON shape.)
-2. All-day shift effective window: `00:00–24:00` or event-defined?
-3. Service for "this user's signups across all rotas in this Event": which interface, which method, does it already exist?
-4. Resx file path for `Shifts_*` keys.
-5. Existing `Common_Cancel` key — reuse or add.
-6. `SignUpRangeAsync` current overlap behaviour: skip / error / unaware.
+1. The exact filename of `BuildStrikeRotaTableViewModel` (probably under `src/Humans.Web/Models/`) — confirm via grep before editing.
+2. The `Humans.Tests` test project layout for `ShiftSignupService` — confirm fixture / setup conventions before adding new tests.
+3. The de/ca/fr/it locale stub maintenance pattern (machine-translated, hand-edited, or marked `<!-- TODO -->`) — match what's already in those files.
 
 ## Decisions log (from brainstorm)
 
@@ -267,8 +311,10 @@ These items are deliberately not finalised here; they get answered during the im
 |---|---|
 | Mechanism | Bootstrap modal, not browser `confirm()`. |
 | Scope | Build/Strike multi-day range form only — no per-shift, no cancel/withdraw. |
-| Conflicts | Cross-rota, with time-window overlap (not date-only). |
-| Conflict source of truth | Service-side; client only displays. |
+| Conflicts | Cross-rota AND cross-event, with `Instant`-based time-window overlap (matches existing service semantics). |
+| Conflict source of truth | `ShiftSignupService.SignUpRangeAsync(skipConflicts: true)`. Client previews, doesn't decide. |
+| Service signature | New parameter `bool skipConflicts = false` on existing method (default preserves strict behaviour). |
 | Modal lifetime | Per-rota (`#confirmSignup-{rotaId}`), modal lives inside the form so submit naturally posts the form. |
-| Date math | Server-side. JS reads pre-formatted strings via `data-*` attributes and JSON blobs. |
-| Performance | Inline JSON of the user's own signups-in-event. No new endpoint. |
+| Date / TZ math | Server-side via NodaTime `Instant`s. JS does string comparison on UTC ISO-8601 strings. |
+| Performance | Inline JSON of the user's own active signups (small: one user, handful of shifts). No new endpoint. |
+| Localization | All six locales (en/de/es/ca/fr/it). Spanish hand-translated; others stubbed per existing pattern. |
