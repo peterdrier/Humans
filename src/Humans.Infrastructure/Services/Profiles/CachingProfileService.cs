@@ -323,9 +323,6 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         return await inner.GetActiveApprovedUserIdsAsync(ct);
     }
 
-    public Task<int> GetActiveApprovedCountAsync(CancellationToken ct = default) =>
-        Task.FromResult(_byUserId.Values.Count(p => p.IsApproved && !p.IsSuspended));
-
     public async Task<int> GetConsentReviewPendingCountAsync(CancellationToken ct = default)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();

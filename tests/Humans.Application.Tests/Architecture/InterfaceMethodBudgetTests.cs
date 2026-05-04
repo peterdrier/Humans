@@ -107,13 +107,19 @@ public class InterfaceMethodBudgetTests
         // (takes a ConsentCheckStatus result; the system-driven
         // SetConsentCheckPendingAsync stays separate — different actor).
         // SuspendAsync + UnsuspendAsync → SetSuspendedAsync (takes a bool).
-        // 39→40: §15i Stub Profile invariant (issue #635) — added
-        // EnsureStubProfileAsync. Required to satisfy design-rules §2a/§2c
-        // after Claude PR review (#403): AccountController and
-        // AccountProvisioningService must not inject IProfileRepository
-        // directly; cross-section stub-profile creation flows through the
-        // owning section's service.
-        [typeof(IProfileService)] = 40,
+        // 39→39: §15i swap (issue #635). Added EnsureStubProfileAsync to
+        // satisfy design-rules §2a/§2c after Claude PR review (#403):
+        // AccountController and AccountProvisioningService must not inject
+        // IProfileRepository directly; cross-section stub-profile creation
+        // flows through the owning section's service. Removed
+        // GetActiveApprovedCountAsync (sole caller AdminController dashboard
+        // tile, surfaced by /audit-surface IProfileService — the existing
+        // GetActiveApprovedUserIdsAsync method on the same interface returns
+        // the same conceptual data; caller does .Count on the result. The
+        // method's own interface comment said "At ~500-user scale this can
+        // be a simple Count query — no caching required" — i.e. it never
+        // earned its dedicated surface area).
+        [typeof(IProfileService)] = 39,
         // -1 for GetContactUsersAsync removal (/Contacts surface deleted in PR 2 of
         // email-identity-decoupling — only ContactService called it).
         // 31→31: account-merge fold redesign Phase 3.4. Added 3 fold primitives
