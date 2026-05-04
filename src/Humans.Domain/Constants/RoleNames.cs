@@ -70,7 +70,9 @@ public static class RoleNames
     public const string FinanceAdmin = "FinanceAdmin";
 
     /// <summary>
-    /// Store Administrator — manages the Store catalog (products, prices, VAT, deposits, deadlines).
+    /// Store Administrator — Store-domain superset: catalog (products, prices, VAT, deposits,
+    /// deadlines), orders, payments, invoices, and treasury sync. FinanceAdmin retains parallel
+    /// access for accounting workflows.
     /// </summary>
     public const string StoreAdmin = "StoreAdmin";
 

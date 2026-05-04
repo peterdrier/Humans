@@ -56,7 +56,7 @@ public class StoreController : HumansControllerBase
         var year = await _shifts.GetActiveYearOrCurrentAsync(_clock);
         var catalog = await _storeService.GetActiveCatalogAsync(year, ct);
 
-        var isPrivilegedReader = RoleChecks.IsFinanceAdmin(User);
+        var isPrivilegedReader = RoleChecks.CanAdministerStore(User);
 
         var sections = new List<StoreCampSeasonOrders>();
         var leadSeasonId = await _campService.GetCampLeadSeasonIdForYearAsync(user.Id, year, ct);

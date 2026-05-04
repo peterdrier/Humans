@@ -157,10 +157,4 @@ public class StoreAdminController : HumansControllerBase
         }
         return RedirectToAction(nameof(Catalog));
     }
-
-    private async Task<int> ResolveActiveYearAsync(CancellationToken ct)
-    {
-        var activeEvent = await _shifts.GetActiveAsync();
-        return activeEvent?.Year > 0 ? activeEvent.Year : _clock.GetCurrentInstant().InUtc().Year;
-    }
 }

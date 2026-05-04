@@ -175,7 +175,7 @@ Stored as int via `HasConversion<int>()`.
 | Actor | Capabilities |
 |-------|--------------|
 | Camp Lead | View / create orders for camp-seasons they lead. Add and remove lines while order is Open and the product's `OrderableUntil` has not passed. Edit counterparty fields while Open. Initiate Stripe checkout to pay. |
-| StoreAdmin | Manage the catalog (`/Store/Admin/Catalog`): create, edit, deactivate products. |
+| StoreAdmin | **Store-domain superset** (per `memory/code/admin-role-superset.md`): catalog CRUD, view all orders, record manual payments, issue invoices, run treasury sync. Equivalent to FinanceAdmin within the Store section. |
 | FinanceAdmin, Admin | All Camp Lead and StoreAdmin capabilities. Record manual payments (incl. refunds via negative amounts) regardless of order state. Issue invoice (single + Issue All). View `/Store/Summary`. Run treasury sync on demand. |
 
 ## Invariants
@@ -196,8 +196,7 @@ Stored as int via `HasConversion<int>()`.
 - A Camp Lead **cannot** add or remove lines after an order's first product `OrderableUntil` has passed (deadline is per-product, evaluated at write time).
 - A Camp Lead **cannot** edit lines or counterparty on an order in `InvoiceIssued` state.
 - A Camp Lead **cannot** view or edit orders for camp-seasons they do not lead (resource-based auth).
-- StoreAdmin **cannot** record payments, issue invoices, or view the order ledger — those are FinanceAdmin/Admin only.
-- Anyone other than FinanceAdmin/Admin **cannot** issue an invoice or run the treasury sync job manually.
+- Anyone other than StoreAdmin/FinanceAdmin/Admin **cannot** issue an invoice or run the treasury sync job manually.
 - Re-issuing an already-issued order **cannot** succeed — the second call throws and does not contact Holded.
 
 ## Triggers

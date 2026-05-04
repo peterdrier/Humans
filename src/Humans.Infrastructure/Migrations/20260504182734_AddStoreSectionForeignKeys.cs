@@ -25,14 +25,6 @@ namespace Humans.Infrastructure.Migrations
                 principalTable: "store_products",
                 principalColumn: "Id",
                 onDelete: ReferentialAction.Restrict);
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_store_orders_camp_seasons_CampSeasonId",
-                table: "store_orders",
-                column: "CampSeasonId",
-                principalTable: "camp_seasons",
-                principalColumn: "Id",
-                onDelete: ReferentialAction.Restrict);
         }
 
         /// <inheritdoc />
@@ -45,10 +37,6 @@ namespace Humans.Infrastructure.Migrations
             migrationBuilder.DropForeignKey(
                 name: "FK_store_order_lines_store_products_ProductId",
                 table: "store_order_lines");
-
-            migrationBuilder.DropForeignKey(
-                name: "FK_store_orders_camp_seasons_CampSeasonId",
-                table: "store_orders");
         }
     }
 }

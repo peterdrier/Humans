@@ -143,12 +143,11 @@ Resource-based via `StoreOrderAuthorizationHandler` keyed on `StoreOrderOperatio
 
 | Role | View | AddLine / RemoveLine / EditCounterparty | Pay |
 |---|---|---|---|
-| `Admin` / `FinanceAdmin` | any state | any state | any state |
+| `Admin` / `StoreAdmin` / `FinanceAdmin` | any state | any state | any state |
 | Camp lead/co-lead of the camp owning the order's `CampSeason` | any state | `Open` only | any state |
-| `StoreAdmin` | — (catalog admin only, no order surface) | — | — |
 | Anyone else | denied | denied | denied |
 
-Note: `StoreAdmin` is intentionally **not** a privileged order-reader; the role only manages the catalog at `/Store/Admin/Catalog`. Per the negative-access rules in `docs/sections/Store.md`, a `StoreAdmin` who leads no camps sees the standard "you don't lead any camps" message on `/Store`, not a privileged view.
+`StoreAdmin` is the Store-domain superset (per `memory/code/admin-role-superset.md`): full access to catalog, orders, payments, and invoices. `FinanceAdmin` retains parallel access for accounting workflows. The shared check is `RoleChecks.CanAdministerStore`.
 
 ## Cross-Section Dependencies
 

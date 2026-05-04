@@ -44,7 +44,7 @@ public class StoreOrderAuthorizationHandler : IAuthorizationHandler
         };
         if (campSeasonId is null) return;
 
-        if (RoleChecks.IsFinanceAdmin(context.User))
+        if (RoleChecks.CanAdministerStore(context.User))
         {
             foreach (var req in pending) context.Succeed(req);
             return;

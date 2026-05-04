@@ -105,6 +105,18 @@ public static class RoleChecks
     }
 
     /// <summary>
+    /// Store domain superset (per <c>memory/code/admin-role-superset.md</c>):
+    /// <c>StoreAdmin</c> owns the Store section end-to-end (catalog, orders, payments,
+    /// invoices). <c>FinanceAdmin</c> retains parallel access for accounting workflows.
+    /// </summary>
+    public static bool CanAdministerStore(ClaimsPrincipal user)
+    {
+        return IsAdmin(user)
+            || user.IsInRole(RoleNames.StoreAdmin)
+            || user.IsInRole(RoleNames.FinanceAdmin);
+    }
+
+    /// <summary>
     /// Admin or VolunteerCoordinator — intentionally excludes NoInfoAdmin,
     /// who can approve shift signups but not manage rotas/departments.
     /// </summary>
