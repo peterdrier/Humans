@@ -30,6 +30,7 @@ public sealed class LoggingUserStoreDecoratorTests : IDisposable
 
         _dbContext = new HumansDbContext(options);
         _logger = Substitute.For<ILogger<LoggingUserStoreDecorator>>();
+        _logger.IsEnabled(LogLevel.Warning).Returns(true);
         _store = new LoggingUserStoreDecorator(_dbContext, _logger);
     }
 

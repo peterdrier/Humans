@@ -206,9 +206,14 @@ public interface IProfileService : IUserMerge
         Guid userId, Guid adminId, CancellationToken ct = default);
 
     /// <summary>
-    /// Sets the human's <c>IsSuspended</c> flag. Suspending also persists
-    /// <paramref name="notes"/> as <c>AdminNotes</c>; unsuspending ignores
-    /// notes. Error keys: <c>NotFound</c>.
+    /// Sets the human's suspension state. Dual-writes the legacy
+    /// <c>IsSuspended</c> bool and the canonical
+    /// <see cref="ProfileState"/> lifecycle marker (suspending →
+    /// <see cref="ProfileState.Suspended"/>; unsuspending re-derives
+    /// Active vs Stub from <see cref="Profile.HasRequiredIdentityFields"/>).
+    /// Suspending also persists <paramref name="notes"/> as
+    /// <c>AdminNotes</c>; unsuspending ignores notes. Error keys:
+    /// <c>NotFound</c>.
     /// </summary>
     Task<OnboardingResult> SetSuspendedAsync(
         Guid userId, Guid adminId, bool suspended, string? notes,
