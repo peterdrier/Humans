@@ -60,6 +60,7 @@ public class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<TicketOrder> TicketOrders => Set<TicketOrder>();
     public DbSet<TicketAttendee> TicketAttendees => Set<TicketAttendee>();
     public DbSet<TicketSyncState> TicketSyncStates => Set<TicketSyncState>();
+    public DbSet<TicketTransferRequest> TicketTransferRequests => Set<TicketTransferRequest>();
     public DbSet<EventSettings> EventSettings => Set<EventSettings>();
     public DbSet<Rota> Rotas => Set<Rota>();
     public DbSet<Shift> Shifts => Set<Shift>();
