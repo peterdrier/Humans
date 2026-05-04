@@ -58,20 +58,26 @@ public sealed class LoggingUserStoreDecorator
     public override Task<User?> FindByEmailAsync(
         string normalizedEmail, CancellationToken cancellationToken = default)
     {
-        var caller = ResolveAppCaller();
-        _logger.LogWarning(
-            "Identity.FindByEmailAsync called for {Email} from {Caller}",
-            normalizedEmail, caller);
+        // IsEnabled guard avoids the StackTrace allocation in ResolveAppCaller
+        // when Warning is filtered out (e.g. log-level tightening in some envs).
+        if (_logger.IsEnabled(LogLevel.Warning))
+        {
+            _logger.LogWarning(
+                "Identity.FindByEmailAsync called for {Email} from {Caller}",
+                normalizedEmail, ResolveAppCaller());
+        }
         return base.FindByEmailAsync(normalizedEmail, cancellationToken);
     }
 
     public override Task<User?> FindByNameAsync(
         string normalizedUserName, CancellationToken cancellationToken = default)
     {
-        var caller = ResolveAppCaller();
-        _logger.LogWarning(
-            "Identity.FindByNameAsync called for {Name} from {Caller}",
-            normalizedUserName, caller);
+        if (_logger.IsEnabled(LogLevel.Warning))
+        {
+            _logger.LogWarning(
+                "Identity.FindByNameAsync called for {Name} from {Caller}",
+                normalizedUserName, ResolveAppCaller());
+        }
         return base.FindByNameAsync(normalizedUserName, cancellationToken);
     }
 

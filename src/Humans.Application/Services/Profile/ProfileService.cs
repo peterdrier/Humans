@@ -433,14 +433,15 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         }
 
         // Issue #635 (§15i): Stub → Active transition. When all required
-        // fields (BurnerName / FirstName / LastName) are populated and the
-        // profile is not Suspended, promote the lifecycle marker.
+        // identity fields are populated and the profile is not Suspended,
+        // promote the lifecycle marker. Predicate lives on the Profile
+        // entity so the same rule serves the lazy-compute path in
+        // CachingProfileService.ComputeProfileState.
         if (profile.State != ProfileState.Suspended)
         {
-            var requiredPresent = !string.IsNullOrWhiteSpace(profile.BurnerName)
-                && !string.IsNullOrWhiteSpace(profile.FirstName)
-                && !string.IsNullOrWhiteSpace(profile.LastName);
-            profile.State = requiredPresent ? ProfileState.Active : ProfileState.Stub;
+            profile.State = profile.HasRequiredIdentityFields()
+                ? ProfileState.Active
+                : ProfileState.Stub;
         }
 
         await _profileRepository.UpdateAsync(profile, ct);
@@ -1108,11 +1109,9 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         }
         else
         {
-            // Re-derive Active vs Stub from required-field presence.
-            var requiredPresent = !string.IsNullOrWhiteSpace(profile.BurnerName)
-                && !string.IsNullOrWhiteSpace(profile.FirstName)
-                && !string.IsNullOrWhiteSpace(profile.LastName);
-            profile.State = requiredPresent ? ProfileState.Active : ProfileState.Stub;
+            profile.State = profile.HasRequiredIdentityFields()
+                ? ProfileState.Active
+                : ProfileState.Stub;
         }
 
         if (suspended)

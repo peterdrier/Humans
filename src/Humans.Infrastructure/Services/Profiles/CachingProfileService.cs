@@ -202,12 +202,12 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
     /// <summary>
     /// Issue #635 (§15i): computes the ProfileState that should be persisted
     /// for a row whose stored value is NULL, from <c>IsSuspended</c> +
-    /// required-field presence. Suspended dominates; otherwise rows missing
-    /// (or whitespace-only on) any of (BurnerName, FirstName, LastName) are
-    /// <see cref="ProfileState.Stub"/>; rows with all three populated and not
-    /// suspended are <see cref="ProfileState.Active"/>. Uses
-    /// <c>IsNullOrWhiteSpace</c> to match the Stub→Active transition logic in
-    /// <c>ProfileService.SaveProfileAsync</c>.
+    /// required-field presence (via <see cref="Profile.HasRequiredIdentityFields"/>).
+    /// Suspended dominates; otherwise rows with all required identity fields
+    /// populated are <see cref="ProfileState.Active"/>, others are
+    /// <see cref="ProfileState.Stub"/>. The shared predicate keeps this lazy-
+    /// compute path in lockstep with <c>ProfileService.SaveProfileAsync</c> /
+    /// <c>SetSuspendedAsync</c>.
     /// </summary>
     internal static ProfileState ComputeProfileState(Profile profile)
     {
@@ -216,12 +216,7 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
             return ProfileState.Suspended;
 #pragma warning restore HUM_PROFILE_ISSUSPENDED
 
-        if (string.IsNullOrWhiteSpace(profile.BurnerName) ||
-            string.IsNullOrWhiteSpace(profile.FirstName) ||
-            string.IsNullOrWhiteSpace(profile.LastName))
-            return ProfileState.Stub;
-
-        return ProfileState.Active;
+        return profile.HasRequiredIdentityFields() ? ProfileState.Active : ProfileState.Stub;
     }
 
     /// <summary>

@@ -80,7 +80,7 @@ public sealed class ProfileBackfillAdminController : HumansControllerBase
         }
 
         _logger.LogInformation(
-            "Issue #635 §15i Stub Profile backfill: created {Count} profiles", missing.Count);
+            "Stub Profile backfill: created {Count} profiles", missing.Count);
         SetSuccess($"Materialized {missing.Count} Stub Profiles.");
         return RedirectToAction(nameof(Index));
     }
