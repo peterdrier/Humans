@@ -528,12 +528,25 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         string email, CancellationToken cancellationToken = default) =>
         _repository.AnyWithEmailAsync(email, cancellationToken);
 
-    public async Task RewriteEmailAddressAsync(
+    public async Task<RewriteEmailAddressOutcome> RewriteEmailAddressAsync(
         Guid userId, string oldEmail, string newEmail,
         CancellationToken cancellationToken = default)
     {
-        await _repository.RewriteEmailAddressAsync(
+        var outcome = await _repository.RewriteEmailAddressAsync(
             userId, oldEmail, newEmail, _clock.GetCurrentInstant(), cancellationToken);
+
+        if (outcome == RewriteEmailAddressOutcome.CrossUserConflict)
+        {
+            // Surface the cross-user collision via the prod log viewer at
+            // Warning (no exception object — there's no exception to attach;
+            // this is a known, classified outcome). The duplicate-account
+            // detection flow will pick the conflict up on its next sweep.
+            _logger.LogWarning(
+                "OAuth rename collision: user {UserId} attempted to rewrite {OldEmail} to {NewEmail}, but the new address already belongs to user {ConflictUserId}. Stale row left in place; duplicate-account detection will surface this to admins.",
+                userId, oldEmail, newEmail, await _repository.GetOtherUserIdHavingEmailAsync(newEmail, userId, cancellationToken));
+        }
+
+        return outcome;
     }
 
     public async Task<IReadOnlyList<UserEmailMatch>> MatchByEmailsAsync(

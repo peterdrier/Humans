@@ -5,6 +5,7 @@ using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
@@ -382,17 +383,41 @@ public class AccountController : HumansControllerBase
                 return;
 
             var oldEmail = match.Email;
-            await _userEmailService.RewriteEmailAddressAsync(match.UserId, oldEmail, claimEmail);
+            var outcome = await _userEmailService.RewriteEmailAddressAsync(
+                match.UserId, oldEmail, claimEmail);
 
-            await _auditLogService.LogAsync(
-                AuditAction.GoogleEmailRenamed,
-                nameof(User), match.UserId,
-                $"email rename detected: {oldEmail} -> {claimEmail}, sub={info.ProviderKey}",
-                nameof(AccountController),
-                relatedEntityId: match.Id, relatedEntityType: nameof(UserEmail));
+            switch (outcome)
+            {
+                case RewriteEmailAddressOutcome.Rewritten:
+                case RewriteEmailAddressOutcome.MergedIntoExistingRowForSameUser:
+                    await _auditLogService.LogAsync(
+                        AuditAction.GoogleEmailRenamed,
+                        nameof(User), match.UserId,
+                        $"email rename detected: {oldEmail} -> {claimEmail}, sub={info.ProviderKey}, outcome={outcome}",
+                        nameof(AccountController),
+                        relatedEntityId: match.Id, relatedEntityType: nameof(UserEmail));
+                    break;
+                case RewriteEmailAddressOutcome.CrossUserConflict:
+                    // Already logged at Warning by UserEmailService with both
+                    // user IDs; no audit row (we didn't actually rewrite).
+                    break;
+                case RewriteEmailAddressOutcome.SourceRowNotFound:
+                    // Legitimate no-op (e.g. row removed between FindByProviderKey
+                    // and rewrite). Nothing to audit.
+                    break;
+            }
+        }
+        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
+            // Cross-user / same-user collisions are now handled as classified
+            // outcomes above. Anything reaching this catch is unexpected and
+            // stays at LogError. (The historical 23505 noise from
+            // nobodies-collective/Humans#622 is now suppressed by the
+            // pre-UPDATE conflict check in the repository.)
             _logger.LogError(ex,
                 "OAuth rename detection failed for {Provider} sub={Sub}",
                 info.LoginProvider, info.ProviderKey);

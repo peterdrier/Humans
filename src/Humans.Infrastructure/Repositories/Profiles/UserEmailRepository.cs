@@ -361,21 +361,55 @@ public sealed class UserEmailRepository : IUserEmailRepository
         return true;
     }
 
-    public async Task<bool> RewriteEmailAddressAsync(
+    public async Task<RewriteEmailAddressOutcome> RewriteEmailAddressAsync(
         Guid userId, string oldEmail, string newEmail, Instant updatedAt,
         CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var row = await ctx.UserEmails
+
+        var sourceRow = await ctx.UserEmails
             .FirstOrDefaultAsync(e => e.UserId == userId &&
                 EF.Functions.ILike(e.Email, oldEmail), ct);
-        if (row is null)
-            return false;
+        if (sourceRow is null)
+            return RewriteEmailAddressOutcome.SourceRowNotFound;
 
-        row.Email = newEmail;
-        row.UpdatedAt = updatedAt;
+        // Pre-UPDATE conflict check on the unique IX_user_emails_Email index.
+        // Without this, a UPDATE attempting to set Email to a value already
+        // present anywhere in user_emails fails with Postgres 23505 (issue
+        // nobodies-collective/Humans#622). We classify the three cases here
+        // and let the caller decide how to surface them.
+        var conflictRow = await ctx.UserEmails
+            .FirstOrDefaultAsync(e => e.Id != sourceRow.Id &&
+                EF.Functions.ILike(e.Email, newEmail), ct);
+
+        if (conflictRow is null)
+        {
+            sourceRow.Email = newEmail;
+            sourceRow.UpdatedAt = updatedAt;
+            await ctx.SaveChangesAsync(ct);
+            return RewriteEmailAddressOutcome.Rewritten;
+        }
+
+        if (conflictRow.UserId != userId)
+        {
+            // Cross-user collision. Don't UPDATE — let the duplicate-account
+            // detection flow surface this to admins. Caller logs a warning.
+            return RewriteEmailAddressOutcome.CrossUserConflict;
+        }
+
+        // Same-user collision: the user already has a row with newEmail. Drop
+        // the source row instead of UPDATEing it (which would violate the
+        // unique index). Mark the existing target row verified so the user
+        // doesn't lose verification status when the OAuth rename detector
+        // collapses two rows into one.
+        ctx.UserEmails.Remove(sourceRow);
+        if (!conflictRow.IsVerified)
+        {
+            conflictRow.IsVerified = true;
+        }
+        conflictRow.UpdatedAt = updatedAt;
         await ctx.SaveChangesAsync(ct);
-        return true;
+        return RewriteEmailAddressOutcome.MergedIntoExistingRowForSameUser;
     }
 
     public async Task SetGoogleExclusiveAsync(

@@ -261,9 +261,17 @@ public interface IUserEmailService
     /// Rewrites the user's <see cref="Domain.Entities.UserEmail"/> row
     /// whose address matches <paramref name="oldEmail"/> (case-insensitive) to
     /// <paramref name="newEmail"/> and stamps <c>UpdatedAt</c>. Used by the
-    /// admin rename-fix flow. No-op if the user has no matching row.
+    /// admin rename-fix flow and by the OAuth rename detector.
+    ///
+    /// Returns a <see cref="RewriteEmailAddressOutcome"/> describing what
+    /// happened (rewritten, merged into a same-user row, cross-user conflict,
+    /// or source row not found). Never throws on a unique-index conflict —
+    /// see <see cref="IUserEmailRepository.RewriteEmailAddressAsync"/> for the
+    /// branching contract. Cross-user conflicts are logged at
+    /// <c>LogWarning</c> with structured properties (no exception object) and
+    /// surfaced to admins via the duplicate-account detection flow.
     /// </summary>
-    Task RewriteEmailAddressAsync(
+    Task<RewriteEmailAddressOutcome> RewriteEmailAddressAsync(
         Guid userId, string oldEmail, string newEmail,
         CancellationToken cancellationToken = default);
 
