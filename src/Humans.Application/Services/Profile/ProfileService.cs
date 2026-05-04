@@ -504,9 +504,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     public Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default) =>
         _profileRepository.GetActiveApprovedUserIdsAsync(ct);
 
-    public Task<int> GetActiveApprovedCountAsync(CancellationToken ct = default) =>
-        _profileRepository.CountActiveApprovedAsync(ct);
-
     public Task<int> GetConsentReviewPendingCountAsync(CancellationToken ct = default) =>
         _profileRepository.GetConsentReviewPendingCountAsync(ct);
 

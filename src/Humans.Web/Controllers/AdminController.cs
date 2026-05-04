@@ -67,7 +67,7 @@ public class AdminController : HumansControllerBase
         CancellationToken ct)
     {
         var firstName = User.Identity?.Name?.Split(' ').FirstOrDefault() ?? "";
-        var activeHumans = await profileService.GetActiveApprovedCountAsync(ct);
+        var activeHumans = (await profileService.GetActiveApprovedUserIdsAsync(ct)).Count;
         var (filled, total, ratio) = await shifts.GetOverallCoverageAsync(ct);
         var openFeedback = await feedback.GetActionableCountAsync(ct);
         var recent = (await auditLog.GetRecentAsync(8, ct))
