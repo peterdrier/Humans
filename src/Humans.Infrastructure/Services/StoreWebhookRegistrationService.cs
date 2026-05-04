@@ -111,11 +111,16 @@ public class StoreWebhookRegistrationService : IHostedService
         if (!Uri.TryCreate(webhookUrl, UriKind.Absolute, out var webhookUri) ||
             !webhookUri.Host.EndsWith(OwnedHostSuffix, StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogInformation(
+            _logger.LogWarning(
                 "Store webhook auto-registration skipped: {Url} is not a recognized PR-preview host (must end in {Suffix}).",
                 webhookUrl, OwnedHostSuffix);
             return;
         }
+
+        // Warning level — this is a rare, boot-time-only event in PR-preview environments
+        // and the success line is the only on-host confirmation that the in-memory
+        // STRIPE_STORE_WEBHOOK_SECRET was stamped. Information would be filtered out in prod.
+        _logger.LogWarning("Auto-registering Stripe webhook for PR-preview env at {Url}…", webhookUrl);
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(RegistrationTimeout);
@@ -144,8 +149,8 @@ public class StoreWebhookRegistrationService : IHostedService
             }
 
             settings.StoreWebhookSecret = created.Secret;
-            _logger.LogInformation(
-                "Auto-registered Stripe webhook {EndpointId} at {Url} (events: {Events}).",
+            _logger.LogWarning(
+                "Auto-registered Stripe webhook {EndpointId} at {Url} (events: {Events}); STRIPE_STORE_WEBHOOK_SECRET stamped in-memory.",
                 created.Id, webhookUrl, EventCheckoutSessionCompleted);
         }
         catch (StripeException ex) when (StripeStartupSmokeService.IsPermissionError(ex))
