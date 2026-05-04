@@ -242,6 +242,9 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         var signup = await _repo.GetByIdForMutationAsync(signupId);
         if (signup is null) return SignupResult.Fail("Signup not found.");
 
+        if (signup.Status == SignupStatus.Bailed)
+            return SignupResult.Fail("This signup has already been bailed.");
+
         var es = signup.Shift.Rota.EventSettings;
         var now = _clock.GetCurrentInstant();
         var isOwner = signup.UserId == actorUserId;
