@@ -70,7 +70,7 @@ A camp's order against a season.
 
 **Indexes:** `CampSeasonId`, `State`.
 
-**Cross-section FKs:** `CampSeasonId` → `CampSeason` (Camps) — **FK only**, no navigation property.
+**Cross-section linkage:** `CampSeasonId` is a bare `Guid` column — no FK constraint, no navigation property (per `memory/architecture/no-cross-section-ef-joins.md`). Resolved at the service layer via `ICampService.GetCampSeasonByIdAsync`.
 
 **Aggregate-local navs:** `StoreOrder.Lines`, `StoreOrder.Payments`.
 
