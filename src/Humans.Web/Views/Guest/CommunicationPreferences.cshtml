@@ -22,9 +22,10 @@
 
         @if (Model.HighlightCategory is { } highlight && !highlight.IsAlwaysOn())
         {
-            var highlightName = highlight == MessageCategory.Ticketing
-                ? $"Ticketing — {DateTime.UtcNow.Year}"
-                : highlight.ToDisplayName();
+            // Reuse the controller-built DisplayName (sourced from IClock for Ticketing year).
+            // Avoids a raw DateTime.UtcNow in the view — see memory/code/nodatime-for-dates.md.
+            var highlightName = Model.Categories.FirstOrDefault(c => c.Category == highlight)?.DisplayName
+                ?? highlight.ToDisplayName();
             <div id="oneClickBanner"
                  class="alert alert-warning d-flex align-items-center justify-content-between gap-3 mb-4"
                  data-category="@highlight">
