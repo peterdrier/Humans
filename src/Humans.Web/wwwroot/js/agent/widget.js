@@ -1,5 +1,7 @@
 (function () {
-    const launcher = document.getElementById('agentWidgetLauncher');
+    // Note: the panel is opened by the parent help-menu (#helpWidgetAgentItem
+    // in the merged HelpWidget). This script wires the panel's own controls
+    // (close, composer, streaming).
     const panel = document.getElementById('agentPanel');
     const closeBtn = document.getElementById('agentPanelClose');
     const messagesEl = document.getElementById('agentMessages');
@@ -7,7 +9,7 @@
     const input = document.getElementById('agentInput');
     const sendBtn = document.getElementById('agentSend');
 
-    if (!launcher || !panel) return;
+    if (!panel || !composer) return;
 
     let currentConversationId = null;
 
@@ -57,10 +59,9 @@
         return DOMPurify.sanitize(html, PURIFY_CONFIG);
     }
 
-    launcher.addEventListener('click', function () {
-        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-    });
-    closeBtn.addEventListener('click', function () { panel.style.display = 'none'; });
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function () { panel.style.display = 'none'; });
+    }
 
     composer.addEventListener('submit', async function (e) {
         e.preventDefault();

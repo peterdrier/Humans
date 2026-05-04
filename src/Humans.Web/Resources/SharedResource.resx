@@ -1373,6 +1373,11 @@
   <data name="Agent_Send" xml:space="preserve"><value>Send</value></data>
   <data name="Agent_ViewHistory" xml:space="preserve"><value>History</value></data>
   <data name="Agent_WidgetButton" xml:space="preserve"><value>Open the helper</value></data>
+  <data name="Help_WidgetButton" xml:space="preserve"><value>Help</value></data>
+  <data name="Help_Menu_TalkWithAgent" xml:space="preserve"><value>Talk with AI Agent</value></data>
+  <data name="Help_Menu_CreateIssue" xml:space="preserve"><value>Create issue</value></data>
+  <data name="Help_Agent_Caveat_LogVisibility" xml:space="preserve"><value>The full conversation log is visible to you and to admins for review.</value></data>
+  <data name="Help_Agent_Caveat_Retention" xml:space="preserve"><value>History is retained for 90 days, then deleted.</value></data>
   <data name="Nav_Agent" xml:space="preserve"><value>Helper</value></data>
 
   <!-- Magic Link Auth -->

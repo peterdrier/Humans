@@ -1829,6 +1829,11 @@
   <data name="Agent_ViewHistory" xml:space="preserve"><value>Cronologia</value></data>
   <data name="Agent_Send" xml:space="preserve"><value>Invia</value></data>
   <data name="Agent_WidgetButton" xml:space="preserve"><value>Apri l'assistente</value></data>
+  <data name="Help_WidgetButton" xml:space="preserve"><value>Aiuto</value></data>
+  <data name="Help_Menu_TalkWithAgent" xml:space="preserve"><value>Parla con l'agente IA</value></data>
+  <data name="Help_Menu_CreateIssue" xml:space="preserve"><value>Crea segnalazione</value></data>
+  <data name="Help_Agent_Caveat_LogVisibility" xml:space="preserve"><value>Il registro completo della conversazione è visibile a te e agli amministratori per la revisione.</value></data>
+  <data name="Help_Agent_Caveat_Retention" xml:space="preserve"><value>La cronologia viene conservata per 90 giorni, poi eliminata.</value></data>
   <data name="Nav_Agent" xml:space="preserve"><value>Assistente</value></data>
 
 
