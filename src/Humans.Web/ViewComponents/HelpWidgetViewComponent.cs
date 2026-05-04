@@ -39,6 +39,7 @@ public class HelpWidgetViewComponent : ViewComponent
 
         var agentAvailable = false;
         var agentHasConsent = false;
+        var retentionDays = _settings.Current.RetentionDays;
 
         if (_settings.Current.Enabled)
         {
@@ -52,8 +53,8 @@ public class HelpWidgetViewComponent : ViewComponent
             }
         }
 
-        return View(new HelpWidgetModel(pagePath, agentAvailable, agentHasConsent));
+        return View(new HelpWidgetModel(pagePath, agentAvailable, agentHasConsent, retentionDays));
     }
 }
 
-public sealed record HelpWidgetModel(string PagePath, bool AgentAvailable, bool AgentHasConsented);
+public sealed record HelpWidgetModel(string PagePath, bool AgentAvailable, bool AgentHasConsented, int RetentionDays);

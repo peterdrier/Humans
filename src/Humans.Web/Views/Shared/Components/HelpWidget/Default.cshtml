@@ -58,7 +58,7 @@
             <p>@Localizer["Agent_ConsentPrompt"]</p>
             <ul class="small text-muted mb-3 ps-3">
                 <li>@Localizer["Help_Agent_Caveat_LogVisibility"]</li>
-                <li>@Localizer["Help_Agent_Caveat_Retention"]</li>
+                <li>@string.Format(Localizer["Help_Agent_Caveat_Retention"].Value, Model.RetentionDays)</li>
             </ul>
             <a asp-controller="Legal" asp-action="Index" asp-route-slug="agent-chat" class="btn btn-primary">
                 @Localizer["Agent_ConsentReviewButton"]

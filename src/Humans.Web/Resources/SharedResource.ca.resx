@@ -1835,7 +1835,7 @@
   <data name="Help_Menu_TalkWithAgent" xml:space="preserve"><value>Parlar amb l'agent IA</value></data>
   <data name="Help_Menu_CreateIssue" xml:space="preserve"><value>Crear incidència</value></data>
   <data name="Help_Agent_Caveat_LogVisibility" xml:space="preserve"><value>El registre complet de la conversa és visible per a tu i per als administradors per a revisió.</value></data>
-  <data name="Help_Agent_Caveat_Retention" xml:space="preserve"><value>L'historial es conserva durant 90 dies i després s'elimina.</value></data>
+  <data name="Help_Agent_Caveat_Retention" xml:space="preserve"><value>L'historial es conserva durant {0} dies i després s'elimina.</value></data>
   <data name="Nav_Agent" xml:space="preserve"><value>Assistent</value></data>
 
 

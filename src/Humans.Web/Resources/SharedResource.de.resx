@@ -1833,7 +1833,7 @@
   <data name="Help_Menu_TalkWithAgent" xml:space="preserve"><value>Mit KI-Assistent sprechen</value></data>
   <data name="Help_Menu_CreateIssue" xml:space="preserve"><value>Problem melden</value></data>
   <data name="Help_Agent_Caveat_LogVisibility" xml:space="preserve"><value>Das vollständige Gesprächsprotokoll ist für dich und für Administratoren zur Überprüfung sichtbar.</value></data>
-  <data name="Help_Agent_Caveat_Retention" xml:space="preserve"><value>Der Verlauf wird 90 Tage lang aufbewahrt und dann gelöscht.</value></data>
+  <data name="Help_Agent_Caveat_Retention" xml:space="preserve"><value>Der Verlauf wird {0} Tage lang aufbewahrt und dann gelöscht.</value></data>
   <data name="Nav_Agent" xml:space="preserve"><value>Assistent</value></data>
 
 

@@ -1833,7 +1833,7 @@
   <data name="Help_Menu_TalkWithAgent" xml:space="preserve"><value>Parla con l'agente IA</value></data>
   <data name="Help_Menu_CreateIssue" xml:space="preserve"><value>Crea segnalazione</value></data>
   <data name="Help_Agent_Caveat_LogVisibility" xml:space="preserve"><value>Il registro completo della conversazione è visibile a te e agli amministratori per la revisione.</value></data>
-  <data name="Help_Agent_Caveat_Retention" xml:space="preserve"><value>La cronologia viene conservata per 90 giorni, poi eliminata.</value></data>
+  <data name="Help_Agent_Caveat_Retention" xml:space="preserve"><value>La cronologia viene conservata per {0} giorni, poi eliminata.</value></data>
   <data name="Nav_Agent" xml:space="preserve"><value>Assistente</value></data>
 
 
