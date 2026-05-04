@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -36,21 +36,18 @@ namespace Humans.Web.Controllers;
 public sealed class ProfileBackfillAdminController : HumansControllerBase
 {
     private readonly IUserService _userService;
-    private readonly IProfileRepository _profileRepository;
-    private readonly IClock _clock;
+    private readonly IProfileService _profileService;
     private readonly ILogger<ProfileBackfillAdminController> _logger;
 
     public ProfileBackfillAdminController(
         UserManager<User> userManager,
         IUserService userService,
-        IProfileRepository profileRepository,
-        IClock clock,
+        IProfileService profileService,
         ILogger<ProfileBackfillAdminController> logger)
         : base(userManager)
     {
         _userService = userService;
-        _profileRepository = profileRepository;
-        _clock = clock;
+        _profileService = profileService;
         _logger = logger;
     }
 
@@ -72,24 +69,14 @@ public sealed class ProfileBackfillAdminController : HumansControllerBase
             return RedirectToAction(nameof(Index));
         }
 
-        var now = _clock.GetCurrentInstant();
         foreach (var row in missing)
         {
-            // Re-check inside the loop in case a parallel signup created the
-            // profile between count and run — keeps the operation idempotent
-            // under concurrent writers.
-            var existing = await _profileRepository.GetByUserIdAsync(row.UserId, ct);
-            if (existing is not null) continue;
-
-            var profile = new Profile
-            {
-                Id = Guid.NewGuid(),
-                UserId = row.UserId,
-                CreatedAt = now,
-                UpdatedAt = now,
-                State = ProfileState.Stub,
-            };
-            await _profileRepository.AddAsync(profile, ct);
+            // EnsureStubProfileAsync is idempotent — re-checks inside the
+            // service so a parallel signup creating the profile between count
+            // and run is handled cleanly. The caching decorator refreshes the
+            // FullProfile entry after the write so downstream reads see the
+            // new Stub immediately (design-rules §2a/§2c).
+            await _profileService.EnsureStubProfileAsync(row.UserId, ct);
         }
 
         _logger.LogInformation(
@@ -101,11 +88,11 @@ public sealed class ProfileBackfillAdminController : HumansControllerBase
     private async Task<IReadOnlyList<MissingProfileRow>> GetUsersMissingProfileAsync(CancellationToken ct)
     {
         var users = await _userService.GetAllUsersAsync(ct);
-        var profiles = await _profileRepository.GetAllAsync(ct);
-        var hasProfile = profiles.Select(p => p.UserId).ToHashSet();
+        var userIds = users.Select(u => u.Id).ToList();
+        var profiles = await _profileService.GetByUserIdsAsync(userIds, ct);
 
         return users
-            .Where(u => !hasProfile.Contains(u.Id))
+            .Where(u => !profiles.ContainsKey(u.Id))
             .Select(u => new MissingProfileRow(
                 u.Id,
                 u.Email ?? string.Empty,

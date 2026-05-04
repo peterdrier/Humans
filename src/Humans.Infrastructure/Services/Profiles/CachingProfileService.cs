@@ -75,17 +75,20 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
     private readonly IProfileRepository _profileRepository;
     private readonly IUserEmailRepository _userEmailRepository;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<CachingProfileService> _logger;
 
     private readonly ConcurrentDictionary<Guid, FullProfile> _byUserId = new();
 
     public CachingProfileService(
         IProfileRepository profileRepository,
         IUserEmailRepository userEmailRepository,
-        IServiceScopeFactory scopeFactory)
+        IServiceScopeFactory scopeFactory,
+        ILogger<CachingProfileService> logger)
     {
         _profileRepository = profileRepository;
         _userEmailRepository = userEmailRepository;
         _scopeFactory = scopeFactory;
+        _logger = logger;
     }
 
     // ==========================================================================
@@ -186,9 +189,12 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // Lazy backfill is best-effort; the next read retries. Don't
-            // block FullProfile resolution on a write failure.
-            System.Diagnostics.Debug.WriteLine(
-                $"CachingProfileService: lazy ProfileState write-back failed for {profile.UserId}: {ex.GetType().Name}");
+            // block FullProfile resolution on a write failure. LogWarning
+            // (no exception object) per memory/code/always-log-problems.md
+            // for expected/transient failures.
+            _logger.LogWarning(
+                "CachingProfileService lazy ProfileState write-back failed for {UserId}: {ExType}",
+                profile.UserId, ex.GetType().Name);
         }
         profile.State = computed;
     }
@@ -484,17 +490,16 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
                     ? "(unknown)"
                     : System.IO.Path.GetFileName(filePath);
 
-                using var scope = _scopeFactory.CreateScope();
-                var logger = scope.ServiceProvider.GetService<ILogger<CachingProfileService>>();
-                logger?.LogDebug(
+                _logger.LogDebug(
                     "FullProfile invalidate userId={UserId} caller={CallerMember} file={CallerFile}",
                     userId, callerMember, callerFile);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 // Logging is best-effort; never block the invalidation on it.
-                System.Diagnostics.Debug.WriteLine(
-                    $"CachingProfileService: invalidate caller-log failed: {ex.GetType().Name}");
+                _logger.LogWarning(
+                    "CachingProfileService invalidate caller-log failed for {UserId}: {ExType}",
+                    userId, ex.GetType().Name);
             }
         }
 

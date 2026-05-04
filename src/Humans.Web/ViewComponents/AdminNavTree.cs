@@ -57,6 +57,7 @@ public static class AdminNavTree
             new("Audience segmentation", "Admin", "AudienceSegmentation",   null, null, "fa-solid fa-chart-pie",  PolicyNames.AdminOnly),
             new("Legal documents",       "AdminLegalDocuments", "LegalDocuments", null, null, "fa-solid fa-scale-balanced", PolicyNames.AdminOnly),
             new("Backfill Provider/IsGoogle", "Admin", "BackfillUserEmailProviders", null, null, "fa-solid fa-key", PolicyNames.AdminOnly),
+            new("Stub Profile Backfill",      "ProfileBackfillAdmin", "Index",       null, null, "fa-solid fa-user-plus", PolicyNames.AdminOnly),
         }),
         new("Diagnostics", new AdminNavItem[]
         {
