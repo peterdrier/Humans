@@ -56,7 +56,7 @@ public interface IShiftSignupService
     /// Creates signups for a date range of all-day shifts (build/strike).
     /// All signups share a SignupBlockId for grouped bail.
     /// </summary>
-    Task<SignupResult> SignUpRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid? actorUserId = null, bool isPrivileged = false);
+    Task<SignupResult> SignUpRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid? actorUserId = null, bool isPrivileged = false, bool skipConflicts = false);
 
     /// <summary>
     /// Approves all pending signups sharing a SignupBlockId.
