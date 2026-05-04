@@ -85,6 +85,7 @@ if (!builder.Environment.IsProduction())
 {
     builder.Services.AddScoped<DevelopmentBudgetSeeder>();
     builder.Services.AddScoped<DevelopmentDashboardSeeder>();
+    builder.Services.AddScoped<DevPersonaSeeder>();
 }
 
 // Configure JSON options with NodaTime support
