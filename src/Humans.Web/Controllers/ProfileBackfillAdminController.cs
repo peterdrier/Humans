@@ -55,7 +55,7 @@ public sealed class ProfileBackfillAdminController : HumansControllerBase
     public async Task<IActionResult> Index(CancellationToken ct = default)
     {
         var missing = await GetUsersMissingProfileAsync(ct);
-        return View("ProfileBackfill", new ProfileBackfillViewModel(missing));
+        return View(new ProfileBackfillViewModel(missing));
     }
 
     [HttpPost("Run")]
