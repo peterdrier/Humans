@@ -85,7 +85,7 @@ src/Humans.Application/Services/Profile/DuplicateAccountService.cs:240:Team
 src/Humans.Application/Services/Profile/DuplicateAccountService.cs:253:Team
 src/Humans.Application/Services/Shifts/ShiftManagementService.cs:1398:Team
 src/Humans.Application/Services/Shifts/ShiftManagementService.cs:1399:Team
-src/Humans.Application/Services/Shifts/ShiftSignupService.cs:1029:Team
+src/Humans.Application/Services/Shifts/ShiftSignupService.cs:1035:Team
 src/Humans.Application/Services/Teams/TeamPageService.cs:59:Team
 src/Humans.Application/Services/Teams/TeamPageService.cs:78:Team
 src/Humans.Application/Services/Teams/TeamPageService.cs:82:Team

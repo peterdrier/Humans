@@ -21,7 +21,7 @@ public class NoConcurrencyTokensRule
         "tests/Humans.Application.Tests/Architecture/Baselines/NoConcurrencyTokens.baseline.txt";
 
     private static readonly Regex TokenRegex = new(
-        @"\.IsConcurrencyToken\s*\(|\[ConcurrencyCheck\]",
+        @"\.IsConcurrencyToken\s*\(|\.IsRowVersion\s*\(|\[ConcurrencyCheck\]|\[Timestamp\]",
         RegexOptions.Compiled | RegexOptions.ExplicitCapture,
         TimeSpan.FromSeconds(2));
 

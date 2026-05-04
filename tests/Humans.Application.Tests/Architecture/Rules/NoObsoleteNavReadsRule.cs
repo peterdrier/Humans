@@ -85,7 +85,6 @@ public class NoObsoleteNavReadsRule
             // Build a list of pragma-disable spans (offsets where CS0618 is
             // disabled). Simple model: track running disable state.
             var disableSpans = ComputePragmaDisableSpans(content);
-            var lines = content.Split('\n');
 
             foreach (var match in accessRegex.Matches(content).Cast<Match>())
             {

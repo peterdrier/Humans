@@ -28,7 +28,7 @@ public class NoStartupGuardsRule
         "tests/Humans.Application.Tests/Architecture/Baselines/NoStartupGuards.baseline.txt";
 
     private static readonly Regex GuardRegex = new(
-        @"\bEnvironment\.(?<op>Exit|FailFast)\s*\(",
+        @"\bEnvironment\.(?<op>Exit|FailFast)\s*\(|(?<op2>StopApplication)\s*\(",
         RegexOptions.Compiled | RegexOptions.ExplicitCapture,
         TimeSpan.FromSeconds(2));
 
@@ -51,8 +51,8 @@ public class NoStartupGuardsRule
         var candidatePaths = Directory
             .EnumerateFiles(webRoot, "Program.cs", SearchOption.TopDirectoryOnly)
             .Concat(Directory.EnumerateFiles(webRoot, "Startup*.cs", SearchOption.TopDirectoryOnly))
-            .Concat(Directory.EnumerateFiles(Path.Combine(webRoot, "Infrastructure"), "*.cs", SearchOption.AllDirectories)
-                .DefaultIfEmpty().Where(p => p is not null).Select(p => p!));
+            .Concat(EnumerateOptional(Path.Combine(webRoot, "Infrastructure")))
+            .Concat(EnumerateOptional(Path.Combine(webRoot, "Extensions")));
 
         foreach (var path in candidatePaths)
         {
@@ -61,10 +61,19 @@ public class NoStartupGuardsRule
             var rel = RatchetTestRunner.ToRelativePath(repoRoot, path);
             foreach (var match in GuardRegex.Matches(content).Cast<Match>())
             {
+                var op = match.Groups["op"].Success
+                    ? "Environment." + match.Groups["op"].Value
+                    : match.Groups["op2"].Value;
                 var lineNumber = LineNumberAt(content, match.Index);
-                yield return $"{rel}:{lineNumber}:Environment.{match.Groups["op"].Value}";
+                yield return $"{rel}:{lineNumber}:{op}";
             }
         }
+    }
+
+    private static IEnumerable<string> EnumerateOptional(string dir)
+    {
+        if (!Directory.Exists(dir)) return Array.Empty<string>();
+        return Directory.EnumerateFiles(dir, "*.cs", SearchOption.AllDirectories);
     }
 
     private static int LineNumberAt(string source, int offset)
