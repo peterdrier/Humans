@@ -36,6 +36,7 @@ public class StoreStripeWebhookController : ControllerBase
     }
 
     [HttpPost("")]
+    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> Receive(CancellationToken ct)
     {
         if (!_stripeService.IsStoreWebhookConfigured)
