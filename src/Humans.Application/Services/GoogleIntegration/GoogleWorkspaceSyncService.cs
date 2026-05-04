@@ -489,8 +489,9 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         // Active team members (skip rejected), resolved via the Teams service
         // so this service does not read team_members directly.
         var teamMembers = await _teamService.GetActiveMembersForTeamsAsync([teamId], cancellationToken);
+        var emailsByUserId = await LoadEmailsForMembersAsync(teamMembers, cancellationToken);
         var teamEmails = teamMembers
-            .Select(TryGetGoogleEmail)
+            .Select(tm => TryGetGoogleEmail(tm, emailsByUserId))
             .OfType<string>()
             .ToList();
 
@@ -878,17 +879,20 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     {
         try
         {
+            var allMembers = teamMembers.Concat(childMembers);
+            var emailsByUserId = await LoadEmailsForMembersAsync(allMembers, cancellationToken);
+
             // Expected: team's active members (skip rejected) — include subteam rollup.
             var expectedMembers = new List<ExpectedMember>();
             foreach (var tm in teamMembers)
             {
-                var email = TryGetGoogleEmail(tm);
+                var email = TryGetGoogleEmail(tm, emailsByUserId);
                 if (email is null) continue;
                 expectedMembers.Add(new ExpectedMember(email, GetDisplayName(tm), GetUserId(tm), GetProfilePictureUrl(tm)));
             }
             foreach (var cm in childMembers)
             {
-                var email = TryGetGoogleEmail(cm);
+                var email = TryGetGoogleEmail(cm, emailsByUserId);
                 if (email is null) continue;
                 if (expectedMembers.Any(m => NormalizingEmailComparer.Instance.Equals(m.Email, email)))
                     continue;
@@ -1072,6 +1076,13 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             var membersByEmail = new Dictionary<string, (string DisplayName, Guid UserId, string? ProfilePictureUrl, List<TeamLink> TeamLinks)>(
                 NormalizingEmailComparer.Instance);
 
+            // Issue #635 (§15i): bulk-fetch UserEmails once for all members
+            // across the team union so TryGetGoogleEmail does not traverse
+            // user.UserEmails cross-domain.
+            var allMembersForEmails = membersByTeam.Values.SelectMany(v => v)
+                .Concat(childMembersByTeam.Values.SelectMany(v => v));
+            var emailsByUserId = await LoadEmailsForMembersAsync(allMembersForEmails, cancellationToken);
+
             foreach (var resource in resources)
             {
                 var level = resource.DrivePermissionLevel is DrivePermissionLevel.None
@@ -1081,7 +1092,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 var teamMembers = membersByTeam.GetValueOrDefault(resource.TeamId, []);
                 foreach (var tm in teamMembers)
                 {
-                    var memberEmail = TryGetGoogleEmail(tm);
+                    var memberEmail = TryGetGoogleEmail(tm, emailsByUserId);
                     if (memberEmail is null) continue;
 
                     if (membersByEmail.TryGetValue(memberEmail, out var existing))
@@ -1098,7 +1109,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 var childMembers = childMembersByTeam.GetValueOrDefault(resource.TeamId, []);
                 foreach (var cm in childMembers)
                 {
-                    var memberEmail = TryGetGoogleEmail(cm);
+                    var memberEmail = TryGetGoogleEmail(cm, emailsByUserId);
                     if (memberEmail is null) continue;
 
                     var childTeamLink = new TeamLink(cm.Team.Name, cm.Team.Slug, level);
@@ -2128,14 +2139,14 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     /// <summary>
     /// Gets the canonical Google Workspace email for a team member, returning
     /// null when the user's <c>GoogleEmailStatus</c> is Rejected or when the
-    /// user has no Workspace identity at all. Resolves through the
-    /// <see cref="User.UserEmails"/> collection (the IsGoogle row, falling
-    /// back to any provider-tagged verified row), which is hydrated by
-    /// <c>TeamService.StitchMemberUserSlicesAsync</c> via
-    /// <see cref="IUserService.GetByIdsWithEmailsAsync"/>. Pulls User data
-    /// from the cross-domain nav that the Teams service stitches in-memory.
+    /// user has no Workspace identity at all. Issue #635 (§15i): UserEmails
+    /// are pre-fetched by the caller via <see cref="IUserEmailRepository"/>
+    /// and passed in as <paramref name="emailsByUserId"/> instead of being
+    /// traversed through <c>tm.User.UserEmails</c>.
     /// </summary>
-    private static string? TryGetGoogleEmail(TeamMember tm)
+    private static string? TryGetGoogleEmail(
+        TeamMember tm,
+        IReadOnlyDictionary<Guid, IReadOnlyList<UserEmail>> emailsByUserId)
     {
 #pragma warning disable CS0618 // Cross-domain User nav populated in-memory by ITeamService (§6b).
         var user = tm.User;
@@ -2145,15 +2156,42 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         if (user.GoogleEmailStatus == GoogleEmailStatus.Rejected)
             return null;
 
-        return user.UserEmails
+        var emails = emailsByUserId.TryGetValue(tm.UserId, out var list)
+            ? list
+            : Array.Empty<UserEmail>();
+
+        return emails
             .Where(e => e.IsVerified && e.IsGoogle)
             .Select(e => e.Email)
             .FirstOrDefault()
-            ?? user.UserEmails
+            ?? emails
                 .Where(e => e.IsVerified && e.Provider != null)
                 .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
                 .Select(e => e.Email)
                 .FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Issue #635 (§15i): bulk-fetch UserEmails for a set of team members,
+    /// grouped by userId. The Google sync hot-path calls this once per
+    /// reconcile and passes the result into every <see cref="TryGetGoogleEmail"/>
+    /// call so we never traverse <c>user.UserEmails</c> cross-domain.
+    /// </summary>
+    private async Task<IReadOnlyDictionary<Guid, IReadOnlyList<UserEmail>>>
+        LoadEmailsForMembersAsync(
+            IEnumerable<TeamMember> members,
+            CancellationToken ct)
+    {
+        var userIds = members.Select(m => m.UserId).Distinct().ToList();
+        if (userIds.Count == 0)
+            return new Dictionary<Guid, IReadOnlyList<UserEmail>>();
+
+        var allEmails = await _userEmailRepository.GetAllAsync(ct);
+        var idSet = new HashSet<Guid>(userIds);
+        return allEmails
+            .Where(e => idSet.Contains(e.UserId))
+            .GroupBy(e => e.UserId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<UserEmail>)g.ToList());
     }
 
     private static string GetDisplayName(TeamMember tm)
