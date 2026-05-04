@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Store;
 using Humans.Application.Services.Store.Dtos;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Web.Authorization.Requirements;
@@ -56,8 +55,7 @@ public class StoreController : HumansControllerBase
         var year = await ResolveActiveYearAsync();
         var catalog = await _storeService.GetActiveCatalogAsync(year, ct);
 
-        var isPrivilegedReader = User.IsInRole(RoleNames.Admin)
-            || User.IsInRole(RoleNames.FinanceAdmin);
+        var isPrivilegedReader = RoleChecks.IsFinanceAdmin(User);
 
         var sections = new List<StoreCampSeasonOrders>();
         var leadSeasonId = await _campService.GetCampLeadSeasonIdForYearAsync(user.Id, year, ct);
@@ -214,6 +212,7 @@ public class StoreController : HumansControllerBase
         }
         catch (ArgumentException ex)
         {
+            _logger.LogWarning("AddLine qty validation failed for order {OrderId}: {Reason}", id, ex.Message);
             SetError(ex.Message);
             return RedirectToAction(nameof(Order), new { id });
         }

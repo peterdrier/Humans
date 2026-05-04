@@ -49,15 +49,15 @@ public class StripeStartupSmokeService : IHostedService
         if (_settings.IsConfigured)
             probes.Add(ProbeTicketsKeyAsync(cts.Token));
         else
-            _logger.LogInformation("Stripe Tickets key not set — fee enrichment disabled.");
+            _logger.LogWarning("Stripe Tickets key not set — fee enrichment disabled.");
 
         if (_settings.IsStoreCheckoutConfigured)
             probes.Add(ProbeStoreKeyAsync(cts.Token));
         else
-            _logger.LogInformation("Stripe Store key not set — Store Checkout disabled.");
+            _logger.LogWarning("Stripe Store key not set — Store Checkout disabled.");
 
         if (!_settings.IsStoreWebhookConfigured)
-            _logger.LogInformation("Stripe Store webhook secret not set — Store webhook will reject all requests.");
+            _logger.LogWarning("Stripe Store webhook secret not set — Store webhook will reject all requests.");
 
         // Each probe catches comprehensively (StripeException, OperationCanceledException,
         // Exception) and logs its own outcome, so WhenAll cannot observe an unhandled fault.
