@@ -3814,11 +3814,6 @@ namespace Humans.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.HasIndex("UserId", "IsPrimary", "IsVerified")
-                        .IsUnique()
-                        .HasDatabaseName("IX_user_emails_UserId_PrimaryVerified")
-                        .HasFilter("\"IsNotificationTarget\" = true AND \"IsVerified\" = true");
-
                     b.ToTable("user_emails", (string)null);
                 });
 
@@ -4149,7 +4144,7 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Humans.Domain.Entities.User", null)
-                        .WithMany("Applications")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -4490,7 +4485,7 @@ namespace Humans.Infrastructure.Migrations
             modelBuilder.Entity("Humans.Domain.Entities.CommunicationPreference", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.User", null)
-                        .WithMany("CommunicationPreferences")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -4505,7 +4500,7 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired();
 
                     b.HasOne("Humans.Domain.Entities.User", "User")
-                        .WithMany("ConsentRecords")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -4749,7 +4744,7 @@ namespace Humans.Infrastructure.Migrations
             modelBuilder.Entity("Humans.Domain.Entities.Profile", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.User", null)
-                        .WithOne("Profile")
+                        .WithOne()
                         .HasForeignKey("Humans.Domain.Entities.Profile", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -4775,7 +4770,7 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired();
 
                     b.HasOne("Humans.Domain.Entities.User", "User")
-                        .WithMany("RoleAssignments")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -4914,7 +4909,7 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired();
 
                     b.HasOne("Humans.Domain.Entities.User", "User")
-                        .WithMany("TeamMemberships")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -5279,19 +5274,7 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.User", b =>
                 {
-                    b.Navigation("Applications");
-
-                    b.Navigation("CommunicationPreferences");
-
-                    b.Navigation("ConsentRecords");
-
                     b.Navigation("EventParticipations");
-
-                    b.Navigation("Profile");
-
-                    b.Navigation("RoleAssignments");
-
-                    b.Navigation("TeamMemberships");
 
                     b.Navigation("UserEmails");
                 });

@@ -74,17 +74,8 @@ public class UserEmailConfiguration : IEntityTypeConfiguration<UserEmail>
             .IsUnique()
             .HasFilter("\"IsVerified\" = true");
 
-        // Issue #635 (§15i): partial unique index enforcing exactly-one
-        // verified primary UserEmail per user. The C# property IsPrimary maps
-        // to legacy column "IsNotificationTarget"; the filter uses the column
-        // name. This complements the existing service-layer invariant in
-        // UserEmailService — the DB safety net is required by the §15i AC.
-        // Composite key on (UserId, IsPrimary, IsVerified) so EF treats this
-        // as a distinct index from the non-unique HasIndex(e => e.UserId)
-        // declared above (single-property indexes on the same column collapse).
-        builder.HasIndex(e => new { e.UserId, e.IsPrimary, e.IsVerified })
-            .IsUnique()
-            .HasFilter("\"IsNotificationTarget\" = true AND \"IsVerified\" = true")
-            .HasDatabaseName("IX_user_emails_UserId_PrimaryVerified");
+        // The "exactly one verified IsPrimary per user" invariant is service-
+        // enforced inside UserEmailService.EnsurePrimaryInvariantAsync — no DB
+        // partial unique index per memory/architecture/db-enforcement-minimal.md.
     }
 }
