@@ -32,6 +32,13 @@ public class CommunicationPreferenceConfiguration : IEntityTypeConfiguration<Com
             .HasMaxLength(100)
             .IsRequired();
 
+        // Issue #635 (§15i): inverse-side FK preservation after the User-side
+        // nav (User.CommunicationPreferences) was stripped.
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(cp => cp.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // One preference per user per category
         builder.HasIndex(cp => new { cp.UserId, cp.Category })
             .IsUnique();

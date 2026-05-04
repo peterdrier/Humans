@@ -36,6 +36,17 @@ public class ConsentRecordConfiguration : IEntityTypeConfiguration<ConsentRecord
             .IsRequired();
 
         // Create unique index to prevent duplicate consents for same user/version
+        // Issue #635 (§15i): inverse-side FK preservation after the User-side
+        // nav (User.ConsentRecords) was stripped. OnDelete(Restrict) preserves
+        // append-only history when a User is deleted via the orchestrated
+        // anonymization path.
+#pragma warning disable CS0618 // ConsentRecord.User is Obsolete; kept for EF FK + inverse nav.
+        builder.HasOne(cr => cr.User)
+            .WithMany()
+            .HasForeignKey(cr => cr.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+#pragma warning restore CS0618
+
         builder.HasIndex(cr => new { cr.UserId, cr.DocumentVersionId })
             .IsUnique();
 
