@@ -552,9 +552,6 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
             .OrderBy(s => s.DayOffset)
             .ToList();
 
-        if (shiftsInRange.Count == 0)
-            return SignupResult.Fail("No shifts found in the specified date range.");
-
         // AdminOnly check (Fix #2)
         if (!isPrivileged && shiftsInRange.Any(s => s.AdminOnly))
             return SignupResult.Fail("One or more shifts in this range are restricted to coordinators and admins.");
@@ -606,7 +603,20 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         {
             var dayList = string.Join(", ", conflictingDays.Select(offset =>
                 FormatShiftDate(es.GateOpeningDate.PlusDays(offset))));
-            return SignupResult.Fail($"Time conflict on day(s): {dayList}.");
+
+            if (!skipConflicts)
+                return SignupResult.Fail($"Time conflict on day(s): {dayList}.");
+
+            skipMessages.Add($"Time conflict on day(s): {dayList}.");
+            shiftsInRange = shiftsInRange.Where(s => !conflictingDays.Contains(s.DayOffset)).ToList();
+        }
+
+        // Empty-range guard — covers both "filtered everything out" and "range was always empty"
+        if (shiftsInRange.Count == 0)
+        {
+            return skipMessages.Count > 0
+                ? SignupResult.Fail(string.Join(" ", skipMessages) + " Nothing to add.")
+                : SignupResult.Fail("No shifts found in the specified date range.");
         }
 
         // Capacity check — hard block: exclude full shifts from the range

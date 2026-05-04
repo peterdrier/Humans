@@ -497,6 +497,66 @@ public class ShiftSignupServiceTests : IDisposable
         newSignups.Should().Equal(-4, -1);
     }
 
+    [HumansFact]
+    public async Task SignUpRange_SkipConflicts_FiltersTimeOverlappingDays()
+    {
+        // Arrange: Build rota + a separate Event rota with a 12:00-14:00 shift on day -2.
+        // All-day Build/Strike window is 08:00-18:00 (Shift.AllDayWindowStart/End).
+        var (es, buildRota, _) = SeedShiftScenario(SignupPolicy.Public);
+        buildRota.Period = RotaPeriod.Build;
+        for (var day = -3; day <= -1; day++)
+            SeedAllDayShift(buildRota, day);
+
+        var otherRota = new Rota
+        {
+            Id = Guid.NewGuid(),
+            Name = "Kitchen",
+            EventSettingsId = es.Id,
+            Period = RotaPeriod.Event,
+            Policy = SignupPolicy.Public,
+            TeamId = buildRota.TeamId,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        otherRota.EventSettings = es; // nav property for in-memory provider
+        _dbContext.Rotas.Add(otherRota);
+
+        var conflictingShift = new Shift
+        {
+            Id = Guid.NewGuid(),
+            RotaId = otherRota.Id,
+            DayOffset = -2,
+            StartTime = new LocalTime(12, 0),
+            Duration = Duration.FromHours(2),
+            MinVolunteers = 1,
+            MaxVolunteers = 5,
+            IsAllDay = false,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        conflictingShift.Rota = otherRota; // nav property for in-memory provider
+        _dbContext.Shifts.Add(conflictingShift);
+
+        var userId = Guid.NewGuid();
+        SeedSignup(userId, conflictingShift.Id, SignupStatus.Confirmed);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var result = await _service.SignUpRangeAsync(userId, buildRota.Id, -3, -1, skipConflicts: true);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        result.Warning.Should().NotBeNull();
+        result.Warning.Should().Contain("Time conflict");
+
+        var newOffsets = await _dbContext.ShiftSignups
+            .Where(s => s.UserId == userId && s.Shift!.RotaId == buildRota.Id)
+            .Join(_dbContext.Shifts, s => s.ShiftId, sh => sh.Id, (s, sh) => sh.DayOffset)
+            .OrderBy(o => o)
+            .ToListAsync();
+        newOffsets.Should().Equal(-3, -1);
+    }
+
     // ============================================================
     // BailRange
     // ============================================================
