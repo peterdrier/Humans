@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.Store;
 using Humans.Application.Services.Store.Dtos;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
+using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -40,7 +41,7 @@ public class StoreAdminController : HumansControllerBase
     [HttpGet("Catalog")]
     public async Task<IActionResult> Catalog(CancellationToken ct)
     {
-        var year = await ResolveActiveYearAsync(ct);
+        var year = await _shifts.GetActiveYearOrCurrentAsync(_clock);
         var products = await _storeService.GetAllProductsForYearAsync(year, ct);
         return View(new StoreCatalogAdminViewModel { Year = year, Products = products });
     }
@@ -48,7 +49,7 @@ public class StoreAdminController : HumansControllerBase
     [HttpGet("Catalog/Edit")]
     public async Task<IActionResult> Edit(CancellationToken ct)
     {
-        var year = await ResolveActiveYearAsync(ct);
+        var year = await _shifts.GetActiveYearOrCurrentAsync(_clock);
         var model = new ProductInputModel
         {
             Year = year,
@@ -100,7 +101,7 @@ public class StoreAdminController : HumansControllerBase
         var dto = new ProductDto(
             input.Id ?? Guid.Empty,
             input.Year,
-            input.Name?.Trim() ?? string.Empty,
+            input.Name ?? string.Empty,
             input.Description,
             input.UnitPriceEur,
             input.VatRatePercent,

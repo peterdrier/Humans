@@ -18,9 +18,6 @@ public class StoreOrderConfiguration : IEntityTypeConfiguration<StoreOrder>
         b.Property(x => x.CounterpartyEmail).HasMaxLength(320);
         b.Property(x => x.State).HasConversion<int>();
         b.HasIndex(x => x.State);
-        // CampSeasonId is a bare cross-section linkage Guid (no FK constraint, no
-        // nav) per memory/architecture/no-cross-section-ef-joins.md. Index it for
-        // queries that filter orders by season — the index is intra-section.
         b.HasIndex(x => x.CampSeasonId);
         b.HasMany(x => x.Lines).WithOne(l => l.Order!).HasForeignKey(l => l.OrderId).OnDelete(DeleteBehavior.Cascade);
         b.HasMany(x => x.Payments).WithOne(p => p.Order!).HasForeignKey(p => p.OrderId).OnDelete(DeleteBehavior.Cascade);

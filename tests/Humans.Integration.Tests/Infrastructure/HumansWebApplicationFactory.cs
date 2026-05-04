@@ -11,6 +11,8 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
 using Testcontainers.PostgreSql;
@@ -89,6 +91,19 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
 
             // Replace IStripeService with a stub so integration tests don't hit
             // api.stripe.com. Per-test setup configures behavior on StripeServiceStub.
+            // Webhook parsing is pure CPU (HMAC-SHA256 + JSON) — no network — so we
+            // delegate ParseStoreCheckoutEvent and the IsStoreWebhookConfigured flag
+            // to a real StripeService instance built with the test secret. This lets
+            // the webhook integration tests exercise real signature verification while
+            // the network-touching methods stay stubbed.
+            var realStripeForWebhookParse = new StripeService(
+                Options.Create(new StripeSettings { StoreWebhookSecret = TestStripeWebhookSecret }),
+                NullLogger<StripeService>.Instance);
+            StripeServiceStub.IsStoreWebhookConfigured.Returns(true);
+            StripeServiceStub.ParseStoreCheckoutEvent(Arg.Any<string>(), Arg.Any<string>())
+                .Returns(call => realStripeForWebhookParse.ParseStoreCheckoutEvent(
+                    (string)call[0], (string)call[1]));
+
             var stripeDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IStripeService));
             if (stripeDescriptor != null) services.Remove(stripeDescriptor);
             services.AddScoped(_ => StripeServiceStub);

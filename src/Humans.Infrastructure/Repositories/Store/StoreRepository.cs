@@ -52,7 +52,7 @@ public sealed class StoreRepository : IStoreRepository
     public async Task<StoreProduct?> GetProductByIdAsync(Guid productId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.StoreProducts.FirstOrDefaultAsync(p => p.Id == productId, ct);
+        return await ctx.StoreProducts.AsNoTracking().FirstOrDefaultAsync(p => p.Id == productId, ct);
     }
 
     public async Task<IReadOnlyDictionary<Guid, string>> GetProductNamesByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default)
@@ -97,7 +97,7 @@ public sealed class StoreRepository : IStoreRepository
     public async Task<StoreOrder?> GetOrderByIdAsync(Guid orderId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.StoreOrders.FirstOrDefaultAsync(o => o.Id == orderId, ct);
+        return await ctx.StoreOrders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == orderId, ct);
     }
 
     public async Task<StoreOrder?> GetOrderWithLinesAndPaymentsAsync(Guid orderId, CancellationToken ct = default)

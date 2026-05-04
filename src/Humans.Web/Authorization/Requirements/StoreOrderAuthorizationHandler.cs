@@ -62,8 +62,6 @@ public class StoreOrderAuthorizationHandler : IAuthorizationHandler
 
         foreach (var req in pending)
         {
-            // Camp Leads cannot mutate orders past Open state. Pay is exempt — payments
-            // continue after invoice issuance. View has no state gate.
             var isMutating = req == StoreOrderOperationRequirement.AddLine
                 || req == StoreOrderOperationRequirement.RemoveLine
                 || req == StoreOrderOperationRequirement.EditCounterparty;

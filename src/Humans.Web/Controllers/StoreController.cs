@@ -6,6 +6,7 @@ using Humans.Application.Services.Store.Dtos;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Web.Authorization.Requirements;
+using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -52,7 +53,7 @@ public class StoreController : HumansControllerBase
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var year = await ResolveActiveYearAsync();
+        var year = await _shifts.GetActiveYearOrCurrentAsync(_clock);
         var catalog = await _storeService.GetActiveCatalogAsync(year, ct);
 
         var isPrivilegedReader = RoleChecks.IsFinanceAdmin(User);
@@ -95,13 +96,18 @@ public class StoreController : HumansControllerBase
         var view = await _authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.View);
         if (!view.Succeeded) return Forbid();
 
-        var year = await ResolveActiveYearAsync();
-        var catalog = await _storeService.GetActiveCatalogAsync(year, ct);
-        var season = await _campService.GetCampSeasonByIdAsync(order.CampSeasonId, ct);
-
         var canEdit = (await _authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.AddLine)).Succeeded;
         var canPay = (await _authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.Pay)).Succeeded
                      && order.BalanceEur > 0;
+
+        // Catalog is only rendered inside the canEdit `Add line` form — skip the load otherwise.
+        IReadOnlyList<ProductDto> catalog = [];
+        if (canEdit)
+        {
+            var year = await _shifts.GetActiveYearOrCurrentAsync(_clock);
+            catalog = await _storeService.GetActiveCatalogAsync(year, ct);
+        }
+        var season = await _campService.GetCampSeasonByIdAsync(order.CampSeasonId, ct);
 
         var model = new StoreOrderViewModel
         {
@@ -280,9 +286,4 @@ public class StoreController : HumansControllerBase
         return RedirectToAction(nameof(Order), new { id });
     }
 
-    private async Task<int> ResolveActiveYearAsync()
-    {
-        var activeEvent = await _shifts.GetActiveAsync();
-        return activeEvent?.Year > 0 ? activeEvent.Year : _clock.GetCurrentInstant().InUtc().Year;
-    }
 }

@@ -57,7 +57,8 @@ public class StoreWebhookRegistrationService : IHostedService
 
     // PR-preview subscribes to the same 4 events QA/prod register manually so async-payment
     // behavior is observable end-to-end. Today the controller only acts on `completed`; the
-    // other three log at Warning until the async-payment state machine is built.
+    // other three log at Warning until the async-payment state machine ships
+    // (nobodies-collective/Humans#638).
     private static readonly IReadOnlyList<string> SubscribedEvents =
     [
         EventCheckoutSessionCompleted,

@@ -6,6 +6,12 @@ namespace Humans.Domain.Entities;
 public class StoreOrder
 {
     public Guid Id { get; set; }
+
+    /// <summary>
+    /// Cross-section linkage to <c>CampSeason</c> — bare Guid, no EF navigation, no FK
+    /// constraint (per <c>memory/architecture/no-cross-section-ef-joins.md</c>). Resolved
+    /// at the service layer via <c>ICampService.GetCampSeasonByIdAsync</c>.
+    /// </summary>
     public Guid CampSeasonId { get; set; }
     public string? Label { get; set; }
     public StoreOrderState State { get; set; } = StoreOrderState.Open;
