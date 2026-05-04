@@ -73,6 +73,12 @@ public interface IGoogleWorkspaceUserService
 /// <summary>
 /// Represents a Google Workspace user account on @nobodies.team.
 /// </summary>
+/// <param name="RecoveryEmail">
+/// The personal recovery email Google has on file for the account. Surfaced
+/// to admins as a sanity check (so the recovery channel can be validated
+/// before the human is locked out). May be <c>null</c> if no recovery email
+/// is set.
+/// </param>
 public record WorkspaceUserAccount(
     string PrimaryEmail,
     string FirstName,
@@ -80,4 +86,5 @@ public record WorkspaceUserAccount(
     bool IsSuspended,
     DateTime CreationTime,
     DateTime? LastLoginTime,
-    bool IsEnrolledIn2Sv);
+    bool IsEnrolledIn2Sv,
+    string? RecoveryEmail = null);

@@ -118,7 +118,8 @@ public sealed class GoogleAdminService : IGoogleAdminService
                     MatchedUserId: matched?.UserId,
                     MatchedDisplayName: matchedUser?.DisplayName,
                     IsUsedAsPrimary: isUsedAsPrimary,
-                    IsEnrolledIn2Sv: account.IsEnrolledIn2Sv));
+                    IsEnrolledIn2Sv: account.IsEnrolledIn2Sv,
+                    RecoveryEmail: account.RecoveryEmail));
             }
 
             var sorted = accountInfos

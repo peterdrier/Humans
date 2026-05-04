@@ -132,7 +132,8 @@ public record WorkspaceAccountInfo(
     Guid? MatchedUserId,
     string? MatchedDisplayName,
     bool IsUsedAsPrimary,
-    bool IsEnrolledIn2Sv);
+    bool IsEnrolledIn2Sv,
+    string? RecoveryEmail = null);
 
 /// <summary>
 /// Result of a workspace account action (provision, suspend, reactivate, reset, link).

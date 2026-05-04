@@ -217,6 +217,7 @@ public sealed class WorkspaceUserDirectoryClient : IWorkspaceUserDirectoryClient
             LastLoginTime: user.LastLoginTimeRaw is not null
                 ? DateTime.Parse(user.LastLoginTimeRaw, System.Globalization.CultureInfo.InvariantCulture)
                 : null,
-            IsEnrolledIn2Sv: user.IsEnrolledIn2Sv ?? false);
+            IsEnrolledIn2Sv: user.IsEnrolledIn2Sv ?? false,
+            RecoveryEmail: string.IsNullOrWhiteSpace(user.RecoveryEmail) ? null : user.RecoveryEmail);
     }
 }

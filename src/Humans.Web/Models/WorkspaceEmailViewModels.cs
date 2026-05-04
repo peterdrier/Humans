@@ -48,6 +48,13 @@ public class WorkspaceEmailAccountViewModel
     /// Unenrolled accounts cannot sign in (2FA is enforced org-wide).
     /// </summary>
     public bool IsEnrolledIn2Sv { get; set; }
+
+    /// <summary>
+    /// Personal recovery email Google has on file. Surfaced as a sanity
+    /// check so the recovery channel can be validated before lockout.
+    /// <c>null</c> when no recovery email is set.
+    /// </summary>
+    public string? RecoveryEmail { get; set; }
 }
 
 /// <summary>

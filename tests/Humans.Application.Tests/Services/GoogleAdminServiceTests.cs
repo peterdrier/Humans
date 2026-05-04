@@ -70,9 +70,11 @@ public class GoogleAdminServiceTests
         _workspaceUserService.ListAccountsAsync(Arg.Any<CancellationToken>())
             .Returns([
                 new WorkspaceUserAccount("alice@nobodies.team", "Alice", "Smith", false,
-                    DateTime.UtcNow, DateTime.UtcNow, IsEnrolledIn2Sv: true),
+                    DateTime.UtcNow, DateTime.UtcNow, IsEnrolledIn2Sv: true,
+                    RecoveryEmail: "alice.personal@example.com"),
                 new WorkspaceUserAccount("bob@nobodies.team", "Bob", "Jones", true,
-                    DateTime.UtcNow, null, IsEnrolledIn2Sv: false),
+                    DateTime.UtcNow, null, IsEnrolledIn2Sv: false,
+                    RecoveryEmail: null),
             ]);
 
         _userEmailService.MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
@@ -107,6 +109,11 @@ public class GoogleAdminServiceTests
             string.Equals(a.PrimaryEmail, "alice@nobodies.team", StringComparison.OrdinalIgnoreCase));
         alice.MatchedUserId.Should().Be(userId);
         alice.IsUsedAsPrimary.Should().BeTrue();
+        alice.RecoveryEmail.Should().Be("alice.personal@example.com");
+
+        var bob = result.Accounts.Single(a =>
+            string.Equals(a.PrimaryEmail, "bob@nobodies.team", StringComparison.OrdinalIgnoreCase));
+        bob.RecoveryEmail.Should().BeNull();
     }
 
     [HumansFact]

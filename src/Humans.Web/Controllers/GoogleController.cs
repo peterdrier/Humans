@@ -588,7 +588,8 @@ public class GoogleController : HumansControllerBase
                 MatchedUserId = a.MatchedUserId,
                 MatchedDisplayName = a.MatchedDisplayName,
                 IsUsedAsPrimary = a.IsUsedAsPrimary,
-                IsEnrolledIn2Sv = a.IsEnrolledIn2Sv
+                IsEnrolledIn2Sv = a.IsEnrolledIn2Sv,
+                RecoveryEmail = a.RecoveryEmail
             }).ToList(),
             TotalAccounts = result.TotalAccounts,
             ActiveAccounts = result.ActiveAccounts,

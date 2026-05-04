@@ -145,6 +145,7 @@
                         <th>Linked Human</th>
                         <th>Status</th>
                         <th>2FA</th>
+                        <th>Recovery Email</th>
                         <th>Created</th>
                         <th>Last Login</th>
                         <th>Backup Codes</th>
@@ -211,6 +212,18 @@
                                     </span>
                                 }
                             </td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(account.RecoveryEmail))
+                                {
+                                    <code class="small">@account.RecoveryEmail</code>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning text-dark" title="No personal recovery email on file — recovery requires admin intervention" data-bs-toggle="tooltip">
+                                        <i class="fa-solid fa-triangle-exclamation me-1"></i>None
+                                    </span>
+                                }
+                            </td>
                             <td>@account.CreationTime.ToDisplayDate()</td>
                             <td>
                                 @if (account.LastLoginTime.HasValue)
@@ -224,18 +237,20 @@
                             </td>
                             <td>
                                 <div class="d-flex gap-1">
+                                    <form asp-action="GenerateBackupCodes" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="email" value="@account.PrimaryEmail" />
+                                        <button type="submit" class="btn btn-outline-primary btn-sm"
+                                                title="@(account.IsEnrolledIn2Sv ? "Generate a fresh set of backup verification codes (invalidates any previously issued set)" : "Generate backup codes so the human can complete first sign-in and enroll in 2FA")"
+                                                data-bs-toggle="tooltip"
+                                                data-confirm="@(account.IsEnrolledIn2Sv
+                                                    ? $"Generate backup codes for {account.PrimaryEmail}? This invalidates any previously issued codes."
+                                                    : $"Generate backup codes for {account.PrimaryEmail} to allow first sign-in? Google may reject this for never-enrolled accounts.")">
+                                            <i class="fa-solid fa-key me-1"></i>Generate
+                                        </button>
+                                    </form>
                                     @if (account.IsEnrolledIn2Sv)
                                     {
-                                        <form asp-action="GenerateBackupCodes" method="post" class="d-inline">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="email" value="@account.PrimaryEmail" />
-                                            <button type="submit" class="btn btn-outline-primary btn-sm"
-                                                    title="Generate a fresh set of backup verification codes for this account"
-                                                    data-bs-toggle="tooltip"
-                                                    data-confirm="Generate backup codes for @account.PrimaryEmail? This invalidates any previously issued codes.">
-                                                <i class="fa-solid fa-key me-1"></i>Generate
-                                            </button>
-                                        </form>
                                         <form asp-action="InvalidateBackupCodes" method="post" class="d-inline">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="email" value="@account.PrimaryEmail" />
@@ -246,14 +261,6 @@
                                                 <i class="fa-solid fa-ban"></i>
                                             </button>
                                         </form>
-                                    }
-                                    else
-                                    {
-                                        <button type="button" class="btn btn-outline-secondary btn-sm" disabled
-                                                title="Backup codes require 2FA enrollment. The human must complete 2FA setup first."
-                                                data-bs-toggle="tooltip">
-                                            <i class="fa-solid fa-key me-1"></i>Generate
-                                        </button>
                                     }
                                 </div>
                             </td>

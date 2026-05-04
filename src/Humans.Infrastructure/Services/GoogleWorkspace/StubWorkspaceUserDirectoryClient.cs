@@ -24,15 +24,18 @@ public sealed class StubWorkspaceUserDirectoryClient : IWorkspaceUserDirectoryCl
             new WorkspaceUserAccount("alice@nobodies.team", "Alice", "Example", false,
                 new DateTime(2025, 1, 15, 0, 0, 0, DateTimeKind.Utc),
                 new DateTime(2026, 3, 18, 10, 0, 0, DateTimeKind.Utc),
-                IsEnrolledIn2Sv: true),
+                IsEnrolledIn2Sv: true,
+                RecoveryEmail: "alice.personal@example.com"),
             new WorkspaceUserAccount("bob@nobodies.team", "Bob", "Test", false,
                 new DateTime(2025, 3, 1, 0, 0, 0, DateTimeKind.Utc),
                 new DateTime(2026, 3, 15, 14, 0, 0, DateTimeKind.Utc),
-                IsEnrolledIn2Sv: false),
+                IsEnrolledIn2Sv: false,
+                RecoveryEmail: null),
             new WorkspaceUserAccount("carol@nobodies.team", "Carol", "Demo", true,
                 new DateTime(2025, 6, 10, 0, 0, 0, DateTimeKind.Utc),
                 null,
-                IsEnrolledIn2Sv: false)
+                IsEnrolledIn2Sv: false,
+                RecoveryEmail: "carol.personal@example.com")
         ];
     }
 
@@ -60,7 +63,8 @@ public sealed class StubWorkspaceUserDirectoryClient : IWorkspaceUserDirectoryCl
         _logger.LogInformation("[Stub] Provisioned fake account: {Email}", primaryEmail);
         var account = new WorkspaceUserAccount(
             primaryEmail, firstName, lastName, false, DateTime.UtcNow, null,
-            IsEnrolledIn2Sv: false);
+            IsEnrolledIn2Sv: false,
+            RecoveryEmail: recoveryEmail);
         _accounts.Add(account);
         return Task.FromResult(account);
     }
