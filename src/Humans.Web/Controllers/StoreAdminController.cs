@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Store;
 using Humans.Application.Services.Store.Dtos;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
-using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -41,7 +40,8 @@ public class StoreAdminController : HumansControllerBase
     [HttpGet("Catalog")]
     public async Task<IActionResult> Catalog(CancellationToken ct)
     {
-        var year = await _shifts.GetActiveYearOrCurrentAsync(_clock);
+        var activeEvent = await _shifts.GetActiveAsync();
+        var year = activeEvent?.Year > 0 ? activeEvent.Year : _clock.GetCurrentInstant().InUtc().Year;
         var products = await _storeService.GetAllProductsForYearAsync(year, ct);
         return View(new StoreCatalogAdminViewModel { Year = year, Products = products });
     }
@@ -49,7 +49,8 @@ public class StoreAdminController : HumansControllerBase
     [HttpGet("Catalog/Edit")]
     public async Task<IActionResult> Edit(CancellationToken ct)
     {
-        var year = await _shifts.GetActiveYearOrCurrentAsync(_clock);
+        var activeEvent = await _shifts.GetActiveAsync();
+        var year = activeEvent?.Year > 0 ? activeEvent.Year : _clock.GetCurrentInstant().InUtc().Year;
         var model = new ProductInputModel
         {
             Year = year,

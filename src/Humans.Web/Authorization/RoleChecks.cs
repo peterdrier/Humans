@@ -66,6 +66,7 @@ public static class RoleChecks
                user.IsInRole(RoleNames.TicketAdmin) ||
                user.IsInRole(RoleNames.NoInfoAdmin) ||
                user.IsInRole(RoleNames.FinanceAdmin) ||
+               user.IsInRole(RoleNames.StoreAdmin) ||
                user.IsInRole(RoleNames.ConsentCoordinator) ||
                user.IsInRole(RoleNames.VolunteerCoordinator);
     }

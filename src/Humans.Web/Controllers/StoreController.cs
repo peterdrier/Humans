@@ -6,7 +6,6 @@ using Humans.Application.Services.Store.Dtos;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Web.Authorization.Requirements;
-using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -53,7 +52,8 @@ public class StoreController : HumansControllerBase
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var year = await _shifts.GetActiveYearOrCurrentAsync(_clock);
+        var activeEvent = await _shifts.GetActiveAsync();
+        var year = activeEvent?.Year > 0 ? activeEvent.Year : _clock.GetCurrentInstant().InUtc().Year;
         var catalog = await _storeService.GetActiveCatalogAsync(year, ct);
 
         var isPrivilegedReader = RoleChecks.CanAdministerStore(User);
@@ -104,7 +104,8 @@ public class StoreController : HumansControllerBase
         IReadOnlyList<ProductDto> catalog = [];
         if (canEdit)
         {
-            var year = await _shifts.GetActiveYearOrCurrentAsync(_clock);
+            var activeEvent = await _shifts.GetActiveAsync();
+            var year = activeEvent?.Year > 0 ? activeEvent.Year : _clock.GetCurrentInstant().InUtc().Year;
             catalog = await _storeService.GetActiveCatalogAsync(year, ct);
         }
         var season = await _campService.GetCampSeasonByIdAsync(order.CampSeasonId, ct);
