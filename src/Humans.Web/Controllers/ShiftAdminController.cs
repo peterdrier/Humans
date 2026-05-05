@@ -48,7 +48,7 @@ public class ShiftAdminController : HumansTeamControllerBase
     }
 
     [HttpGet("")]
-    public async Task<IActionResult> Index(string slug)
+    public async Task<IActionResult> Index(string slug, bool incompleteOnboarding = false)
     {
         var (teamError, user, team) = await ResolveDepartmentAccessAsync(
             slug,
@@ -81,6 +81,11 @@ public class ShiftAdminController : HumansTeamControllerBase
                 confirmedCount += shiftSignups.Count(s => s.Status == SignupStatus.Confirmed);
                 pendingSignups.AddRange(shiftSignups.Where(s => s.Status == SignupStatus.Pending));
             }
+        }
+
+        if (incompleteOnboarding)
+        {
+            pendingSignups = (await _signupService.FilterToIncompleteOnboardingAsync(pendingSignups)).ToList();
         }
 
         var allUserIds = rotas.SelectMany(r => r.Shifts)
@@ -140,7 +145,8 @@ public class ShiftAdminController : HumansTeamControllerBase
             StaffingHours = staffingHours.ToList(),
             Now = _clock.GetCurrentInstant(),
             AllDepartments = allDepartments,
-            AllTags = allTags.ToList()
+            AllTags = allTags.ToList(),
+            IncompleteOnboardingFilter = incompleteOnboarding
         });
     }
 

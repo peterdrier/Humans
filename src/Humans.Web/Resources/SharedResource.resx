@@ -140,6 +140,8 @@
   <data name="Dashboard_ProfileCard" xml:space="preserve"><value>Profile</value></data>
   <data name="Dashboard_ProfileComplete" xml:space="preserve"><value>Your profile is complete.</value></data>
   <data name="Dashboard_ProfileIncomplete" xml:space="preserve"><value>Complete your profile to help us know you better.</value></data>
+  <data name="Dashboard_ProfileCompletionPercent" xml:space="preserve"><value>Your profile is {0}% complete</value><comment>{0} = percentage 0-99</comment></data>
+  <data name="Dashboard_FinishProfile" xml:space="preserve"><value>Finish profile</value></data>
   <data name="Dashboard_ViewProfile" xml:space="preserve"><value>View Profile</value></data>
   <data name="Dashboard_ConsentsCard" xml:space="preserve"><value>Agreements</value></data>
   <data name="Dashboard_ConsentsNeeded" xml:space="preserve"><value>&lt;strong&gt;{0}&lt;/strong&gt; of {1} documents need your consent.</value><comment>{0} = pending count, {1} = total required</comment></data>
@@ -359,6 +361,8 @@
   <data name="Emails_Description" xml:space="preserve"><value>Manage your email addresses. Your sign-in email is always included. Add additional emails, set which one receives notifications, and control profile visibility.</value></data>
   <data name="Emails_YourEmails" xml:space="preserve"><value>Your Email Addresses</value></data>
   <data name="Emails_AddNew" xml:space="preserve"><value>Add Email Address</value></data>
+  <data name="Emails_MergeWarningTitle" xml:space="preserve"><value>Merging accounts?</value></data>
+  <data name="Emails_MergeWarningBody" xml:space="preserve"><value>Account merge is for combining two accounts that belong to the same person (for example, an old email and a new email that are both yours). It is not a way to share or transfer tickets, bookings, or other items between two different people. Ticket transfer between humans is a separate feature, coming soon.</value></data>
   <data name="Emails_VerificationWillBeSent" xml:space="preserve"><value>A verification email will be sent to this address.</value></data>
   <data name="Emails_SendVerification" xml:space="preserve"><value>Send Verification Email</value></data>
   <data name="Emails_ResendCooldown" xml:space="preserve"><value>You can request a new verification email in {0} minute(s).</value><comment>{0} = minutes remaining</comment></data>
@@ -1359,21 +1363,22 @@
   <data name="Feedback_Error" xml:space="preserve"><value>Something went wrong submitting your feedback. Please try again.</value></data>
 
   <!-- Agent Widget -->
-  <data name="Agent_ConsentPrompt" xml:space="preserve"><value>Before using the in-app helper, please review and accept the Agent Chat Terms.</value></data>
-  <data name="Agent_ConsentReviewButton" xml:space="preserve"><value>Review Agent Chat Terms</value></data>
-  <data name="Agent_HistoryActions" xml:space="preserve"><value>Actions</value></data>
-  <data name="Agent_HistoryDelete" xml:space="preserve"><value>Delete</value></data>
   <data name="Agent_HistoryEmpty" xml:space="preserve"><value>No conversations yet.</value></data>
   <data name="Agent_HistoryLastMessage" xml:space="preserve"><value>Last message</value></data>
   <data name="Agent_HistoryMessages" xml:space="preserve"><value>Messages</value></data>
   <data name="Agent_HistoryStarted" xml:space="preserve"><value>Started</value></data>
   <data name="Agent_HistoryTitle" xml:space="preserve"><value>Agent — My Conversations</value></data>
   <data name="Agent_InputPlaceholder" xml:space="preserve"><value>Ask a question about how the system works…</value></data>
-  <data name="Agent_PanelTitle" xml:space="preserve"><value>Helper</value></data>
+  <data name="Agent_PanelTitle" xml:space="preserve"><value>Assistant</value></data>
+  <data name="Agent_TermsLink" xml:space="preserve"><value>AI Terms</value></data>
   <data name="Agent_Send" xml:space="preserve"><value>Send</value></data>
   <data name="Agent_ViewHistory" xml:space="preserve"><value>History</value></data>
   <data name="Agent_WidgetButton" xml:space="preserve"><value>Open the helper</value></data>
-  <data name="Nav_Agent" xml:space="preserve"><value>Helper</value></data>
+  <data name="Help_WidgetButton" xml:space="preserve"><value>Help</value></data>
+  <data name="Help_Menu_TalkWithAgent" xml:space="preserve"><value>Talk with the Assistant</value></data>
+  <data name="Help_Menu_CreateIssue" xml:space="preserve"><value>Create issue</value></data>
+  <data name="Help_Agent_IssueProposed" xml:space="preserve"><value>I can't answer this myself. I've drafted an issue for the team — please review and submit it.</value></data>
+  <data name="Nav_Agent" xml:space="preserve"><value>Assistant</value></data>
 
   <!-- Magic Link Auth -->
   <data name="Email_MagicLinkLogin_Subject" xml:space="preserve"><value>Your login link for Nobodies</value></data>
@@ -1985,6 +1990,10 @@
   <data name="EmailGrid_UnlinkSuccess" xml:space="preserve"><value>Sign-in provider unlinked.</value></data>
   <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve"><value>This email is linked to a sign-in provider. Use Unlink instead.</value></data>
   <data name="EmailGrid_AdminAddSentVerification" xml:space="preserve"><value>Verification email sent to the user.</value></data>
+  <data name="EmailGrid_AdminVerify" xml:space="preserve"><value>Verify</value></data>
+  <data name="EmailGrid_ConfirmAdminVerify" xml:space="preserve"><value>Manually mark this email verified without the user clicking the link?</value></data>
+  <data name="EmailGrid_AdminVerifySuccess" xml:space="preserve"><value>Email manually verified.</value></data>
+  <data name="EmailGrid_AdminVerifyMergeRequested" xml:space="preserve"><value>This address is already verified on another account. A merge request was created instead of verifying.</value></data>
   <data name="EmailGrid_LinkFailed" xml:space="preserve"><value>We couldn't link this Google account. Please try again.</value></data>
   <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>Manage emails</value></data>
 
@@ -2094,5 +2103,11 @@
 &lt;p&gt;Your primary Nobodies email is now &lt;strong&gt;{2}&lt;/strong&gt;, and your access to groups and shared folders through that address is unchanged. This message is just so you have a record of which address was tidied up.&lt;/p&gt;
 &lt;p&gt;If you believe {1} should still have had access, please contact your team coordinator.&lt;/p&gt;
 &lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = removed email, {2} = current Google email</comment></data>
+
+  <!-- ======================== -->
+  <!-- Onboarding Widget Banner -->
+  <!-- ======================== -->
+  <data name="OnboardingBanner_Text" xml:space="preserve"><value>Finish setting up your account to access shifts and team features.</value></data>
+  <data name="OnboardingBanner_Cta" xml:space="preserve"><value>Continue setup →</value></data>
 
 </root>

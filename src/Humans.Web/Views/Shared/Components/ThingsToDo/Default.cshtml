@@ -31,6 +31,14 @@
                             <div class="@(item.IsDone ? "text-muted" : "text-body-secondary") small mt-1">
                                 @item.Description
                             </div>
+                            @if (item.PercentComplete is int pct)
+                            {
+                                <div class="progress mt-2" style="height: 6px; max-width: 320px;">
+                                    <div class="progress-bar" role="progressbar"
+                                         style="width: @(pct)%"
+                                         aria-valuenow="@pct" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                            }
                         </div>
                         @if (!item.IsDone && item.ActionUrl is not null)
                         {

@@ -2,11 +2,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Application.Configuration;
+using Humans.Application.Helpers;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Services;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Dashboard;
+using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 
@@ -17,6 +19,7 @@ public class HomeController : HumansControllerBase
     private readonly IDashboardService _dashboardService;
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IUserService _userService;
+    private readonly IOnboardingWidgetState _widgetState;
     private readonly IConfiguration _configuration;
     private readonly ConfigurationRegistry _configRegistry;
     private readonly ILogger<HomeController> _logger;
@@ -26,6 +29,7 @@ public class HomeController : HumansControllerBase
         IDashboardService dashboardService,
         IShiftManagementService shiftMgmt,
         IUserService userService,
+        IOnboardingWidgetState widgetState,
         IConfiguration configuration,
         ConfigurationRegistry configRegistry,
         ILogger<HomeController> logger)
@@ -34,6 +38,7 @@ public class HomeController : HumansControllerBase
         _dashboardService = dashboardService;
         _shiftMgmt = shiftMgmt;
         _userService = userService;
+        _widgetState = widgetState;
         _configuration = configuration;
         _configRegistry = configRegistry;
         _logger = logger;
@@ -68,6 +73,13 @@ public class HomeController : HumansControllerBase
             return View();
         }
 
+        // Route through the onboarding widget until the user has completed every required step.
+        var step = await _widgetState.GetCurrentStepAsync(user.Id, cancellationToken);
+        if (step != OnboardingWidgetStep.Complete)
+        {
+            return RedirectToAction("Index", "OnboardingWidget");
+        }
+
         // Profileless accounts go to Guest dashboard
         var hasProfile = User.HasClaim(
             Authorization.RoleAssignmentClaimsTransformation.HasProfileClaimType,
@@ -80,6 +92,10 @@ public class HomeController : HumansControllerBase
         var isPrivileged = User.IsInRole("Admin");
         var data = await _dashboardService.GetMemberDashboardAsync(user.Id, isPrivileged, cancellationToken);
 
+        // Shift-tag preferences live on a separate table; load the count so the
+        // profile-completion bar can credit users who picked any preferences.
+        var shiftTagPrefs = await _shiftMgmt.GetVolunteerTagPreferencesAsync(user.Id);
+
         var viewModel = new DashboardViewModel
         {
             UserId = user.Id,
@@ -88,6 +104,7 @@ public class HomeController : HumansControllerBase
             MembershipStatus = data.MembershipSnapshot.Status,
             HasProfile = data.Profile is not null,
             ProfileComplete = data.Profile is not null && !string.IsNullOrEmpty(data.Profile.FirstName),
+            ProfileCompletionPercent = ProfileCompletion.ComputePercent(data.Profile, shiftTagPrefs.Count > 0),
             PendingConsents = data.MembershipSnapshot.PendingConsentCount,
             TotalRequiredConsents = data.MembershipSnapshot.RequiredConsentCount,
             IsVolunteerMember = data.MembershipSnapshot.IsVolunteerMember,

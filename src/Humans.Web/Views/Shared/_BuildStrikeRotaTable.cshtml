@@ -7,7 +7,7 @@
 }
 @if (availableShifts.Count > 0)
 {
-    <form asp-controller="Shifts" asp-action="SignUpRange" method="post" class="row g-2 align-items-end mb-3">
+    <form asp-controller="@Model.SignUpRangeController" asp-action="@Model.SignUpRangeAction" method="post" class="row g-2 align-items-end mb-3">
         @Html.AntiForgeryToken()
         <input type="hidden" name="rotaId" value="@rotaGroup.Rota.Id" />
         @if (Model.FilterDepartmentId.HasValue) { <input type="hidden" name="departmentId" value="@Model.FilterDepartmentId" /> }

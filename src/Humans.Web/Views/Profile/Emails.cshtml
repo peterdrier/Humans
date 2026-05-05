@@ -1,3 +1,6 @@
+@using Microsoft.AspNetCore.Authorization
+@using Humans.Web.Authorization
+@inject IAuthorizationService AuthService
 @model Humans.Web.Models.EmailsViewModel
 @{
     ViewData["Title"] = Localizer["Emails_Title"].Value;
@@ -7,6 +10,11 @@
     // stuck — radios can't unselect — so expose Clear on the offending rows.
     var hasMultipleGoogle = Model.Emails.Count(e => e.IsGoogle) > 1;
     var hasMultiplePrimary = Model.Emails.Count(e => e.IsPrimary && e.IsVerified) > 1;
+    // Manual verify is gated by PolicyNames.AdminOnly server-side; surface the
+    // gate in the view so HumanAdmin/Board (who reach the page via
+    // UserEmailOperations.Edit) don't see a button that 403s on click.
+    var canManuallyVerify = Model.IsAdminContext
+        && (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
 }
 
 <div class="row">
@@ -238,6 +246,19 @@
                                     }
                                 </td>
                                 <td class="text-end">
+                                    @if (canManuallyVerify && !row.IsVerified && string.IsNullOrEmpty(row.Provider))
+                                    {
+                                        <form asp-action="AdminVerifyEmail"
+                                              asp-route-id="@Model.TargetUserId"
+                                              method="post" class="d-inline me-1"
+                                              data-confirm="@Localizer["EmailGrid_ConfirmAdminVerify"].Value">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="emailId" value="@row.Id" />
+                                            <button type="submit" class="btn btn-outline-success btn-sm">
+                                                <i class="fa-solid fa-check me-1"></i>@Localizer["EmailGrid_AdminVerify"]
+                                            </button>
+                                        </form>
+                                    }
                                     @* Never offer a destructive action on the only remaining email — *@
                                     @* removing the last row would leave the user with no email at all, *@
                                     @* regardless of whether the row is provider-linked. *@
@@ -299,6 +320,16 @@
                 <h5 class="mb-0">@Localizer["Emails_AddNew"]</h5>
             </div>
             <div class="card-body">
+                @if (!Model.IsAdminContext)
+                {
+                    <div class="alert alert-info d-flex align-items-start mb-3">
+                        <i class="fa-solid fa-circle-info me-2 fs-4"></i>
+                        <div>
+                            <strong>@Localizer["Emails_MergeWarningTitle"]</strong>
+                            <div>@Localizer["Emails_MergeWarningBody"]</div>
+                        </div>
+                    </div>
+                }
                 <form asp-action="@(Model.IsAdminContext ? "AdminAddEmail" : "AddEmail")"
                       asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
                       method="post">

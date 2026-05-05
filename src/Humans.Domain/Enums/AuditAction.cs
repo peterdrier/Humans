@@ -113,6 +113,7 @@ public enum AuditAction
     UserEmailDeleted,
     UserEmailVisibilityChanged,
     UserEmailAdded,
+    UserEmailManuallyVerified,
     ShiftSignupCreated,
     ShiftSignupReassigned,
     StoreOrderCreated,

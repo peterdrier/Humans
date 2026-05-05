@@ -15,7 +15,7 @@ public sealed class InMemoryLogSink : ILogEventSink
     private readonly int _capacity;
     private readonly ConcurrentDictionary<LogEventLevel, long> _lifetimeCounts = new();
 
-    public InMemoryLogSink(int capacity = 200)
+    public InMemoryLogSink(int capacity = 1000)
     {
         _capacity = capacity;
     }
@@ -28,7 +28,7 @@ public sealed class InMemoryLogSink : ILogEventSink
             _events.TryDequeue(out _);
     }
 
-    public IReadOnlyList<LogEvent> GetEvents(int count = 200) =>
+    public IReadOnlyList<LogEvent> GetEvents(int count = 1000) =>
         _events.Reverse().Take(count).ToList();
 
     /// <summary>

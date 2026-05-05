@@ -103,6 +103,16 @@ public sealed class ShiftSignupRepository : IShiftSignupRepository
             .Include(s => s.Shift).ThenInclude(s => s.Rota)
             .FirstOrDefaultAsync(s => s.SignupBlockId == signupBlockId, ct);
 
+    public async Task<List<ShiftSignup>> GetPendingForUserInEventForMutationAsync(
+        Guid userId, Guid eventSettingsId, CancellationToken ct = default) =>
+        await _dbContext.ShiftSignups
+            .Include(s => s.Shift).ThenInclude(sh => sh.Rota)
+            .Include(s => s.Shift).ThenInclude(sh => sh.ShiftSignups)
+            .Where(s => s.UserId == userId &&
+                        s.Status == SignupStatus.Pending &&
+                        s.Shift.Rota.EventSettingsId == eventSettingsId)
+            .ToListAsync(ct);
+
     public async Task<IReadOnlyList<ShiftSignup>> GetByShiftAsync(Guid shiftId, CancellationToken ct = default) =>
         await _dbContext.ShiftSignups
             .AsNoTracking()

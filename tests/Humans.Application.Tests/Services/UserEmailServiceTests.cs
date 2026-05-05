@@ -1245,4 +1245,152 @@ public class UserEmailServiceTests
 
         await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
     }
+
+    // ─── AdminMarkVerifiedAsync — issue #659 ─────────────────────────────
+    // Admin manual verification: skip the token flow but reuse the same
+    // duplicate-email merge-request branch as VerifyEmailAsync.
+
+    [HumansFact]
+    public async Task AdminMarkVerifiedAsync_PendingPlainRow_VerifiesAndAudits()
+    {
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        var pending = new UserEmail
+        {
+            Id = rowId,
+            UserId = userId,
+            Email = "pending@example.com",
+            IsVerified = false,
+            Provider = null,
+            VerificationSentAt = _clock.GetCurrentInstant(),
+        };
+
+        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+            .Returns(pending);
+        _repository.GetConflictingVerifiedEmailAsync(
+                rowId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns((UserEmail?)null);
+
+        var result = await _service.AdminMarkVerifiedAsync(userId, rowId, actorId);
+
+        result.MergeRequestCreated.Should().BeFalse();
+        result.Email.Should().Be("pending@example.com");
+        pending.IsVerified.Should().BeTrue();
+        await _repository.Received(1).UpdateAsync(pending, Arg.Any<CancellationToken>());
+        await _fullProfileInvalidator.Received(1).InvalidateAsync(
+            userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.UserEmailManuallyVerified,
+            nameof(User), userId,
+            Arg.Any<string>(),
+            actorId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task AdminMarkVerifiedAsync_DuplicateEmail_CreatesMergeRequestWithoutVerifying()
+    {
+        // Mirrors VerifyEmailAsync's duplicate-handling: if the address is
+        // already verified on another account, the admin path must NOT
+        // silently complete verification — it creates a merge request so
+        // the existing duplicate-account flow handles the collision.
+        var userId = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        var pending = new UserEmail
+        {
+            Id = rowId,
+            UserId = userId,
+            Email = "shared@example.com",
+            IsVerified = false,
+            Provider = null,
+        };
+        var conflicting = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = otherUserId,
+            Email = "shared@example.com",
+            IsVerified = true,
+        };
+
+        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+            .Returns(pending);
+        _repository.GetConflictingVerifiedEmailAsync(
+                rowId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(conflicting);
+        _mergeService.HasPendingForEmailIdAsync(rowId, Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        var result = await _service.AdminMarkVerifiedAsync(userId, rowId, actorId);
+
+        result.MergeRequestCreated.Should().BeTrue();
+        pending.IsVerified.Should().BeFalse();
+        await _mergeService.Received(1).CreateAsync(
+            Arg.Is<AccountMergeRequest>(m =>
+                m.TargetUserId == userId
+                && m.SourceUserId == otherUserId
+                && m.PendingEmailId == rowId
+                && m.Status == AccountMergeRequestStatus.Pending),
+            Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().UpdateAsync(
+            Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task AdminMarkVerifiedAsync_RowNotFound_Throws()
+    {
+        var userId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+            .Returns((UserEmail?)null);
+
+        var act = async () => await _service.AdminMarkVerifiedAsync(userId, rowId, Guid.NewGuid());
+
+        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
+    }
+
+    [HumansFact]
+    public async Task AdminMarkVerifiedAsync_AlreadyVerified_Throws()
+    {
+        var userId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+            .Returns(new UserEmail
+            {
+                Id = rowId,
+                UserId = userId,
+                Email = "v@x.test",
+                IsVerified = true,
+                Provider = null,
+            });
+
+        var act = async () => await _service.AdminMarkVerifiedAsync(userId, rowId, Guid.NewGuid());
+
+        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
+    }
+
+    [HumansFact]
+    public async Task AdminMarkVerifiedAsync_OAuthRow_Throws()
+    {
+        // Provider != null rows are verified through the OAuth callback,
+        // not via this admin path — even an admin shouldn't bypass that.
+        var userId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+            .Returns(new UserEmail
+            {
+                Id = rowId,
+                UserId = userId,
+                Email = "oauth@x.test",
+                IsVerified = false,
+                Provider = "Google",
+                ProviderKey = "sub-x",
+            });
+
+        var act = async () => await _service.AdminMarkVerifiedAsync(userId, rowId, Guid.NewGuid());
+
+        await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
+    }
 }

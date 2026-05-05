@@ -42,12 +42,13 @@
     </div>
 }
 
-@* ─── Things to do (auto-hides when all complete) ─── *@
+@* ─── Things to do (auto-hides when all complete; profile-completion nudge lives inside as a graded item) ─── *@
 <div class="row justify-content-center mb-4">
     <div class="col-lg-8">
         <vc:things-to-do user-id="@Model.UserId"
                          is-volunteer-member="@Model.IsVolunteerMember"
-                         has-shift-signups="@Model.HasShiftSignups" />
+                         has-shift-signups="@Model.HasShiftSignups"
+                         profile-completion-percent="@Model.ProfileCompletionPercent" />
     </div>
 </div>
 

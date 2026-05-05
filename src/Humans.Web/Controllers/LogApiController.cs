@@ -15,7 +15,7 @@ public class LogApiController : ControllerBase
         [FromQuery] int count = 50,
         [FromQuery] string? minLevel = null)
     {
-        count = Math.Clamp(count, 1, 200);
+        count = Math.Clamp(count, 1, 1000);
 
         LogEventLevel? minLogLevel = null;
         if (minLevel is not null)
@@ -32,7 +32,7 @@ public class LogApiController : ControllerBase
                 return BadRequest(new { error = $"Invalid minLevel '{minLevel}'. Valid values: Warning, Error, Fatal" });
         }
 
-        var events = InMemoryLogSink.Instance.GetEvents(200);
+        var events = InMemoryLogSink.Instance.GetEvents(1000);
 
         if (minLogLevel.HasValue)
         {

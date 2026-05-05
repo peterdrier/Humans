@@ -563,7 +563,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         Guid eventSettingsId, Guid? departmentId = null,
         LocalDate? fromDate = null, LocalDate? toDate = null,
         bool includeAdminOnly = false, bool includeSignups = false,
-        bool includeHidden = false)
+        bool includeHidden = false, bool priorityOnly = false)
     {
         var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
         if (es is null) return [];
@@ -575,9 +575,24 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             ? Period.Between(es.GateOpeningDate, toDate.Value, PeriodUnits.Days).Days
             : null;
 
-        var shifts = await _repo.GetShiftsWithSignupsForEventAsync(
+        IReadOnlyList<Shift> shifts = await _repo.GetShiftsWithSignupsForEventAsync(
             eventSettingsId, departmentId, includeAdminOnly, includeHidden,
             fromOffset, toOffset, includeRotaTags: true);
+
+        // priorityOnly: keep only shifts whose rota is Important/Essential or whose rota has
+        // any understaffed shift (confirmed signups < MinVolunteers). The understaffed test
+        // is rota-wide so a single understaffed shift surfaces all sibling shifts on that rota.
+        if (priorityOnly)
+        {
+            var priorityRotaIds = shifts
+                .GroupBy(s => s.RotaId)
+                .Where(g =>
+                    g.First().Rota.Priority is ShiftPriority.Important or ShiftPriority.Essential ||
+                    g.Any(s => s.ShiftSignups.Count(ss => ss.Status == SignupStatus.Confirmed) < s.MinVolunteers))
+                .Select(g => g.Key)
+                .ToHashSet();
+            shifts = shifts.Where(s => priorityRotaIds.Contains(s.RotaId)).ToList();
+        }
 
         // Cross-domain lookups via services.
         var teamIds = shifts.Select(s => s.Rota.TeamId).Distinct().ToList();

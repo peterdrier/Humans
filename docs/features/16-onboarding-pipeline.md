@@ -8,9 +8,13 @@
   src/Humans.Web/Controllers/ProfileController.cs
   src/Humans.Web/Controllers/ConsentController.cs
   src/Humans.Web/Controllers/OnboardingReviewController.cs
+  src/Humans.Web/Controllers/OnboardingWidgetController.cs
   src/Humans.Web/Controllers/ApplicationController.cs
   src/Humans.Web/Views/Home/**
   src/Humans.Web/Views/OnboardingReview/**
+  src/Humans.Web/Views/OnboardingWidget/**
+  src/Humans.Web/Views/Shared/Components/OnboardingProgressBanner/**
+  src/Humans.Web/ViewComponents/OnboardingProgressBannerViewComponent.cs
   src/Humans.Domain/Entities/Profile.cs
   src/Humans.Domain/Entities/Application.cs
 -->
@@ -139,6 +143,8 @@ Two parallel tracks (either order):
   - If Colaborador/Asociado → Application entity created (Status = Submitted)
 - **After initial onboarding, profile edit shows profile fields only — no tier selector or application form**
 
+The default Volunteer flow uses the **onboarding widget** (Names → Shifts → Consents) instead of the legacy single-page form — see "Onboarding Widget (Low-Friction Variant)" below. The full one-shot form remains the path for Colaborador/Asociado applicants because it surfaces the application fields inline.
+
 ### Stage 3: Legal Consents
 
 **Trigger:** User visits Consent page
@@ -174,6 +180,38 @@ This gate is about Volunteer access only. It does not evaluate tier applications
 - Board members vote, then finalize decision
 - Approve → Colaboradors/Asociados team with term
 - Reject → notification, human remains Volunteer
+
+## Onboarding Widget (Low-Friction Variant)
+
+A guided three-step UX that replaces the single-page profile form for the Volunteer path. It defers everything that's not strictly required to "get a Volunteer to a shift today" so a brand-new user can browse and pick a shift before completing the rest of their profile.
+
+**Why:** the full one-shot form has a real abandonment cliff. Most volunteers don't fill bio / location / emergency contact at first visit, and demanding all of that before they can see what shifts exist breaks the loop ("I came here to help on Friday — why am I writing a bio?").
+
+### Steps
+
+1. **Names** — burner name, first name, last name. Pre-filled from OAuth claims when present. Required because every downstream view ("Hi, X") depends on a display name.
+2. **Shifts** — browse priority shifts and pick one (or skip). Build/Strike rotas use the multi-day range picker; event shifts use the standard sign-up. Signups before admission are stored as `Pending` and auto-promoted on admission.
+3. **Consents** — the unsigned legal documents required for Volunteers, signed one at a time inline.
+
+### Dispatcher
+
+`OnboardingWidgetController.Index` is the canonical entry point. It calls `IOnboardingWidgetState.GetCurrentStepAsync` and redirects to the action for the user's next incomplete step (or `Home/Index` once everything is done). Layouts, the post-signup redirect, and the onboarding banner all link to `Index` rather than to a specific step, so a refresh / direct nav lands on whichever step is current.
+
+### Persistent banner
+
+`OnboardingProgressBannerViewComponent` is rendered from the layout. It calls `GetCurrentStepAsync` on every page (suppressed on widget pages themselves to avoid the "you're already here" footgun). Errors are swallowed so a transient query failure never breaks a layout render.
+
+### Pending-signup promotion
+
+`ShiftSignupService.PromoteWidgetPendingSignupsAfterAdmissionAsync` runs on admission to Volunteers. It groups the user's `Pending` signups by `SignupBlockId` (range blocks promote together; null block IDs are treated as singletons keyed on the signup's own `Id`) and confirms any block that passes capacity + `Public` policy re-checks. RequireApproval rotas stay Pending awaiting coordinator action.
+
+### Direct-POST safety
+
+The Names POST is reachable directly. `ProfileService.SaveProfileAsync` does a full-field overwrite, and the widget's Names viewmodel has only three populated fields. A step guard short-circuits when `GetCurrentStepAsync` is already past Names and dispatches the user back through `Index`, so a stray POST can't wipe an already-populated profile (bio, location, emergency contact, …).
+
+### Authorization
+
+The controller inherits `HumansControllerBase` for `SetError` / TempData conventions. User identity is resolved from the `NameIdentifier` claim (the controller is `[Authorize]`-gated; full `User` resolution via `UserManager` isn't needed because the actions only consume `userId`).
 
 ## Migration: Existing Users
 

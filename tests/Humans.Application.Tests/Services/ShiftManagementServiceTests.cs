@@ -297,6 +297,71 @@ public class ShiftManagementServiceTests : IDisposable
         results[0].Signups.Should().BeEmpty();
     }
 
+    [HumansFact]
+    public async Task GetBrowseShifts_PriorityOnly_FiltersToImportantOrEssentialOrUnderstaffed()
+    {
+        // Arrange three rotas in the same event:
+        //   - Normal priority + fully staffed     → EXCLUDED
+        //   - Important priority + fully staffed  → INCLUDED (priority)
+        //   - Normal priority + understaffed      → INCLUDED (some shift below MinVolunteers)
+        var (es, normalStaffedRota) = SeedRotaScenario(RotaPeriod.Event);
+
+        var importantRota = new Rota
+        {
+            Id = Guid.NewGuid(),
+            EventSettingsId = es.Id,
+            TeamId = normalStaffedRota.TeamId,
+            Name = "Important Rota",
+            Priority = ShiftPriority.Important,
+            Policy = SignupPolicy.Public,
+            Period = RotaPeriod.Event,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow,
+            EventSettings = es
+        };
+        _dbContext.Rotas.Add(importantRota);
+
+        var understaffedRota = new Rota
+        {
+            Id = Guid.NewGuid(),
+            EventSettingsId = es.Id,
+            TeamId = normalStaffedRota.TeamId,
+            Name = "Understaffed Normal Rota",
+            Priority = ShiftPriority.Normal,
+            Policy = SignupPolicy.Public,
+            Period = RotaPeriod.Event,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow,
+            EventSettings = es
+        };
+        _dbContext.Rotas.Add(understaffedRota);
+
+        // Normal+staffed: MinVolunteers=2, two confirmed signups → meets minimum.
+        var normalShift = SeedShift(normalStaffedRota, dayOffset: 1);
+        SeedSignup(normalShift, SeedUser("NormA"), SignupStatus.Confirmed);
+        SeedSignup(normalShift, SeedUser("NormB"), SignupStatus.Confirmed);
+
+        // Important+staffed: still INCLUDED because of priority.
+        var importantShift = SeedShift(importantRota, dayOffset: 1);
+        SeedSignup(importantShift, SeedUser("ImpA"), SignupStatus.Confirmed);
+        SeedSignup(importantShift, SeedUser("ImpB"), SignupStatus.Confirmed);
+
+        // Normal+understaffed: zero confirmed signups, MinVolunteers=2 → understaffed → INCLUDED.
+        var understaffedShift = SeedShift(understaffedRota, dayOffset: 1);
+
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var results = await _service.GetBrowseShiftsAsync(es.Id, priorityOnly: true);
+
+        // Assert: only the Important rota's shift and the understaffed Normal rota's shift remain.
+        results.Select(r => r.Shift.RotaId).Should().BeEquivalentTo(new[]
+        {
+            importantRota.Id,
+            understaffedRota.Id
+        });
+    }
+
     // ============================================================
     // Helpers
     // ============================================================

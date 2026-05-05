@@ -82,6 +82,15 @@ public interface IShiftSignupRepository
         Guid signupBlockId, bool includeConfirmed, CancellationToken ct = default);
 
     /// <summary>
+    /// Loads every Pending signup the user owns in the given event with
+    /// <c>Shift.Rota</c> and the shift's sibling signups (for the
+    /// rota-policy + per-shift capacity re-check). Tracking-enabled — used by
+    /// the post-admission promotion path.
+    /// </summary>
+    Task<List<ShiftSignup>> GetPendingForUserInEventForMutationAsync(
+        Guid userId, Guid eventSettingsId, CancellationToken ct = default);
+
+    /// <summary>
     /// Loads the first signup in a block with <c>Shift.Rota</c>. Read-only,
     /// used for block-ownership lookups.
     /// </summary>

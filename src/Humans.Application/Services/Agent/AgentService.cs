@@ -152,7 +152,7 @@ public sealed class AgentService : IAgentService, IUserDataContributor
         var assistantBuffer = new StringBuilder();
         var fetchedDocs = new List<string>();
         var toolCallCount = 0;
-        Guid? handoffId = null;
+        AgentIssueProposal? issueProposal = null;
         AgentTurnFinalizer? finalFinalizer = null;
 
         while (true)
@@ -204,19 +204,25 @@ public sealed class AgentService : IAgentService, IUserDataContributor
                 results.Add(result);
                 fetchedDocs.Add(call.Name + ":" + call.JsonArguments);
 
-                if (string.Equals(call.Name, AgentToolNames.RouteToFeedback, StringComparison.Ordinal) && !result.IsError)
+                if (string.Equals(call.Name, AgentToolNames.RouteToIssue, StringComparison.Ordinal) && !result.IsError)
                 {
-                    var marker = "/Feedback/";
-                    var idx = result.Content.IndexOf(marker, StringComparison.Ordinal);
-                    if (idx >= 0 && Guid.TryParse(result.Content.AsSpan(idx + marker.Length), out var id))
-                        handoffId = id;
+                    issueProposal = ParseIssueProposalArgs(call.JsonArguments, conversation.Id);
                 }
             }
 
             sdkMessages.Add(new AnthropicMessage("tool", Text: null, ToolCalls: null, ToolResults: results));
 
-            if (handoffId is not null || toolCallCount >= _anthropicOptions.MaxToolCallsPerTurn)
+            if (issueProposal is not null || toolCallCount >= _anthropicOptions.MaxToolCallsPerTurn)
                 break;
+        }
+
+        // The proposal frame is the user-visible signal that the agent is
+        // handing off into the Issues form. It travels alongside the regular
+        // text/finalizer stream — the client opens the issue submission modal
+        // pre-filled when it sees this.
+        if (issueProposal is not null)
+        {
+            yield return new AgentTurnToken(null, null, null, issueProposal);
         }
 
         var message = new AgentMessage
@@ -232,7 +238,7 @@ public sealed class AgentService : IAgentService, IUserDataContributor
             Model = settings.Model,
             DurationMs = 0,
             FetchedDocs = fetchedDocs.ToArray(),
-            HandedOffToFeedbackId = handoffId
+            HandedOffToFeedbackId = null
         };
         await _repo.AppendMessageAsync(message, cancellationToken);
 
@@ -252,11 +258,11 @@ public sealed class AgentService : IAgentService, IUserDataContributor
     public Task<IReadOnlyList<AgentConversation>> GetHistoryAsync(Guid userId, int take, CancellationToken ct) =>
         _repo.ListConversationsForUserAsync(userId, take, ct);
 
-    public async Task DeleteConversationAsync(Guid userId, Guid conversationId, CancellationToken ct)
+    public async Task<AgentConversation?> GetConversationForUserAsync(
+        Guid userId, Guid conversationId, CancellationToken ct)
     {
         var conv = await _repo.GetConversationByIdAsync(conversationId, ct);
-        if (conv is null || conv.UserId != userId) return;
-        await _repo.DeleteConversationAsync(conversationId, ct);
+        return conv is not null && conv.UserId == userId ? conv : null;
     }
 
     public Task<IReadOnlyList<AgentConversation>> ListAllConversationsForAdminAsync(
@@ -329,6 +335,35 @@ public sealed class AgentService : IAgentService, IUserDataContributor
 
     private AgentTurnToken Finalizer(string stopReason) =>
         new(null, null, new AgentTurnFinalizer(0, 0, 0, 0, _settings.Current.Model, stopReason));
+
+    private AgentIssueProposal? ParseIssueProposalArgs(string jsonArguments, Guid conversationId)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(jsonArguments);
+            var root = doc.RootElement;
+            var title = root.TryGetProperty("title", out var t) ? t.GetString() ?? "" : "";
+            var description = root.TryGetProperty("description", out var d) ? d.GetString() ?? "" : "";
+            var categoryRaw = root.TryGetProperty("category", out var c) ? c.GetString() : null;
+            var category = Enum.TryParse<IssueCategory>(categoryRaw, ignoreCase: true, out var parsed)
+                ? parsed
+                : IssueCategory.Question;
+
+            // Trim to the same caps the issues form enforces; the agent's
+            // suggestion sometimes runs over.
+            if (title.Length > 200) title = title[..200];
+            if (description.Length > 5000) description = description[..5000];
+
+            return new AgentIssueProposal(title, category, description);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            _logger.LogWarning(
+                "route_to_issue args could not be parsed for conversation {ConversationId}; proposal dropped. Args: {Args}",
+                conversationId, jsonArguments);
+            return null;
+        }
+    }
 
     private async Task PersistRefusal(AgentTurnRequest req, string reason, CancellationToken ct)
     {

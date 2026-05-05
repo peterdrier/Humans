@@ -51,13 +51,14 @@ The only onboarding-specific value type is the narrow `IOnboardingEligibilityQue
 - OAuth login checks verified UserEmails, unverified UserEmails, and User.Email before creating a new account — preventing duplicate accounts when the same email exists on another user in any form.
 - `OnboardingService` depends only on interfaces (plus `IClock`) — no `DbContext`, `IDbContextFactory`, `DbSet<T>`, `IMemoryCache`, `IFullProfileInvalidator`, or repository. Enforced by `OnboardingArchitectureTests`.
 - The DI cycle between `OnboardingService` and `ProfileService` is broken by the narrow `IOnboardingEligibilityQuery` interface (`SetConsentCheckPendingIfEligibleAsync(userId, ct)`). `OnboardingService` implements it; `ProfileService` depends on it. `ConsentService` currently depends on the full `IOnboardingService` (cycle broken via `IServiceProvider` for `IMembershipCalculator` rather than the narrow interface — see ConsentService ctor) — narrowing Consent to `IOnboardingEligibilityQuery` is a follow-up.
+- Onboarding can be completed via the legacy linear flow (Profile → Consents) or the `/OnboardingWidget` guided flow (Names → Shifts → Consents). The data and admission rules are identical; the widget reorders the user-facing screens. Active-member admission still fires from `ConsentService.SubmitConsentAsync`'s `SyncVolunteersMembershipForUserAsync` call.
 
 ## Negative Access Rules
 
 - VolunteerCoordinator **cannot** clear, flag, or reject in the review queue. They have read-only access only (`PolicyNames.ReviewQueueAccess` lets them view; the Clear/Flag/Reject POST endpoints all require `PolicyNames.ConsentCoordinatorBoardOrAdmin`).
 - ConsentCoordinator **cannot** cast Board votes on tier applications, **cannot** finalize tier-application Approve/Reject decisions (Board+Admin only via `OnboardingReviewController.Vote` / `Finalize`), and **cannot** manually `ApproveVolunteerAsync` a flagged profile (Board+Admin only via `ProfileController.ApproveVolunteer`).
 - Regular humans still onboarding **cannot** access most of the application (teams, shifts, budget, tickets, governance, etc.) until they become active Volunteers.
-- Profileless accounts **cannot** access the Home dashboard, City Planning, Budget, Shifts, Governance, or any member-only features. They are redirected to the Guest dashboard.
+- Profileless accounts **cannot** access the Home dashboard, City Planning, Budget, Shifts, Governance, or any member-only features. They are redirected to the Guest dashboard. **Exception:** profileless mid-widget users see the priority-shift list rendered inside `/OnboardingWidget` Step 2; direct navigation to `/Shifts` still routes them through the membership filter as today.
 
 ## Triggers
 

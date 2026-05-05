@@ -1,9 +1,10 @@
 using System.Globalization;
 using System.Text.Json;
-using Humans.Application.Constants;
+using System.Text.Json.Serialization;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Consent;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Models;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Web.Models.Agent;
@@ -20,26 +21,27 @@ public class AgentController : HumansControllerBase
 {
     private static readonly JsonSerializerOptions JsonOpts = new JsonSerializerOptions
     {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new JsonStringEnumConverter() }
     }.ConfigureForNodaTime(NodaTime.DateTimeZoneProviders.Tzdb);
 
     private readonly IAgentService _agent;
     private readonly IAuthorizationService _auth;
-    private readonly IConsentService _consents;
     private readonly IAgentSettingsService _settings;
+    private readonly IUserService _users;
 
     public AgentController(
         IAgentService agent,
         IAuthorizationService auth,
-        IConsentService consents,
         IAgentSettingsService settings,
+        IUserService users,
         UserManager<User> userManager)
         : base(userManager)
     {
         _agent = agent;
         _auth = auth;
-        _consents = consents;
         _settings = settings;
+        _users = users;
     }
 
     [HttpPost("Ask")]
@@ -56,13 +58,6 @@ public class AgentController : HumansControllerBase
         if (!_settings.Current.Enabled)
         {
             Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-            return;
-        }
-
-        var pendingDocs = await _consents.GetPendingDocumentNamesAsync(user.Id, cancellationToken);
-        if (pendingDocs.Contains(LegalDocumentNames.AgentChatTerms, StringComparer.Ordinal))
-        {
-            Response.StatusCode = StatusCodes.Status403Forbidden;
             return;
         }
 
@@ -91,31 +86,82 @@ public class AgentController : HumansControllerBase
         }
     }
 
-    [HttpGet("History")]
-    public async Task<IActionResult> History(CancellationToken cancellationToken)
+    [HttpGet("Conversations")]
+    public async Task<IActionResult> Conversations(
+        bool refusalsOnly = false, bool handoffsOnly = false, Guid? userId = null,
+        int page = 0, CancellationToken cancellationToken = default)
     {
-        var (missing, user) = await RequireCurrentUserAsync();
+        var (missing, currentUser) = await RequireCurrentUserAsync();
         if (missing is not null) return missing;
 
-        var history = await _agent.GetHistoryAsync(user.Id, take: 50, cancellationToken);
-        return View(history);
+        var isAdmin = User.IsInRole(RoleNames.Admin);
+        var rows = await LoadConversationsAsync(
+            isAdmin, currentUser.Id, refusalsOnly, handoffsOnly, userId, page, cancellationToken);
+        var listRows = await StitchListRowsAsync(rows, isAdmin, cancellationToken);
+        return View(new AgentConversationsViewModel(listRows, IsAdminView: isAdmin));
     }
 
-    [HttpDelete("Conversation/{id:guid}")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteConversation(Guid id, CancellationToken cancellationToken)
+    [HttpGet("Conversations/{id:guid}")]
+    public async Task<IActionResult> ConversationDetail(Guid id, CancellationToken cancellationToken)
     {
-        var (missing, user) = await RequireCurrentUserAsync();
+        var (missing, currentUser) = await RequireCurrentUserAsync();
         if (missing is not null) return missing;
 
-        await _agent.DeleteConversationAsync(user.Id, id, cancellationToken);
-        return NoContent();
+        var isAdmin = User.IsInRole(RoleNames.Admin);
+        var conv = await LoadConversationForViewerAsync(isAdmin, currentUser.Id, id, cancellationToken);
+        if (conv is null) return NotFound();
+
+        var displayName = await ResolveOwnerDisplayNameAsync(isAdmin, conv, cancellationToken);
+        return View(new AgentConversationDetailViewModel(conv, displayName, IsAdminView: isAdmin));
+    }
+
+    private Task<IReadOnlyList<AgentConversation>> LoadConversationsAsync(
+        bool isAdmin, Guid currentUserId,
+        bool refusalsOnly, bool handoffsOnly, Guid? userId, int page,
+        CancellationToken ct)
+    {
+        const int adminPageSize = 25;
+        return isAdmin
+            ? _agent.ListAllConversationsForAdminAsync(
+                refusalsOnly, handoffsOnly, userId, adminPageSize, page * adminPageSize, ct)
+            : _agent.GetHistoryAsync(currentUserId, take: 50, ct);
+    }
+
+    private async Task<List<AgentConversationRow>> StitchListRowsAsync(
+        IReadOnlyList<AgentConversation> rows, bool isAdmin, CancellationToken ct)
+    {
+        // Display names are only meaningful in admin mode (where the table
+        // shows the Human column). Skip the lookup entirely for non-admins.
+        if (!isAdmin || rows.Count == 0)
+            return rows.Select(r => new AgentConversationRow(r, DisplayName: null)).ToList();
+
+        var distinctUserIds = rows.Select(r => r.UserId).Distinct().ToArray();
+        var users = await _users.GetByIdsAsync(distinctUserIds, ct);
+        return rows.Select(r => new AgentConversationRow(
+            Conversation: r,
+            DisplayName: users.TryGetValue(r.UserId, out var u) ? u.DisplayName : null)
+        ).ToList();
+    }
+
+    private Task<AgentConversation?> LoadConversationForViewerAsync(
+        bool isAdmin, Guid currentUserId, Guid conversationId, CancellationToken ct) =>
+        isAdmin
+            ? _agent.GetConversationForAdminAsync(conversationId, ct)
+            : _agent.GetConversationForUserAsync(currentUserId, conversationId, ct);
+
+    private async Task<string?> ResolveOwnerDisplayNameAsync(
+        bool isAdmin, AgentConversation conv, CancellationToken ct)
+    {
+        if (!isAdmin) return null;
+        var owner = await _users.GetByIdAsync(conv.UserId, ct);
+        return owner?.DisplayName ?? conv.UserId.ToString();
     }
 
     private async Task WriteSse(AgentTurnToken token, CancellationToken cancellationToken)
     {
         string eventName = token.TextDelta is not null ? "text"
                          : token.ToolCall is not null ? "tool"
+                         : token.IssueProposal is not null ? "propose"
                          : "final";
         var payload = JsonSerializer.Serialize(token, JsonOpts);
         await Response.WriteAsync(
@@ -124,3 +170,22 @@ public class AgentController : HumansControllerBase
         await Response.Body.FlushAsync(cancellationToken);
     }
 }
+
+/// <summary>List of conversations + an admin flag the view uses to decide whether
+/// to surface admin-only chrome (Human column, refusal/handoff filters).</summary>
+public sealed record AgentConversationsViewModel(
+    IReadOnlyList<AgentConversationRow> Rows,
+    bool IsAdminView);
+
+/// <summary>One row in the conversations list. <see cref="DisplayName"/> is null
+/// for non-admin views (the column is hidden) and stitched in from
+/// <c>IUserService</c> for admin views.</summary>
+public sealed record AgentConversationRow(AgentConversation Conversation, string? DisplayName);
+
+/// <summary>Conversation detail with display name (admin only) and an admin flag
+/// the view uses to gate token counts, tool invocations, and the prompt-preview
+/// link.</summary>
+public sealed record AgentConversationDetailViewModel(
+    AgentConversation Conversation,
+    string? DisplayName,
+    bool IsAdminView);

@@ -21,6 +21,9 @@ public class WelcomeController : Controller
             {
                 return Redirect("/Shifts");
             }
+
+            // Authenticated but not active — send them into the widget instead of re-rendering the explainer.
+            return Redirect("/OnboardingWidget");
         }
 
         return View();

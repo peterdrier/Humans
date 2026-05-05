@@ -11,6 +11,7 @@ using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -222,6 +223,15 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
 
         // Sync system team memberships (adds user if eligible + all consents done).
         await _syncJob.SyncVolunteersMembershipForUserAsync(userId);
+
+        // Promote any current-event Pending shift signups the user has parked
+        // while consents were outstanding. Resolved lazily through the service
+        // provider — same pattern as IMembershipCalculator above — to keep the
+        // cross-section dependency edge soft. See:
+        // docs/superpowers/specs/2026-05-05-low-friction-shift-signup-design.md
+        var shiftSignupService = _serviceProvider.GetRequiredService<IShiftSignupService>();
+        await shiftSignupService.PromoteWidgetPendingSignupsAfterAdmissionAsync(userId, ct);
+
         await _syncJob.SyncCoordinatorsMembershipForUserAsync(userId);
 
         // Auto-resolve AccessSuspended notifications only once ALL required consents are complete.
@@ -347,6 +357,41 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         }
 
         return result;
+    }
+
+    public async Task<IReadOnlyList<RequiredConsentRow>> GetRequiredConsentRowsForUserAsync(
+        Guid userId, Guid teamId, CancellationToken ct = default)
+    {
+        var now = _clock.GetCurrentInstant();
+
+        var documents = await _legalDocumentSyncService
+            .GetActiveRequiredDocumentsForTeamsAsync(new[] { teamId }, ct);
+
+        // Chain-follow merge tombstones so a fold-target's signed set
+        // transparently includes versions consented to by merged source ids.
+        var consentedVersionIds = await GetConsentedVersionIdsAsync(userId, ct);
+
+        var rows = new List<RequiredConsentRow>(documents.Count);
+        foreach (var doc in documents)
+        {
+            var currentVersion = doc.Versions
+                .Where(v => v.EffectiveFrom <= now)
+                .MaxBy(v => v.EffectiveFrom);
+
+            if (currentVersion is null)
+                continue;
+
+            rows.Add(new RequiredConsentRow(
+                DocumentVersionId: currentVersion.Id,
+                Title: doc.Name,
+                Signed: consentedVersionIds.Contains(currentVersion.Id)));
+        }
+
+        // Unsigned-first so the user sees outstanding work at the top of the widget.
+        return rows
+            .OrderBy(r => r.Signed)
+            .ThenBy(r => r.Title, StringComparer.Ordinal)
+            .ToList();
     }
 
     public async Task<IReadOnlyList<string>> GetPendingDocumentNamesAsync(Guid userId, CancellationToken ct = default)

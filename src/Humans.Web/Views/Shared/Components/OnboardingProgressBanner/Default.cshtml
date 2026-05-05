@@ -1,0 +1,12 @@
+@using Microsoft.AspNetCore.Mvc.Localization
+@inject IHtmlLocalizer<SharedResource> BannerLocalizer
+@model Humans.Web.ViewComponents.OnboardingProgressBannerViewModel
+@if (Model.Show)
+{
+    <div class="alert alert-info mb-0 rounded-0 text-center">
+        @BannerLocalizer["OnboardingBanner_Text"]
+        <a href="@Url.Action("Index", "OnboardingWidget")" class="alert-link ms-2">
+            @BannerLocalizer["OnboardingBanner_Cta"]
+        </a>
+    </div>
+}

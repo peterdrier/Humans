@@ -32,6 +32,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         "Guest",            // Profileless account dashboard
         "Legal",            // Public legal documents ([AllowAnonymous])
         "Notification",     // Notification inbox — accessible to all authenticated users
+        "OnboardingWidget", // Guided onboarding flow (Names → Shifts → Consents) — used by mid-onboarding users
     };
 
     public Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
