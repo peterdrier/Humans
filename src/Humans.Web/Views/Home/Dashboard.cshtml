@@ -42,34 +42,13 @@
     </div>
 }
 
-@* ─── Profile completion nudge ─── *@
-@if (Model.HasProfile && Model.ProfileCompletionPercent < 100)
-{
-    <div class="row justify-content-center mb-4">
-        <div class="col-lg-8">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <strong>@string.Format(Localizer["Dashboard_ProfileCompletionPercent"].Value, Model.ProfileCompletionPercent)</strong>
-                        <a asp-controller="Profile" asp-action="Edit" class="btn btn-sm btn-outline-primary">@Localizer["Dashboard_FinishProfile"]</a>
-                    </div>
-                    <div class="progress" style="height: 8px;">
-                        <div class="progress-bar" role="progressbar"
-                             style="width: @(Model.ProfileCompletionPercent)%"
-                             aria-valuenow="@Model.ProfileCompletionPercent" aria-valuemin="0" aria-valuemax="100"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-}
-
-@* ─── Things to do (auto-hides when all complete) ─── *@
+@* ─── Things to do (auto-hides when all complete; profile-completion nudge lives inside as a graded item) ─── *@
 <div class="row justify-content-center mb-4">
     <div class="col-lg-8">
         <vc:things-to-do user-id="@Model.UserId"
                          is-volunteer-member="@Model.IsVolunteerMember"
-                         has-shift-signups="@Model.HasShiftSignups" />
+                         has-shift-signups="@Model.HasShiftSignups"
+                         profile-completion-percent="@Model.ProfileCompletionPercent" />
     </div>
 </div>
 
