@@ -1,13 +1,16 @@
 @using Humans.Web.Extensions
-@model Humans.Web.Controllers.AdminAgentConversationDetail
+@model Humans.Web.Controllers.AgentConversationDetailViewModel
 @{ ViewData["Title"] = "Conversation Detail"; var conv = Model.Conversation; }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 class="mb-0">Conversation</h2>
     <div class="d-flex gap-2">
-        <a asp-action="ConversationPrompt" asp-route-id="@conv.Id" class="btn btn-outline-info btn-sm">
-            Show what would be sent to Anthropic
-        </a>
+        @if (Model.IsAdminView)
+        {
+            <a asp-controller="AdminAgent" asp-action="ConversationPrompt" asp-route-id="@conv.Id" class="btn btn-outline-info btn-sm">
+                Show what would be sent to Anthropic
+            </a>
+        }
         <a asp-action="Conversations" class="btn btn-outline-secondary btn-sm">Back to list</a>
     </div>
 </div>
@@ -15,8 +18,11 @@
 <dl class="row mb-4">
     <dt class="col-sm-3">ID</dt>
     <dd class="col-sm-9"><code>@conv.Id</code></dd>
-    <dt class="col-sm-3">Human</dt>
-    <dd class="col-sm-9"><human-link user-id="@conv.UserId" display-name="@Model.DisplayName" admin="true" /></dd>
+    @if (Model.IsAdminView)
+    {
+        <dt class="col-sm-3">Human</dt>
+        <dd class="col-sm-9"><human-link user-id="@conv.UserId" display-name="@Model.DisplayName" admin="true" /></dd>
+    }
     <dt class="col-sm-3">Started</dt>
     <dd class="col-sm-9">@conv.StartedAt.ToAuditTimestamp() UTC</dd>
     <dt class="col-sm-3">Last message</dt>
@@ -50,14 +56,36 @@
                 {
                     <div class="alert alert-warning mt-2 mb-0 py-1">Refusal: @msg.RefusalReason</div>
                 }
-                @if (msg.HandedOffToFeedbackId.HasValue)
+                @if (Model.IsAdminView && msg.HandedOffToFeedbackId.HasValue)
                 {
                     <div class="alert alert-info mt-2 mb-0 py-1">Handed off to feedback: <code>@msg.HandedOffToFeedbackId</code></div>
                 }
-                <div class="text-muted small mt-2">
-                    Prompt: @msg.PromptTokens tok | Output: @msg.OutputTokens tok | Cached: @msg.CachedTokens tok | @msg.DurationMs ms
-                    @if (!string.IsNullOrEmpty(msg.Model)) { <span> | @msg.Model</span> }
-                </div>
+                @if (Model.IsAdminView && msg.FetchedDocs is { Length: > 0 })
+                {
+                    <details class="mt-2">
+                        <summary class="text-muted small">Tool invocations (@msg.FetchedDocs.Length)</summary>
+                        @foreach (var entry in msg.FetchedDocs)
+                        {
+                            var colon = entry.IndexOf(':');
+                            var toolName = colon > 0 ? entry[..colon] : entry;
+                            var toolArgs = colon > 0 ? entry[(colon + 1)..] : "";
+                            <div class="border rounded p-2 mt-2 bg-light">
+                                <div class="small"><strong>@toolName</strong></div>
+                                @if (!string.IsNullOrWhiteSpace(toolArgs))
+                                {
+                                    <pre class="small mb-0 mt-1" style="white-space: pre-wrap; word-break: break-word;">@toolArgs</pre>
+                                }
+                            </div>
+                        }
+                    </details>
+                }
+                @if (Model.IsAdminView)
+                {
+                    <div class="text-muted small mt-2">
+                        Prompt: @msg.PromptTokens tok | Output: @msg.OutputTokens tok | Cached: @msg.CachedTokens tok | @msg.DurationMs ms
+                        @if (!string.IsNullOrEmpty(msg.Model)) { <span> | @msg.Model</span> }
+                    </div>
+                }
             </div>
         </div>
     }

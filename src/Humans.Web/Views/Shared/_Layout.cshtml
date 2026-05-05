@@ -166,7 +166,6 @@
             crossorigin="anonymous"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
-    @await Component.InvokeAsync("IssuesWidget")
-    @await Component.InvokeAsync("AgentWidget")
+    @await Component.InvokeAsync("HelpWidget")
 </body>
 </html>

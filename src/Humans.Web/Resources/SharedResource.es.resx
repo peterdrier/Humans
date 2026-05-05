@@ -1817,10 +1817,6 @@
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>Si no estás satisfecho con nuestra respuesta, tienes derecho a presentar una reclamación ante la Agencia Española de Protección de Datos (AEPD) en {0}.</value><comment>{0} = AEPD URL</comment></data>
 
   <!-- Agent Widget -->
-  <data name="Agent_ConsentPrompt" xml:space="preserve"><value>Antes de usar el asistente, revisa y acepta las Condiciones del Chat del Asistente.</value></data>
-  <data name="Agent_ConsentReviewButton" xml:space="preserve"><value>Revisar condiciones</value></data>
-  <data name="Agent_HistoryActions" xml:space="preserve"><value>Acciones</value></data>
-  <data name="Agent_HistoryDelete" xml:space="preserve"><value>Eliminar</value></data>
   <data name="Agent_HistoryEmpty" xml:space="preserve"><value>Aún no tienes conversaciones.</value></data>
   <data name="Agent_HistoryLastMessage" xml:space="preserve"><value>Último mensaje</value></data>
   <data name="Agent_HistoryMessages" xml:space="preserve"><value>Mensajes</value></data>
@@ -1828,9 +1824,14 @@
   <data name="Agent_HistoryTitle" xml:space="preserve"><value>Asistente — Mis conversaciones</value></data>
   <data name="Agent_InputPlaceholder" xml:space="preserve"><value>Pregunta cómo funciona el sistema…</value></data>
   <data name="Agent_PanelTitle" xml:space="preserve"><value>Asistente</value></data>
+  <data name="Agent_TermsLink" xml:space="preserve"><value>Términos IA</value></data>
   <data name="Agent_ViewHistory" xml:space="preserve"><value>Historial</value></data>
   <data name="Agent_Send" xml:space="preserve"><value>Enviar</value></data>
   <data name="Agent_WidgetButton" xml:space="preserve"><value>Abrir el asistente</value></data>
+  <data name="Help_WidgetButton" xml:space="preserve"><value>Ayuda</value></data>
+  <data name="Help_Menu_TalkWithAgent" xml:space="preserve"><value>Hablar con el Asistente</value></data>
+  <data name="Help_Menu_CreateIssue" xml:space="preserve"><value>Crear incidencia</value></data>
+  <data name="Help_Agent_IssueProposed" xml:space="preserve"><value>No puedo responder a esto por mí mismo. He redactado una incidencia para el equipo — revísala y envíala, por favor.</value></data>
   <data name="Nav_Agent" xml:space="preserve"><value>Asistente</value></data>
 
 
