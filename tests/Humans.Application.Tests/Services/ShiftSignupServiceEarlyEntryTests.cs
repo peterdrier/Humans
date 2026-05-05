@@ -15,9 +15,11 @@ using Humans.Infrastructure.Services;
 using Xunit;
 using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Auth;
+using Humans.Domain.Constants;
 using Humans.Infrastructure.Repositories.Shifts;
 
 namespace Humans.Application.Tests.Services;
@@ -60,9 +62,14 @@ public class ShiftSignupServiceEarlyEntryTests : IDisposable
             NullLogger<ShiftManagementService>.Instance);
 
         _repo = new ShiftSignupRepository(_dbContext, _clock);
+        var membership = Substitute.For<IMembershipCalculator>();
+        membership.HasAllRequiredConsentsForTeamAsync(
+            Arg.Any<Guid>(), SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+            .Returns(true);
         _service = new ShiftSignupService(
             _repo,
             _shiftMgmt,
+            membership,
             _auditLog,
             Substitute.For<INotificationService>(),
             serviceProvider,

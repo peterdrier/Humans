@@ -1,11 +1,13 @@
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
@@ -48,6 +50,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 {
     private readonly IShiftSignupRepository _repo;
     private readonly IShiftManagementService _shiftMgmt;
+    private readonly IMembershipCalculator _membership;
     private readonly IAuditLogService _auditLogService;
     private readonly INotificationService _notificationService;
     private readonly IServiceProvider _serviceProvider;
@@ -61,6 +64,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
     public ShiftSignupService(
         IShiftSignupRepository repo,
         IShiftManagementService shiftMgmt,
+        IMembershipCalculator membership,
         IAuditLogService auditLogService,
         INotificationService notificationService,
         IServiceProvider serviceProvider,
@@ -69,6 +73,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
     {
         _repo = repo;
         _shiftMgmt = shiftMgmt;
+        _membership = membership;
         _auditLogService = auditLogService;
         _notificationService = notificationService;
         _serviceProvider = serviceProvider;
@@ -123,7 +128,14 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         // Determine initial status — Admin, NoInfoAdmin, and Dept Coordinators auto-confirm
         var canApprove = await _shiftMgmt.CanApproveSignupsAsync(userId, shift.Rota.TeamId);
-        var autoConfirm = shift.Rota.Policy == SignupPolicy.Public || canApprove;
+
+        // Force Pending for users missing required Volunteer consents.
+        // The ConsentService promotion hook upgrades to Confirmed once admission fires.
+        // See: docs/superpowers/specs/2026-05-05-low-friction-shift-signup-design.md
+        var hasConsents = await _membership.HasAllRequiredConsentsForTeamAsync(
+            userId, SystemTeamIds.Volunteers, default);
+        var publicAutoConfirm = shift.Rota.Policy == SignupPolicy.Public && hasConsents;
+        var autoConfirm = publicAutoConfirm || canApprove;
 
         var signup = new ShiftSignup
         {
@@ -643,7 +655,14 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         // Create signups
         var blockId = Guid.NewGuid();
-        var autoConfirm = rota.Policy == SignupPolicy.Public ||
+
+        // Force Pending for users missing required Volunteer consents.
+        // The ConsentService promotion hook upgrades to Confirmed once admission fires.
+        // See: docs/superpowers/specs/2026-05-05-low-friction-shift-signup-design.md
+        var hasConsents = await _membership.HasAllRequiredConsentsForTeamAsync(
+            userId, SystemTeamIds.Volunteers, default);
+        var publicAutoConfirm = rota.Policy == SignupPolicy.Public && hasConsents;
+        var autoConfirm = publicAutoConfirm ||
                           await _shiftMgmt.CanApproveSignupsAsync(userId, rota.TeamId);
         ShiftSignup? lastSignup = null;
 
