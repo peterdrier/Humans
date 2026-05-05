@@ -556,9 +556,15 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         if (!isPrivileged && shiftsInRange.Any(s => s.AdminOnly))
             return SignupResult.Fail("One or more shifts in this range are restricted to coordinators and admins.");
 
-        // Duplicate signup check — reject (or filter, if skipConflicts) if user already has Pending/Confirmed
+        // Fetch all active signups upfront — used for both duplicate-check and time-overlap check
         var shiftIdsInRange = shiftsInRange.Select(s => s.Id).ToHashSet();
-        var activeShiftIds = await _repo.GetActiveShiftIdsForUserAsync(userId, shiftIdsInRange);
+        var existingSignups = await _repo.GetActiveSignupsForUserAsync(userId);
+        var activeShiftIds = existingSignups
+            .Where(s => shiftIdsInRange.Contains(s.ShiftId))
+            .Select(s => s.ShiftId)
+            .ToHashSet();
+
+        // Duplicate signup check — reject (or filter, if skipConflicts) if user already has Pending/Confirmed
         var skipMessages = new List<string>();
         if (activeShiftIds.Count > 0)
         {
@@ -577,7 +583,6 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         }
 
         // Check overlap for each day (include Pending signups too)
-        var existingSignups = await _repo.GetActiveSignupsForUserAsync(userId);
 
         var conflictingDays = new List<int>();
         foreach (var shift in shiftsInRange)
