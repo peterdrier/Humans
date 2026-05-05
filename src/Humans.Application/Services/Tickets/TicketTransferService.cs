@@ -1,5 +1,6 @@
 using Humans.Application.Configuration;
 using Humans.Application.DTOs;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
@@ -7,6 +8,7 @@ using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -29,6 +31,7 @@ public sealed class TicketTransferService : ITicketTransferService
     private readonly IAuditLogService _auditLog;
     private readonly TicketVendorSettings _settings;
     private readonly IClock _clock;
+    private readonly IMemoryCache _cache;
     private readonly ILogger<TicketTransferService> _logger;
 
     public TicketTransferService(
@@ -41,6 +44,7 @@ public sealed class TicketTransferService : ITicketTransferService
         IAuditLogService auditLog,
         IOptions<TicketVendorSettings> settings,
         IClock clock,
+        IMemoryCache cache,
         ILogger<TicketTransferService> logger)
     {
         _transferRepo = transferRepo;
@@ -52,6 +56,7 @@ public sealed class TicketTransferService : ITicketTransferService
         _auditLog = auditLog;
         _settings = settings.Value;
         _clock = clock;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -349,6 +354,13 @@ public sealed class TicketTransferService : ITicketTransferService
         request.VendorResult = TicketTransferVendorResult.Succeeded;
         request.NewVendorTicketId = issued.VendorTicketId;
         request.VendorMessage = voidResult.HoldId is null ? null : $"hold {voidResult.HoldId}";
+
+        // Two TicketAttendee rows just changed (new recipient row + voided original).
+        // Invalidate ticket caches so the homepage card and ticket-coverage views
+        // see the new state without waiting for the 5-min TTL.
+        _cache.InvalidateTicketCaches();
+        _cache.InvalidateUserTicketCount(request.RequesterUserId);
+        _cache.InvalidateUserTicketCount(request.RecipientUserId);
     }
 
     private async Task<RecipientLookupResultDto?> BuildRecipientCardAsync(Guid userId, CancellationToken ct)

@@ -9,6 +9,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Tickets;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -61,6 +62,7 @@ public sealed class TicketTransferServiceTests
             _auditLog,
             settings,
             _clock,
+            new MemoryCache(new MemoryCacheOptions()),
             NullLogger<TicketTransferService>.Instance);
 
         // Default: no pending transfer for any attendee

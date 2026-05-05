@@ -5,6 +5,7 @@ using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace Humans.Web.Controllers;
 
@@ -13,13 +14,16 @@ namespace Humans.Web.Controllers;
 public sealed class TicketTransferController : HumansControllerBase
 {
     private readonly ITicketTransferService _service;
+    private readonly ILogger<TicketTransferController> _logger;
 
     public TicketTransferController(
         ITicketTransferService service,
-        UserManager<User> userManager)
+        UserManager<User> userManager,
+        ILogger<TicketTransferController> logger)
         : base(userManager)
     {
         _service = service;
+        _logger = logger;
     }
 
     [HttpGet("Request")]
@@ -76,6 +80,8 @@ public sealed class TicketTransferController : HumansControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning("Ticket transfer Submit rejected for attendee {AttendeeId}: {Message}",
+                form.AttendeeId, ex.Message);
             SetError(ex.Message);
             return RedirectToAction(nameof(RequestTransfer), new { attendeeId = form.AttendeeId });
         }
@@ -95,6 +101,8 @@ public sealed class TicketTransferController : HumansControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning("Ticket transfer Cancel rejected for transfer {TransferId}: {Message}",
+                id, ex.Message);
             SetError(ex.Message);
         }
         return RedirectToAction(nameof(HomeController.Index), "Home");
