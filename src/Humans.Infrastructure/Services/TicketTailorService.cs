@@ -137,7 +137,7 @@ public class TicketTailorService : ITicketVendorService
             {
                 tickets.Add(new VendorTicketDto(
                     VendorTicketId: ticket.Id,
-                    VendorOrderId: ticket.OrderId ?? string.Empty,
+                    VendorOrderId: ticket.OrderId,
                     AttendeeName: ticket.FullName ?? $"{ticket.FirstName} {ticket.LastName}".Trim(),
                     AttendeeEmail: ticket.Email,
                     TicketTypeName: ticket.Description ?? "Unknown",
@@ -453,7 +453,7 @@ public class TicketTailorService : ITicketVendorService
 
         return new VendorTicketDto(
             VendorTicketId: body.Id,
-            VendorOrderId: body.OrderId ?? string.Empty, // null for API-issued tickets — sync fix in Phase 4 handles this
+            VendorOrderId: body.OrderId,
             AttendeeName: body.FullName ?? $"{body.FirstName} {body.LastName}".Trim(),
             AttendeeEmail: body.Email,
             TicketTypeName: body.Description ?? "Unknown",

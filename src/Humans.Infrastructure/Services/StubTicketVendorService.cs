@@ -295,7 +295,7 @@ public sealed class StubTicketVendorService : ITicketVendorService
     {
         var issued = new VendorTicketDto(
             VendorTicketId: $"tt_stub_{Guid.NewGuid().ToString("N")[..8]}",
-            VendorOrderId: string.Empty,
+            VendorOrderId: null,
             AttendeeName: request.FullName,
             AttendeeEmail: request.Email,
             TicketTypeName: "Stub Reissued Ticket",

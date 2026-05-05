@@ -140,7 +140,7 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
             var attendeesMatched = 0;
             foreach (var dto in tickets)
             {
-                if (!orderIdByVendorId.TryGetValue(dto.VendorOrderId, out var parentOrderId))
+                if (!orderIdByVendorId.TryGetValue(dto.VendorOrderId ?? string.Empty, out var parentOrderId))
                 {
                     _logger.LogWarning(
                         "Attendee {VendorTicketId} references unknown order {VendorOrderId}, skipping",
