@@ -108,7 +108,7 @@ public class OnboardingWidgetController : Controller
                 es.Id, includeAdminOnly: false, includeSignups: true,
                 includeHidden: false, priorityOnly: !showAll);
             var (shiftIds, statuses) = await _signupService.GetActiveSignupStatusesAsync(GetUserId(), es.Id);
-            browseModel = OnboardingShiftsBrowseModelBuilder.Build(es, urgentShifts, _shiftMgmt, shiftIds, statuses);
+            browseModel = OnboardingShiftsBrowseModelBuilder.Build(es, urgentShifts, shiftIds, statuses);
         }
 
         return View(new ShiftsStepViewModel { ShowAll = showAll, BrowseModel = browseModel });

@@ -7,6 +7,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
+using Humans.Web.Models.Shifts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -142,47 +143,8 @@ public class ShiftsController : HumansControllerBase
         var shiftTeamIds = filteredShifts.Select(u => u.Shift.Rota.TeamId).Distinct().ToList();
         var teamLookup = await _teamService.GetByIdsWithParentsAsync(shiftTeamIds);
 
-        // Map UrgentShift → ShiftDisplayItem (shared by both sort modes)
-        ShiftDisplayItem MapToDisplayItem(UrgentShift u)
-        {
-            var (start, end, shiftPeriod) = _shiftMgmt.ResolveShiftTimes(u.Shift, es);
-            return new ShiftDisplayItem
-            {
-                Shift = u.Shift,
-                AbsoluteStart = start,
-                AbsoluteEnd = end,
-                Period = shiftPeriod,
-                ConfirmedCount = u.ConfirmedCount,
-                RemainingSlots = u.RemainingSlots,
-                UrgencyScore = u.UrgencyScore,
-                Signups = u.Signups
-                    .Select(s => new ShiftSignupInfo(
-                        s.UserId, s.DisplayName, s.Status,
-                        s.HasProfilePicture ? $"/Profile/Picture?id={s.UserId}" : null))
-                    .ToList()
-            };
-        }
-
-        RotaShiftGroup BuildRotaGroup(IGrouping<Guid, UrgentShift> rotaGroup, string? deptName = null, string? deptSlug = null)
-        {
-            var rota = rotaGroup.OrderBy(x => x.Shift.Id).First().Shift.Rota;
-            var shifts = rotaGroup
-                .Select(MapToDisplayItem)
-                .OrderBy(s => s.AbsoluteStart)
-                .ToList();
-            return new RotaShiftGroup
-            {
-                Rota = rota,
-                Shifts = shifts,
-                DepartmentName = deptName,
-                DepartmentSlug = deptSlug,
-                MaxUrgencyScore = shifts.Count > 0 ? shifts.Max(s => s.UrgencyScore) : 0,
-                TotalConfirmed = shifts.Sum(s => s.ConfirmedCount),
-                TotalSlots = shifts.Sum(s => s.Shift.MaxVolunteers)
-            };
-        }
-
-        // Group by department → rota → shift
+        // Group by department → rota → shift. Per-shift / per-rota mapping is shared
+        // with the onboarding widget via ShiftBrowseMapper.
         var departments = filteredShifts
             .GroupBy(u => u.Shift.Rota.TeamId)
             .Select(deptGroup =>
@@ -199,7 +161,7 @@ public class ShiftsController : HumansControllerBase
                     TeamSlug = deptSlug,
                     Rotas = deptGroup
                         .GroupBy(u => u.Shift.RotaId)
-                        .Select(rg => BuildRotaGroup(rg, deptName, deptSlug))
+                        .Select(rg => ShiftBrowseMapper.BuildRotaGroup(rg, es, deptName, deptSlug))
                         .OrderBy(r => r.Rota.Name, StringComparer.Ordinal)
                         .ToList()
                 };

@@ -1,6 +1,6 @@
 using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
-using Humans.Web.Models;
+using Humans.Web.Models.Shifts;
 
 namespace Humans.Web.Models.OnboardingWidget;
 
@@ -12,35 +12,23 @@ namespace Humans.Web.Models.OnboardingWidget;
 /// no-business-logic-in-controllers ratchet thresholds. The widget shows a
 /// simplified urgency-ranked browse — no department grouping, no tag/period
 /// filters — so this is a smaller mapping than <c>ShiftsController.Index</c>'s.
+/// Per-shift and per-rota mapping is shared with the full browse via
+/// <see cref="ShiftBrowseMapper"/>.
 /// </summary>
 public static class OnboardingShiftsBrowseModelBuilder
 {
     public static ShiftBrowseViewModel Build(
         EventSettings eventSettings,
         IReadOnlyList<UrgentShift> urgentShifts,
-        IShiftManagementService shiftMgmt,
         HashSet<Guid> userSignupShiftIds,
         Dictionary<Guid, Domain.Enums.SignupStatus> userSignupStatuses)
     {
         var rotaGroups = urgentShifts
             .GroupBy(u => u.Shift.RotaId)
-            .Select(rg =>
-            {
-                var shifts = rg
-                    .Select(u => MapToDisplayItem(u, eventSettings, shiftMgmt))
-                    .OrderBy(s => s.AbsoluteStart)
-                    .ToList();
-                var rota = rg.OrderBy(x => x.Shift.Id).First().Shift.Rota;
-                return new RotaShiftGroup
-                {
-                    Rota = rota,
-                    Shifts = shifts,
-                    DepartmentName = rg.First().DepartmentName,
-                    MaxUrgencyScore = shifts.Count > 0 ? shifts.Max(s => s.UrgencyScore) : 0,
-                    TotalConfirmed = shifts.Sum(s => s.ConfirmedCount),
-                    TotalSlots = shifts.Sum(s => s.Shift.MaxVolunteers),
-                };
-            })
+            .Select(rg => ShiftBrowseMapper.BuildRotaGroup(
+                rg,
+                eventSettings,
+                departmentName: rg.First().DepartmentName))
             .OrderByDescending(r => r.MaxUrgencyScore)
             .ToList();
 
@@ -52,27 +40,6 @@ public static class OnboardingShiftsBrowseModelBuilder
             UrgencyRankedRotas = rotaGroups,
             UserSignupShiftIds = userSignupShiftIds,
             UserSignupStatuses = userSignupStatuses,
-        };
-    }
-
-    private static ShiftDisplayItem MapToDisplayItem(
-        UrgentShift u, EventSettings es, IShiftManagementService shiftMgmt)
-    {
-        var (start, end, shiftPeriod) = shiftMgmt.ResolveShiftTimes(u.Shift, es);
-        return new ShiftDisplayItem
-        {
-            Shift = u.Shift,
-            AbsoluteStart = start,
-            AbsoluteEnd = end,
-            Period = shiftPeriod,
-            ConfirmedCount = u.ConfirmedCount,
-            RemainingSlots = u.RemainingSlots,
-            UrgencyScore = u.UrgencyScore,
-            Signups = u.Signups
-                .Select(s => new ShiftSignupInfo(
-                    s.UserId, s.DisplayName, s.Status,
-                    s.HasProfilePicture ? $"/Profile/Picture?id={s.UserId}" : null))
-                .ToList(),
         };
     }
 }
