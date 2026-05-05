@@ -197,4 +197,4 @@ Unique constraint on (UserId, GuideEventId).
 - **Decorator decision** — No caching decorator. Rationale: guide data is mutable and moderated; stale cache would show rejected events as approved. Reads are lightweight at ~500-user scale.
 - **Cross-domain navs** — `GuideEvent.Camp` (navigation) and `GuideEvent.SubmitterUser` (navigation) are included only within this section's repository queries. They are legacy navigation properties retained for query convenience; no cross-section `.Include()` calls are made from outside this section.
 - **Cross-section calls** — `UserManager<User>` (Identity, in controllers only), `IEmailService` (in `ModerationController`).
-- **Architecture test** — Not yet added; track in `todos.md`.
+- **Architecture test** — `tests/Humans.Application.Tests/Architecture/EventGuideArchitectureTests.cs` pins the service/repository split and the canonical `Events` / `Barrios` / `api/events` route names.
