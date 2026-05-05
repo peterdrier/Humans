@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -36,6 +37,8 @@ public class OnboardingWidgetControllerConsentsTests
     private readonly IShiftSignupService _signups = Substitute.For<IShiftSignupService>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IConsentService _consents = Substitute.For<IConsentService>();
+    private readonly IStringLocalizer<Humans.Web.SharedResource> _localizer =
+        Substitute.For<IStringLocalizer<Humans.Web.SharedResource>>();
     private readonly DefaultHttpContext _http = new();
 
     public OnboardingWidgetControllerConsentsTests()
@@ -43,6 +46,8 @@ public class OnboardingWidgetControllerConsentsTests
         var userStore = Substitute.For<IUserStore<User>>();
         _userManager = Substitute.For<UserManager<User>>(
             userStore, null, null, null, null, null, null, null, null);
+        _localizer[Arg.Any<string>()].Returns(ci =>
+            new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
     }
 
     private OnboardingWidgetController BuildSut(Guid userId)
@@ -56,7 +61,7 @@ public class OnboardingWidgetControllerConsentsTests
         var services = new ServiceCollection();
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
         _http.RequestServices = services.BuildServiceProvider();
-        var ctrl = new OnboardingWidgetController(_userManager, _state, _profile, _signups, _shiftMgmt, _consents);
+        var ctrl = new OnboardingWidgetController(_userManager, _state, _profile, _signups, _shiftMgmt, _consents, _localizer);
         ctrl.ControllerContext = new ControllerContext
         {
             HttpContext = _http,
@@ -126,7 +131,10 @@ public class OnboardingWidgetControllerConsentsTests
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Consents), redirect.ActionName);
-        Assert.Equal("MustCheck", ctrl.TempData[TempDataKeys.ErrorMessage]);
+        // Localizer stub returns the key as the value, so this verifies that
+        // the controller now goes through `_localizer["Consent_MustCheck"]`
+        // (matches ConsentController.Submit) rather than emitting the raw key.
+        Assert.Equal("Consent_MustCheck", ctrl.TempData[TempDataKeys.ErrorMessage]);
         await _consents.DidNotReceive().SubmitConsentAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(),
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());

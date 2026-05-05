@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -33,6 +34,8 @@ public class OnboardingWidgetControllerShiftsTests
     private readonly IShiftSignupService _signups = Substitute.For<IShiftSignupService>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IConsentService _consents = Substitute.For<IConsentService>();
+    private readonly IStringLocalizer<Humans.Web.SharedResource> _localizer =
+        Substitute.For<IStringLocalizer<Humans.Web.SharedResource>>();
     private readonly DefaultHttpContext _http = new();
 
     public OnboardingWidgetControllerShiftsTests()
@@ -40,6 +43,8 @@ public class OnboardingWidgetControllerShiftsTests
         var userStore = Substitute.For<IUserStore<User>>();
         _userManager = Substitute.For<UserManager<User>>(
             userStore, null, null, null, null, null, null, null, null);
+        _localizer[Arg.Any<string>()].Returns(ci =>
+            new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
     }
 
     private OnboardingWidgetController BuildSut(Guid userId)
@@ -54,7 +59,7 @@ public class OnboardingWidgetControllerShiftsTests
         var services = new ServiceCollection();
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
         _http.RequestServices = services.BuildServiceProvider();
-        var ctrl = new OnboardingWidgetController(_userManager, _state, _profile, _signups, _shiftMgmt, _consents);
+        var ctrl = new OnboardingWidgetController(_userManager, _state, _profile, _signups, _shiftMgmt, _consents, _localizer);
         ctrl.ControllerContext = new ControllerContext
         {
             HttpContext = _http,

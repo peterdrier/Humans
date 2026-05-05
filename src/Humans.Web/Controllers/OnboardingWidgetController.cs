@@ -12,6 +12,7 @@ using Humans.Web.Models.OnboardingWidget;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 
 namespace Humans.Web.Controllers;
 
@@ -28,6 +29,7 @@ public class OnboardingWidgetController : HumansControllerBase
     private readonly IShiftSignupService _signupService;
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IConsentService _consents;
+    private readonly IStringLocalizer<SharedResource> _localizer;
 
     public OnboardingWidgetController(
         UserManager<User> userManager,
@@ -35,7 +37,8 @@ public class OnboardingWidgetController : HumansControllerBase
         IProfileService profileService,
         IShiftSignupService signupService,
         IShiftManagementService shiftMgmt,
-        IConsentService consents)
+        IConsentService consents,
+        IStringLocalizer<SharedResource> localizer)
         : base(userManager)
     {
         _state = state;
@@ -43,6 +46,7 @@ public class OnboardingWidgetController : HumansControllerBase
         _signupService = signupService;
         _shiftMgmt = shiftMgmt;
         _consents = consents;
+        _localizer = localizer;
     }
 
     // [Authorize] guarantees the NameIdentifier claim is present.
@@ -206,7 +210,7 @@ public class OnboardingWidgetController : HumansControllerBase
     {
         if (!explicitConsent)
         {
-            SetError("MustCheck");
+            SetError(_localizer["Consent_MustCheck"].Value);
             return RedirectToAction(nameof(Consents));
         }
 

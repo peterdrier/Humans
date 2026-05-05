@@ -1126,6 +1126,13 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
     public async Task PromoteWidgetPendingSignupsAfterAdmissionAsync(
         Guid userId, CancellationToken ct = default)
     {
+        // Called from ConsentService.SubmitConsentAsync after every consent.
+        // The Confirmed-implies-admitted-Volunteer invariant requires that we
+        // only promote once the user has signed all required Volunteer consents
+        // — admission to Volunteers is gated on the same predicate.
+        if (!await _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, ct))
+            return;
+
         var activeEvent = await _shiftMgmt.GetActiveAsync();
         if (activeEvent is null) return;
 

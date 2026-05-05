@@ -11,10 +11,8 @@
             </div>
         </div>
 
-        @if (TempData["Error"] is string err && !string.IsNullOrEmpty(err))
-        {
-            <div class="alert alert-danger" role="alert">@err</div>
-        }
+        <vc:temp-data-alerts />
+
 
         <partial name="_ConsentReviewBody" model="@(new ConsentReviewFormViewModel
         {

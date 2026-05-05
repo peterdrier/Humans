@@ -5,6 +5,7 @@ using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Services.Shifts;
 using Humans.Application.Tests.Infrastructure;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -46,6 +47,12 @@ public class PromoteWidgetPendingSignupsAfterAdmissionTests : IDisposable
         _clock = new FakeClock(TestNow);
         _auditLog = Substitute.For<IAuditLogService>();
         _membership = Substitute.For<IMembershipCalculator>();
+        // Default: user has all required consents — exercises the existing
+        // promotion logic. Tests that need the missing-consents guard override
+        // this on a per-test basis.
+        _membership.HasAllRequiredConsentsForTeamAsync(
+            Arg.Any<Guid>(), SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+            .Returns(true);
 
         var teamService = Substitute.For<ITeamService>();
         var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
@@ -120,6 +127,24 @@ public class PromoteWidgetPendingSignupsAfterAdmissionTests : IDisposable
         var reloaded = await _dbContext.ShiftSignups.AsNoTracking()
             .FirstAsync(s => s.Id == signup.Id);
         Assert.Equal(SignupStatus.Confirmed, reloaded.Status);
+    }
+
+    [HumansFact]
+    public async Task Promote_MissingRequiredConsents_StaysPending()
+    {
+        // ConsentService.SubmitConsentAsync calls promote after every signature.
+        // Until ALL required Volunteer consents are signed, signups must remain
+        // Pending — Confirmed implies admitted Volunteer.
+        _membership.HasAllRequiredConsentsForTeamAsync(
+            _userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+            .Returns(false);
+        var signup = SeedPendingSignup(SignupPolicy.Public, capacity: 5, confirmedSoFar: 0);
+
+        await _service.PromoteWidgetPendingSignupsAfterAdmissionAsync(_userId);
+
+        var reloaded = await _dbContext.ShiftSignups.AsNoTracking()
+            .FirstAsync(s => s.Id == signup.Id);
+        Assert.Equal(SignupStatus.Pending, reloaded.Status);
     }
 
     [HumansFact]
