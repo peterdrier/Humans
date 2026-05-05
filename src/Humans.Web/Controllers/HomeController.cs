@@ -7,7 +7,6 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Services;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Dashboard;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
@@ -22,7 +21,7 @@ public class HomeController : HumansControllerBase
     private readonly IConfiguration _configuration;
     private readonly ConfigurationRegistry _configRegistry;
     private readonly ILogger<HomeController> _logger;
-    private readonly ITicketRepository _ticketRepository;
+    private readonly ITicketQueryService _ticketQueryService;
     private readonly ITicketTransferService _ticketTransferService;
 
     public HomeController(
@@ -33,7 +32,7 @@ public class HomeController : HumansControllerBase
         IConfiguration configuration,
         ConfigurationRegistry configRegistry,
         ILogger<HomeController> logger,
-        ITicketRepository ticketRepository,
+        ITicketQueryService ticketQueryService,
         ITicketTransferService ticketTransferService)
         : base(userManager)
     {
@@ -43,7 +42,7 @@ public class HomeController : HumansControllerBase
         _configuration = configuration;
         _configRegistry = configRegistry;
         _logger = logger;
-        _ticketRepository = ticketRepository;
+        _ticketQueryService = ticketQueryService;
         _ticketTransferService = ticketTransferService;
     }
 
@@ -147,7 +146,7 @@ public class HomeController : HumansControllerBase
             PendingCount = data.PendingSignupCount,
         };
 
-        var visibleAttendees = await _ticketRepository.GetAttendeesVisibleToUserAsync(user.Id, cancellationToken);
+        var visibleAttendees = await _ticketQueryService.GetAttendeesVisibleToUserAsync(user.Id, cancellationToken);
 
         var pendingTransfers = (await _ticketTransferService.GetByRequesterAsync(user.Id, cancellationToken))
             .Where(t => t.Status == TicketTransferStatus.Pending)

@@ -79,8 +79,8 @@ public sealed class TicketTransferServiceTests
         _userEmailService.GetPrimaryEmailAsync(_recipientId, Arg.Any<CancellationToken>())
             .Returns("alice@example.com");
 
-        // Default: burner-name search returns empty
-        _profileService.SearchByBurnerNameAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+        // Default: name/burner search returns empty
+        _profileService.SearchHumansByNameAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<HumanSearchResult>());
     }
 
@@ -141,7 +141,7 @@ public sealed class TicketTransferServiceTests
     public async Task LookupRecipientAsync_BurnerName_UniqueMatch_ReturnsCard()
     {
         var userId = Guid.NewGuid();
-        _profileService.SearchByBurnerNameAsync("sparkle", 2, Arg.Any<CancellationToken>())
+        _profileService.SearchHumansByNameAsync("sparkle", Arg.Any<CancellationToken>())
             .Returns(new[] { MakeSearchResult(userId, "Sparkle Person") });
         _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(MakeUser(userId, "Sparkle Person"));
@@ -159,7 +159,7 @@ public sealed class TicketTransferServiceTests
     [HumansFact]
     public async Task LookupRecipientAsync_BurnerName_AmbiguousMatch_ReturnsNull()
     {
-        _profileService.SearchByBurnerNameAsync("popular", 2, Arg.Any<CancellationToken>())
+        _profileService.SearchHumansByNameAsync("popular", Arg.Any<CancellationToken>())
             .Returns(new[]
             {
                 MakeSearchResult(Guid.NewGuid(), "A"),
@@ -174,7 +174,7 @@ public sealed class TicketTransferServiceTests
     [HumansFact]
     public async Task LookupRecipientAsync_BurnerName_MatchIsRequester_ReturnsNull()
     {
-        _profileService.SearchByBurnerNameAsync("me", 2, Arg.Any<CancellationToken>())
+        _profileService.SearchHumansByNameAsync("me", Arg.Any<CancellationToken>())
             .Returns(new[] { MakeSearchResult(_requesterId, "Me") });
 
         var result = await _service.LookupRecipientAsync("me", _requesterId);
@@ -664,7 +664,7 @@ public sealed class TicketTransferServiceTests
             HasCustomPicture: false,
             ProfileId: Guid.NewGuid(),
             UpdatedAtTicks: 0L,
-            MatchField: null,
+            MatchField: "Burner Name",
             MatchSnippet: null);
 
     /// <summary>

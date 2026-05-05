@@ -39,7 +39,7 @@ public sealed class TicketTransferRepository : ITicketTransferRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.TicketTransferRequests
             .Where(r => r.RequesterUserId == userId)
-            .OrderByDescending(r => r.RequestedAt)
+            .OrderByDescending(r => r.RequestedAt) // arch:db-sort-ok chronological history stream
             .ToListAsync(ct);
     }
 
@@ -50,7 +50,7 @@ public sealed class TicketTransferRepository : ITicketTransferRepository
             .Include(r => r.OriginalTicketAttendee)
                 .ThenInclude(a => a.TicketOrder)
             .Where(r => r.Status == status)
-            .OrderBy(r => r.RequestedAt)
+            .OrderBy(r => r.RequestedAt) // arch:db-sort-ok chronological FIFO admin queue
             .ToListAsync(ct);
     }
 

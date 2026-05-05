@@ -958,6 +958,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<bool> HasCurrentEventTicketAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<UserTicketExportData> GetUserTicketExportDataAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<Humans.Domain.Entities.TicketAttendee>> GetAttendeesVisibleToUserAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
     }
 
     private sealed class FakeUserService : IUserService

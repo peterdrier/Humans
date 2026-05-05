@@ -28,7 +28,7 @@ else
             @foreach (var r in Model)
             {
                 <tr>
-                    <td>@r.RequestedAt.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture)</td>
+                    <td>@r.RequestedAt.ToDisplayDateTime()</td>
                     <td>@r.RequesterDisplayName</td>
                     <td>@r.RecipientDisplayName<br/><small class="text-muted">@r.RecipientEmail</small></td>
                     <td>@r.OriginalAttendeeName<br/><small class="text-muted">@r.TicketTypeName</small></td>

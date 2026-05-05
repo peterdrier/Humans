@@ -162,6 +162,4 @@ src/Humans.Infrastructure/Repositories/Tickets/TicketRepository.cs:OrderByDescen
 src/Humans.Infrastructure/Repositories/Tickets/TicketRepository.cs:OrderByDescending#7
 src/Humans.Infrastructure/Repositories/Tickets/TicketRepository.cs:OrderByDescending#8
 src/Humans.Infrastructure/Repositories/Tickets/TicketRepository.cs:OrderByDescending#9
-src/Humans.Infrastructure/Repositories/Tickets/TicketTransferRepository.cs:OrderBy#1
-src/Humans.Infrastructure/Repositories/Tickets/TicketTransferRepository.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/Users/UserRepository.cs:OrderByDescending#1

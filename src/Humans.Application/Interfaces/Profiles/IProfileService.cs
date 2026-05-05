@@ -140,9 +140,6 @@ public interface IProfileService : IUserMerge
     /// </summary>
     Task<IReadOnlyList<HumanSearchResult>> SearchHumansByNameAsync(string query, CancellationToken ct = default);
 
-    /// <summary>Wildcard-match profiles by BurnerName (case-insensitive contains). Returns up to <paramref name="maxResults"/> rows. Used by ticket-transfer recipient lookup.</summary>
-    Task<IReadOnlyList<HumanSearchResult>> SearchByBurnerNameAsync(string query, int maxResults, CancellationToken ct = default);
-
     /// <summary>
     /// Reconciles the user's CV entries (volunteer history) with the provided set.
     /// No-op if the user has no profile.

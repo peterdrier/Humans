@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using Humans.Domain.Entities;
 using NodaTime;
 
 namespace Humans.Application.Interfaces.Tickets;
@@ -158,6 +159,15 @@ public interface ITicketQueryService
         Instant fromInclusive,
         Instant toExclusive,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns all <see cref="TicketAttendee"/>s the user is attached to: as the
+    /// buyer (TicketOrder.MatchedUserId == userId) or as the matched recipient
+    /// (TicketAttendee.MatchedUserId == userId). Used by the homepage ticket
+    /// card to enumerate visible attendees, including ones transferred in.
+    /// </summary>
+    Task<IReadOnlyList<TicketAttendee>> GetAttendeesVisibleToUserAsync(
+        Guid userId, CancellationToken ct = default);
 }
 
 /// <summary>

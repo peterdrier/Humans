@@ -412,22 +412,6 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
             ProfilesProfileService.SearchHumansByNameFromSnapshot(_byUserId.Values, query));
     }
 
-    public Task<IReadOnlyList<HumanSearchResult>> SearchByBurnerNameAsync(
-        string query, int maxResults, CancellationToken ct = default)
-    {
-        var results = (IReadOnlyList<HumanSearchResult>)_byUserId.Values
-            .Where(p => p.IsApproved && !p.IsSuspended)
-            .Where(p => p.BurnerName?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
-            .OrderBy(p => p.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .Take(maxResults)
-            .Select(p => new HumanSearchResult(
-                p.UserId, p.DisplayName, p.BurnerName, p.City, p.Bio, p.ContributionInterests,
-                p.ProfilePictureUrl, p.HasCustomPicture, p.ProfileId, p.UpdatedAtTicks,
-                "BurnerName", p.BurnerName))
-            .ToList();
-        return Task.FromResult(results);
-    }
-
     public async Task<IReadOnlyList<ProfileLanguage>> GetProfileLanguagesAsync(
         Guid profileId, CancellationToken ct = default)
     {
