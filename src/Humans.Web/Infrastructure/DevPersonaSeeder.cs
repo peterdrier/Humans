@@ -39,6 +39,7 @@ public sealed class DevPersonaSeeder
     private readonly HumansDbContext _db;
     private readonly IProfileService _profileService;
     private readonly IUserEmailService _userEmailService;
+    private readonly IFullProfileInvalidator _fullProfileInvalidator;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
     private readonly IOptions<CityPlanningOptions> _cityPlanningOptions;
@@ -49,6 +50,7 @@ public sealed class DevPersonaSeeder
         HumansDbContext db,
         IProfileService profileService,
         IUserEmailService userEmailService,
+        IFullProfileInvalidator fullProfileInvalidator,
         IClock clock,
         IMemoryCache cache,
         IOptions<CityPlanningOptions> cityPlanningOptions,
@@ -58,6 +60,7 @@ public sealed class DevPersonaSeeder
         _db = db;
         _profileService = profileService;
         _userEmailService = userEmailService;
+        _fullProfileInvalidator = fullProfileInvalidator;
         _clock = clock;
         _cache = cache;
         _cityPlanningOptions = cityPlanningOptions;
@@ -227,6 +230,12 @@ public sealed class DevPersonaSeeder
 
         await _db.SaveChangesAsync();
         _cache.InvalidateUserAccess(id);
+        // SaveProfileAsync (above) refreshed FullProfile while IsApproved=false /
+        // ConsentCheckStatus=Pending. We then patched both directly on the EF entity
+        // and saved — that bypasses CachingProfileService, leaving the FullProfile
+        // dict stale (persona looks unapproved, gets routed to onboarding).
+        // Re-invalidate so the dict picks up the post-patch row.
+        await _fullProfileInvalidator.InvalidateAsync(id);
 
         _logger.LogInformation("DEV: seeded persona {Email} with roles [{Roles}] and teams [{Teams}]",
             email, string.Join(", ", roles), string.Join(", ", teams.Select(t => t)));
@@ -379,6 +388,10 @@ public sealed class DevPersonaSeeder
             await _db.SaveChangesAsync();
             _cache.InvalidateActiveTeams();
             _cache.InvalidateUserAccess(coordinatorUserId);
+            // Team membership changes ripple into FullProfile (active-teams shape)
+            // — InvalidateUserAccess only evicts ActiveTeams/role/shift caches,
+            // not the FullProfile dict in CachingProfileService.
+            await _fullProfileInvalidator.InvalidateAsync(coordinatorUserId);
             _logger.LogInformation(
                 "DEV: ensured coordinator teams — department {DeptId}, sub-team {SubTeamId}",
                 deptId, subTeamId);
@@ -486,6 +499,10 @@ public sealed class DevPersonaSeeder
             await _db.SaveChangesAsync();
             _cache.InvalidateActiveTeams();
             _cache.InvalidateUserAccess(userId);
+            // Team membership changes ripple into FullProfile (active-teams shape)
+            // — InvalidateUserAccess only evicts ActiveTeams/role/shift caches,
+            // not the FullProfile dict in CachingProfileService.
+            await _fullProfileInvalidator.InvalidateAsync(userId);
         }
     }
 
