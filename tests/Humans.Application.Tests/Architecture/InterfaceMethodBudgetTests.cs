@@ -121,8 +121,9 @@ public class InterfaceMethodBudgetTests
         // earned its dedicated surface area).
         // 39→40: ticket-transfer recipient lookup (PR #421). Added
         // SearchProfilesAsync(Func<FullProfile,bool>) — predicate-based
-        // search introduced for the burner-name-only filter. Followup work
-        // will migrate the existing SearchHumansAsync / SearchHumansByNameAsync /
+        // search introduced for the burner-name-only filter.
+        // Followup tracked in nobodies-collective/Humans#665: migrate the
+        // existing SearchHumansAsync / SearchHumansByNameAsync /
         // SearchApprovedUsersAsync callers onto the predicate variant and
         // delete the narrow methods, bringing the budget back down.
         [typeof(IProfileService)] = 40,
