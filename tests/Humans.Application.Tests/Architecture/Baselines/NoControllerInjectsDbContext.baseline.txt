@@ -8,5 +8,3 @@
 
 src/Humans.Web/Controllers/AdminController.cs:HumansDbContext-injected#1
 src/Humans.Web/Controllers/AdminController.cs:HumansDbContext-injected#2
-src/Humans.Web/Controllers/DevLoginController.cs:HumansDbContext-injected#1
-src/Humans.Web/Controllers/DevLoginController.cs:HumansDbContext-injected#2
