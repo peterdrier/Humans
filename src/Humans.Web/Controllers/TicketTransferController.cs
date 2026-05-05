@@ -140,11 +140,11 @@ public sealed class TicketTransferController : HumansControllerBase
                 await _service.ApproveAsync(id, user.Id, adminNotes, ct);
             else
                 await _service.RejectAsync(id, user.Id, adminNotes, ct);
-            TempData["Success"] = approve ? "Transfer approved." : "Transfer rejected.";
+            SetSuccess(approve ? "Transfer approved." : "Transfer rejected.");
         }
         catch (InvalidOperationException ex)
         {
-            TempData["Error"] = ex.Message;
+            SetError(ex.Message);
         }
         return RedirectToAction(nameof(Index));
     }

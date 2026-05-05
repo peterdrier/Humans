@@ -5,10 +5,7 @@
 
 <h1>Review transfer</h1>
 
-@if (TempData["Error"] is string err)
-{
-    <div class="alert alert-danger">@err</div>
-}
+<vc:temp-data-alerts />
 
 <dl class="row">
     <dt class="col-sm-3">From</dt><dd class="col-sm-9">@Model.RequesterDisplayName</dd>

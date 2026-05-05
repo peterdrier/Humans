@@ -5,10 +5,7 @@
 
 <h1>Transfer ticket</h1>
 
-@if (TempData["Error"] is string err)
-{
-    <div class="alert alert-danger">@err</div>
-}
+<vc:temp-data-alerts />
 
 <form asp-action="Lookup" method="post" class="mb-3">
     @Html.AntiForgeryToken()

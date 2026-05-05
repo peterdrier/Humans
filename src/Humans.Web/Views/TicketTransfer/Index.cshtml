@@ -5,14 +5,7 @@
 
 <h1>Ticket transfer requests <span class="badge bg-secondary">@Model.Count pending</span></h1>
 
-@if (TempData["Success"] is string success)
-{
-    <div class="alert alert-success">@success</div>
-}
-@if (TempData["Error"] is string err)
-{
-    <div class="alert alert-danger">@err</div>
-}
+<vc:temp-data-alerts />
 
 @if (Model.Count == 0)
 {
