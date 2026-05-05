@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using Humans.Application.DTOs;
+using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Services.Onboarding;
+using Humans.Domain.Constants;
 using Humans.Web.Models;
 using Humans.Web.Models.OnboardingWidget;
 using Microsoft.AspNetCore.Authorization;
@@ -23,17 +25,20 @@ public class OnboardingWidgetController : Controller
     private readonly IProfileService _profileService;
     private readonly IShiftSignupService _signupService;
     private readonly IShiftManagementService _shiftMgmt;
+    private readonly IConsentService _consents;
 
     public OnboardingWidgetController(
         IOnboardingWidgetState state,
         IProfileService profileService,
         IShiftSignupService signupService,
-        IShiftManagementService shiftMgmt)
+        IShiftManagementService shiftMgmt,
+        IConsentService consents)
     {
         _state = state;
         _profileService = profileService;
         _signupService = signupService;
         _shiftMgmt = shiftMgmt;
+        _consents = consents;
     }
 
     public async Task<IActionResult> Index(CancellationToken ct)
@@ -137,7 +142,30 @@ public class OnboardingWidgetController : Controller
     }
 
     [HttpGet]
-    public IActionResult Consents() => throw new NotSupportedException("Consents step is implemented in Task 7.");
+    public async Task<IActionResult> Consents(CancellationToken ct)
+    {
+        var userId = GetUserId();
+        var rows = await _consents.GetRequiredConsentRowsForUserAsync(userId, SystemTeamIds.Volunteers, ct);
+        var vm = new ConsentsStepViewModel { RequiredConsents = rows };
+        return View(vm);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SignConsent(Guid documentVersionId, CancellationToken ct)
+    {
+        var userId = GetUserId();
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var userAgent = Request.Headers.UserAgent.ToString();
+
+        var result = await _consents.SubmitConsentAsync(
+            userId, documentVersionId, explicitConsent: true, ipAddress, userAgent, ct);
+
+        if (!result.Success)
+            TempData["Error"] = result.ErrorKey;
+
+        return RedirectToAction(nameof(Consents));
+    }
 
     private Guid GetUserId() =>
         Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);

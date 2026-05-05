@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
@@ -23,10 +24,11 @@ public class OnboardingWidgetControllerDispatcherTests
     private readonly IProfileService _profile = Substitute.For<IProfileService>();
     private readonly IShiftSignupService _signups = Substitute.For<IShiftSignupService>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
+    private readonly IConsentService _consents = Substitute.For<IConsentService>();
 
     private OnboardingWidgetController BuildSut(Guid userId)
     {
-        var ctrl = new OnboardingWidgetController(_state, _profile, _signups, _shiftMgmt);
+        var ctrl = new OnboardingWidgetController(_state, _profile, _signups, _shiftMgmt, _consents);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(

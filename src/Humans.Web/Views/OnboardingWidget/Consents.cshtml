@@ -1,0 +1,39 @@
+@using Humans.Application.Interfaces.Consent
+@model Humans.Web.Models.OnboardingWidget.ConsentsStepViewModel
+@{ ViewData["Title"] = "One last step — sign the required documents"; }
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <h1 class="mb-3">One last step</h1>
+        <p class="text-muted mb-4">Please sign the required volunteer documents.</p>
+
+        @if (TempData["Error"] is string err && !string.IsNullOrEmpty(err))
+        {
+            <div class="alert alert-danger" role="alert">@err</div>
+        }
+
+        @foreach (var row in Model.RequiredConsents)
+        {
+            <div class="card mb-3">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-1">@row.Title</h5>
+                        <a href="@row.Url" target="_blank">Read the document</a>
+                    </div>
+                    @if (row.Signed)
+                    {
+                        <span class="badge bg-success">Signed</span>
+                    }
+                    else
+                    {
+                        <form asp-action="SignConsent" method="post" class="m-0">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="documentVersionId" value="@row.DocumentVersionId" />
+                            <button type="submit" class="btn btn-primary">I agree</button>
+                        </form>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>

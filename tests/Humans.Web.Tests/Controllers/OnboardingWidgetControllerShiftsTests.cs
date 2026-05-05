@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
@@ -25,6 +26,7 @@ public class OnboardingWidgetControllerShiftsTests
     private readonly IProfileService _profile = Substitute.For<IProfileService>();
     private readonly IShiftSignupService _signups = Substitute.For<IShiftSignupService>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
+    private readonly IConsentService _consents = Substitute.For<IConsentService>();
     private readonly DefaultHttpContext _http = new();
 
     private OnboardingWidgetController BuildSut(Guid userId)
@@ -33,7 +35,7 @@ public class OnboardingWidgetControllerShiftsTests
         _http.User = new ClaimsPrincipal(new ClaimsIdentity(
             new[] { new Claim(ClaimTypes.NameIdentifier, userId.ToString()) },
             "test"));
-        var ctrl = new OnboardingWidgetController(_state, _profile, _signups, _shiftMgmt);
+        var ctrl = new OnboardingWidgetController(_state, _profile, _signups, _shiftMgmt, _consents);
         ctrl.ControllerContext = new ControllerContext { HttpContext = _http };
         return ctrl;
     }
