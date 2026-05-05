@@ -302,4 +302,41 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
 
     public Task CreateAsync(AccountMergeRequest request, CancellationToken ct = default) =>
         _mergeRepository.AddAsync(request, ct);
+
+    public async Task AdminMergeAsync(
+        Guid sourceUserId, Guid targetUserId,
+        Guid adminUserId, string? notes = null,
+        CancellationToken ct = default)
+    {
+        if (sourceUserId == targetUserId)
+            throw new InvalidOperationException("Source and target users are the same.");
+
+        var source = await _userService.GetByIdAsync(sourceUserId, ct)
+            ?? throw new InvalidOperationException($"Source user {sourceUserId} not found.");
+        var target = await _userService.GetByIdAsync(targetUserId, ct)
+            ?? throw new InvalidOperationException($"Target user {targetUserId} not found.");
+
+        if (source.MergedToUserId is not null)
+            throw new InvalidOperationException(
+                $"Source user {sourceUserId} is already tombstoned (merged into {source.MergedToUserId}).");
+
+        if (target.MergedToUserId is not null)
+            throw new InvalidOperationException(
+                $"Target user {targetUserId} is already tombstoned.");
+
+        _logger.LogInformation(
+            "Admin {AdminId} initiated direct merge: folding {SourceUserId} into {TargetUserId}",
+            adminUserId, sourceUserId, targetUserId);
+
+        var description = $"Admin-initiated via EmailProblems: folded source {sourceUserId} into target {targetUserId}. Notes: {notes ?? "(none)"}";
+
+        var audit = new AuditEntry(
+            AuditAction.AccountMergeAccepted,
+            nameof(User), sourceUserId,
+            description,
+            RelatedEntityId: targetUserId,
+            RelatedEntityType: nameof(User));
+
+        await FoldAsync(sourceUserId, targetUserId, adminUserId, audit, ct);
+    }
 }
