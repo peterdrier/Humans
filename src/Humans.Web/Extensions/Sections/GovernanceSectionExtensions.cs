@@ -41,6 +41,8 @@ internal static class GovernanceSectionExtensions
         // Narrow interface that breaks the DI cycle with ProfileService / ConsentService.
         services.AddScoped<IOnboardingEligibilityQuery>(sp => sp.GetRequiredService<OnboardingOrchestratorService>());
 
+        services.AddScoped<IOnboardingWidgetState, Humans.Application.Services.Onboarding.OnboardingWidgetState>();
+
         services.AddScoped<TermRenewalReminderJob>();
 
         return services;
