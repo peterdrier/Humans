@@ -46,6 +46,7 @@ var logConfig = new LoggerConfiguration()
     .Enrich.FromLogContext()
     .Enrich.WithProperty("Application", "Humans.Web")
     .Enrich.With<PiiRedactionEnricher>()
+    .Enrich.With<CurrentUserEnricher>()
     .WriteTo.Console()
     .WriteTo.Sink(InMemoryLogSink.Instance, LogEventLevel.Warning);
 
@@ -526,6 +527,11 @@ var app = builder.Build();
 // Initialize timezone-aware display extensions with IHttpContextAccessor
 // so all Instant.ToDisplay*() calls automatically use the user's session timezone.
 DateTimeDisplayExtensions.Initialize(app.Services.GetRequiredService<IHttpContextAccessor>());
+
+// Seed the Serilog CurrentUserEnricher with the request-scoped HttpContextAccessor.
+// Done here (post-Build) so the parameterless enricher activator can read the current
+// principal off the ambient HttpContext on every log emission.
+CurrentUserEnricher.StaticAccessor = app.Services.GetRequiredService<IHttpContextAccessor>();
 
 // Eagerly resolve IHumansMetrics so the background gauge-refresh timer starts
 // immediately — otherwise observable gauges emit nothing until first injection.

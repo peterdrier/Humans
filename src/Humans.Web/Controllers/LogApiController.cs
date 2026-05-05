@@ -44,9 +44,26 @@ public class LogApiController : ControllerBase
             Timestamp = e.Timestamp.UtcDateTime,
             Level = e.Level.ToString(),
             Message = e.RenderMessage(),
-            Exception = e.Exception?.ToString()
+            Exception = e.Exception?.ToString(),
+            UserId = ExtractUserId(e),
         });
 
         return Ok(result);
+    }
+
+    private static Guid? ExtractUserId(LogEvent logEvent)
+    {
+        if (!logEvent.Properties.TryGetValue("UserId", out var prop))
+            return null;
+
+        if (prop is not ScalarValue scalar || scalar.Value is null)
+            return null;
+
+        return scalar.Value switch
+        {
+            Guid g => g,
+            string s when Guid.TryParse(s, out var parsed) => parsed,
+            _ => null,
+        };
     }
 }
