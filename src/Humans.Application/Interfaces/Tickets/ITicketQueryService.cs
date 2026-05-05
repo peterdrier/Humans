@@ -19,6 +19,16 @@ public interface ITicketQueryService
     Task<int> GetUserTicketCountAsync(Guid userId);
 
     /// <summary>
+    /// Returns the <see cref="TicketAttendee.Id"/> values for every <c>Valid</c>
+    /// or <c>CheckedIn</c> attendee row matched to <paramref name="userId"/>.
+    /// Used by the agent user-context snapshot to populate the per-turn open-
+    /// tickets list. A buyer who purchased tickets for others does NOT count;
+    /// only attendees whose <c>MatchedUserId</c> equals the supplied user are
+    /// returned.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetOpenTicketIdsForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// Get the set of user IDs that have at least one valid ticket as an attendee,
     /// using MatchedUserId on attendees (valid/checked-in only).
     /// A buyer who purchased tickets for others does NOT count.

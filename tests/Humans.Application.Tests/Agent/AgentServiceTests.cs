@@ -213,8 +213,8 @@ public class AgentServiceTests
         var snapshots = Substitute.For<IAgentUserSnapshotProvider>();
         snapshots.LoadAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(
             new AgentUserSnapshot(Guid.NewGuid(), "Test User", "es", "Volunteer", true,
-                Array.Empty<(string, string)>(), Array.Empty<string>(), Array.Empty<string>(),
-                Array.Empty<Guid>(), Array.Empty<Guid>()));
+                Array.Empty<(string, string)>(), Array.Empty<TeamMembership>(), Array.Empty<string>(),
+                Array.Empty<Guid>(), Array.Empty<Guid>(), Array.Empty<UpcomingShiftEntry>()));
         var preload = Substitute.For<IAgentPreloadCorpusBuilder>();
         preload.BuildAsync(Arg.Any<AgentPreloadConfig>(), Arg.Any<CancellationToken>()).Returns("");
         var assembler = new AgentPromptAssembler();

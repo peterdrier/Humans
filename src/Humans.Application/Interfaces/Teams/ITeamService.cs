@@ -1,3 +1,4 @@
+using Humans.Application.Models;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
@@ -527,10 +528,14 @@ public interface ITeamService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets the names of all active (non-Volunteers) teams the user belongs to,
-    /// ordered alphabetically. Used for profile popover display.
+    /// Gets the active (non-Volunteers) team memberships for a user — team
+    /// name + role on each team — ordered alphabetically by team name. Used
+    /// by the profile popover and the agent user-context snapshot so
+    /// coordinator vs. member distinctions are visible without a second
+    /// query. Returns an empty list when the user has no active non-Volunteer
+    /// memberships.
     /// </summary>
-    Task<IReadOnlyList<string>> GetActiveTeamNamesForUserAsync(
+    Task<IReadOnlyList<TeamMembership>> GetActiveTeamMembershipsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>

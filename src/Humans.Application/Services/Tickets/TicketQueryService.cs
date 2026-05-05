@@ -85,6 +85,17 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         return count;
     }
 
+    public async Task<IReadOnlyList<Guid>> GetOpenTicketIdsForUserAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var attendees = await _ticketRepository.GetAttendeesMatchedToUserAsync(userId, ct);
+        return attendees
+            .Where(a => a.Status == TicketAttendeeStatus.Valid ||
+                        a.Status == TicketAttendeeStatus.CheckedIn)
+            .Select(a => a.Id)
+            .ToList();
+    }
+
     private async Task<int> GetUserTicketCountCoreAsync(Guid userId)
     {
         // Match on attendees only — a buyer who purchased tickets for others

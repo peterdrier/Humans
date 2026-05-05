@@ -17,6 +17,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Models;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -1654,16 +1655,20 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         CancellationToken cancellationToken = default) =>
         _repo.GetCoordinatorUserIdsAsync(teamId, cancellationToken);
 
-    public async Task<IReadOnlyList<string>> GetActiveTeamNamesForUserAsync(
+    public async Task<IReadOnlyList<TeamMembership>> GetActiveTeamMembershipsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
         var cached = await GetCachedTeamsAsync(cancellationToken);
-        return cached.Values
-            .Where(t => t.SystemTeamType != SystemTeamType.Volunteers
-                && t.Members.Any(m => m.UserId == userId))
-            .Select(t => t.Name)
-            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        var memberships = new List<TeamMembership>();
+        foreach (var team in cached.Values)
+        {
+            if (team.SystemTeamType == SystemTeamType.Volunteers) continue;
+            var member = team.Members.FirstOrDefault(m => m.UserId == userId);
+            if (member is null) continue;
+            memberships.Add(new TeamMembership(team.Name, member.Role));
+        }
+        memberships.Sort((a, b) => string.Compare(a.TeamName, b.TeamName, StringComparison.OrdinalIgnoreCase));
+        return memberships;
     }
 
     public async Task EnqueueGoogleResyncForUserTeamsAsync(
