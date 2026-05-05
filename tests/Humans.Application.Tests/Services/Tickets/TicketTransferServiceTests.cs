@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
@@ -82,7 +83,7 @@ public sealed class TicketTransferServiceTests
             .Returns("alice@example.com");
 
         // Default: name/burner search returns empty
-        _profileService.SearchHumansByNameAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _profileService.SearchProfilesAsync(Arg.Any<Func<FullProfile, bool>>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<HumanSearchResult>());
     }
 
@@ -143,7 +144,7 @@ public sealed class TicketTransferServiceTests
     public async Task LookupRecipientAsync_BurnerName_UniqueMatch_ReturnsCard()
     {
         var userId = Guid.NewGuid();
-        _profileService.SearchHumansByNameAsync("sparkle", Arg.Any<CancellationToken>())
+        _profileService.SearchProfilesAsync(Arg.Any<Func<FullProfile, bool>>(), Arg.Any<CancellationToken>())
             .Returns(new[] { MakeSearchResult(userId, "Sparkle Person") });
         _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(MakeUser(userId, "Sparkle Person"));
@@ -161,7 +162,7 @@ public sealed class TicketTransferServiceTests
     [HumansFact]
     public async Task LookupRecipientAsync_BurnerName_AmbiguousMatch_ReturnsNull()
     {
-        _profileService.SearchHumansByNameAsync("popular", Arg.Any<CancellationToken>())
+        _profileService.SearchProfilesAsync(Arg.Any<Func<FullProfile, bool>>(), Arg.Any<CancellationToken>())
             .Returns(new[]
             {
                 MakeSearchResult(Guid.NewGuid(), "A"),
@@ -176,7 +177,7 @@ public sealed class TicketTransferServiceTests
     [HumansFact]
     public async Task LookupRecipientAsync_BurnerName_MatchIsRequester_ReturnsNull()
     {
-        _profileService.SearchHumansByNameAsync("me", Arg.Any<CancellationToken>())
+        _profileService.SearchProfilesAsync(Arg.Any<Func<FullProfile, bool>>(), Arg.Any<CancellationToken>())
             .Returns(new[] { MakeSearchResult(_requesterId, "Me") });
 
         var result = await _service.LookupRecipientAsync("me", _requesterId);

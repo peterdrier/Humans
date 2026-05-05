@@ -119,7 +119,13 @@ public class InterfaceMethodBudgetTests
         // method's own interface comment said "At ~500-user scale this can
         // be a simple Count query — no caching required" — i.e. it never
         // earned its dedicated surface area).
-        [typeof(IProfileService)] = 39,
+        // 39→40: ticket-transfer recipient lookup (PR #421). Added
+        // SearchProfilesAsync(Func<FullProfile,bool>) — predicate-based
+        // search introduced for the burner-name-only filter. Followup work
+        // will migrate the existing SearchHumansAsync / SearchHumansByNameAsync /
+        // SearchApprovedUsersAsync callers onto the predicate variant and
+        // delete the narrow methods, bringing the budget back down.
+        [typeof(IProfileService)] = 40,
         // -1 for GetContactUsersAsync removal (/Contacts surface deleted in PR 2 of
         // email-identity-decoupling — only ContactService called it).
         // 31→31: account-merge fold redesign Phase 3.4. Added 3 fold primitives

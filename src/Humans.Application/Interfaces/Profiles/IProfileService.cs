@@ -141,6 +141,16 @@ public interface IProfileService : IUserMerge
     Task<IReadOnlyList<HumanSearchResult>> SearchHumansByNameAsync(string query, CancellationToken ct = default);
 
     /// <summary>
+    /// Predicate-based search over approved, non-suspended profiles. The caller
+    /// supplies the exact match condition; results are ordered by display name
+    /// and capped at 50. <see cref="HumanSearchResult.MatchField"/> and
+    /// <see cref="HumanSearchResult.MatchSnippet"/> are null because the caller
+    /// already knows what it filtered for.
+    /// </summary>
+    Task<IReadOnlyList<HumanSearchResult>> SearchProfilesAsync(
+        Func<FullProfile, bool> predicate, CancellationToken ct = default);
+
+    /// <summary>
     /// Reconciles the user's CV entries (volunteer history) with the provided set.
     /// No-op if the user has no profile.
     /// </summary>

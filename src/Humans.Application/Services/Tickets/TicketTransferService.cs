@@ -74,14 +74,16 @@ public sealed class TicketTransferService : ITicketTransferService
             return await BuildRecipientCardAsync(userId.Value, ct);
         }
 
-        var hits = await _profileService.SearchHumansByNameAsync(trimmed, ct);
-        var burnerOnly = hits
-            .Where(h => string.Equals(h.MatchField, "Burner Name", StringComparison.Ordinal))
+        var hits = await _profileService.SearchProfilesAsync(
+            p => !string.IsNullOrEmpty(p.BurnerName) &&
+                 p.BurnerName.Contains(trimmed, StringComparison.OrdinalIgnoreCase),
+            ct);
+        var matches = hits
             .Where(h => h.UserId != requesterUserId)
             .Take(2)
             .ToList();
-        if (burnerOnly.Count != 1) return null;
-        return await BuildRecipientCardAsync(burnerOnly[0].UserId, ct);
+        if (matches.Count != 1) return null;
+        return await BuildRecipientCardAsync(matches[0].UserId, ct);
     }
 
     public async Task<TicketTransferRowDto> CreateRequestAsync(

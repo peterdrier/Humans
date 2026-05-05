@@ -774,6 +774,28 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         return SearchHumansByNameFromSnapshot(snapshot, query);
     }
 
+    public async Task<IReadOnlyList<HumanSearchResult>> SearchProfilesAsync(
+        Func<FullProfile, bool> predicate, CancellationToken ct = default)
+    {
+        var snapshot = await BuildFullProfileSnapshotAsync(ct);
+        return SearchProfilesFromSnapshot(snapshot, predicate);
+    }
+
+    public static IReadOnlyList<HumanSearchResult> SearchProfilesFromSnapshot(
+        IEnumerable<FullProfile> snapshot, Func<FullProfile, bool> predicate)
+    {
+        return snapshot
+            .Where(p => p.IsApproved && !p.IsSuspended)
+            .Where(predicate)
+            .OrderBy(p => p.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .Take(50)
+            .Select(p => new HumanSearchResult(
+                p.UserId, p.DisplayName, p.BurnerName, p.City, p.Bio, p.ContributionInterests,
+                p.ProfilePictureUrl, p.HasCustomPicture, p.ProfileId, p.UpdatedAtTicks,
+                MatchField: null, MatchSnippet: null))
+            .ToList();
+    }
+
     /// <summary>
     /// Searches all approved, non-suspended profiles from a pre-built <see cref="FullProfile"/>
     /// snapshot for users whose display name or notification email contains <paramref name="query"/>.
