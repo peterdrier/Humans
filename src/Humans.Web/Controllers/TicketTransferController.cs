@@ -23,7 +23,6 @@ public sealed class TicketTransferController : HumansControllerBase
     }
 
     [HttpGet("Request")]
-    [ActionName("Request")]
     public IActionResult RequestTransfer(Guid attendeeId)
     {
         var vm = new TicketTransferRequestPageViewModel { AttendeeId = attendeeId };
@@ -78,7 +77,7 @@ public sealed class TicketTransferController : HumansControllerBase
         catch (InvalidOperationException ex)
         {
             SetError(ex.Message);
-            return RedirectToAction("Request", new { attendeeId = form.AttendeeId });
+            return RedirectToAction(nameof(RequestTransfer), new { attendeeId = form.AttendeeId });
         }
     }
 

@@ -12,7 +12,7 @@
     <dt class="col-sm-3">To</dt><dd class="col-sm-9">@Model.RecipientDisplayName <small class="text-muted">(@Model.RecipientEmail)</small></dd>
     <dt class="col-sm-3">Ticket</dt><dd class="col-sm-9">@Model.OriginalAttendeeName — @Model.TicketTypeName</dd>
     <dt class="col-sm-3">Reason</dt><dd class="col-sm-9">@Model.RequesterReason</dd>
-    <dt class="col-sm-3">Requested</dt><dd class="col-sm-9">@Model.RequestedAt</dd>
+    <dt class="col-sm-3">Requested</dt><dd class="col-sm-9">@Model.RequestedAt.ToDisplayDateTime()</dd>
 </dl>
 
 <form asp-action="Decide" method="post" class="mt-3">
