@@ -234,6 +234,7 @@
                 <a href="#forms">Forms &amp; Inputs</a>
                 <a href="#layout">Layout Bits</a>
                 <a href="#skipped">Skipped (with reason)</a>
+                <a href="#choosing">Choosing between them</a>
             </nav>
         </div>
 
@@ -1020,6 +1021,112 @@
                     <li><strong>Audit/list partials</strong> — <code>_AuditLogContent</code>, <code>_AuditLogScripts</code>, <code>_RolesListContent</code>, <code>_ApplicationHistory</code>, <code>_ApplicationsListContent</code>, <code>_ApplicationResponseSections</code>: pieces of larger pages, exercised via the <code>vc:audit-log</code> entry above and the Applications/Roles admin pages.</li>
                     <li><strong>Script-only partials</strong> — <code>_RequestVerificationTokenScript</code>, <code>_EscapeHtmlScript</code>, <code>_GitHubFolderPathScript</code>, <code>_MemberSearchScript</code>, <code>_VolunteerSearchScript</code>, <code>_ValidationScriptsPartial</code>: emit JS only.</li>
                     <li><strong>Infrastructure tag helper</strong> — <code>NonceTagHelper</code>: applies CSP nonces to <code>&lt;script&gt;</code>/<code>&lt;style&gt;</code>; nothing visible to render.</li>
+                </ul>
+            </section>
+
+            @* ============== CHOOSING BETWEEN THEM ============== *@
+            <section id="choosing" class="wg-section">
+                <h2>Choosing between them</h2>
+                <p class="text-muted">
+                    The three card types above (<span class="wg-card-kind kind-th">TagHelper</span>
+                    <span class="wg-card-kind kind-vc">ViewComponent</span>
+                    <span class="wg-card-kind kind-pa">Partial</span>) are not interchangeable. They sit at different
+                    layers of the Razor pipeline and the choice matters for performance, testability, and where data fetching lives.
+                </p>
+
+                <div class="table-responsive mb-3">
+                    <table class="table table-bordered align-top mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:18%;">Aspect</th>
+                                <th style="width:27%;"><span class="wg-card-kind kind-th">TagHelper</span></th>
+                                <th style="width:27%;"><span class="wg-card-kind kind-vc">ViewComponent</span></th>
+                                <th style="width:28%;"><span class="wg-card-kind kind-pa">Partial</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <th>Shape on disk</th>
+                                <td>One C# class deriving from <code>TagHelper</code></td>
+                                <td>One C# class deriving from <code>ViewComponent</code> + a <code>Default.cshtml</code> under <code>Views/Shared/Components/&lt;Name&gt;/</code></td>
+                                <td>One <code>.cshtml</code> file with a <code>@@model</code>, no code-behind</td>
+                            </tr>
+                            <tr>
+                                <th>How it's invoked</th>
+                                <td>HTML-like syntax — element name (<code>&lt;human-link …/&gt;</code>) or attribute on an existing element (<code>&lt;li authorize-policy="…"&gt;</code>)</td>
+                                <td><code>&lt;vc:name attr="…"/&gt;</code> or <code>@@await Component.InvokeAsync("Name", new { … })</code></td>
+                                <td><code>@@await Html.PartialAsync("_Name", model)</code> or <code>&lt;partial name="…" model="@@x"/&gt;</code></td>
+                            </tr>
+                            <tr>
+                                <th>Data fetching</th>
+                                <td>Yes — has DI, can be async (<code>ProcessAsync</code>); fetch in <code>Process</code></td>
+                                <td>Yes — has DI, async <code>InvokeAsync</code>; the class is the data fetcher, the view is presentation</td>
+                                <td>No — caller must pass a fully-populated model</td>
+                            </tr>
+                            <tr>
+                                <th>Self-gating by auth</th>
+                                <td>Possible (e.g. <code>AuthorizeViewTagHelper</code> reads <code>IHttpContextAccessor</code>); not the typical use</td>
+                                <td>Common — read <code>UserClaimsPrincipal</code> in the class, return <code>Content("")</code> when not authorized (see <code>AgentWidget</code>, <code>FeedbackWidget</code>)</td>
+                                <td>No — caller decides whether to render</td>
+                            </tr>
+                            <tr>
+                                <th>Output shape</th>
+                                <td>Mutates the surrounding HTML element (sets tag name, attributes, content) — feels native to HTML</td>
+                                <td>Renders its own view fragment, full <code>IHtmlContent</code></td>
+                                <td>Renders its own view fragment, full <code>IHtmlContent</code></td>
+                            </tr>
+                            <tr>
+                                <th>Cost per render</th>
+                                <td>Low — single class instance, no extra view lookup beyond what the parent already does</td>
+                                <td>Highest — per-render component instance, separate view resolution + rendering pipeline</td>
+                                <td>Lowest — no class instance, just a view lookup</td>
+                            </tr>
+                            <tr>
+                                <th>Discoverability</th>
+                                <td>Registered via <code>@@addTagHelper *, Humans.Web</code> in <code>_ViewImports</code></td>
+                                <td>Auto-discovered by the framework</td>
+                                <td>Looked up by file path; conventions in <code>Views/Shared/</code> for cross-area reuse</td>
+                            </tr>
+                            <tr>
+                                <th>Testability</th>
+                                <td>Unit-testable as a plain C# class</td>
+                                <td>Unit-testable as a plain C# class; the view is integration-tested via the host</td>
+                                <td>Integration-tested via Razor host; no class to unit-test</td>
+                            </tr>
+                            <tr>
+                                <th>Examples in this gallery</th>
+                                <td><code>&lt;human-link&gt;</code>, <code>authorize-policy="…"</code></td>
+                                <td><code>&lt;vc:profile-card&gt;</code>, <code>&lt;vc:audit-log&gt;</code>, <code>&lt;vc:nav-badges&gt;</code>, <code>&lt;vc:notification-bell&gt;</code></td>
+                                <td><code>_ProfileCard</code>, <code>_RoleBadge</code>, <code>_Pager</code>, <code>_ShiftsSummaryCard</code>, <code>_EventRotaTable</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h5>Decision flow</h5>
+                <ol class="mb-3">
+                    <li>
+                        <strong>Does it need to fetch data, hit DI, or check authorization itself?</strong>
+                        Yes → <span class="wg-card-kind kind-vc">ViewComponent</span>. The widget is the data-fetcher; the caller just drops it in.
+                    </li>
+                    <li>
+                        <strong>Otherwise — does it want to feel native to HTML?</strong>
+                        i.e. add behavior to an element via an attribute (<code>authorize-policy</code>) or introduce a small custom element (<code>&lt;human-link&gt;</code>).
+                        Yes → <span class="wg-card-kind kind-th">TagHelper</span>. Best when the caller would otherwise hand-write the same HTML repeatedly with small variations.
+                    </li>
+                    <li>
+                        <strong>Otherwise — caller has the data, you're sharing presentation only?</strong>
+                        Yes → <span class="wg-card-kind kind-pa">Partial</span>. Cheapest, simplest. Use this whenever the data is already on the parent's view model.
+                    </li>
+                </ol>
+
+                <h5>Common pitfalls</h5>
+                <ul class="mb-0">
+                    <li><strong>Don't reach for a ViewComponent when a Partial would do.</strong> ViewComponents are a "mini controller + view" — every render spins one up. If the caller already has the data, a Partial is faster, simpler, and easier to test.</li>
+                    <li><strong>Don't reach for a TagHelper when you really need data.</strong> TagHelpers can do DI, but the result is a class that's secretly a controller. ViewComponents are the explicit form of that pattern.</li>
+                    <li><strong>Don't put data fetching in a Partial</strong> by injecting services into the <code>.cshtml</code> via <code>@@inject</code>. That's a ViewComponent in disguise, untestable, and easy to N+1.</li>
+                    <li><strong>Self-gating belongs in the widget, not the caller</strong> — when something is admin-only or hides for unauthenticated viewers, do it inside the ViewComponent (return <code>Content("")</code>) so callers don't have to remember the auth rule. <code>AgentWidgetViewComponent</code> and <code>FeedbackWidgetViewComponent</code> are the canonical examples.</li>
+                    <li><strong>Multi-instance widgets need unique IDs.</strong> Floating-button widgets (<code>IssuesWidget</code>, <code>AgentWidget</code>) hard-code DOM IDs and are injected by <code>_Layout</code> exactly once — don't drop a second <code>&lt;vc:&gt;</code> on the same page (this gallery's earlier draft did, hence the floating buttons here are layout-only).</li>
                 </ul>
             </section>
 
