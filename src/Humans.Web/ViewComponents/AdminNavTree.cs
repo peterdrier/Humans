@@ -17,8 +17,10 @@ public static class AdminNavTree
     {
         new("Operations", new AdminNavItem[]
         {
-            new("Tickets",    "Ticket", "Index",    null, null, "fa-solid fa-ticket",            PolicyNames.TicketAdminBoardOrAdmin),
-            new("Scanner",    "Scanner", "Index",   null, null, "fa-solid fa-qrcode",            PolicyNames.TicketAdminBoardOrAdmin),
+            new("Tickets",            "Ticket",         "Index", null, null, "fa-solid fa-ticket",      PolicyNames.TicketAdminBoardOrAdmin),
+            new("Transfer requests",  "TicketTransfer", "Index", null, null, "fa-solid fa-right-left",  PolicyNames.TicketAdminOrAdmin,
+                 PillCount: PillCounts.TransferQueue),
+            new("Scanner",            "Scanner",        "Index", null, null, "fa-solid fa-qrcode",      PolicyNames.TicketAdminBoardOrAdmin),
         }),
         new("Members", new AdminNavItem[]
         {
@@ -97,6 +99,13 @@ internal static class PillCounts
             return null;
         var onboarding = sp.GetRequiredService<Humans.Application.Interfaces.Onboarding.IOnboardingService>();
         var count = await onboarding.GetUnvotedApplicationCountAsync(userId);
+        return count > 0 ? count : null;
+    }
+
+    public static async ValueTask<int?> TransferQueue(IServiceProvider sp)
+    {
+        var transfers = sp.GetRequiredService<Humans.Application.Interfaces.Tickets.ITicketTransferService>();
+        var count = await transfers.CountPendingAsync();
         return count > 0 ? count : null;
     }
 }
