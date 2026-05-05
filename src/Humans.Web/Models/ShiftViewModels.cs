@@ -10,7 +10,7 @@ namespace Humans.Web.Models;
 
 // === EventSettings ===
 
-public class EventSettingsViewModel
+public class EventSettingsViewModel : IValidatableObject
 {
     public Guid? Id { get; set; }
 
@@ -49,6 +49,24 @@ public class EventSettingsViewModel
     public int? GlobalVolunteerCap { get; set; }
     public int ReminderLeadTimeHours { get; set; } = 24;
     public bool IsActive { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (FirstCrewStartOffset >= SetupWeekStartOffset
+            || SetupWeekStartOffset >= PreEventWeekStartOffset
+            || PreEventWeekStartOffset >= FinishingWeekendStartOffset)
+        {
+            yield return new ValidationResult(
+                "Build sub-period offsets must be strictly ascending: First crew < Set-up week < Pre-event week < Finishing weekend.",
+                new[]
+                {
+                    nameof(FirstCrewStartOffset),
+                    nameof(SetupWeekStartOffset),
+                    nameof(PreEventWeekStartOffset),
+                    nameof(FinishingWeekendStartOffset),
+                });
+        }
+    }
 }
 
 // === Rota ===

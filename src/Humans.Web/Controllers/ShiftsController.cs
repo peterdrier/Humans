@@ -515,36 +515,34 @@ public class ShiftsController : HumansControllerBase
     public async Task<IActionResult> Settings()
     {
         var es = await _shiftMgmt.GetActiveAsync();
-        var model = new EventSettingsViewModel();
-
-        if (es is not null)
-        {
-            model.Id = es.Id;
-            model.EventName = es.EventName;
-            model.TimeZoneId = es.TimeZoneId;
-            model.GateOpeningDate = LocalDatePattern.Iso.Format(es.GateOpeningDate);
-            model.BuildStartOffset = es.BuildStartOffset;
-            model.EventEndOffset = es.EventEndOffset;
-            model.StrikeEndOffset = es.StrikeEndOffset;
-            model.FirstCrewStartOffset = es.FirstCrewStartOffset;
-            model.SetupWeekStartOffset = es.SetupWeekStartOffset;
-            model.PreEventWeekStartOffset = es.PreEventWeekStartOffset;
-            model.FinishingWeekendStartOffset = es.FinishingWeekendStartOffset;
-            model.EarlyEntryCapacityJson = JsonSerializer.Serialize(es.EarlyEntryCapacity);
-            model.BarriosEarlyEntryAllocationJson = es.BarriosEarlyEntryAllocation is not null
-                ? JsonSerializer.Serialize(es.BarriosEarlyEntryAllocation)
-                : null;
-            model.EarlyEntryClose = es.EarlyEntryClose.HasValue
-                ? InstantPattern.General.Format(es.EarlyEntryClose.Value)
-                : null;
-            model.IsShiftBrowsingOpen = es.IsShiftBrowsingOpen;
-            model.GlobalVolunteerCap = es.GlobalVolunteerCap;
-            model.ReminderLeadTimeHours = es.ReminderLeadTimeHours;
-            model.IsActive = es.IsActive;
-        }
-
-        return View(model);
+        return View(es is null ? new EventSettingsViewModel() : MapEventSettingsToViewModel(es));
     }
+
+    private static EventSettingsViewModel MapEventSettingsToViewModel(EventSettings es) => new()
+    {
+        Id = es.Id,
+        EventName = es.EventName,
+        TimeZoneId = es.TimeZoneId,
+        GateOpeningDate = LocalDatePattern.Iso.Format(es.GateOpeningDate),
+        BuildStartOffset = es.BuildStartOffset,
+        EventEndOffset = es.EventEndOffset,
+        StrikeEndOffset = es.StrikeEndOffset,
+        FirstCrewStartOffset = es.FirstCrewStartOffset,
+        SetupWeekStartOffset = es.SetupWeekStartOffset,
+        PreEventWeekStartOffset = es.PreEventWeekStartOffset,
+        FinishingWeekendStartOffset = es.FinishingWeekendStartOffset,
+        EarlyEntryCapacityJson = JsonSerializer.Serialize(es.EarlyEntryCapacity),
+        BarriosEarlyEntryAllocationJson = es.BarriosEarlyEntryAllocation is not null
+            ? JsonSerializer.Serialize(es.BarriosEarlyEntryAllocation)
+            : null,
+        EarlyEntryClose = es.EarlyEntryClose.HasValue
+            ? InstantPattern.General.Format(es.EarlyEntryClose.Value)
+            : null,
+        IsShiftBrowsingOpen = es.IsShiftBrowsingOpen,
+        GlobalVolunteerCap = es.GlobalVolunteerCap,
+        ReminderLeadTimeHours = es.ReminderLeadTimeHours,
+        IsActive = es.IsActive,
+    };
 
     [HttpPost("Settings")]
     [ValidateAntiForgeryToken]
@@ -553,15 +551,6 @@ public class ShiftsController : HumansControllerBase
     {
         if (!ModelState.IsValid)
             return View(model);
-
-        if (model.FirstCrewStartOffset >= model.SetupWeekStartOffset
-            || model.SetupWeekStartOffset >= model.PreEventWeekStartOffset
-            || model.PreEventWeekStartOffset >= model.FinishingWeekendStartOffset)
-        {
-            ModelState.AddModelError(string.Empty,
-                "Build sub-period offsets must be strictly ascending: First crew < Set-up week < Pre-event week < Finishing weekend.");
-            return View(model);
-        }
 
         if (DateTimeZoneProviders.Tzdb.GetZoneOrNull(model.TimeZoneId) is null)
         {

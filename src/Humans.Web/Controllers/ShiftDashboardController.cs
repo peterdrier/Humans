@@ -57,6 +57,19 @@ public class ShiftDashboardController : HumansControllerBase
         return parsed.Success ? parsed.Value : null;
     }
 
+    // When a period/sub-period is selected, JS auto-populates the date inputs
+    // with that range as a visual cue — dates are display-only in that case.
+    // Only when period is null AND a date is present do dates take over as the
+    // filter on the urgent-shifts list.
+    private static (LocalDate? activeStart, LocalDate? activeEnd) ResolveActiveDateRange(
+        ShiftPeriod? period, LocalDate? filterStartDate, LocalDate? filterEndDate)
+    {
+        var datesAreFilter = !period.HasValue && (filterStartDate.HasValue || filterEndDate.HasValue);
+        return (
+            datesAreFilter ? filterStartDate : null,
+            datesAreFilter ? filterEndDate : null);
+    }
+
     [HttpGet("")]
     public async Task<IActionResult> Index(
         Guid? departmentId,
@@ -76,16 +89,7 @@ public class ShiftDashboardController : HumansControllerBase
 
         LocalDate? filterStartDate = ParseIsoDateOrNull(startDate);
         LocalDate? filterEndDate = ParseIsoDateOrNull(endDate);
-
-        // When a period/sub-period is selected the JS auto-populates the date inputs
-        // with that range as a visual cue. The dates are display-only in that case —
-        // period+subPeriod drive the actual filter. So when both come in, ignore the
-        // dates as a filter signal (still keep them in the view model so they render
-        // in the inputs). When period is null and dates are present, dates take over
-        // and become the filter on the urgent-shifts list.
-        var datesAreFilter = !period.HasValue && (filterStartDate.HasValue || filterEndDate.HasValue);
-        LocalDate? activeStart = datesAreFilter ? filterStartDate : null;
-        LocalDate? activeEnd = datesAreFilter ? filterEndDate : null;
+        var (activeStart, activeEnd) = ResolveActiveDateRange(period, filterStartDate, filterEndDate);
 
         var window = trendWindow ?? TrendWindow.Last30Days;
 
