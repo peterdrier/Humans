@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Models;
@@ -20,7 +21,8 @@ public class AgentController : HumansControllerBase
 {
     private static readonly JsonSerializerOptions JsonOpts = new JsonSerializerOptions
     {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new JsonStringEnumConverter() }
     }.ConfigureForNodaTime(NodaTime.DateTimeZoneProviders.Tzdb);
 
     private readonly IAgentService _agent;
