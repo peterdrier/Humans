@@ -323,7 +323,7 @@ public class ShiftsController : HumansControllerBase
         }
 
         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-        var result = await _signupService.SignUpRangeAsync(user.Id, rotaId, startDayOffset, endDayOffset, isPrivileged: privileged);
+        var result = await _signupService.SignUpRangeAsync(user.Id, rotaId, startDayOffset, endDayOffset, isPrivileged: privileged, skipConflicts: true);
 
         if (!result.Success)
         {
