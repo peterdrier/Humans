@@ -1,0 +1,17 @@
+@using Humans.Application.Interfaces.Onboarding
+@using Microsoft.AspNetCore.Mvc.Localization
+@inject IOnboardingWidgetState WidgetState
+@inject IHtmlLocalizer<SharedResource> BannerLocalizer
+@{
+    if (User?.Identity?.IsAuthenticated != true) { return; }
+    var userIdRaw = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (!Guid.TryParse(userIdRaw, out var userId)) { return; }
+    var step = await WidgetState.GetCurrentStepAsync(userId);
+    if (step == OnboardingWidgetStep.Complete) { return; }
+}
+<div class="alert alert-info mb-0 rounded-0 text-center">
+    @BannerLocalizer["OnboardingBanner_Text"]
+    <a href="@Url.Action("Index", "OnboardingWidget")" class="alert-link ms-2">
+        @BannerLocalizer["OnboardingBanner_Cta"]
+    </a>
+</div>

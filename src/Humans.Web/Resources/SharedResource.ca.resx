@@ -2026,4 +2026,10 @@
 &lt;p&gt;Si creus que {1} hauria de continuar tenint accés, posa't en contacte amb la persona coordinadora del teu equip.&lt;/p&gt;
 &lt;p&gt;L'equip de Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = removed email, {2} = current Google email</comment></data>
 
+  <!-- ======================== -->
+  <!-- Onboarding Widget Banner -->
+  <!-- ======================== -->
+  <data name="OnboardingBanner_Text" xml:space="preserve"><value>Finish setting up your account to access shifts and team features.</value><comment>TODO: translate</comment></data>
+  <data name="OnboardingBanner_Cta" xml:space="preserve"><value>Continue setup →</value><comment>TODO: translate</comment></data>
+
 </root>

@@ -2084,4 +2084,10 @@
 &lt;p&gt;If you believe {1} should still have had access, please contact your team coordinator.&lt;/p&gt;
 &lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = removed email, {2} = current Google email</comment></data>
 
+  <!-- ======================== -->
+  <!-- Onboarding Widget Banner -->
+  <!-- ======================== -->
+  <data name="OnboardingBanner_Text" xml:space="preserve"><value>Finish setting up your account to access shifts and team features.</value></data>
+  <data name="OnboardingBanner_Cta" xml:space="preserve"><value>Continue setup →</value></data>
+
 </root>
