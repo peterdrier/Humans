@@ -599,6 +599,37 @@ public class GoogleAdminServiceTests
     }
 
     [HumansFact]
+    public async Task ResetPasswordAndGenerate2FaAsync_StillRefusesWhenAuditWriteFailsOnEnrolledAccount()
+    {
+        // The 2SV refusal happens BEFORE any Workspace mutation, so an audit
+        // outage must not turn a safe refusal into a 500 — we surface the
+        // refusal regardless and log the audit failure as Critical.
+        _workspaceUserService.GetAccountAsync(
+                "alice@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(new WorkspaceUserAccount(
+                "alice@nobodies.team", "Alice", "Smith", IsSuspended: false,
+                CreationTime: DateTime.UtcNow, LastLoginTime: null,
+                IsEnrolledIn2Sv: true));
+        _auditLogService.LogAsync(
+                AuditAction.WorkspaceAccountResetBlockedFor2Sv,
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<Guid?>(), Arg.Any<string?>())
+            .ThrowsAsync(new InvalidOperationException("Audit DB unavailable"));
+
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+            "alice@nobodies.team", _actorUserId);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("already enrolled in 2FA");
+
+        await _workspaceUserService.DidNotReceive().ResetPasswordAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _workspaceUserService.DidNotReceive().GenerateBackupCodesAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ResetPasswordAndGenerate2FaAsync_ReturnsErrorWhenAccountNotFound()
     {
         _workspaceUserService.GetAccountAsync(

@@ -406,6 +406,9 @@ public sealed class GoogleAdminService : IGoogleAdminService
 
         if (liveAccount is null)
         {
+            _logger.LogWarning(
+                "Reset+2FA refused for {Email}: account not found in Workspace Directory. Actor: {ActorUserId}.",
+                email, actorUserId);
             return new WorkspaceRecoveryCredentialsResult(
                 Success: false,
                 Email: email,
@@ -414,11 +417,29 @@ public sealed class GoogleAdminService : IGoogleAdminService
 
         if (liveAccount.IsEnrolledIn2Sv)
         {
-            await _auditLogService.LogAsync(
-                AuditAction.WorkspaceAccountResetBlockedFor2Sv,
-                "WorkspaceAccount", Guid.Empty,
-                $"Refused Reset+2FA for @{NobodiesTeamDomain} account {email}: already enrolled in 2-Step Verification",
-                actorUserId);
+            _logger.LogWarning(
+                "Reset+2FA refused for {Email}: already enrolled in 2-Step Verification. Actor: {ActorUserId}.",
+                email, actorUserId);
+
+            // Audit AFTER the refusal decision. If audit persistence throws,
+            // log Critical and still return the user-facing refusal — degrading
+            // gracefully on an audit-side outage matches the BackupCodesGenerated
+            // pattern below, and forcing a 500 here would mask a safe outcome
+            // (no Workspace mutation happened).
+            try
+            {
+                await _auditLogService.LogAsync(
+                    AuditAction.WorkspaceAccountResetBlockedFor2Sv,
+                    "WorkspaceAccount", Guid.Empty,
+                    $"Refused Reset+2FA for @{NobodiesTeamDomain} account {email}: already enrolled in 2-Step Verification",
+                    actorUserId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogCritical(ex,
+                    "Audit-log write failed for Reset+2FA refusal on {Email} by actor {ActorUserId}. Refusal was still surfaced to the admin; reconcile audit trail manually.",
+                    email, actorUserId);
+            }
 
             return new WorkspaceRecoveryCredentialsResult(
                 Success: false,
