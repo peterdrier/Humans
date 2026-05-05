@@ -918,6 +918,21 @@ public class GoogleController : HumansControllerBase
         return RedirectToAction(nameof(Index));
     }
 
+    // --- Email Flag Violations (admin remediation) ---
+
+    [HttpGet("EmailFlagViolations")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    public async Task<IActionResult> EmailFlagViolations(
+        [FromServices] IUserEmailService userEmailService,
+        CancellationToken ct)
+    {
+        var violations = await userEmailService.GetEmailFlagViolationsAsync(ct);
+        var sorted = violations
+            .OrderBy(v => v.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        return View(sorted);
+    }
+
     // --- Index ---
 
     [HttpGet("")]

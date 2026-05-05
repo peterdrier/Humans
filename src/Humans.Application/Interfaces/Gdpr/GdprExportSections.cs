@@ -17,6 +17,7 @@ namespace Humans.Application.Interfaces.Gdpr;
 public static class GdprExportSections
 {
     public const string Account = "Account";
+    public const string EventParticipations = "EventParticipations";
     public const string UserEmails = "UserEmails";
     public const string Profile = "Profile";
     public const string ContactFields = "ContactFields";

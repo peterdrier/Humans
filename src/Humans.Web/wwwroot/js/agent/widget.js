@@ -11,6 +11,52 @@
 
     let currentConversationId = null;
 
+    // Configure marked with GFM + breaks (single newlines render as <br>),
+    // matching how Anthropic models tend to write.
+    if (typeof marked !== 'undefined') {
+        marked.setOptions({ breaks: true, gfm: true });
+    }
+
+    // Force <a> tags to safe defaults for external URLs (target=_blank,
+    // rel=noopener noreferrer); same-tab + no rel for internal /-prefixed paths.
+    if (typeof DOMPurify !== 'undefined') {
+        DOMPurify.addHook('afterSanitizeAttributes', function (node) {
+            if (node.tagName === 'A' && node.hasAttribute('href')) {
+                const href = node.getAttribute('href');
+                if (href && !href.startsWith('/')) {
+                    node.setAttribute('target', '_blank');
+                    node.setAttribute('rel', 'noopener noreferrer');
+                } else {
+                    node.removeAttribute('target');
+                    node.removeAttribute('rel');
+                }
+            }
+        });
+    }
+
+    // Allowed tags for sanitized markdown output (forbid img, iframe, script,
+    // event handlers — DOMPurify defaults already strip those, but we are
+    // explicit about the allow-list).
+    const PURIFY_CONFIG = {
+        ALLOWED_TAGS: [
+            'p', 'br', 'hr',
+            'ul', 'ol', 'li',
+            'strong', 'em', 'code', 'pre', 'blockquote',
+            'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+            'a',
+            'table', 'thead', 'tbody', 'tr', 'th', 'td'
+        ],
+        ALLOWED_ATTR: ['href', 'target', 'rel']
+    };
+
+    function renderMarkdown(raw) {
+        if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
+            return null;
+        }
+        const html = marked.parse(raw);
+        return DOMPurify.sanitize(html, PURIFY_CONFIG);
+    }
+
     launcher.addEventListener('click', function () {
         panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
     });
@@ -25,6 +71,10 @@
 
         appendMessage('user', message);
         const bubble = appendMessage('assistant', '');
+        // Track raw accumulated markdown per assistant bubble so we can
+        // re-parse + sanitize on each delta. innerHTML write below is safe
+        // ONLY because DOMPurify gates it.
+        bubble.dataset.rawMarkdown = '';
 
         try {
             const resp = await fetch('/Agent/Ask', {
@@ -71,10 +121,19 @@
         if (!data) return;
         const parsed = JSON.parse(data);
         if (event === 'text' && parsed.textDelta) {
-            bubble.textContent += parsed.textDelta;
+            bubble.dataset.rawMarkdown = (bubble.dataset.rawMarkdown || '') + parsed.textDelta;
+            const sanitized = renderMarkdown(bubble.dataset.rawMarkdown);
+            if (sanitized !== null) {
+                // Safe: sanitized is the output of DOMPurify.sanitize.
+                bubble.innerHTML = sanitized;
+            } else {
+                // Fallback if marked/DOMPurify failed to load — keep streaming as text.
+                bubble.textContent = bubble.dataset.rawMarkdown;
+            }
             messagesEl.scrollTop = messagesEl.scrollHeight;
         } else if (event === 'final' && parsed.finalizer) {
             const reason = parsed.finalizer.stopReason;
+            // Final-frame placeholders are trusted strings — render as plain text.
             if (reason === 'disabled') bubble.textContent = '(The agent is currently disabled.)';
             if (reason === 'rate_limited') bubble.textContent = '(Daily limit reached — try again tomorrow.)';
             // Capture the conversation id from the first successful turn so the

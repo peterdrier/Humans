@@ -1,6 +1,12 @@
 @model Humans.Web.Models.EmailsViewModel
 @{
     ViewData["Title"] = Localizer["Emails_Title"].Value;
+    // N>1 violation detection: self users normally toggle exclusively, so we
+    // hide Clear in the self grid. But when the data is already in violation
+    // (multiple Google rows or multiple verified Primary rows), the user is
+    // stuck — radios can't unselect — so expose Clear on the offending rows.
+    var hasMultipleGoogle = Model.Emails.Count(e => e.IsGoogle) > 1;
+    var hasMultiplePrimary = Model.Emails.Count(e => e.IsPrimary && e.IsVerified) > 1;
 }
 
 <div class="row">
@@ -119,48 +125,95 @@
                                         var primaryChecked = isLockedRow ? true : row.IsPrimary;
                                         var primaryDisabled = workspaceLocked || !row.IsVerified;
                                     }
-                                    <form asp-action="@(Model.IsAdminContext ? "AdminSetPrimary" : "SetPrimary")"
-                                          asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
-                                          method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="emailId" value="@row.Id" />
-                                        <label class="d-inline-flex align-items-center mb-0">
-                                            <input type="radio"
-                                                   class="form-check-input me-1 js-auto-submit"
-                                                   name="isPrimary"
-                                                   value="true"
-                                                   @(primaryChecked ? "checked" : "")
-                                                   @(primaryDisabled ? "disabled" : "") />
-                                            @if (!primaryChecked && !row.IsVerified)
+                                    @* Button-based set/clear (issue 650): radios in independent forms *@
+                                    @* are not a real radio group, so a checked one cannot be unselected *@
+                                    @* — admins could not recover from the duplicate-IsPrimary state.   *@
+                                    @{
+                                        var showClearPrimary = !isLockedRow && row.IsPrimary
+                                            && (Model.IsAdminContext || hasMultiplePrimary);
+                                    }
+                                    @if (primaryChecked)
+                                    {
+                                        <span class="d-inline-flex align-items-center">
+                                            <i class="fa-solid fa-circle-check text-success me-1" aria-label="@Localizer["EmailGrid_Primary"]"></i>
+                                            @if (showClearPrimary)
                                             {
-                                                <span class="text-muted small">@Localizer["Emails_VerifyFirst"]</span>
+                                                <form asp-action="@(Model.IsAdminContext ? "AdminClearPrimary" : "ClearPrimary")"
+                                                      asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
+                                                      method="post" class="d-inline ms-1"
+                                                      data-confirm="@Localizer["EmailGrid_ConfirmClearPrimary"].Value">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="emailId" value="@row.Id" />
+                                                    <button type="submit" class="btn btn-link btn-sm text-muted p-0"
+                                                            title="@Localizer["EmailGrid_Clear"].Value">
+                                                        <i class="fa-solid fa-xmark"></i>
+                                                    </button>
+                                                </form>
                                             }
-                                        </label>
-                                    </form>
+                                        </span>
+                                    }
+                                    else if (!primaryDisabled)
+                                    {
+                                        <form asp-action="@(Model.IsAdminContext ? "AdminSetPrimary" : "SetPrimary")"
+                                              asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
+                                              method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="emailId" value="@row.Id" />
+                                            <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                                @Localizer["EmailGrid_SetPrimary"]
+                                            </button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">@Localizer["Emails_VerifyFirst"]</span>
+                                    }
                                 </td>
                                 <td>
                                     @{
                                         var googleChecked = isLockedRow ? true : row.IsGoogle;
                                         var googleDisabled = workspaceLocked || !row.IsVerified;
                                     }
-                                    <form asp-action="@(Model.IsAdminContext ? "AdminSetGoogle" : "SetGoogle")"
-                                          asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
-                                          method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="emailId" value="@row.Id" />
-                                        <label class="d-inline-flex align-items-center mb-0">
-                                            <input type="radio"
-                                                   class="form-check-input me-1 js-auto-submit"
-                                                   name="isGoogle"
-                                                   value="true"
-                                                   @(googleChecked ? "checked" : "")
-                                                   @(googleDisabled ? "disabled" : "") />
-                                            @if (!googleChecked && !row.IsVerified)
+                                    @{
+                                        var showClearGoogle = !isLockedRow && row.IsGoogle
+                                            && (Model.IsAdminContext || hasMultipleGoogle);
+                                    }
+                                    @if (googleChecked)
+                                    {
+                                        <span class="d-inline-flex align-items-center">
+                                            <i class="fa-brands fa-google text-success me-1" aria-label="@Localizer["EmailGrid_Google"]"></i>
+                                            @if (showClearGoogle)
                                             {
-                                                <span class="text-muted small">@Localizer["Emails_VerifyFirst"]</span>
+                                                <form asp-action="@(Model.IsAdminContext ? "AdminClearGoogle" : "ClearGoogle")"
+                                                      asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
+                                                      method="post" class="d-inline ms-1"
+                                                      data-confirm="@Localizer["EmailGrid_ConfirmClearGoogle"].Value">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="emailId" value="@row.Id" />
+                                                    <button type="submit" class="btn btn-link btn-sm text-muted p-0"
+                                                            title="@Localizer["EmailGrid_Clear"].Value">
+                                                        <i class="fa-solid fa-xmark"></i>
+                                                    </button>
+                                                </form>
                                             }
-                                        </label>
-                                    </form>
+                                        </span>
+                                    }
+                                    else if (!googleDisabled)
+                                    {
+                                        <form asp-action="@(Model.IsAdminContext ? "AdminSetGoogle" : "SetGoogle")"
+                                              asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
+                                              method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="emailId" value="@row.Id" />
+                                            <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                                @Localizer["EmailGrid_SetGoogle"]
+                                            </button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">@Localizer["Emails_VerifyFirst"]</span>
+                                    }
                                 </td>
                                 <td>
                                     @if (row.IsVerified)

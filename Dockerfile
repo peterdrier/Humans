@@ -35,9 +35,11 @@ WORKDIR /app
 
 # Install native dependencies for SkiaSharp + curl for healthcheck
 # (libheif native binaries are provided by the LibHeif.Native NuGet package)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libfontconfig1 \
-    curl \
+# Swap to nl.archive.ubuntu.com — geographically closer and avoids archive.ubuntu.com flakiness
+RUN sed -i 's|archive\.ubuntu\.com|nl.archive.ubuntu.com|g; s|security\.ubuntu\.com|nl.archive.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources \
+    && apt-get update && apt-get install -y --no-install-recommends \
+        libfontconfig1 \
+        curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user

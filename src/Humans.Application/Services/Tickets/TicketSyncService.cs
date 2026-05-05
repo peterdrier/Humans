@@ -370,17 +370,18 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
         var updated = new List<TicketOrder>(ordersToEnrich.Count);
         foreach (var order in ordersToEnrich)
         {
-            // Belt-and-suspenders: skip placeholder PaymentIntent ids the
-            // repository filter should already exclude.
-            if (string.IsNullOrEmpty(order.StripePaymentIntentId)
-                || string.Equals(order.StripePaymentIntentId, "--", StringComparison.Ordinal))
+            // Belt-and-suspenders: skip placeholder / whitespace-only PaymentIntent ids
+            // the repository filter should already exclude. Trim guards against
+            // unprintable characters that slipped past TT (em-dash, NBSP, etc.).
+            var trimmedPi = order.StripePaymentIntentId?.Trim();
+            if (trimmedPi is null or "" or "--")
             {
                 continue;
             }
 
             try
             {
-                var details = await _stripeService.GetPaymentDetailsAsync(order.StripePaymentIntentId, ct);
+                var details = await _stripeService.GetPaymentDetailsAsync(trimmedPi, ct);
                 if (details is null) continue;
 
                 order.PaymentMethod = details.PaymentMethod;
@@ -391,9 +392,12 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
             }
             catch (Exception ex)
             {
+                // Drop the exception arg — these warnings recur every cycle for genuinely
+                // transient Stripe errors and the stack trace adds noise without
+                // diagnostic value. Keep the structured Reason for triage.
                 _logger.LogWarning(
                     "Failed to fetch Stripe data for order {OrderId} (PI: {PaymentIntentId}): {Reason}",
-                    order.VendorOrderId, order.StripePaymentIntentId, ex.Message);
+                    order.VendorOrderId, trimmedPi, ex.Message);
             }
         }
 

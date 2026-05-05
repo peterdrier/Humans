@@ -601,6 +601,16 @@ public sealed class UserRepository : IUserRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<EventParticipation>> GetEventParticipationsByUserIdAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.EventParticipations
+            .AsNoTracking()
+            .Where(ep => ep.UserId == userId)
+            .ToListAsync(ct);
+    }
+
     // ==========================================================================
     // Writes — EventParticipation
     // ==========================================================================

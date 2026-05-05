@@ -134,7 +134,7 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
 
         await _auditLogService.LogAsync(
             AuditAction.RoleAssigned, nameof(User), userId,
-            $"Role '{roleName}' assigned",
+            $"'{roleName}'",
             assignerId);
 
         _navBadge.Invalidate();
@@ -197,7 +197,7 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
 
         await _auditLogService.LogAsync(
             AuditAction.RoleEnded, nameof(User), roleAssignment.UserId,
-            $"Role '{roleAssignment.RoleName}' ended",
+            $"'{roleAssignment.RoleName}'",
             enderId);
 
         _navBadge.Invalidate();

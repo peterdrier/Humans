@@ -54,6 +54,21 @@ public sealed class GoogleAdminService : IGoogleAdminService
         _logger = logger;
     }
 
+    // Resolve a single Workspace email to the linked human's UserId for audit
+    // attribution. Returns null when the address isn't linked. Mirrors the
+    // verified > UpdatedAt > UserId tie-break used by GetWorkspaceAccountListAsync
+    // so the audit subject matches what /Google/Accounts shows.
+    private async Task<Guid?> TryFindLinkedUserIdAsync(string email, CancellationToken ct)
+    {
+        var matches = await _userEmailService.MatchByEmailsAsync([email], ct);
+        return matches
+            .OrderByDescending(m => m.IsVerified)
+            .ThenByDescending(m => m.UpdatedAt)
+            .ThenBy(m => m.UserId)
+            .Select(m => (Guid?)m.UserId)
+            .FirstOrDefault();
+    }
+
     public async Task<WorkspaceAccountListResult> GetWorkspaceAccountListAsync(
         CancellationToken ct = default)
     {
@@ -297,22 +312,11 @@ public sealed class GoogleAdminService : IGoogleAdminService
         string email, Guid actorUserId,
         CancellationToken ct = default)
     {
+        string newPassword;
         try
         {
-            var newPassword = PasswordGenerator.GenerateTemporary();
+            newPassword = PasswordGenerator.GenerateTemporary();
             await _workspaceUserService.ResetPasswordAsync(email, newPassword, ct);
-
-            // Audit AFTER Google API success — the "business save" here is the
-            // Workspace-side password reset. No local DB write happens in this flow.
-            await _auditLogService.LogAsync(
-                AuditAction.WorkspaceAccountPasswordReset,
-                "WorkspaceAccount", Guid.Empty,
-                $"Reset password for @{NobodiesTeamDomain} account: {email}",
-                actorUserId);
-
-            return new WorkspaceAccountActionResult(true,
-                Message: $"Password reset for {email}. New temporary password: {newPassword}",
-                TemporaryPassword: newPassword);
         }
         catch (Exception ex)
         {
@@ -320,6 +324,37 @@ public sealed class GoogleAdminService : IGoogleAdminService
             return new WorkspaceAccountActionResult(false,
                 ErrorMessage: $"Failed to reset password for {email}.");
         }
+
+        // Audit AFTER Google API success — the "business save" here is the
+        // Workspace-side password reset. No local DB write happens in this flow.
+        // EntityId carries the linked human's UserId when the address resolves
+        // to one, so the audit row renders with the human's name as subject;
+        // unlinked accounts log with Guid.Empty and fall back to the email tail.
+        // Isolate from the outer flow: if the linked-user lookup or audit
+        // persistence throws (DB outage, timeout, cancellation), the password
+        // has already been rotated in Workspace and the caller MUST still
+        // receive the new temporary password — otherwise they retry, lock
+        // the human out further, and we own the confusion. Surface the audit
+        // failure loudly via a critical log for out-of-band reconciliation.
+        try
+        {
+            var linkedUserId = await TryFindLinkedUserIdAsync(email, ct);
+            await _auditLogService.LogAsync(
+                AuditAction.WorkspaceAccountPasswordReset,
+                "WorkspaceAccount", linkedUserId ?? Guid.Empty,
+                email,
+                actorUserId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical(ex,
+                "Audit-log write failed AFTER password reset for {Email} by actor {ActorUserId}. Password was rotated; reconcile audit trail manually.",
+                email, actorUserId);
+        }
+
+        return new WorkspaceAccountActionResult(true,
+            Message: $"Password reset for {email}. New temporary password: {newPassword}",
+            TemporaryPassword: newPassword);
     }
 
     private async Task<WorkspaceBackupCodesResult> GenerateBackupCodesAsync(
@@ -361,10 +396,14 @@ public sealed class GoogleAdminService : IGoogleAdminService
         // log so it can be reconciled out-of-band.
         try
         {
+            // EntityId carries the linked human's UserId when the address resolves
+            // to one, so the audit row renders with the human's name as subject;
+            // unlinked accounts log with Guid.Empty and fall back to the email tail.
+            var linkedUserId = await TryFindLinkedUserIdAsync(email, ct);
             await _auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountBackupCodesGenerated,
-                "WorkspaceAccount", Guid.Empty,
-                $"Generated {codes.Count} backup code(s) for @{NobodiesTeamDomain} account: {email}",
+                "WorkspaceAccount", linkedUserId ?? Guid.Empty,
+                $"{codes.Count} code(s), {email}",
                 actorUserId);
         }
         catch (Exception ex)
@@ -385,6 +424,68 @@ public sealed class GoogleAdminService : IGoogleAdminService
         string email, Guid actorUserId,
         CancellationToken ct = default)
     {
+        // Refuse if the account is already enrolled in 2-Step Verification.
+        // The combined flow rotates the backup-code set destructively, so
+        // running it against a properly-set-up account would silently break
+        // the human's working 2FA. Always re-check live Directory state — the
+        // UI hides the button, but a hand-crafted POST must hit the same gate.
+        WorkspaceUserAccount? liveAccount;
+        try
+        {
+            liveAccount = await _workspaceUserService.GetAccountAsync(email, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch live 2SV state for: {Email}", email);
+            return new WorkspaceRecoveryCredentialsResult(
+                Success: false,
+                Email: email,
+                ErrorMessage: $"Failed to verify 2FA enrollment for {email}. Aborted; no changes made.");
+        }
+
+        if (liveAccount is null)
+        {
+            _logger.LogWarning(
+                "Reset+2FA refused for {Email}: account not found in Workspace Directory. Actor: {ActorUserId}.",
+                email, actorUserId);
+            return new WorkspaceRecoveryCredentialsResult(
+                Success: false,
+                Email: email,
+                ErrorMessage: $"Account {email} not found in Workspace Directory.");
+        }
+
+        if (liveAccount.IsEnrolledIn2Sv)
+        {
+            _logger.LogWarning(
+                "Reset+2FA refused for {Email}: already enrolled in 2-Step Verification. Actor: {ActorUserId}.",
+                email, actorUserId);
+
+            // Audit AFTER the refusal decision. If audit persistence throws,
+            // log Critical and still return the user-facing refusal — degrading
+            // gracefully on an audit-side outage matches the BackupCodesGenerated
+            // pattern below, and forcing a 500 here would mask a safe outcome
+            // (no Workspace mutation happened).
+            try
+            {
+                await _auditLogService.LogAsync(
+                    AuditAction.WorkspaceAccountResetBlockedFor2Sv,
+                    "WorkspaceAccount", Guid.Empty,
+                    $"Refused Reset+2FA for @{NobodiesTeamDomain} account {email}: already enrolled in 2-Step Verification",
+                    actorUserId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogCritical(ex,
+                    "Audit-log write failed for Reset+2FA refusal on {Email} by actor {ActorUserId}. Refusal was still surfaced to the admin; reconcile audit trail manually.",
+                    email, actorUserId);
+            }
+
+            return new WorkspaceRecoveryCredentialsResult(
+                Success: false,
+                Email: email,
+                ErrorMessage: $"{email} is already enrolled in 2FA. Reset+2FA is for locked-out humans only — use the plain Reset Password button, or rotate 2FA in the Google Admin console.");
+        }
+
         // Step 1: reset the password. Audit + return on failure — there's
         // no point grabbing a backup code if the human can't sign in anyway.
         var resetResult = await ResetPasswordAsync(email, actorUserId, ct);

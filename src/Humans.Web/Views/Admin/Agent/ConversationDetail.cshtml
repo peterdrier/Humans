@@ -38,7 +38,14 @@
                 <span class="text-muted small">@msg.CreatedAt.ToAuditTimestamp() UTC</span>
             </div>
             <div class="card-body">
-                <p class="mb-1" style="white-space: pre-wrap;">@msg.Content</p>
+                @if (msg.Role == Humans.Domain.Enums.AgentRole.Assistant)
+                {
+                    <div class="agent-assistant-content mb-1">@Html.SanitizedMarkdown(msg.Content)</div>
+                }
+                else
+                {
+                    <p class="mb-1" style="white-space: pre-wrap;">@msg.Content</p>
+                }
                 @if (!string.IsNullOrEmpty(msg.RefusalReason))
                 {
                     <div class="alert alert-warning mt-2 mb-0 py-1">Refusal: @msg.RefusalReason</div>

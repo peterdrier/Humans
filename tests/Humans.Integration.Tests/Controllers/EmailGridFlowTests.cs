@@ -58,7 +58,7 @@ public class EmailGridFlowTests : IntegrationTestBase
             addResult.IsConflict.Should().BeTrue(
                 "AddEmail must flag the conflict so the verification email warns the user.");
 
-            var verifyResult = await userEmailService.VerifyEmailAsync(userAId, addResult.Token);
+            var verifyResult = await userEmailService.VerifyEmailAsync(userAId, addResult.EmailId, addResult.Token);
             verifyResult.MergeRequestCreated.Should().BeTrue(
                 "the verify-time conflict path is what writes the merge request.");
         }
@@ -165,7 +165,7 @@ public class EmailGridFlowTests : IntegrationTestBase
             var addResult = await userEmailService.AddEmailAsync(targetUserId, sharedEmail);
             addResult.IsConflict.Should().BeTrue();
 
-            var verifyResult = await userEmailService.VerifyEmailAsync(targetUserId, addResult.Token);
+            var verifyResult = await userEmailService.VerifyEmailAsync(targetUserId, addResult.EmailId, addResult.Token);
             verifyResult.MergeRequestCreated.Should().BeTrue(
                 "even when an admin initiates the add, cross-user collisions must surface as merge requests, not silent folds.");
         }
