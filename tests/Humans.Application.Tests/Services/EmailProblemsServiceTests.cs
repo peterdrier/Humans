@@ -130,4 +130,23 @@ public class EmailProblemsServiceTests
         report.Problems.Should().ContainSingle(p =>
             p.Kind == EmailProblemKind.ZeroIsGoogle && p.UserId == userId);
     }
+
+    [HumansFact]
+    public async Task DetectsUnverifiedEmail_RegardlessOfFlags()
+    {
+        var userId = Guid.NewGuid();
+        var emailId = Guid.NewGuid();
+        SetProfiles(MakeProfile(userId,
+            new UserEmailSnapshot(emailId, "a@x.com", false, false, false)));
+        SetOrphans();
+        SetGhosts();
+
+        var report = await Sut.ScanAsync();
+
+        report.Problems.Should().ContainSingle(p =>
+            p.Kind == EmailProblemKind.Unverified
+            && p.UserId == userId
+            && p.UserEmailId == emailId
+            && p.Email == "a@x.com");
+    }
 }

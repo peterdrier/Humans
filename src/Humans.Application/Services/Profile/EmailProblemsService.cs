@@ -49,6 +49,13 @@ public sealed class EmailProblemsService : IEmailProblemsService
             if (!emails.Any(e => e.IsGoogle))
                 problems.Add(new EmailProblem(
                     EmailProblemKind.ZeroIsGoogle, p.UserId, null, null, null, null));
+
+            foreach (var unverified in emails.Where(e => !e.IsVerified))
+            {
+                problems.Add(new EmailProblem(
+                    EmailProblemKind.Unverified, p.UserId, null,
+                    unverified.Id, unverified.Email, null));
+            }
         }
 
         return new EmailProblemsReport(_clock.GetCurrentInstant(), problems);
