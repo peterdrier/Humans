@@ -1,5 +1,8 @@
 using System.Security.Claims;
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces.Profiles;
+using Humans.Web.Models.OnboardingWidget;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,10 +17,12 @@ namespace Humans.Web.Controllers;
 public class OnboardingWidgetController : Controller
 {
     private readonly IOnboardingWidgetState _state;
+    private readonly IProfileService _profileService;
 
-    public OnboardingWidgetController(IOnboardingWidgetState state)
+    public OnboardingWidgetController(IOnboardingWidgetState state, IProfileService profileService)
     {
         _state = state;
+        _profileService = profileService;
     }
 
     public async Task<IActionResult> Index(CancellationToken ct)
@@ -36,7 +41,45 @@ public class OnboardingWidgetController : Controller
     }
 
     [HttpGet]
-    public IActionResult Names() => throw new NotSupportedException("Names step is implemented in Task 3.");
+    public IActionResult Names()
+    {
+        // Pre-fill from OAuth claims when present.
+        var vm = new NamesViewModel
+        {
+            FirstName = User.FindFirstValue(ClaimTypes.GivenName) ?? string.Empty,
+            LastName = User.FindFirstValue(ClaimTypes.Surname) ?? string.Empty,
+        };
+        return View(vm);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Names(NamesViewModel vm, CancellationToken ct)
+    {
+        if (!ModelState.IsValid)
+            return View(vm);
+
+        var userId = GetUserId();
+        var language = HttpContext.Request.Headers["Accept-Language"].ToString()
+            .Split(',').FirstOrDefault() ?? "en";
+
+        var request = new ProfileSaveRequest(
+            BurnerName: vm.BurnerName,
+            FirstName: vm.FirstName,
+            LastName: vm.LastName,
+            City: null, CountryCode: null, Latitude: null, Longitude: null, PlaceId: null,
+            Bio: null, Pronouns: null, ContributionInterests: null, BoardNotes: null,
+            BirthdayMonth: null, BirthdayDay: null,
+            EmergencyContactName: null, EmergencyContactPhone: null, EmergencyContactRelationship: null,
+            NoPriorBurnExperience: false,
+            ProfilePictureData: null, ProfilePictureContentType: null, RemoveProfilePicture: false,
+            SelectedTier: null, ApplicationMotivation: null, ApplicationAdditionalInfo: null,
+            ApplicationSignificantContribution: null, ApplicationRoleUnderstanding: null);
+
+        await _profileService.SaveProfileAsync(userId, vm.BurnerName, request, language, ct);
+
+        return RedirectToAction(nameof(Shifts));
+    }
 
     [HttpGet]
     public IActionResult Shifts() => throw new NotSupportedException("Shifts step is implemented in Task 5.");

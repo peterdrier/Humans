@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Testing;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Http;
@@ -18,10 +19,11 @@ namespace Humans.Web.Tests.Controllers;
 public class OnboardingWidgetControllerDispatcherTests
 {
     private readonly IOnboardingWidgetState _state = Substitute.For<IOnboardingWidgetState>();
+    private readonly IProfileService _profile = Substitute.For<IProfileService>();
 
     private OnboardingWidgetController BuildSut(Guid userId)
     {
-        var ctrl = new OnboardingWidgetController(_state);
+        var ctrl = new OnboardingWidgetController(_state, _profile);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
