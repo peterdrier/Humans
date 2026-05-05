@@ -172,7 +172,7 @@ public class AgentController : HumansControllerBase
 }
 
 /// <summary>List of conversations + an admin flag the view uses to decide whether
-/// to surface admin-only chrome (Human column, refusal/handoff filters).</summary>
+/// to surface admin-only chrome (Human column, refusal filters).</summary>
 public sealed record AgentConversationsViewModel(
     IReadOnlyList<AgentConversationRow> Rows,
     bool IsAdminView);
