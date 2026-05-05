@@ -33,6 +33,11 @@ public sealed class StubTicketVendorService : ITicketVendorService
         "Sala", "Vidal", "Roig", "Pons", "Santos", "Prats", "Valle", "Luna", "Guasch", "Casals"
     ];
 
+    // Order #0 is hard-coded to peter@nobodies.team so dev / preview environments
+    // always have a recognizable user with attendee rows for ticket-transfer testing.
+    private const string TestUserEmail = "peter@nobodies.team";
+    private const string TestUserName = "Peter Drier";
+
     // Pre-built sample data, generated once and cached for the process lifetime.
     private static readonly Lazy<SampleData> Sample = new(BuildSampleData);
 
@@ -116,12 +121,13 @@ public sealed class StubTicketVendorService : ITicketVendorService
             .Select(x => x.t)
             .ToList();
 
-        // Build orders: 150 two-ticket + 300 single-ticket = 600 tickets total
-        var orderSizes = Enumerable.Repeat(2, 150)
+        // Build orders: 1 fixed peter-order (2 tickets) + 149 two-ticket + 300 single-ticket = 600 total
+        var orderSizes = Enumerable.Repeat(2, 149)
             .Concat(Enumerable.Repeat(1, 300))
             .Select((size, i) => (Size: size, Sort: DeterministicHash($"order-size:{i}")))
             .OrderBy(x => x.Sort)
             .Select(x => x.Size)
+            .Prepend(2)
             .ToList();
 
         var ticketCursor = 0;
@@ -134,7 +140,9 @@ public sealed class StubTicketVendorService : ITicketVendorService
             ticketCursor += size;
 
             var vendorOrderId = $"stub-order-{orderIndex + 1:D4}";
-            var buyer = BuildPerson(orderIndex);
+            var buyer = orderIndex == 0
+                ? (Name: TestUserName, Email: TestUserEmail)
+                : BuildPerson(orderIndex);
             var purchasedAt = BuildPurchaseInstant(saleStart, orderIndex, orderSizes.Count);
 
             // Some orders get donations
@@ -156,7 +164,9 @@ public sealed class StubTicketVendorService : ITicketVendorService
             for (var t = 0; t < orderTickets.Count; t++)
             {
                 var ticket = orderTickets[t];
-                var attendee = BuildPerson(orderIndex * 10 + t + 500);
+                var attendee = orderIndex == 0
+                    ? (Name: $"{TestUserName} (ticket {t + 1})", Email: TestUserEmail)
+                    : BuildPerson(orderIndex * 10 + t + 500);
                 var vendorTicketId = $"stub-ticket-{orderIndex + 1:D4}-{t + 1:D2}";
 
                 // Every 5th ticket is checked in for realistic event summary stats
