@@ -765,10 +765,13 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
     /// <summary>
     /// Predicate-based search over a pre-built <see cref="FullProfile"/>
-    /// snapshot. Always filters to approved + non-suspended, ordered by display
-    /// name, capped at 50. Called by <c>CachingProfileService</c> with its
-    /// private dict snapshot. <see cref="HumanSearchResult.MatchField"/> and
-    /// <see cref="HumanSearchResult.MatchSnippet"/> are null — the caller
+    /// snapshot. Filters to approved + non-suspended and applies the predicate.
+    /// Returns matches in unspecified order; callers are responsible for any
+    /// display ordering and result cap (the appropriate cap depends on the
+    /// caller's downstream filtering — e.g. team-admin pages exclude existing
+    /// members before taking 10). Called by <c>CachingProfileService</c> with
+    /// its private dict snapshot. <see cref="HumanSearchResult.MatchField"/>
+    /// and <see cref="HumanSearchResult.MatchSnippet"/> are null — the caller
     /// already knows what it filtered for.
     /// </summary>
     public static IReadOnlyList<HumanSearchResult> SearchProfilesFromSnapshot(
@@ -777,8 +780,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         return snapshot
             .Where(p => p.IsApproved && !p.IsSuspended)
             .Where(predicate)
-            .OrderBy(p => p.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .Take(50)
             .Select(p => new HumanSearchResult(
                 p.UserId, p.DisplayName, p.BurnerName, p.City, p.Bio, p.ContributionInterests,
                 p.Pronouns, p.PrimaryEmail,

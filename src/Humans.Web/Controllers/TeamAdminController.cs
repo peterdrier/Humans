@@ -413,6 +413,7 @@ public class TeamAdminController : HumansTeamControllerBase
 
         var filtered = results
             .Where(r => !existingMemberIds.Contains(r.UserId))
+            .OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
             .Take(10)
             .Select(r => r.ToApprovedUserSearchResult())
             .ToList();
@@ -1060,6 +1061,7 @@ public class TeamAdminController : HumansTeamControllerBase
             ProfileSearchPredicates.ByNameOrPrimaryEmail(q));
         var nonMembers = allResults
             .Where(r => !teamMemberUserIds.Contains(r.UserId))
+            .OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
             .Take(10 - matchingTeamMembers.Count)
             .Select(r => new RoleAssignmentSearchResult(r.UserId, r.DisplayName, r.PrimaryEmail ?? "", false))
             .ToList();

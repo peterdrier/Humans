@@ -1939,6 +1939,8 @@ public class ProfileController : HumansControllerBase
             ProfileSearchPredicates.Broad(q), ct);
 
         viewModel.Results = results
+            .OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .Take(50)
             .Select(r => r.ToHumanSearchViewModel(Url, q))
             .ToList();
 

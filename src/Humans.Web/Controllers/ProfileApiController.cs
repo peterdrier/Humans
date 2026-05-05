@@ -33,6 +33,7 @@ public class ProfileApiController : ControllerBase
         var results = await _profileService.SearchProfilesAsync(predicate);
 
         return Ok(results
+            .OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
             .Take(10)
             .Select(r => r.ToHumanLookupSearchResult()));
     }
