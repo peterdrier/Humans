@@ -4,11 +4,11 @@ using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Services.Onboarding;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Web.Models;
 using Humans.Web.Models.OnboardingWidget;
+using Humans.Web.Services.Onboarding;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -170,7 +170,7 @@ public class OnboardingWidgetController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public IActionResult Skip(CancellationToken ct)
     {
-        HttpContext.Session.SetString(OnboardingWidgetState.ShiftSkipSessionKey, "true");
+        HttpContext.Session.SetString(HttpOnboardingWidgetSessionState.ShiftSkipSessionKey, "true");
         return RedirectToAction(nameof(Consents));
     }
 
