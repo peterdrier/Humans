@@ -121,9 +121,12 @@ public class AgentController : HumansControllerBase
         CancellationToken ct)
     {
         const int adminPageSize = 25;
+        // Clamp negative page values from the URL — a negative offset would
+        // otherwise crash the EF paging call with a 500.
+        var safePage = page < 0 ? 0 : page;
         return isAdmin
             ? _agent.ListAllConversationsForAdminAsync(
-                refusalsOnly, handoffsOnly, userId, adminPageSize, page * adminPageSize, ct)
+                refusalsOnly, handoffsOnly, userId, adminPageSize, safePage * adminPageSize, ct)
             : _agent.GetHistoryAsync(currentUserId, take: 50, ct);
     }
 

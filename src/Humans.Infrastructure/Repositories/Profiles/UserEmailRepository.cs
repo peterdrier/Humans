@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Repositories;
@@ -18,10 +19,14 @@ namespace Humans.Infrastructure.Repositories.Profiles;
 public sealed class UserEmailRepository : IUserEmailRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
+    private readonly ILogger<UserEmailRepository> _logger;
 
-    public UserEmailRepository(IDbContextFactory<HumansDbContext> factory)
+    public UserEmailRepository(
+        IDbContextFactory<HumansDbContext> factory,
+        ILogger<UserEmailRepository> logger)
     {
         _factory = factory;
+        _logger = logger;
     }
 
     public async Task<IReadOnlyList<UserEmail>> GetByUserIdReadOnlyAsync(
@@ -413,11 +418,34 @@ public sealed class UserEmailRepository : IUserEmailRepository
         // source row was the only IsPrimary=true row — the "exactly one
         // verified IsPrimary per user" invariant is service-enforced (no DB
         // partial unique index) and would otherwise stay broken until some
-        // later repair path runs.
+        // later repair path runs. Also propagate Provider/ProviderKey: the
+        // OAuth rename detector finds sourceRow by (Provider, ProviderKey),
+        // so deleting it without copying the linkage would orphan the OAuth
+        // identity and break future FindByProviderKeyAsync lookups. IsGoogle
+        // is intentionally NOT propagated — it is user-controlled and must
+        // never be auto-derived.
         ctx.UserEmails.Remove(sourceRow);
         if (sourceRow.IsPrimary)
         {
             conflictRow.IsPrimary = true;
+        }
+        if (sourceRow.Provider is not null && conflictRow.Provider is null)
+        {
+            conflictRow.Provider = sourceRow.Provider;
+            conflictRow.ProviderKey = sourceRow.ProviderKey;
+        }
+        else if (sourceRow.Provider is not null && conflictRow.Provider is not null)
+        {
+            // Both rows carry an OAuth identity — same user holds two Provider
+            // rows (e.g., Google + future Apple). Deleting sourceRow drops its
+            // OAuth linkage; we cannot copy it onto conflictRow without
+            // clobbering conflictRow's existing identity. Log so the loss is
+            // visible — the caller has no signal in the return enum.
+            _logger.LogWarning(
+                "RewriteEmailAddressAsync: same-user merge dropping sourceRow OAuth identity " +
+                "(UserId={UserId}, sourceProvider={SourceProvider}, conflictProvider={ConflictProvider}). " +
+                "FindByProviderKeyAsync for the dropped (provider, key) will return null.",
+                userId, sourceRow.Provider, conflictRow.Provider);
         }
         conflictRow.UpdatedAt = updatedAt;
         await ctx.SaveChangesAsync(ct);

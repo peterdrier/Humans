@@ -65,7 +65,7 @@ public class ProfileServiceTests : IDisposable
         // Real repositories backed by an IDbContextFactory wrapping the in-memory store.
         var factory = new Infrastructure.TestDbContextFactory(options);
         _profileRepository = new ProfileRepository(factory, _clock);
-        _userEmailRepository = new UserEmailRepository(factory);
+        _userEmailRepository = new UserEmailRepository(factory, NullLogger<UserEmailRepository>.Instance);
         _contactFieldRepository = new ContactFieldRepository(factory);
 
         _service = new ProfileService(
