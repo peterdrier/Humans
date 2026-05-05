@@ -2,6 +2,9 @@ using System.Security.Claims;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Services.Onboarding;
+using Humans.Web.Models;
 using Humans.Web.Models.OnboardingWidget;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,11 +21,19 @@ public class OnboardingWidgetController : Controller
 {
     private readonly IOnboardingWidgetState _state;
     private readonly IProfileService _profileService;
+    private readonly IShiftSignupService _signupService;
+    private readonly IShiftManagementService _shiftMgmt;
 
-    public OnboardingWidgetController(IOnboardingWidgetState state, IProfileService profileService)
+    public OnboardingWidgetController(
+        IOnboardingWidgetState state,
+        IProfileService profileService,
+        IShiftSignupService signupService,
+        IShiftManagementService shiftMgmt)
     {
         _state = state;
         _profileService = profileService;
+        _signupService = signupService;
+        _shiftMgmt = shiftMgmt;
     }
 
     public async Task<IActionResult> Index(CancellationToken ct)
@@ -83,7 +94,47 @@ public class OnboardingWidgetController : Controller
     }
 
     [HttpGet]
-    public IActionResult Shifts() => throw new NotSupportedException("Shifts step is implemented in Task 5.");
+    public async Task<IActionResult> Shifts(bool showAll = false, CancellationToken ct = default)
+    {
+        var es = await _shiftMgmt.GetActiveAsync();
+        ShiftBrowseViewModel browseModel;
+        if (es is null)
+        {
+            browseModel = new ShiftBrowseViewModel { EventSettings = null!, ShowSignups = true, Sort = "urgency" };
+        }
+        else
+        {
+            var urgentShifts = await _shiftMgmt.GetBrowseShiftsAsync(
+                es.Id, includeAdminOnly: false, includeSignups: true,
+                includeHidden: false, priorityOnly: !showAll);
+            var (shiftIds, statuses) = await _signupService.GetActiveSignupStatusesAsync(GetUserId(), es.Id);
+            browseModel = OnboardingShiftsBrowseModelBuilder.Build(es, urgentShifts, _shiftMgmt, shiftIds, statuses);
+        }
+
+        return View(new ShiftsStepViewModel { ShowAll = showAll, BrowseModel = browseModel });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SignUp(Guid shiftId, CancellationToken ct)
+    {
+        var userId = GetUserId();
+        var result = await _signupService.SignUpAsync(userId, shiftId, userId, false);
+        if (!result.Success)
+        {
+            TempData["Error"] = result.Error ?? "Could not sign up.";
+            return RedirectToAction(nameof(Shifts));
+        }
+        return RedirectToAction(nameof(Consents));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public IActionResult Skip(CancellationToken ct)
+    {
+        HttpContext.Session.SetString(OnboardingWidgetState.ShiftSkipSessionKey, "true");
+        return RedirectToAction(nameof(Consents));
+    }
 
     [HttpGet]
     public IActionResult Consents() => throw new NotSupportedException("Consents step is implemented in Task 7.");

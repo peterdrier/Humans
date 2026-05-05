@@ -1,0 +1,138 @@
+@model Humans.Web.Models.OnboardingWidget.ShiftsStepViewModel
+@{
+    ViewData["Title"] = "Pick a shift";
+    var browse = Model.BrowseModel;
+    var es = browse.EventSettings;
+    var hasShifts = es is not null && browse.UrgencyRankedRotas.Count > 0;
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <h1 class="mb-2">Pick a shift</h1>
+            @if (Model.ShowAll)
+            {
+                <p class="text-muted mb-4">All shifts.</p>
+            }
+            else
+            {
+                <p class="text-muted mb-4">These are the shifts that need help most. Click a shift to sign up.</p>
+            }
+
+            <vc:temp-data-alerts />
+
+            @if (!hasShifts)
+            {
+                @* Empty-state — mirrors Shifts/BrowsingClosed. Either no active event or nothing matches the priority filter. *@
+                <div class="alert alert-info text-center my-4">
+                    @if (es is null)
+                    {
+                        <p class="mb-0">No active event right now. You can finish onboarding without picking a shift.</p>
+                    }
+                    else if (!Model.ShowAll)
+                    {
+                        <p class="mb-0">No priority shifts open at the moment.</p>
+                    }
+                    else
+                    {
+                        <p class="mb-0">No shifts available at the moment.</p>
+                    }
+                </div>
+            }
+            else
+            {
+                @foreach (var rotaGroup in browse.UrgencyRankedRotas)
+                {
+                    var rotaFillPercent = rotaGroup.TotalSlots > 0
+                        ? (int)Math.Round(100.0 * rotaGroup.TotalConfirmed / rotaGroup.TotalSlots)
+                        : 0;
+                    var rotaFillColor = rotaFillPercent >= 80 ? "bg-success"
+                        : rotaFillPercent >= 40 ? "bg-warning"
+                        : "bg-danger";
+
+                    <div class="card mb-3">
+                        <div class="card-header bg-transparent">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <div>
+                                    <span class="fw-semibold">@rotaGroup.Rota.Name</span>
+                                    @if (rotaGroup.Rota.Priority == ShiftPriority.Essential)
+                                    {
+                                        <span class="badge bg-danger ms-2">@Localizer["Shifts_Essential"]</span>
+                                    }
+                                    else if (rotaGroup.Rota.Priority == ShiftPriority.Important)
+                                    {
+                                        <span class="badge bg-warning text-dark ms-2">@Localizer["Shifts_Important"]</span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(rotaGroup.DepartmentName))
+                                    {
+                                        <small class="text-muted ms-2">@rotaGroup.DepartmentName</small>
+                                    }
+                                </div>
+                                <div class="d-flex align-items-center gap-2" style="min-width: 140px;">
+                                    <div class="progress flex-grow-1" style="height: 6px;">
+                                        <div class="progress-bar @rotaFillColor" role="progressbar" style="width: @rotaFillPercent%;"></div>
+                                    </div>
+                                    <small class="text-muted text-nowrap">@rotaGroup.TotalConfirmed/@rotaGroup.TotalSlots</small>
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrEmpty(rotaGroup.Rota.Description))
+                            {
+                                <div class="text-muted small mt-2">@Html.SanitizedMarkdown(rotaGroup.Rota.Description)</div>
+                            }
+                        </div>
+                        <div class="card-body pt-2">
+                            @{
+                                var hasAllDayShifts = rotaGroup.Shifts.Any(s => s.Shift.IsAllDay);
+                                var hasTimedShifts = rotaGroup.Shifts.Any(s => !s.Shift.IsAllDay);
+                                var isBuildStrike = rotaGroup.Rota.Period != RotaPeriod.Event;
+                            }
+                            @if (isBuildStrike || hasAllDayShifts)
+                            {
+                                @await Html.PartialAsync("_BuildStrikeRotaTable", new BuildStrikeRotaTableViewModel
+                                {
+                                    RotaGroup = rotaGroup,
+                                    EventSettings = es!,
+                                    UserSignupShiftIds = browse.UserSignupShiftIds,
+                                    ShowSignups = browse.ShowSignups,
+                                })
+                            }
+                            @if (!isBuildStrike || hasTimedShifts)
+                            {
+                                var timedShifts = isBuildStrike
+                                    ? rotaGroup.Shifts.Where(s => !s.Shift.IsAllDay).ToList()
+                                    : rotaGroup.Shifts.ToList();
+                                @await Html.PartialAsync("_EventRotaTable", new EventRotaTableViewModel
+                                {
+                                    Shifts = timedShifts,
+                                    EventSettings = es!,
+                                    UserSignupShiftIds = browse.UserSignupShiftIds,
+                                    UserSignupStatuses = browse.UserSignupStatuses,
+                                    ShowSignups = browse.ShowSignups,
+                                })
+                            }
+                        </div>
+                    </div>
+                }
+            }
+
+            <div class="d-flex flex-wrap gap-3 align-items-center mt-4">
+                @if (!Model.ShowAll && hasShifts)
+                {
+                    <a asp-action="Shifts" asp-route-showAll="true" class="btn btn-link">
+                        Show all shifts
+                    </a>
+                }
+
+                <form asp-action="Skip" method="post" class="d-inline ms-auto">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-secondary">
+                        Not right now
+                    </button>
+                    <small class="text-muted d-block mt-1">
+                        Ok — but be sure to come back later. It's more fun when we build this all together.
+                    </small>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

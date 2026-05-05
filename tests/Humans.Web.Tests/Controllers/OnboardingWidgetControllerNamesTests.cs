@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Testing;
 using Humans.Web.Controllers;
 using Humans.Web.Models.OnboardingWidget;
@@ -16,10 +17,12 @@ public class OnboardingWidgetControllerNamesTests
 {
     private readonly IOnboardingWidgetState _state = Substitute.For<IOnboardingWidgetState>();
     private readonly IProfileService _profile = Substitute.For<IProfileService>();
+    private readonly IShiftSignupService _signups = Substitute.For<IShiftSignupService>();
+    private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
 
     private OnboardingWidgetController BuildSut(Guid userId, string lang = "en")
     {
-        var ctrl = new OnboardingWidgetController(_state, _profile);
+        var ctrl = new OnboardingWidgetController(_state, _profile, _signups, _shiftMgmt);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
