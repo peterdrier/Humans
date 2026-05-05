@@ -206,7 +206,7 @@ public sealed class AgentService : IAgentService, IUserDataContributor
 
                 if (string.Equals(call.Name, AgentToolNames.RouteToIssue, StringComparison.Ordinal) && !result.IsError)
                 {
-                    issueProposal = ParseIssueProposalArgs(call.JsonArguments);
+                    issueProposal = ParseIssueProposalArgs(call.JsonArguments, conversation.Id);
                 }
             }
 
@@ -343,7 +343,7 @@ public sealed class AgentService : IAgentService, IUserDataContributor
     private AgentTurnToken Finalizer(string stopReason) =>
         new(null, null, new AgentTurnFinalizer(0, 0, 0, 0, _settings.Current.Model, stopReason));
 
-    private static AgentIssueProposal? ParseIssueProposalArgs(string jsonArguments)
+    private AgentIssueProposal? ParseIssueProposalArgs(string jsonArguments, Guid conversationId)
     {
         try
         {
@@ -363,8 +363,11 @@ public sealed class AgentService : IAgentService, IUserDataContributor
 
             return new AgentIssueProposal(title, category, description);
         }
-        catch (System.Text.Json.JsonException)
+        catch (System.Text.Json.JsonException ex)
         {
+            _logger.LogWarning(ex,
+                "route_to_issue args could not be parsed for conversation {ConversationId}; proposal dropped. Args: {Args}",
+                conversationId, jsonArguments);
             return null;
         }
     }
