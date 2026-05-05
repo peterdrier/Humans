@@ -47,19 +47,13 @@ public class NoConcurrencyTokensRule
             var content = File.ReadAllText(path);
             if (!TokenRegex.IsMatch(content)) continue;
             var rel = RatchetTestRunner.ToRelativePath(repoRoot, path);
+            var ordinal = 0;
             foreach (var match in TokenRegex.Matches(content).Cast<Match>())
             {
-                var lineNumber = LineNumberAt(content, match.Index);
-                yield return $"{rel}:{lineNumber}:concurrency-token";
+                ordinal++;
+                var line = RatchetTestRunner.LineNumberAt(content, match.Index);
+                yield return $"{rel}:concurrency-token#{ordinal} # L{line}";
             }
         }
-    }
-
-    private static int LineNumberAt(string source, int offset)
-    {
-        var line = 1;
-        for (var i = 0; i < offset && i < source.Length; i++)
-            if (source[i] == '\n') line++;
-        return line;
     }
 }

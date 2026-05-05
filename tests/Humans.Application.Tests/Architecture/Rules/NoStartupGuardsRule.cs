@@ -59,13 +59,18 @@ public class NoStartupGuardsRule
             var content = File.ReadAllText(path);
             if (!GuardRegex.IsMatch(content)) continue;
             var rel = RatchetTestRunner.ToRelativePath(repoRoot, path);
+            // Per-(file, op) ordinal so multiple guards of the same kind
+            // remain distinct keys without using line numbers.
+            var counts = new Dictionary<string, int>(StringComparer.Ordinal);
             foreach (var match in GuardRegex.Matches(content).Cast<Match>())
             {
                 var op = match.Groups["op"].Success
                     ? "Environment." + match.Groups["op"].Value
                     : match.Groups["op2"].Value;
-                var lineNumber = LineNumberAt(content, match.Index);
-                yield return $"{rel}:{lineNumber}:{op}";
+                counts.TryGetValue(op, out var n);
+                counts[op] = ++n;
+                var line = RatchetTestRunner.LineNumberAt(content, match.Index);
+                yield return $"{rel}:{op}#{n} # L{line}";
             }
         }
     }
@@ -74,13 +79,5 @@ public class NoStartupGuardsRule
     {
         if (!Directory.Exists(dir)) return Array.Empty<string>();
         return Directory.EnumerateFiles(dir, "*.cs", SearchOption.AllDirectories);
-    }
-
-    private static int LineNumberAt(string source, int offset)
-    {
-        var line = 1;
-        for (var i = 0; i < offset && i < source.Length; i++)
-            if (source[i] == '\n') line++;
-        return line;
     }
 }
