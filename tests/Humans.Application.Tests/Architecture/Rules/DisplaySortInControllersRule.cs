@@ -47,10 +47,13 @@ public class DisplaySortInControllersRule
             if (!SortRegex.IsMatch(content)) continue;
             var lines = content.Split('\n');
             var rel = RatchetTestRunner.ToRelativePath(repoRoot, path);
+            // Per-(file, op) ordinal so multiple sorts of the same kind in one
+            // file stay distinct without line numbers.
+            var counts = new Dictionary<string, int>(StringComparer.Ordinal);
 
             foreach (var match in SortRegex.Matches(content).Cast<Match>())
             {
-                var lineNumber = LineNumberAt(content, match.Index);
+                var lineNumber = RatchetTestRunner.LineNumberAt(content, match.Index);
                 var thisLine = lineNumber - 1 < lines.Length ? lines[lineNumber - 1] : string.Empty;
                 var prevLine = lineNumber - 2 >= 0 && lineNumber - 2 < lines.Length ? lines[lineNumber - 2] : string.Empty;
 
@@ -58,16 +61,10 @@ public class DisplaySortInControllersRule
                 if (prevLine.Contains(AllowMarker, StringComparison.Ordinal)) continue;
 
                 var op = match.Groups["op"].Value;
-                yield return $"{rel}:{lineNumber}:{op}";
+                counts.TryGetValue(op, out var n);
+                counts[op] = ++n;
+                yield return $"{rel}:{op}#{n} # L{lineNumber}";
             }
         }
-    }
-
-    private static int LineNumberAt(string source, int offset)
-    {
-        var line = 1;
-        for (var i = 0; i < offset && i < source.Length; i++)
-            if (source[i] == '\n') line++;
-        return line;
     }
 }

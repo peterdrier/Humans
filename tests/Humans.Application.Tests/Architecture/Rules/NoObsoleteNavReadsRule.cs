@@ -59,8 +59,8 @@ public class NoObsoleteNavReadsRule
                 var content = File.ReadAllText(path);
                 foreach (var match in ObsoletePropertyRegex.Matches(content).Cast<Match>())
                 {
-                    var name = match.Groups["name"].Value;
-                    if (name.Length > 0) obsoleteNames.Add(name);
+                    var pname = match.Groups["name"].Value;
+                    if (pname.Length > 0) obsoleteNames.Add(pname);
                 }
             }
         }
@@ -86,13 +86,19 @@ public class NoObsoleteNavReadsRule
             // disabled). Simple model: track running disable state.
             var disableSpans = ComputePragmaDisableSpans(content);
 
+            var rel = RatchetTestRunner.ToRelativePath(repoRoot, path);
+            // Per-(file, prop) ordinal so multiple reads of the same nav in
+            // one file stay distinct without line numbers.
+            var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+
             foreach (var match in accessRegex.Matches(content).Cast<Match>())
             {
                 if (IsInsideDisableSpan(disableSpans, match.Index)) continue;
-                var lineNumber = LineNumberAt(content, match.Index);
                 var prop = match.Groups["n"].Value;
-                var rel = RatchetTestRunner.ToRelativePath(repoRoot, path);
-                yield return $"{rel}:{lineNumber}:{prop}";
+                counts.TryGetValue(prop, out var n);
+                counts[prop] = ++n;
+                var line = RatchetTestRunner.LineNumberAt(content, match.Index);
+                yield return $"{rel}:{prop}#{n} # L{line}";
             }
         }
     }
@@ -171,13 +177,5 @@ public class NoObsoleteNavReadsRule
         foreach (var (s, e) in spans)
             if (offset >= s && offset < e) return true;
         return false;
-    }
-
-    private static int LineNumberAt(string source, int offset)
-    {
-        var line = 1;
-        for (var i = 0; i < offset && i < source.Length; i++)
-            if (source[i] == '\n') line++;
-        return line;
     }
 }

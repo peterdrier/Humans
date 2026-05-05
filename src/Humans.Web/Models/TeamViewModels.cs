@@ -523,13 +523,13 @@ public class HumanSearchResultViewModel
     public string? MatchSnippet { get; set; }
 }
 
-public class AdminTeamListViewModel : PagedListViewModel
+public class AdminTeamListViewModel
 {
-    public AdminTeamListViewModel() : base()
-    {
-    }
+    public List<AdminTeamViewModel> Departments { get; set; } = [];
+    public List<AdminTeamViewModel> System { get; set; } = [];
+    public List<AdminTeamViewModel> Hidden { get; set; } = [];
 
-    public List<AdminTeamViewModel> Teams { get; set; } = [];
+    public bool HasAnyTeams => Departments.Count + System.Count + Hidden.Count > 0;
 }
 
 public class AdminTeamViewModel

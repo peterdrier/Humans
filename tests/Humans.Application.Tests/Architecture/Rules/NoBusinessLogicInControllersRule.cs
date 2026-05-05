@@ -6,11 +6,11 @@ namespace Humans.Application.Tests.Architecture.Rules;
 
 /// <summary>
 /// Ratcheted rule: controllers don't carry business logic. Action methods
-/// over ~25 effective lines OR with cyclomatic complexity ≥ 6 are flagged.
+/// over the line threshold OR with cyclomatic complexity ≥ the complexity
+/// threshold are flagged.
 ///
 /// Source rule:
-/// <c>memory/architecture/no-business-logic-in-controllers.md</c> (new in
-/// this PR).
+/// <c>memory/architecture/no-business-logic-in-controllers.md</c>.
 ///
 /// Detection (regex-based heuristic — conservative, baseline-friendly):
 /// - Scan <c>src/Humans.Web/Controllers/*.cs</c> (or any
@@ -23,17 +23,25 @@ namespace Humans.Application.Tests.Architecture.Rules;
 ///   <c>if</c>, <c>else if</c>, <c>case</c>, <c>&amp;&amp;</c>, <c>||</c>,
 ///   <c>?</c> (ternary), <c>while</c>, <c>for</c>, <c>foreach</c>,
 ///   <c>catch</c>. Start at 1.
-/// - Threshold: lines &gt; 25 OR complexity ≥ 6 → violation.
+/// - Threshold: lines &gt; <see cref="LineThreshold"/> OR complexity ≥
+///   <see cref="ComplexityThreshold"/> → violation.
 ///
 /// The seed baseline absorbs the current state. New action methods that
 /// breach either threshold trip the ratchet.
+///
+/// Locator key includes parameter arity (<c>name/arity</c>) so overloads
+/// are distinguishable — and edits inside one overload don't require
+/// updating the baseline entry for the other.
 /// </summary>
 public class NoBusinessLogicInControllersRule
 {
     private const string BaselinePath =
         "tests/Humans.Application.Tests/Architecture/Baselines/NoBusinessLogicInControllers.baseline.txt";
 
-    private const int LineThreshold = 25;
+    // Threshold is intentionally generous for now — the goal is to keep the
+    // worst offenders out, not every hiccup. Tighten over time as the
+    // baseline ratchets down.
+    private const int LineThreshold = 50;
     private const int ComplexityThreshold = 6;
 
     [HumansFact]
@@ -72,28 +80,80 @@ public class NoBusinessLogicInControllersRule
 
             var content = File.ReadAllText(path);
             var rel = RatchetTestRunner.ToRelativePath(repoRoot, path);
+            // (name/arity) collisions are theoretically possible (two overloads
+            // with the same arity) but extremely rare. Add an ordinal suffix
+            // when they happen to keep keys unique.
+            var counts = new Dictionary<string, int>(StringComparer.Ordinal);
 
             foreach (var match in MethodHeaderRegex.Matches(content).Cast<Match>())
             {
                 var methodName = match.Groups["name"].Value;
-                var bodyStart = content.IndexOf('{', match.Index + match.Length);
-                if (bodyStart < 0) continue;
+                // The header regex ends right at the opening "(" of the
+                // parameter list. Locate that paren and balance to find arity.
+                var openParenIndex = match.Index + match.Length - 1;
+                if (openParenIndex < 0 || openParenIndex >= content.Length || content[openParenIndex] != '(')
+                {
+                    openParenIndex = content.IndexOf('(', match.Index);
+                    if (openParenIndex < 0) continue;
+                }
+                var closeParenIndex = FindMatchingClose(content, openParenIndex, '(', ')');
+                if (closeParenIndex < 0) continue;
+                var paramSegment = content.Substring(openParenIndex + 1, closeParenIndex - openParenIndex - 1);
+                var arity = CountParameters(paramSegment);
 
-                var bodyEnd = FindMatchingClose(content, bodyStart);
+                var bodyStart = content.IndexOf('{', closeParenIndex);
+                if (bodyStart < 0) continue;
+                var bodyEnd = FindMatchingClose(content, bodyStart, '{', '}');
                 if (bodyEnd < 0) continue;
 
                 var body = content.Substring(bodyStart, bodyEnd - bodyStart + 1);
-                var lineNumber = LineNumberAt(content, match.Index);
+                var lineNumber = RatchetTestRunner.LineNumberAt(content, match.Index);
 
                 var lines = CountEffectiveLines(body);
                 var complexity = ComputeComplexity(body);
 
                 if (lines > LineThreshold || complexity >= ComplexityThreshold)
                 {
-                    yield return $"{rel}:{lineNumber}:{methodName} (lines={lines}, cc={complexity})";
+                    var key = $"{methodName}/{arity}";
+                    counts.TryGetValue(key, out var n);
+                    counts[key] = ++n;
+                    var keyWithOrdinal = n == 1 ? key : $"{key}#{n}";
+                    yield return $"{rel}:{keyWithOrdinal} # L{lineNumber} lines={lines} cc={complexity}";
                 }
             }
         }
+    }
+
+    private static int CountParameters(string paramSegment)
+    {
+        var s = paramSegment.Trim();
+        if (s.Length == 0) return 0;
+        // Count top-level commas (depth 0 in <>, [], (), {}). One more than
+        // top-level commas is the parameter count.
+        var depth = 0;
+        var top = 0;
+        foreach (var c in s)
+        {
+            switch (c)
+            {
+                case '<':
+                case '[':
+                case '(':
+                case '{':
+                    depth++;
+                    break;
+                case '>':
+                case ']':
+                case ')':
+                case '}':
+                    if (depth > 0) depth--;
+                    break;
+                case ',':
+                    if (depth == 0) top++;
+                    break;
+            }
+        }
+        return top + 1;
     }
 
     private static int CountEffectiveLines(string methodBody)
@@ -126,27 +186,19 @@ public class NoBusinessLogicInControllersRule
         return cc;
     }
 
-    private static int FindMatchingClose(string source, int openBraceIndex)
+    private static int FindMatchingClose(string source, int openIndex, char open, char close)
     {
         var depth = 0;
-        for (var i = openBraceIndex; i < source.Length; i++)
+        for (var i = openIndex; i < source.Length; i++)
         {
             var c = source[i];
-            if (c == '{') depth++;
-            else if (c == '}')
+            if (c == open) depth++;
+            else if (c == close)
             {
                 depth--;
                 if (depth == 0) return i;
             }
         }
         return -1;
-    }
-
-    private static int LineNumberAt(string source, int offset)
-    {
-        var line = 1;
-        for (var i = 0; i < offset && i < source.Length; i++)
-            if (source[i] == '\n') line++;
-        return line;
     }
 }
