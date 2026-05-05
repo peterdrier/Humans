@@ -854,7 +854,33 @@ public sealed class GoogleAdminService : IGoogleAdminService
             // Update the corresponding UserEmail row if one exists for the old email —
             // delegated to the owning section so no user_emails writes happen here.
             // Self-persists via IUserEmailRepository.
-            await _userEmailService.RewriteEmailAddressAsync(userId, oldEmail, newEmail, ct);
+            var rewriteOutcome = await _userEmailService.RewriteEmailAddressAsync(
+                userId, oldEmail, newEmail, ct);
+
+            // Only Rewritten / MergedIntoExistingRowForSameUser are real successes.
+            // CrossUserConflict means another user already owns newEmail (issue 622)
+            // — surface as failure so the admin sees the duplicate-account flow
+            // rather than a false-success message + phantom audit row.
+            // SourceRowNotFound means there was no row to rewrite in the first place.
+            if (rewriteOutcome == RewriteEmailAddressOutcome.CrossUserConflict)
+            {
+                return new EmailRenameFixResult(false,
+                    ErrorMessage:
+                        $"'{newEmail}' already belongs to another user. Resolve via the duplicate-account flow before retrying.");
+            }
+            if (rewriteOutcome == RewriteEmailAddressOutcome.SourceRowNotFound)
+            {
+                // We just resolved oldEmail from this user's verified rows above;
+                // SourceRowNotFound here means the row disappeared between the
+                // lookup and the rewrite — log at Warning so the prod log viewer
+                // shows the discrepancy (the admin UI gets the failure message,
+                // but observability would otherwise be invisible).
+                _logger.LogWarning(
+                    "Admin {AdminId} email rename: source row not found for user {UserId} oldEmail {OldEmail} — row may have been removed concurrently.",
+                    actorUserId, userId, oldEmail);
+                return new EmailRenameFixResult(false,
+                    ErrorMessage: $"No UserEmail row found for '{oldEmail}'.");
+            }
 
             _logger.LogInformation(
                 "Admin {AdminId} fixing email rename for user {UserId}: '{OldEmail}' -> '{NewEmail}'",

@@ -361,21 +361,67 @@ public sealed class UserEmailRepository : IUserEmailRepository
         return true;
     }
 
-    public async Task<bool> RewriteEmailAddressAsync(
+    public async Task<RewriteEmailAddressOutcome> RewriteEmailAddressAsync(
         Guid userId, string oldEmail, string newEmail, Instant updatedAt,
         CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var row = await ctx.UserEmails
-            .FirstOrDefaultAsync(e => e.UserId == userId &&
-                EF.Functions.ILike(e.Email, oldEmail), ct);
-        if (row is null)
-            return false;
 
-        row.Email = newEmail;
-        row.UpdatedAt = updatedAt;
+        // Escape '_' and '%' in the inputs so ILIKE treats them as literals
+        // (matches GetOtherUserIdHavingEmailAsync semantics — without this an
+        // address containing '_' could falsely match unrelated rows).
+        var escapedOld = EscapeLikePattern(oldEmail);
+        var escapedNew = EscapeLikePattern(newEmail);
+
+        var sourceRow = await ctx.UserEmails
+            .FirstOrDefaultAsync(e => e.UserId == userId &&
+                EF.Functions.ILike(e.Email, escapedOld, "\\"), ct);
+        if (sourceRow is null)
+            return RewriteEmailAddressOutcome.SourceRowNotFound;
+
+        // Pre-UPDATE conflict check matching the partial unique index
+        // (IX_user_emails_Email has HasFilter("\"IsVerified\" = true")). Only
+        // verified rows can produce a Postgres 23505 on the UPDATE, so
+        // classifying any case-insensitive match — including unverified rows —
+        // as a conflict would over-block the rewrite and route legitimate
+        // OAuth renames into duplicate-account handling. Issue
+        // nobodies-collective/Humans#622.
+        var conflictRow = await ctx.UserEmails
+            .FirstOrDefaultAsync(e => e.Id != sourceRow.Id &&
+                e.IsVerified &&
+                EF.Functions.ILike(e.Email, escapedNew, "\\"), ct);
+
+        if (conflictRow is null)
+        {
+            sourceRow.Email = newEmail;
+            sourceRow.UpdatedAt = updatedAt;
+            await ctx.SaveChangesAsync(ct);
+            return RewriteEmailAddressOutcome.Rewritten;
+        }
+
+        if (conflictRow.UserId != userId)
+        {
+            // Cross-user collision. Don't UPDATE — let the duplicate-account
+            // detection flow surface this to admins. Caller logs a warning.
+            return RewriteEmailAddressOutcome.CrossUserConflict;
+        }
+
+        // Same-user collision: the user already has a verified row with
+        // newEmail. Drop the source row instead of UPDATEing it (which would
+        // violate the unique index). Propagate IsPrimary from the source so
+        // we don't strand the user without a primary verified email when the
+        // source row was the only IsPrimary=true row — the "exactly one
+        // verified IsPrimary per user" invariant is service-enforced (no DB
+        // partial unique index) and would otherwise stay broken until some
+        // later repair path runs.
+        ctx.UserEmails.Remove(sourceRow);
+        if (sourceRow.IsPrimary)
+        {
+            conflictRow.IsPrimary = true;
+        }
+        conflictRow.UpdatedAt = updatedAt;
         await ctx.SaveChangesAsync(ct);
-        return true;
+        return RewriteEmailAddressOutcome.MergedIntoExistingRowForSameUser;
     }
 
     public async Task SetGoogleExclusiveAsync(

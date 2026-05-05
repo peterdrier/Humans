@@ -214,10 +214,27 @@ public interface IUserEmailRepository
     /// Rewrites the <c>Email</c> of the user's existing <see cref="UserEmail"/> row
     /// (case-insensitive match on <paramref name="oldEmail"/>) to
     /// <paramref name="newEmail"/> and stamps <c>UpdatedAt</c> with
-    /// <paramref name="updatedAt"/>. Used by the admin rename-fix flow. Returns
-    /// true when a row was updated. No-op if no matching row exists.
+    /// <paramref name="updatedAt"/>. Used by the admin rename-fix flow and by
+    /// the OAuth rename detector.
+    ///
+    /// Three-way pre-UPDATE conflict resolution on the unique <c>Email</c>
+    /// index:
+    /// <list type="bullet">
+    /// <item>No conflicting row → standard UPDATE
+    ///   (<see cref="RewriteEmailAddressOutcome.Rewritten"/>).</item>
+    /// <item>Conflicting row owned by the same user → drop the source row and
+    ///   mark the existing target row verified, in a single transaction
+    ///   (<see cref="RewriteEmailAddressOutcome.MergedIntoExistingRowForSameUser"/>).</item>
+    /// <item>Conflicting row owned by a DIFFERENT user → no UPDATE, no exception
+    ///   (<see cref="RewriteEmailAddressOutcome.CrossUserConflict"/>). The caller
+    ///   logs a warning and lets the duplicate-account detection flow surface
+    ///   the conflict to admins.</item>
+    /// </list>
+    ///
+    /// No-op if no row matches <paramref name="oldEmail"/> for this user
+    /// (<see cref="RewriteEmailAddressOutcome.SourceRowNotFound"/>).
     /// </summary>
-    Task<bool> RewriteEmailAddressAsync(
+    Task<RewriteEmailAddressOutcome> RewriteEmailAddressAsync(
         Guid userId, string oldEmail, string newEmail, Instant updatedAt,
         CancellationToken ct = default);
 

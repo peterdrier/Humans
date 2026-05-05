@@ -5,6 +5,7 @@ using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
@@ -382,17 +383,47 @@ public class AccountController : HumansControllerBase
                 return;
 
             var oldEmail = match.Email;
-            await _userEmailService.RewriteEmailAddressAsync(match.UserId, oldEmail, claimEmail);
+            var outcome = await _userEmailService.RewriteEmailAddressAsync(
+                match.UserId, oldEmail, claimEmail);
 
-            await _auditLogService.LogAsync(
-                AuditAction.GoogleEmailRenamed,
-                nameof(User), match.UserId,
-                $"email rename detected: {oldEmail} -> {claimEmail}, sub={info.ProviderKey}",
-                nameof(AccountController),
-                relatedEntityId: match.Id, relatedEntityType: nameof(UserEmail));
+            switch (outcome)
+            {
+                case RewriteEmailAddressOutcome.Rewritten:
+                case RewriteEmailAddressOutcome.MergedIntoExistingRowForSameUser:
+                    await _auditLogService.LogAsync(
+                        AuditAction.GoogleEmailRenamed,
+                        nameof(User), match.UserId,
+                        $"email rename detected: {oldEmail} -> {claimEmail}, sub={info.ProviderKey}, outcome={outcome}",
+                        nameof(AccountController),
+                        relatedEntityId: match.Id, relatedEntityType: nameof(UserEmail));
+                    break;
+                case RewriteEmailAddressOutcome.CrossUserConflict:
+                    // Already logged at Warning by UserEmailService with both
+                    // user IDs; no audit row (we didn't actually rewrite).
+                    break;
+                case RewriteEmailAddressOutcome.SourceRowNotFound:
+                    // FindByProviderKeyAsync just confirmed the row existed with
+                    // oldEmail; getting SourceRowNotFound here means the row
+                    // disappeared between the two calls — surface at Warning so
+                    // the prod log viewer shows the discrepancy. No audit (no
+                    // rewrite happened).
+                    _logger.LogWarning(
+                        "OAuth rename: source row not found for user {UserId} oldEmail {OldEmail} (sub={Sub}) — row may have been removed concurrently between FindByProviderKey and rewrite.",
+                        match.UserId, oldEmail, info.ProviderKey);
+                    break;
+            }
+        }
+        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
+            // Cross-user / same-user collisions are now handled as classified
+            // outcomes above. Anything reaching this catch is unexpected and
+            // stays at LogError. (The historical 23505 noise from
+            // nobodies-collective/Humans#622 is now suppressed by the
+            // pre-UPDATE conflict check in the repository.)
             _logger.LogError(ex,
                 "OAuth rename detection failed for {Provider} sub={Sub}",
                 info.LoginProvider, info.ProviderKey);
