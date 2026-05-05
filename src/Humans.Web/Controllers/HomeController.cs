@@ -92,6 +92,10 @@ public class HomeController : HumansControllerBase
         var isPrivileged = User.IsInRole("Admin");
         var data = await _dashboardService.GetMemberDashboardAsync(user.Id, isPrivileged, cancellationToken);
 
+        // Shift-tag preferences live on a separate table; load the count so the
+        // profile-completion bar can credit users who picked any preferences.
+        var shiftTagPrefs = await _shiftMgmt.GetVolunteerTagPreferencesAsync(user.Id);
+
         var viewModel = new DashboardViewModel
         {
             UserId = user.Id,
@@ -100,7 +104,7 @@ public class HomeController : HumansControllerBase
             MembershipStatus = data.MembershipSnapshot.Status,
             HasProfile = data.Profile is not null,
             ProfileComplete = data.Profile is not null && !string.IsNullOrEmpty(data.Profile.FirstName),
-            ProfileCompletionPercent = ProfileCompletion.ComputePercent(data.Profile),
+            ProfileCompletionPercent = ProfileCompletion.ComputePercent(data.Profile, shiftTagPrefs.Count > 0),
             PendingConsents = data.MembershipSnapshot.PendingConsentCount,
             TotalRequiredConsents = data.MembershipSnapshot.RequiredConsentCount,
             IsVolunteerMember = data.MembershipSnapshot.IsVolunteerMember,
