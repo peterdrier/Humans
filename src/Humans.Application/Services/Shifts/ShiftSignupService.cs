@@ -1123,6 +1123,66 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
     public Task<IReadOnlyList<ShiftSignup>> GetAllForOrphanScanAsync(CancellationToken ct = default) =>
         _repo.GetAllForOrphanScanAsync(ct);
 
+    public async Task PromoteWidgetPendingSignupsAfterAdmissionAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var activeEvent = await _shiftMgmt.GetActiveAsync();
+        if (activeEvent is null) return;
+
+        var pending = await _repo.GetPendingForUserInEventForMutationAsync(userId, activeEvent.Id, ct);
+        if (pending.Count == 0) return;
+
+        // Range blocks promote together: if any signup in a block is held back
+        // by capacity or non-Public policy, every signup in that block stays
+        // Pending. Group by SignupBlockId, treating null block as a singleton.
+        var groups = pending.GroupBy(s => s.SignupBlockId);
+
+        var promoted = new List<ShiftSignup>();
+        foreach (var group in groups)
+        {
+            var block = group.ToList();
+
+            // Public-only — RequireApproval signups stay Pending awaiting coordinator.
+            if (block.Any(s => s.Shift.Rota.Policy != SignupPolicy.Public))
+                continue;
+
+            // Capacity re-check per shift; exclude this user's own Pending row
+            // from the count so a user-Pending row doesn't block its own promotion.
+            var blockedByCapacity = false;
+            foreach (var signup in block)
+            {
+                var confirmed = signup.Shift.ShiftSignups
+                    .Count(ss => ss.Status == SignupStatus.Confirmed);
+                if (confirmed >= signup.Shift.MaxVolunteers)
+                {
+                    blockedByCapacity = true;
+                    break;
+                }
+            }
+            if (blockedByCapacity)
+                continue;
+
+            foreach (var signup in block)
+            {
+                signup.Confirm(userId, _clock);
+                promoted.Add(signup);
+            }
+        }
+
+        if (promoted.Count == 0) return;
+
+        await _repo.SaveChangesAsync(ct);
+
+        foreach (var signup in promoted)
+        {
+            await _auditLogService.LogAsync(
+                AuditAction.ShiftSignupConfirmed, nameof(ShiftSignup), signup.Id,
+                $"shift '{signup.Shift.Rota.Name}' day {signup.Shift.DayOffset} (auto-promoted on admission)",
+                userId,
+                signup.UserId, nameof(User));
+        }
+    }
+
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {

@@ -11,6 +11,7 @@ using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -222,6 +223,15 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
 
         // Sync system team memberships (adds user if eligible + all consents done).
         await _syncJob.SyncVolunteersMembershipForUserAsync(userId);
+
+        // Promote any current-event Pending shift signups the user has parked
+        // while consents were outstanding. Resolved lazily through the service
+        // provider — same pattern as IMembershipCalculator above — to keep the
+        // cross-section dependency edge soft. See:
+        // docs/superpowers/specs/2026-05-05-low-friction-shift-signup-design.md
+        var shiftSignupService = _serviceProvider.GetRequiredService<IShiftSignupService>();
+        await shiftSignupService.PromoteWidgetPendingSignupsAfterAdmissionAsync(userId, ct);
+
         await _syncJob.SyncCoordinatorsMembershipForUserAsync(userId);
 
         // Auto-resolve AccessSuspended notifications only once ALL required consents are complete.
