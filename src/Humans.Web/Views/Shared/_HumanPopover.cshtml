@@ -1,9 +1,19 @@
 @model Humans.Web.Models.ProfileSummaryViewModel
+@using Humans.Web.Authorization
+@using Microsoft.AspNetCore.Authorization
+@inject IAuthorizationService AuthService
 
 <div class="d-flex align-items-center" style="min-width: 200px;">
     <vc:user-avatar user-id="@Model.UserId" size="72" css-class="me-2" />
     <div>
-        <div class="fw-semibold">@Model.DisplayName</div>
+        <div class="fw-semibold">
+            @Model.DisplayName
+            @if ((await AuthService.AuthorizeAsync(User, PolicyNames.HumanAdminBoardOrAdmin)).Succeeded
+                && !string.IsNullOrEmpty(Model.PreferredLanguage?.ToFlagClass()))
+            {
+                <span class="@Model.PreferredLanguage.ToFlagClass() ms-1" title="@Model.PreferredLanguage.ToDisplayLanguageName()"></span>
+            }
+        </div>
         @if (Model.IsSuspended)
         {
             <span class="badge bg-danger" style="font-size: 0.7rem;">Suspended</span>
@@ -22,12 +32,19 @@
         }
     </div>
 </div>
-@if (Model.Teams.Count > 0)
+@if (Model.Teams.Count > 0 || Model.Languages.Count > 0)
 {
     <div class="mt-2 pt-2 border-top">
         @foreach (var team in Model.Teams)
         {
             <span class="badge bg-light text-dark border me-1 mb-1" style="font-size: 0.7rem;">@team</span>
+        }
+        @foreach (var lang in Model.Languages)
+        {
+            <span class="badge bg-light text-dark border me-1 mb-1" style="font-size: 0.7rem;">
+                @lang.LanguageName
+                <small class="opacity-75">(@lang.Proficiency)</small>
+            </span>
         }
     </div>
 }

@@ -113,6 +113,81 @@ public class RatchetTestRunnerTests : IDisposable
         read.Should().BeEquivalentTo(new[] { "src/A.cs:1:x", "src/B.cs:2:y" });
     }
 
+    [HumansFact]
+    public void ReadBaseline_strips_trailing_informational_suffix()
+    {
+        // Trailing " # ..." on data lines is informational only — the diff
+        // key stops at the " # " separator. Lines without the separator are
+        // returned verbatim.
+        File.WriteAllLines(_baselineAbsolutePath, new[]
+        {
+            "src/A.cs:foo # L42 lines=10",
+            "src/B.cs:bar#1 # L99",
+            "src/C.cs:baz",
+        });
+        var read = RatchetTestRunner.ReadBaseline(_baselineRelativePath);
+        read.Should().BeEquivalentTo(new[]
+        {
+            "src/A.cs:foo",
+            "src/B.cs:bar#1",
+            "src/C.cs:baz",
+        });
+    }
+
+    [HumansFact]
+    public void StripTrailingComment_preserves_embedded_hash_in_key()
+    {
+        // The key may itself contain a "#N" ordinal (no preceding space) —
+        // those must NOT be treated as the start of a comment.
+        RatchetTestRunner.StripTrailingComment("src/A.cs:HasOne<User>#2 # L42")
+            .Should().Be("src/A.cs:HasOne<User>#2");
+        RatchetTestRunner.StripTrailingComment("src/A.cs:Edit/3")
+            .Should().Be("src/A.cs:Edit/3");
+        RatchetTestRunner.StripTrailingComment("src/A.cs:concurrency-token#1")
+            .Should().Be("src/A.cs:concurrency-token#1");
+    }
+
+    [HumansFact]
+    public void Run_passes_when_only_trailing_line_info_changes()
+    {
+        // The whole point of the new format: an unrelated edit that shifts
+        // a violation's line number must NOT trip the ratchet.
+        File.WriteAllLines(_baselineAbsolutePath, new[]
+        {
+            "src/A.cs:Edit/2 # L100 lines=30",
+            "src/B.cs:Update/1 # L50 lines=20",
+        });
+
+        // Same keys, different line numbers and diagnostics — should pass.
+        RatchetTestRunner.Run(
+            "TestRule",
+            _baselineRelativePath,
+            new[]
+            {
+                "src/A.cs:Edit/2 # L142 lines=30",   // shifted +42 lines
+                "src/B.cs:Update/1 # L73 lines=22",  // shifted +23 lines, diagnostics changed
+            });
+    }
+
+    [HumansFact]
+    public void Run_failure_message_includes_full_locator_with_line_info()
+    {
+        File.WriteAllLines(_baselineAbsolutePath, Array.Empty<string>());
+
+        var act = () => RatchetTestRunner.Run(
+            "TestRule",
+            _baselineRelativePath,
+            new[] { "src/B.cs:NewViolation/1 # L77 lines=42" });
+
+        // The failure message should preserve the trailing info so the
+        // human can locate the violation in the source.
+        act.Should().Throw<Exception>()
+            .WithMessage("*src/B.cs:NewViolation/1*");
+        act.Should().Throw<Exception>()
+            .WithMessage("*L77*",
+                "the informational suffix should appear in the failure message even though it doesn't participate in diffing");
+    }
+
     public void Dispose()
     {
         if (_disposed) return;

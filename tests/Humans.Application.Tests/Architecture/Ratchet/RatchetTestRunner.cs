@@ -26,9 +26,16 @@ namespace Humans.Application.Tests.Architecture.Ratchet;
 /// every fix PR.
 ///
 /// Locator format (one per line):
-///   <c>relative/path.cs:line:symbol-or-message</c>
+///   <c>relative/path.cs:stable-key [# L&lt;line&gt; informational-suffix]</c>
 ///
-/// Comments (<c>#</c>) and blank lines are stripped on read.
+/// The diff key is everything before the first <c> # </c> (space-hash) or
+/// end-of-line. Trailing <c># …</c> content is stripped before diffing and
+/// is purely informational — typically a line number and per-rule
+/// diagnostics — so unrelated edits that shift line numbers don't trip the
+/// ratchet.
+///
+/// Whole-line comments (<c>#</c> in column 0) and blank lines are stripped
+/// on read.
 /// </summary>
 public static class RatchetTestRunner
 {
@@ -48,10 +55,11 @@ public static class RatchetTestRunner
     }
 
     /// <summary>
-    /// Read a baseline file into a sorted set of locator strings. Comments
-    /// (lines starting with <c>#</c>) and blank lines are stripped. If the
-    /// baseline file does not exist, returns an empty set — the rule then
-    /// behaves as a hard test (any violation fails).
+    /// Read a baseline file into a sorted set of diff keys. Comments
+    /// (lines starting with <c>#</c>) and blank lines are dropped entirely;
+    /// trailing <c> # …</c> on data lines is stripped (informational only).
+    /// If the baseline file does not exist, returns an empty set — the rule
+    /// then behaves as a hard test (any violation fails).
     /// </summary>
     public static SortedSet<string> ReadBaseline(string baselineRelativePath)
     {
@@ -64,62 +72,90 @@ public static class RatchetTestRunner
             var trimmed = line.Trim();
             if (trimmed.Length == 0) continue;
             if (trimmed.StartsWith('#')) continue;
-            result.Add(trimmed);
+            result.Add(StripTrailingComment(trimmed));
         }
         return result;
     }
 
     /// <summary>
+    /// Strip a trailing informational <c> # …</c> suffix (space-hash) from a
+    /// data line. The first <c> # </c> separator wins; everything after it
+    /// is dropped. Lines without a separator are returned unchanged.
+    /// Embedded <c>#</c> characters that aren't preceded by whitespace are
+    /// left intact (e.g. a stable key like <c>HasOne&lt;User&gt;#1</c>).
+    /// </summary>
+    public static string StripTrailingComment(string line)
+    {
+        // Search for " #" (space then hash). The convention is that the
+        // informational suffix is always introduced with a leading space.
+        var idx = line.IndexOf(" #", StringComparison.Ordinal);
+        return idx < 0 ? line : line.Substring(0, idx).TrimEnd();
+    }
+
+    /// <summary>
     /// Run a ratcheted rule. Compares the rule's current scan output against
     /// its baseline file; hard-fails on new violations, soft-fails (separately)
-    /// on stale baseline entries.
+    /// on stale baseline entries. Diffing is done by stable key — trailing
+    /// <c> # …</c> informational suffixes are ignored, so changes to line
+    /// numbers or other diagnostics never trip the ratchet.
     /// </summary>
     /// <param name="ruleName">Human-readable name, used in failure messages.</param>
     /// <param name="baselineRelativePath">Path to the baseline file relative
     /// to the repository root, e.g. <c>tests/Humans.Application.Tests/Architecture/Baselines/MyRule.baseline.txt</c>.</param>
     /// <param name="currentViolations">The locator strings produced by the
-    /// rule's scanner against the current tree.</param>
+    /// rule's scanner against the current tree. Each string may include a
+    /// trailing <c> # …</c> suffix; the suffix is stripped for diffing but
+    /// retained in failure messages.</param>
     public static void Run(string ruleName, string baselineRelativePath, IEnumerable<string> currentViolations)
     {
-        var current = new SortedSet<string>(currentViolations, StringComparer.Ordinal);
+        // Build a key → full-line map for current violations. Multiple full
+        // lines collapsing to the same key are merged (first-write wins).
+        var currentByKey = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        foreach (var v in currentViolations)
+        {
+            var key = StripTrailingComment(v);
+            if (!currentByKey.ContainsKey(key)) currentByKey.Add(key, v);
+        }
+
+        var current = new SortedSet<string>(currentByKey.Keys, StringComparer.Ordinal);
         var baseline = ReadBaseline(baselineRelativePath);
 
-        var newViolations = current.Except(baseline, StringComparer.Ordinal).ToList();
-        var fixedViolations = baseline.Except(current, StringComparer.Ordinal).ToList();
+        var newKeys = current.Except(baseline, StringComparer.Ordinal).ToList();
+        var fixedKeys = baseline.Except(current, StringComparer.Ordinal).ToList();
 
         // Hard-fail FIRST — new violations matter more than stale baselines.
-        if (newViolations.Count > 0)
+        if (newKeys.Count > 0)
         {
             var sb = new StringBuilder();
             sb.Append("Rule '").Append(ruleName).Append("' detected ")
-                .Append(newViolations.Count.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                .Append(newKeys.Count.ToString(System.Globalization.CultureInfo.InvariantCulture))
                 .Append(" NEW violation(s) not in baseline.\n");
             sb.Append("Baseline file: ").Append(baselineRelativePath).Append('\n');
             sb.Append('\n');
             sb.Append("New violations (fix the code, OR if intentional add these lines to the baseline):\n");
-            foreach (var v in newViolations)
-                sb.Append("  + ").Append(v).Append('\n');
-            newViolations.Should().BeEmpty(because: sb.ToString());
+            foreach (var k in newKeys)
+                sb.Append("  + ").Append(currentByKey.TryGetValue(k, out var full) ? full : k).Append('\n');
+            newKeys.Should().BeEmpty(because: sb.ToString());
         }
 
-        // Soft-fail: baseline contains lines no longer present in the scan.
+        // Soft-fail: baseline contains keys no longer present in the scan.
         // This still fails the test — the baseline must shrink to match
         // reality so future regressions can't hide behind stale entries.
-        if (fixedViolations.Count > 0)
+        if (fixedKeys.Count > 0)
         {
             var sb = new StringBuilder();
             sb.Append("Rule '").Append(ruleName).Append("': you fixed ")
-                .Append(fixedViolations.Count.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                .Append(fixedKeys.Count.ToString(System.Globalization.CultureInfo.InvariantCulture))
                 .Append(" violation(s) — thank you!\n");
             sb.Append("Please remove the following line(s) from the baseline file:\n");
             sb.Append("  ").Append(baselineRelativePath).Append('\n');
             sb.Append('\n');
-            foreach (var v in fixedViolations)
-                sb.Append("  - ").Append(v).Append('\n');
+            foreach (var k in fixedKeys)
+                sb.Append("  - ").Append(k).Append('\n');
             sb.Append('\n');
             sb.Append("Why: stale baseline entries silently allow regressions. The ratchet only\n");
             sb.Append("works if baselines shrink as violations are fixed.\n");
-            fixedViolations.Should().BeEmpty(because: sb.ToString());
+            fixedKeys.Should().BeEmpty(because: sb.ToString());
         }
     }
 
@@ -153,5 +189,18 @@ public static class RatchetTestRunner
     {
         var rel = Path.GetRelativePath(repoRoot, absolutePath);
         return rel.Replace('\\', '/');
+    }
+
+    /// <summary>
+    /// Resolve a 1-based line number from a 0-based offset into the source.
+    /// Helper for rule scanners building the informational <c># L&lt;line&gt;</c>
+    /// suffix.
+    /// </summary>
+    public static int LineNumberAt(string source, int offset)
+    {
+        var line = 1;
+        for (var i = 0; i < offset && i < source.Length; i++)
+            if (source[i] == '\n') line++;
+        return line;
     }
 }

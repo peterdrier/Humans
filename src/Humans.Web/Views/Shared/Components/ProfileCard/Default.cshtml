@@ -1,4 +1,7 @@
 @model Humans.Web.Models.ProfileCardViewModel
+@using Humans.Web.Authorization
+@using Microsoft.AspNetCore.Authorization
+@inject IAuthorizationService AuthService
 
 @* === Card 1: Public Profile === *@
 <div class="card mb-4">
@@ -22,7 +25,8 @@
                 {
                     <span class="text-muted me-2">@Model.Pronouns</span>
                 }
-                @if (!string.IsNullOrEmpty(Model.PreferredLanguage?.ToFlagClass()))
+                @if ((await AuthService.AuthorizeAsync(User, PolicyNames.HumanAdminBoardOrAdmin)).Succeeded
+                    && !string.IsNullOrEmpty(Model.PreferredLanguage?.ToFlagClass()))
                 {
                     <span class="@Model.PreferredLanguage.ToFlagClass()" title="@Model.PreferredLanguage.ToDisplayLanguageName()"></span>
                 }
@@ -40,6 +44,18 @@
                                     <span class="ms-1">@await Html.PartialAsync("_RoleBadge", TeamMemberRole.Coordinator)</span>
                                 }
                             </a>
+                        }
+                    </div>
+                }
+                @if (Model.Languages.Count > 0)
+                {
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                        @foreach (var lang in Model.Languages)
+                        {
+                            <span class="badge @lang.ProficiencyBadgeClass">
+                                @lang.LanguageName
+                                <small class="ms-1 opacity-75">(@lang.Proficiency)</small>
+                            </span>
                         }
                     </div>
                 }
@@ -145,22 +161,6 @@
             <hr />
             <h6 class="text-muted mb-2">@Localizer["Profile_Bio"]</h6>
             <p class="mb-0" style="white-space: pre-line">@Model.Bio</p>
-        }
-
-        @* Languages *@
-        @if (Model.Languages.Count > 0)
-        {
-            <hr />
-            <h6 class="text-muted mb-2">@Localizer["Profile_Languages"]</h6>
-            <div class="d-flex flex-wrap gap-2">
-                @foreach (var lang in Model.Languages)
-                {
-                    <span class="badge @lang.ProficiencyBadgeClass">
-                        @lang.LanguageName
-                        <small class="ms-1 opacity-75">(@lang.Proficiency)</small>
-                    </span>
-                }
-            </div>
         }
 
         @* Contribution Interests *@
