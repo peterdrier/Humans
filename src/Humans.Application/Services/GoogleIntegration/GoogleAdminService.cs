@@ -385,6 +385,47 @@ public sealed class GoogleAdminService : IGoogleAdminService
         string email, Guid actorUserId,
         CancellationToken ct = default)
     {
+        // Refuse if the account is already enrolled in 2-Step Verification.
+        // The combined flow rotates the backup-code set destructively, so
+        // running it against a properly-set-up account would silently break
+        // the human's working 2FA. Always re-check live Directory state — the
+        // UI hides the button, but a hand-crafted POST must hit the same gate.
+        WorkspaceUserAccount? liveAccount;
+        try
+        {
+            liveAccount = await _workspaceUserService.GetAccountAsync(email, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch live 2SV state for: {Email}", email);
+            return new WorkspaceRecoveryCredentialsResult(
+                Success: false,
+                Email: email,
+                ErrorMessage: $"Failed to verify 2FA enrollment for {email}. Aborted; no changes made.");
+        }
+
+        if (liveAccount is null)
+        {
+            return new WorkspaceRecoveryCredentialsResult(
+                Success: false,
+                Email: email,
+                ErrorMessage: $"Account {email} not found in Workspace Directory.");
+        }
+
+        if (liveAccount.IsEnrolledIn2Sv)
+        {
+            await _auditLogService.LogAsync(
+                AuditAction.WorkspaceAccountResetBlockedFor2Sv,
+                "WorkspaceAccount", Guid.Empty,
+                $"Refused Reset+2FA for @{NobodiesTeamDomain} account {email}: already enrolled in 2-Step Verification",
+                actorUserId);
+
+            return new WorkspaceRecoveryCredentialsResult(
+                Success: false,
+                Email: email,
+                ErrorMessage: $"{email} is already enrolled in 2FA. Reset+2FA is for locked-out humans only — use the plain Reset Password button, or rotate 2FA in the Google Admin console.");
+        }
+
         // Step 1: reset the password. Audit + return on failure — there's
         // no point grabbing a backup code if the human can't sign in anyway.
         var resetResult = await ResetPasswordAsync(email, actorUserId, ct);
