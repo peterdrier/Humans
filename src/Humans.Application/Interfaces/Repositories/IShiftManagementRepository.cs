@@ -199,14 +199,12 @@ public interface IShiftManagementRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Loads shifts (with signups) for urgency scoring. Same shape as
-    /// <see cref="GetShiftsWithSignupsForEventAsync"/> with a fixed filter
-    /// of "in-event, optional department, optional day offset".
+    /// Loads shifts (with signups) for urgency scoring. Filters by event,
+    /// optional department, and optional day-offset bounds (inclusive).
     /// </summary>
     Task<IReadOnlyList<Shift>> GetShiftsWithSignupsForUrgencyAsync(
         Guid eventSettingsId,
         Guid? departmentId,
-        int? dayOffset,
         int? minDayOffset,
         int? maxDayOffset,
         CancellationToken ct = default);

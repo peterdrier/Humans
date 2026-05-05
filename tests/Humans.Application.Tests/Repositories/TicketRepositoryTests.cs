@@ -143,7 +143,7 @@ public sealed class TicketRepositoryTests : IDisposable
     // ── GetAllUserEmailLookupEntriesAsync ────────────────────────────────────
 
     [HumansFact]
-    public async Task GetAllUserEmailLookupEntriesAsync_ReturnsOneEntryPerRow()
+    public async Task GetAllUserEmailLookupEntriesAsync_ReturnsOnlyVerifiedRows()
     {
         var user = new User
         {
@@ -179,9 +179,11 @@ public sealed class TicketRepositoryTests : IDisposable
 
         var entries = await _repo.GetAllUserEmailLookupEntriesAsync();
 
-        entries.Should().HaveCount(2);
-        entries.Should().Contain(e => e.Email == "primary@example.com" && e.IsGoogle);
-        entries.Should().Contain(e => e.Email == "alt@example.com" && !e.IsGoogle);
+        // Verified-only: the unverified "alt@example.com" row must NOT be returned
+        // (issue nobodies-collective/Humans#645).
+        entries.Should().HaveCount(1);
+        entries.Should().Contain(e => e.Email == "primary@example.com");
+        entries.Should().NotContain(e => e.Email == "alt@example.com");
     }
 
     // ── GetMatchedAttendeesForEventAsync ─────────────────────────────────────

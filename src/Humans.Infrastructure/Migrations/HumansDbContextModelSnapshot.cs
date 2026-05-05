@@ -1812,6 +1812,16 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<int>("FinishingWeekendStartOffset")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(-4);
+
+                    b.Property<int>("FirstCrewStartOffset")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(-25);
+
                     b.Property<LocalDate>("GateOpeningDate")
                         .HasColumnType("date");
 
@@ -1824,8 +1834,18 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<bool>("IsShiftBrowsingOpen")
                         .HasColumnType("boolean");
 
+                    b.Property<int>("PreEventWeekStartOffset")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(-9);
+
                     b.Property<int>("ReminderLeadTimeHours")
                         .HasColumnType("integer");
+
+                    b.Property<int>("SetupWeekStartOffset")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(-16);
 
                     b.Property<int>("StrikeEndOffset")
                         .HasColumnType("integer");

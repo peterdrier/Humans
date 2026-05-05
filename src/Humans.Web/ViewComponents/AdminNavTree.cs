@@ -51,7 +51,7 @@ public static class AdminNavTree
         new("Agent", new AdminNavItem[]
         {
             new("Agent Config",  "AdminAgent", "Settings",      null, null, "fa-solid fa-robot",    PolicyNames.AdminOnly),
-            new("Agent History", "AdminAgent", "Conversations", null, null, "fa-solid fa-comments", PolicyNames.AdminOnly),
+            new("Agent History", "Agent",      "Conversations", null, null, "fa-solid fa-comments", PolicyNames.AdminOnly),
         }),
         new("People data", new AdminNavItem[]
         {

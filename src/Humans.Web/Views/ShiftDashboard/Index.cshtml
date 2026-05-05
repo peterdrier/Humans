@@ -2,6 +2,7 @@
 @using Humans.Application.Enums
 @using Humans.Domain.Enums
 @using Humans.Web.Controllers
+@using NodaTime.Text
 
 @{
     ViewData["Title"] = Localizer["ShiftDash_Title"].Value;
@@ -10,6 +11,9 @@
 
     string PeriodBtnClass(ShiftPeriod? p) =>
         Model.SelectedPeriod == p ? "btn btn-primary active" : "btn btn-outline-secondary";
+
+    string SubPeriodBtnClass(BuildSubPeriod? p) =>
+        Model.SelectedSubPeriod == p ? "btn btn-primary active" : "btn btn-outline-secondary";
 
     var daysToBuild = Model.Countdown.DaysToBuild;
     var firstBuildDay = Model.Countdown.FirstBuildDay;
@@ -78,57 +82,62 @@
         </div>
     </div>
 
-    @* Unified filter card: period tabs on top, date+department form below *@
+    @* Unified filter card: period buttons + sub-period buttons (visible when Build is selected),
+       and the date-range + department form below. Period and date range are MUTUALLY EXCLUSIVE —
+       client-side JS clears one when the user picks the other. *@
     <div class="card mb-4" id="filters">
         <div class="card-body">
             <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
                 <span class="text-muted small me-2">@Localizer["ShiftDash_PeriodFilter_Label"]</span>
-                <div class="btn-group btn-group-sm" role="group">
-                    <a asp-action="Index"
-                       asp-route-departmentId="@Model.SelectedDepartmentId"
-                       asp-route-rotaId="@Model.SelectedRotaId"
-                       asp-route-date="@Model.SelectedDate"
-                       asp-route-trendWindow="@Model.TrendWindow"
-                       asp-fragment="filters"
-                       class="@PeriodBtnClass(null)">@Localizer["ShiftDash_PeriodFilter_All"]</a>
-                    <a asp-action="Index"
-                       asp-route-departmentId="@Model.SelectedDepartmentId"
-                       asp-route-rotaId="@Model.SelectedRotaId"
-                       asp-route-date="@Model.SelectedDate"
-                       asp-route-trendWindow="@Model.TrendWindow"
-                       asp-route-period="@ShiftPeriod.Build"
-                       asp-fragment="filters"
-                       class="@PeriodBtnClass(ShiftPeriod.Build)">@Localizer["ShiftDash_PeriodFilter_BuildDays"]</a>
-                    <a asp-action="Index"
-                       asp-route-departmentId="@Model.SelectedDepartmentId"
-                       asp-route-rotaId="@Model.SelectedRotaId"
-                       asp-route-date="@Model.SelectedDate"
-                       asp-route-trendWindow="@Model.TrendWindow"
-                       asp-route-period="@ShiftPeriod.Event"
-                       asp-fragment="filters"
-                       class="@PeriodBtnClass(ShiftPeriod.Event)">@Localizer["ShiftDash_PeriodFilter_EventShifts"]</a>
-                    <a asp-action="Index"
-                       asp-route-departmentId="@Model.SelectedDepartmentId"
-                       asp-route-rotaId="@Model.SelectedRotaId"
-                       asp-route-date="@Model.SelectedDate"
-                       asp-route-trendWindow="@Model.TrendWindow"
-                       asp-route-period="@ShiftPeriod.Strike"
-                       asp-fragment="filters"
-                       class="@PeriodBtnClass(ShiftPeriod.Strike)">@Localizer["ShiftDash_PeriodFilter_Strike"]</a>
+                <div class="btn-group btn-group-sm" role="group" id="dashboard-period-group">
+                    <a href="#" data-period="" class="@PeriodBtnClass(null)">@Localizer["ShiftDash_PeriodFilter_All"]</a>
+                    <a href="#" data-period="@ShiftPeriod.Build" class="@PeriodBtnClass(ShiftPeriod.Build)">@Localizer["ShiftDash_PeriodFilter_BuildDays"]</a>
+                    <a href="#" data-period="@ShiftPeriod.Event" class="@PeriodBtnClass(ShiftPeriod.Event)">@Localizer["ShiftDash_PeriodFilter_EventShifts"]</a>
+                    <a href="#" data-period="@ShiftPeriod.Strike" class="@PeriodBtnClass(ShiftPeriod.Strike)">@Localizer["ShiftDash_PeriodFilter_Strike"]</a>
                 </div>
             </div>
-            <form method="get" id="dashboard-filter-form" class="row g-2 align-items-end">
+            @if (Model.SelectedPeriod == ShiftPeriod.Build)
+            {
+                <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                    <span class="text-muted small me-2">@Localizer["ShiftDash_SubPeriodFilter_Label"]</span>
+                    <div class="btn-group btn-group-sm" role="group" id="dashboard-subperiod-group">
+                        <a href="#" data-subperiod="" class="@SubPeriodBtnClass(null)">@Localizer["ShiftDash_SubPeriodFilter_All"]</a>
+                        <a href="#" data-subperiod="@BuildSubPeriod.FirstCrew" class="@SubPeriodBtnClass(BuildSubPeriod.FirstCrew)">@Localizer["ShiftDash_SubPeriodFilter_FirstCrew"]</a>
+                        <a href="#" data-subperiod="@BuildSubPeriod.SetupWeek" class="@SubPeriodBtnClass(BuildSubPeriod.SetupWeek)">@Localizer["ShiftDash_SubPeriodFilter_SetupWeek"]</a>
+                        <a href="#" data-subperiod="@BuildSubPeriod.PreEventWeek" class="@SubPeriodBtnClass(BuildSubPeriod.PreEventWeek)">@Localizer["ShiftDash_SubPeriodFilter_PreEventWeek"]</a>
+                        <a href="#" data-subperiod="@BuildSubPeriod.FinishingWeekend" class="@SubPeriodBtnClass(BuildSubPeriod.FinishingWeekend)">@Localizer["ShiftDash_SubPeriodFilter_FinishingWeekend"]</a>
+                    </div>
+                </div>
+            }
+            <form method="get" id="dashboard-filter-form" class="row g-2 align-items-end"
+                  data-gate-opening="@LocalDatePattern.Iso.Format(Model.EventSettings.GateOpeningDate)"
+                  data-build-start-offset="@Model.EventSettings.BuildStartOffset"
+                  data-event-end-offset="@Model.EventSettings.EventEndOffset"
+                  data-strike-end-offset="@Model.EventSettings.StrikeEndOffset"
+                  data-firstcrew-offset="@Model.EventSettings.FirstCrewStartOffset"
+                  data-setupweek-offset="@Model.EventSettings.SetupWeekStartOffset"
+                  data-preeventweek-offset="@Model.EventSettings.PreEventWeekStartOffset"
+                  data-finishingweekend-offset="@Model.EventSettings.FinishingWeekendStartOffset">
                 @if (Model.SelectedPeriod.HasValue)
                 {
-                    <input type="hidden" name="period" value="@Model.SelectedPeriod.Value" />
+                    <input type="hidden" name="period" id="dashboard-period-input" value="@Model.SelectedPeriod.Value" />
                 }
+                else
+                {
+                    <input type="hidden" name="period" id="dashboard-period-input" value="" />
+                }
+                <input type="hidden" name="subPeriod" id="dashboard-subperiod-input" value="@(Model.SelectedSubPeriod?.ToString() ?? "")" />
                 @if (Model.TrendWindow != TrendWindow.Last30Days)
                 {
                     <input type="hidden" name="trendWindow" value="@Model.TrendWindow" />
                 }
                 <div class="col-md-3">
-                    <label class="form-label">@Localizer["ShiftDash_Date"]</label>
-                    <input type="date" name="date" value="@Model.SelectedDate" class="form-control" />
+                    <label class="form-label">Start date</label>
+                    <input type="date" name="startDate" id="dashboard-start-date" value="@Model.SelectedStartDate" class="form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">End date</label>
+                    <input type="date" name="endDate" id="dashboard-end-date" value="@Model.SelectedEndDate" class="form-control" min="@Model.SelectedStartDate" />
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">@Localizer["ShiftDash_Department"]</label>
@@ -145,6 +154,25 @@
                     <a asp-action="Index" asp-fragment="filters" class="btn btn-outline-secondary ms-1">@Localizer["ShiftDash_Clear"]</a>
                 </div>
             </form>
+            @if (Model.FilterStartDate.HasValue || Model.FilterEndDate.HasValue)
+            {
+                <div class="mt-2 small text-muted">
+                    <i class="fa-solid fa-calendar me-1"></i>
+                    Showing
+                    @if (Model.FilterStartDate.HasValue && Model.FilterEndDate.HasValue)
+                    {
+                        <strong>@Model.FilterStartDate.Value.ToString("MMM d", null) – @Model.FilterEndDate.Value.ToString("MMM d yyyy", null)</strong>
+                    }
+                    else if (Model.FilterStartDate.HasValue)
+                    {
+                        <text>from <strong>@Model.FilterStartDate.Value.ToString("MMM d yyyy", null)</strong> onwards</text>
+                    }
+                    else
+                    {
+                        <text>up to <strong>@Model.FilterEndDate!.Value.ToString("MMM d yyyy", null)</strong></text>
+                    }
+                </div>
+            }
         </div>
     </div>
     <script>
@@ -195,111 +223,122 @@
     @* Staffing hours chart *@
     @await Html.PartialAsync("_StaffingHoursChart", (Model.StaffingHours, "dashboardStaffingHoursChart"))
 
-    @* Urgency table *@
+    @* Grouped urgency accordion — one card per (Rota, Department) summarising slot
+       coverage; expand to see per-day shifts and (for VolunteerCoordinator/Admin/NoInfoAdmin)
+       voluntell forms. Replaces the previous one-row-per-shift table that repeated
+       Rota and Department down the page. *@
     @if (Model.Shifts.Count == 0)
     {
         <div class="alert alert-info">@Localizer["ShiftDash_NoShiftsMatch"]</div>
     }
     else
     {
-        <div class="table-responsive">
-            <table class="table table-hover align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>@Localizer["ShiftDash_Shift"]</th>
-                        <th>@Localizer["ShiftDash_Department"]</th>
-                        <th>@Localizer["ShiftDash_DateTime"]</th>
-                        <th>@Localizer["ShiftDash_Slots"]</th>
-                        <th>@Localizer["ShiftDash_Priority"]</th>
-                        <th authorize-policy="ShiftDashboardAccess"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var item in Model.Shifts
-                        .OrderBy(s => s.Shift.Rota.Name, StringComparer.OrdinalIgnoreCase)
-                        .ThenBy(s => s.Shift.DayOffset)
-                        .ThenBy(s => s.Shift.StartTime))
-                    {
-                        var shift = item.Shift;
-                        var shiftDate = Model.EventSettings.GateOpeningDate.PlusDays(shift.DayOffset);
-                        var shiftDateLabel = shiftDate.ToDisplayShiftDate();
-                        var period = shift.GetShiftPeriod(Model.EventSettings);
-                        var periodBadge = period switch
-                        {
-                            ShiftPeriod.Build => "bg-info",
-                            ShiftPeriod.Event => "bg-success",
-                            ShiftPeriod.Strike => "bg-secondary",
-                            _ => "bg-secondary"
-                        };
-                        var periodLabel = period switch
-                        {
-                            ShiftPeriod.Build => Localizer["Shifts_SetUp"].Value,
-                            ShiftPeriod.Event => Localizer["Shifts_Event"].Value,
-                            ShiftPeriod.Strike => Localizer["Shifts_Strike"].Value,
-                            _ => ""
-                        };
-                        var priorityBadge = shift.Rota.Priority switch
-                        {
-                            ShiftPriority.Essential => "bg-danger",
-                            ShiftPriority.Important => "bg-warning text-dark",
-                            _ => "bg-secondary"
-                        };
-                        var priorityLabel = shift.Rota.Priority.ToString();
-                        var understaffed = item.ConfirmedCount < shift.MinVolunteers;
-                        var isHighlighted = Model.SelectedRotaId.HasValue && shift.RotaId == Model.SelectedRotaId.Value;
-                        var collapseId = "voluntell-" + shift.Id.ToString("N");
+        var grouped = Model.Shifts
+            .GroupBy(item => (item.Shift.RotaId, RotaName: item.Shift.Rota.Name, item.DepartmentName, item.Shift.Rota.Priority))
+            .OrderBy(g => g.Key.RotaName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(g => g.Key.DepartmentName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
-                        <tr class="@(isHighlighted ? "table-warning" : "")">
-                            <td>
-                                @shift.Rota.Name
-                                @if (shift.AdminOnly) { <span class="badge bg-dark ms-1">Admin</span> }
-                            </td>
-                            <td>@item.DepartmentName</td>
-                            <td>
-                                <span class="badge @periodBadge me-1">@periodLabel</span>
-                                @shiftDateLabel
-                                <small class="text-muted ms-1">@shift.StartTime</small>
-                            </td>
-                            <td>
-                                <span class="@(understaffed ? "text-danger fw-bold" : "")">@item.ConfirmedCount</span>
-                                <small class="text-muted">/ @shift.MinVolunteers–@shift.MaxVolunteers</small>
-                            </td>
-                            <td><span class="badge @priorityBadge">@priorityLabel</span></td>
-                            @* Voluntell action is privileged — only the narrower
-                               ShiftDashboardAccess role list (Admin / NoInfoAdmin /
-                               VolunteerCoordinator) can assign humans to shifts. Subteam
-                               managers see the urgency rows but get no action column. *@
-                            <td authorize-policy="ShiftDashboardAccess">
-                                <button class="btn btn-sm btn-outline-primary"
-                                        type="button"
-                                        data-bs-toggle="collapse"
-                                        data-bs-target="#@collapseId"
-                                        data-shift-id="@shift.Id">
-                                    @Localizer["ShiftDash_Voluntell"]
-                                </button>
-                            </td>
-                        </tr>
-                        <tr class="collapse" id="@collapseId" authorize-policy="ShiftDashboardAccess">
-                            <td colspan="6">
-                                <div class="p-3 bg-light rounded border">
-                                    <label class="form-label fw-semibold">@string.Format(Localizer["ShiftDash_SearchHumans"].Value, shift.Rota.Name)</label>
-                                    <input type="text"
-                                           class="form-control mb-2 volunteer-search-input"
-                                           placeholder="@Localizer["ShiftDash_SearchPlaceholder"].Value"
-                                           data-shift-id="@shift.Id"
-                                           autocomplete="off" />
-                                    <div class="volunteer-results" data-shift-id="@shift.Id"></div>
-                                </div>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+        <div class="accordion" id="urgencyAccordion">
+        @foreach (var group in grouped)
+        {
+            var groupId = "urgrp-" + group.Key.RotaId.ToString("N");
+            var totalConfirmed = group.Sum(i => i.ConfirmedCount);
+            var totalMax = group.Sum(i => i.Shift.MaxVolunteers);
+            var totalMin = group.Sum(i => i.Shift.MinVolunteers);
+            var isUnderstaffed = totalConfirmed < totalMin;
+            var dayCount = group.Select(i => i.Shift.DayOffset).Distinct().Count();
+            var isHighlighted = Model.SelectedRotaId.HasValue && group.Key.RotaId == Model.SelectedRotaId.Value;
+            var priorityBadge = group.Key.Priority switch
+            {
+                ShiftPriority.Essential => "bg-danger",
+                ShiftPriority.Important => "bg-warning text-dark",
+                _ => "bg-secondary"
+            };
+
+            <div class="accordion-item @(isHighlighted ? "border-warning" : "")">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#@groupId"
+                            aria-expanded="false">
+                        <span class="flex-grow-1">
+                            <strong>@group.Key.RotaName</strong>
+                            <small class="text-muted ms-2">@group.Key.DepartmentName</small>
+                        </span>
+                        <span class="me-3">
+                            <span class="@(isUnderstaffed ? "text-danger fw-bold" : "")">@totalConfirmed</span>
+                            <small class="text-muted">/ @totalMin–@totalMax slots</small>
+                            <small class="text-muted ms-2">· @dayCount day@(dayCount == 1 ? "" : "s")</small>
+                        </span>
+                        <span class="badge @priorityBadge me-3">@group.Key.Priority</span>
+                    </button>
+                </h2>
+                <div id="@groupId" class="accordion-collapse collapse">
+                    <div class="accordion-body p-0">
+                        <table class="table table-sm mb-0 align-middle">
+                            <tbody>
+                            @foreach (var item in group.OrderBy(i => i.Shift.DayOffset).ThenBy(i => i.Shift.StartTime))
+                            {
+                                var shift = item.Shift;
+                                var shiftDate = Model.EventSettings.GateOpeningDate.PlusDays(shift.DayOffset);
+                                var shiftDateLabel = shiftDate.ToDisplayShiftDate();
+                                var rowUnderstaffed = item.ConfirmedCount < shift.MinVolunteers;
+                                var collapseId = "voluntell-" + shift.Id.ToString("N");
+
+                                <tr>
+                                    <td class="ps-3" style="width: 1%; white-space: nowrap;">
+                                        @shiftDateLabel
+                                        <small class="text-muted ms-1">@shift.StartTime</small>
+                                        @if (shift.AdminOnly) { <span class="badge bg-dark ms-1">Admin</span> }
+                                    </td>
+                                    <td>
+                                        <span class="@(rowUnderstaffed ? "text-danger fw-bold" : "")">@item.ConfirmedCount</span>
+                                        <small class="text-muted">/ @shift.MinVolunteers–@shift.MaxVolunteers</small>
+                                    </td>
+                                    @* Voluntell action stays gated by the narrow ShiftDashboardAccess
+                                       policy (PR #401) so subteam managers see urgency rows but no
+                                       action column. *@
+                                    <td class="text-end pe-3" authorize-policy="ShiftDashboardAccess">
+                                        <button class="btn btn-sm btn-outline-primary"
+                                                type="button"
+                                                data-bs-toggle="collapse"
+                                                data-bs-target="#@collapseId"
+                                                data-shift-id="@shift.Id">
+                                            @Localizer["ShiftDash_Voluntell"]
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr class="collapse" id="@collapseId" authorize-policy="ShiftDashboardAccess">
+                                    <td colspan="3">
+                                        <div class="p-3 bg-light rounded border">
+                                            <label class="form-label fw-semibold">@string.Format(Localizer["ShiftDash_SearchHumans"].Value, shift.Rota.Name)</label>
+                                            <input type="text"
+                                                   class="form-control mb-2 volunteer-search-input"
+                                                   placeholder="@Localizer["ShiftDash_SearchPlaceholder"].Value"
+                                                   data-shift-id="@shift.Id"
+                                                   autocomplete="off" />
+                                            <div class="volunteer-results" data-shift-id="@shift.Id"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
         </div>
     }
 </div>
 
 @section Scripts {
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css"
+      integrity="sha384-RkASv+6KfBMW9eknReJIJ6b3UnjKOKC5bOUaNgIY778NFbQ8MtWq9Lr/khUgqtTt"
+      crossorigin="anonymous" />
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"
+        integrity="sha384-5JqMv4L/Xa0hfvtF06qboNdhvuYXUku9ZrhZh3bSk8VXF0A/RuSLHpLsSV9Zqhl6"
+        crossorigin="anonymous"></script>
 <script>
 @await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
 @await Html.PartialAsync("~/Views/Shared/_VolunteerSearchScript.cshtml", new ViewDataDictionary(ViewData)
@@ -313,5 +352,117 @@
     ["DietaryPreferenceStyle"] = "muted",
     ["ShowPoolBadge"] = false
 })
+
+// Filter UI plumbing. Picking a period or sub-period populates the date pickers
+// with that range as a visual cue (so coordinators can see which dates the filter
+// covers). The server still uses period+subPeriod as the canonical filter when
+// they're set; dates are display-only in that case. Editing a date manually clears
+// the period/subPeriod hidden inputs — the date range becomes the filter.
+(function () {
+    var form = document.getElementById('dashboard-filter-form');
+    var periodInput = document.getElementById('dashboard-period-input');
+    var subPeriodInput = document.getElementById('dashboard-subperiod-input');
+    var startDate = document.getElementById('dashboard-start-date');
+    var endDate = document.getElementById('dashboard-end-date');
+    if (!form) return;
+
+    // Flatpickr overlays the native browser date picker so the displayed format
+    // is forced to dd/mm/yyyy regardless of browser locale (en-US would otherwise
+    // show mm/dd/yyyy on type="date"). The underlying input value stays ISO
+    // (yyyy-mm-dd) so the server sees the same string format either way.
+    var fpStart = null, fpEnd = null;
+    if (typeof flatpickr === 'function') {
+        fpStart = flatpickr(startDate, { dateFormat: 'Y-m-d', altInput: true, altFormat: 'd/m/Y', allowInput: true });
+        fpEnd = flatpickr(endDate, { dateFormat: 'Y-m-d', altInput: true, altFormat: 'd/m/Y', allowInput: true });
+        // Keep the end-date picker's minimum in sync with the start-date selection.
+        if (startDate.value) fpEnd.set('minDate', startDate.value);
+    }
+
+    var gateOpeningIso = form.getAttribute('data-gate-opening') || '';
+    var buildStartOffset = parseInt(form.getAttribute('data-build-start-offset') || '0', 10);
+    var eventEndOffset = parseInt(form.getAttribute('data-event-end-offset') || '0', 10);
+    var strikeEndOffset = parseInt(form.getAttribute('data-strike-end-offset') || '0', 10);
+    var firstCrewOffset = parseInt(form.getAttribute('data-firstcrew-offset') || '0', 10);
+    var setupWeekOffset = parseInt(form.getAttribute('data-setupweek-offset') || '0', 10);
+    var preEventWeekOffset = parseInt(form.getAttribute('data-preeventweek-offset') || '0', 10);
+    var finishingWeekendOffset = parseInt(form.getAttribute('data-finishingweekend-offset') || '0', 10);
+
+    function isoAddDays(iso, n) {
+        // Parse as UTC midnight, add days, format back to YYYY-MM-DD.
+        var d = new Date(iso + 'T00:00:00Z');
+        if (isNaN(d.getTime())) return '';
+        d.setUTCDate(d.getUTCDate() + n);
+        return d.toISOString().slice(0, 10);
+    }
+
+    function periodOffsetRange(period) {
+        if (period === 'Build') return [buildStartOffset, -1];
+        if (period === 'Event') return [0, eventEndOffset];
+        if (period === 'Strike') return [eventEndOffset + 1, strikeEndOffset];
+        return null; // "All" or unknown
+    }
+
+    function subPeriodOffsetRange(sub) {
+        if (sub === 'FirstCrew') return [firstCrewOffset, setupWeekOffset - 1];
+        if (sub === 'SetupWeek') return [setupWeekOffset, preEventWeekOffset - 1];
+        if (sub === 'PreEventWeek') return [preEventWeekOffset, finishingWeekendOffset - 1];
+        if (sub === 'FinishingWeekend') return [finishingWeekendOffset, -1];
+        return periodOffsetRange('Build'); // "All set-up" = full build window
+    }
+
+    function setDatesFromRange(range) {
+        if (!range || !gateOpeningIso) { clearDates(); return; }
+        var s = isoAddDays(gateOpeningIso, range[0]);
+        var e = isoAddDays(gateOpeningIso, range[1]);
+        if (fpStart) fpStart.setDate(s, false);
+        else if (startDate) startDate.value = s;
+        if (fpEnd) { fpEnd.set('minDate', s); fpEnd.setDate(e, false); }
+        else if (endDate) { endDate.min = s; endDate.value = e; }
+    }
+
+    function clearDates() {
+        if (fpStart) fpStart.clear();
+        else if (startDate) startDate.value = '';
+        if (fpEnd) { fpEnd.set('minDate', null); fpEnd.clear(); }
+        else if (endDate) { endDate.value = ''; endDate.min = ''; }
+    }
+
+    function clearPeriod() {
+        if (periodInput) periodInput.value = '';
+        if (subPeriodInput) subPeriodInput.value = '';
+    }
+
+    document.querySelectorAll('#dashboard-period-group a').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            var period = btn.getAttribute('data-period') || '';
+            if (periodInput) periodInput.value = period;
+            if (subPeriodInput) subPeriodInput.value = '';
+            setDatesFromRange(periodOffsetRange(period));
+            form.submit();
+        });
+    });
+
+    document.querySelectorAll('#dashboard-subperiod-group a').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            var sub = btn.getAttribute('data-subperiod') || '';
+            if (subPeriodInput) subPeriodInput.value = sub;
+            setDatesFromRange(subPeriodOffsetRange(sub));
+            form.submit();
+        });
+    });
+
+    if (startDate) {
+        startDate.addEventListener('change', function () {
+            if (fpEnd) fpEnd.set('minDate', startDate.value || null);
+            else if (endDate) endDate.min = startDate.value || '';
+            clearPeriod();
+        });
+    }
+    if (endDate) {
+        endDate.addEventListener('change', function () { clearPeriod(); });
+    }
+})();
 </script>
 }

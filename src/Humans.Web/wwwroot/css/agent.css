@@ -1,5 +1,9 @@
-.agent-msg { padding: 0.5rem 0.75rem; margin-bottom: 0.5rem; border-radius: 8px; white-space: pre-wrap; }
-.agent-msg-user { background: #e9f1ff; align-self: flex-end; }
+.agent-msg { padding: 0.5rem 0.75rem; margin-bottom: 0.5rem; border-radius: 8px; }
+/* User messages are written via textContent and need pre-wrap to preserve
+   the user's own line breaks. Assistant messages render sanitized markdown
+   HTML (<p>, <br>, <ul>, …) and must NOT have pre-wrap, or the inter-block
+   whitespace from marked's output produces visible double spacing. */
+.agent-msg-user { background: #e9f1ff; align-self: flex-end; white-space: pre-wrap; }
 .agent-msg-assistant { background: #f4f4f4; }
 .agent-panel { display: flex; flex-direction: column; }
 @media (max-width: 576px) {
@@ -7,4 +11,33 @@
 }
 @media (prefers-reduced-motion: reduce) {
     .agent-panel { transition: none !important; }
+}
+
+/* Help widget — single FAB + popover menu replacing former
+   IssuesWidget + AgentWidget bubbles (issue #627). */
+.help-widget-menu-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 12px 16px;
+    min-height: 44px;
+    background: transparent;
+    border: 0;
+    text-align: left;
+    cursor: pointer;
+    color: inherit;
+}
+.help-widget-menu-item:hover,
+.help-widget-menu-item:focus {
+    background: #f4f4f4;
+    outline: none;
+}
+.help-widget-menu-item-primary {
+    font-weight: 600;
+}
+@media (max-width: 576px) {
+    .help-widget-menu {
+        right: 0 !important;
+        max-width: calc(100vw - 32px);
+    }
 }

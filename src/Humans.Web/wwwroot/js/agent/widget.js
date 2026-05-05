@@ -1,5 +1,7 @@
 (function () {
-    const launcher = document.getElementById('agentWidgetLauncher');
+    // Note: the panel is opened by the parent help-menu (#helpWidgetAgentItem
+    // in the merged HelpWidget). This script wires the panel's own controls
+    // (close, composer, streaming).
     const panel = document.getElementById('agentPanel');
     const closeBtn = document.getElementById('agentPanelClose');
     const messagesEl = document.getElementById('agentMessages');
@@ -7,7 +9,7 @@
     const input = document.getElementById('agentInput');
     const sendBtn = document.getElementById('agentSend');
 
-    if (!launcher || !panel) return;
+    if (!panel || !composer) return;
 
     let currentConversationId = null;
 
@@ -57,10 +59,9 @@
         return DOMPurify.sanitize(html, PURIFY_CONFIG);
     }
 
-    launcher.addEventListener('click', function () {
-        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-    });
-    closeBtn.addEventListener('click', function () { panel.style.display = 'none'; });
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function () { panel.style.display = 'none'; });
+    }
 
     composer.addEventListener('submit', async function (e) {
         e.preventDefault();
@@ -131,6 +132,16 @@
                 bubble.textContent = bubble.dataset.rawMarkdown;
             }
             messagesEl.scrollTop = messagesEl.scrollHeight;
+        } else if (event === 'propose' && parsed.issueProposal) {
+            // Agent called route_to_issue. Open the issue submission modal
+            // pre-filled with the proposal. Preserve any answer the agent
+            // already streamed — only fall back to the canned "I drafted
+            // an issue" text when the bubble is empty (escalate-only turn).
+            if (!bubble.dataset.rawMarkdown) {
+                bubble.textContent = panel.dataset.issueProposedText || 'I drafted an issue for you. Please review and submit.';
+            }
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+            openIssueModalPrefilled(parsed.issueProposal);
         } else if (event === 'final' && parsed.finalizer) {
             const reason = parsed.finalizer.stopReason;
             // Final-frame placeholders are trusted strings — render as plain text.
@@ -145,6 +156,26 @@
                 currentConversationId = newId;
             }
         }
+    }
+
+    function openIssueModalPrefilled(proposal) {
+        const modalEl = document.getElementById('issuesWidgetModal');
+        if (!modalEl || typeof bootstrap === 'undefined') return;
+
+        const form = document.getElementById('issuesWidgetForm');
+        if (form) {
+            const titleInput = form.querySelector('input[name="Title"]');
+            const categorySelect = form.querySelector('select[name="Category"]');
+            const descriptionTextarea = form.querySelector('textarea[name="Description"]');
+            if (titleInput) titleInput.value = proposal.title || '';
+            if (categorySelect && proposal.category) {
+                // Category is the IssueCategory enum string (Bug/Feature/Question).
+                categorySelect.value = proposal.category;
+            }
+            if (descriptionTextarea) descriptionTextarea.value = proposal.description || '';
+        }
+
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
     }
 
     function appendMessage(role, text) {

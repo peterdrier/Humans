@@ -1,0 +1,248 @@
+@model Humans.Web.ViewComponents.HelpWidgetModel
+@{
+    var pagePath = Model.PagePath;
+    var toastSuccessTemplate = Localizer["Issue_Widget_ToastSuccess"].Value;
+    var toastValidationFailed = Localizer["Issue_Widget_ToastValidationFailed"].Value;
+    var toastNetworkError = Localizer["Issue_Widget_ToastNetworkError"].Value;
+}
+
+<!-- Floating "Help" bubble + popover menu -->
+<div class="help-widget position-fixed" style="bottom: 24px; right: 24px; z-index: 1050;">
+    <button type="button" class="btn btn-primary rounded-circle shadow help-widget-launcher"
+            id="helpWidgetLauncher"
+            style="width: 56px; height: 56px;"
+            aria-haspopup="true" aria-expanded="false" aria-controls="helpWidgetMenu"
+            title="@Localizer["Help_WidgetButton"]">
+        <i class="fa-solid fa-question fa-lg"></i>
+    </button>
+    <div class="help-widget-menu shadow-lg" id="helpWidgetMenu"
+         role="menu" aria-labelledby="helpWidgetLauncher"
+         style="display: none; position: absolute; bottom: 68px; right: 0;
+                background: white; border-radius: 12px; min-width: 240px;
+                padding: 8px 0; overflow: hidden;">
+        @if (Model.AgentAvailable)
+        {
+            <button type="button" role="menuitem" class="help-widget-menu-item help-widget-menu-item-primary"
+                    id="helpWidgetAgentItem">
+                <i class="fa-solid fa-robot me-2 text-success"></i>
+                <span>@Localizer["Help_Menu_TalkWithAgent"]</span>
+            </button>
+        }
+        <button type="button" role="menuitem" class="help-widget-menu-item"
+                id="helpWidgetIssueItem"
+                data-bs-toggle="modal" data-bs-target="#issuesWidgetModal">
+            <i class="fa-solid fa-circle-exclamation me-2 text-primary"></i>
+            <span>@Localizer["Help_Menu_CreateIssue"]</span>
+        </button>
+    </div>
+</div>
+
+@if (Model.AgentAvailable)
+{
+    <div class="agent-panel position-fixed shadow-lg" id="agentPanel"
+         data-issue-proposed-text="@Localizer["Help_Agent_IssueProposed"]"
+         style="display: none; bottom: 92px; right: 24px; width: 420px; max-height: 70vh;
+                z-index: 1050; background: white; border-radius: 12px; overflow: hidden;">
+        <div class="agent-header d-flex justify-content-between align-items-center p-3 border-bottom">
+            <strong>@Localizer["Agent_PanelTitle"]</strong>
+            <div class="d-flex align-items-center gap-2">
+                <a asp-controller="Agent" asp-action="Conversations"
+                   class="text-decoration-none small"
+                   title="@Localizer["Agent_ViewHistory"]">
+                    @Localizer["Agent_ViewHistory"]
+                </a>
+                <button type="button" class="btn-close" id="agentPanelClose" aria-label="Close"></button>
+            </div>
+        </div>
+        <div class="agent-body" id="agentBody" style="display: flex; flex-direction: column;">
+            <div class="agent-messages flex-grow-1 p-3 overflow-auto" id="agentMessages"
+                 style="max-height: 50vh;"></div>
+            <form class="agent-composer p-3 border-top" id="agentComposer">
+                @Html.AntiForgeryToken()
+                <div class="input-group">
+                    <textarea id="agentInput" class="form-control" rows="2"
+                              placeholder="@Localizer["Agent_InputPlaceholder"]" maxlength="2000"></textarea>
+                    <button type="submit" class="btn btn-primary" id="agentSend">
+                        @Localizer["Agent_Send"]
+                    </button>
+                </div>
+                <div class="agent-terms small text-muted text-end mt-2">
+                    <a asp-controller="Legal" asp-action="Index" asp-route-slug="agent-chat"
+                       target="_blank" rel="noopener" class="text-decoration-none">
+                        @Localizer["Agent_TermsLink"]
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+<!-- Issue submission modal (opened via menu item; markup moved verbatim from former IssuesWidget) -->
+<div class="modal fade" id="issuesWidgetModal" tabindex="-1" aria-labelledby="issuesWidgetModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="issuesWidgetForm" asp-controller="Issues" asp-action="Submit" method="post" enctype="multipart/form-data"
+                  data-toast-success="@toastSuccessTemplate"
+                  data-toast-validation-failed="@toastValidationFailed"
+                  data-toast-network-error="@toastNetworkError">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title" id="issuesWidgetModalLabel">@Localizer["Issue_FileAnIssue"]</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["Issue_Title"]</label>
+                        <input type="text" name="Title" class="form-control" required maxlength="200" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["Issue_Type"]</label>
+                        <select name="Category" class="form-select" required>
+                            @foreach (var c in Enum.GetValues<IssueCategory>())
+                            {
+                                <option value="@c">@IssuePresentation.CategoryEmoji(c) @c</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["Issue_Description"]</label>
+                        <textarea name="Description" class="form-control" rows="5" required maxlength="5000"
+                                  placeholder="@Localizer["Issue_Description_Placeholder"]"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["Issue_Attachment"]</label>
+                        <input type="file" name="Screenshot" class="form-control" accept="image/*" />
+                    </div>
+                    <input type="hidden" name="PageUrl" id="issuesWidgetPageUrl" value="@pagePath" />
+                    <input type="hidden" name="UserAgent" id="issuesWidgetUserAgent" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Localizer["Issue_Cancel"]</button>
+                    <button type="submit" class="btn btn-primary">@Localizer["Issue_FileIssue"]</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<link rel="stylesheet" href="~/css/agent.css" asp-append-version="true" />
+@if (Model.AgentAvailable)
+{
+    <script src="https://cdn.jsdelivr.net/npm/marked@14.1.4/marked.min.js"
+            integrity="sha384-lqPzN0kmFw9t2syAMwVPM4VbAyqsz/lPyYWbb2Xt6nSPM0WPNrpSWCUBgdcAdgnC"
+            crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js"
+            integrity="sha384-XQqX/4yiUGu+oyr87jvWzRuqBUK/adrY0DunhL+tID9m/9dwSpV8h9Fk/Sg6ifVQ"
+            crossorigin="anonymous"></script>
+    <script src="~/js/agent/widget.js" asp-append-version="true"></script>
+}
+<script>
+    (function () {
+        // Help bubble — toggles the menu.
+        var launcher = document.getElementById('helpWidgetLauncher');
+        var menu = document.getElementById('helpWidgetMenu');
+        if (launcher && menu) {
+            launcher.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var open = menu.style.display === 'block';
+                menu.style.display = open ? 'none' : 'block';
+                launcher.setAttribute('aria-expanded', open ? 'false' : 'true');
+            });
+            // Click-outside to close.
+            document.addEventListener('click', function (e) {
+                if (!menu.contains(e.target) && e.target !== launcher) {
+                    menu.style.display = 'none';
+                    launcher.setAttribute('aria-expanded', 'false');
+                }
+            });
+            // Escape to close.
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && menu.style.display === 'block') {
+                    menu.style.display = 'none';
+                    launcher.setAttribute('aria-expanded', 'false');
+                    launcher.focus();
+                }
+            });
+        }
+
+        // "Talk with AI Agent" — open the panel; widget.js handles the
+        // consent gate UI in-place if the user has not yet consented.
+        var agentItem = document.getElementById('helpWidgetAgentItem');
+        var agentPanel = document.getElementById('agentPanel');
+        if (agentItem && agentPanel) {
+            agentItem.addEventListener('click', function () {
+                agentPanel.style.display = 'block';
+                if (menu) menu.style.display = 'none';
+                if (launcher) launcher.setAttribute('aria-expanded', 'false');
+            });
+        }
+
+        // "Create issue" — close menu when modal trigger fires.
+        var issueItem = document.getElementById('helpWidgetIssueItem');
+        if (issueItem) {
+            issueItem.addEventListener('click', function () {
+                if (menu) menu.style.display = 'none';
+                if (launcher) launcher.setAttribute('aria-expanded', 'false');
+            });
+        }
+
+        // Issues modal pre-fill + AJAX submit (carried over from former IssuesWidget).
+        var modalEl = document.getElementById('issuesWidgetModal');
+        if (!modalEl) return;
+
+        modalEl.addEventListener('show.bs.modal', function () {
+            document.getElementById('issuesWidgetPageUrl').value = window.location.pathname + window.location.search;
+            document.getElementById('issuesWidgetUserAgent').value = navigator.userAgent;
+        });
+
+        var form = document.getElementById('issuesWidgetForm');
+        if (!form) return;
+
+        var toastSuccessTemplate = form.getAttribute('data-toast-success') || '';
+        var toastValidationFailed = form.getAttribute('data-toast-validation-failed') || '';
+        var toastNetworkError = form.getAttribute('data-toast-network-error') || '';
+
+        function show(msg, kind) {
+            if (typeof showToast === 'function') {
+                showToast(msg, kind);
+            } else {
+                alert(msg);
+            }
+        }
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+
+            var formData = new FormData(form);
+            fetch(form.action, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            })
+            .then(function (r) {
+                if (r.status === 200) {
+                    return r.json().then(function (data) { return { ok: true, data: data }; });
+                }
+                return r.text().then(function (txt) { return { ok: false, status: r.status, body: txt }; });
+            })
+            .then(function (result) {
+                if (result.ok && result.data && result.data.id) {
+                    form.reset();
+                    var modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                    show(toastSuccessTemplate.replace('{0}', '/Issues/' + result.data.id), 'success');
+                } else {
+                    show(toastValidationFailed, 'danger');
+                }
+            })
+            .catch(function () {
+                show(toastNetworkError, 'danger');
+            })
+            .finally(function () {
+                if (submitBtn) submitBtn.disabled = false;
+            });
+        });
+    })();
+</script>

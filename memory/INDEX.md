@@ -12,7 +12,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`caching-transparent`](architecture/caching-transparent.md) — no `Cached*` types in domain surface; `Full<Section>` is the §15 stitched-DTO pattern
 - [`consent-record-immutable`](architecture/consent-record-immutable.md) — `consent_records` table: DB triggers block UPDATE/DELETE, INSERT only
 - [`db-enforcement-minimal`](architecture/db-enforcement-minimal.md) — service is the contract, not the DB; only audit-log immutability is doctrinal
-- [`display-sort-in-controllers`](architecture/display-sort-in-controllers.md) — display ordering is the controller's job; repo-layer `OrderBy` allowed only for pagination tie-breakers, top-N, identity-ordered streams (mark with `// arch:db-sort-ok`)
+- [`display-sort-in-controllers`](architecture/display-sort-in-controllers.md) — display ordering belongs at the presentation layer (controllers / views / view-model assembly), not in services or repositories; repo-layer `OrderBy` allowed only for pagination tie-breakers, top-N, identity-ordered streams (mark with `// arch:db-sort-ok`)
 - [`interface-method-budget-ratchet`](architecture/interface-method-budget-ratchet.md) — HARD RULE. Add a method to a budgeted interface → remove one from the SAME interface, same PR. No splits to dodge.
 - [`migration-regen-after-rebase`](architecture/migration-regen-after-rebase.md) — HARD RULE. Once main's migrations interleave with yours, `migrations remove` is broken for your branch-migrations. Stop and ask. Don't hand-edit snapshot. Regen BEFORE rebase, not after.
 - [`no-admin-url-section`](architecture/no-admin-url-section.md) — HARD RULE: top-level `/Admin/*` is legacy/frozen; never add new `/Admin/foo` routes. New admin pages live at `/<Section>/Admin/*` only
@@ -91,6 +91,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`triage-fetch-full-history`](process/triage-fetch-full-history.md) — `/triage` must `GET /api/feedback/{id}/messages` for every report; list-endpoint counts can be stale
 - [`triage-show-verbatim`](process/triage-show-verbatim.md) — `/triage` always shows reporter's verbatim Description text alongside the analysis
 - [`user-feedback-spec-changes-need-review`](process/user-feedback-spec-changes-need-review.md) — when an issue originated from end-user feedback (triage→issue chain) and proposes a behavioral / policy / capability / spec change beyond a mechanical fix, route to Peter for review before sprint/batch dispatch. Mechanical fixes (typos, broken links, error-message wording) flow normally.
+- [`widget-gallery-up-to-date`](process/widget-gallery-up-to-date.md) — adding/removing a TagHelper, ViewComponent, or user-facing shared partial under `src/Humans.Web/` → also update `Views/WidgetGallery/Index.cshtml` (and the controller if real sample data is needed). Skipped section is the explicit allowlist for non-rendered widgets.
 - [`worktree-removal-git-only`](process/worktree-removal-git-only.md) — HARD RULE. Worktree cleanup is `git worktree remove` only. Failure → report and stop. Narrow exception: if git emptied contents but left an empty parent dir, `rmdir` (non-recursive) is allowed. Otherwise no PowerShell `Remove-Item -Recurse`, no rm -rf, no process kills, no retries.
 
 ## product/

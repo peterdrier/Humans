@@ -105,7 +105,7 @@ src/Humans.Web/Controllers/ShiftAdminController.cs:GenerateShifts/3
 src/Humans.Web/Controllers/ShiftAdminController.cs:Index/1
 src/Humans.Web/Controllers/ShiftAdminController.cs:MoveRota/3
 src/Humans.Web/Controllers/ShiftAdminController.cs:SearchVolunteers/3
-src/Humans.Web/Controllers/ShiftDashboardController.cs:Index/5
+src/Humans.Web/Controllers/ShiftDashboardController.cs:Index/7
 src/Humans.Web/Controllers/ShiftDashboardController.cs:SearchVolunteers/2
 src/Humans.Web/Controllers/ShiftsController.cs:Index/8
 src/Humans.Web/Controllers/ShiftsController.cs:Mine/0

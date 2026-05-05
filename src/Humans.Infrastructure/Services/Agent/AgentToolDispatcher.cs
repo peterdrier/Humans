@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Text.Json;
 using Humans.Application.Constants;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Feedback;
 using Humans.Application.Models;
 using Humans.Infrastructure.Services.Preload;
 using Microsoft.Extensions.Logging;
@@ -13,18 +12,15 @@ public sealed class AgentToolDispatcher : IAgentToolDispatcher
 {
     private readonly AgentSectionDocReader _sections;
     private readonly AgentFeatureSpecReader _features;
-    private readonly IFeedbackService _feedback;
     private readonly ILogger<AgentToolDispatcher> _logger;
 
     public AgentToolDispatcher(
         AgentSectionDocReader sections,
         AgentFeatureSpecReader features,
-        IFeedbackService feedback,
         ILogger<AgentToolDispatcher> logger)
     {
         _sections = sections;
         _features = features;
-        _feedback = feedback;
         _logger = logger;
     }
 
@@ -60,13 +56,14 @@ public sealed class AgentToolDispatcher : IAgentToolDispatcher
                             ? new AnthropicToolResult(call.Id, string.Create(CultureInfo.InvariantCulture, $"Unknown section: {key}"), IsError: true)
                             : new AnthropicToolResult(call.Id, body, IsError: false);
                     }
-                case AgentToolNames.RouteToFeedback:
+                case AgentToolNames.RouteToIssue:
                     {
-                        var summary = args.TryGetProperty("summary", out var sm) ? sm.GetString() ?? "" : "";
-                        var topic = args.TryGetProperty("topic", out var t) ? t.GetString() ?? "" : "";
-                        var handoff = await _feedback.SubmitFromAgentAsync(userId, conversationId, summary, topic, cancellationToken);
+                        // No DB write — AgentService inspects the call args and emits an
+                        // AgentIssueProposal frame so the client can pre-fill the issue
+                        // submission form. The tool result here is just an LLM-facing
+                        // confirmation telling it the turn is over.
                         return new AnthropicToolResult(call.Id,
-                            string.Create(CultureInfo.InvariantCulture, $"Handed off. Feedback URL: {handoff.FeedbackUrl}"),
+                            "Proposal queued. The system will pre-fill an issue submission form for the user. Stop and await the next user turn.",
                             IsError: false);
                     }
                 default:

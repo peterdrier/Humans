@@ -1,9 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Constants;
-using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Feedback;
 using Humans.Application.Models;
-using NSubstitute;
 using Xunit;
 
 namespace Humans.Application.Tests.Agent;
@@ -25,36 +22,28 @@ public class AgentToolDispatcherTests
     }
 
     [HumansFact]
-    public async Task RouteToFeedback_calls_IFeedbackService_and_returns_feedback_url()
+    public async Task RouteToIssue_returns_proposal_marker_without_creating_anything()
     {
-        var feedback = Substitute.For<IFeedbackService>();
-        feedback.SubmitFromAgentAsync(
-                Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<CancellationToken>())
-            .Returns(new FeedbackHandoffResult(Guid.Parse("11111111-1111-1111-1111-111111111111"), "/Feedback/11111111-1111-1111-1111-111111111111"));
-        var dispatcher = MakeDispatcher(feedback: feedback);
+        var dispatcher = MakeDispatcher();
 
         var result = await dispatcher.DispatchAsync(
-            new AnthropicToolCall("t1", AgentToolNames.RouteToFeedback, """{"summary":"can't answer","topic":"camps"}"""),
+            new AnthropicToolCall("t1", AgentToolNames.RouteToIssue,
+                """{"title":"Calendar feature","category":"Feature","description":"User asked about calendar; not implemented yet."}"""),
             userId: Guid.Parse("22222222-2222-2222-2222-222222222222"),
             conversationId: Guid.Parse("33333333-3333-3333-3333-333333333333"),
             CancellationToken.None);
 
         result.IsError.Should().BeFalse();
-        result.Content.Should().Contain("/Feedback/11111111");
-        await feedback.Received(1).SubmitFromAgentAsync(
-            Guid.Parse("22222222-2222-2222-2222-222222222222"),
-            Guid.Parse("33333333-3333-3333-3333-333333333333"),
-            "can't answer", "camps", Arg.Any<CancellationToken>());
+        result.Content.Should().Contain("Proposal queued");
     }
 
-    private static Humans.Infrastructure.Services.Agent.AgentToolDispatcher MakeDispatcher(IFeedbackService? feedback = null)
+    private static Humans.Infrastructure.Services.Agent.AgentToolDispatcher MakeDispatcher()
     {
         var env = new TestHostEnvironment();
         var sections = new Humans.Infrastructure.Services.Preload.AgentSectionDocReader(env);
         var features = new Humans.Infrastructure.Services.Preload.AgentFeatureSpecReader(env);
         var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<Humans.Infrastructure.Services.Agent.AgentToolDispatcher>.Instance;
-        return new Humans.Infrastructure.Services.Agent.AgentToolDispatcher(sections, features, feedback ?? Substitute.For<IFeedbackService>(), logger);
+        return new Humans.Infrastructure.Services.Agent.AgentToolDispatcher(sections, features, logger);
     }
 
     private static string RepoRoot()
