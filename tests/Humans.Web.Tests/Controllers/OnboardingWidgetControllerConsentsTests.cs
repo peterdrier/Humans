@@ -4,6 +4,7 @@ using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Constants;
+using Humans.Domain.Entities;
 using Humans.Testing;
 using Humans.Web.Controllers;
 using Humans.Web.Models.OnboardingWidget;
@@ -16,10 +17,11 @@ using Xunit;
 namespace Humans.Web.Tests.Controllers;
 
 /// <summary>
-/// Step 3 of the onboarding widget — Consents GET (renders required-document
-/// rows from <see cref="IConsentService"/>) and SignConsent POST (routes a
-/// single signature through <see cref="IConsentService.SubmitConsentAsync"/>
-/// and redirects back so the dispatcher can re-evaluate the step).
+/// Step 3 of the onboarding widget — Consents GET (renders the next unsigned
+/// required document inline so the user reads what they're agreeing to) and
+/// SignConsent POST (routes a single signature through
+/// <see cref="IConsentService.SubmitConsentAsync"/> and redirects back so the
+/// dispatcher can re-evaluate the step).
 /// </summary>
 public class OnboardingWidgetControllerConsentsTests
 {
@@ -55,7 +57,7 @@ public class OnboardingWidgetControllerConsentsTests
             .Returns(new ConsentSubmitResult(Success: true));
         var ctrl = BuildSut(userId);
 
-        var result = await ctrl.SignConsent(docVersionId, CancellationToken.None);
+        var result = await ctrl.SignConsent(docVersionId, explicitConsent: true, CancellationToken.None);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
@@ -78,7 +80,7 @@ public class OnboardingWidgetControllerConsentsTests
             .Returns(new ConsentSubmitResult(Success: false, ErrorKey: "AlreadyConsented"));
         var ctrl = BuildSut(userId);
 
-        var result = await ctrl.SignConsent(docVersionId, CancellationToken.None);
+        var result = await ctrl.SignConsent(docVersionId, explicitConsent: true, CancellationToken.None);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
@@ -86,13 +88,74 @@ public class OnboardingWidgetControllerConsentsTests
     }
 
     [HumansFact]
-    public async Task Consents_Get_ReadsRowsForVolunteersTeam_AndReturnsView()
+    public async Task SignConsent_Post_WithoutCheckbox_RedirectsToConsents_WithError_AndDoesNotCallService()
     {
+        // The checkbox is the legal "explicit consent" gesture — submitting
+        // without it is a user error, not a service call. Route back to the
+        // consent page with an error message; never invoke the consent service.
         var userId = Guid.NewGuid();
-        var docId = Guid.NewGuid();
+        var docVersionId = Guid.NewGuid();
+        var ctrl = BuildSut(userId);
+
+        var result = await ctrl.SignConsent(docVersionId, explicitConsent: false, CancellationToken.None);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(nameof(OnboardingWidgetController.Consents), redirect.ActionName);
+        Assert.Equal("MustCheck", ctrl.TempData["Error"]);
+        await _consents.DidNotReceive().SubmitConsentAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Consents_Get_RendersFirstUnsignedDocumentContent()
+    {
+        // The widget shows the next unsigned doc inline (full content) so users
+        // can read what they're agreeing to — not just a "Read the document"
+        // link they might skip.
+        var userId = Guid.NewGuid();
+        var signedId = Guid.NewGuid();
+        var unsignedId = Guid.NewGuid();
         IReadOnlyList<RequiredConsentRow> rows = new List<RequiredConsentRow>
         {
-            new(docId, "Code of Conduct", Signed: false),
+            new(signedId, "Code of Conduct", Signed: true),
+            new(unsignedId, "Privacy Policy", Signed: false),
+        };
+        _consents.GetRequiredConsentRowsForUserAsync(
+                userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+            .Returns(rows);
+        var version = new DocumentVersion
+        {
+            Id = unsignedId,
+            VersionNumber = "1.2",
+            Content = new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "# Política", ["en"] = "# Policy" },
+            ChangesSummary = "Updated section 4",
+            LegalDocument = new LegalDocument { Name = "Privacy Policy" },
+        };
+        _consents.GetConsentReviewDetailAsync(unsignedId, userId, Arg.Any<CancellationToken>())
+            .Returns((version, (ConsentRecord?)null, (string?)null));
+        var ctrl = BuildSut(userId);
+
+        var result = await ctrl.Consents(CancellationToken.None);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var vm = Assert.IsType<ConsentsStepViewModel>(view.Model);
+        Assert.Equal(unsignedId, vm.DocumentVersionId);
+        Assert.Equal("Privacy Policy", vm.DocumentName);
+        Assert.Equal("1.2", vm.VersionNumber);
+        Assert.Equal("Updated section 4", vm.ChangesSummary);
+        Assert.Equal(2, vm.CurrentIndex);   // signed (1), unsigned (2)
+        Assert.Equal(2, vm.TotalRequired);
+        Assert.Equal("# Policy", vm.Content["en"]);
+    }
+
+    [HumansFact]
+    public async Task Consents_Get_AllSigned_RedirectsThroughIndexDispatcher()
+    {
+        var userId = Guid.NewGuid();
+        IReadOnlyList<RequiredConsentRow> rows = new List<RequiredConsentRow>
+        {
+            new(Guid.NewGuid(), "Code of Conduct", Signed: true),
         };
         _consents.GetRequiredConsentRowsForUserAsync(
                 userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
@@ -101,11 +164,7 @@ public class OnboardingWidgetControllerConsentsTests
 
         var result = await ctrl.Consents(CancellationToken.None);
 
-        var view = Assert.IsType<ViewResult>(result);
-        var vm = Assert.IsType<ConsentsStepViewModel>(view.Model);
-        Assert.Single(vm.RequiredConsents);
-        Assert.Equal(docId, vm.RequiredConsents[0].DocumentVersionId);
-        Assert.Equal("Code of Conduct", vm.RequiredConsents[0].Title);
-        Assert.False(vm.RequiredConsents[0].Signed);
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
     }
 }

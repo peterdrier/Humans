@@ -1,0 +1,129 @@
+@model Humans.Web.Models.ConsentReviewFormViewModel
+@{
+    var orderedLanguages = Model.Content
+        .OrderByDisplayLanguage(canonicalFirst: true)
+        .ToList();
+    var defaultLang = Model.Content.GetDefaultDocumentLanguage();
+    var documentTabs = new TabbedMarkdownDocumentsViewModel
+    {
+        Documents = orderedLanguages,
+        TabsId = "contentTabs",
+        ContentId = "contentTabsContent",
+        DefaultLanguage = defaultLang,
+        EmptyMessage = Localizer["ConsentReview_ContentNotAvailable"].Value,
+        ContentCssClass = "tab-content border border-top-0 p-4 bg-white"
+    };
+
+    var rm = new System.Resources.ResourceManager(typeof(SharedResource));
+    var consentTranslations = new Dictionary<string, object>();
+    foreach (var lang in orderedLanguages)
+    {
+        var culture = new System.Globalization.CultureInfo(lang.Key);
+        consentTranslations[lang.Key] = new
+        {
+            checkbox = rm.GetString("ConsentReview_ConsentCheckbox", culture) ?? "",
+            legalNote = rm.GetString("ConsentReview_SpanishLegalNote", culture) ?? "",
+            validationMsg = rm.GetString("ConsentReview_CheckboxRequired", culture) ?? ""
+        };
+    }
+    var spanishLegalNote = rm.GetString("ConsentReview_SpanishLegalNote", new System.Globalization.CultureInfo("es")) ?? "";
+}
+
+@if (!string.IsNullOrEmpty(Model.ChangesSummary))
+{
+    <div class="alert alert-info">
+        <strong>@Localizer["ConsentReview_ChangesInVersion"]</strong> @Model.ChangesSummary
+    </div>
+}
+
+@if (orderedLanguages.Count > 0)
+{
+    @await Html.PartialAsync("~/Views/Shared/_TabbedMarkdownDocuments.cshtml", documentTabs)
+}
+else
+{
+    <div class="alert alert-secondary">
+        <p class="text-muted mb-0">@Localizer["ConsentReview_ContentNotAvailable"]</p>
+    </div>
+}
+
+<div class="card mt-4">
+    <div class="card-body">
+        <form asp-action="@Model.SubmitAction" asp-controller="@Model.SubmitController" method="post">
+            <input type="hidden" name="DocumentVersionId" value="@Model.DocumentVersionId" />
+
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" name="ExplicitConsent" value="true" id="explicitConsent"
+                       data-val-required="@Localizer["ConsentReview_CheckboxRequired"]">
+                <label class="form-check-label" for="explicitConsent">
+                    <strong id="consent-checkbox-text">@Localizer["ConsentReview_ConsentCheckbox"]</strong>
+                    <br />
+                    <small class="text-muted" id="consent-legal-note">
+                        @Localizer["ConsentReview_SpanishLegalNote"]
+                    </small>
+                </label>
+            </div>
+
+            <div class="d-flex justify-content-between">
+                @if (!string.IsNullOrEmpty(Model.CancelHref))
+                {
+                    <a href="@Model.CancelHref" class="btn btn-outline-secondary">@Model.CancelText</a>
+                }
+                else
+                {
+                    <span></span>
+                }
+                <button type="submit" class="btn btn-primary">@Model.SubmitButtonText</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    (function () {
+        var translations = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(consentTranslations));
+        var spanishLegalNote = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(spanishLegalNote));
+        var defaultLang = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(defaultLang));
+
+        var cb = document.getElementById('explicitConsent');
+        var checkboxText = document.getElementById('consent-checkbox-text');
+        var legalNote = document.getElementById('consent-legal-note');
+
+        function updateConsentText(lang) {
+            var t = translations[lang];
+            if (!t || !checkboxText || !legalNote || !cb) return;
+
+            checkboxText.textContent = t.checkbox;
+
+            if (lang === 'es') {
+                legalNote.innerHTML = t.legalNote;
+            } else {
+                legalNote.innerHTML = t.legalNote + '<br><em>' + spanishLegalNote + '</em>';
+            }
+
+            cb.dataset.valRequired = t.validationMsg;
+            if (!cb.checked) {
+                cb.setCustomValidity(t.validationMsg);
+            }
+        }
+
+        if (cb) {
+            var msg = cb.dataset.valRequired;
+            cb.setCustomValidity(msg);
+            cb.addEventListener('change', function () {
+                this.setCustomValidity(this.checked ? '' : this.dataset.valRequired);
+            });
+        }
+
+        var tabContainer = document.getElementById('contentTabs');
+        if (tabContainer) {
+            tabContainer.addEventListener('shown.bs.tab', function (e) {
+                var tabId = e.target.id;
+                var lang = tabId.replace('contentTabs-tab-', '');
+                updateConsentText(lang);
+            });
+        }
+
+        updateConsentText(defaultLang);
+    })();
+</script>

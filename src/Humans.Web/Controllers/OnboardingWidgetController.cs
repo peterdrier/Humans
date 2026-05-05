@@ -146,14 +146,41 @@ public class OnboardingWidgetController : Controller
     {
         var userId = GetUserId();
         var rows = await _consents.GetRequiredConsentRowsForUserAsync(userId, SystemTeamIds.Volunteers, ct);
-        var vm = new ConsentsStepViewModel { RequiredConsents = rows };
+        var unsigned = rows.Where(r => !r.Signed).ToList();
+        if (unsigned.Count == 0)
+            return RedirectToAction(nameof(Index));
+
+        var next = unsigned[0];
+        var (version, _, _) = await _consents.GetConsentReviewDetailAsync(next.DocumentVersionId, userId, ct);
+        if (version is null)
+            return RedirectToAction(nameof(Index));
+
+        var totalRequired = rows.Count;
+        var currentIndex = totalRequired - unsigned.Count + 1;
+
+        var vm = new ConsentsStepViewModel
+        {
+            DocumentVersionId = version.Id,
+            DocumentName = version.LegalDocument.Name,
+            VersionNumber = version.VersionNumber,
+            Content = new Dictionary<string, string>(version.Content, StringComparer.Ordinal),
+            ChangesSummary = version.ChangesSummary,
+            CurrentIndex = currentIndex,
+            TotalRequired = totalRequired,
+        };
         return View(vm);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SignConsent(Guid documentVersionId, CancellationToken ct)
+    public async Task<IActionResult> SignConsent(Guid documentVersionId, bool explicitConsent, CancellationToken ct)
     {
+        if (!explicitConsent)
+        {
+            TempData["Error"] = "MustCheck";
+            return RedirectToAction(nameof(Consents));
+        }
+
         var userId = GetUserId();
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         var userAgent = Request.Headers.UserAgent.ToString();

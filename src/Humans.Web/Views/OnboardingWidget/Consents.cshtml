@@ -1,38 +1,29 @@
-@using Humans.Application.Interfaces.Consent
 @model Humans.Web.Models.OnboardingWidget.ConsentsStepViewModel
-@{ ViewData["Title"] = "One last step — sign the required documents"; }
+@{ ViewData["Title"] = $"{Model.DocumentName} — please review and sign"; }
 
 <div class="row justify-content-center">
-    <div class="col-md-8 col-lg-6">
-        <h1 class="mb-3">One last step</h1>
-        <p class="text-muted mb-4">Please sign the required volunteer documents.</p>
+    <div class="col-lg-10">
+        <p class="text-muted small mb-2">Document @Model.CurrentIndex of @Model.TotalRequired</p>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h1 class="mb-0">@Model.DocumentName</h1>
+                <span class="badge bg-info">@Localizer["Consent_Version"] @Model.VersionNumber</span>
+            </div>
+        </div>
 
         @if (TempData["Error"] is string err && !string.IsNullOrEmpty(err))
         {
             <div class="alert alert-danger" role="alert">@err</div>
         }
 
-        @foreach (var row in Model.RequiredConsents)
+        <partial name="_ConsentReviewBody" model="@(new ConsentReviewFormViewModel
         {
-            <div class="card mb-3">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="mb-1">@row.Title</h5>
-                        <a asp-controller="Consent" asp-action="Review" asp-route-id="@row.DocumentVersionId" target="_blank">Read the document</a>
-                    </div>
-                    @if (row.Signed)
-                    {
-                        <span class="badge bg-success">Signed</span>
-                    }
-                    else
-                    {
-                        <form asp-action="SignConsent" method="post" class="m-0">
-                            <input type="hidden" name="documentVersionId" value="@row.DocumentVersionId" />
-                            <button type="submit" class="btn btn-primary">I agree</button>
-                        </form>
-                    }
-                </div>
-            </div>
-        }
+            DocumentVersionId = Model.DocumentVersionId,
+            Content = Model.Content,
+            ChangesSummary = Model.ChangesSummary,
+            SubmitAction = "SignConsent",
+            SubmitController = "OnboardingWidget",
+            SubmitButtonText = Localizer["ConsentReview_GiveConsent"].Value,
+        })" />
     </div>
 </div>
