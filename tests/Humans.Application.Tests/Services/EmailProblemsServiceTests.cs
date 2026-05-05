@@ -221,4 +221,18 @@ public class EmailProblemsServiceTests
             && p.UserId == deadUserId
             && p.Email == "ghost@x.com");
     }
+
+    [HumansFact]
+    public async Task DetectsGhostExternalLogins()
+    {
+        var ghostUserId = Guid.NewGuid();
+        SetProfiles();
+        SetOrphans();
+        SetGhosts(ghostUserId);
+
+        var report = await Sut.ScanAsync();
+
+        report.Problems.Should().ContainSingle(p =>
+            p.Kind == EmailProblemKind.GhostExternalLogins && p.UserId == ghostUserId);
+    }
 }

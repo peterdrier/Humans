@@ -106,6 +106,13 @@ public sealed class EmailProblemsService : IEmailProblemsService
                 EmailProblemKind.OrphanUserEmail, o.UserId, null, o.Id, o.Email, null));
         }
 
+        var ghosts = await _userService.GetUsersWithLoginsButNoEmailsAsync(ct);
+        foreach (var ghostId in ghosts)
+        {
+            problems.Add(new EmailProblem(
+                EmailProblemKind.GhostExternalLogins, ghostId, null, null, null, null));
+        }
+
         return new EmailProblemsReport(_clock.GetCurrentInstant(), problems);
     }
 }
