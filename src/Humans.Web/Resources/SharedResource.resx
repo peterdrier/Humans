@@ -1363,6 +1363,16 @@
   <data name="Feedback_Error" xml:space="preserve"><value>Something went wrong submitting your feedback. Please try again.</value></data>
 
   <!-- Agent Widget -->
+  <data name="Agent_ConversationBackToHistory" xml:space="preserve"><value>Back to history</value></data>
+  <data name="Agent_ConversationEmpty" xml:space="preserve"><value>No messages in this conversation.</value></data>
+  <data name="Agent_ConversationHandedOffToFeedback" xml:space="preserve"><value>Handed off to feedback report</value></data>
+  <data name="Agent_ConversationRefusedLabel" xml:space="preserve"><value>The agent declined to answer this turn.</value></data>
+  <data name="Agent_ConversationTitle" xml:space="preserve"><value>Agent conversation</value></data>
+  <data name="Agent_ConversationToolCallsSummary" xml:space="preserve"><value>{0} tool call(s)</value></data>
+  <data name="Agent_ConversationTranscript" xml:space="preserve"><value>Transcript</value></data>
+  <data name="Agent_ContextCardCaveat" xml:space="preserve"><value>This is your current context. If your roles or teams have changed since this conversation, the agent saw a different version at the time.</value></data>
+  <data name="Agent_ContextCardEmpty" xml:space="preserve"><value>No personal context is currently being sent to the agent.</value></data>
+  <data name="Agent_ContextCardSummary" xml:space="preserve"><value>Your context (as the agent sees you now)</value></data>
   <data name="Agent_HistoryEmpty" xml:space="preserve"><value>No conversations yet.</value></data>
   <data name="Agent_HistoryLastMessage" xml:space="preserve"><value>Last message</value></data>
   <data name="Agent_HistoryMessages" xml:space="preserve"><value>Messages</value></data>
