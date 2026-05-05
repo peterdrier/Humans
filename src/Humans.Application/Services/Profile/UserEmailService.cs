@@ -538,10 +538,13 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         {
             // Surface the cross-user collision via the prod log viewer at
             // Warning (no exception object — there's no exception to attach;
-            // this is a known, classified outcome). The duplicate-account
-            // detection flow will pick the conflict up on its next sweep.
+            // this is a known, classified outcome). Caller-neutral wording —
+            // this method is called from both AccountController (OAuth rename
+            // detector) and GoogleAdminService (admin fix flow). The
+            // duplicate-account detection flow will pick the conflict up on
+            // its next sweep.
             _logger.LogWarning(
-                "OAuth rename collision: user {UserId} attempted to rewrite {OldEmail} to {NewEmail}, but the new address already belongs to user {ConflictUserId}. Stale row left in place; duplicate-account detection will surface this to admins.",
+                "Email rewrite collision: user {UserId} attempted to rewrite {OldEmail} to {NewEmail}, but the new address already belongs to user {ConflictUserId}. Stale row left in place; duplicate-account detection will surface this to admins.",
                 userId, oldEmail, newEmail, await _repository.GetOtherUserIdHavingEmailAsync(newEmail, userId, cancellationToken));
         }
 
