@@ -15,7 +15,9 @@ namespace Humans.Application.Tests.Architecture.Rules;
 /// Detection: scan <c>src/Humans.Infrastructure/Migrations/*.cs</c>
 /// (excluding <c>.Designer.cs</c> and <c>HumansDbContextModelSnapshot.cs</c>),
 /// find every <c>migrationBuilder.Drop*</c> call inside the <c>Up</c> method
-/// body, emit one locator per line.
+/// body, emit one locator per call. The first <c>name: "X"</c> argument is
+/// captured so the same drop op on different objects produces distinct keys
+/// without using line numbers.
 ///
 /// The <c>Down()</c> method legitimately mirrors <c>Up()</c> Adds with Drops,
 /// so we strip <c>Down()</c> bodies before scanning.
@@ -26,7 +28,12 @@ public class NoDestructiveMigrationOpsRule
         "tests/Humans.Application.Tests/Architecture/Baselines/NoDestructiveMigrationOps.baseline.txt";
 
     private static readonly Regex DropOpRegex = new(
-        @"migrationBuilder\.(?<op>DropColumn|DropTable|DropIndex|DropForeignKey|DropUniqueConstraint|DropCheckConstraint|DropPrimaryKey)\b",
+        @"migrationBuilder\.(?<op>DropColumn|DropTable|DropIndex|DropForeignKey|DropUniqueConstraint|DropCheckConstraint|DropPrimaryKey)\b\s*\(\s*(?<args>[^;]*?)\)\s*;",
+        RegexOptions.Compiled | RegexOptions.ExplicitCapture | RegexOptions.Singleline,
+        TimeSpan.FromSeconds(2));
+
+    private static readonly Regex NameArgRegex = new(
+        @"\bname\s*:\s*""(?<name>[^""]+)""",
         RegexOptions.Compiled | RegexOptions.ExplicitCapture,
         TimeSpan.FromSeconds(2));
 
@@ -54,17 +61,23 @@ public class NoDestructiveMigrationOpsRule
             if (upBody is null) continue;
 
             var rel = RatchetTestRunner.ToRelativePath(repoRoot, path);
+            var upBodyStart = content.IndexOf(upBody, StringComparison.Ordinal);
+            // Per-key ordinal so multiple drops with the same op+name shape
+            // (rare, but possible across schemas) remain distinct.
+            var counts = new Dictionary<string, int>(StringComparer.Ordinal);
 
-            // Walk lines of the Up body and emit one locator per drop call,
-            // mapping back to absolute file line numbers.
             foreach (var match in DropOpRegex.Matches(upBody).Cast<Match>())
             {
-                // Convert offset-within-Up-body to absolute line in file.
-                var upBodyStart = content.IndexOf(upBody, StringComparison.Ordinal);
-                var absoluteOffset = upBodyStart + match.Index;
-                var lineNumber = LineNumberAt(content, absoluteOffset);
                 var op = match.Groups["op"].Value;
-                yield return $"{rel}:{lineNumber}:{op}";
+                var args = match.Groups["args"].Value;
+                var nameMatch = NameArgRegex.Match(args);
+                var arg = nameMatch.Success ? nameMatch.Groups["name"].Value : "?";
+                var key = $"{op}(name={arg})";
+                counts.TryGetValue(key, out var n);
+                counts[key] = ++n;
+                var absoluteOffset = upBodyStart + match.Index;
+                var line = RatchetTestRunner.LineNumberAt(content, absoluteOffset);
+                yield return $"{rel}:{key}#{n} # L{line}";
             }
         }
     }
@@ -102,13 +115,5 @@ public class NoDestructiveMigrationOpsRule
             }
         }
         return null;
-    }
-
-    private static int LineNumberAt(string source, int offset)
-    {
-        var line = 1;
-        for (var i = 0; i < offset && i < source.Length; i++)
-            if (source[i] == '\n') line++;
-        return line;
     }
 }

@@ -94,6 +94,9 @@ public class NoCrossSectionEfJoinsRule
             if (!fileSection.TryGetValue(path, out var thisSection)) continue;
             var content = File.ReadAllText(path);
             var rel = RatchetTestRunner.ToRelativePath(repoRoot, path);
+            // Per-(file, key) ordinal so two refs with the same shape in the
+            // same file remain distinct without line numbers.
+            var counts = new Dictionary<string, int>(StringComparer.Ordinal);
 
             foreach (var match in GenericNavRegex.Matches(content).Cast<Match>())
             {
@@ -101,8 +104,11 @@ public class NoCrossSectionEfJoinsRule
                 var referenced = match.Groups["type"].Value;
                 if (!entitySection.TryGetValue(referenced, out var refSection)) continue;
                 if (string.Equals(refSection, thisSection, StringComparison.Ordinal)) continue;
-                var lineNumber = LineNumberAt(content, match.Index);
-                yield return $"{rel}:{lineNumber}:{op}<{referenced}> ({thisSection}->{refSection})";
+                var key = $"{op}<{referenced}>({thisSection}->{refSection})";
+                counts.TryGetValue(key, out var n);
+                counts[key] = ++n;
+                var line = RatchetTestRunner.LineNumberAt(content, match.Index);
+                yield return $"{rel}:{key}#{n} # L{line}";
             }
 
             foreach (var match in LambdaNavRegex.Matches(content).Cast<Match>())
@@ -115,8 +121,11 @@ public class NoCrossSectionEfJoinsRule
                 // an entity name (common case: HasOne(x => x.User) → User).
                 if (!entitySection.TryGetValue(navProperty, out var refSection)) continue;
                 if (string.Equals(refSection, thisSection, StringComparison.Ordinal)) continue;
-                var lineNumber = LineNumberAt(content, match.Index);
-                yield return $"{rel}:{lineNumber}:{op}(=>.{navProperty}) ({thisSection}->{refSection})";
+                var key = $"{op}(=>.{navProperty})({thisSection}->{refSection})";
+                counts.TryGetValue(key, out var n);
+                counts[key] = ++n;
+                var line = RatchetTestRunner.LineNumberAt(content, match.Index);
+                yield return $"{rel}:{key}#{n} # L{line}";
             }
         }
     }
@@ -127,13 +136,5 @@ public class NoCrossSectionEfJoinsRule
         var parts = rel.Replace('\\', '/').Split('/');
         // parts.Length == 1 → file directly under Configurations/, no section.
         return parts.Length >= 2 ? parts[0] : null;
-    }
-
-    private static int LineNumberAt(string source, int offset)
-    {
-        var line = 1;
-        for (var i = 0; i < offset && i < source.Length; i++)
-            if (source[i] == '\n') line++;
-        return line;
     }
 }
