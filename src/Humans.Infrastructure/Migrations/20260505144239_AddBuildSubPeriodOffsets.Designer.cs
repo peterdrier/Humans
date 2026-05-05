@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260505115355_AddBuildSubPeriodOffsets")]
+    [Migration("20260505144239_AddBuildSubPeriodOffsets")]
     partial class AddBuildSubPeriodOffsets
     {
         /// <inheritdoc />
