@@ -140,6 +140,8 @@
   <data name="Dashboard_ProfileCard" xml:space="preserve"><value>Profile</value></data>
   <data name="Dashboard_ProfileComplete" xml:space="preserve"><value>Your profile is complete.</value></data>
   <data name="Dashboard_ProfileIncomplete" xml:space="preserve"><value>Complete your profile to help us know you better.</value></data>
+  <data name="Dashboard_ProfileCompletionPercent" xml:space="preserve"><value>Your profile is {0}% complete</value><comment>{0} = percentage 0-99</comment></data>
+  <data name="Dashboard_FinishProfile" xml:space="preserve"><value>Finish profile</value></data>
   <data name="Dashboard_ViewProfile" xml:space="preserve"><value>View Profile</value></data>
   <data name="Dashboard_ConsentsCard" xml:space="preserve"><value>Agreements</value></data>
   <data name="Dashboard_ConsentsNeeded" xml:space="preserve"><value>&lt;strong&gt;{0}&lt;/strong&gt; of {1} documents need your consent.</value><comment>{0} = pending count, {1} = total required</comment></data>

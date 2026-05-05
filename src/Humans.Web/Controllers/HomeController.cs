@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Application.Configuration;
+using Humans.Application.Helpers;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Services;
@@ -99,6 +100,7 @@ public class HomeController : HumansControllerBase
             MembershipStatus = data.MembershipSnapshot.Status,
             HasProfile = data.Profile is not null,
             ProfileComplete = data.Profile is not null && !string.IsNullOrEmpty(data.Profile.FirstName),
+            ProfileCompletionPercent = ProfileCompletion.ComputePercent(data.Profile),
             PendingConsents = data.MembershipSnapshot.PendingConsentCount,
             TotalRequiredConsents = data.MembershipSnapshot.RequiredConsentCount,
             IsVolunteerMember = data.MembershipSnapshot.IsVolunteerMember,

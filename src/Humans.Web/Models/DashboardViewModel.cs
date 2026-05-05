@@ -16,6 +16,7 @@ public class DashboardViewModel
     // Profile
     public bool HasProfile { get; set; }
     public bool ProfileComplete { get; set; }
+    public int ProfileCompletionPercent { get; init; }
 
     // Consents
     public int PendingConsents { get; set; }
