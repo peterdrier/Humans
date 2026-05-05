@@ -88,7 +88,7 @@ public class AgentController : HumansControllerBase
 
     [HttpGet("Conversations")]
     public async Task<IActionResult> Conversations(
-        bool refusalsOnly = false, bool handoffsOnly = false, Guid? userId = null,
+        bool refusalsOnly = false, Guid? userId = null,
         int page = 0, CancellationToken cancellationToken = default)
     {
         var (missing, currentUser) = await RequireCurrentUserAsync();
@@ -96,7 +96,7 @@ public class AgentController : HumansControllerBase
 
         var isAdmin = User.IsInRole(RoleNames.Admin);
         var rows = await LoadConversationsAsync(
-            isAdmin, currentUser.Id, refusalsOnly, handoffsOnly, userId, page, cancellationToken);
+            isAdmin, currentUser.Id, refusalsOnly, userId, page, cancellationToken);
         var listRows = await StitchListRowsAsync(rows, isAdmin, cancellationToken);
         return View(new AgentConversationsViewModel(listRows, IsAdminView: isAdmin));
     }
@@ -117,13 +117,13 @@ public class AgentController : HumansControllerBase
 
     private Task<IReadOnlyList<AgentConversation>> LoadConversationsAsync(
         bool isAdmin, Guid currentUserId,
-        bool refusalsOnly, bool handoffsOnly, Guid? userId, int page,
+        bool refusalsOnly, Guid? userId, int page,
         CancellationToken ct)
     {
         const int adminPageSize = 25;
         return isAdmin
             ? _agent.ListAllConversationsForAdminAsync(
-                refusalsOnly, handoffsOnly, userId, adminPageSize, page * adminPageSize, ct)
+                refusalsOnly, userId, adminPageSize, page * adminPageSize, ct)
             : _agent.GetHistoryAsync(currentUserId, take: 50, ct);
     }
 

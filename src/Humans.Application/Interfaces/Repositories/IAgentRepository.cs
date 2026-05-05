@@ -39,7 +39,7 @@ public interface IAgentRepository
     Task<IReadOnlyList<AgentConversation>> ListConversationsForUserWithMessagesAsync(Guid userId, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<AgentConversation>> ListAllConversationsAsync(
-        bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
+        bool refusalsOnly, Guid? userId, int take, int skip,
         CancellationToken cancellationToken);
 
     Task<int> PurgeConversationsOlderThanAsync(Instant cutoff, CancellationToken cancellationToken);
