@@ -1,20 +1,13 @@
 using System.Reflection;
-using System.Security.Cryptography;
 using System.Text;
 using Humans.Application.Configuration;
-using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Infrastructure.Configuration;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Options;
-using NodaTime;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
+using Humans.Infrastructure.Configuration;
+using Humans.Web.Infrastructure;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers;
 
@@ -32,6 +25,12 @@ public record DevPersonaInfo(string Slug, string DisplayName);
 ///
 /// Personas are dynamically generated from <see cref="RoleNames"/> constants
 /// so new roles automatically get a dev login button.
+///
+/// Per design-rules §2a/§2c: this controller does not inject
+/// <see cref="HumansDbContext"/>. Persona seeding (User + Profile + UserEmail
+/// + auxiliary teams/camps/roles) is delegated to <see cref="DevPersonaSeeder"/>;
+/// user lookup goes through <see cref="UserManager{TUser}"/> and
+/// <see cref="IUserEmailService"/>.
 /// </summary>
 [Route("dev/login")]
 public class DevLoginController : Controller
@@ -46,39 +45,30 @@ public class DevLoginController : Controller
 
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
-    private readonly HumansDbContext _db;
     private readonly IUserEmailService _userEmailService;
-    private readonly IClock _clock;
+    private readonly DevPersonaSeeder _personaSeeder;
     private readonly IWebHostEnvironment _env;
     private readonly IConfiguration _config;
     private readonly ConfigurationRegistry _configRegistry;
-    private readonly IMemoryCache _cache;
-    private readonly IOptions<CityPlanningOptions> _cityPlanningOptions;
     private readonly ILogger<DevLoginController> _logger;
 
     public DevLoginController(
         UserManager<User> userManager,
         SignInManager<User> signInManager,
-        HumansDbContext db,
         IUserEmailService userEmailService,
-        IClock clock,
+        DevPersonaSeeder personaSeeder,
         IWebHostEnvironment env,
         IConfiguration config,
         ConfigurationRegistry configRegistry,
-        IMemoryCache cache,
-        IOptions<CityPlanningOptions> campMapOptions,
         ILogger<DevLoginController> logger)
     {
         _userManager = userManager;
         _signInManager = signInManager;
-        _db = db;
         _userEmailService = userEmailService;
-        _clock = clock;
+        _personaSeeder = personaSeeder;
         _env = env;
         _config = config;
         _configRegistry = configRegistry;
-        _cache = cache;
-        _cityPlanningOptions = campMapOptions;
         _logger = logger;
     }
 
@@ -96,19 +86,19 @@ public class DevLoginController : Controller
         if (info is null)
             return NotFound();
 
-        var id = PersonaGuid(info.Slug);
+        var id = DevPersonaSeeder.PersonaGuid(info.Slug);
         Guid resolvedUserId;
 
         await SeedLock.WaitAsync();
         try
         {
-            resolvedUserId = await EnsurePersonaAsync(info, id);
+            resolvedUserId = await _personaSeeder.EnsurePersonaAsync(info.Slug, info.DisplayName, id);
             if (string.Equals(info.Slug, "coordinator", StringComparison.OrdinalIgnoreCase))
-                await EnsureCoordinatorTeamsAsync(resolvedUserId);
-            if (IsBarrioLeadSlug(info.Slug))
-                await EnsureBarrioCampAsync(info.Slug, resolvedUserId);
-            if (IsCityPlanningSlug(info.Slug))
-                await EnsureCityPlanningTeamAsync(resolvedUserId);
+                await _personaSeeder.EnsureCoordinatorTeamsAsync(resolvedUserId);
+            if (DevPersonaSeeder.IsBarrioLeadSlug(info.Slug))
+                await _personaSeeder.EnsureBarrioCampAsync(info.Slug, resolvedUserId);
+            if (DevPersonaSeeder.IsCityPlanningSlug(info.Slug))
+                await _personaSeeder.EnsureCityPlanningTeamAsync(resolvedUserId);
         }
         finally
         {
@@ -145,14 +135,10 @@ public class DevLoginController : Controller
         if (!IsDevAuthEnabled())
             return NotFound();
 
-        var users = await _db.Users
-            .OrderBy(u => u.DisplayName)
-            .Select(u => new { u.Id, u.DisplayName, u.Email })
-            .Take(100)
-            .ToListAsync();
+        var users = await _personaSeeder.GetUsersForChooserAsync();
 
         ViewData["ReturnUrl"] = returnUrl;
-        return View(users.Select(u => (u.Id, u.DisplayName ?? u.Email ?? "Unknown", u.Email ?? "")).ToList());
+        return View(users.ToList());
     }
 
     /// <summary>
@@ -188,434 +174,6 @@ public class DevLoginController : Controller
             _configRegistry, "DevAuth:Enabled", "Development", defaultValue: false);
     }
 
-    private async Task<Guid> EnsurePersonaAsync(DevPersonaInfo info, Guid id)
-    {
-        var existing = await _userManager.FindByIdAsync(id.ToString());
-        if (existing is not null)
-            return existing.Id;
-
-        var email = $"dev-{info.Slug}@localhost";
-
-        // Legacy personas may exist with old hardcoded GUIDs — reuse them.
-        var byEmailUserId = await _userEmailService.GetUserIdByVerifiedEmailAsync(email);
-        if (byEmailUserId is not null)
-        {
-            _logger.LogInformation("DEV: found legacy persona {Email} ({OldId}), reusing", email, byEmailUserId.Value);
-            return byEmailUserId.Value;
-        }
-
-        var now = _clock.GetCurrentInstant();
-        var displayName = $"Dev {info.DisplayName}";
-
-        // Guest persona: bare user with no profile, teams, or roles
-        if (string.Equals(info.Slug, "guest", StringComparison.OrdinalIgnoreCase))
-        {
-            await SeedProfilelessUserAsync(id, email, displayName, now);
-            return id;
-        }
-
-        var nameParts = info.DisplayName.Split(' ', 2);
-        var firstName = nameParts[0];
-        var lastName = nameParts.Length > 1 ? nameParts[1] : info.DisplayName;
-
-        // Determine role and team assignments
-        var isCoordinatorPersona = string.Equals(info.Slug, "coordinator", StringComparison.OrdinalIgnoreCase);
-        var roleName = isCoordinatorPersona ? null : RoleNameFromSlug(info.Slug);
-        var roles = roleName is not null ? new[] { roleName } : Array.Empty<string>();
-        Guid[] teams;
-        if (roleName is not null && string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal))
-            teams = [SystemTeamIds.Volunteers, SystemTeamIds.Board];
-        else if (IsBarrioLeadSlug(info.Slug))
-            teams = [SystemTeamIds.Volunteers, SystemTeamIds.BarrioLeads];
-        else
-            teams = [SystemTeamIds.Volunteers];
-
-        var user = new User
-        {
-            Id = id,
-            DisplayName = displayName,
-            CreatedAt = now,
-            LastLoginAt = now
-        };
-
-        var result = await _userManager.CreateAsync(user);
-        if (!result.Succeeded)
-        {
-            _logger.LogError("Failed to create dev persona {Email}: {Errors}",
-                email, string.Join(", ", result.Errors.Select(e => e.Description)));
-            return id;
-        }
-
-        _db.UserEmails.Add(new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = id,
-            Email = email,
-            Provider = "Google",
-            ProviderKey = $"dev-{id}",
-            IsVerified = true,
-            IsPrimary = true,
-            Visibility = ContactFieldVisibility.BoardOnly,
-            CreatedAt = now,
-            UpdatedAt = now
-        });
-
-        var profileId = Guid.NewGuid();
-        _db.Profiles.Add(new Profile
-        {
-            Id = profileId,
-            UserId = id,
-            BurnerName = displayName,
-            FirstName = firstName,
-            LastName = lastName,
-            IsApproved = true,
-            ConsentCheckStatus = ConsentCheckStatus.Cleared,
-            City = "Barcelona",
-            CountryCode = "ES",
-            Bio = $"Dev persona for testing the {info.DisplayName} role.",
-            Pronouns = "they/them",
-            DateOfBirth = new LocalDate(4, 6, 15), // June 15 (year 4 = leap year placeholder)
-            CreatedAt = now,
-            UpdatedAt = now
-        });
-
-        // Seed sample contact fields so profile page exercises the contact rendering path
-        _db.ContactFields.Add(new ContactField
-        {
-            Id = Guid.NewGuid(),
-            ProfileId = profileId,
-            FieldType = ContactFieldType.Signal,
-            Value = $"+34 600 000 {id.ToString()[..3]}",
-            Visibility = ContactFieldVisibility.AllActiveProfiles,
-            DisplayOrder = 0,
-            CreatedAt = now,
-            UpdatedAt = now
-        });
-        _db.ContactFields.Add(new ContactField
-        {
-            Id = Guid.NewGuid(),
-            ProfileId = profileId,
-            FieldType = ContactFieldType.Telegram,
-            Value = $"@dev_{info.Slug}",
-            Visibility = ContactFieldVisibility.MyTeams,
-            DisplayOrder = 1,
-            CreatedAt = now,
-            UpdatedAt = now
-        });
-
-        foreach (var teamId in teams)
-        {
-            _db.TeamMembers.Add(new TeamMember
-            {
-                Id = Guid.NewGuid(),
-                UserId = id,
-                TeamId = teamId,
-                Role = TeamMemberRole.Member,
-                JoinedAt = now
-            });
-        }
-
-        foreach (var role in roles)
-        {
-            _db.RoleAssignments.Add(new RoleAssignment
-            {
-                Id = Guid.NewGuid(),
-                UserId = id,
-                RoleName = role,
-                ValidFrom = now,
-                ValidTo = null,
-                Notes = "Dev persona — auto-seeded",
-                CreatedAt = now,
-                CreatedByUserId = id
-            });
-        }
-
-        await _db.SaveChangesAsync();
-        _cache.InvalidateUserAccess(id);
-
-        _logger.LogInformation("DEV: seeded persona {Email} with roles [{Roles}] and teams [{Teams}]",
-            email, string.Join(", ", roles), string.Join(", ", teams.Select(t => t)));
-
-        return id;
-    }
-
-    /// <summary>
-    /// Seeds a test barrio
-    /// </summary>
-    private async Task EnsureBarrioCampAsync(string personaSlug, Guid leadUserId)
-    {
-        // barrio-1-lead → camp slug "barrio-1", name "Barrio 1"
-        var campSlug = personaSlug[..^"-lead".Length]; // "barrio-1" or "barrio-2"
-        var campName = campSlug.Replace("-", " ", StringComparison.Ordinal); // "barrio 1" → title-case below
-        campName = string.Concat(campName[..1].ToUpperInvariant(), campName.AsSpan(1)); // "Barrio 1" / "Barrio 2"
-
-        var year = (await _db.CampSettings.FirstAsync()).PublicYear;
-
-        var campId = PersonaGuid($"dev-camp:{campSlug}");
-        var seasonId = PersonaGuid($"dev-camp-season:{campSlug}:{year}");
-        var leadId = PersonaGuid($"dev-camp-lead:{campSlug}:{leadUserId}");
-
-        var now = _clock.GetCurrentInstant();
-
-        if (!await _db.Set<Camp>().AnyAsync(c => c.Id == campId))
-        {
-            _db.Set<Camp>().Add(new Camp
-            {
-                Id = campId,
-                Slug = campSlug,
-                ContactEmail = $"dev-{campSlug}@localhost",
-                ContactPhone = "+34 600 000 000",
-                CreatedByUserId = leadUserId,
-                CreatedAt = now,
-                UpdatedAt = now
-            });
-
-            _db.Set<CampSeason>().Add(new CampSeason
-            {
-                Id = seasonId,
-                CampId = campId,
-                Year = year,
-                Name = campName,
-                Status = CampSeasonStatus.Active,
-                BlurbShort = $"A dev test barrio ({campName}).",
-                BlurbLong = $"{campName} is a development test barrio used for local and preview environment testing. Feel free to edit this description.",
-                Languages = "English, Spanish",
-                MemberCount = 42,
-                CreatedAt = now,
-                UpdatedAt = now
-            });
-
-            _logger.LogInformation("DEV: seeded camp {Slug} ({Id})", campSlug, campId);
-        }
-
-        if (!await _db.Set<CampLead>().AnyAsync(l => l.Id == leadId))
-        {
-            _db.Set<CampLead>().Add(new CampLead
-            {
-                Id = leadId,
-                CampId = campId,
-                UserId = leadUserId,
-                Role = CampLeadRole.Primary,
-                JoinedAt = now
-            });
-
-            _logger.LogInformation("DEV: seeded camp lead for {Slug} user {UserId}", campSlug, leadUserId);
-        }
-
-        await _db.SaveChangesAsync();
-    }
-
-    /// <summary>
-    /// Ensures the coordinator persona's test department and sub-team exist with active memberships.
-    /// Called from SignIn() on every login so sync-job deactivations are repaired.
-    /// </summary>
-    private async Task EnsureCoordinatorTeamsAsync(Guid coordinatorUserId)
-    {
-        var now = _clock.GetCurrentInstant();
-        var changed = false;
-        var deptId = PersonaGuid("dev-test-department");
-        var subTeamId = PersonaGuid("dev-test-subteam");
-
-        // Ensure department exists
-        if (!await _db.Teams.AnyAsync(t => t.Id == deptId))
-        {
-            _db.Teams.Add(new Team
-            {
-                Id = deptId,
-                Name = "Dev Test Department",
-                Description = "Test department for coordinator e2e tests",
-                Slug = "dev-test-department",
-                IsActive = true,
-                RequiresApproval = true,
-                SystemTeamType = SystemTeamType.None,
-                CreatedAt = now,
-                UpdatedAt = now
-            });
-            changed = true;
-        }
-
-        // Ensure sub-team exists
-        if (!await _db.Teams.AnyAsync(t => t.Id == subTeamId))
-        {
-            _db.Teams.Add(new Team
-            {
-                Id = subTeamId,
-                Name = "Dev Test SubTeam",
-                Description = "Test sub-team for coordinator e2e tests",
-                Slug = "dev-test-subteam",
-                IsActive = true,
-                RequiresApproval = true,
-                SystemTeamType = SystemTeamType.None,
-                ParentTeamId = deptId,
-                CreatedAt = now,
-                UpdatedAt = now
-            });
-            changed = true;
-        }
-
-        // Ensure department membership exists with Coordinator role.
-        // Repair the role if a prior version of the seed (or any other code path) left
-        // the row at Member — the e2e teams-auth tests rely on this being Coordinator.
-        changed |= await EnsureSeededMembershipAsync(deptId, coordinatorUserId, TeamMemberRole.Coordinator, now);
-
-        // Ensure sub-team membership exists with Member role.
-        changed |= await EnsureSeededMembershipAsync(subTeamId, coordinatorUserId, TeamMemberRole.Member, now);
-
-        if (changed)
-        {
-            await _db.SaveChangesAsync();
-            _cache.InvalidateActiveTeams();
-            _cache.InvalidateUserAccess(coordinatorUserId);
-            _logger.LogInformation(
-                "DEV: ensured coordinator teams — department {DeptId}, sub-team {SubTeamId}",
-                deptId, subTeamId);
-        }
-    }
-
-    private async Task<bool> EnsureSeededMembershipAsync(
-        Guid teamId,
-        Guid userId,
-        TeamMemberRole expectedRole,
-        Instant now)
-    {
-        var existing = await _db.TeamMembers
-            .FirstOrDefaultAsync(tm => tm.TeamId == teamId && tm.UserId == userId);
-
-        if (existing is null)
-        {
-            _db.TeamMembers.Add(new TeamMember
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                TeamId = teamId,
-                Role = expectedRole,
-                JoinedAt = now
-            });
-            return true;
-        }
-
-        var changed = false;
-        if (existing.LeftAt is not null)
-        {
-            existing.LeftAt = null;
-            changed = true;
-        }
-        if (existing.Role != expectedRole)
-        {
-            existing.Role = expectedRole;
-            changed = true;
-        }
-        return changed;
-    }
-
-    /// <summary>
-    /// Ensures the city planning team (from config) exists and the user is a coordinator of it.
-    /// </summary>
-    private async Task EnsureCityPlanningTeamAsync(Guid userId)
-    {
-        var teamSlug = _cityPlanningOptions.Value.CityPlanningTeamSlug;
-        if (string.IsNullOrEmpty(teamSlug))
-        {
-            _logger.LogWarning("DEV: CityPlanning:CityPlanningTeamSlug is not configured, skipping city planning team seeding");
-            return;
-        }
-
-        var now = _clock.GetCurrentInstant();
-        var changed = false;
-
-        var team = await _db.Teams.FirstOrDefaultAsync(t => t.Slug == teamSlug);
-        if (team is null)
-        {
-            team = new Team
-            {
-                Id = Guid.NewGuid(),
-                Name = "City Planning",
-                Description = "Dev-seeded city planning team",
-                Slug = teamSlug,
-                IsActive = true,
-                RequiresApproval = false,
-                SystemTeamType = SystemTeamType.None,
-                CreatedAt = now,
-                UpdatedAt = now
-            };
-            _db.Teams.Add(team);
-            changed = true;
-            _logger.LogInformation("DEV: seeded city planning team {Slug}", teamSlug);
-        }
-
-        var hasActiveMembership = await _db.TeamMembers
-            .AnyAsync(tm => tm.TeamId == team.Id && tm.UserId == userId && tm.LeftAt == null);
-        if (!hasActiveMembership)
-        {
-            var inactiveMembership = await _db.TeamMembers
-                .FirstOrDefaultAsync(tm => tm.TeamId == team.Id && tm.UserId == userId && tm.LeftAt != null);
-            if (inactiveMembership is not null)
-            {
-                inactiveMembership.LeftAt = null;
-                inactiveMembership.Role = TeamMemberRole.Coordinator;
-            }
-            else
-            {
-                _db.TeamMembers.Add(new TeamMember
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = userId,
-                    TeamId = team.Id,
-                    Role = TeamMemberRole.Coordinator,
-                    JoinedAt = now
-                });
-            }
-            changed = true;
-        }
-
-        if (changed)
-        {
-            await _db.SaveChangesAsync();
-            _cache.InvalidateActiveTeams();
-            _cache.InvalidateUserAccess(userId);
-        }
-    }
-
-    /// <summary>
-    /// Seeds a profileless user — just User + UserEmail, no Profile, no teams, no roles.
-    /// Used for testing the Guest dashboard and profileless account flows.
-    /// </summary>
-    private async Task SeedProfilelessUserAsync(Guid id, string email, string displayName, Instant now)
-    {
-        var user = new User
-        {
-            Id = id,
-            DisplayName = displayName,
-            CreatedAt = now,
-            LastLoginAt = now
-        };
-
-        var result = await _userManager.CreateAsync(user);
-        if (!result.Succeeded)
-        {
-            _logger.LogError("Failed to create dev guest persona {Email}: {Errors}",
-                email, string.Join(", ", result.Errors.Select(e => e.Description)));
-            return;
-        }
-
-        _db.UserEmails.Add(new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = id,
-            Email = email,
-            Provider = "Google",
-            ProviderKey = $"dev-{id}",
-            IsVerified = true,
-            IsPrimary = true,
-            Visibility = ContactFieldVisibility.BoardOnly,
-            CreatedAt = now,
-            UpdatedAt = now
-        });
-
-        await _db.SaveChangesAsync();
-        _logger.LogInformation("DEV: seeded profileless guest persona {Email} ({Id})", email, id);
-    }
-
     // ============================================================
     // Static helpers
     // ============================================================
@@ -644,37 +202,6 @@ public class DevLoginController : Controller
         }
 
         return list;
-    }
-
-    private static bool IsBarrioLeadSlug(string slug) =>
-        slug.EndsWith("-lead", StringComparison.OrdinalIgnoreCase) &&
-        slug.StartsWith("barrio-", StringComparison.OrdinalIgnoreCase);
-
-    private static bool IsCityPlanningSlug(string slug) =>
-        string.Equals(slug, "city-planning", StringComparison.OrdinalIgnoreCase);
-
-    /// <summary>
-    /// Deterministic GUID from persona slug — stable across restarts for idempotent seeding.
-    /// </summary>
-    private static Guid PersonaGuid(string slug)
-    {
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes($"dev-persona:{slug}"));
-        return new Guid(hash.AsSpan(0, 16));
-    }
-
-    /// <summary>
-    /// Resolves a persona slug back to a RoleNames constant, or null for "volunteer".
-    /// </summary>
-    private static string? RoleNameFromSlug(string slug)
-    {
-        if (string.Equals(slug, "volunteer", StringComparison.OrdinalIgnoreCase))
-            return null;
-
-        return typeof(RoleNames)
-            .GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)
-            .Where(f => f.IsLiteral && !f.IsInitOnly && f.FieldType == typeof(string))
-            .Select(f => (string)f.GetRawConstantValue()!)
-            .FirstOrDefault(r => string.Equals(PascalToKebab(r), slug, StringComparison.OrdinalIgnoreCase));
     }
 
     private static string PascalToKebab(string pascal)

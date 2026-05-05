@@ -85,6 +85,7 @@ if (!builder.Environment.IsProduction())
 {
     builder.Services.AddScoped<DevelopmentBudgetSeeder>();
     builder.Services.AddScoped<DevelopmentDashboardSeeder>();
+    builder.Services.AddScoped<DevPersonaSeeder>();
 }
 
 // Configure JSON options with NodaTime support
@@ -469,13 +470,25 @@ builder.Services.AddCors(options =>
 });
 
 // Add Controllers with Views
-builder.Services.AddControllersWithViews(options =>
+var mvcBuilder = builder.Services.AddControllersWithViews(options =>
     {
         options.Filters.Add<MembershipRequiredFilter>();
         options.Filters.Add<Humans.Web.Filters.AuthorizationPillFilter>();
     })
     .AddViewLocalization(LanguageViewLocationExpanderFormat.Suffix)
     .AddDataAnnotationsLocalization();
+
+// In Production, exclude DevLoginController from MVC's controller feature.
+// DevLoginController depends on DevPersonaSeeder, which is only registered
+// outside Production. ValidateOnBuild + ValidateScopes would otherwise fail
+// host startup, or every /dev/login/* request would 500 before its
+// IsDevAuthEnabled() guard could return NotFound. Excluding it at the feature
+// level means routes never bind in Production and the path returns a real 404.
+if (builder.Environment.IsProduction())
+{
+    mvcBuilder.ConfigureApplicationPartManager(apm =>
+        apm.FeatureProviders.Add(new DevLoginControllerExclusionProvider()));
+}
 builder.Services.AddRazorPages();
 builder.Services.AddSignalR();
 
