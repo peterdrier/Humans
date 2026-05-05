@@ -99,6 +99,13 @@ public sealed class EmailProblemsService : IEmailProblemsService
             }
         }
 
+        var orphans = await _userEmailService.GetOrphanUserEmailsAsync(ct);
+        foreach (var o in orphans)
+        {
+            problems.Add(new EmailProblem(
+                EmailProblemKind.OrphanUserEmail, o.UserId, null, o.Id, o.Email, null));
+        }
+
         return new EmailProblemsReport(_clock.GetCurrentInstant(), problems);
     }
 }

@@ -197,4 +197,28 @@ public class EmailProblemsServiceTests
 
         report.Problems.Should().ContainSingle(p => p.Kind == EmailProblemKind.SharedAcrossUsers);
     }
+
+    [HumansFact]
+    public async Task DetectsOrphanUserEmail()
+    {
+        var deadUserId = Guid.NewGuid();
+        var emailId = Guid.NewGuid();
+        SetProfiles();
+        SetOrphans(new UserEmail
+        {
+            Id = emailId,
+            UserId = deadUserId,
+            Email = "ghost@x.com",
+            IsVerified = true
+        });
+        SetGhosts();
+
+        var report = await Sut.ScanAsync();
+
+        report.Problems.Should().ContainSingle(p =>
+            p.Kind == EmailProblemKind.OrphanUserEmail
+            && p.UserEmailId == emailId
+            && p.UserId == deadUserId
+            && p.Email == "ghost@x.com");
+    }
 }
