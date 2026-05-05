@@ -870,6 +870,14 @@ public sealed class GoogleAdminService : IGoogleAdminService
             }
             if (rewriteOutcome == RewriteEmailAddressOutcome.SourceRowNotFound)
             {
+                // We just resolved oldEmail from this user's verified rows above;
+                // SourceRowNotFound here means the row disappeared between the
+                // lookup and the rewrite — log at Warning so the prod log viewer
+                // shows the discrepancy (the admin UI gets the failure message,
+                // but observability would otherwise be invisible).
+                _logger.LogWarning(
+                    "Admin {AdminId} email rename: source row not found for user {UserId} oldEmail {OldEmail} — row may have been removed concurrently.",
+                    actorUserId, userId, oldEmail);
                 return new EmailRenameFixResult(false,
                     ErrorMessage: $"No UserEmail row found for '{oldEmail}'.");
             }

@@ -402,8 +402,14 @@ public class AccountController : HumansControllerBase
                     // user IDs; no audit row (we didn't actually rewrite).
                     break;
                 case RewriteEmailAddressOutcome.SourceRowNotFound:
-                    // Legitimate no-op (e.g. row removed between FindByProviderKey
-                    // and rewrite). Nothing to audit.
+                    // FindByProviderKeyAsync just confirmed the row existed with
+                    // oldEmail; getting SourceRowNotFound here means the row
+                    // disappeared between the two calls — surface at Warning so
+                    // the prod log viewer shows the discrepancy. No audit (no
+                    // rewrite happened).
+                    _logger.LogWarning(
+                        "OAuth rename: source row not found for user {UserId} oldEmail {OldEmail} (sub={Sub}) — row may have been removed concurrently between FindByProviderKey and rewrite.",
+                        match.UserId, oldEmail, info.ProviderKey);
                     break;
             }
         }

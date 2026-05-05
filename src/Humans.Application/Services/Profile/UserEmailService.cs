@@ -545,6 +545,14 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
                 userId, oldEmail, newEmail, await _repository.GetOtherUserIdHavingEmailAsync(newEmail, userId, cancellationToken));
         }
 
+        // Both Rewritten (UPDATE) and MergedIntoExistingRowForSameUser (DELETE +
+        // mark-verified) mutate user_emails rows that FullProfile derives
+        // PrimaryEmail / AllVerifiedEmails / GoogleEmail from — invalidate so
+        // the cache doesn't serve stale values until the next warmup. The
+        // no-mutation outcomes (SourceRowNotFound / CrossUserConflict) make
+        // this a harmless no-op invalidate.
+        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+
         return outcome;
     }
 
