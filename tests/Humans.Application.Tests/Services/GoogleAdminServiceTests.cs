@@ -9,6 +9,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
+using NodaTime;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Xunit;
@@ -388,6 +389,31 @@ public class GoogleAdminServiceTests
             .ResetPasswordAsync("test@nobodies.team", Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task ResetPasswordAsync_AuditsLinkedHumanAsSubject()
+    {
+        // When the workspace address resolves to a human, the audit row's
+        // EntityId must carry that UserId so the activity feed renders the
+        // human's name as subject instead of "Unknown".
+        var linkedUserId = Guid.NewGuid();
+        _userEmailService.MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns([
+                new UserEmailMatch(
+                    "ben.tree@nobodies.team", linkedUserId,
+                    IsPrimary: false, IsVerified: true,
+                    UpdatedAt: SystemClock.Instance.GetCurrentInstant())
+            ]);
+
+        await _service.ResetPasswordAsync("ben.tree@nobodies.team", _actorUserId);
+
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.WorkspaceAccountPasswordReset,
+            "WorkspaceAccount", linkedUserId,
+            Arg.Is<string>(s => s.Contains("ben.tree@nobodies.team")),
+            _actorUserId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
     // --- GenerateBackupCodesAsync (tested via ResetPasswordAndGenerate2FaAsync) ---
 
     [HumansFact]
@@ -410,7 +436,7 @@ public class GoogleAdminServiceTests
         await _auditLogService.Received(1).LogAsync(
             AuditAction.WorkspaceAccountBackupCodesGenerated,
             "WorkspaceAccount", Guid.Empty,
-            Arg.Is<string>(s => s.Contains("alice@nobodies.team") && s.Contains("3 backup code")),
+            Arg.Is<string>(s => s.Contains("alice@nobodies.team") && s.Contains("3 code")),
             _actorUserId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }

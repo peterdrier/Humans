@@ -54,6 +54,21 @@ public sealed class GoogleAdminService : IGoogleAdminService
         _logger = logger;
     }
 
+    // Resolve a single Workspace email to the linked human's UserId for audit
+    // attribution. Returns null when the address isn't linked. Mirrors the
+    // verified > UpdatedAt > UserId tie-break used by GetWorkspaceAccountListAsync
+    // so the audit subject matches what /Google/Accounts shows.
+    private async Task<Guid?> TryFindLinkedUserIdAsync(string email, CancellationToken ct)
+    {
+        var matches = await _userEmailService.MatchByEmailsAsync([email], ct);
+        return matches
+            .OrderByDescending(m => m.IsVerified)
+            .ThenByDescending(m => m.UpdatedAt)
+            .ThenBy(m => m.UserId)
+            .Select(m => (Guid?)m.UserId)
+            .FirstOrDefault();
+    }
+
     public async Task<WorkspaceAccountListResult> GetWorkspaceAccountListAsync(
         CancellationToken ct = default)
     {
@@ -304,10 +319,14 @@ public sealed class GoogleAdminService : IGoogleAdminService
 
             // Audit AFTER Google API success — the "business save" here is the
             // Workspace-side password reset. No local DB write happens in this flow.
+            // EntityId carries the linked human's UserId when the address resolves
+            // to one, so the audit row renders with the human's name as subject;
+            // unlinked accounts log with Guid.Empty and fall back to the email tail.
+            var linkedUserId = await TryFindLinkedUserIdAsync(email, ct);
             await _auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountPasswordReset,
-                "WorkspaceAccount", Guid.Empty,
-                $"Reset password for @{NobodiesTeamDomain} account: {email}",
+                "WorkspaceAccount", linkedUserId ?? Guid.Empty,
+                email,
                 actorUserId);
 
             return new WorkspaceAccountActionResult(true,
@@ -361,10 +380,14 @@ public sealed class GoogleAdminService : IGoogleAdminService
         // log so it can be reconciled out-of-band.
         try
         {
+            // EntityId carries the linked human's UserId when the address resolves
+            // to one, so the audit row renders with the human's name as subject;
+            // unlinked accounts log with Guid.Empty and fall back to the email tail.
+            var linkedUserId = await TryFindLinkedUserIdAsync(email, ct);
             await _auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountBackupCodesGenerated,
-                "WorkspaceAccount", Guid.Empty,
-                $"Generated {codes.Count} backup code(s) for @{NobodiesTeamDomain} account: {email}",
+                "WorkspaceAccount", linkedUserId ?? Guid.Empty,
+                $"{codes.Count} code(s), {email}",
                 actorUserId);
         }
         catch (Exception ex)

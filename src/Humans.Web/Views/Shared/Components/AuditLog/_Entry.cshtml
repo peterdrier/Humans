@@ -15,12 +15,16 @@
          : v.EndsWith(" to", StringComparison.Ordinal) ? v[..^3]
          : v;
 
-    // Subject: the user being acted upon
+    // Subject: the user being acted upon. Guid.Empty means "no linked human"
+    // (e.g. WorkspaceAccount audits where the address isn't matched to a User);
+    // treat it as null so the view falls back to a verb-trimmed, subject-less render
+    // instead of resolving Guid.Empty against the user-name dict and showing "Unknown".
     Guid? subjectId = Model.EntityType is "User" or "Profile" or "WorkspaceAccount"
         ? Model.EntityId
         : string.Equals(Model.RelatedEntityType, "User", StringComparison.Ordinal)
             ? Model.RelatedEntityId
             : null;
+    if (subjectId == Guid.Empty) subjectId = null;
 
     // Target team
     Guid? targetTeamId = string.Equals(Model.EntityType, "Team", StringComparison.Ordinal)

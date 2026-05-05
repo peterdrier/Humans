@@ -104,6 +104,8 @@ public class AuditLogViewComponent : ViewComponent
         AuditAction.VolunteerApproved => "approved",
         AuditAction.RoleAssigned => "assigned role to",
         AuditAction.RoleEnded => "ended role for",
+        AuditAction.WorkspaceAccountPasswordReset => "reset Workspace password for",
+        AuditAction.WorkspaceAccountBackupCodesGenerated => "generated Workspace backup codes for",
         AuditAction.ConsentCheckCleared => "cleared consent check for",
         AuditAction.ConsentCheckFlagged => "flagged consent check for",
         AuditAction.SignupRejected => "rejected signup for",
@@ -140,7 +142,11 @@ public class AuditLogViewComponent : ViewComponent
         or AuditAction.ShiftSignupBailed
         or AuditAction.ShiftSignupNoShow
         or AuditAction.ShiftSignupCancelled
-        or AuditAction.ShiftSignupReassigned;
+        or AuditAction.ShiftSignupReassigned
+        or AuditAction.RoleAssigned
+        or AuditAction.RoleEnded
+        or AuditAction.WorkspaceAccountPasswordReset
+        or AuditAction.WorkspaceAccountBackupCodesGenerated;
 }
 
 public class AuditLogComponentViewModel
