@@ -385,6 +385,68 @@ public sealed class GoogleAdminService : IGoogleAdminService
         string email, Guid actorUserId,
         CancellationToken ct = default)
     {
+        // Refuse if the account is already enrolled in 2-Step Verification.
+        // The combined flow rotates the backup-code set destructively, so
+        // running it against a properly-set-up account would silently break
+        // the human's working 2FA. Always re-check live Directory state — the
+        // UI hides the button, but a hand-crafted POST must hit the same gate.
+        WorkspaceUserAccount? liveAccount;
+        try
+        {
+            liveAccount = await _workspaceUserService.GetAccountAsync(email, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch live 2SV state for: {Email}", email);
+            return new WorkspaceRecoveryCredentialsResult(
+                Success: false,
+                Email: email,
+                ErrorMessage: $"Failed to verify 2FA enrollment for {email}. Aborted; no changes made.");
+        }
+
+        if (liveAccount is null)
+        {
+            _logger.LogWarning(
+                "Reset+2FA refused for {Email}: account not found in Workspace Directory. Actor: {ActorUserId}.",
+                email, actorUserId);
+            return new WorkspaceRecoveryCredentialsResult(
+                Success: false,
+                Email: email,
+                ErrorMessage: $"Account {email} not found in Workspace Directory.");
+        }
+
+        if (liveAccount.IsEnrolledIn2Sv)
+        {
+            _logger.LogWarning(
+                "Reset+2FA refused for {Email}: already enrolled in 2-Step Verification. Actor: {ActorUserId}.",
+                email, actorUserId);
+
+            // Audit AFTER the refusal decision. If audit persistence throws,
+            // log Critical and still return the user-facing refusal — degrading
+            // gracefully on an audit-side outage matches the BackupCodesGenerated
+            // pattern below, and forcing a 500 here would mask a safe outcome
+            // (no Workspace mutation happened).
+            try
+            {
+                await _auditLogService.LogAsync(
+                    AuditAction.WorkspaceAccountResetBlockedFor2Sv,
+                    "WorkspaceAccount", Guid.Empty,
+                    $"Refused Reset+2FA for @{NobodiesTeamDomain} account {email}: already enrolled in 2-Step Verification",
+                    actorUserId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogCritical(ex,
+                    "Audit-log write failed for Reset+2FA refusal on {Email} by actor {ActorUserId}. Refusal was still surfaced to the admin; reconcile audit trail manually.",
+                    email, actorUserId);
+            }
+
+            return new WorkspaceRecoveryCredentialsResult(
+                Success: false,
+                Email: email,
+                ErrorMessage: $"{email} is already enrolled in 2FA. Reset+2FA is for locked-out humans only — use the plain Reset Password button, or rotate 2FA in the Google Admin console.");
+        }
+
         // Step 1: reset the password. Audit + return on failure — there's
         // no point grabbing a backup code if the human can't sign in anyway.
         var resetResult = await ResetPasswordAsync(email, actorUserId, ct);

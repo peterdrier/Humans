@@ -676,6 +676,100 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     }
 
     /// <inheritdoc />
+    public async Task<bool> ClearGoogleAsync(
+        Guid userId, Guid userEmailId, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var row = await _repository.GetByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
+        if (row is null || !row.IsGoogle) return false;
+
+        row.IsGoogle = false;
+        row.UpdatedAt = _clock.GetCurrentInstant();
+        await _repository.UpdateAsync(row, cancellationToken);
+        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+
+        await _auditLogService.LogAsync(
+            AuditAction.UserEmailGoogleCleared,
+            nameof(User), userId,
+            $"Cleared Google identity flag from {row.Email}",
+            actorUserId,
+            relatedEntityId: row.Id, relatedEntityType: nameof(UserEmail));
+
+        return true;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> ClearPrimaryAsync(
+        Guid userId, Guid userEmailId, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var row = await _repository.GetByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
+        if (row is null || !row.IsPrimary) return false;
+
+        row.IsPrimary = false;
+        row.UpdatedAt = _clock.GetCurrentInstant();
+        await _repository.UpdateAsync(row, cancellationToken);
+        // Don't auto-promote a successor — the admin is using this path
+        // specifically to recover from a duplicate-IsPrimary state and may
+        // want to pick the new primary deliberately.
+        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+
+        await _auditLogService.LogAsync(
+            AuditAction.UserEmailPrimaryCleared,
+            nameof(User), userId,
+            $"Cleared primary flag from {row.Email}",
+            actorUserId,
+            relatedEntityId: row.Id, relatedEntityType: nameof(UserEmail));
+
+        return true;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<UserEmailFlagViolation>> GetEmailFlagViolationsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var allEmails = await _repository.GetAllAsync(cancellationToken);
+
+        var perUser = allEmails
+            .GroupBy(e => e.UserId)
+            .Select(g =>
+            {
+                var verified = g.Where(e => e.IsVerified).ToList();
+                var isGoogleCount = g.Count(e => e.IsGoogle);
+                var verifiedPrimaryCount = verified.Count(e => e.IsPrimary);
+                var hasMultipleGoogle = isGoogleCount > 1;
+                var hasPrimaryProblem = verified.Count > 0 && verifiedPrimaryCount != 1;
+                return (
+                    UserId: g.Key,
+                    IsGoogleCount: isGoogleCount,
+                    VerifiedCount: verified.Count,
+                    VerifiedPrimaryCount: verifiedPrimaryCount,
+                    HasMultipleGoogle: hasMultipleGoogle,
+                    HasPrimaryProblem: hasPrimaryProblem);
+            })
+            .Where(x => x.HasMultipleGoogle || x.HasPrimaryProblem)
+            .ToList();
+
+        if (perUser.Count == 0)
+            return [];
+
+        var users = await _userService.GetByIdsAsync(
+            perUser.Select(x => x.UserId).ToList(),
+            cancellationToken);
+
+        return perUser
+            .Select(x => new UserEmailFlagViolation(
+                x.UserId,
+                users.TryGetValue(x.UserId, out var user) ? user.DisplayName : null,
+                x.IsGoogleCount,
+                x.VerifiedCount,
+                x.VerifiedPrimaryCount,
+                x.HasMultipleGoogle,
+                x.HasPrimaryProblem))
+            .ToList();
+    }
+
+    /// <inheritdoc />
     public async Task<bool> LinkAsync(
         Guid userId, string provider, string providerKey, string email, Guid actorUserId,
         CancellationToken cancellationToken = default)

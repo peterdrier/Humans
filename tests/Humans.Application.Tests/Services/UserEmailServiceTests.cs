@@ -346,6 +346,221 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
+    public async Task ClearGoogleAsync_FlaggedRow_ClearsAndAudits()
+    {
+        // Issue 650: admin can clear IsGoogle from a row even when the user
+        // is in the duplicate-IsGoogle invariant-violation state.
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        var row = new UserEmail
+        {
+            Id = rowId,
+            UserId = userId,
+            Email = "a@x.test",
+            IsVerified = true,
+            IsGoogle = true,
+        };
+        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+            .Returns(row);
+
+        var result = await _service.ClearGoogleAsync(userId, rowId, actorId);
+
+        result.Should().BeTrue();
+        row.IsGoogle.Should().BeFalse();
+        await _repository.Received(1).UpdateAsync(row, Arg.Any<CancellationToken>());
+        await _fullProfileInvalidator.Received(1).InvalidateAsync(
+            userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.UserEmailGoogleCleared,
+            nameof(User), userId,
+            Arg.Any<string>(),
+            actorId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task ClearGoogleAsync_NotFlagged_ReturnsFalse()
+    {
+        var userId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        var row = new UserEmail
+        {
+            Id = rowId,
+            UserId = userId,
+            Email = "a@x.test",
+            IsVerified = true,
+            IsGoogle = false,
+        };
+        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+            .Returns(row);
+
+        var result = await _service.ClearGoogleAsync(userId, rowId, userId);
+
+        result.Should().BeFalse();
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ClearGoogleAsync_OnlyClearsTargetRow_LeavesOtherFlagAlone()
+    {
+        // Critical for the duplicate-IsGoogle remediation: clearing one row
+        // must NOT touch the sibling row's flag, otherwise an admin trying
+        // to fix "two flagged" would zero both out instead of resolving.
+        var userId = Guid.NewGuid();
+        var rowAId = Guid.NewGuid();
+        var rowA = new UserEmail
+        {
+            Id = rowAId,
+            UserId = userId,
+            Email = "a@x.test",
+            IsVerified = true,
+            IsGoogle = true,
+        };
+        _repository.GetByIdAndUserIdAsync(rowAId, userId, Arg.Any<CancellationToken>())
+            .Returns(rowA);
+
+        var result = await _service.ClearGoogleAsync(userId, rowAId, userId);
+
+        result.Should().BeTrue();
+        // Only the targeted row should have flowed through UpdateAsync —
+        // SetGoogleExclusiveAsync (which would touch siblings) must not fire.
+        await _repository.DidNotReceive().SetGoogleExclusiveAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        await _repository.Received(1).UpdateAsync(rowA, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ClearPrimaryAsync_FlaggedRow_ClearsAndAudits()
+    {
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        var row = new UserEmail
+        {
+            Id = rowId,
+            UserId = userId,
+            Email = "a@x.test",
+            IsVerified = true,
+            IsPrimary = true,
+        };
+        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+            .Returns(row);
+
+        var result = await _service.ClearPrimaryAsync(userId, rowId, actorId);
+
+        result.Should().BeTrue();
+        row.IsPrimary.Should().BeFalse();
+        await _repository.Received(1).UpdateAsync(row, Arg.Any<CancellationToken>());
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.UserEmailPrimaryCleared,
+            nameof(User), userId,
+            Arg.Any<string>(),
+            actorId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task ClearPrimaryAsync_DoesNotAutoPromoteSuccessor()
+    {
+        // Admin-recovery semantics: after Clear, the user is left with zero
+        // primary. The admin is expected to call SetPrimary explicitly. The
+        // service must not call EnsurePrimaryInvariantAsync on this path.
+        var userId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        var row = new UserEmail
+        {
+            Id = rowId,
+            UserId = userId,
+            Email = "a@x.test",
+            IsVerified = true,
+            IsPrimary = true,
+        };
+        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+            .Returns(row);
+
+        await _service.ClearPrimaryAsync(userId, rowId, userId);
+
+        // EnsurePrimaryInvariantAsync would fetch all emails for the user via
+        // GetByUserIdForMutationAsync — proving it didn't run is enough here.
+        await _repository.DidNotReceive().GetByUserIdForMutationAsync(
+            userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetEmailFlagViolationsAsync_FlagsMultipleGoogleAndBadPrimaryCounts()
+    {
+        // Two flagged scenarios + one healthy user. Healthy user must not
+        // appear in the result; the violations list must include both
+        // problem types with the right convenience flags set.
+        var userMultipleGoogle = Guid.NewGuid();
+        var userNoPrimary = Guid.NewGuid();
+        var userMultiplePrimary = Guid.NewGuid();
+        var userHealthy = Guid.NewGuid();
+
+        var rows = new List<UserEmail>
+        {
+            // userMultipleGoogle: 2 verified rows, both IsGoogle=true, one IsPrimary=true.
+            new() { Id = Guid.NewGuid(), UserId = userMultipleGoogle, Email = "a@x.test", IsVerified = true, IsGoogle = true,  IsPrimary = true  },
+            new() { Id = Guid.NewGuid(), UserId = userMultipleGoogle, Email = "b@x.test", IsVerified = true, IsGoogle = true,  IsPrimary = false },
+
+            // userNoPrimary: verified rows but none flagged primary.
+            new() { Id = Guid.NewGuid(), UserId = userNoPrimary, Email = "c@x.test", IsVerified = true, IsGoogle = false, IsPrimary = false },
+            new() { Id = Guid.NewGuid(), UserId = userNoPrimary, Email = "d@x.test", IsVerified = true, IsGoogle = false, IsPrimary = false },
+
+            // userMultiplePrimary: two IsPrimary=true verified rows.
+            new() { Id = Guid.NewGuid(), UserId = userMultiplePrimary, Email = "e@x.test", IsVerified = true, IsGoogle = false, IsPrimary = true },
+            new() { Id = Guid.NewGuid(), UserId = userMultiplePrimary, Email = "f@x.test", IsVerified = true, IsGoogle = false, IsPrimary = true },
+
+            // userHealthy: exactly one primary, no extra Google rows.
+            new() { Id = Guid.NewGuid(), UserId = userHealthy, Email = "g@x.test", IsVerified = true, IsGoogle = true, IsPrimary = true },
+            new() { Id = Guid.NewGuid(), UserId = userHealthy, Email = "h@x.test", IsVerified = true, IsGoogle = false, IsPrimary = false },
+        };
+
+        _repository.GetAllAsync(Arg.Any<CancellationToken>()).Returns(rows);
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User>());
+
+        var violations = await _service.GetEmailFlagViolationsAsync();
+
+        violations.Should().HaveCount(3);
+        violations.Should().NotContain(v => v.UserId == userHealthy);
+
+        var multipleGoogle = violations.Single(v => v.UserId == userMultipleGoogle);
+        multipleGoogle.IsGoogleCount.Should().Be(2);
+        multipleGoogle.HasMultipleGoogle.Should().BeTrue();
+
+        var noPrimary = violations.Single(v => v.UserId == userNoPrimary);
+        noPrimary.VerifiedPrimaryCount.Should().Be(0);
+        noPrimary.HasPrimaryProblem.Should().BeTrue();
+        noPrimary.HasMultipleGoogle.Should().BeFalse();
+
+        var multiplePrimary = violations.Single(v => v.UserId == userMultiplePrimary);
+        multiplePrimary.VerifiedPrimaryCount.Should().Be(2);
+        multiplePrimary.HasPrimaryProblem.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task GetEmailFlagViolationsAsync_IgnoresUnverifiedRowsForPrimaryCheck()
+    {
+        // A user with zero verified rows is not in the violation set —
+        // the "exactly one primary" rule applies only when verified rows
+        // exist.
+        var userId = Guid.NewGuid();
+        var rows = new List<UserEmail>
+        {
+            new() { Id = Guid.NewGuid(), UserId = userId, Email = "a@x.test", IsVerified = false, IsGoogle = false, IsPrimary = false },
+        };
+        _repository.GetAllAsync(Arg.Any<CancellationToken>()).Returns(rows);
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User>());
+
+        var violations = await _service.GetEmailFlagViolationsAsync();
+
+        violations.Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task LinkAsync_AttachesToExistingEmail()
     {
         // A row matching the email already exists for the user → attach
