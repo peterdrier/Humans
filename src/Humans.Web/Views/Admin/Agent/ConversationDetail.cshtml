@@ -54,6 +54,25 @@
                 {
                     <div class="alert alert-info mt-2 mb-0 py-1">Handed off to feedback: <code>@msg.HandedOffToFeedbackId</code></div>
                 }
+                @if (msg.FetchedDocs is { Length: > 0 })
+                {
+                    <details class="mt-2">
+                        <summary class="text-muted small">Tool invocations (@msg.FetchedDocs.Length)</summary>
+                        @foreach (var entry in msg.FetchedDocs)
+                        {
+                            var colon = entry.IndexOf(':');
+                            var toolName = colon > 0 ? entry[..colon] : entry;
+                            var toolArgs = colon > 0 ? entry[(colon + 1)..] : "";
+                            <div class="border rounded p-2 mt-2 bg-light">
+                                <div class="small"><strong>@toolName</strong></div>
+                                @if (!string.IsNullOrWhiteSpace(toolArgs))
+                                {
+                                    <pre class="small mb-0 mt-1" style="white-space: pre-wrap; word-break: break-word;">@toolArgs</pre>
+                                }
+                            </div>
+                        }
+                    </details>
+                }
                 <div class="text-muted small mt-2">
                     Prompt: @msg.PromptTokens tok | Output: @msg.OutputTokens tok | Cached: @msg.CachedTokens tok | @msg.DurationMs ms
                     @if (!string.IsNullOrEmpty(msg.Model)) { <span> | @msg.Model</span> }
