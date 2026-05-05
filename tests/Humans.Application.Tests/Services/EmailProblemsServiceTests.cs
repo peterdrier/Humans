@@ -160,4 +160,41 @@ public class EmailProblemsServiceTests
             && p.UserEmailId == emailId
             && p.Email == "a@x.com");
     }
+
+    [HumansFact]
+    public async Task DetectsRawEmailCollisionAcrossUsers()
+    {
+        var u1 = Guid.NewGuid();
+        var u2 = Guid.NewGuid();
+        SetProfiles(
+            MakeProfile(u1, new UserEmailSnapshot(Guid.NewGuid(), "joe@x.com", true, true, false)),
+            MakeProfile(u2, new UserEmailSnapshot(Guid.NewGuid(), "joe@x.com", true, true, false)));
+        SetOrphans();
+        SetGhosts();
+
+        var report = await Sut.ScanAsync();
+
+        report.Problems.Should().ContainSingle(p =>
+            p.Kind == EmailProblemKind.SharedAcrossUsers
+            && p.Email == "joe@x.com"
+            && (p.UserId == u1 || p.UserId == u2)
+            && (p.OtherUserId == u1 || p.OtherUserId == u2)
+            && p.UserId != p.OtherUserId);
+    }
+
+    [HumansFact]
+    public async Task DetectsNormalizationEquivalentCollision()
+    {
+        var u1 = Guid.NewGuid();
+        var u2 = Guid.NewGuid();
+        SetProfiles(
+            MakeProfile(u1, new UserEmailSnapshot(Guid.NewGuid(), "joe@gmail.com", true, true, false)),
+            MakeProfile(u2, new UserEmailSnapshot(Guid.NewGuid(), "joe@googlemail.com", true, true, false)));
+        SetOrphans();
+        SetGhosts();
+
+        var report = await Sut.ScanAsync();
+
+        report.Problems.Should().ContainSingle(p => p.Kind == EmailProblemKind.SharedAcrossUsers);
+    }
 }

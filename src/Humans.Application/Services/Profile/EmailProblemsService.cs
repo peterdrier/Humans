@@ -1,6 +1,7 @@
 using Humans.Application.DTOs.EmailProblems;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
+using Humans.Domain.Helpers;
 using NodaTime;
 
 namespace Humans.Application.Services.Profile;
@@ -61,6 +62,40 @@ public sealed class EmailProblemsService : IEmailProblemsService
                 problems.Add(new EmailProblem(
                     EmailProblemKind.Unverified, p.UserId, null,
                     unverified.Id, unverified.Email, null));
+            }
+        }
+
+        // Cross-user duplicates: build normalized-email -> userIds map, flag pairs.
+        var normToUsers = new Dictionary<string, List<(Guid UserId, string Raw)>>(StringComparer.Ordinal);
+        foreach (var p in profiles)
+        {
+            foreach (var email in p.AllUserEmails)
+            {
+                var norm = EmailNormalization.NormalizeForComparison(email.Email);
+                if (!normToUsers.TryGetValue(norm, out var list))
+                {
+                    list = new List<(Guid, string)>();
+                    normToUsers[norm] = list;
+                }
+                list.Add((p.UserId, email.Email));
+            }
+        }
+
+        foreach (var kvp in normToUsers)
+        {
+            var distinctUsers = kvp.Value.Select(t => t.UserId).Distinct().ToList();
+            if (distinctUsers.Count <= 1) continue;
+
+            for (var i = 0; i < distinctUsers.Count; i++)
+            {
+                for (var j = i + 1; j < distinctUsers.Count; j++)
+                {
+                    var rawA = kvp.Value.First(t => t.UserId == distinctUsers[i]).Raw;
+                    problems.Add(new EmailProblem(
+                        EmailProblemKind.SharedAcrossUsers,
+                        distinctUsers[i], distinctUsers[j],
+                        null, rawA, null));
+                }
             }
         }
 
