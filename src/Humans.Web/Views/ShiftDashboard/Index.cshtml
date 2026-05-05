@@ -99,13 +99,13 @@
             @if (Model.SelectedPeriod == ShiftPeriod.Build)
             {
                 <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                    <span class="text-muted small me-2">Set-up phase</span>
+                    <span class="text-muted small me-2">@Localizer["ShiftDash_SubPeriodFilter_Label"]</span>
                     <div class="btn-group btn-group-sm" role="group" id="dashboard-subperiod-group">
-                        <a href="#" data-subperiod="" class="@SubPeriodBtnClass(null)">All set-up</a>
-                        <a href="#" data-subperiod="@BuildSubPeriod.FirstCrew" class="@SubPeriodBtnClass(BuildSubPeriod.FirstCrew)">First crew</a>
-                        <a href="#" data-subperiod="@BuildSubPeriod.SetupWeek" class="@SubPeriodBtnClass(BuildSubPeriod.SetupWeek)">Set-up week</a>
-                        <a href="#" data-subperiod="@BuildSubPeriod.PreEventWeek" class="@SubPeriodBtnClass(BuildSubPeriod.PreEventWeek)">Pre-event week</a>
-                        <a href="#" data-subperiod="@BuildSubPeriod.FinishingWeekend" class="@SubPeriodBtnClass(BuildSubPeriod.FinishingWeekend)">Finishing weekend</a>
+                        <a href="#" data-subperiod="" class="@SubPeriodBtnClass(null)">@Localizer["ShiftDash_SubPeriodFilter_All"]</a>
+                        <a href="#" data-subperiod="@BuildSubPeriod.FirstCrew" class="@SubPeriodBtnClass(BuildSubPeriod.FirstCrew)">@Localizer["ShiftDash_SubPeriodFilter_FirstCrew"]</a>
+                        <a href="#" data-subperiod="@BuildSubPeriod.SetupWeek" class="@SubPeriodBtnClass(BuildSubPeriod.SetupWeek)">@Localizer["ShiftDash_SubPeriodFilter_SetupWeek"]</a>
+                        <a href="#" data-subperiod="@BuildSubPeriod.PreEventWeek" class="@SubPeriodBtnClass(BuildSubPeriod.PreEventWeek)">@Localizer["ShiftDash_SubPeriodFilter_PreEventWeek"]</a>
+                        <a href="#" data-subperiod="@BuildSubPeriod.FinishingWeekend" class="@SubPeriodBtnClass(BuildSubPeriod.FinishingWeekend)">@Localizer["ShiftDash_SubPeriodFilter_FinishingWeekend"]</a>
                     </div>
                 </div>
             }

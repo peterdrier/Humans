@@ -52,6 +52,13 @@ public class EventSettingsViewModel : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
+        if (FirstCrewStartOffset < BuildStartOffset)
+        {
+            yield return new ValidationResult(
+                $"First crew offset cannot be earlier than build start offset ({nameof(BuildStartOffset)}).",
+                [nameof(FirstCrewStartOffset)]);
+        }
+
         if (FirstCrewStartOffset >= SetupWeekStartOffset
             || SetupWeekStartOffset >= PreEventWeekStartOffset
             || PreEventWeekStartOffset >= FinishingWeekendStartOffset)

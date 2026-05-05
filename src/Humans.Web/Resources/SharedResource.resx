@@ -1870,6 +1870,13 @@
   <data name="ShiftDash_PeriodFilter_EventShifts" xml:space="preserve"><value>Event</value></data>
   <data name="ShiftDash_PeriodFilter_Strike" xml:space="preserve"><value>Strike</value></data>
 
+  <data name="ShiftDash_SubPeriodFilter_Label" xml:space="preserve"><value>Set-up phase:</value></data>
+  <data name="ShiftDash_SubPeriodFilter_All" xml:space="preserve"><value>All set-up</value></data>
+  <data name="ShiftDash_SubPeriodFilter_FirstCrew" xml:space="preserve"><value>First crew</value></data>
+  <data name="ShiftDash_SubPeriodFilter_SetupWeek" xml:space="preserve"><value>Set-up week</value></data>
+  <data name="ShiftDash_SubPeriodFilter_PreEventWeek" xml:space="preserve"><value>Pre-event week</value></data>
+  <data name="ShiftDash_SubPeriodFilter_FinishingWeekend" xml:space="preserve"><value>Finishing weekend</value></data>
+
   <data name="ShiftDash_Departments_Title" xml:space="preserve"><value>Departments</value></data>
   <data name="ShiftDash_Departments_SortNote" xml:space="preserve"><value>sorted by lowest slot fill % first</value></data>
   <data name="ShiftDash_Countdown_Label" xml:space="preserve"><value>Countdown to feet on the ground</value></data>

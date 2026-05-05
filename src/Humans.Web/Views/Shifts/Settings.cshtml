@@ -67,22 +67,22 @@
                         <div class="row">
                             <div class="col-md-3 mb-3">
                                 <label asp-for="FirstCrewStartOffset" class="form-label">First Crew Start</label>
-                                <input asp-for="FirstCrewStartOffset" type="number" max="-1" class="form-control" />
+                                <input asp-for="FirstCrewStartOffset" type="number" min="-365" max="-1" class="form-control" />
                                 <small class="form-text text-muted">e.g., -25</small>
                             </div>
                             <div class="col-md-3 mb-3">
                                 <label asp-for="SetupWeekStartOffset" class="form-label">Set-up Week Start</label>
-                                <input asp-for="SetupWeekStartOffset" type="number" max="-1" class="form-control" />
+                                <input asp-for="SetupWeekStartOffset" type="number" min="-365" max="-1" class="form-control" />
                                 <small class="form-text text-muted">e.g., -16</small>
                             </div>
                             <div class="col-md-3 mb-3">
                                 <label asp-for="PreEventWeekStartOffset" class="form-label">Pre-event Week Start</label>
-                                <input asp-for="PreEventWeekStartOffset" type="number" max="-1" class="form-control" />
+                                <input asp-for="PreEventWeekStartOffset" type="number" min="-365" max="-1" class="form-control" />
                                 <small class="form-text text-muted">e.g., -9</small>
                             </div>
                             <div class="col-md-3 mb-3">
                                 <label asp-for="FinishingWeekendStartOffset" class="form-label">Finishing Weekend Start</label>
-                                <input asp-for="FinishingWeekendStartOffset" type="number" max="-1" class="form-control" />
+                                <input asp-for="FinishingWeekendStartOffset" type="number" min="-365" max="-1" class="form-control" />
                                 <small class="form-text text-muted">e.g., -4</small>
                             </div>
                         </div>
