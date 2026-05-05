@@ -8,6 +8,7 @@ using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Governance;
 using Humans.Infrastructure.Services;
+using Humans.Web.Services.Onboarding;
 using GovernanceApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
 using OnboardingOrchestratorService = Humans.Application.Services.Onboarding.OnboardingService;
 using OnboardingWidgetStateService = Humans.Application.Services.Onboarding.OnboardingWidgetState;
@@ -43,6 +44,7 @@ internal static class GovernanceSectionExtensions
         services.AddScoped<IOnboardingEligibilityQuery>(sp => sp.GetRequiredService<OnboardingOrchestratorService>());
 
         services.AddScoped<IOnboardingWidgetState, OnboardingWidgetStateService>();
+        services.AddScoped<IOnboardingWidgetSessionState, HttpOnboardingWidgetSessionState>();
 
         services.AddScoped<TermRenewalReminderJob>();
 

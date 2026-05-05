@@ -1716,6 +1716,17 @@
   <data name="Shifts_SaveAvailability" xml:space="preserve"><value>Verfügbarkeit speichern</value></data>
   <data name="Shifts_DaysSelected" xml:space="preserve"><value>Tage ausgewählt</value></data>
   <data name="Shifts_SlotsFull" xml:space="preserve"><value>Einige Tage brauchen noch Hilfe, aber alle verfügbaren Plätze sind derzeit belegt. Schau später noch einmal vorbei, falls Plätze frei werden.</value></data>
+  <data name="Shifts_ConfirmSignup_Title" xml:space="preserve"><value>Bestätige deine Anmeldung zum {0}</value></data>
+  <data name="Shifts_ConfirmSignup_Phase" xml:space="preserve"><value>Du meldest dich für {0} an ({1}-Phase).</value></data>
+  <data name="Shifts_ConfirmSignup_Range" xml:space="preserve"><value>Vom {0} bis zum {1} ({2} Tage).</value></data>
+  <data name="Shifts_ConfirmSignup_Range_Single" xml:space="preserve"><value>Für den {0} (1 Tag).</value></data>
+  <data name="Shifts_ConfirmSignup_ArriveBy" xml:space="preserve"><value>Du wirst erwartet, vor Ort zu sein bis {0}.</value></data>
+  <data name="Shifts_ConfirmSignup_Prompt" xml:space="preserve"><value>Ist das der Zeitraum, für den du dich anmelden wolltest?</value></data>
+  <data name="Shifts_ConfirmSignup_Confirm" xml:space="preserve"><value>Anmeldung bestätigen</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_Heading" xml:space="preserve"><value>Einige Tage in diesem Zeitraum kollidieren mit Schichten, für die du bereits angemeldet bist:</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_Row" xml:space="preserve"><value>{0} — bereits angemeldet bei {1} ({2}–{3})</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_PartialNote" xml:space="preserve"><value>Du bist an einigen dieser Tage schon angemeldet, deshalb fügen wir nur die freien Tage hinzu.</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_AllBlocked" xml:space="preserve"><value>Sieht so aus, als wärst du an jedem Tag in diesem Zeitraum bereits für eine Schicht angemeldet — wir können keine davon hinzufügen.</value></data>
 
   <data name="ShiftDash_Title" xml:space="preserve"><value>Schicht-Dashboard</value></data>
   <data name="ShiftDash_ShiftsCount" xml:space="preserve"><value>{0} Schichten</value><comment>{0} = count</comment></data>

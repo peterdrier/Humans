@@ -1718,6 +1718,17 @@
   <data name="Shifts_SaveAvailability" xml:space="preserve"><value>Guardar disponibilidad</value></data>
   <data name="Shifts_DaysSelected" xml:space="preserve"><value>días seleccionados</value></data>
   <data name="Shifts_SlotsFull" xml:space="preserve"><value>Algunos días aún necesitan ayuda, pero todos los turnos disponibles están completos. Vuelve más tarde por si se abren plazas.</value></data>
+  <data name="Shifts_ConfirmSignup_Title" xml:space="preserve"><value>Confirma tu inscripción al {0}</value></data>
+  <data name="Shifts_ConfirmSignup_Phase" xml:space="preserve"><value>Te vas a inscribir en {0} (fase de {1}).</value></data>
+  <data name="Shifts_ConfirmSignup_Range" xml:space="preserve"><value>Del {0} al {1} ({2} días).</value></data>
+  <data name="Shifts_ConfirmSignup_Range_Single" xml:space="preserve"><value>Para el {0} (1 día).</value></data>
+  <data name="Shifts_ConfirmSignup_ArriveBy" xml:space="preserve"><value>Se espera que estés en el sitio antes del {0}.</value></data>
+  <data name="Shifts_ConfirmSignup_Prompt" xml:space="preserve"><value>¿Es este el periodo en el que querías inscribirte?</value></data>
+  <data name="Shifts_ConfirmSignup_Confirm" xml:space="preserve"><value>Confirmar inscripción</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_Heading" xml:space="preserve"><value>Algunos días de este rango entran en conflicto con turnos en los que ya estás inscrito/a:</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_Row" xml:space="preserve"><value>{0} — ya inscrito/a en {1} ({2}–{3})</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_PartialNote" xml:space="preserve"><value>Ya estás inscrito/a en algunos de estos días, así que solo añadiremos los que estén libres.</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_AllBlocked" xml:space="preserve"><value>Parece que ya tienes un turno reservado en cada día de este rango, así que no podemos añadir ninguno.</value></data>
 
   <data name="ShiftDash_Title" xml:space="preserve"><value>Panel de turnos</value></data>
   <data name="ShiftDash_ShiftsCount" xml:space="preserve"><value>{0} turnos</value><comment>{0} = count</comment></data>

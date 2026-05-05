@@ -4,21 +4,17 @@ using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Constants;
-using Microsoft.AspNetCore.Http;
 
 namespace Humans.Application.Services.Onboarding;
 
 public class OnboardingWidgetState : IOnboardingWidgetState
 {
-    /// <summary>Session key set by `/OnboardingWidget/Skip` and read here.</summary>
-    public const string ShiftSkipSessionKey = "OnboardingShiftSkip";
-
     private readonly IProfileService _profile;
     private readonly IShiftSignupService _signups;
     private readonly IMembershipCalculator _membership;
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IConsentService _consents;
-    private readonly IHttpContextAccessor _http;
+    private readonly IOnboardingWidgetSessionState _session;
 
     public OnboardingWidgetState(
         IProfileService profile,
@@ -26,14 +22,14 @@ public class OnboardingWidgetState : IOnboardingWidgetState
         IMembershipCalculator membership,
         IShiftManagementService shiftMgmt,
         IConsentService consents,
-        IHttpContextAccessor http)
+        IOnboardingWidgetSessionState session)
     {
         _profile = profile;
         _signups = signups;
         _membership = membership;
         _shiftMgmt = shiftMgmt;
         _consents = consents;
-        _http = http;
+        _session = session;
     }
 
     public async Task<OnboardingWidgetStep> GetCurrentStepAsync(Guid userId, CancellationToken ct = default)
@@ -55,10 +51,7 @@ public class OnboardingWidgetState : IOnboardingWidgetState
         if (requiredRows.Any(r => r.Signed))
             return OnboardingWidgetStep.Consents;
 
-        var hasSkip = string.Equals(
-            _http.HttpContext?.Session.GetString(ShiftSkipSessionKey),
-            "true",
-            StringComparison.Ordinal);
+        var hasSkip = _session.ShiftSkipActive;
 
         var activeEvent = await _shiftMgmt.GetActiveAsync();
         var hasCurrentEventSignup = false;

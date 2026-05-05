@@ -3,11 +3,11 @@ using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Services.Onboarding;
 using Humans.Domain.Entities;
 using Humans.Testing;
 using Humans.Web.Constants;
 using Humans.Web.Controllers;
+using Humans.Web.Services.Onboarding;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -116,7 +116,7 @@ public class OnboardingWidgetControllerShiftsTests
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Consents), redirect.ActionName);
-        Assert.Equal("true", _http.Session.GetString(OnboardingWidgetState.ShiftSkipSessionKey));
+        Assert.Equal("true", _http.Session.GetString(HttpOnboardingWidgetSessionState.ShiftSkipSessionKey));
     }
 
     private sealed class TestSession : ISession
