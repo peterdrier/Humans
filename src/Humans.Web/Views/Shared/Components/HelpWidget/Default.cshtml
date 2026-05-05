@@ -54,19 +54,7 @@
                 <button type="button" class="btn-close" id="agentPanelClose" aria-label="Close"></button>
             </div>
         </div>
-        <div class="agent-consent p-3" id="agentConsentGate"
-             style="display: @(Model.AgentHasConsented ? "none" : "block");">
-            <p>@Localizer["Agent_ConsentPrompt"]</p>
-            <ul class="small text-muted mb-3 ps-3">
-                <li>@Localizer["Help_Agent_Caveat_LogVisibility"]</li>
-                <li>@string.Format(Localizer["Help_Agent_Caveat_Retention"].Value, Model.RetentionDays)</li>
-            </ul>
-            <a asp-controller="Legal" asp-action="Index" asp-route-slug="agent-chat" class="btn btn-primary">
-                @Localizer["Agent_ConsentReviewButton"]
-            </a>
-        </div>
-        <div class="agent-body" id="agentBody"
-             style="display: @(Model.AgentHasConsented ? "flex" : "none"); flex-direction: column;">
+        <div class="agent-body" id="agentBody" style="display: flex; flex-direction: column;">
             <div class="agent-messages flex-grow-1 p-3 overflow-auto" id="agentMessages"
                  style="max-height: 50vh;"></div>
             <form class="agent-composer p-3 border-top" id="agentComposer">
@@ -77,6 +65,12 @@
                     <button type="submit" class="btn btn-primary" id="agentSend">
                         @Localizer["Agent_Send"]
                     </button>
+                </div>
+                <div class="agent-terms small text-muted text-end mt-2">
+                    <a asp-controller="Legal" asp-action="Index" asp-route-slug="agent-chat"
+                       target="_blank" rel="noopener" class="text-decoration-none">
+                        @Localizer["Agent_TermsLink"]
+                    </a>
                 </div>
             </form>
         </div>

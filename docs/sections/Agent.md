@@ -59,13 +59,13 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 
 | Actor | Capability |
 |---|---|
-| Authenticated, consented human | Send messages, read own history at `/Agent/Conversations` |
+| Authenticated human | Send messages, read own history at `/Agent/Conversations` |
 | Admin | Configure settings, view all conversations at `/Agent/Conversations` (Human column + filters), disable globally |
-| Anyone else (anonymous, unconsented) | Widget not rendered; endpoints return 403 |
+| Anyone else (anonymous) | Widget not rendered; endpoints return 401 |
 
 ## Invariants
 
-1. **Consent gate.** Widget and endpoints refuse any request from a user who has not consented to the current active `AgentChatTerms` version.
+1. **Terms link, not gate.** The Assistant panel shows a persistent "AI Terms" link below the composer that opens `/Legal/agent-chat` (the rendered Agent Chat Terms from `nobodies-collective/legal`). There is no explicit consent step — opening the panel and sending a message constitutes use; the terms describe what's sent, retention, and rights. The team-required-doc consent flow (`IConsentService.GetPendingDocumentNamesAsync`) is intentionally NOT used here; agent use is opt-in, not a membership precondition.
 2. **Enabled gate.** If `AgentSettings.Enabled = false`, widget is hidden and `POST /Agent/Ask` returns `503 ServiceUnavailable`.
 3. **Rate limit.** Per-user daily and hourly caps from `AgentSettings`. Over-cap requests return `429 TooManyRequests` without hitting the provider.
 4. **Tool whitelist.** Only `fetch_feature_spec`, `fetch_section_guide`, `route_to_issue` are valid tool names. Unknown names return a tool error; filesystem is never touched outside `docs/sections/` and `docs/features/`.
@@ -79,7 +79,7 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 ## Negative Access Rules
 
 - Non-authenticated users never see the widget and always receive 401/403 from endpoints.
-- A user who revokes consent (future work) loses widget visibility immediately; historical conversations are retained unless the user deletes them.
+- Withdrawal of use: there is no in-app revoke button; users who want their conversation history deleted contact the Board via the email in the Terms.
 - Admin CANNOT see a conversation that belongs to a user who has deleted it.
 
 ## Triggers
@@ -92,7 +92,7 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 
 - **Issues** — agent handoff produces a client-side issue proposal (title/category/description) that pre-fills `/Issues/Submit`. The agent does not write Issue rows itself.
 - **Feedback (legacy)** — historical `FeedbackReport.Source = AgentUnresolved` rows from before this PR are still readable via the Feedback admin queue. Agent no longer creates new ones.
-- **Legal & Consent** — `ILegalDocumentSyncService` resolves the active `AgentChatTerms` version; `IConsentService` gates widget visibility.
+- **Legal** — `LegalDocumentService` resolves the `agent-chat` slug to the `AgentChat/` folder in the legal repo and renders content at `/Legal/agent-chat`. The Assistant panel links there from the composer footer. No `IConsentService` involvement.
 - **Profiles / Users / Auth / Teams** — `IAgentUserSnapshotProvider` composes the per-turn user context from `IProfileService`, `IUserService`, `IRoleAssignmentService.GetActiveForUserAsync`, `ITeamService.GetActiveTeamNamesForUserAsync`.
 - **GDPR** — `AgentService` implements `IUserDataContributor` so per-user export pulls conversation history. User deletion does not cascade into Agent; orphan rows expire via the retention job.
 
@@ -107,7 +107,7 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 - **Repositories** — `IAgentRepository` (Scoped) is the single repository for the section: settings (`agent_settings`), conversations (`agent_conversations`), and messages (`agent_messages`). Nothing in the section injects `HumansDbContext` directly.
 - **Provider boundary** — `IAnthropicClient` (Singleton, wraps the `Anthropic` 12.11.0 SDK) is the only place that touches the Anthropic API. `AgentService` knows nothing about HTTP, retries, or SDK-specific types.
 - **Tooling** — `IAgentToolDispatcher` is the only path that loads section/feature markdown. `route_to_issue` does NOT call any service from the dispatcher — it returns a proposal-marker that `AgentService` rehydrates from the tool args (parsed in `ParseIssueProposalArgs`) and emits as an `AgentIssueProposal` SSE frame. The whitelist of tools is enforced in dispatcher constants; unknown names short-circuit before any I/O.
-- **Authorization** — `AgentController.Ask` performs the consent gate and enabled gate inline (returning 403 / 503 respectively), then calls `IAuthorizationService.AuthorizeAsync(User, userId, PolicyNames.AgentRateLimit)` which runs `AgentRateLimitHandler` (resource-based) — the handler only checks per-user daily message cap, daily token cap, and hourly message cap. A failed authorization yields `429 TooManyRequests`. Widget visibility is controlled by `AgentSettings.Enabled` + the per-user consent gate; there is no role check.
+- **Authorization** — `AgentController.Ask` performs the enabled gate inline (returning 503 if disabled), then calls `IAuthorizationService.AuthorizeAsync(User, userId, PolicyNames.AgentRateLimit)` which runs `AgentRateLimitHandler` (resource-based) — the handler only checks per-user daily message cap, daily token cap, and hourly message cap. A failed authorization yields `429 TooManyRequests`. Widget visibility is controlled by `AgentSettings.Enabled`; there is no role check and no consent gate.
 
 ### Touch-and-clean guidance
 

@@ -1,8 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
-using Humans.Application.Constants;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Models;
 using Humans.Domain.Constants;
@@ -27,14 +25,12 @@ public class AgentController : HumansControllerBase
 
     private readonly IAgentService _agent;
     private readonly IAuthorizationService _auth;
-    private readonly IConsentService _consents;
     private readonly IAgentSettingsService _settings;
     private readonly IUserService _users;
 
     public AgentController(
         IAgentService agent,
         IAuthorizationService auth,
-        IConsentService consents,
         IAgentSettingsService settings,
         IUserService users,
         UserManager<User> userManager)
@@ -42,7 +38,6 @@ public class AgentController : HumansControllerBase
     {
         _agent = agent;
         _auth = auth;
-        _consents = consents;
         _settings = settings;
         _users = users;
     }
@@ -61,13 +56,6 @@ public class AgentController : HumansControllerBase
         if (!_settings.Current.Enabled)
         {
             Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-            return;
-        }
-
-        var pendingDocs = await _consents.GetPendingDocumentNamesAsync(user.Id, cancellationToken);
-        if (pendingDocs.Contains(LegalDocumentNames.AgentChatTerms, StringComparer.Ordinal))
-        {
-            Response.StatusCode = StatusCodes.Status403Forbidden;
             return;
         }
 

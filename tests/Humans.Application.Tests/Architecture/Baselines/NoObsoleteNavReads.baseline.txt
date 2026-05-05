@@ -227,8 +227,6 @@ src/Humans.Web/TagHelpers/AuthorizeViewTagHelper.cs:50:User
 src/Humans.Web/ViewComponents/AdminNavTree.cs:95:User
 src/Humans.Web/ViewComponents/AdminSidebarViewComponent.cs:47:User
 src/Humans.Web/ViewComponents/AdminSidebarViewComponent.cs:50:User
-src/Humans.Web/ViewComponents/HelpWidgetViewComponent.cs:21:User
-src/Humans.Web/ViewComponents/HelpWidgetViewComponent.cs:26:User
 src/Humans.Web/ViewComponents/ProfileCardViewComponent.cs:115:Team
 src/Humans.Web/ViewComponents/ProfileCardViewComponent.cs:116:Team
 src/Humans.Web/ViewComponents/ProfileCardViewComponent.cs:117:Team

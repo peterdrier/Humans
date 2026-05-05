@@ -14,7 +14,7 @@ src/Humans.Web/Controllers/AdminController.cs:395:AudienceSegmentation (lines=74
 src/Humans.Web/Controllers/AdminController.cs:93:PurgeHuman (lines=21, cc=6)
 src/Humans.Web/Controllers/AdminLegalDocumentsController.cs:121:EditLegalDocument (lines=35, cc=3)
 src/Humans.Web/Controllers/AdminLegalDocumentsController.cs:79:CreateLegalDocument (lines=21, cc=6)
-src/Humans.Web/Controllers/AgentController.cs:52:Ask (lines=27, cc=7)
+src/Humans.Web/Controllers/AgentController.cs:47:Ask (lines=23, cc=6)
 src/Humans.Web/Controllers/ApplicationController.cs:161:Details (lines=29, cc=3)
 src/Humans.Web/Controllers/ApplicationController.cs:265:ApplicationDetail (lines=30, cc=2)
 src/Humans.Web/Controllers/ApplicationController.cs:94:Create (lines=34, cc=14)
