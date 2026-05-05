@@ -1359,6 +1359,8 @@
   <data name="Emails_ManageEmails" xml:space="preserve"><value>Adreces de correu</value></data>
   <data name="Emails_ManageEmailsHelp" xml:space="preserve"><value>Afegeix adreces de correu addicionals, controla notificacions i estableix la visibilitat del perfil.</value></data>
   <data name="Emails_ManageLater" xml:space="preserve"><value>Pots afegir i gestionar adreces de correu addicionals des del teu perfil després de completar la configuració.</value></data>
+  <data name="Emails_MergeWarningBody" xml:space="preserve"><value>La fusió de comptes serveix per combinar dos comptes que pertanyen a la mateixa persona (per exemple, un correu antic i un de nou, tots dos teus). No és una manera de compartir o transferir entrades, reserves o altres elements entre dues persones diferents. La transferència d'entrades entre humans és una funció separada, properament.</value></data>
+  <data name="Emails_MergeWarningTitle" xml:space="preserve"><value>Fusionar comptes?</value></data>
   <data name="Emails_ResendCooldown" xml:space="preserve"><value>Pots sol·licitar un correu de verificació nou d’aquí a {0} minut(s).</value></data>
   <data name="Emails_SendVerification" xml:space="preserve"><value>Envia correu de verificació</value></data>
   <data name="Emails_Title" xml:space="preserve"><value>Adreces de correu</value></data>

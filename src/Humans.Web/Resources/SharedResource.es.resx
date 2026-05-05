@@ -1359,6 +1359,8 @@
   <data name="Emails_ManageEmails" xml:space="preserve"><value>Direcciones de correo</value></data>
   <data name="Emails_ManageEmailsHelp" xml:space="preserve"><value>Agregar direcciones de correo adicionales, controlar notificaciones y establecer la visibilidad del perfil.</value></data>
   <data name="Emails_ManageLater" xml:space="preserve"><value>Puedes agregar y gestionar direcciones de correo adicionales desde tu perfil después de completar la configuración.</value></data>
+  <data name="Emails_MergeWarningBody" xml:space="preserve"><value>La fusión de cuentas sirve para combinar dos cuentas que pertenecen a la misma persona (por ejemplo, un correo antiguo y uno nuevo, ambos tuyos). No es una forma de compartir o transferir entradas, reservas u otros elementos entre dos personas distintas. La transferencia de entradas entre humanos es una función aparte, próximamente.</value></data>
+  <data name="Emails_MergeWarningTitle" xml:space="preserve"><value>¿Fusionar cuentas?</value></data>
   <data name="Emails_ResendCooldown" xml:space="preserve"><value>Puedes solicitar un nuevo correo de verificación en {0} minuto(s).</value></data>
   <data name="Emails_SendVerification" xml:space="preserve"><value>Enviar correo de verificación</value></data>
   <data name="Emails_Title" xml:space="preserve"><value>Direcciones de correo</value></data>

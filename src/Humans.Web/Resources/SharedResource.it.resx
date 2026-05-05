@@ -1344,6 +1344,8 @@
   <data name="Emails_ManageEmails" xml:space="preserve"><value>Indirizzi e-mail</value></data>
   <data name="Emails_ManageEmailsHelp" xml:space="preserve"><value>Aggiungi indirizzi e-mail aggiuntivi, gestisci le notifiche e imposta la visibilità del profilo.</value></data>
   <data name="Emails_ManageLater" xml:space="preserve"><value>Puoi aggiungere e gestire indirizzi e-mail aggiuntivi dal tuo profilo dopo aver completato la configurazione.</value></data>
+  <data name="Emails_MergeWarningBody" xml:space="preserve"><value>L'unione degli account serve a combinare due account che appartengono alla stessa persona (per esempio, una vecchia e una nuova e-mail, entrambe tue). Non è un modo per condividere o trasferire biglietti, prenotazioni o altri elementi tra due persone diverse. Il trasferimento di biglietti tra umani è una funzionalità separata, in arrivo a breve.</value></data>
+  <data name="Emails_MergeWarningTitle" xml:space="preserve"><value>Unire account?</value></data>
   <data name="Emails_ResendCooldown" xml:space="preserve"><value>Puoi richiedere una nuova e-mail di verifica tra {0} minuto/i.</value></data>
   <data name="Emails_SendVerification" xml:space="preserve"><value>Invia e-mail di verifica</value></data>
   <data name="Emails_Title" xml:space="preserve"><value>Indirizzi e-mail</value></data>

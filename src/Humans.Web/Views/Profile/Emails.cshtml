@@ -299,6 +299,16 @@
                 <h5 class="mb-0">@Localizer["Emails_AddNew"]</h5>
             </div>
             <div class="card-body">
+                @if (!Model.IsAdminContext)
+                {
+                    <div class="alert alert-info d-flex align-items-start mb-3">
+                        <i class="fa-solid fa-circle-info me-2 fs-4"></i>
+                        <div>
+                            <strong>@Localizer["Emails_MergeWarningTitle"]</strong>
+                            <div>@Localizer["Emails_MergeWarningBody"]</div>
+                        </div>
+                    </div>
+                }
                 <form asp-action="@(Model.IsAdminContext ? "AdminAddEmail" : "AddEmail")"
                       asp-route-id="@(Model.IsAdminContext ? Model.TargetUserId : (Guid?)null)"
                       method="post">

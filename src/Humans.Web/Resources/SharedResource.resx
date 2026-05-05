@@ -359,6 +359,8 @@
   <data name="Emails_Description" xml:space="preserve"><value>Manage your email addresses. Your sign-in email is always included. Add additional emails, set which one receives notifications, and control profile visibility.</value></data>
   <data name="Emails_YourEmails" xml:space="preserve"><value>Your Email Addresses</value></data>
   <data name="Emails_AddNew" xml:space="preserve"><value>Add Email Address</value></data>
+  <data name="Emails_MergeWarningTitle" xml:space="preserve"><value>Merging accounts?</value></data>
+  <data name="Emails_MergeWarningBody" xml:space="preserve"><value>Account merge is for combining two accounts that belong to the same person (for example, an old email and a new email that are both yours). It is not a way to share or transfer tickets, bookings, or other items between two different people. Ticket transfer between humans is a separate feature, coming soon.</value></data>
   <data name="Emails_VerificationWillBeSent" xml:space="preserve"><value>A verification email will be sent to this address.</value></data>
   <data name="Emails_SendVerification" xml:space="preserve"><value>Send Verification Email</value></data>
   <data name="Emails_ResendCooldown" xml:space="preserve"><value>You can request a new verification email in {0} minute(s).</value><comment>{0} = minutes remaining</comment></data>
