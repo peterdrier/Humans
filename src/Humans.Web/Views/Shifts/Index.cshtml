@@ -377,9 +377,10 @@
                                 UserActiveSignups = Model.UserActiveSignups,
                                 RotaWindowsByDayOffset = rotaGroup.Shifts
                                     .Where(s => s.Shift.IsAllDay)
+                                    .GroupBy(s => s.Shift.DayOffset)
                                     .ToDictionary(
-                                        s => s.Shift.DayOffset,
-                                        s => new ShiftWindow(s.AbsoluteStart, s.AbsoluteEnd))
+                                        g => g.Key,
+                                        g => new ShiftWindow(g.First().AbsoluteStart, g.First().AbsoluteEnd))
                             })
                         }
                         @if (!isBuildStrike || hasTimedShifts)
@@ -532,9 +533,10 @@
                                                     UserActiveSignups = Model.UserActiveSignups,
                                                     RotaWindowsByDayOffset = rotaGroup.Shifts
                                                         .Where(s => s.Shift.IsAllDay)
+                                                        .GroupBy(s => s.Shift.DayOffset)
                                                         .ToDictionary(
-                                                            s => s.Shift.DayOffset,
-                                                            s => new ShiftWindow(s.AbsoluteStart, s.AbsoluteEnd))
+                                                            g => g.Key,
+                                                            g => new ShiftWindow(g.First().AbsoluteStart, g.First().AbsoluteEnd))
                                                 })
                                             }
                                             @if (!isBuildStrike || hasTimedShifts)
