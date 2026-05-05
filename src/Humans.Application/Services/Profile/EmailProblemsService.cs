@@ -41,6 +41,14 @@ public sealed class EmailProblemsService : IEmailProblemsService
             if (emails.Count(e => e.IsGoogle) > 1)
                 problems.Add(new EmailProblem(
                     EmailProblemKind.MultipleIsGoogle, p.UserId, null, null, null, null));
+
+            if (emails.Any(e => e.IsVerified) && !emails.Any(e => e.IsPrimary))
+                problems.Add(new EmailProblem(
+                    EmailProblemKind.ZeroIsPrimary, p.UserId, null, null, null, null));
+
+            if (!emails.Any(e => e.IsGoogle))
+                problems.Add(new EmailProblem(
+                    EmailProblemKind.ZeroIsGoogle, p.UserId, null, null, null, null));
         }
 
         return new EmailProblemsReport(_clock.GetCurrentInstant(), problems);

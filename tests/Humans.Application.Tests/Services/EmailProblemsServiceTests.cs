@@ -85,4 +85,49 @@ public class EmailProblemsServiceTests
         report.Problems.Should().ContainSingle(p =>
             p.Kind == EmailProblemKind.MultipleIsGoogle && p.UserId == userId);
     }
+
+    [HumansFact]
+    public async Task DetectsZeroIsPrimary_WhenUserHasVerifiedEmails()
+    {
+        var userId = Guid.NewGuid();
+        SetProfiles(MakeProfile(userId,
+            new UserEmailSnapshot(Guid.NewGuid(), "a@x.com", true, false, false),
+            new UserEmailSnapshot(Guid.NewGuid(), "b@x.com", true, false, false)));
+        SetOrphans();
+        SetGhosts();
+
+        var report = await Sut.ScanAsync();
+
+        report.Problems.Should().ContainSingle(p =>
+            p.Kind == EmailProblemKind.ZeroIsPrimary && p.UserId == userId);
+    }
+
+    [HumansFact]
+    public async Task DoesNotFlagZeroIsPrimary_WhenUserHasNoVerifiedEmails()
+    {
+        var userId = Guid.NewGuid();
+        SetProfiles(MakeProfile(userId,
+            new UserEmailSnapshot(Guid.NewGuid(), "a@x.com", false, false, false)));
+        SetOrphans();
+        SetGhosts();
+
+        var report = await Sut.ScanAsync();
+
+        report.Problems.Should().NotContain(p => p.Kind == EmailProblemKind.ZeroIsPrimary);
+    }
+
+    [HumansFact]
+    public async Task DetectsZeroIsGoogle()
+    {
+        var userId = Guid.NewGuid();
+        SetProfiles(MakeProfile(userId,
+            new UserEmailSnapshot(Guid.NewGuid(), "a@x.com", true, true, false)));
+        SetOrphans();
+        SetGhosts();
+
+        var report = await Sut.ScanAsync();
+
+        report.Problems.Should().ContainSingle(p =>
+            p.Kind == EmailProblemKind.ZeroIsGoogle && p.UserId == userId);
+    }
 }
