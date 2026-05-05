@@ -9,8 +9,6 @@
         <p class="text-muted mb-4">Two short steps before you pick a shift.</p>
 
         <form asp-action="Names" method="post">
-            @Html.AntiForgeryToken()
-
             <div class="mb-3">
                 <label asp-for="FirstName" class="form-label"></label>
                 <input asp-for="FirstName" class="form-control" autocomplete="given-name" />

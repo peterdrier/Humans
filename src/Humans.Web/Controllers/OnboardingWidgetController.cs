@@ -60,8 +60,9 @@ public class OnboardingWidgetController : Controller
             return View(vm);
 
         var userId = GetUserId();
-        var language = HttpContext.Request.Headers["Accept-Language"].ToString()
-            .Split(',').FirstOrDefault() ?? "en";
+        var acceptLang = HttpContext.Request.Headers["Accept-Language"].ToString()
+            .Split(',', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+        var language = string.IsNullOrEmpty(acceptLang) ? "en" : acceptLang;
 
         var request = new ProfileSaveRequest(
             BurnerName: vm.BurnerName,
