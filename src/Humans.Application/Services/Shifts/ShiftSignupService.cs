@@ -619,6 +619,9 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
                 : SignupResult.Fail("No shifts found in the specified date range.");
         }
 
+        // Rebuild shiftIdsInRange after conflict filters so capacity check only queries relevant shifts
+        shiftIdsInRange = shiftsInRange.Select(s => s.Id).ToHashSet();
+
         // Capacity check — hard block: exclude full shifts from the range
         string? warning = skipMessages.Count > 0 ? string.Join(" ", skipMessages) : null;
         var signupCounts = await _repo.GetConfirmedCountsByShiftAsync(shiftIdsInRange);
