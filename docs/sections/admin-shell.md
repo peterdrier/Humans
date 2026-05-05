@@ -19,23 +19,23 @@ The admin shell applies to all routes under `/Admin`. The `AdminLayout.cshtml` l
 
 ## Actors & Roles
 
+Sidebar groups: Operations, Members, Money, Governance, Integrations, Agent, People data, Diagnostics (and Dev — env-gated to `!IsProduction()`). Source of truth is `AdminNavTree.cs`; the per-role expected items below are pinned by `tests/e2e/tests/admin-shell.spec.ts` (`sidebarMatrix`).
+
 | Actor | Capabilities |
 |-------|--------------|
-| Admin | Full access to all sidebar groups and items |
-| Board | Access to Governance and Users sidebar groups |
-| HumanAdmin | Access to Users, Profiles, and Onboarding sidebar groups |
-| FinanceAdmin | Access to Budget sidebar group |
-| TicketAdmin | Access to Tickets sidebar group |
-| TeamsAdmin | Access to Teams sidebar group |
-| CampAdmin | Access to Camps sidebar group |
-| FeedbackAdmin | Access to Feedback sidebar group |
-| NoInfoAdmin | Access to Users sidebar group (read-only admin view) |
-| VolunteerCoordinator | Access to Onboarding review queue sidebar item |
-| ConsentCoordinator | Access to Onboarding consent review sidebar item |
+| Admin | Full access — every group and every item |
+| Board | Operations (Tickets, Scanner), Members (Humans, Review), Governance (Voting, Board) |
+| HumanAdmin | Members (Humans) |
+| TicketAdmin | Operations (Tickets, Scanner) |
+| FinanceAdmin | Money (Finance, Store catalog) |
+| StoreAdmin | Money (Store catalog) |
+| ConsentCoordinator | Members (Review) |
+| VolunteerCoordinator | Members (Review) |
+| TeamsAdmin / CampAdmin / FeedbackAdmin / NoInfoAdmin | Reach the `/Admin` dashboard (member of `AnyAdminRole`) but have no sidebar items in the current tree — they act via the dashboard tiles and any direct links from member-facing pages |
 
 ## Invariants
 
-- The `Admin` top-nav link is visible only to users who hold at least one admin-shaped role (enforced by `PolicyNames.AdminOnly` on the `[Authorize]` attribute on the `AdminController` base or area filter).
+- The `Admin` top-nav link and the `/Admin` dashboard are gated by `PolicyNames.AnyAdminRole` (12 roles: Admin, Board, HumanAdmin, TeamsAdmin, CampAdmin, TicketAdmin, FeedbackAdmin, FinanceAdmin, StoreAdmin, NoInfoAdmin, VolunteerCoordinator, ConsentCoordinator). Other actions on `AdminController` remain `PolicyNames.AdminOnly`.
 - Sidebar items are filtered per-item by `IAuthorizationService.AuthorizeAsync`; an item the current user cannot access does not appear in the rendered HTML.
 - Sidebar groups whose entire visible-item list is empty do not render.
 - The admin shell adds no new authorization policies; it reuses existing `PolicyNames.*` constants defined in the Auth section.
@@ -43,7 +43,7 @@ The admin shell applies to all routes under `/Admin`. The `AdminLayout.cshtml` l
 
 ## Negative Access Rules
 
-- A user with no admin-shaped role **cannot** reach any `/Admin` route — existing `[Authorize(Policy = PolicyNames.AdminOnly)]` enforcement applies at the controller/area level before the shell renders.
+- A user with no admin-shaped role **cannot** reach the `/Admin` dashboard — `[Authorize(Policy = PolicyNames.AnyAdminRole)]` on `AdminController.Index` rejects them before the shell renders. Non-Index actions are individually gated, most by `PolicyNames.AdminOnly`.
 - An admin-role user **cannot** see sidebar items they are not authorized for — items are individually gated, not globally shown.
 
 ## Triggers
