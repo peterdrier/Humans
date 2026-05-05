@@ -10,6 +10,7 @@
     <Project Path="tests/Humans.Domain.Tests/Humans.Domain.Tests.csproj" />
     <Project Path="tests/Humans.Application.Tests/Humans.Application.Tests.csproj" />
     <Project Path="tests/Humans.Integration.Tests/Humans.Integration.Tests.csproj" />
+    <Project Path="tests/Humans.Web.Tests/Humans.Web.Tests.csproj" />
   </Folder>
   <Folder Name="/build/">
     <File Path="Directory.Build.props" />
