@@ -175,6 +175,34 @@
                             }
                         </div>
                     </div>
+                    @if (Model.MyAttendees.Count > 1)
+                    {
+                        <ul class="list-group list-group-flush mt-2">
+                            @foreach (var att in Model.MyAttendees)
+                            {
+                                <li class="list-group-item d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <div>@att.AttendeeName</div>
+                                        <small class="text-muted">@att.TicketTypeName</small>
+                                    </div>
+                                    <div>
+                                        @if (att.HasPendingOutgoingTransfer)
+                                        {
+                                            <span class="badge bg-warning">@Localizer["TicketTransfer_Pending"]</span>
+                                        }
+                                        else if (att.CanRequestTransfer)
+                                        {
+                                            <a class="btn btn-sm btn-outline-secondary"
+                                               asp-controller="TicketTransfer" asp-action="Request"
+                                               asp-route-attendeeId="@att.AttendeeId">
+                                                @Localizer["TicketTransfer_RequestButton"]
+                                            </a>
+                                        }
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    }
                 }
                 else if (Model.ParticipationStatus == ParticipationStatus.NotAttending)
                 {
