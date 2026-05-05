@@ -109,9 +109,17 @@ public class OnboardingWidgetController : Controller
         }
         else
         {
-            var urgentShifts = await _shiftMgmt.GetBrowseShiftsAsync(
+            // Onboarding only surfaces Event-period rotas. Build/Strike rotas
+            // use a multi-day SignUpRange action that the widget doesn't
+            // implement, and they're typically pre-organized through camp/
+            // department channels — not the right thing to show a brand-new
+            // volunteer on their first signup. Hidden + AdminOnly rotas are
+            // already filtered at the data layer.
+            var urgentShifts = (await _shiftMgmt.GetBrowseShiftsAsync(
                 es.Id, includeAdminOnly: false, includeSignups: true,
-                includeHidden: false, priorityOnly: !showAll);
+                includeHidden: false, priorityOnly: !showAll))
+                .Where(u => u.Shift.Rota.Period == Humans.Domain.Enums.RotaPeriod.Event)
+                .ToList();
             var (shiftIds, statuses) = await _signupService.GetActiveSignupStatusesAsync(GetUserId(), es.Id);
             browseModel = OnboardingShiftsBrowseModelBuilder.Build(es, urgentShifts, shiftIds, statuses);
         }

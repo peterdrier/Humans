@@ -81,35 +81,20 @@
                             }
                         </div>
                         <div class="card-body pt-2">
-                            @{
-                                var hasAllDayShifts = rotaGroup.Shifts.Any(s => s.Shift.IsAllDay);
-                                var hasTimedShifts = rotaGroup.Shifts.Any(s => !s.Shift.IsAllDay);
-                                var isBuildStrike = rotaGroup.Rota.Period != RotaPeriod.Event;
-                            }
-                            @if (isBuildStrike || hasAllDayShifts)
+                            @* Onboarding widget only renders Event-period rotas (filtered in the
+                               controller), so the per-shift table is the only renderer needed.
+                               The form posts back to OnboardingWidget/SignUp so success routes
+                               into the widget dispatcher (which sends the user on to Consents). *@
+                            @await Html.PartialAsync("_EventRotaTable", new EventRotaTableViewModel
                             {
-                                @await Html.PartialAsync("_BuildStrikeRotaTable", new BuildStrikeRotaTableViewModel
-                                {
-                                    RotaGroup = rotaGroup,
-                                    EventSettings = es!,
-                                    UserSignupShiftIds = browse.UserSignupShiftIds,
-                                    ShowSignups = browse.ShowSignups,
-                                })
-                            }
-                            @if (!isBuildStrike || hasTimedShifts)
-                            {
-                                var timedShifts = isBuildStrike
-                                    ? rotaGroup.Shifts.Where(s => !s.Shift.IsAllDay).ToList()
-                                    : rotaGroup.Shifts.ToList();
-                                @await Html.PartialAsync("_EventRotaTable", new EventRotaTableViewModel
-                                {
-                                    Shifts = timedShifts,
-                                    EventSettings = es!,
-                                    UserSignupShiftIds = browse.UserSignupShiftIds,
-                                    UserSignupStatuses = browse.UserSignupStatuses,
-                                    ShowSignups = browse.ShowSignups,
-                                })
-                            }
+                                Shifts = rotaGroup.Shifts.ToList(),
+                                EventSettings = es!,
+                                UserSignupShiftIds = browse.UserSignupShiftIds,
+                                UserSignupStatuses = browse.UserSignupStatuses,
+                                ShowSignups = browse.ShowSignups,
+                                SignUpController = "OnboardingWidget",
+                                SignUpAction = "SignUp",
+                            })
                         </div>
                     </div>
                 }

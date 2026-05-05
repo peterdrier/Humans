@@ -98,7 +98,7 @@
                         }
                         else
                         {
-                            <form asp-controller="Shifts" asp-action="SignUp" method="post" class="d-inline">
+                            <form asp-controller="@Model.SignUpController" asp-action="@Model.SignUpAction" method="post" class="d-inline">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="shiftId" value="@shift.Id" />
                                 @if (Model.FilterDepartmentId.HasValue) { <input type="hidden" name="departmentId" value="@Model.FilterDepartmentId" /> }
