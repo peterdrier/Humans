@@ -1,0 +1,61 @@
+@model Humans.Web.Models.TicketTransferRequestPageViewModel
+@{
+    ViewData["Title"] = "Transfer ticket";
+}
+
+<h1>Transfer ticket</h1>
+
+@if (TempData["Error"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+<form asp-action="Lookup" method="post" class="mb-3">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="attendeeId" value="@Model.AttendeeId" />
+    <label for="query">Recipient (full email address, or burner name)</label>
+    <div class="input-group">
+        <input id="query" name="query" value="@Model.Query" class="form-control" required />
+        <button class="btn btn-primary" type="submit">Look up</button>
+    </div>
+</form>
+
+@if (Model.LookupError is not null)
+{
+    <div class="alert alert-warning">@Model.LookupError</div>
+}
+
+@if (Model.Recipient is not null)
+{
+    <div class="card mb-3">
+        <div class="card-body d-flex align-items-center">
+            @if (Model.Recipient.HasCustomProfilePicture && Model.Recipient.ProfilePictureUrl is not null)
+            {
+                <img src="@Model.Recipient.ProfilePictureUrl" alt="" class="rounded-circle me-3" style="width:64px;height:64px" />
+            }
+            else
+            {
+                <div class="me-3 text-muted" style="width:64px;height:64px;display:flex;align-items:center;justify-content:center;background:#eee;border-radius:50%">
+                    <strong>@(Model.Recipient.DisplayName.FirstOrDefault())</strong>
+                </div>
+            }
+            <div>
+                <div><strong>@Model.Recipient.DisplayName</strong></div>
+                @if (Model.Recipient.BurnerName is not null) { <div class="text-muted">@Model.Recipient.BurnerName</div> }
+                @if (Model.Recipient.PreferredEmail is not null) { <div class="text-muted">@Model.Recipient.PreferredEmail</div> }
+            </div>
+        </div>
+    </div>
+
+    <form asp-action="Submit" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="AttendeeId" value="@Model.AttendeeId" />
+        <input type="hidden" name="RecipientUserId" value="@Model.Recipient.UserId" />
+        <div class="mb-3">
+            <label for="Reason">Reason for transfer (visible to admin)</label>
+            <textarea id="Reason" name="Reason" rows="3" class="form-control" required maxlength="1000"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Request transfer</button>
+        <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Cancel</a>
+    </form>
+}
