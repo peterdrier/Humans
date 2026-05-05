@@ -1714,6 +1714,17 @@
   <data name="Shifts_SaveAvailability" xml:space="preserve"><value>Enregistrer la disponibilité</value></data>
   <data name="Shifts_DaysSelected" xml:space="preserve"><value>jours sélectionnés</value></data>
   <data name="Shifts_SlotsFull" xml:space="preserve"><value>Certains jours ont encore besoin d'aide, mais tous les créneaux disponibles sont complets. Reviens plus tard au cas où des places se libèrent.</value></data>
+  <data name="Shifts_ConfirmSignup_Title" xml:space="preserve"><value>Confirmez votre inscription au {0}</value></data>
+  <data name="Shifts_ConfirmSignup_Phase" xml:space="preserve"><value>Vous vous inscrivez à la phase de {0}.</value></data>
+  <data name="Shifts_ConfirmSignup_Range" xml:space="preserve"><value>Du {0} au {1} ({2} jours).</value></data>
+  <data name="Shifts_ConfirmSignup_Range_Single" xml:space="preserve"><value>Pour le {0} (1 jour).</value></data>
+  <data name="Shifts_ConfirmSignup_ArriveBy" xml:space="preserve"><value>Vous êtes attendu·e sur place au plus tard le {0}.</value></data>
+  <data name="Shifts_ConfirmSignup_Prompt" xml:space="preserve"><value>Est-ce bien la période pour laquelle vous souhaitiez vous inscrire ?</value></data>
+  <data name="Shifts_ConfirmSignup_Confirm" xml:space="preserve"><value>Confirmer l'inscription</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_Heading" xml:space="preserve"><value>Certains jours de cette plage chevauchent des créneaux pour lesquels vous êtes déjà inscrit·e :</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_Row" xml:space="preserve"><value>{0} — déjà inscrit·e à {1} ({2}–{3})</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_PartialNote" xml:space="preserve"><value>Seuls les jours sans conflit seront ajoutés.</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_AllBlocked" xml:space="preserve"><value>Tous les jours de cette plage chevauchent des inscriptions existantes — rien à ajouter.</value></data>
 
   <data name="ShiftDash_Title" xml:space="preserve"><value>Tableau de bord des quarts</value></data>
   <data name="ShiftDash_ShiftsCount" xml:space="preserve"><value>{0} quarts</value><comment>{0} = count</comment></data>

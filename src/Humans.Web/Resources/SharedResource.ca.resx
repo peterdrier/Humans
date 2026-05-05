@@ -1716,6 +1716,17 @@
   <data name="Shifts_SaveAvailability" xml:space="preserve"><value>Desar disponibilitat</value></data>
   <data name="Shifts_DaysSelected" xml:space="preserve"><value>dies seleccionats</value></data>
   <data name="Shifts_SlotsFull" xml:space="preserve"><value>Alguns dies encara necessiten ajuda, però totes les places disponibles estan completes. Torna més tard per si s'obren places.</value></data>
+  <data name="Shifts_ConfirmSignup_Title" xml:space="preserve"><value>Confirma la teva inscripció al {0}</value></data>
+  <data name="Shifts_ConfirmSignup_Phase" xml:space="preserve"><value>T'estàs inscrivint a la fase de {0}.</value></data>
+  <data name="Shifts_ConfirmSignup_Range" xml:space="preserve"><value>Del {0} al {1} ({2} dies).</value></data>
+  <data name="Shifts_ConfirmSignup_Range_Single" xml:space="preserve"><value>Per al {0} (1 dia).</value></data>
+  <data name="Shifts_ConfirmSignup_ArriveBy" xml:space="preserve"><value>S'espera que siguis al lloc abans del {0}.</value></data>
+  <data name="Shifts_ConfirmSignup_Prompt" xml:space="preserve"><value>És aquest el període en què volies inscriure't?</value></data>
+  <data name="Shifts_ConfirmSignup_Confirm" xml:space="preserve"><value>Confirmar inscripció</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_Heading" xml:space="preserve"><value>Alguns dies d'aquest rang entren en conflicte amb torns en què ja estàs inscrit/a:</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_Row" xml:space="preserve"><value>{0} — ja inscrit/a a {1} ({2}–{3})</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_PartialNote" xml:space="preserve"><value>Només s'afegiran els dies que no entrin en conflicte.</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_AllBlocked" xml:space="preserve"><value>Tots els dies d'aquest rang entren en conflicte amb inscripcions existents — no hi ha res a afegir.</value></data>
 
   <data name="ShiftDash_Title" xml:space="preserve"><value>Tauler de torns</value></data>
   <data name="ShiftDash_ShiftsCount" xml:space="preserve"><value>{0} torns</value><comment>{0} = count</comment></data>
