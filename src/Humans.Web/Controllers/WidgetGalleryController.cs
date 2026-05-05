@@ -15,7 +15,7 @@ namespace Humans.Web.Controllers;
 /// Admin-only catalog of every reusable UI widget — TagHelpers, ViewComponents, and
 /// shared partials — rendered against real data so designers and developers can see
 /// what exists, what it's called, and how it looks filled in. Companion to
-/// <c>/ColorPalette</c>.
+/// <c>/ColorPalette</c>. Admin dev tool — no nav link, access via URL directly.
 /// </summary>
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("WidgetGallery")]
@@ -23,15 +23,18 @@ public sealed class WidgetGalleryController : HumansControllerBase
 {
     private readonly ITeamService _teamService;
     private readonly IShiftManagementService _shiftMgmt;
+    private readonly ILogger<WidgetGalleryController> _logger;
 
     public WidgetGalleryController(
         UserManager<User> userManager,
         ITeamService teamService,
-        IShiftManagementService shiftMgmt)
+        IShiftManagementService shiftMgmt,
+        ILogger<WidgetGalleryController> logger)
         : base(userManager)
     {
         _teamService = teamService;
         _shiftMgmt = shiftMgmt;
+        _logger = logger;
     }
 
     [HttpGet("")]
@@ -62,7 +65,7 @@ public sealed class WidgetGalleryController : HumansControllerBase
                 ConfirmedCount = 17,
                 PendingCount = 3,
                 UniqueVolunteerCount = 12,
-                ShiftsUrl = Url.Action("Index", "Shifts") ?? "#",
+                ShiftsUrl = Url.Action(nameof(ShiftsController.Index), "Shifts") ?? "#",
                 CanManageShifts = true,
                 IncludesSubTeamCount = 2,
             },
@@ -105,8 +108,9 @@ public sealed class WidgetGalleryController : HumansControllerBase
         {
             return await _shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false);
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogWarning("Failed to fetch shift profile for user {UserId}: {Reason}", userId, ex.Message);
             return null;
         }
     }

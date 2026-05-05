@@ -424,10 +424,9 @@
                         </div>
                         <span class="wg-card-path">src/Humans.Web/ViewComponents/IssuesWidgetViewComponent.cs</span>
                     </div>
-                    <div class="wg-card-note">Floating "file an issue" widget — successor to the feedback widget.</div>
-                    <div class="wg-card-example">
-                        <vc:issues-widget />
-                        <div class="text-muted small">↑ injected in the page chrome (member + admin shells).</div>
+                    <div class="wg-card-note">Floating "file an issue" widget — successor to the feedback widget. Already injected by <code>_Layout</code> on every page (including this one), so look for the floating button in the page chrome rather than rendering a duplicate here.</div>
+                    <div class="wg-card-example is-empty">
+                        Rendered in page chrome by <code>_Layout.cshtml</code> — see the floating button at the bottom-right of this page.
                     </div>
                 </div>
 
@@ -439,10 +438,9 @@
                         </div>
                         <span class="wg-card-path">src/Humans.Web/ViewComponents/AgentWidgetViewComponent.cs</span>
                     </div>
-                    <div class="wg-card-note">Floating Agent chat trigger. Phase 1: admin-only, gated on Agent settings + consent.</div>
-                    <div class="wg-card-example">
-                        <vc:agent-widget />
-                        <div class="text-muted small">↑ floating launcher; renders nothing if Agent is disabled or you haven't consented.</div>
+                    <div class="wg-card-note">Floating Agent chat trigger. Phase 1: admin-only, gated on Agent settings + consent. Already injected by <code>_Layout</code> on every page (including this one), so look for the floating button in the page chrome rather than rendering a duplicate here.</div>
+                    <div class="wg-card-example is-empty">
+                        Rendered in page chrome by <code>_Layout.cshtml</code> — see the floating launcher at the bottom-right of this page (renders nothing if Agent is disabled or you haven't consented).
                     </div>
                 </div>
             </section>
