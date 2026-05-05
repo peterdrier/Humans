@@ -854,7 +854,25 @@ public sealed class GoogleAdminService : IGoogleAdminService
             // Update the corresponding UserEmail row if one exists for the old email —
             // delegated to the owning section so no user_emails writes happen here.
             // Self-persists via IUserEmailRepository.
-            await _userEmailService.RewriteEmailAddressAsync(userId, oldEmail, newEmail, ct);
+            var rewriteOutcome = await _userEmailService.RewriteEmailAddressAsync(
+                userId, oldEmail, newEmail, ct);
+
+            // Only Rewritten / MergedIntoExistingRowForSameUser are real successes.
+            // CrossUserConflict means another user already owns newEmail (issue 622)
+            // — surface as failure so the admin sees the duplicate-account flow
+            // rather than a false-success message + phantom audit row.
+            // SourceRowNotFound means there was no row to rewrite in the first place.
+            if (rewriteOutcome == RewriteEmailAddressOutcome.CrossUserConflict)
+            {
+                return new EmailRenameFixResult(false,
+                    ErrorMessage:
+                        $"'{newEmail}' already belongs to another user. Resolve via the duplicate-account flow before retrying.");
+            }
+            if (rewriteOutcome == RewriteEmailAddressOutcome.SourceRowNotFound)
+            {
+                return new EmailRenameFixResult(false,
+                    ErrorMessage: $"No UserEmail row found for '{oldEmail}'.");
+            }
 
             _logger.LogInformation(
                 "Admin {AdminId} fixing email rename for user {UserId}: '{OldEmail}' -> '{NewEmail}'",
