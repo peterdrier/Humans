@@ -1,9 +1,13 @@
-@using Microsoft.AspNetCore.Authorization
-@using Humans.Web.Authorization
-@inject IAuthorizationService AuthService
 @model Humans.Web.Models.AdminTeamListViewModel
 @{
     ViewData["Title"] = "Teams Summary";
+
+    var groups = new (string Heading, List<AdminTeamViewModel> Teams)[]
+    {
+        ("Departments", Model.Departments),
+        ("System", Model.System),
+        ("Hidden", Model.Hidden),
+    };
 }
 
 <nav aria-label="breadcrumb">
@@ -20,144 +24,46 @@
 
 <vc:temp-data-alerts />
 
-<div class="card">
-    <div class="table-responsive">
-        <table class="table table-hover mb-0">
-            <thead>
-                <tr>
-                    <th>@Localizer["AdminTeams_Name"]</th>
-                    <th>@Localizer["AdminTeams_Type"]</th>
-                    <th>@Localizer["AdminTeams_Members"]</th>
-                    <th>@Localizer["AdminTeams_PendingJoins"]</th>
-                    <th>@Localizer["AdminTeams_PendingShifts"]</th>
-                    <th>@Localizer["AdminTeams_MailGroup"]</th>
-                    <th>Slots</th>
-                    <th>@Localizer["AdminTeams_DriveResources"]</th>
-                    <th>@Localizer["Common_Status"]</th>
-                    <th>@Localizer["AdminTeams_Created"]</th>
-                    <th authorize-policy="BoardOrAdmin">@Localizer["MyTeams_Actions"]</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var team in Model.Teams)
-                {
-                    <tr>
-                        <td>
-                            @if (team.IsChildTeam)
-                            {
-                                <span class="text-muted ms-3">└</span>
-                            }
-                            <a asp-controller="Team" asp-action="Details" asp-route-slug="@team.Slug">@team.Name</a>
-                        </td>
-                        <td>
-                            @if (team.IsSystemTeam)
-                            {
-                                <span class="badge bg-secondary">@team.SystemTeamType</span>
-                            }
-                            else if (team.RequiresApproval)
-                            {
-                                <span class="badge bg-info">@Localizer["Teams_RequiresApproval"]</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-success">@Localizer["AdminTeams_Open"]</span>
-                            }
-                        </td>
-                        <td>@team.MemberCount</td>
-                        <td>
-                            @if (team.PendingRequestCount > 0)
-                            {
-                                <a asp-controller="TeamAdmin" asp-action="Members" asp-route-slug="@team.Slug">
-                                    <span class="badge bg-warning">@team.PendingRequestCount</span>
-                                </a>
-                            }
-                            else
-                            {
-                                <span class="text-muted">0</span>
-                            }
-                        </td>
-                        <td>
-                            @if (team.PendingShiftSignupCount > 0)
-                            {
-                                @if ((await AuthService.AuthorizeAsync(User, PolicyNames.BoardOrAdmin)).Succeeded)
-                                {
-                                    <a asp-controller="ShiftAdmin" asp-action="Index" asp-route-slug="@team.Slug">
-                                        <span class="badge bg-warning">@team.PendingShiftSignupCount</span>
-                                    </a>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-warning">@team.PendingShiftSignupCount</span>
-                                }
-                            }
-                            else
-                            {
-                                <span class="text-muted">0</span>
-                            }
-                        </td>
-                        <td>
-                            @if (team.GoogleGroupEmail != null)
-                            {
-                                <small>@(team.GoogleGroupEmail.Split('@')[0])@@</small>
-                            }
-                            else
-                            {
-                                <span class="text-muted">—</span>
-                            }
-                        </td>
-                        <td>@team.RoleSlotCount</td>
-                        <td>
-                            @if (team.DriveResourceCount > 0)
-                            {
-                                <span>@team.DriveResourceCount</span>
-                            }
-                            else
-                            {
-                                <span class="text-muted">0</span>
-                            }
-                        </td>
-                        <td>
-                            @if (team.IsActive)
-                            {
-                                <span class="badge bg-success">@Localizer["AdminHuman_Active"]</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-secondary">@Localizer["AdminTeams_Inactive"]</span>
-                            }
-                            @if (team.IsHidden)
-                            {
-                                <span class="badge bg-dark" title="This team is hidden from non-admin users"><i class="fa-solid fa-eye-slash me-1"></i>Hidden</span>
-                            }
-                        </td>
-                        <td>@team.CreatedAt.ToDisplayCompactDate()</td>
-                        <td authorize-policy="BoardOrAdmin">
-                            @if (!team.IsSystemTeam)
-                            {
-                                <div class="d-flex gap-1" role="group">
-                                    <a asp-action="EditTeam" asp-route-id="@team.Id" class="btn btn-sm btn-outline-primary">@Localizer["Common_Edit"]</a>
-                                    @if (team.IsActive)
-                                    {
-                                        <form asp-action="DeleteTeam" asp-route-id="@team.Id" method="post" class="d-inline">
-                                            @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="@Localizer["AdminTeams_DeactivateConfirm"].Value">@Localizer["AdminTeams_Deactivate"]</button>
-                                        </form>
-                                    }
-                                </div>
-                            }
-                            else
-                            {
-                                <span class="text-muted">@Localizer["AdminTeams_SystemManaged"]</span>
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-</div>
+@foreach (var group in groups)
+{
+    <h2 class="h5 mt-4 mb-2">@group.Heading</h2>
+    @if (group.Teams.Count == 0)
+    {
+        <p class="text-muted small mb-0">No teams in this group.</p>
+    }
+    else
+    {
+        <div class="card mb-3">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>@Localizer["AdminTeams_Name"]</th>
+                            <th>@Localizer["AdminTeams_Type"]</th>
+                            <th>@Localizer["AdminTeams_Members"]</th>
+                            <th>@Localizer["AdminTeams_PendingJoins"]</th>
+                            <th>@Localizer["AdminTeams_PendingShifts"]</th>
+                            <th>@Localizer["AdminTeams_MailGroup"]</th>
+                            <th>Slots</th>
+                            <th>@Localizer["AdminTeams_DriveResources"]</th>
+                            <th>@Localizer["Common_Status"]</th>
+                            <th>@Localizer["AdminTeams_Created"]</th>
+                            <th authorize-policy="BoardOrAdmin">@Localizer["MyTeams_Actions"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var team in group.Teams)
+                        {
+                            <partial name="_AdminTeamRow" model="team" />
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+}
 
-@if (!Model.Teams.Any())
+@if (!Model.HasAnyTeams)
 {
     <div class="alert alert-info mt-3">
         @Localizer["Teams_NoTeams"]
