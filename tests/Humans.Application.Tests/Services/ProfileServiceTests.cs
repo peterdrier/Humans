@@ -1148,10 +1148,10 @@ public class ProfileServiceTests : IDisposable
         pendingEmailId.Should().BeNull();
     }
 
-    // --- Search (via static helpers, exercised directly since inner returns empty) ---
+    // --- Search (via static SearchProfilesFromSnapshot helper) ---
 
     [HumansFact]
-    public async Task SearchHumansAsync_MatchesByDisplayName()
+    public async Task SearchProfiles_MatchesByDisplayName()
     {
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId, displayName: "Sparkle Phoenix");
@@ -1160,15 +1160,16 @@ public class ProfileServiceTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var snapshot = new[] { MakeFullProfile(profile, userId) };
-        var results = ProfileService.SearchHumansFromSnapshot(snapshot, "Sparkle");
+        var results = ProfileService.SearchProfilesFromSnapshot(
+            snapshot,
+            p => p.DisplayName.Contains("Sparkle", StringComparison.OrdinalIgnoreCase));
 
         results.Should().HaveCount(1);
         results[0].UserId.Should().Be(userId);
-        results[0].MatchField.Should().Be("Name");
     }
 
     [HumansFact]
-    public async Task SearchHumansAsync_MatchesByCity()
+    public async Task SearchProfiles_MatchesByCity()
     {
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
@@ -1178,14 +1179,16 @@ public class ProfileServiceTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var snapshot = new[] { MakeFullProfile(profile, userId) };
-        var results = ProfileService.SearchHumansFromSnapshot(snapshot, "Barcelona");
+        var results = ProfileService.SearchProfilesFromSnapshot(
+            snapshot,
+            p => p.City?.Contains("Barcelona", StringComparison.OrdinalIgnoreCase) == true);
 
         results.Should().HaveCount(1);
-        results[0].MatchField.Should().Be("City");
+        results[0].City.Should().Be("Barcelona");
     }
 
     [HumansFact]
-    public async Task SearchHumansAsync_MatchesByBio()
+    public async Task SearchProfiles_MatchesByBio()
     {
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
@@ -1195,15 +1198,16 @@ public class ProfileServiceTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var snapshot = new[] { MakeFullProfile(profile, userId) };
-        var results = ProfileService.SearchHumansFromSnapshot(snapshot, "fire dancing");
+        var results = ProfileService.SearchProfilesFromSnapshot(
+            snapshot,
+            p => p.Bio?.Contains("fire dancing", StringComparison.OrdinalIgnoreCase) == true);
 
         results.Should().HaveCount(1);
-        results[0].MatchField.Should().Be("Bio");
-        results[0].MatchSnippet.Should().Contain("fire dancing");
+        results[0].Bio.Should().Contain("fire dancing");
     }
 
     [HumansFact]
-    public async Task SearchHumansAsync_ExcludesSuspended()
+    public async Task SearchProfiles_ExcludesSuspended()
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
@@ -1217,14 +1221,16 @@ public class ProfileServiceTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var snapshot = new[] { MakeFullProfile(p1, u1), MakeFullProfile(p2, u2) };
-        var results = ProfileService.SearchHumansFromSnapshot(snapshot, "Madrid");
+        var results = ProfileService.SearchProfilesFromSnapshot(
+            snapshot,
+            p => p.City?.Contains("Madrid", StringComparison.OrdinalIgnoreCase) == true);
 
         results.Should().HaveCount(1);
         results[0].UserId.Should().Be(u2);
     }
 
     [HumansFact]
-    public async Task SearchHumansAsync_ExcludesUnapproved()
+    public async Task SearchProfiles_ExcludesUnapproved()
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
@@ -1238,14 +1244,16 @@ public class ProfileServiceTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var snapshot = new[] { MakeFullProfile(p1, u1), MakeFullProfile(p2, u2) };
-        var results = ProfileService.SearchHumansFromSnapshot(snapshot, "Madrid");
+        var results = ProfileService.SearchProfilesFromSnapshot(
+            snapshot,
+            p => p.City?.Contains("Madrid", StringComparison.OrdinalIgnoreCase) == true);
 
         results.Should().HaveCount(1);
         results[0].UserId.Should().Be(u2);
     }
 
     [HumansFact]
-    public async Task SearchHumansAsync_NoMatch_ReturnsEmpty()
+    public async Task SearchProfiles_NoMatch_ReturnsEmpty()
     {
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
@@ -1254,7 +1262,9 @@ public class ProfileServiceTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var snapshot = new[] { MakeFullProfile(profile, userId) };
-        var results = ProfileService.SearchHumansFromSnapshot(snapshot, "zzzznonexistent");
+        var results = ProfileService.SearchProfilesFromSnapshot(
+            snapshot,
+            p => p.DisplayName.Contains("zzzznonexistent", StringComparison.OrdinalIgnoreCase));
 
         results.Should().BeEmpty();
     }
@@ -1321,7 +1331,7 @@ public class ProfileServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SearchApprovedUsersAsync_BaseService_LoadsFromRepositoryAndFilters()
+    public async Task SearchProfilesAsync_BaseService_FiltersByDisplayName()
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
@@ -1336,7 +1346,8 @@ public class ProfileServiceTests : IDisposable
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User> { [u1] = user1, [u2] = user2 });
 
-        var result = await _service.SearchApprovedUsersAsync("Sparkle");
+        var result = await _service.SearchProfilesAsync(p =>
+            p.DisplayName.Contains("Sparkle", StringComparison.OrdinalIgnoreCase));
 
         result.Should().HaveCount(1);
         result[0].UserId.Should().Be(u1);
@@ -1344,7 +1355,7 @@ public class ProfileServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SearchHumansAsync_BaseService_LoadsFromRepositoryAndFilters()
+    public async Task SearchProfilesAsync_BaseService_FiltersByCity()
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
@@ -1361,11 +1372,12 @@ public class ProfileServiceTests : IDisposable
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User> { [u1] = user1, [u2] = user2 });
 
-        var result = await _service.SearchHumansAsync("Barcelona");
+        var result = await _service.SearchProfilesAsync(p =>
+            p.City?.Contains("Barcelona", StringComparison.OrdinalIgnoreCase) == true);
 
         result.Should().HaveCount(1);
         result[0].UserId.Should().Be(u1);
-        result[0].MatchField.Should().Be("City");
+        result[0].City.Should().Be("Barcelona");
     }
 
     [HumansFact]

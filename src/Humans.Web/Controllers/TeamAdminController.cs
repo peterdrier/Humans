@@ -22,6 +22,7 @@ using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Services.Profile;
 
 namespace Humans.Web.Controllers;
 
@@ -401,7 +402,8 @@ public class TeamAdminController : HumansTeamControllerBase
             return Json(Array.Empty<ApprovedUserSearchResult>());
         }
 
-        var results = await _profileService.SearchApprovedUsersAsync(q);
+        var results = await _profileService.SearchProfilesAsync(
+            ProfileSearchPredicates.ByNameOrPrimaryEmail(q));
 
         // Exclude existing team members
         var existingMemberIds = team.Members
@@ -1054,11 +1056,12 @@ public class TeamAdminController : HumansTeamControllerBase
             .ToList();
 
         // Also search all approved users for non-members
-        var allResults = await _profileService.SearchApprovedUsersAsync(q);
+        var allResults = await _profileService.SearchProfilesAsync(
+            ProfileSearchPredicates.ByNameOrPrimaryEmail(q));
         var nonMembers = allResults
             .Where(r => !teamMemberUserIds.Contains(r.UserId))
             .Take(10 - matchingTeamMembers.Count)
-            .Select(r => new RoleAssignmentSearchResult(r.UserId, r.DisplayName, r.Email, false))
+            .Select(r => new RoleAssignmentSearchResult(r.UserId, r.DisplayName, r.PrimaryEmail ?? "", false))
             .ToList();
 
         var combined = matchingTeamMembers.Concat(nonMembers).ToList();

@@ -226,7 +226,7 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
     /// (<see cref="GetBirthdayProfilesAsync"/>,
     /// <see cref="GetApprovedProfilesWithLocationAsync"/>,
     /// <see cref="GetFilteredHumansAsync"/>,
-    /// <see cref="SearchApprovedUsersAsync"/>) return complete results immediately
+    /// <see cref="SearchProfilesAsync"/>) return complete results immediately
     /// after deploy rather than filling in lazily as each user is accessed.
     /// </summary>
     /// <remarks>
@@ -391,25 +391,11 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         return await inner.GetEmailCooldownInfoAsync(pendingEmailId, ct);
     }
 
-    public Task<IReadOnlyList<UserSearchResult>> SearchApprovedUsersAsync(
-        string query, CancellationToken ct = default)
+    public Task<IReadOnlyList<HumanSearchResult>> SearchProfilesAsync(
+        Func<FullProfile, bool> predicate, CancellationToken ct = default)
     {
         return Task.FromResult(
-            ProfilesProfileService.SearchApprovedUsersFromSnapshot(_byUserId.Values, query));
-    }
-
-    public Task<IReadOnlyList<HumanSearchResult>> SearchHumansAsync(
-        string query, CancellationToken ct = default)
-    {
-        return Task.FromResult(
-            ProfilesProfileService.SearchHumansFromSnapshot(_byUserId.Values, query));
-    }
-
-    public Task<IReadOnlyList<HumanSearchResult>> SearchHumansByNameAsync(
-        string query, CancellationToken ct = default)
-    {
-        return Task.FromResult(
-            ProfilesProfileService.SearchHumansByNameFromSnapshot(_byUserId.Values, query));
+            ProfilesProfileService.SearchProfilesFromSnapshot(_byUserId.Values, predicate));
     }
 
     public async Task<IReadOnlyList<ProfileLanguage>> GetProfileLanguagesAsync(

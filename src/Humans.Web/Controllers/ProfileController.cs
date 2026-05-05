@@ -28,6 +28,7 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Services.Profile;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
@@ -1934,10 +1935,11 @@ public class ProfileController : HumansControllerBase
             return View(viewModel);
         }
 
-        var results = await _profileService.SearchHumansAsync(q, ct);
+        var results = await _profileService.SearchProfilesAsync(
+            ProfileSearchPredicates.Broad(q), ct);
 
         viewModel.Results = results
-            .Select(r => r.ToHumanSearchViewModel(Url))
+            .Select(r => r.ToHumanSearchViewModel(Url, q))
             .ToList();
 
         return View(viewModel);

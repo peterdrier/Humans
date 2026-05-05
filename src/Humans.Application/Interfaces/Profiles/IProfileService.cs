@@ -128,17 +128,15 @@ public interface IProfileService : IUserMerge
 
     Task<AdminHumanDetailData?> GetAdminHumanDetailAsync(Guid userId, CancellationToken ct = default);
 
-    Task<IReadOnlyList<UserSearchResult>> SearchApprovedUsersAsync(string query, CancellationToken ct = default);
-
-    Task<IReadOnlyList<HumanSearchResult>> SearchHumansAsync(string query, CancellationToken ct = default);
-
     /// <summary>
-    /// Narrowed variant of <see cref="SearchHumansAsync"/> that matches only on
-    /// display name (first/last) and burner name. Used by the typeahead picker
-    /// where a tighter, less noisy result list is what callers want; the full
-    /// search page (bio / city / interests / CV) keeps using the broad method.
+    /// Predicate-based search over approved, non-suspended profiles. The caller
+    /// supplies the exact match condition; results are ordered by display name
+    /// and capped at 50. <see cref="HumanSearchResult.MatchField"/> and
+    /// <see cref="HumanSearchResult.MatchSnippet"/> are null because the caller
+    /// already knows what it filtered for.
     /// </summary>
-    Task<IReadOnlyList<HumanSearchResult>> SearchHumansByNameAsync(string query, CancellationToken ct = default);
+    Task<IReadOnlyList<HumanSearchResult>> SearchProfilesAsync(
+        Func<FullProfile, bool> predicate, CancellationToken ct = default);
 
     /// <summary>
     /// Reconciles the user's CV entries (volunteer history) with the provided set.

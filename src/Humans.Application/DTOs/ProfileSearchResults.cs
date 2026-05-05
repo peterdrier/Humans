@@ -1,7 +1,5 @@
 namespace Humans.Application.DTOs;
 
-public record UserSearchResult(Guid UserId, string DisplayName, string Email);
-
 public record HumanSearchResult(
     Guid UserId,
     string DisplayName,
@@ -9,6 +7,8 @@ public record HumanSearchResult(
     string? City,
     string? Bio,
     string? ContributionInterests,
+    string? Pronouns,
+    string? PrimaryEmail,
     string? ProfilePictureUrl,
     bool HasCustomPicture,
     Guid ProfileId,
