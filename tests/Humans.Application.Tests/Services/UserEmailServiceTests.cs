@@ -1359,8 +1359,11 @@ public class UserEmailServiceTests
         _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(new UserEmail
             {
-                Id = rowId, UserId = userId, Email = "v@x.test",
-                IsVerified = true, Provider = null,
+                Id = rowId,
+                UserId = userId,
+                Email = "v@x.test",
+                IsVerified = true,
+                Provider = null,
             });
 
         var act = async () => await _service.AdminMarkVerifiedAsync(userId, rowId, Guid.NewGuid());
@@ -1378,8 +1381,12 @@ public class UserEmailServiceTests
         _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(new UserEmail
             {
-                Id = rowId, UserId = userId, Email = "oauth@x.test",
-                IsVerified = false, Provider = "Google", ProviderKey = "sub-x",
+                Id = rowId,
+                UserId = userId,
+                Email = "oauth@x.test",
+                IsVerified = false,
+                Provider = "Google",
+                ProviderKey = "sub-x",
             });
 
         var act = async () => await _service.AdminMarkVerifiedAsync(userId, rowId, Guid.NewGuid());

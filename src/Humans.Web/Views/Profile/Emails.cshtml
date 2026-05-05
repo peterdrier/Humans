@@ -238,7 +238,12 @@
                                     }
                                 </td>
                                 <td class="text-end">
-                                    @if (Model.IsAdminContext && !row.IsVerified && string.IsNullOrEmpty(row.Provider))
+                                    @* Manual verify is gated by PolicyNames.AdminOnly server-side, so       *@
+                                    @* HumanAdmin/Board reach the page (UserEmailOperations.Edit) but would  *@
+                                    @* 403 on submit. Hide the button for non-Admin actors so they don't see *@
+                                    @* a control they can't use.                                             *@
+                                    @if (Model.IsAdminContext && Model.ActorIsFullAdmin
+                                        && !row.IsVerified && string.IsNullOrEmpty(row.Provider))
                                     {
                                         <form asp-action="AdminVerifyEmail"
                                               asp-route-id="@Model.TargetUserId"

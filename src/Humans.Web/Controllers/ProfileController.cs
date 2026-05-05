@@ -1207,7 +1207,9 @@ public class ProfileController : HumansControllerBase
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Admin failed to manually verify email {EmailId} for user {UserId}", emailId, id);
+            _logger.LogWarning(
+                "Admin failed to manually verify email {EmailId} for user {UserId}: {Reason}",
+                emailId, id, ex.Message);
             SetError(ex.Message);
         }
 
@@ -2364,6 +2366,7 @@ public class ProfileController : HumansControllerBase
             TargetUserId = user.Id,
             TargetDisplayName = user.DisplayName,
             IsAdminContext = isAdminContext,
+            ActorIsFullAdmin = User.IsInRole(RoleNames.Admin),
             WorkspaceLockedEmailId = workspaceLockedEmail?.Id
         };
     }
