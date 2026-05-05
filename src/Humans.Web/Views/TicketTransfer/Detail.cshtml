@@ -1,0 +1,31 @@
+@model Humans.Application.DTOs.TicketTransferRowDto
+@{
+    ViewData["Title"] = "Review transfer";
+}
+
+<h1>Review transfer</h1>
+
+@if (TempData["Error"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+<dl class="row">
+    <dt class="col-sm-3">From</dt><dd class="col-sm-9">@Model.RequesterDisplayName</dd>
+    <dt class="col-sm-3">To</dt><dd class="col-sm-9">@Model.RecipientDisplayName <small class="text-muted">(@Model.RecipientEmail)</small></dd>
+    <dt class="col-sm-3">Ticket</dt><dd class="col-sm-9">@Model.OriginalAttendeeName — @Model.TicketTypeName</dd>
+    <dt class="col-sm-3">Reason</dt><dd class="col-sm-9">@Model.RequesterReason</dd>
+    <dt class="col-sm-3">Requested</dt><dd class="col-sm-9">@Model.RequestedAt</dd>
+</dl>
+
+<form asp-action="Decide" method="post" class="mt-3">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" value="@Model.Id" />
+    <div class="mb-3">
+        <label for="adminNotes">Admin notes (optional)</label>
+        <textarea id="adminNotes" name="adminNotes" rows="2" class="form-control" maxlength="1000"></textarea>
+    </div>
+    <button type="submit" name="approve" value="true" class="btn btn-success">Approve</button>
+    <button type="submit" name="approve" value="false" class="btn btn-danger">Reject</button>
+    <a class="btn btn-outline-secondary" asp-action="Index">Back</a>
+</form>
