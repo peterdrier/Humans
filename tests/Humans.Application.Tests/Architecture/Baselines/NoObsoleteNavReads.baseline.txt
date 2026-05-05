@@ -224,7 +224,7 @@ src/Humans.Web/Program.cs:398:User
 src/Humans.Web/Program.cs:498:User
 src/Humans.Web/Program.cs:501:User
 src/Humans.Web/TagHelpers/AuthorizeViewTagHelper.cs:50:User
-src/Humans.Web/ViewComponents/AdminNavTree.cs:95:User
+src/Humans.Web/ViewComponents/AdminNavTree.cs:96:User
 src/Humans.Web/ViewComponents/AdminSidebarViewComponent.cs:47:User
 src/Humans.Web/ViewComponents/AdminSidebarViewComponent.cs:50:User
 src/Humans.Web/ViewComponents/AgentWidgetViewComponent.cs:14:User

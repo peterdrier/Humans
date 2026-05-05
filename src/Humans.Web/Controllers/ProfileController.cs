@@ -973,6 +973,74 @@ public class ProfileController : HumansControllerBase
         return RedirectToAction(nameof(AdminEmails), new { id });
     }
 
+    [HttpPost("{id:guid}/Admin/Emails/ClearGoogle")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AdminClearGoogle(Guid id, Guid emailId, CancellationToken ct)
+    {
+        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        var actor = await GetCurrentUserAsync();
+        if (actor is null)
+            return Forbid();
+
+        try
+        {
+            var ok = await _userEmailService.ClearGoogleAsync(id, emailId, actor.Id, ct);
+            if (ok)
+            {
+                _cache.InvalidateNobodiesTeamEmails();
+                SetSuccess(_localizer["EmailGrid_GoogleFlagCleared"].Value);
+            }
+            else
+            {
+                SetError(_localizer["EmailGrid_ClearGoogleRejected"].Value);
+            }
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Admin failed to clear Google flag on email {EmailId} for user {UserId}", emailId, id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(AdminEmails), new { id });
+    }
+
+    [HttpPost("{id:guid}/Admin/Emails/ClearPrimary")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AdminClearPrimary(Guid id, Guid emailId, CancellationToken ct)
+    {
+        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        var actor = await GetCurrentUserAsync();
+        if (actor is null)
+            return Forbid();
+
+        try
+        {
+            var ok = await _userEmailService.ClearPrimaryAsync(id, emailId, actor.Id, ct);
+            if (ok)
+            {
+                _cache.InvalidateNobodiesTeamEmails();
+                SetSuccess(_localizer["EmailGrid_PrimaryFlagCleared"].Value);
+            }
+            else
+            {
+                SetError(_localizer["EmailGrid_ClearPrimaryRejected"].Value);
+            }
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Admin failed to clear primary flag on email {EmailId} for user {UserId}", emailId, id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(AdminEmails), new { id });
+    }
+
     [HttpPost("{id:guid}/Admin/Emails/Add")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AdminAddEmail(Guid id, string email, CancellationToken ct)
