@@ -7,7 +7,6 @@ using Humans.Application.Services.Onboarding;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Microsoft.AspNetCore.Http;
 using NSubstitute;
 using Xunit;
 
@@ -20,14 +19,13 @@ public class OnboardingWidgetStateTests
     private readonly IMembershipCalculator _membership = Substitute.For<IMembershipCalculator>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IConsentService _consents = Substitute.For<IConsentService>();
-    private readonly IHttpContextAccessor _http = Substitute.For<IHttpContextAccessor>();
-    private readonly DefaultHttpContext _httpContext = new();
+    private readonly IOnboardingWidgetSessionState _session = Substitute.For<IOnboardingWidgetSessionState>();
 
     public OnboardingWidgetStateTests()
     {
-        _http.HttpContext.Returns(_httpContext);
-        // Session is provided by a no-op test session in the helper below.
-        _httpContext.Session = new TestSession();
+        // Default: no skip flag set (new user fresh through the widget). Individual
+        // tests override this when exercising the skip-active path.
+        _session.ShiftSkipActive.Returns(false);
         // Default: no signed required consents (new user). Individual tests
         // override this when exercising the returning-member path.
         _consents.GetRequiredConsentRowsForUserAsync(
@@ -36,7 +34,7 @@ public class OnboardingWidgetStateTests
     }
 
     private OnboardingWidgetState BuildSut() =>
-        new(_profile, _signups, _membership, _shiftMgmt, _consents, _http);
+        new(_profile, _signups, _membership, _shiftMgmt, _consents, _session);
 
     [HumansFact]
     public async Task ConsentsComplete_ShortCircuitsToComplete_EvenWithoutSignup()
@@ -95,7 +93,7 @@ public class OnboardingWidgetStateTests
             .Returns(new EventSettings { Id = eventId });
         _signups.GetActiveSignupStatusesAsync(userId, eventId)
             .Returns((new HashSet<Guid>(), new Dictionary<Guid, SignupStatus>()));
-        _httpContext.Session.SetString(OnboardingWidgetState.ShiftSkipSessionKey, "true");
+        _session.ShiftSkipActive.Returns(true);
 
         var step = await BuildSut().GetCurrentStepAsync(userId);
 
@@ -167,24 +165,5 @@ public class OnboardingWidgetStateTests
         var step = await BuildSut().GetCurrentStepAsync(userId);
 
         Assert.Equal(OnboardingWidgetStep.Shifts, step);
-    }
-
-    private sealed class TestSession : ISession
-    {
-        private readonly Dictionary<string, byte[]> _store = new(StringComparer.Ordinal);
-        public bool IsAvailable => true;
-        public string Id => "test";
-        public IEnumerable<string> Keys => _store.Keys;
-        public void Clear() => _store.Clear();
-        public Task CommitAsync(CancellationToken ct = default) => Task.CompletedTask;
-        public Task LoadAsync(CancellationToken ct = default) => Task.CompletedTask;
-        public void Remove(string key) => _store.Remove(key);
-        public void Set(string key, byte[] value) => _store[key] = value;
-        public bool TryGetValue(string key, out byte[] value)
-        {
-            if (_store.TryGetValue(key, out var v)) { value = v; return true; }
-            value = Array.Empty<byte>();
-            return false;
-        }
     }
 }
