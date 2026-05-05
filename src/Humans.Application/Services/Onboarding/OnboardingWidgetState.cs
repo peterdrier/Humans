@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
@@ -16,6 +17,7 @@ public class OnboardingWidgetState : IOnboardingWidgetState
     private readonly IShiftSignupService _signups;
     private readonly IMembershipCalculator _membership;
     private readonly IShiftManagementService _shiftMgmt;
+    private readonly IConsentService _consents;
     private readonly IHttpContextAccessor _http;
 
     public OnboardingWidgetState(
@@ -23,12 +25,14 @@ public class OnboardingWidgetState : IOnboardingWidgetState
         IShiftSignupService signups,
         IMembershipCalculator membership,
         IShiftManagementService shiftMgmt,
+        IConsentService consents,
         IHttpContextAccessor http)
     {
         _profile = profile;
         _signups = signups;
         _membership = membership;
         _shiftMgmt = shiftMgmt;
+        _consents = consents;
         _http = http;
     }
 
@@ -41,6 +45,15 @@ public class OnboardingWidgetState : IOnboardingWidgetState
         var profile = await _profile.GetProfileAsync(userId, ct);
         if (profile is null)
             return OnboardingWidgetStep.Names;
+
+        // Returning member: any signed row in the current required Volunteer
+        // set means they're a known member with consents to renew (annual
+        // expiration / newly-added required doc) — skip the Shifts step and
+        // send them straight to Consents.
+        var requiredRows = await _consents.GetRequiredConsentRowsForUserAsync(
+            userId, SystemTeamIds.Volunteers, ct);
+        if (requiredRows.Any(r => r.Signed))
+            return OnboardingWidgetStep.Consents;
 
         var hasSkip = string.Equals(
             _http.HttpContext?.Session.GetString(ShiftSkipSessionKey),

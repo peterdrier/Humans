@@ -164,7 +164,11 @@ public class OnboardingWidgetController : Controller
         if (!result.Success)
             TempData["Error"] = result.ErrorKey;
 
-        return RedirectToAction(nameof(Consents));
+        // Always go through the dispatcher so the user is routed Home once
+        // the final required consent is signed, instead of stranded on the
+        // signed-documents view. Failure path also dispatches — TempData
+        // carries the error if the dispatcher routes back to Consents.
+        return RedirectToAction(nameof(Index));
     }
 
     private Guid GetUserId() =>

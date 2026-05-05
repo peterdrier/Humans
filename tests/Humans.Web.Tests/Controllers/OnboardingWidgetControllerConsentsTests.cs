@@ -42,8 +42,11 @@ public class OnboardingWidgetControllerConsentsTests
     }
 
     [HumansFact]
-    public async Task SignConsent_Post_CallsConsentService_AndRedirectsBackToConsents()
+    public async Task SignConsent_Post_CallsConsentService_AndRedirectsThroughIndexDispatcher()
     {
+        // Routing back through Index lets the dispatcher send the user Home
+        // when this was the final required consent — instead of stranding
+        // them on the signed-documents page.
         var userId = Guid.NewGuid();
         var docVersionId = Guid.NewGuid();
         _consents.SubmitConsentAsync(
@@ -55,15 +58,18 @@ public class OnboardingWidgetControllerConsentsTests
         var result = await ctrl.SignConsent(docVersionId, CancellationToken.None);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal(nameof(OnboardingWidgetController.Consents), redirect.ActionName);
+        Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
         await _consents.Received(1).SubmitConsentAsync(
             userId, docVersionId, true,
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task SignConsent_Post_OnFailure_RedirectsToConsents_WithTempDataError()
+    public async Task SignConsent_Post_OnFailure_RedirectsToIndex_WithTempDataError()
     {
+        // Failure path also goes through Index so the dispatcher applies; the
+        // dispatcher will route back to Consents (or wherever appropriate)
+        // and TempData["Error"] survives the redirect.
         var userId = Guid.NewGuid();
         var docVersionId = Guid.NewGuid();
         _consents.SubmitConsentAsync(
@@ -75,7 +81,7 @@ public class OnboardingWidgetControllerConsentsTests
         var result = await ctrl.SignConsent(docVersionId, CancellationToken.None);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal(nameof(OnboardingWidgetController.Consents), redirect.ActionName);
+        Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
         Assert.Equal("AlreadyConsented", ctrl.TempData["Error"]);
     }
 

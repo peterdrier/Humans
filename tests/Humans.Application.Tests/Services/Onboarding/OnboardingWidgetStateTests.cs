@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
@@ -18,6 +19,7 @@ public class OnboardingWidgetStateTests
     private readonly IShiftSignupService _signups = Substitute.For<IShiftSignupService>();
     private readonly IMembershipCalculator _membership = Substitute.For<IMembershipCalculator>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
+    private readonly IConsentService _consents = Substitute.For<IConsentService>();
     private readonly IHttpContextAccessor _http = Substitute.For<IHttpContextAccessor>();
     private readonly DefaultHttpContext _httpContext = new();
 
@@ -26,10 +28,15 @@ public class OnboardingWidgetStateTests
         _http.HttpContext.Returns(_httpContext);
         // Session is provided by a no-op test session in the helper below.
         _httpContext.Session = new TestSession();
+        // Default: no signed required consents (new user). Individual tests
+        // override this when exercising the returning-member path.
+        _consents.GetRequiredConsentRowsForUserAsync(
+                Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<RequiredConsentRow>());
     }
 
     private OnboardingWidgetState BuildSut() =>
-        new(_profile, _signups, _membership, _shiftMgmt, _http);
+        new(_profile, _signups, _membership, _shiftMgmt, _consents, _http);
 
     [HumansFact]
     public async Task ConsentsComplete_ShortCircuitsToComplete_EvenWithoutSignup()
@@ -110,6 +117,37 @@ public class OnboardingWidgetStateTests
         _signups.GetActiveSignupStatusesAsync(userId, eventId)
             .Returns((new HashSet<Guid> { shiftId },
                       new Dictionary<Guid, SignupStatus> { [shiftId] = SignupStatus.Pending }));
+
+        var step = await BuildSut().GetCurrentStepAsync(userId);
+
+        Assert.Equal(OnboardingWidgetStep.Consents, step);
+    }
+
+    [HumansFact]
+    public async Task ProfileWithSignedRequiredConsent_ReturnsConsents_NotShifts()
+    {
+        // Returning member: consents missing (e.g. annual expiration / new
+        // required doc) but at least one current required doc is signed.
+        // Should bypass the Shifts step.
+        var userId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var signedDocId = Guid.NewGuid();
+        var unsignedDocId = Guid.NewGuid();
+        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, default)
+            .Returns(false);
+        _profile.GetProfileAsync(userId, default)
+            .Returns(new Profile { UserId = userId });
+        _consents.GetRequiredConsentRowsForUserAsync(
+                userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+            .Returns(new[]
+            {
+                new RequiredConsentRow(signedDocId, "Code of Conduct", Signed: true),
+                new RequiredConsentRow(unsignedDocId, "Privacy Policy", Signed: false),
+            });
+        _shiftMgmt.GetActiveAsync()
+            .Returns(new EventSettings { Id = eventId });
+        _signups.GetActiveSignupStatusesAsync(userId, eventId)
+            .Returns((new HashSet<Guid>(), new Dictionary<Guid, SignupStatus>()));
 
         var step = await BuildSut().GetCurrentStepAsync(userId);
 
