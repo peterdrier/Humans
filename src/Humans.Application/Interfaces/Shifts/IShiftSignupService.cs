@@ -79,6 +79,13 @@ public interface IShiftSignupService
     Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null);
 
     /// <summary>
+    /// Gets all active (Confirmed or Pending) signups for a user across every event,
+    /// with Shift.Rota.EventSettings included. Used by the dashboard to detect
+    /// cross-event conflicts when signing up for a date range.
+    /// </summary>
+    Task<IReadOnlyList<ShiftSignup>> GetActiveSignupsForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// Gets a signup by primary key with Shift.Rota included.
     /// </summary>
     Task<ShiftSignup?> GetByIdAsync(Guid signupId);

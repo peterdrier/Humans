@@ -898,6 +898,9 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
     public Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null) =>
         _repo.GetByUserAsync(userId, eventSettingsId);
 
+    public Task<IReadOnlyList<ShiftSignup>> GetActiveSignupsForUserAsync(Guid userId, CancellationToken ct = default) =>
+        _repo.GetActiveSignupsForUserAsync(userId, ct);
+
     public Task<ShiftSignup?> GetByIdAsync(Guid signupId) =>
         _repo.GetByIdAsync(signupId);
 
