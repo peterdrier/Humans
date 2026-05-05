@@ -218,7 +218,7 @@
     <p class="text-muted mb-4">
         A live catalog of every reusable UI widget — TagHelpers, ViewComponents, and shared partials —
         rendered against real data. Companion to <a href="/ColorPalette">/ColorPalette</a>.
-        Admin-only. Resolved sample data: current user
+        Admin-only. Resolved sample data: current human
         <strong>@Model.CurrentUserDisplayName</strong>@if (Model.SampleTeamName is not null) {<text>, sample team <strong>@Model.SampleTeamName</strong></text>}@if (Model.SampleEventSettings is not null) {<text>, active event <strong>@Model.SampleEventSettings.EventName</strong></text>}.
     </p>
 
@@ -253,7 +253,7 @@
                     </div>
                     <div class="wg-card-note">
                         Renders a link to a human's profile. Display name and avatar are resolved internally from the
-                        Profile section by user id; <code>profile-picture-url</code> is deprecated and ignored.
+                        Profile section by human id; <code>profile-picture-url</code> is deprecated and ignored.
                     </div>
                     @ParamsBlock(
                         ("user-id", "<code>Guid</code> — required"),
@@ -292,7 +292,7 @@
                         <span class="wg-card-path">src/Humans.Web/ViewComponents/UserAvatarViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">
-                        Stand-alone avatar resolved from a user id. Falls back to initial-letter circle when no custom picture.
+                        Stand-alone avatar resolved from a human id. Falls back to initial-letter circle when no custom picture.
                     </div>
                     @ParamsBlock(
                         ("userId", "<code>Guid</code> — required"),
@@ -332,7 +332,7 @@
                     )
                     @AuthLine("In <code>Public</code> mode, viewer's roles drive whether legal-name fields render — board members see legal name, others don't.")
                     <div class="wg-variants">
-                        <div class="wg-variant-label">view-mode="Admin"<span class="wg-variant-sub">current user</span></div>
+                        <div class="wg-variant-label">view-mode="Admin"<span class="wg-variant-sub">current human</span></div>
                         <div class="wg-variant-render" style="display:block;">
                             <vc:profile-card user-id="@Model.CurrentUserId" view-mode="@ProfileCardViewMode.Admin" />
                         </div>
@@ -389,7 +389,7 @@
                         <span class="wg-card-path">src/Humans.Web/ViewComponents/NobodiesEmailBadgeViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">
-                        Indicates whether a user has a <code>nobodies.team</code> Workspace email. Five modes selected by the caller.
+                        Indicates whether a human has a <code>nobodies.team</code> Workspace email. Five modes selected by the caller.
                     </div>
                     @ParamsBlock(
                         ("userId", "<code>Guid</code> — required"),
@@ -435,7 +435,7 @@
                         }
                         else
                         {
-                            <text>(No volunteer event profile for the current user — fill out shift info on /Profile/ShiftInfo to see this populated.)</text>
+                            <text>(No volunteer event profile for the current human — fill out shift info on /Profile/ShiftInfo to see this populated.)</text>
                         }
                     </div>
                 </div>
@@ -453,7 +453,7 @@
                         </div>
                         <span class="wg-card-path">src/Humans.Web/ViewComponents/MyCampsViewComponent.cs</span>
                     </div>
-                    <div class="wg-card-note">Camp memberships for the current user, grouped by year. Renders nothing if the user belongs to no camps.</div>
+                    <div class="wg-card-note">Camp memberships for the current human, grouped by year. Renders nothing if the human belongs to no camps.</div>
                     @ParamsBlock()
                     @AuthLine("Authenticated only — uses <code>UserManager.GetUserAsync</code>; logs and renders nothing on failure.")
                     <div class="wg-card-example">
@@ -469,7 +469,7 @@
                         </div>
                         <span class="wg-card-path">src/Humans.Web/ViewComponents/MyGoogleResourcesViewComponent.cs</span>
                     </div>
-                    <div class="wg-card-note">Google Drive / Calendar / Group resources the current user can access via team membership.</div>
+                    <div class="wg-card-note">Google Drive / Calendar / Group resources the current human can access via team membership.</div>
                     @ParamsBlock()
                     @AuthLine("Authenticated only.")
                     <div class="wg-card-example">
@@ -485,7 +485,7 @@
                         </div>
                         <span class="wg-card-path">src/Humans.Web/ViewComponents/ShiftSignupsViewComponent.cs</span>
                     </div>
-                    <div class="wg-card-note">A user's shift signups for the active event, split into Upcoming / Pending / Past.</div>
+                    <div class="wg-card-note">A human's shift signups for the active event, split into Upcoming / Pending / Past.</div>
                     @ParamsBlock(
                         ("userId", "<code>Guid</code> — required"),
                         ("viewMode", "<code>ShiftSignupsViewMode</code> — Self · Admin"),
@@ -507,7 +507,7 @@
                         <span class="wg-card-path">src/Humans.Web/ViewComponents/ThingsToDoViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">
-                        Onboarding checklist on the member dashboard. Auto-hides when all items are done — if you see
+                        Onboarding checklist on the human dashboard. Auto-hides when all items are done — if you see
                         nothing here, your account is fully onboarded.
                     </div>
                     @ParamsBlock(
@@ -641,7 +641,7 @@
                         </div>
                         <span class="wg-card-path">src/Humans.Web/ViewComponents/NotificationBellViewComponent.cs</span>
                     </div>
-                    <div class="wg-card-note">Unread-counts bell rendered in the topbar. Caches per-user counts for 2 minutes.</div>
+                    <div class="wg-card-note">Unread-counts bell rendered in the topbar. Caches per-human counts for 2 minutes.</div>
                     @ParamsBlock()
                     @AuthLine("Authenticated only — empty model when unauthenticated.")
                     <div class="wg-card-example">
@@ -737,19 +737,19 @@
                         </div>
                         <span class="wg-card-path">src/Humans.Web/ViewComponents/NavBadgesViewComponent.cs</span>
                     </div>
-                    <div class="wg-card-note">Numeric badges on admin nav items. Counts cached for 2 minutes (per-user for voting/issues, global for review/feedback).</div>
+                    <div class="wg-card-note">Numeric badges on admin nav items. Counts cached for 2 minutes (per-human for voting/issues, global for review/feedback).</div>
                     @ParamsBlock(
                         ("queue", "<code>string</code> — review · voting · issues · feedback")
                     )
-                    @AuthLine("Voting and issues queues filter by current user's roles; review/feedback are global counts (admins always see them).")
+                    @AuthLine("Voting and issues queues filter by current viewer's roles; review/feedback are global counts (admins always see them).")
                     <div class="wg-variants">
                         <div class="wg-variant-label">queue="review"<span class="wg-variant-sub">pending applicant review</span></div>
                         <div class="wg-variant-render"><vc:nav-badges queue="review" /></div>
 
-                        <div class="wg-variant-label">queue="voting"<span class="wg-variant-sub">unvoted applications for current user</span></div>
+                        <div class="wg-variant-label">queue="voting"<span class="wg-variant-sub">unvoted applications for current human</span></div>
                         <div class="wg-variant-render"><vc:nav-badges queue="voting" /></div>
 
-                        <div class="wg-variant-label">queue="issues"<span class="wg-variant-sub">actionable issues for current user</span></div>
+                        <div class="wg-variant-label">queue="issues"<span class="wg-variant-sub">actionable issues for current human</span></div>
                         <div class="wg-variant-render"><vc:nav-badges queue="issues" /></div>
 
                         <div class="wg-variant-label">queue="feedback"<span class="wg-variant-sub">actionable feedback (global)</span></div>
@@ -798,7 +798,7 @@
                         </div>
                         <span class="wg-card-path">src/Humans.Web/ViewComponents/AuditLogViewComponent.cs</span>
                     </div>
-                    <div class="wg-card-note">Filtered audit log. Filters can stack — entity type/id, user id, comma-separated actions.</div>
+                    <div class="wg-card-note">Filtered audit log. Filters can stack — entity type/id, human id, comma-separated actions.</div>
                     @ParamsBlock(
                         ("entityType", "<code>string?</code> — e.g. <code>User</code>, <code>Team</code>, <code>Application</code>"),
                         ("entityId", "<code>Guid?</code> — scoped to one entity"),
@@ -809,7 +809,7 @@
                         ("showCard", "<code>bool</code> — wrap in a Bootstrap card (default true)")
                     )
                     <div class="wg-card-example">
-                        <vc:audit-log user-id="@Model.CurrentUserId" limit="10" title="Recent audit entries for current user" />
+                        <vc:audit-log user-id="@Model.CurrentUserId" limit="10" title="Recent audit entries for current human" />
                     </div>
                 </div>
             </section>
@@ -826,7 +826,7 @@
                         </div>
                         <span class="wg-card-path">src/Humans.Web/Views/Shared/_HumanSearchInput.cshtml</span>
                     </div>
-                    <div class="wg-card-note">Type-ahead human picker. Hits <code>/api/profiles/search</code>; the picked user's id ends up on a hidden input so it submits with the surrounding form.</div>
+                    <div class="wg-card-note">Type-ahead human picker. Hits <code>/api/profiles/search</code>; the picked human's id ends up on a hidden input so it submits with the surrounding form.</div>
                     @ParamsBlock(
                         ("ViewData[\"FieldName\"]", "<code>string</code> — name of the hidden input (default <code>userId</code>)"),
                         ("ViewData[\"InstanceKey\"]", "<code>string?</code> — required when multiple instances render on the same page"),
