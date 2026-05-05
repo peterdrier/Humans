@@ -23,6 +23,15 @@ public interface IAgentService : IUserDataContributor
         bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Admin-only listing of all conversations with messages eagerly loaded so
+    /// callers can compute per-conversation aggregates without N+1 round trips.
+    /// Used by <c>/api/agent/conversations</c>.
+    /// </summary>
+    Task<IReadOnlyList<Humans.Domain.Entities.AgentConversation>> ListAllConversationsForAdminWithMessagesAsync(
+        bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
+        CancellationToken cancellationToken);
+
     /// <summary>Admin-only fetch of a single conversation with messages eagerly loaded.</summary>
     Task<Humans.Domain.Entities.AgentConversation?> GetConversationForAdminAsync(
         Guid id, CancellationToken cancellationToken);

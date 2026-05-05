@@ -40,22 +40,10 @@ public class AgentApiController : ControllerBase
         take = Math.Clamp(take, 1, 200);
         if (skip < 0) skip = 0;
 
-        // Two-step load (list rows, then hydrate each with messages) to avoid
-        // adding a fresh repo OrderBy/Include shape that would trip the
-        // DisplaySortInControllers ratchet. At ~500-user scale with `take`
-        // capped at 200, the per-row fetch is acceptable for QA tooling.
-        var rows = await _agent.ListAllConversationsForAdminAsync(
+        var rows = await _agent.ListAllConversationsForAdminWithMessagesAsync(
             refusalsOnly, handoffsOnly, userId, take, skip, ct);
-
         var users = await ResolveUsersAsync(rows.Select(c => c.UserId), ct);
-        var summaries = new List<object>(rows.Count);
-        foreach (var row in rows)
-        {
-            var withMessages = await _agent.GetConversationForAdminAsync(row.Id, ct);
-            if (withMessages is null) continue; // race with retention purge
-            summaries.Add(ToSummary(withMessages, users));
-        }
-        return Ok(summaries);
+        return Ok(rows.Select(r => ToSummary(r, users)));
     }
 
     [HttpGet("conversations/{id:guid}")]
