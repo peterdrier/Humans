@@ -91,6 +91,10 @@ public record FullProfile(
             .Select(e => e.Email)
             .FirstOrDefault();
 
+        var snapshots = userEmails
+            .Select(e => new UserEmailSnapshot(e.Id, e.Email, e.IsVerified, e.IsPrimary, e.IsGoogle))
+            .ToList();
+
 #pragma warning disable HUM_PROFILE_ISSUSPENDED
         var isSuspended = profile.IsSuspended;
 #pragma warning restore HUM_PROFILE_ISSUSPENDED
@@ -121,6 +125,7 @@ public record FullProfile(
             PrimaryEmail: primary,
             AllVerifiedEmails: verified,
             GoogleEmail: google,
+            UserEmails: snapshots,
             State: profile.State);
     }
 
