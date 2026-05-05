@@ -12,8 +12,6 @@ public interface IAgentService : IUserDataContributor
     Task<IReadOnlyList<Humans.Domain.Entities.AgentConversation>> GetHistoryAsync(
         Guid userId, int take, CancellationToken cancellationToken);
 
-    Task DeleteConversationAsync(Guid userId, Guid conversationId, CancellationToken cancellationToken);
-
     /// <summary>Fetches a conversation with messages eagerly loaded only if it
     /// belongs to <paramref name="userId"/>; returns null otherwise. Used by the
     /// user-facing /Agent/Conversation/{id} viewer.</summary>

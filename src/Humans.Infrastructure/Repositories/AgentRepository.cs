@@ -98,14 +98,6 @@ public sealed class AgentRepository : IAgentRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task DeleteConversationAsync(Guid id, CancellationToken cancellationToken)
-    {
-        var conv = await _db.AgentConversations.FindAsync([id], cancellationToken);
-        if (conv is null) return;
-        _db.AgentConversations.Remove(conv);
-        await _db.SaveChangesAsync(cancellationToken);
-    }
-
     public async Task<int> PurgeConversationsOlderThanAsync(Instant cutoff, CancellationToken cancellationToken)
     {
         // Standard load+remove pattern (vs ExecuteDeleteAsync) — small scale,

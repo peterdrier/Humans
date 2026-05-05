@@ -719,39 +719,21 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
-                            <span class="wg-card-name">&lt;vc:issues-widget&gt;</span>
+                            <span class="wg-card-name">&lt;vc:help-widget&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/IssuesWidgetViewComponent.cs</span>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/HelpWidgetViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">
-                        Floating "file an issue" widget — successor to the feedback widget. Already injected by <code>_Layout</code>
-                        on every page (including this one), so look for the floating button in the page chrome rather than rendering a duplicate here.
+                        Floating "Help" launcher with a popover menu — replaces the previous separate Issues and Agent FABs.
+                        Menu items: "Talk with the Assistant" (when <code>AgentSettings.Enabled</code>) and "Create issue".
+                        Already injected by <code>_Layout</code> on every page (including this one), so look for the floating button
+                        in the page chrome rather than rendering a duplicate here.
                     </div>
                     @ParamsBlock()
-                    @AuthLine("Authenticated only. Pre-fills the section dropdown from <code>Request.Path</code>.")
+                    @AuthLine("Authenticated only. The Assistant panel includes an &quot;AI Terms&quot; link (<code>/Legal/agent-chat</code>) below the composer; no consent gate.")
                     <div class="wg-card-example is-empty">
-                        Rendered in page chrome by <code>_Layout.cshtml</code> — see the floating button at the bottom-right of this page.
-                    </div>
-                </div>
-
-                <div class="wg-card">
-                    <div class="wg-card-header">
-                        <div>
-                            <span class="wg-card-name">&lt;vc:agent-widget&gt;</span>
-                            <span class="wg-card-kind kind-vc">ViewComponent</span>
-                        </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/AgentWidgetViewComponent.cs</span>
-                    </div>
-                    <div class="wg-card-note">
-                        Floating Agent chat trigger. Already injected by <code>_Layout</code> on every page (including this one), so look
-                        for the floating button in the page chrome rather than rendering a duplicate here.
-                    </div>
-                    @ParamsBlock()
-                    @AuthLine("Phase 1: <strong>Admin only</strong>, gated additionally on <code>AgentSettings.Enabled</code> and the <code>AgentChatTerms</code> consent.")
-                    <div class="wg-card-example is-empty">
-                        Rendered in page chrome by <code>_Layout.cshtml</code> — see the floating launcher at the bottom-right
-                        (renders nothing if Agent is disabled or you haven't consented).
+                        Rendered in page chrome by <code>_Layout.cshtml</code> — see the floating launcher at the bottom-right of this page.
                     </div>
                 </div>
             </section>
@@ -1066,7 +1048,7 @@
                             <tr>
                                 <th>Self-gating by auth</th>
                                 <td>Possible (e.g. <code>AuthorizeViewTagHelper</code> reads <code>IHttpContextAccessor</code>); not the typical use</td>
-                                <td>Common — read <code>UserClaimsPrincipal</code> in the class, return <code>Content("")</code> when not authorized (see <code>AgentWidget</code>, <code>FeedbackWidget</code>)</td>
+                                <td>Common — read <code>UserClaimsPrincipal</code> in the class, return <code>Content("")</code> when not authorized (see <code>HelpWidget</code>, <code>FeedbackWidget</code>)</td>
                                 <td>No — caller decides whether to render</td>
                             </tr>
                             <tr>
@@ -1125,8 +1107,8 @@
                     <li><strong>Don't reach for a ViewComponent when a Partial would do.</strong> ViewComponents are a "mini controller + view" — every render spins one up. If the caller already has the data, a Partial is faster, simpler, and easier to test.</li>
                     <li><strong>Don't reach for a TagHelper when you really need data.</strong> TagHelpers can do DI, but the result is a class that's secretly a controller. ViewComponents are the explicit form of that pattern.</li>
                     <li><strong>Don't put data fetching in a Partial</strong> by injecting services into the <code>.cshtml</code> via <code>@@inject</code>. That's a ViewComponent in disguise, untestable, and easy to N+1.</li>
-                    <li><strong>Self-gating belongs in the widget, not the caller</strong> — when something is admin-only or hides for unauthenticated viewers, do it inside the ViewComponent (return <code>Content("")</code>) so callers don't have to remember the auth rule. <code>AgentWidgetViewComponent</code> and <code>FeedbackWidgetViewComponent</code> are the canonical examples.</li>
-                    <li><strong>Multi-instance widgets need unique IDs.</strong> Floating-button widgets (<code>IssuesWidget</code>, <code>AgentWidget</code>) hard-code DOM IDs and are injected by <code>_Layout</code> exactly once — don't drop a second <code>&lt;vc:&gt;</code> on the same page (this gallery's earlier draft did, hence the floating buttons here are layout-only).</li>
+                    <li><strong>Self-gating belongs in the widget, not the caller</strong> — when something is admin-only or hides for unauthenticated viewers, do it inside the ViewComponent (return <code>Content("")</code>) so callers don't have to remember the auth rule. <code>HelpWidgetViewComponent</code> and <code>FeedbackWidgetViewComponent</code> are the canonical examples.</li>
+                    <li><strong>Multi-instance widgets need unique IDs.</strong> Floating-button widgets (e.g. <code>HelpWidget</code>) hard-code DOM IDs and are injected by <code>_Layout</code> exactly once — don't drop a second <code>&lt;vc:&gt;</code> on the same page (this gallery's earlier draft did, hence the floating buttons here are layout-only).</li>
                 </ul>
             </section>
 

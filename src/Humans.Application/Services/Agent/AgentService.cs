@@ -258,13 +258,6 @@ public sealed class AgentService : IAgentService, IUserDataContributor
     public Task<IReadOnlyList<AgentConversation>> GetHistoryAsync(Guid userId, int take, CancellationToken ct) =>
         _repo.ListConversationsForUserAsync(userId, take, ct);
 
-    public async Task DeleteConversationAsync(Guid userId, Guid conversationId, CancellationToken ct)
-    {
-        var conv = await _repo.GetConversationByIdAsync(conversationId, ct);
-        if (conv is null || conv.UserId != userId) return;
-        await _repo.DeleteConversationAsync(conversationId, ct);
-    }
-
     public async Task<AgentConversation?> GetConversationForUserAsync(
         Guid userId, Guid conversationId, CancellationToken ct)
     {
@@ -363,9 +356,9 @@ public sealed class AgentService : IAgentService, IUserDataContributor
 
             return new AgentIssueProposal(title, category, description);
         }
-        catch (System.Text.Json.JsonException ex)
+        catch (System.Text.Json.JsonException)
         {
-            _logger.LogWarning(ex,
+            _logger.LogWarning(
                 "route_to_issue args could not be parsed for conversation {ConversationId}; proposal dropped. Args: {Args}",
                 conversationId, jsonArguments);
             return null;

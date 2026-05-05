@@ -42,7 +42,5 @@ public interface IAgentRepository
         bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
         CancellationToken cancellationToken);
 
-    Task DeleteConversationAsync(Guid id, CancellationToken cancellationToken);
-
     Task<int> PurgeConversationsOlderThanAsync(Instant cutoff, CancellationToken cancellationToken);
 }
