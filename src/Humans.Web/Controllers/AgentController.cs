@@ -116,6 +116,7 @@ public class AgentController : HumansControllerBase
     {
         string eventName = token.TextDelta is not null ? "text"
                          : token.ToolCall is not null ? "tool"
+                         : token.IssueProposal is not null ? "propose"
                          : "final";
         var payload = JsonSerializer.Serialize(token, JsonOpts);
         await Response.WriteAsync(

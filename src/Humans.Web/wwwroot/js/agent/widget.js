@@ -132,6 +132,14 @@
                 bubble.textContent = bubble.dataset.rawMarkdown;
             }
             messagesEl.scrollTop = messagesEl.scrollHeight;
+        } else if (event === 'propose' && parsed.issueProposal) {
+            // Agent called route_to_issue. Replace the empty assistant bubble
+            // with a localized "I drafted an issue, please review" message and
+            // open the issue submission modal pre-filled with the proposal.
+            bubble.textContent = panel.dataset.issueProposedText || 'I drafted an issue for you. Please review and submit.';
+            bubble.dataset.rawMarkdown = '';
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+            openIssueModalPrefilled(parsed.issueProposal);
         } else if (event === 'final' && parsed.finalizer) {
             const reason = parsed.finalizer.stopReason;
             // Final-frame placeholders are trusted strings — render as plain text.
@@ -146,6 +154,26 @@
                 currentConversationId = newId;
             }
         }
+    }
+
+    function openIssueModalPrefilled(proposal) {
+        const modalEl = document.getElementById('issuesWidgetModal');
+        if (!modalEl || typeof bootstrap === 'undefined') return;
+
+        const form = document.getElementById('issuesWidgetForm');
+        if (form) {
+            const titleInput = form.querySelector('input[name="Title"]');
+            const categorySelect = form.querySelector('select[name="Category"]');
+            const descriptionTextarea = form.querySelector('textarea[name="Description"]');
+            if (titleInput) titleInput.value = proposal.title || '';
+            if (categorySelect && proposal.category) {
+                // Category is the IssueCategory enum string (Bug/Feature/Question).
+                categorySelect.value = proposal.category;
+            }
+            if (descriptionTextarea) descriptionTextarea.value = proposal.description || '';
+        }
+
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
     }
 
     function appendMessage(role, text) {
