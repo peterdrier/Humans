@@ -1751,6 +1751,17 @@
   <data name="Shifts_SaveAvailability" xml:space="preserve"><value>Save Availability</value></data>
   <data name="Shifts_DaysSelected" xml:space="preserve"><value>days selected</value></data>
   <data name="Shifts_SlotsFull" xml:space="preserve"><value>Some days still need help but all available slots are currently full. Check back later in case spots open up.</value></data>
+  <data name="Shifts_ConfirmSignup_Title" xml:space="preserve"><value>Confirm your {0} sign-up</value></data>
+  <data name="Shifts_ConfirmSignup_Phase" xml:space="preserve"><value>You're signing up for the {0} phase.</value></data>
+  <data name="Shifts_ConfirmSignup_Range" xml:space="preserve"><value>From {0} to {1} ({2} days).</value></data>
+  <data name="Shifts_ConfirmSignup_Range_Single" xml:space="preserve"><value>For {0} (1 day).</value></data>
+  <data name="Shifts_ConfirmSignup_ArriveBy" xml:space="preserve"><value>You'll be expected on site by {0}.</value></data>
+  <data name="Shifts_ConfirmSignup_Prompt" xml:space="preserve"><value>Is this the period you intended to sign up for?</value></data>
+  <data name="Shifts_ConfirmSignup_Confirm" xml:space="preserve"><value>Confirm sign-up</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_Heading" xml:space="preserve"><value>Some days in this range conflict with shifts you're already signed up for:</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_Row" xml:space="preserve"><value>{0} — already signed up for {1} ({2}–{3})</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_PartialNote" xml:space="preserve"><value>Sign-up will only add days that don't conflict.</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_AllBlocked" xml:space="preserve"><value>Every day in this range conflicts with existing signups — nothing to add.</value></data>
 
   <data name="ShiftDash_Title" xml:space="preserve"><value>Shift Dashboard</value></data>
   <data name="ShiftDash_ShiftsCount" xml:space="preserve"><value>{0} shifts</value><comment>{0} = count</comment></data>
