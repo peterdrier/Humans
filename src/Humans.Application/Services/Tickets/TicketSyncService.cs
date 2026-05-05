@@ -140,12 +140,31 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
             var attendeesMatched = 0;
             foreach (var dto in tickets)
             {
-                if (!orderIdByVendorId.TryGetValue(dto.VendorOrderId ?? string.Empty, out var parentOrderId))
+                Guid parentOrderId;
+
+                if (dto.VendorOrderId is { Length: > 0 })
                 {
-                    _logger.LogWarning(
-                        "Attendee {VendorTicketId} references unknown order {VendorOrderId}, skipping",
-                        dto.VendorTicketId, dto.VendorOrderId);
-                    continue;
+                    if (!orderIdByVendorId.TryGetValue(dto.VendorOrderId, out parentOrderId))
+                    {
+                        _logger.LogWarning(
+                            "Attendee {VendorTicketId} references unknown order {VendorOrderId}, skipping",
+                            dto.VendorTicketId, dto.VendorOrderId);
+                        continue;
+                    }
+                }
+                else
+                {
+                    // API-issued ticket (e.g. via transfer reissue) — no order id from vendor.
+                    // Prefer existing local row's parent order; otherwise treat as orphan and skip.
+                    var localExisting = existingAttendeesByVendorId.GetValueOrDefault(dto.VendorTicketId);
+                    if (localExisting is null)
+                    {
+                        _logger.LogWarning(
+                            "Attendee {VendorTicketId} has null vendor order id and no local row; skipping",
+                            dto.VendorTicketId);
+                        continue;
+                    }
+                    parentOrderId = localExisting.TicketOrderId;
                 }
 
                 var attendee = BuildAttendeeEntity(dto, eventId, emailLookup, now, parentOrderId,
