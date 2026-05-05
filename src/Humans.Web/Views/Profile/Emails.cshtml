@@ -1,3 +1,6 @@
+@using Microsoft.AspNetCore.Authorization
+@using Humans.Web.Authorization
+@inject IAuthorizationService AuthService
 @model Humans.Web.Models.EmailsViewModel
 @{
     ViewData["Title"] = Localizer["Emails_Title"].Value;
@@ -7,6 +10,11 @@
     // stuck — radios can't unselect — so expose Clear on the offending rows.
     var hasMultipleGoogle = Model.Emails.Count(e => e.IsGoogle) > 1;
     var hasMultiplePrimary = Model.Emails.Count(e => e.IsPrimary && e.IsVerified) > 1;
+    // Manual verify is gated by PolicyNames.AdminOnly server-side; surface the
+    // gate in the view so HumanAdmin/Board (who reach the page via
+    // UserEmailOperations.Edit) don't see a button that 403s on click.
+    var canManuallyVerify = Model.IsAdminContext
+        && (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
 }
 
 <div class="row">
@@ -238,12 +246,7 @@
                                     }
                                 </td>
                                 <td class="text-end">
-                                    @* Manual verify is gated by PolicyNames.AdminOnly server-side, so       *@
-                                    @* HumanAdmin/Board reach the page (UserEmailOperations.Edit) but would  *@
-                                    @* 403 on submit. Hide the button for non-Admin actors so they don't see *@
-                                    @* a control they can't use.                                             *@
-                                    @if (Model.IsAdminContext && Model.ActorIsFullAdmin
-                                        && !row.IsVerified && string.IsNullOrEmpty(row.Provider))
+                                    @if (canManuallyVerify && !row.IsVerified && string.IsNullOrEmpty(row.Provider))
                                     {
                                         <form asp-action="AdminVerifyEmail"
                                               asp-route-id="@Model.TargetUserId"

@@ -305,6 +305,7 @@ All profile-related functionality lives under `/Profile`:
 | `/Profile/Me/Emails` | Email management |
 | `/Profile/Me/Emails/ClearGoogle`, `/Profile/Me/Emails/ClearPrimary` | Self-recovery — drop a single row's `IsGoogle`/`IsPrimary` flag (only surfaced in UI on N>1 violation; auth is self-or-admin) |
 | `/Profile/{id}/Admin/Emails/ClearGoogle`, `/Profile/{id}/Admin/Emails/ClearPrimary` | Admin remediation — drop a single row's flag without auto-promoting a successor |
+| `/Profile/{id}/Admin/Emails/Verify` | Admin manual verification (`PolicyNames.AdminOnly`) — marks a pending plain UserEmail row verified without consuming a token; creates a merge request when the address is already verified on another account |
 | `/Profile/Me/ShiftInfo` | Shift preferences |
 | `/Profile/Me/CommunicationPreferences` | Per-category email/in-app communication preferences |
 | `/Profile/Me/Notifications` | Permanent redirect to `/Profile/Me/CommunicationPreferences` |

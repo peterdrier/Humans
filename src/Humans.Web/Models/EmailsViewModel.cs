@@ -65,16 +65,6 @@ public class EmailsViewModel
     public bool IsAdminContext { get; set; }
 
     /// <summary>
-    /// True when the current actor holds the global Admin role. Distinct from
-    /// <see cref="IsAdminContext"/>: HumanAdmin and Board can also reach this
-    /// page (via <c>UserEmailOperations.Edit</c>) and have <c>IsAdminContext</c>
-    /// true, but Admin-only actions on the page (e.g. manual email
-    /// verification gated by <c>PolicyNames.AdminOnly</c>) hide their UI for
-    /// non-Admin actors so they don't see a button that 403s on click.
-    /// </summary>
-    public bool ActorIsFullAdmin { get; set; }
-
-    /// <summary>
     /// When non-null, identifies the email row that is the user's Workspace
     /// canonical identity (Provider=Google + email on the configured Workspace
     /// domain). While set, the view locks Primary and Google radios across the
