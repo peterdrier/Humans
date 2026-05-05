@@ -22,6 +22,15 @@ For each issue in the work order (sequentially, never parallel):
 1. Read the issue spec carefully. Identify every acceptance criterion and behavioral requirement.
 2. Explore the codebase to understand existing patterns and relevant files.
 3. Implement the feature/fix. Follow all project rules — scan `memory/INDEX.md` and read any atom whose description matches the change you're making. The architecture story is in `docs/architecture/design-rules.md`.
+3.5. **Escape valve — privilege OR broader spec change.** STOP, do NOT commit, do NOT push, and report back to the orchestrator if EITHER of these fires during exploration or implementation:
+
+   a. **Privilege change.** The change crosses into privilege territory — bumping a default permission tier, modifying `[Authorize]` requirements, expanding a role grant, adding to a CORS allowlist beyond clearly-internal dev origins, adding an admin flag, lowering an auth bar, granting move/delete/admin on shared resources. Per `memory/process/privilege-changes-need-explicit-approval.md`.
+
+   b. **Spec change derived from user feedback.** The issue body includes an `fb:` feedback reference AND the change alters what the system does or allows beyond a mechanical fix — adds/removes a workflow step, changes eligibility rules, changes what data is shown or collected, adds a new public endpoint, changes a default behavior, removes a consent step. Per `memory/process/user-feedback-spec-changes-need-review.md`.
+
+   When you stop, report: the specific concern, the line(s) that would need to change, a one-line summary of what changes for whom, and (if a privilege change) which user(s) would gain the capability. The orchestrator escalates to Peter; you do not. The pre-flight gate in `/execute-sprint` Step 2.5 should have caught these — if you're hitting this path, either the gate missed something or the spec was misleading. Either way, the worker is not the layer that decides.
+
+   Mechanical fixes from user feedback (typos, broken links, error-message wording, layout glitches, hidden stack traces, missing icons) do NOT trigger this — only spec/policy/capability changes do.
 4. Run `dotnet build Humans.slnx` — fix any build errors before proceeding.
 5. Commit the implementation with a message referencing the issue number.
 

@@ -100,7 +100,7 @@ public class SendReConsentReminderJob : IRecurringJob
                     continue;
                 }
 
-                var effectiveEmail = user.GetEffectiveEmail();
+                var effectiveEmail = user.Email;
                 if (effectiveEmail is not null)
                 {
                     await _emailService.SendReConsentReminderAsync(

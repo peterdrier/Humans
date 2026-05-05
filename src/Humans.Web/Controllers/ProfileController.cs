@@ -582,11 +582,12 @@ public class ProfileController : HumansControllerBase
         {
             var result = await _userEmailService.AddEmailAsync(user.Id, model.NewEmail);
 
-            // Build verification URL
+            // Build verification URL — emailId disambiguates when the user has
+            // multiple pending plain rows (issue nobodies-collective/Humans#611).
             var verificationUrl = Url.Action(
                 nameof(VerifyEmail),
                 "Profile",
-                new { userId = user.Id, token = HttpUtility.UrlEncode(result.Token) },
+                new { userId = user.Id, emailId = result.EmailId, token = HttpUtility.UrlEncode(result.Token) },
                 Request.Scheme);
 
             // Send verification email
@@ -612,7 +613,9 @@ public class ProfileController : HumansControllerBase
         }
         catch (ValidationException ex)
         {
-            _logger.LogWarning("Rejected email add for user {UserId}: {Reason}", user.Id, ex.Message);
+            _logger.LogWarning(
+                "Rejected email add for user {UserId} ({Email}): {Reason}",
+                user.Id, model.NewEmail, ex.Message);
             ModelState.AddModelError(nameof(model.NewEmail), ex.Message);
             return View(nameof(Emails), await BuildEmailsViewModelAsync(user));
         }
@@ -622,9 +625,9 @@ public class ProfileController : HumansControllerBase
 
     [HttpGet("Me/Emails/Verify")]
     [AllowAnonymous]
-    public async Task<IActionResult> VerifyEmail(Guid userId, string token)
+    public async Task<IActionResult> VerifyEmail(Guid userId, Guid emailId, string token)
     {
-        if (string.IsNullOrEmpty(token))
+        if (string.IsNullOrEmpty(token) || emailId == Guid.Empty)
         {
             return VerifyEmailError(_localizer["Profile_InvalidVerificationLink"].Value);
         }
@@ -632,7 +635,7 @@ public class ProfileController : HumansControllerBase
         try
         {
             var decodedToken = HttpUtility.UrlDecode(token);
-            var result = await _userEmailService.VerifyEmailAsync(userId, decodedToken);
+            var result = await _userEmailService.VerifyEmailAsync(userId, emailId, decodedToken);
             _cache.InvalidateNobodiesTeamEmails();
 
             if (result.MergeRequestCreated)
@@ -999,11 +1002,13 @@ public class ProfileController : HumansControllerBase
             // Verification email goes to the target user (the human whose row this is),
             // not to the admin. The admin can't verify on the user's behalf — that
             // defeats the purpose of verification. Mirrors the self AddEmail path.
-            // VerifyEmail still binds by query-string userId, so pass it explicitly.
+            // VerifyEmail still binds by query-string userId + emailId, so pass them
+            // explicitly. emailId disambiguates when the user has multiple pending
+            // plain rows (issue nobodies-collective/Humans#611).
             var verificationUrl = Url.Action(
                 nameof(VerifyEmail),
                 "Profile",
-                new { userId = id, token = HttpUtility.UrlEncode(result.Token) },
+                new { userId = id, emailId = result.EmailId, token = HttpUtility.UrlEncode(result.Token) },
                 Request.Scheme);
 
             await _emailService.SendEmailVerificationAsync(
@@ -1033,7 +1038,9 @@ public class ProfileController : HumansControllerBase
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            _logger.LogWarning(ex, "Admin failed to add email for user {UserId}: {Reason}", id, ex.Message);
+            _logger.LogWarning(
+                "Admin failed to add email for user {UserId} ({Email}): {Reason}",
+                id, email, ex.Message);
             SetError(ex.Message);
         }
 
@@ -1381,13 +1388,24 @@ public class ProfileController : HumansControllerBase
         // store directly — IProfileService owns the FS-first / DB-fallback /
         // migrate-on-read orchestration AND the anonymization gate (issue
         // nobodies-collective/Humans#527).
-        var result = await _profileService.GetProfilePictureAsync(id, ct);
-        if (result is null)
+        try
         {
-            return NotFound();
-        }
+            var result = await _profileService.GetProfilePictureAsync(id, ct);
+            if (result is null)
+            {
+                return NotFound();
+            }
 
-        return File(result.Value.Data, result.Value.ContentType);
+            return File(result.Value.Data, result.Value.ContentType);
+        }
+        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            // Client aborted the request mid-read. Don't surface as 500/Error;
+            // log at Warning without the exception object so the prod log viewer
+            // still sees the event but the stack-trace noise is dropped.
+            _logger.LogWarning("Request aborted while reading profile picture for {ProfileId}", id);
+            return new EmptyResult();
+        }
     }
 
     [HttpPost("Me/ImportGooglePhoto")]
@@ -1584,33 +1602,43 @@ public class ProfileController : HumansControllerBase
     [HttpGet("{id:guid}/Popover")]
     public async Task<IActionResult> Popover(Guid id, CancellationToken ct)
     {
-        var profile = await _profileService.GetProfileAsync(id, ct);
-        if (profile is null) return NotFound();
-
-        var popoverUser = await _userService.GetByIdAsync(id, ct);
-        var teams = await _teamService.GetActiveTeamNamesForUserAsync(id, ct);
-
-        var effectivePictureUrl = profile.HasCustomProfilePicture
-            ? Url.Action(nameof(Picture), "Profile",
-                new { id = profile.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
-            : popoverUser?.ProfilePictureUrl;
-
-        var vm = new ProfileSummaryViewModel
+        try
         {
-            UserId = id,
-            DisplayName = popoverUser?.DisplayName ?? "Unknown",
-            Email = popoverUser?.Email,
-            ProfilePictureUrl = effectivePictureUrl,
-            MembershipTier = profile.MembershipTier.ToString(),
-            MembershipStatus = profile.IsSuspended ? "Suspended"
-                : profile.IsApproved ? "Active" : "Pending",
-            City = profile.City,
-            CountryCode = profile.CountryCode,
-            IsSuspended = profile.IsSuspended,
-            Teams = teams.ToList()
-        };
+            var profile = await _profileService.GetProfileAsync(id, ct);
+            if (profile is null) return NotFound();
 
-        return PartialView("_HumanPopover", vm);
+            var popoverUser = await _userService.GetByIdAsync(id, ct);
+            var teams = await _teamService.GetActiveTeamNamesForUserAsync(id, ct);
+
+            var effectivePictureUrl = profile.HasCustomProfilePicture
+                ? Url.Action(nameof(Picture), "Profile",
+                    new { id = profile.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
+                : popoverUser?.ProfilePictureUrl;
+
+            var vm = new ProfileSummaryViewModel
+            {
+                UserId = id,
+                DisplayName = popoverUser?.DisplayName ?? "Unknown",
+                Email = popoverUser?.Email,
+                ProfilePictureUrl = effectivePictureUrl,
+                MembershipTier = profile.MembershipTier.ToString(),
+                MembershipStatus = profile.IsSuspended ? "Suspended"
+                    : profile.IsApproved ? "Active" : "Pending",
+                City = profile.City,
+                CountryCode = profile.CountryCode,
+                IsSuspended = profile.IsSuspended,
+                Teams = teams.ToList()
+            };
+
+            return PartialView("_HumanPopover", vm);
+        }
+        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            // Client aborted the request mid-read. Don't surface as 500/Error;
+            // log at Warning without the exception object.
+            _logger.LogWarning("Request aborted while loading popover for {ProfileId}", id);
+            return new EmptyResult();
+        }
     }
 
     [HttpGet("{id:guid}/SendMessage")]
@@ -1653,10 +1681,12 @@ public class ProfileController : HumansControllerBase
         if (currentUser.Id == id)
             return RedirectToAction(nameof(ViewProfile), new { id });
 
-        var targetUser = await _userManager.Users
-            .Include(u => u.UserEmails)
-            .FirstOrDefaultAsync(u => u.Id == id);
-        if (targetUser is null)
+        // Issue #635 (§15i): bulk-fetch sender + recipient with UserEmails
+        // hydrated through the section-owned service instead of a raw
+        // `.Include(u => u.UserEmails)` over the cross-domain nav.
+        var participants = await _userService.GetByIdsWithEmailsAsync(
+            new[] { id, currentUser.Id });
+        if (!participants.TryGetValue(id, out var targetUser))
             return NotFound();
 
         if (!await _commPrefService.AcceptsFacilitatedMessagesAsync(id))
@@ -1676,18 +1706,17 @@ public class ProfileController : HumansControllerBase
             model.Message, "<[^>]+>", "", System.Text.RegularExpressions.RegexOptions.None,
             TimeSpan.FromSeconds(1));
 
-        var sender = await _userManager.Users
-            .Include(u => u.UserEmails)
-            .FirstAsync(u => u.Id == currentUser.Id);
+        if (!participants.TryGetValue(currentUser.Id, out var sender))
+            return NotFound();
 
-        var recipientEmail = targetUser.GetEffectiveEmail() ?? targetUser.Email;
+        var recipientEmail = targetUser.Email;
         if (string.IsNullOrWhiteSpace(recipientEmail))
         {
             ModelState.AddModelError(string.Empty, _localizer["Common_Error"].Value);
             return View(model);
         }
 
-        var senderEmail = sender.GetEffectiveEmail() ?? sender.Email;
+        var senderEmail = sender.Email;
         if (string.IsNullOrWhiteSpace(senderEmail))
         {
             ModelState.AddModelError(string.Empty, _localizer["Common_Error"].Value);

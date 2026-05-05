@@ -3,6 +3,7 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
@@ -70,9 +71,11 @@ public class GoogleAdminServiceTests
         _workspaceUserService.ListAccountsAsync(Arg.Any<CancellationToken>())
             .Returns([
                 new WorkspaceUserAccount("alice@nobodies.team", "Alice", "Smith", false,
-                    DateTime.UtcNow, DateTime.UtcNow),
+                    DateTime.UtcNow, DateTime.UtcNow, IsEnrolledIn2Sv: true,
+                    RecoveryEmail: "alice.personal@example.com"),
                 new WorkspaceUserAccount("bob@nobodies.team", "Bob", "Jones", true,
-                    DateTime.UtcNow, null),
+                    DateTime.UtcNow, null, IsEnrolledIn2Sv: false,
+                    RecoveryEmail: null),
             ]);
 
         _userEmailService.MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
@@ -98,12 +101,38 @@ public class GoogleAdminServiceTests
         result.SuspendedAccounts.Should().Be(1);
         result.LinkedAccounts.Should().Be(1);
         result.UnlinkedAccounts.Should().Be(1);
+        // Bob is unenrolled but suspended — suspended accounts are excluded
+        // from the missing-2FA count by design (they can't sign in anyway).
+        result.MissingTwoFactorCount.Should().Be(0);
         result.ErrorMessage.Should().BeNull();
 
         var alice = result.Accounts.Single(a =>
             string.Equals(a.PrimaryEmail, "alice@nobodies.team", StringComparison.OrdinalIgnoreCase));
         alice.MatchedUserId.Should().Be(userId);
         alice.IsUsedAsPrimary.Should().BeTrue();
+        alice.RecoveryEmail.Should().Be("alice.personal@example.com");
+
+        var bob = result.Accounts.Single(a =>
+            string.Equals(a.PrimaryEmail, "bob@nobodies.team", StringComparison.OrdinalIgnoreCase));
+        bob.RecoveryEmail.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetWorkspaceAccountListAsync_CountsActiveUnenrolledTowardMissingTwoFactor()
+    {
+        _workspaceUserService.ListAccountsAsync(Arg.Any<CancellationToken>())
+            .Returns([
+                new WorkspaceUserAccount("alice@nobodies.team", "Alice", "Smith", false,
+                    DateTime.UtcNow, DateTime.UtcNow, IsEnrolledIn2Sv: true),
+                new WorkspaceUserAccount("carol@nobodies.team", "Carol", "Doe", false,
+                    DateTime.UtcNow, null, IsEnrolledIn2Sv: false),
+                new WorkspaceUserAccount("bob@nobodies.team", "Bob", "Jones", true,
+                    DateTime.UtcNow, null, IsEnrolledIn2Sv: false),
+            ]);
+
+        var result = await _service.GetWorkspaceAccountListAsync();
+
+        result.MissingTwoFactorCount.Should().Be(1);
     }
 
     [HumansFact]
@@ -119,7 +148,7 @@ public class GoogleAdminServiceTests
         _workspaceUserService.ListAccountsAsync(Arg.Any<CancellationToken>())
             .Returns([
                 new WorkspaceUserAccount("dup@nobodies.team", "Dup", "User", false,
-                    DateTime.UtcNow, null),
+                    DateTime.UtcNow, null, IsEnrolledIn2Sv: false),
             ]);
 
         _userEmailService.MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
@@ -175,7 +204,7 @@ public class GoogleAdminServiceTests
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(new WorkspaceUserAccount("test@nobodies.team", "Test", "User", false,
-                DateTime.UtcNow, null));
+                DateTime.UtcNow, null, IsEnrolledIn2Sv: false));
 
         var result = await _service.ProvisionStandaloneAccountAsync(
             "test", "Test", "User", _actorUserId);
@@ -196,7 +225,7 @@ public class GoogleAdminServiceTests
     {
         _workspaceUserService.GetAccountAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new WorkspaceUserAccount("test@nobodies.team", "Test", "User", false,
-                DateTime.UtcNow, null));
+                DateTime.UtcNow, null, IsEnrolledIn2Sv: false));
 
         var result = await _service.ProvisionStandaloneAccountAsync(
             "test", "Test", "User", _actorUserId);
@@ -344,6 +373,179 @@ public class GoogleAdminServiceTests
 
         await _workspaceUserService.Received(1)
             .ResetPasswordAsync("test@nobodies.team", Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    // --- GenerateBackupCodesAsync (tested via ResetPasswordAndGenerate2FaAsync) ---
+
+    [HumansFact]
+    public async Task GenerateBackupCodesAsync_ReturnsCodesAndAuditsOnSuccess()
+    {
+        // GenerateBackupCodesAsync is private; exercise it through the public combined method.
+        IReadOnlyList<string> issued = ["aaaa-1111", "bbbb-2222", "cccc-3333"];
+        _workspaceUserService.GenerateBackupCodesAsync(
+                "alice@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(issued);
+
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+            "alice@nobodies.team", _actorUserId);
+
+        result.Success.Should().BeTrue();
+        result.Email.Should().Be("alice@nobodies.team");
+        // The combined method exposes the first code as BackupCode.
+        result.BackupCode.Should().Be("aaaa-1111");
+
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.WorkspaceAccountBackupCodesGenerated,
+            "WorkspaceAccount", Guid.Empty,
+            Arg.Is<string>(s => s.Contains("alice@nobodies.team") && s.Contains("3 backup code")),
+            _actorUserId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task GenerateBackupCodesAsync_ReturnsFailureAndDoesNotAuditOnEmptyList()
+    {
+        // Generate succeeded on Google's side but List returned 0 — we
+        // must not write a misleading "generated 0 codes" audit entry.
+        _workspaceUserService.GenerateBackupCodesAsync(
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<string>());
+
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+            "alice@nobodies.team", _actorUserId);
+
+        // Combined method returns Success=true with password-only on backup-code failure.
+        result.Success.Should().BeTrue();
+        result.BackupCode.Should().BeNull();
+        result.Message.Should().Contain("none were returned");
+
+        await _auditLogService.DidNotReceive().LogAsync(
+            AuditAction.WorkspaceAccountBackupCodesGenerated,
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task GenerateBackupCodesAsync_ReturnsErrorOnWorkspaceFailure()
+    {
+        _workspaceUserService.GenerateBackupCodesAsync(
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Google API error"));
+
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+            "alice@nobodies.team", _actorUserId);
+
+        // Combined method surfaces backup-code failure as Success=true, BackupCode=null.
+        result.Success.Should().BeTrue();
+        result.BackupCode.Should().BeNull();
+        result.Message.Should().Contain("Backup-code generation failed");
+
+        await _auditLogService.DidNotReceive().LogAsync(
+            AuditAction.WorkspaceAccountBackupCodesGenerated,
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task GenerateBackupCodesAsync_ReturnsCodesEvenWhenAuditWriteFails()
+    {
+        // Google has already invalidated the previously-issued set, so dropping
+        // the new codes locks the human out. The audit failure for backup-code
+        // generation is logged loudly but the code must still flow back to the admin.
+        IReadOnlyList<string> issued = ["aaaa-1111", "bbbb-2222"];
+        _workspaceUserService.GenerateBackupCodesAsync(
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(issued);
+        // Only fail the backup-codes audit; let the password-reset audit succeed
+        // so the combined method reaches the backup-code path.
+        _auditLogService.LogAsync(
+                AuditAction.WorkspaceAccountBackupCodesGenerated,
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<Guid?>(), Arg.Any<string?>())
+            .ThrowsAsync(new InvalidOperationException("Audit DB unavailable"));
+
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+            "alice@nobodies.team", _actorUserId);
+
+        result.Success.Should().BeTrue();
+        result.BackupCode.Should().Be("aaaa-1111");
+    }
+
+    // --- ResetPasswordAndGenerate2FaAsync ---
+
+    [HumansFact]
+    public async Task ResetPasswordAndGenerate2FaAsync_ReturnsBothCredentialsOnSuccess()
+    {
+        IReadOnlyList<string> issued = ["aaaa-1111", "bbbb-2222", "cccc-3333"];
+        _workspaceUserService.GenerateBackupCodesAsync(
+                "alice@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(issued);
+
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+            "alice@nobodies.team", _actorUserId);
+
+        result.Success.Should().BeTrue();
+        result.Email.Should().Be("alice@nobodies.team");
+        result.TempPassword.Should().NotBeNullOrEmpty();
+        // The recovery flow uses one code, not the full set.
+        result.BackupCode.Should().Be("aaaa-1111");
+
+        await _workspaceUserService.Received(1).ResetPasswordAsync(
+            "alice@nobodies.team", Arg.Any<string>(), Arg.Any<CancellationToken>());
+
+        // Two audit entries — one for the password reset, one for the codes generation.
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.WorkspaceAccountPasswordReset,
+            "WorkspaceAccount", Guid.Empty,
+            Arg.Any<string>(), _actorUserId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.WorkspaceAccountBackupCodesGenerated,
+            "WorkspaceAccount", Guid.Empty,
+            Arg.Any<string>(), _actorUserId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task ResetPasswordAndGenerate2FaAsync_ReturnsFailureWhenPasswordResetFails()
+    {
+        _workspaceUserService.ResetPasswordAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Google API error"));
+
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+            "alice@nobodies.team", _actorUserId);
+
+        result.Success.Should().BeFalse();
+        result.TempPassword.Should().BeNull();
+        result.BackupCode.Should().BeNull();
+        result.ErrorMessage.Should().Contain("Failed to reset password");
+
+        // Backup-code generation must NOT be attempted when password reset failed.
+        await _workspaceUserService.DidNotReceive().GenerateBackupCodesAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ResetPasswordAndGenerate2FaAsync_ReturnsPasswordOnlyWhenBackupCodesFail()
+    {
+        // Password reset succeeds, but Google rejects the backup-code request.
+        // The admin still gets the password — partial success is more useful
+        // than asking them to retry from scratch (Google has already rotated).
+        _workspaceUserService.GenerateBackupCodesAsync(
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Google API error"));
+
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+            "alice@nobodies.team", _actorUserId);
+
+        result.Success.Should().BeTrue();
+        result.TempPassword.Should().NotBeNullOrEmpty();
+        result.BackupCode.Should().BeNull();
+        result.Message.Should().Contain("Backup-code generation failed");
     }
 
     // --- LinkAccountAsync ---

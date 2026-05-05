@@ -15,7 +15,11 @@ using NodaTime.Text;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
+// Page entry uses the WIDER policy so any team coordinator / sub-team manager
+// can see the dashboard. Privileged sub-panels (coordinator activity, pending
+// shifts, voluntell action) stay gated by the NARROWER ShiftDashboardAccess
+// policy in the view itself.
+[Authorize(Policy = PolicyNames.ShiftDepartmentManager)]
 [Route("Shifts/Dashboard")]
 public class ShiftDashboardController : HumansControllerBase
 {
@@ -129,6 +133,10 @@ public class ShiftDashboardController : HumansControllerBase
         return View(model);
     }
 
+    // Privileged action — overrides the controller-level wider policy with the
+    // narrow ShiftDashboardAccess so subteam managers can't volunteer-search by
+    // hitting the endpoint directly.
+    [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
     [HttpGet("SearchVolunteers")]
     public async Task<IActionResult> SearchVolunteers(Guid shiftId, string? query)
     {
@@ -161,6 +169,10 @@ public class ShiftDashboardController : HumansControllerBase
         }
     }
 
+    // Privileged action — only the narrow ShiftDashboardAccess role list can
+    // assign humans to shifts. Hides from the wider ShiftDepartmentManager
+    // policy that gates the page entry.
+    [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
     [HttpPost("Voluntell")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Voluntell(Guid shiftId, Guid userId)

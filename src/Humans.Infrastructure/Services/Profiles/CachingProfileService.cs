@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application;
 using Humans.Application.DTOs;
@@ -74,17 +75,20 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
     private readonly IProfileRepository _profileRepository;
     private readonly IUserEmailRepository _userEmailRepository;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<CachingProfileService> _logger;
 
     private readonly ConcurrentDictionary<Guid, FullProfile> _byUserId = new();
 
     public CachingProfileService(
         IProfileRepository profileRepository,
         IUserEmailRepository userEmailRepository,
-        IServiceScopeFactory scopeFactory)
+        IServiceScopeFactory scopeFactory,
+        ILogger<CachingProfileService> logger)
     {
         _profileRepository = profileRepository;
         _userEmailRepository = userEmailRepository;
         _scopeFactory = scopeFactory;
+        _logger = logger;
     }
 
     // ==========================================================================
@@ -152,10 +156,67 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         }
 
         var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
-        var notificationEmail = userEmails.FirstOrDefault(e => e.IsPrimary && e.IsVerified)?.Email
-                                ?? user.Email;
 
-        _byUserId[userId] = FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), notificationEmail);
+        await PopulateStateIfNullAsync(profile, ct);
+
+        // Issue #635 (§15i): pass userEmails directly so PrimaryEmail /
+        // AllVerifiedEmails / GoogleEmail derive from already-loaded data
+        // without per-property repo calls.
+        _byUserId[userId] = FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), userEmails);
+    }
+
+    /// <summary>
+    /// Issue #635 (§15i): if the loaded <paramref name="profile"/>'s State is
+    /// null, lazy-compute the canonical value and write it back via
+    /// <see cref="IProfileRepository.WriteBackStateIfNullAsync"/>. The repo
+    /// guard (State IS NULL) keeps this idempotent under concurrent reads.
+    /// Mutates the in-memory profile so the cached <see cref="FullProfile"/>
+    /// reflects the computed value even when the write-back is a no-op.
+    /// Best-effort: a write failure logs and proceeds — the next read retries.
+    /// Used by both <see cref="RefreshEntryAsync"/> (single-user path) and
+    /// <see cref="WarmAllAsync"/> (startup warmup) so legacy NULL rows are
+    /// populated regardless of how the FullProfile entry is built.
+    /// </summary>
+    private async Task PopulateStateIfNullAsync(Profile profile, CancellationToken ct)
+    {
+        if (profile.State is not null) return;
+
+        var computed = ComputeProfileState(profile);
+        try
+        {
+            await _profileRepository.WriteBackStateIfNullAsync(profile.UserId, computed, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Lazy backfill is best-effort; the next read retries. Don't
+            // block FullProfile resolution on a write failure. LogWarning
+            // (no exception object) per memory/code/always-log-problems.md
+            // for expected/transient failures.
+            _logger.LogWarning(
+                "CachingProfileService lazy ProfileState write-back failed for {UserId}: {ExType}",
+                profile.UserId, ex.GetType().Name);
+        }
+        profile.State = computed;
+    }
+
+    /// <summary>
+    /// Issue #635 (§15i): computes the ProfileState that should be persisted
+    /// for a row whose stored value is NULL, from <c>IsSuspended</c> +
+    /// required-field presence (via <see cref="Profile.HasRequiredIdentityFields"/>).
+    /// Suspended dominates; otherwise rows with all required identity fields
+    /// populated are <see cref="ProfileState.Active"/>, others are
+    /// <see cref="ProfileState.Stub"/>. The shared predicate keeps this lazy-
+    /// compute path in lockstep with <c>ProfileService.SaveProfileAsync</c> /
+    /// <c>SetSuspendedAsync</c>.
+    /// </summary>
+    internal static ProfileState ComputeProfileState(Profile profile)
+    {
+#pragma warning disable HUM_PROFILE_ISSUSPENDED
+        if (profile.IsSuspended)
+            return ProfileState.Suspended;
+#pragma warning restore HUM_PROFILE_ISSUSPENDED
+
+        return profile.HasRequiredIdentityFields() ? ProfileState.Active : ProfileState.Stub;
     }
 
     /// <summary>
@@ -186,16 +247,27 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
 
         var userIds = profiles.Select(p => p.UserId).ToList();
         var users = await userService.GetByIdsAsync(userIds, ct);
-        var notificationEmails = await _userEmailRepository.GetAllNotificationTargetEmailsAsync(ct);
+
+        // Issue #635 (§15i): bulk-load all UserEmails once, group by userId,
+        // and feed FullProfile.Create so PrimaryEmail / AllVerifiedEmails /
+        // GoogleEmail are populated without per-user repo calls.
+        var allUserEmails = await _userEmailRepository.GetAllAsync(ct);
+        var emailsByUserId = allUserEmails
+            .GroupBy(e => e.UserId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<UserEmail>)g.ToList());
 
         foreach (var profile in profiles)
         {
             if (!users.TryGetValue(profile.UserId, out var user))
                 continue;
 
-            notificationEmails.TryGetValue(profile.UserId, out var notificationEmail);
+            await PopulateStateIfNullAsync(profile, ct);
+
+            var userEmails = emailsByUserId.TryGetValue(profile.UserId, out var list)
+                ? list
+                : Array.Empty<UserEmail>();
             _byUserId[profile.UserId] =
-                FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), notificationEmail);
+                FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), userEmails);
         }
     }
 
@@ -251,9 +323,6 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
         return await inner.GetActiveApprovedUserIdsAsync(ct);
     }
-
-    public Task<int> GetActiveApprovedCountAsync(CancellationToken ct = default) =>
-        Task.FromResult(_byUserId.Values.Count(p => p.IsApproved && !p.IsSuspended));
 
     public async Task<int> GetConsentReviewPendingCountAsync(CancellationToken ct = default)
     {
@@ -336,6 +405,13 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
             ProfilesProfileService.SearchHumansFromSnapshot(_byUserId.Values, query));
     }
 
+    public Task<IReadOnlyList<HumanSearchResult>> SearchHumansByNameAsync(
+        string query, CancellationToken ct = default)
+    {
+        return Task.FromResult(
+            ProfilesProfileService.SearchHumansByNameFromSnapshot(_byUserId.Values, query));
+    }
+
     public async Task<IReadOnlyList<ProfileLanguage>> GetProfileLanguagesAsync(
         Guid profileId, CancellationToken ct = default)
     {
@@ -384,8 +460,46 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
     // ==========================================================================
 
     /// <inheritdoc cref="IFullProfileInvalidator.InvalidateAsync"/>
-    public Task InvalidateAsync(Guid userId, CancellationToken ct = default) =>
-        RefreshEntryAsync(userId, ct);
+    public Task InvalidateAsync(
+        Guid userId,
+        CancellationToken ct = default,
+        [System.Runtime.CompilerServices.CallerMemberName] string memberName = "",
+        [System.Runtime.CompilerServices.CallerFilePath] string filePath = "")
+    {
+        // Issue #635 (§15i): dev-mode caller log via [CallerMemberName] /
+        // [CallerFilePath] params. The compiler fills these in at the
+        // callsite, so test mocks and direct callers don't have to pass
+        // anything. Cheap StringComparison against ASPNETCORE_ENVIRONMENT
+        // keeps the call free of an IHostEnvironment dependency on this
+        // Singleton. The log is the canonical way to verify every
+        // Profile-affecting write hits the invalidator during exploratory
+        // testing on the preview environment. Only fires off-Production so
+        // no perf cost in production.
+        var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        if (!string.Equals(env, "Production", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                var callerMember = string.IsNullOrEmpty(memberName) ? "(unknown)" : memberName;
+                var callerFile = string.IsNullOrEmpty(filePath)
+                    ? "(unknown)"
+                    : System.IO.Path.GetFileName(filePath);
+
+                _logger.LogDebug(
+                    "FullProfile invalidate userId={UserId} caller={CallerMember} file={CallerFile}",
+                    userId, callerMember, callerFile);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // Logging is best-effort; never block the invalidation on it.
+                _logger.LogWarning(
+                    "CachingProfileService invalidate caller-log failed for {UserId}: {ExType}",
+                    userId, ex.GetType().Name);
+            }
+        }
+
+        return RefreshEntryAsync(userId, ct);
+    }
 
     // ==========================================================================
     // Writes — delegate then invalidate
@@ -399,6 +513,14 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         var navBadge = scope.ServiceProvider.GetRequiredService<INavBadgeCacheInvalidator>();
         await inner.SetMembershipTierAsync(userId, tier, ct);
         navBadge.Invalidate();
+        await RefreshEntryAsync(userId, ct);
+    }
+
+    public async Task EnsureStubProfileAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        await inner.EnsureStubProfileAsync(userId, ct);
         await RefreshEntryAsync(userId, ct);
     }
 
@@ -480,40 +602,23 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         return await inner.GetPendingReviewCountAsync(ct);
     }
 
-    public async Task<OnboardingResult> ClearConsentCheckAsync(
-        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default)
+    public async Task<OnboardingResult> RecordConsentCheckAsync(
+        Guid userId, Guid reviewerId, ConsentCheckStatus result, string? notes,
+        CancellationToken ct = default)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
         var navBadge = scope.ServiceProvider.GetRequiredService<INavBadgeCacheInvalidator>();
         var notificationMeter = scope.ServiceProvider.GetRequiredService<INotificationMeterCacheInvalidator>();
 
-        var result = await inner.ClearConsentCheckAsync(userId, reviewerId, notes, ct);
-        if (result.Success)
+        var outcome = await inner.RecordConsentCheckAsync(userId, reviewerId, result, notes, ct);
+        if (outcome.Success)
         {
             navBadge.Invalidate();
             notificationMeter.Invalidate();
             await RefreshEntryAsync(userId, ct);
         }
-        return result;
-    }
-
-    public async Task<OnboardingResult> FlagConsentCheckAsync(
-        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default)
-    {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-        var navBadge = scope.ServiceProvider.GetRequiredService<INavBadgeCacheInvalidator>();
-        var notificationMeter = scope.ServiceProvider.GetRequiredService<INotificationMeterCacheInvalidator>();
-
-        var result = await inner.FlagConsentCheckAsync(userId, reviewerId, notes, ct);
-        if (result.Success)
-        {
-            navBadge.Invalidate();
-            notificationMeter.Invalidate();
-            await RefreshEntryAsync(userId, ct);
-        }
-        return result;
+        return outcome;
     }
 
     public async Task<OnboardingResult> RejectSignupAsync(
@@ -552,25 +657,14 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         return result;
     }
 
-    public async Task<OnboardingResult> SuspendAsync(
-        Guid userId, Guid adminId, string? notes, CancellationToken ct = default)
+    public async Task<OnboardingResult> SetSuspendedAsync(
+        Guid userId, Guid adminId, bool suspended, string? notes,
+        CancellationToken ct = default)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
 
-        var result = await inner.SuspendAsync(userId, adminId, notes, ct);
-        if (result.Success)
-            await RefreshEntryAsync(userId, ct);
-        return result;
-    }
-
-    public async Task<OnboardingResult> UnsuspendAsync(
-        Guid userId, Guid adminId, CancellationToken ct = default)
-    {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-
-        var result = await inner.UnsuspendAsync(userId, adminId, ct);
+        var result = await inner.SetSuspendedAsync(userId, adminId, suspended, notes, ct);
         if (result.Success)
             await RefreshEntryAsync(userId, ct);
         return result;

@@ -73,5 +73,9 @@ public class UserEmailConfiguration : IEntityTypeConfiguration<UserEmail>
         builder.HasIndex(e => e.Email)
             .IsUnique()
             .HasFilter("\"IsVerified\" = true");
+
+        // The "exactly one verified IsPrimary per user" invariant is service-
+        // enforced inside UserEmailService.EnsurePrimaryInvariantAsync — no DB
+        // partial unique index per memory/architecture/db-enforcement-minimal.md.
     }
 }

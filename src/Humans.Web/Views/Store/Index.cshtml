@@ -1,0 +1,107 @@
+@model Humans.Web.Models.StoreIndexViewModel
+@{
+    ViewData["Title"] = "Store";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Store</h1>
+    <span class="badge bg-secondary fs-6">@Model.Year</span>
+</div>
+
+<vc:temp-data-alerts />
+
+@if (!Model.CampSeasons.Any())
+{
+    <div class="alert alert-info">
+        You don't lead any camps with an active season this year. The catalog
+        below is read-only.
+    </div>
+}
+else
+{
+    @foreach (var campSection in Model.CampSeasons)
+    {
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="h5 mb-0">@campSection.CampName</h2>
+                <form asp-action="Create" asp-route-campSeasonId="@campSection.CampSeasonId"
+                      method="post" class="d-flex gap-2 align-items-center mb-0">
+                    @Html.AntiForgeryToken()
+                    <input type="text" name="label" class="form-control form-control-sm"
+                           placeholder="Label (optional)" maxlength="100" />
+                    <button type="submit" class="btn btn-sm btn-primary">Start order</button>
+                </form>
+            </div>
+            <div class="card-body p-0">
+                @if (campSection.Orders.Any())
+                {
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Label</th>
+                                <th>State</th>
+                                <th class="text-end">Lines + VAT</th>
+                                <th class="text-end">Deposits</th>
+                                <th class="text-end">Balance</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var order in campSection.Orders)
+                            {
+                                <tr>
+                                    <td>@(string.IsNullOrWhiteSpace(order.Label) ? "(no label)" : order.Label)</td>
+                                    <td><span class="badge bg-secondary">@order.State</span></td>
+                                    <td class="text-end">&euro;@((order.LinesSubtotalEur + order.VatTotalEur).ToString("N2"))</td>
+                                    <td class="text-end">&euro;@order.DepositTotalEur.ToString("N2")</td>
+                                    <td class="text-end fw-bold">&euro;@order.BalanceEur.ToString("N2")</td>
+                                    <td class="text-end">
+                                        <a asp-action="Order" asp-route-id="@order.Id" class="btn btn-sm btn-outline-primary">Open</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <div class="p-3 text-muted">No orders yet.</div>
+                }
+            </div>
+        </div>
+    }
+}
+
+<h2 class="h4 mb-3">Catalog (@Model.Year)</h2>
+@if (!Model.Catalog.Any())
+{
+    <div class="alert alert-secondary">No products are active for @Model.Year.</div>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th class="text-end">Unit price</th>
+                <th class="text-end">VAT</th>
+                <th class="text-end">Deposit</th>
+                <th>Order by</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var product in Model.Catalog)
+            {
+                <tr>
+                    <td>@product.Name</td>
+                    <td>@product.Description</td>
+                    <td class="text-end">&euro;@product.UnitPriceEur.ToString("N2")</td>
+                    <td class="text-end">@product.VatRatePercent.ToString("0.##")%</td>
+                    <td class="text-end">@(product.DepositAmountEur.HasValue ? $"€{product.DepositAmountEur.Value:N2}" : "—")</td>
+                    <td>@product.OrderableUntil.ToDisplayDate()</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

@@ -315,6 +315,45 @@ public interface IEmailService
     /// via <see cref="CampaignCodeEmailRequest.CampaignGrantId"/> for status tracking.
     /// </summary>
     Task SendCampaignCodeAsync(CampaignCodeEmailRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a notification that a Google Group membership has been removed
+    /// (Variant 1 — full loss of access, group sub-template). System category;
+    /// no unsubscribe footer (issue peterdrier/Humans#639).
+    /// </summary>
+    Task SendGoogleGroupRemovalLossOfAccessAsync(
+        string removedEmail,
+        string userName,
+        string groupName,
+        string groupEmail,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a notification that a Google Drive permission has been removed
+    /// (Variant 1 — full loss of access, Drive sub-template). System category;
+    /// no unsubscribe footer (issue peterdrier/Humans#639).
+    /// </summary>
+    Task SendGoogleDriveRemovalLossOfAccessAsync(
+        string removedEmail,
+        string userName,
+        string folderName,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a notification that a Google Workspace permission has been
+    /// removed from a secondary email address (Variant 2 — secondary-email
+    /// cleanup). The user retains access through their primary Google
+    /// address. System category; no unsubscribe footer
+    /// (issue peterdrier/Humans#639).
+    /// </summary>
+    Task SendGoogleAccessRemovalSecondaryCleanupAsync(
+        string removedEmail,
+        string userName,
+        string currentGoogleEmail,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

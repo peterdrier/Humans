@@ -81,4 +81,15 @@ public sealed class GoogleWorkspaceUserService : IGoogleWorkspaceUserService
         }
         return account;
     }
+
+    public async Task<IReadOnlyList<string>> GenerateBackupCodesAsync(
+        string primaryEmail, CancellationToken ct = default)
+    {
+        var codes = await _client.GenerateBackupCodesAsync(primaryEmail, ct);
+        _logger.LogInformation(
+            "Generated {Count} backup code(s) for workspace account: {Email}",
+            codes.Count, primaryEmail);
+        return codes;
+    }
+
 }

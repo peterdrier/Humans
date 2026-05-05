@@ -31,6 +31,17 @@ public interface IProfileService : IUserMerge
         CancellationToken ct = default);
 
     /// <summary>
+    /// Issue #635 (§15i): idempotently materialize a <see cref="ProfileState.Stub"/>
+    /// Profile row for the given user. Called by User-creation paths
+    /// (<c>AccountController.ExternalLoginCallback</c>, <c>AccountController.CompleteSignup</c>,
+    /// <c>AccountProvisioningService.FindOrCreateUserByEmailAsync</c>) so cross-
+    /// section reads can rely on a non-null Profile pointer. No-op if a profile
+    /// already exists. The caching decorator refreshes the FullProfile entry
+    /// after the write so downstream reads see the new Stub immediately.
+    /// </summary>
+    Task EnsureStubProfileAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// Updates the profile's <see cref="Profile.MembershipTier"/> and
     /// <see cref="Profile.UpdatedAt"/>, persists, and invalidates the
     /// profile's cache entry. No-op with a warning log if the user has no
@@ -88,13 +99,6 @@ public interface IProfileService : IUserMerge
     Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the count of profiles whose status is approved and not suspended.
-    /// Used by the admin dashboard "Active humans" stat tile. At ~500-user scale
-    /// this can be a simple Count query — no caching required.
-    /// </summary>
-    Task<int> GetActiveApprovedCountAsync(CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the count of profiles whose <c>ConsentCheckStatus</c> is Pending
     /// or Flagged and whose <c>RejectedAt</c> is null. Used by the notification
     /// meter to surface pending consent reviews to Consent Coordinators
@@ -127,6 +131,14 @@ public interface IProfileService : IUserMerge
     Task<IReadOnlyList<UserSearchResult>> SearchApprovedUsersAsync(string query, CancellationToken ct = default);
 
     Task<IReadOnlyList<HumanSearchResult>> SearchHumansAsync(string query, CancellationToken ct = default);
+
+    /// <summary>
+    /// Narrowed variant of <see cref="SearchHumansAsync"/> that matches only on
+    /// display name (first/last) and burner name. Used by the typeahead picker
+    /// where a tighter, less noisy result list is what callers want; the full
+    /// search page (bio / city / interests / CV) keeps using the broad method.
+    /// </summary>
+    Task<IReadOnlyList<HumanSearchResult>> SearchHumansByNameAsync(string query, CancellationToken ct = default);
 
     /// <summary>
     /// Reconciles the user's CV entries (volunteer history) with the provided set.
@@ -167,18 +179,17 @@ public interface IProfileService : IUserMerge
     Task<int> GetPendingReviewCountAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Clears the consent check for the given user (marks cleared + approved).
-    /// Error keys: <c>NotFound</c>, <c>AlreadyRejected</c>.
+    /// Records a reviewer's consent-check decision. <paramref name="result"/>
+    /// must be <see cref="ConsentCheckStatus.Cleared"/> (also sets
+    /// <c>IsApproved=true</c>) or <see cref="ConsentCheckStatus.Flagged"/>
+    /// (sets <c>IsApproved=false</c>). The system-side
+    /// <see cref="ConsentCheckStatus.Pending"/> transition lives on
+    /// <see cref="SetConsentCheckPendingAsync"/>. Error keys:
+    /// <c>NotFound</c>, <c>AlreadyRejected</c> (Cleared only).
     /// </summary>
-    Task<OnboardingResult> ClearConsentCheckAsync(
-        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default);
-
-    /// <summary>
-    /// Flags the consent check for the given user (marks flagged + unapproved).
-    /// Error keys: <c>NotFound</c>.
-    /// </summary>
-    Task<OnboardingResult> FlagConsentCheckAsync(
-        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default);
+    Task<OnboardingResult> RecordConsentCheckAsync(
+        Guid userId, Guid reviewerId, ConsentCheckStatus result, string? notes,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Rejects a signup (records rejection reason, sets RejectedAt).
@@ -195,18 +206,18 @@ public interface IProfileService : IUserMerge
         Guid userId, Guid adminId, CancellationToken ct = default);
 
     /// <summary>
-    /// Suspends the human (sets IsSuspended). Admin notes saved on the profile.
-    /// Error keys: <c>NotFound</c>.
+    /// Sets the human's suspension state. Dual-writes the legacy
+    /// <c>IsSuspended</c> bool and the canonical
+    /// <see cref="ProfileState"/> lifecycle marker (suspending →
+    /// <see cref="ProfileState.Suspended"/>; unsuspending re-derives
+    /// Active vs Stub from <see cref="Profile.HasRequiredIdentityFields"/>).
+    /// Suspending also persists <paramref name="notes"/> as
+    /// <c>AdminNotes</c>; unsuspending ignores notes. Error keys:
+    /// <c>NotFound</c>.
     /// </summary>
-    Task<OnboardingResult> SuspendAsync(
-        Guid userId, Guid adminId, string? notes, CancellationToken ct = default);
-
-    /// <summary>
-    /// Unsuspends the human (clears IsSuspended).
-    /// Error keys: <c>NotFound</c>.
-    /// </summary>
-    Task<OnboardingResult> UnsuspendAsync(
-        Guid userId, Guid adminId, CancellationToken ct = default);
+    Task<OnboardingResult> SetSuspendedAsync(
+        Guid userId, Guid adminId, bool suspended, string? notes,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Sets a profile's consent check status to <c>Pending</c> and bumps

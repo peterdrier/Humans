@@ -51,7 +51,7 @@ A community-calendar event belonging to a team. May be a single event or a recur
 
 ### CalendarEventException
 
-Per-occurrence override or cancellation for a recurring `CalendarEvent`. Cascade-deletes with the parent event.
+Per-occurrence override or cancellation for a recurring `CalendarEvent`. Cascade-deletes with the parent event. Inherits the parent's soft-delete via a global EF query filter (`ex => ex.Event.DeletedAt == null`) — exception rows are excluded from all queries when their parent event is soft-deleted, matching `CalendarEvent`'s `DeletedAt` filter.
 
 **Table:** `calendar_event_exceptions`
 
@@ -94,7 +94,7 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 - `RecurrenceRule` and `RecurrenceTimezone` are set together, or neither is set (all-or-nothing invariant).
 - `RecurrenceTimezone` defaults to `"Europe/Madrid"` if not specified on a recurring event.
 - `RecurrenceUntilUtc` is the last instant the recurrence can possibly produce an occurrence (RRULE `UNTIL` if present, else the end of the `COUNT`-th occurrence computed via Ical.Net, else null for open-ended rules); used for indexable SQL window prefiltering.
-- Soft-delete via `DeletedAt` — a global EF Core query filter hides deleted events from all queries.
+- Soft-delete via `DeletedAt` — a global EF Core query filter hides deleted events from all queries. `CalendarEventException` carries a matching filter (`ex => ex.Event.DeletedAt == null`) so exception rows attached to a soft-deleted event are also hidden; repository writes that need to observe orphaned-by-soft-delete exceptions (e.g. `UpsertExceptionAsync`'s existence lookup, to avoid duplicate-insert against the unique index when the parent is soft-deleted between pre-check and upsert) call `IgnoreQueryFilters()` explicitly.
 - `CalendarEventException` rows cascade-delete with the parent event.
 - Unique index on `(EventId, OriginalOccurrenceStartUtc)` — prevents duplicate exceptions for the same occurrence.
 - Recurrence is expanded in-memory per-request against the event's `RecurrenceTimezone` using `Ical.Net` library (RFC 5545 compliant).

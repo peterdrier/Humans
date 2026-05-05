@@ -36,13 +36,18 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Verifies an email address using a token.
-    /// If the email is already verified on another account, creates a merge request
-    /// instead of completing verification.
-    /// Returns a result indicating the email and whether a merge request was created.
+    /// Verifies an email address using a token. <paramref name="emailId"/>
+    /// identifies the specific pending row the verification link was issued
+    /// for — the token is bound to this row's Id via the token's purpose
+    /// suffix, so passing it here disambiguates when the same user has
+    /// multiple pending plain rows (issue nobodies-collective/Humans#611).
+    /// If the email is already verified on another account, creates a merge
+    /// request instead of completing verification. Returns a result
+    /// indicating the email and whether a merge request was created.
     /// </summary>
     Task<VerifyEmailResult> VerifyEmailAsync(
         Guid userId,
+        Guid emailId,
         string token,
         CancellationToken cancellationToken = default);
 
@@ -187,6 +192,32 @@ public interface IUserEmailService
     /// </summary>
     Task<IReadOnlyList<string>> GetVerifiedEmailsForUserAsync(
         Guid userId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns every <see cref="UserEmail"/> entity belonging to
+    /// <paramref name="userId"/>, including the per-row metadata
+    /// (<c>IsVerified</c>, <c>IsPrimary</c>, <c>IsGoogle</c>,
+    /// <c>Provider</c>, etc.). Used by cross-section callers
+    /// (GoogleAdmin / GoogleWorkspaceSync) that need the row-level metadata
+    /// to compute Google-rename detection or sync flags. Returns an empty
+    /// list when the user has no emails. The return type is the raw
+    /// entity rather than a DTO because the callers genuinely need the
+    /// per-row flags — projecting to a DTO would just rename them.
+    /// </summary>
+    Task<IReadOnlyList<UserEmail>> GetEntitiesByUserIdAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns every <see cref="UserEmail"/> grouped by <c>UserId</c>. Used
+    /// by cross-section callers that need to bulk-load row-level metadata
+    /// for a known set of users (e.g. the Google sync hot path that calls
+    /// this once per reconcile). Users with no emails are absent from the
+    /// returned dictionary.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<UserEmail>>> GetEntitiesByUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds,
         CancellationToken cancellationToken = default);
 
     /// <summary>

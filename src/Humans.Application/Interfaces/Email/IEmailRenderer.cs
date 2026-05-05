@@ -134,4 +134,34 @@ public interface IEmailRenderer
     /// injection, and converting the resulting markdown body to HTML.
     /// </summary>
     EmailContent RenderCampaignCode(string subject, string markdownBody, string code, string recipientName);
+
+    /// <summary>
+    /// Variant 1 group sub-template — Google Group removal, loss of access
+    /// (issue peterdrier/Humans#639).
+    /// </summary>
+    EmailContent RenderGoogleGroupRemovalLossOfAccess(
+        string userName,
+        string groupName,
+        string groupEmail,
+        string? culture = null);
+
+    /// <summary>
+    /// Variant 1 Drive sub-template — Google Drive permission removal, loss
+    /// of access (issue peterdrier/Humans#639).
+    /// </summary>
+    EmailContent RenderGoogleDriveRemovalLossOfAccess(
+        string userName,
+        string folderName,
+        string? culture = null);
+
+    /// <summary>
+    /// Variant 2 — secondary-email cleanup. Same template covers both
+    /// Group and Drive removals; the message is reassurance-focused, not
+    /// resource-specific (issue peterdrier/Humans#639).
+    /// </summary>
+    EmailContent RenderGoogleAccessRemovalSecondaryCleanup(
+        string userName,
+        string removedEmail,
+        string currentGoogleEmail,
+        string? culture = null);
 }

@@ -11,17 +11,27 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
 using Testcontainers.PostgreSql;
 using Xunit;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Infrastructure.Services;
 
 namespace Humans.Integration.Tests.Infrastructure;
 
 public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
+    /// <summary>Test-only Stripe Store webhook signing secret. Used by webhook integration tests to compute valid Stripe-Signature headers.</summary>
+    public const string TestStripeWebhookSecret = "whsec_test_humans_integration_secret_do_not_use_in_prod";
+
+    /// <summary>Stub IStripeService for integration tests (replaces real Stripe network calls).</summary>
+    public IStripeService StripeServiceStub { get; } = Substitute.For<IStripeService>();
+
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
         .Build();
 
@@ -71,6 +81,32 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
             {
                 options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
             });
+
+            // Provide a deterministic Stripe Store webhook secret so the integration
+            // tests can sign synthetic events. Production runs read this from an env var.
+            services.Configure<StripeSettings>(opts =>
+            {
+                opts.StoreWebhookSecret = TestStripeWebhookSecret;
+            });
+
+            // Replace IStripeService with a stub so integration tests don't hit
+            // api.stripe.com. Per-test setup configures behavior on StripeServiceStub.
+            // Webhook parsing is pure CPU (HMAC-SHA256 + JSON) — no network — so we
+            // delegate ParseStoreCheckoutEvent and the IsStoreWebhookConfigured flag
+            // to a real StripeService instance built with the test secret. This lets
+            // the webhook integration tests exercise real signature verification while
+            // the network-touching methods stay stubbed.
+            var realStripeForWebhookParse = new StripeService(
+                Options.Create(new StripeSettings { StoreWebhookSecret = TestStripeWebhookSecret }),
+                NullLogger<StripeService>.Instance);
+            StripeServiceStub.IsStoreWebhookConfigured.Returns(true);
+            StripeServiceStub.ParseStoreCheckoutEvent(Arg.Any<string>(), Arg.Any<string>())
+                .Returns(call => realStripeForWebhookParse.ParseStoreCheckoutEvent(
+                    (string)call[0], (string)call[1]));
+
+            var stripeDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IStripeService));
+            if (stripeDescriptor != null) services.Remove(stripeDescriptor);
+            services.AddScoped(_ => StripeServiceStub);
 
             RegisteredServices = services.ToList();
 

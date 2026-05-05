@@ -1595,6 +1595,10 @@
   <data name="CommPrefs_Alert" xml:space="preserve"><value>Alerta</value></data>
   <data name="CommPrefs_BackToProfile" xml:space="preserve"><value>Tornar al perfil</value></data>
   <data name="CommPrefs_BackToDashboard" xml:space="preserve"><value>Tornar al tauler</value></data>
+  <data name="CommPrefs_OneClick_Prompt" xml:space="preserve"><value>Has fet clic en un enllaç per donar-te de baixa dels correus de {0}.</value></data>
+  <data name="CommPrefs_OneClick_Hint" xml:space="preserve"><value>Dóna't de baixa amb un sol clic, o ajusta els detalls a la matriu de sota.</value></data>
+  <data name="CommPrefs_OneClick_Button" xml:space="preserve"><value>Donar-se de baixa de {0}</value></data>
+  <data name="CommPrefs_OneClick_Done" xml:space="preserve"><value>T'has donat de baixa. Pots tornar a activar qualsevol categoria a sota.</value></data>
 
   <data name="Emails_Header_Email" xml:space="preserve"><value>Correu</value></data>
   <data name="Emails_Header_Status" xml:space="preserve"><value>Estat</value></data>
@@ -1986,5 +1990,40 @@
   <data name="Issue_Assignee_Updated" xml:space="preserve"><value>Assignació actualitzada.</value></data>
   <data name="Issue_Section_Updated" xml:space="preserve"><value>Secció actualitzada.</value></data>
   <data name="Issue_GitHub_Linked" xml:space="preserve"><value>Vinculada amb GitHub.</value></data>
+
+  <data name="Welcome_Title" xml:space="preserve"><value>Benvinguda</value></data>
+  <data name="Welcome_Heading" xml:space="preserve"><value>Ja hi ets.</value></data>
+  <data name="Welcome_Subtitle" xml:space="preserve"><value>La teva entrada per a Elsewhere 2026 està confirmada.</value></data>
+  <data name="Welcome_ShiftsTitle" xml:space="preserve"><value>Ara fem que això passi entre tots.</value></data>
+  <data name="Welcome_ShiftsBody" xml:space="preserve"><value>Elsewhere no és un festival on véns — és un que ajudes a construir. Cada human tria torns: muntatge abans, operació durant i desmuntatge després.</value></data>
+  <data name="Welcome_ShiftsBody2" xml:space="preserve"><value>Per veure els torns i apuntar-t'hi, necessites un compte a Humans. Només porta un parell de minuts.</value></data>
+  <data name="Welcome_CTA" xml:space="preserve"><value>Inicia sessió o crea un compte</value></data>
+  <data name="Welcome_Footer" xml:space="preserve"><value>Ja tens compte? El mateix botó — inicia sessió i arribaràs directament als torns.</value></data>
+  <data name="Welcome_Contact" xml:space="preserve"><value>Preguntes? Escriu-nos a</value></data>
+
+  <!-- Google sync removal notifications (issue peterdrier/Humans#639) -->
+  <data name="Email_GoogleGroupRemoval_LossOfAccess_Subject" xml:space="preserve"><value>Has estat tret del grup {0}</value><comment>{0} = group email</comment></data>
+  <data name="Email_GoogleGroupRemoval_LossOfAccess_Body" xml:space="preserve"><value>&lt;h2&gt;Accés al grup retirat&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;S'ha retirat el teu accés al Grup de Google &lt;strong&gt;{1}&lt;/strong&gt; (&lt;code&gt;{2}&lt;/code&gt;).&lt;/p&gt;
+&lt;p&gt;Aquesta acció ha estat automàtica segons els teus equips i rols actuals a Nobodies. Ja no rebràs els missatges enviats a aquest grup.&lt;/p&gt;
+&lt;p&gt;Si creus que això és un error, posa't en contacte amb la persona coordinadora del teu equip.&lt;/p&gt;
+&lt;p&gt;L'equip de Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = group display name, {2} = group email</comment></data>
+
+  <data name="Email_GoogleDriveRemoval_LossOfAccess_Subject" xml:space="preserve"><value>S'ha retirat el teu accés a {0}</value><comment>{0} = folder name</comment></data>
+  <data name="Email_GoogleDriveRemoval_LossOfAccess_Body" xml:space="preserve"><value>&lt;h2&gt;Accés a Drive retirat&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;S'ha retirat el teu accés a la carpeta compartida &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;Aquesta acció ha estat automàtica segons els teus equips i rols actuals a Nobodies.&lt;/p&gt;
+&lt;p&gt;Si creus que això és un error, posa't en contacte amb la persona coordinadora del teu equip.&lt;/p&gt;
+&lt;p&gt;L'equip de Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = folder name</comment></data>
+
+  <data name="Email_GoogleAccessRemoval_SecondaryCleanup_Subject" xml:space="preserve"><value>{0} ja no té accés als grups de Nobodies</value><comment>{0} = removed email</comment></data>
+  <data name="Email_GoogleAccessRemoval_SecondaryCleanup_Body" xml:space="preserve"><value>&lt;h2&gt;Correu secundari netejat&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;L'adreça &lt;strong&gt;{1}&lt;/strong&gt; s'ha retirat dels grups i carpetes compartides de Nobodies.&lt;/p&gt;
+&lt;p&gt;La teva adreça principal a Nobodies és ara &lt;strong&gt;{2}&lt;/strong&gt;, i el teu accés als grups i carpetes compartides a través d'aquesta adreça no ha canviat. Aquest missatge serveix només perquè tinguis constància de l'adreça que s'ha netejat.&lt;/p&gt;
+&lt;p&gt;Si creus que {1} hauria de continuar tenint accés, posa't en contacte amb la persona coordinadora del teu equip.&lt;/p&gt;
+&lt;p&gt;L'equip de Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = removed email, {2} = current Google email</comment></data>
 
 </root>

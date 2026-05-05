@@ -18,6 +18,7 @@ public static class PolicyNames
     public const string TicketAdminOrAdmin = nameof(TicketAdminOrAdmin);
     public const string FeedbackAdminOrAdmin = nameof(FeedbackAdminOrAdmin);
     public const string FinanceAdminOrAdmin = nameof(FinanceAdminOrAdmin);
+    public const string StoreCatalogAdmin = nameof(StoreCatalogAdmin);
     public const string ReviewQueueAccess = nameof(ReviewQueueAccess);
     public const string ConsentCoordinatorBoardOrAdmin = nameof(ConsentCoordinatorBoardOrAdmin);
     public const string ShiftDashboardAccess = nameof(ShiftDashboardAccess);

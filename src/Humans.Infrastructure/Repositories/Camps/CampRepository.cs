@@ -691,8 +691,16 @@ public sealed class CampRepository : ICampRepository
         Guid campSeasonId, Guid userId, Instant now, Guid confirmedByUserId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
+        // Only consider non-Removed rows. The partial unique index
+        // IX_camp_members_active_unique permits multiple Removed rows alongside
+        // at most one non-Removed row per (season, user) — so a user who was
+        // removed in the past and re-requested can have both. Promoting an
+        // older Removed row would collide with the live Pending row on save.
         var existing = await ctx.CampMembers.FirstOrDefaultAsync(
-            m => m.CampSeasonId == campSeasonId && m.UserId == userId, ct);
+            m => m.CampSeasonId == campSeasonId
+                 && m.UserId == userId
+                 && m.Status != CampMemberStatus.Removed,
+            ct);
 
         if (existing is not null)
         {

@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace Humans.Application.Interfaces.Profiles;
 
 /// <summary>
@@ -9,7 +11,19 @@ namespace Humans.Application.Interfaces.Profiles;
 /// preserving the fully-warm invariant (removes only when the user's profile
 /// no longer exists).
 /// </summary>
+/// <remarks>
+/// Issue #635 (§15i): in non-Production environments the implementation logs
+/// the calling member + file (captured automatically via
+/// <see cref="CallerMemberNameAttribute"/> / <see cref="CallerFilePathAttribute"/>)
+/// so every Profile-affecting write that hits the invalidator is visible
+/// during preview-environment exploratory testing. Callers don't need to
+/// supply the caller-info params; the compiler fills them in at the callsite.
+/// </remarks>
 public interface IFullProfileInvalidator
 {
-    Task InvalidateAsync(Guid userId, CancellationToken ct = default);
+    Task InvalidateAsync(
+        Guid userId,
+        CancellationToken ct = default,
+        [CallerMemberName] string memberName = "",
+        [CallerFilePath] string filePath = "");
 }

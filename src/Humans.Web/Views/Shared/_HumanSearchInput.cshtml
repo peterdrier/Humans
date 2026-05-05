@@ -1,22 +1,49 @@
 @{
     var fieldName = ViewData["FieldName"] as string ?? "userId";
-    var inputId = "human-search-" + fieldName;
-    var dropdownId = "human-search-dropdown-" + fieldName;
-    var hiddenId = "human-search-hidden-" + fieldName;
+    // Multiple instances of this partial can render on the same page (e.g. one per
+    // role slot in the camp roles panel). Element IDs need to be unique even when
+    // they share the same form field name. Caller can pass an InstanceKey, otherwise
+    // we fall back to a random suffix.
+    var instanceKey = ViewData["InstanceKey"] as string;
+    if (string.IsNullOrEmpty(instanceKey))
+    {
+        instanceKey = fieldName + "-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+    }
+    var inputId = "human-search-" + instanceKey;
+    var dropdownId = "human-search-dropdown-" + instanceKey;
+    var hiddenId = "human-search-hidden-" + instanceKey;
+    var placeholder = ViewData["Placeholder"] as string ?? "Search by name…";
+    // Optional: a list of user IDs to exclude from search results (e.g. humans
+    // who already hold the role this picker is being used to fill).
+    var excludeIds = ViewData["ExcludeUserIds"] as IEnumerable<Guid>;
+    var excludeIdsJson = excludeIds is null
+        ? "[]"
+        : System.Text.Json.JsonSerializer.Serialize(excludeIds.Select(g => g.ToString()).ToArray());
+    // Optional scope hint passed through to /api/profiles/search. "name" narrows
+    // matching to display name + burner name only. Default keeps the broad search
+    // (bio / city / interests / CV) so existing callers don't change behavior.
+    var scope = ViewData["Scope"] as string;
+    var scopeJson = System.Text.Json.JsonSerializer.Serialize(scope ?? "");
 }
 
+@*
+    Robust dropdown rendering: the <ul> is reparented to <body> on show so it
+    can never be clipped by a parent card / column / overflow rule. Position is
+    `fixed` and JS-set just below the input via getBoundingClientRect. z-index
+    is below the navbar profile menu (3000) but above all page content (auto/0).
+*@
 <div class="human-search-wrapper position-relative" style="flex: 1;">
     <input type="text"
            id="@inputId"
            class="form-control"
-           placeholder="Search by name…"
+           placeholder="@placeholder"
            autocomplete="off" />
     <input type="hidden"
            id="@hiddenId"
            name="@fieldName" />
     <ul id="@dropdownId"
-        class="list-group position-absolute w-100 shadow-sm"
-        style="z-index: 1050; display: none; max-height: 260px; overflow-y: auto; top: 100%;">
+        class="list-group shadow-sm"
+        style="display: none; position: fixed; max-height: 260px; overflow-y: auto; z-index: 2000; background: var(--h-bg-card, #fff); border: 1px solid var(--h-border, #ccc); border-radius: 4px;">
     </ul>
 </div>
 
@@ -26,6 +53,37 @@
     var hiddenInput = document.getElementById('@hiddenId');
     var dropdown = document.getElementById('@dropdownId');
     var debounceTimer = null;
+    var isOpen = false;
+    var excludeIds = @Html.Raw(excludeIdsJson);
+    var scopeArg = @Html.Raw(scopeJson);
+
+    // Move dropdown to body once at init so no parent stacking/clip ever applies.
+    if (dropdown.parentNode !== document.body) {
+        document.body.appendChild(dropdown);
+    }
+
+    function positionDropdown() {
+        var rect = textInput.getBoundingClientRect();
+        dropdown.style.top = (rect.bottom + 2) + 'px';
+        dropdown.style.left = rect.left + 'px';
+        dropdown.style.width = rect.width + 'px';
+    }
+
+    function showDropdown() {
+        positionDropdown();
+        dropdown.style.display = 'block';
+        isOpen = true;
+        window.addEventListener('scroll', positionDropdown, true);
+        window.addEventListener('resize', positionDropdown);
+    }
+
+    function hideDropdown() {
+        dropdown.style.display = 'none';
+        dropdown.innerHTML = '';
+        isOpen = false;
+        window.removeEventListener('scroll', positionDropdown, true);
+        window.removeEventListener('resize', positionDropdown);
+    }
 
     textInput.addEventListener('input', function () {
         clearTimeout(debounceTimer);
@@ -44,21 +102,32 @@
         }
     });
 
-    document.addEventListener('click', function (e) {
-        if (!textInput.contains(e.target) && !dropdown.contains(e.target)) {
-            hideDropdown();
-        }
+    document.addEventListener('mousedown', function (e) {
+        if (!isOpen) return;
+        if (textInput.contains(e.target) || dropdown.contains(e.target)) return;
+        hideDropdown();
     });
 
     function fetchResults(q) {
-        fetch('/api/profiles/search?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+        var url = '/api/profiles/search?q=' + encodeURIComponent(q);
+        if (scopeArg) url += '&scope=' + encodeURIComponent(scopeArg);
+        fetch(url, { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (results) { renderDropdown(results); })
-            .catch(function () { hideDropdown(); });
+            .catch(function (err) {
+                console.error('Human search fetch failed', err);
+                hideDropdown();
+            });
     }
 
     function renderDropdown(results) {
         dropdown.innerHTML = '';
+        // Drop anyone already filling the role this picker is for, so they
+        // can't be picked again (no need for the "already holds this role"
+        // server-side error in the common case).
+        if (excludeIds && excludeIds.length > 0) {
+            results = results.filter(function (r) { return excludeIds.indexOf(r.userId) === -1; });
+        }
         if (!results || results.length === 0) {
             hideDropdown();
             return;
@@ -67,7 +136,8 @@
             var li = document.createElement('li');
             li.className = 'list-group-item list-group-item-action py-2 px-3';
             li.style.cursor = 'pointer';
-            var label = r.displayName;
+            // Both fields escaped — they end up in innerHTML alongside trusted markup.
+            var label = escapeHtml(r.displayName);
             if (r.burnerName) {
                 label += ' <span class="text-muted small">(' + escapeHtml(r.burnerName) + ')</span>';
             }
@@ -80,12 +150,7 @@
             });
             dropdown.appendChild(li);
         });
-        dropdown.style.display = '';
-    }
-
-    function hideDropdown() {
-        dropdown.style.display = 'none';
-        dropdown.innerHTML = '';
+        showDropdown();
     }
 
     @await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")

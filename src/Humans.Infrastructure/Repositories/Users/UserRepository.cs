@@ -545,7 +545,7 @@ public sealed class UserRepository : IUserRepository
         if (user is null)
             return null;
 
-        var originalEmail = user.GetEffectiveEmail();
+        var originalEmail = user.Email;
         var originalDisplayName = user.DisplayName;
         var preferredLanguage = user.PreferredLanguage;
 
@@ -598,6 +598,16 @@ public sealed class UserRepository : IUserRepository
         return await ctx.EventParticipations
             .AsNoTracking()
             .Where(ep => ep.Year == year)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<EventParticipation>> GetEventParticipationsByUserIdAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.EventParticipations
+            .AsNoTracking()
+            .Where(ep => ep.UserId == userId)
             .ToListAsync(ct);
     }
 

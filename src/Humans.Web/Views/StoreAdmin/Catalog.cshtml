@@ -1,0 +1,99 @@
+@model StoreCatalogAdminViewModel
+@{
+    ViewData["Title"] = "Store Catalog";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Store Catalog — @Model.Year</h1>
+    <a asp-action="Edit" class="btn btn-primary">
+        <i class="fa-solid fa-plus me-1"></i>Create product
+    </a>
+</div>
+
+<vc:temp-data-alerts />
+
+@if (Model.Products.Count == 0)
+{
+    <div class="card">
+        <div class="card-body text-center py-4 text-muted">
+            No products defined for @Model.Year. Create one to get started.
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-striped mb-0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th class="text-end">Unit price</th>
+                        <th class="text-end">VAT %</th>
+                        <th class="text-end">Deposit</th>
+                        <th>Orderable until</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model.Products)
+                    {
+                        <tr class="@(p.IsActive ? string.Empty : "text-muted")">
+                            <td>
+                                <strong>@p.Name</strong>
+                                @if (!string.IsNullOrWhiteSpace(p.Description))
+                                {
+                                    <div class="small text-muted">@p.Description</div>
+                                }
+                            </td>
+                            <td class="text-end">@p.UnitPriceEur.ToString("0.00") €</td>
+                            <td class="text-end">@p.VatRatePercent.ToString("0.##")</td>
+                            <td class="text-end">
+                                @(p.DepositAmountEur is { } d ? d.ToString("0.00") + " €" : "—")
+                            </td>
+                            <td>@p.OrderableUntil.ToDisplayDate()</td>
+                            <td>
+                                @if (p.IsActive)
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Inactive</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <a asp-action="Edit" asp-route-id="@p.Id" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fa-solid fa-pen me-1"></i>Edit
+                                </a>
+                                @if (p.IsActive)
+                                {
+                                    <form asp-action="Deactivate" asp-route-id="@p.Id" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                data-confirm="Deactivate &quot;@p.Name&quot;? It will no longer be orderable but historical lines remain.">
+                                            <i class="fa-solid fa-eye-slash me-1"></i>Deactivate
+                                        </button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script nonce="@Context.Items["CspNonce"]">
+        document.querySelectorAll('[data-confirm]').forEach(function (button) {
+            button.addEventListener('click', function (e) {
+                if (!confirm(this.getAttribute('data-confirm'))) {
+                    e.preventDefault();
+                }
+            });
+        });
+    </script>
+}

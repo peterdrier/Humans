@@ -39,32 +39,18 @@ public class User : IdentityUser<Guid>
     public Instant? LastLoginAt { get; set; }
 
     /// <summary>
-    /// Navigation property to the member profile.
-    /// </summary>
-    public Profile? Profile { get; set; }
-
-    /// <summary>
-    /// Navigation property to role assignments.
-    /// </summary>
-    public ICollection<RoleAssignment> RoleAssignments { get; } = new List<RoleAssignment>();
-
-    /// <summary>
-    /// Navigation property to consent records.
-    /// </summary>
-    public ICollection<ConsentRecord> ConsentRecords { get; } = new List<ConsentRecord>();
-
-    /// <summary>
-    /// Navigation property to applications.
-    /// </summary>
-    public ICollection<Application> Applications { get; } = new List<Application>();
-
-    /// <summary>
-    /// Navigation property to team memberships.
-    /// </summary>
-    public ICollection<TeamMember> TeamMemberships { get; } = new List<TeamMember>();
-
-    /// <summary>
-    /// Navigation property to email addresses.
+    /// Navigation property to email addresses. Issue #635 (§15i): the only
+    /// cross-domain nav still declared on User. Required by the
+    /// <see cref="Email"/> / <see cref="EmailConfirmed"/> overrides which
+    /// compute their values from the loaded UserEmails collection. External
+    /// readers do not traverse this nav — they go through
+    /// <c>IUserEmailRepository</c> / <c>IUserEmailService</c> /
+    /// <c>FullProfile.PrimaryEmail</c> instead. The other six User-side navs
+    /// (<c>Profile</c>, <c>RoleAssignments</c>, <c>ConsentRecords</c>,
+    /// <c>Applications</c>, <c>TeamMemberships</c>,
+    /// <c>CommunicationPreferences</c>) and the <c>GetEffectiveEmail()</c>
+    /// method were removed; their inverse-side EF configurations now own the
+    /// schema-level FK definitions.
     /// </summary>
     public ICollection<UserEmail> UserEmails { get; } = new List<UserEmail>();
 
@@ -106,11 +92,22 @@ public class User : IdentityUser<Guid>
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Issue #635 (§15i): NormalizedEmail is shadow-populated by Identity but
+    /// is not the canonical read path. Application code should use
+    /// <see cref="Email"/> (overridden, computed from <see cref="UserEmails"/>)
+    /// or query <c>IUserEmailRepository</c> directly. The override exists
+    /// solely to attach the obsolete diagnostic; behavior is unchanged so
+    /// Identity machinery keeps working.
+    /// </remarks>
+#pragma warning disable CS0809 // Obsolete override of non-obsolete base — intentional: marks application reads as non-canonical.
+    [Obsolete("NormalizedEmail is shadow-populated by Identity. Use User.Email or IUserEmailRepository for canonical email lookup.", DiagnosticId = "HUM_USER_NORMALIZEDEMAIL", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/635")]
     public override string? NormalizedEmail
     {
         get => Email?.ToUpperInvariant();
         set => base.NormalizedEmail = value;
     }
+#pragma warning restore CS0809
 
     /// <inheritdoc />
     public override bool EmailConfirmed
@@ -156,12 +153,6 @@ public class User : IdentityUser<Guid>
         get => base.NormalizedUserName ?? Id.ToString().ToUpperInvariant();
         set => base.NormalizedUserName = value;
     }
-
-    /// <summary>
-    /// Effective email for system notifications. Requires
-    /// <see cref="UserEmails"/> to be loaded.
-    /// </summary>
-    public string? GetEffectiveEmail() => Email;
 
     /// <summary>
     /// When the last re-consent reminder email was sent (for rate limiting).
@@ -228,12 +219,9 @@ public class User : IdentityUser<Guid>
     public string? ExternalSourceId { get; set; }
 
     /// <summary>
-    /// Navigation property to communication preferences.
-    /// </summary>
-    public ICollection<CommunicationPreference> CommunicationPreferences { get; } = new List<CommunicationPreference>();
-
-    /// <summary>
-    /// Navigation property to event participation records.
+    /// Navigation property to event participation records. Owned by the
+    /// Users section (per <c>docs/sections/Users.md</c>); not part of the
+    /// §15i nav-strip.
     /// </summary>
     public ICollection<EventParticipation> EventParticipations { get; } = new List<EventParticipation>();
 

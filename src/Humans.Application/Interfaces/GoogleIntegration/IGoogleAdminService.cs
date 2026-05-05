@@ -45,6 +45,17 @@ public interface IGoogleAdminService
         CancellationToken ct = default);
 
     /// <summary>
+    /// Resets the password for a @nobodies.team account AND grabs a single
+    /// fresh backup verification code so the admin can hand both to a
+    /// locked-out human in one transaction (the user can sign in with the
+    /// temp password and the code regardless of 2FA-enrollment state).
+    /// Writes two audit entries (password reset + backup codes generated).
+    /// </summary>
+    Task<WorkspaceRecoveryCredentialsResult> ResetPasswordAndGenerate2FaAsync(
+        string email, Guid actorUserId,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Links a @nobodies.team account to a user.
     /// </summary>
     Task<WorkspaceAccountActionResult> LinkAccountAsync(
@@ -100,6 +111,7 @@ public record WorkspaceAccountListResult(
     int LinkedAccounts,
     int UnlinkedAccounts,
     int NotPrimaryCount,
+    int MissingTwoFactorCount,
     string? ErrorMessage = null);
 
 /// <summary>
@@ -114,7 +126,9 @@ public record WorkspaceAccountInfo(
     DateTime? LastLoginTime,
     Guid? MatchedUserId,
     string? MatchedDisplayName,
-    bool IsUsedAsPrimary);
+    bool IsUsedAsPrimary,
+    bool IsEnrolledIn2Sv,
+    string? RecoveryEmail = null);
 
 /// <summary>
 /// Result of a workspace account action (provision, suspend, reactivate, reset, link).
@@ -124,6 +138,30 @@ public record WorkspaceAccountActionResult(
     string? Message = null,
     string? ErrorMessage = null,
     string? TemporaryPassword = null);
+
+/// <summary>
+/// Result of generating backup verification codes. Codes are returned once and
+/// must be delivered to the human immediately — they cannot be retrieved again.
+/// </summary>
+public record WorkspaceBackupCodesResult(
+    bool Success,
+    string? Email = null,
+    IReadOnlyList<string>? Codes = null,
+    string? Message = null,
+    string? ErrorMessage = null);
+
+/// <summary>
+/// Result of the combined password-reset + single-backup-code recovery flow.
+/// Both fields are one-shot — they can never be retrieved again after
+/// the admin closes the modal.
+/// </summary>
+public record WorkspaceRecoveryCredentialsResult(
+    bool Success,
+    string? Email = null,
+    string? TempPassword = null,
+    string? BackupCode = null,
+    string? Message = null,
+    string? ErrorMessage = null);
 
 /// <summary>
 /// Result of applying email backfill corrections.

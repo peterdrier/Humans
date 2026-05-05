@@ -11,6 +11,7 @@ using Humans.Web.Constants;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 
@@ -587,15 +588,30 @@ public class GoogleController : HumansControllerBase
                 LastLoginTime = a.LastLoginTime,
                 MatchedUserId = a.MatchedUserId,
                 MatchedDisplayName = a.MatchedDisplayName,
-                IsUsedAsPrimary = a.IsUsedAsPrimary
+                IsUsedAsPrimary = a.IsUsedAsPrimary,
+                IsEnrolledIn2Sv = a.IsEnrolledIn2Sv,
+                RecoveryEmail = a.RecoveryEmail
             }).ToList(),
             TotalAccounts = result.TotalAccounts,
             ActiveAccounts = result.ActiveAccounts,
             SuspendedAccounts = result.SuspendedAccounts,
             LinkedAccounts = result.LinkedAccounts,
             UnlinkedAccounts = result.UnlinkedAccounts,
-            NotPrimaryCount = result.NotPrimaryCount
+            NotPrimaryCount = result.NotPrimaryCount,
+            MissingTwoFactorCount = result.MissingTwoFactorCount
         };
+
+        // If a previous POST just issued recovery credentials (password reset
+        // ± a 2FA backup code), surface them once via a modal. TempData is
+        // single-use — once the page renders, the secrets are gone.
+        if (TempData[TempDataKeys.WorkspaceRecoveryCredentials] is string credsJson)
+        {
+            var credsVm = System.Text.Json.JsonSerializer.Deserialize<WorkspaceRecoveryCredentialsViewModel>(credsJson);
+            if (credsVm is not null)
+            {
+                ViewBag.RecoveryCredentials = credsVm;
+            }
+        }
 
         return View(model);
     }
@@ -693,11 +709,66 @@ public class GoogleController : HumansControllerBase
             email, currentUser.Id);
 
         if (result.Success)
-            SetSuccess(result.Message!);
+        {
+            CarryRecoveryCredentials(new WorkspaceRecoveryCredentialsViewModel
+            {
+                Email = email,
+                TempPassword = result.TemporaryPassword!,
+                BackupCode = null
+            });
+            SetSuccess($"Password reset for {email}. Deliver the new password securely.");
+        }
         else
-            SetError(result.ErrorMessage!);
+        {
+            SetError(result.ErrorMessage ?? $"Failed to reset password for {email}.");
+        }
 
         return RedirectToAction(nameof(Accounts));
+    }
+
+    [HttpPost("Accounts/ResetPasswordAndGenerate2Fa")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ResetPasswordAndGenerate2Fa(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return BadRequest();
+        }
+
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser is null) return Unauthorized();
+
+        var result = await _googleAdminService.ResetPasswordAndGenerate2FaAsync(
+            email, currentUser.Id);
+
+        if (result.Success && !string.IsNullOrEmpty(result.TempPassword))
+        {
+            CarryRecoveryCredentials(new WorkspaceRecoveryCredentialsViewModel
+            {
+                Email = result.Email ?? email,
+                TempPassword = result.TempPassword,
+                BackupCode = result.BackupCode
+            });
+            if (!string.IsNullOrEmpty(result.BackupCode))
+                SetSuccess(result.Message ?? $"Recovery credentials issued for {email}. Deliver them securely.");
+            else
+                SetError(result.Message ?? $"Password reset for {email}, but backup-code generation failed. Deliver the password and retry 2FA.");
+        }
+        else
+        {
+            SetError(result.ErrorMessage ?? $"Failed to issue recovery credentials for {email}.");
+        }
+
+        return RedirectToAction(nameof(Accounts));
+    }
+
+    private void CarryRecoveryCredentials(WorkspaceRecoveryCredentialsViewModel vm)
+    {
+        // Single-use across the PRG redirect — a refresh of /Google/Accounts
+        // after dismissing the modal cannot re-expose the secrets.
+        TempData[TempDataKeys.WorkspaceRecoveryCredentials] =
+            System.Text.Json.JsonSerializer.Serialize(vm);
     }
 
     [HttpPost("Accounts/Link")]
@@ -736,23 +807,26 @@ public class GoogleController : HumansControllerBase
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SyncOutbox(
         [FromServices] IUserService userService,
-        [FromServices] ITeamService teamService)
+        [FromServices] ITeamService teamService,
+        [FromServices] IProfileService profileService)
     {
         var events = (await _googleSyncService.GetRecentOutboxEventsAsync(200)).ToList();
 
         // Resolve display info for events via section-owned services (§15 Part 2c,
         // design-rules §2a — controllers go through service interfaces, not repos).
+        // Issue #635 (§15i): GoogleEmail derives from FullProfile.GoogleEmail
+        // (which reads the IsGoogle UserEmail row); fall back to user.Email
+        // (the canonical primary, computed via the override) when no
+        // IsGoogle row is set.
         var userIds = events.Select(e => e.UserId).Distinct().ToList();
         var teamIds = events.Select(e => e.TeamId).Distinct().ToList();
         var users = await userService.GetByIdsWithEmailsAsync(userIds);
-        var googleEmailLookup = users.ToDictionary(
-            kvp => kvp.Key,
-            kvp => kvp.Value.UserEmails
-                .Where(e => e.IsVerified && e.IsGoogle)
-                .Select(e => e.Email)
-                .FirstOrDefault()
-                ?? kvp.Value.Email
-                ?? "unknown");
+        var googleEmailLookup = new Dictionary<Guid, string>();
+        foreach (var (userId, user) in users)
+        {
+            var fullProfile = await profileService.GetFullProfileAsync(userId);
+            googleEmailLookup[userId] = fullProfile?.GoogleEmail ?? user.Email ?? "unknown";
+        }
         var displayNameLookup = users.ToDictionary(
             kvp => kvp.Key, kvp => kvp.Value.DisplayName);
         var teamLookup = (await teamService.GetTeamNamesByIdsAsync(teamIds))

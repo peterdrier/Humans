@@ -61,12 +61,49 @@ If `--dry-run`: show the parsed plan, which batches would run in parallel vs seq
 
 For each unique issue across all batches being executed, fetch the full spec:
 ```bash
-gh issue view {number} --repo nobodies-collective/Humans --json title,body
+gh issue view {number} --repo nobodies-collective/Humans --json title,body,labels,author,comments
 ```
 
-Extract acceptance criteria from each issue body. Store as structured data to pass to batch workers.
+The `labels` and `author` fields are required by the Step 2.5 pre-flight gate (label-based classification + author check); `comments` is required by the project's hook (Peter's later comments often flip OP intent). Extract acceptance criteria from each issue body. Store labels, author login, and comments alongside the body. Pass as structured data to batch workers.
 
 **Do this BEFORE launching agents** — fetch once, pass to each agent. Don't make each agent fetch independently.
+
+## Step 2.5: Privilege / spec-change pre-flight (HARD GATE)
+
+For each issue spec fetched in Step 2, scan it for privilege/spec-change signals before any agent is launched. ANY of the following triggers the gate:
+
+- **Label check (highest signal):** if the issue carries `needs-owner-review` or `blocked:needs-design`, treat it as gated regardless of body content. Triage already classified this issue as needing Peter's direction; the label is the canonical signal — keyword greps below are belt-and-suspenders for issues that bypassed triage classification.
+- **Keyword grep on the spec body:** `permission`, `privilege`, `role`, `scope`, `allowlist`, `CORS`, `[Authorize]`, `Admin` (as a grant), `default.*level`, `fileOrganizer`, `ContentManager`, `writer`, `Contributor`, `bypass`, `override.*auth`, `AllowAnonymous`
+- **Spec-change body keywords (broader than privilege):** `eligibility`, `workflow step`, `consent step`, `new endpoint`, `public api`, `who can`, `policy change`, `default behavior` — these can flag spec changes the privilege list misses
+- **Author check:** if `.author.login != "peterdrier"`, raise the bar further — the spec was authored by triage or a teammate, not Peter
+- **Source check:** if the issue body links to a feedback ID (pattern `fb:[a-f0-9]+`), raise the bar further — this originated from a user request
+
+**Two gate paths — privilege/label vs spec-change-only — handled differently for Peter-authored issues.**
+
+Per `memory/process/user-feedback-spec-changes-need-review.md`: *"This rule does NOT block Peter-authored issues — Peter authoring an issue IS his approval for that change."* Per `memory/process/privilege-changes-need-explicit-approval.md`: privilege changes need explicit per-change approval *regardless of who authored the issue*. The two atoms ask for different behavior; the gate must reflect that.
+
+**Path 1 — HARD GATE (privilege keyword OR label hit, regardless of author):**
+
+Triggers when the issue hits the label check OR the privilege keyword filter. Author identity does NOT exempt — privilege changes need fresh per-change approval even from Peter.
+
+1. STOP — do not dispatch any agents yet, do not enter Step 3
+2. Show Peter: the issue number, title, which trigger fired (label / privilege keyword), the matched signal(s), the issue's author login, any `fb:` feedback reference, and the first ~20 lines of the issue body
+3. Ask explicitly: "This issue would `<change>` for `<who>`. Confirm before I dispatch a worker?" — phrase it as a capability/spec change, not a code change
+4. Wait for explicit "yes, proceed" — silence, a question, or "what do you think?" is NOT approval
+5. If Peter says no or wants to redirect, drop the issue from the batch and continue with the rest of the sprint
+
+**Path 2 — SPEC-CHANGE-ONLY (no privilege keyword, no label hit):**
+
+Triggers when ONLY the spec-change keyword filter fires (and neither path 1 trigger does). Behavior depends on author + feedback origin:
+
+- If `.author.login == "peterdrier"` AND no `fb:[a-f0-9]+` reference in the body → **soft notice only**: print one line noting the spec-change keyword(s) hit and which issue, then proceed without requiring "yes, proceed". Peter authored the issue; that IS his approval. The notice is for visibility, not gating.
+- If author is not Peter, OR there's an `fb:` feedback reference, OR both → fall through to the HARD GATE in path 1 (steps 1–5 above). The spec change wasn't authored by Peter directly, so explicit per-issue approval is required.
+
+**Bar-raising signals.** Author and feedback-id checks don't trigger the gate on their own (a Peter-authored, mechanical, no-keyword issue doesn't need this gate at all). But when combined with a path 1 trigger (privilege keyword or label), they tighten the framing — call out the non-Peter author or the `fb:` origin in step 2's display so Peter sees that his approval is required and is not a re-confirmation of his own prior decision.
+
+This gate fires even when the sprint plan already labeled the issue with a tier — sprint planning is fallible. The worker prompt construction in Step 6 must NEVER include a privilege-change OR spec-change issue without this gate having fired and Peter having explicitly approved.
+
+Per `memory/process/privilege-changes-need-explicit-approval.md` and `memory/process/user-feedback-spec-changes-need-review.md`.
 
 ## Step 3: Determine execution plan
 

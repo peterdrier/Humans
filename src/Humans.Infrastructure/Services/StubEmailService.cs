@@ -279,6 +279,46 @@ public class StubEmailService : IEmailService
         return Task.CompletedTask;
     }
 
+    public Task SendGoogleGroupRemovalLossOfAccessAsync(
+        string removedEmail,
+        string userName,
+        string groupName,
+        string groupEmail,
+        string? culture = null,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation(
+            "[STUB] Would send Google group removal (loss-of-access) to {Email} ({UserName}) [Culture: {Culture}] group {GroupName} ({GroupEmail})",
+            removedEmail, userName, culture, groupName, groupEmail);
+        return Task.CompletedTask;
+    }
+
+    public Task SendGoogleDriveRemovalLossOfAccessAsync(
+        string removedEmail,
+        string userName,
+        string folderName,
+        string? culture = null,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation(
+            "[STUB] Would send Google Drive removal (loss-of-access) to {Email} ({UserName}) [Culture: {Culture}] folder {FolderName}",
+            removedEmail, userName, culture, folderName);
+        return Task.CompletedTask;
+    }
+
+    public Task SendGoogleAccessRemovalSecondaryCleanupAsync(
+        string removedEmail,
+        string userName,
+        string currentGoogleEmail,
+        string? culture = null,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation(
+            "[STUB] Would send Google access removal (secondary cleanup) to {Email} ({UserName}) [Culture: {Culture}] primary now {Primary}",
+            removedEmail, userName, culture, currentGoogleEmail);
+        return Task.CompletedTask;
+    }
+
     public Task SendIssueCommentAsync(
         string to,
         string displayName,

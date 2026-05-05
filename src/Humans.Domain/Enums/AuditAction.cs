@@ -65,6 +65,10 @@ public enum AuditAction
     WorkspaceAccountReactivated,
     WorkspaceAccountPasswordReset,
     WorkspaceAccountLinked,
+    WorkspaceAccountBackupCodesGenerated,
+    // Reserved — was wired briefly during PR #254 development. No code path
+    // currently writes this value; do not remove (audit enum is positional).
+    WorkspaceAccountBackupCodesInvalidated,
     AccountMergeRequested,
     AccountMergeAccepted,
     AccountMergeRejected,
@@ -108,4 +112,12 @@ public enum AuditAction
     UserEmailAdded,
     ShiftSignupCreated,
     ShiftSignupReassigned,
+    StoreOrderCreated,
+    StoreLineAdded,
+    StoreLineRemoved,
+    StoreCounterpartyEdited,
+    StoreProductCreated,
+    StoreProductUpdated,
+    StoreProductDeactivated,
+    StorePaymentRecorded,
 }

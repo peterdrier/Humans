@@ -1,0 +1,39 @@
+@{
+    ViewData["Title"] = Localizer["Welcome_Title"].Value;
+    var shiftsUrl = Url.Action("Index", "Shifts");
+    var loginUrl = Url.Action("Login", "Account", new { returnUrl = shiftsUrl });
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+
+        <section class="welcome-hero text-center">
+            <div class="welcome-checkmark">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <h1 class="welcome-heading">@Localizer["Welcome_Heading"]</h1>
+            <p class="welcome-subtitle">@Localizer["Welcome_Subtitle"]</p>
+        </section>
+
+        <div class="welcome-shifts-card">
+            <h2 class="welcome-shifts-title">@Localizer["Welcome_ShiftsTitle"]</h2>
+            <p class="welcome-shifts-body">@Localizer["Welcome_ShiftsBody"]</p>
+            <p class="welcome-shifts-body">@Localizer["Welcome_ShiftsBody2"]</p>
+        </div>
+
+        <div class="text-center mb-3">
+            <a href="@loginUrl" class="btn btn-primary btn-lg welcome-cta">
+                <i class="fa-solid fa-right-to-bracket me-2"></i>@Localizer["Welcome_CTA"]
+            </a>
+        </div>
+
+        <p class="welcome-footer text-center">@Localizer["Welcome_Footer"]</p>
+
+        <div class="welcome-contact text-center">
+            <p>@Localizer["Welcome_Contact"]
+                <a href="mailto:hola@nobodies.team">hola@nobodies.team</a>
+            </p>
+        </div>
+
+    </div>
+</div>

@@ -157,7 +157,7 @@ public class SyncLegalDocumentsJob : IRecurringJob
                 continue;
             }
 
-            var effectiveEmail = user.GetEffectiveEmail();
+            var effectiveEmail = user.Email;
             if (effectiveEmail is null)
             {
                 continue;

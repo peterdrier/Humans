@@ -333,6 +333,44 @@ public class SmtpEmailService : IEmailService
         _metrics.RecordEmailSent("issue_comment");
     }
 
+    public async Task SendGoogleGroupRemovalLossOfAccessAsync(
+        string removedEmail,
+        string userName,
+        string groupName,
+        string groupEmail,
+        string? culture = null,
+        CancellationToken cancellationToken = default)
+    {
+        var content = _renderer.RenderGoogleGroupRemovalLossOfAccess(userName, groupName, groupEmail, culture);
+        await SendEmailAsync(removedEmail, content.Subject, content.HtmlBody, cancellationToken);
+        _metrics.RecordEmailSent("google_group_removal_loss_of_access");
+    }
+
+    public async Task SendGoogleDriveRemovalLossOfAccessAsync(
+        string removedEmail,
+        string userName,
+        string folderName,
+        string? culture = null,
+        CancellationToken cancellationToken = default)
+    {
+        var content = _renderer.RenderGoogleDriveRemovalLossOfAccess(userName, folderName, culture);
+        await SendEmailAsync(removedEmail, content.Subject, content.HtmlBody, cancellationToken);
+        _metrics.RecordEmailSent("google_drive_removal_loss_of_access");
+    }
+
+    public async Task SendGoogleAccessRemovalSecondaryCleanupAsync(
+        string removedEmail,
+        string userName,
+        string currentGoogleEmail,
+        string? culture = null,
+        CancellationToken cancellationToken = default)
+    {
+        var content = _renderer.RenderGoogleAccessRemovalSecondaryCleanup(
+            userName, removedEmail, currentGoogleEmail, culture);
+        await SendEmailAsync(removedEmail, content.Subject, content.HtmlBody, cancellationToken);
+        _metrics.RecordEmailSent("google_access_removal_secondary_cleanup");
+    }
+
     private async Task SendEmailAsync(
         string toAddress,
         string subject,

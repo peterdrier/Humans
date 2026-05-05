@@ -70,6 +70,13 @@ public static class RoleNames
     public const string FinanceAdmin = "FinanceAdmin";
 
     /// <summary>
+    /// Store Administrator — Store-domain superset: catalog (products, prices, VAT, deposits,
+    /// deadlines), orders, payments, invoices, and treasury sync. FinanceAdmin retains parallel
+    /// access for accounting workflows.
+    /// </summary>
+    public const string StoreAdmin = "StoreAdmin";
+
+    /// <summary>
     /// Roles that Board and HumanAdmin are permitted to manage (assign/end).
     /// Used by both service-layer authorization and Web-layer role checks.
     /// </summary>
@@ -83,6 +90,7 @@ public static class RoleNames
         NoInfoAdmin,
         FeedbackAdmin,
         FinanceAdmin,
+        StoreAdmin,
         ConsentCoordinator,
         VolunteerCoordinator
     };

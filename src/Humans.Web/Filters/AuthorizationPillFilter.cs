@@ -16,6 +16,12 @@ namespace Humans.Web.Filters;
 /// </summary>
 public class AuthorizationPillFilter : IActionFilter
 {
+    // Synthetic pill label for users granted access via the IsAnyTeamManagerOrCoordinator
+    // requirement (department coordinator or sub-team manager). Not a real Identity
+    // role — only used for the pill's display string. Listed in PolicyRoles below
+    // alongside the role-based admins for any policy that admits team coordinators.
+    private const string TeamCoordinatorPillLabel = "TeamCoordinator";
+
     // Map raw role names to user-friendly display labels
     private static readonly Dictionary<string, string> RoleDisplayNames = new(StringComparer.Ordinal)
     {
@@ -29,7 +35,9 @@ public class AuthorizationPillFilter : IActionFilter
         [RoleNames.NoInfoAdmin] = "NoInfo Admin",
         [RoleNames.FeedbackAdmin] = "Feedback Admin",
         [RoleNames.HumanAdmin] = "Human Admin",
-        [RoleNames.FinanceAdmin] = "Finance Admin"
+        [RoleNames.FinanceAdmin] = "Finance Admin",
+        [TeamCoordinatorPillLabel] = "Team Coordinator",
+        [RoleNames.StoreAdmin] = "Store Admin"
     };
 
     // Map policy names to their constituent roles for pill display
@@ -46,10 +54,14 @@ public class AuthorizationPillFilter : IActionFilter
         [PolicyNames.TicketAdminOrAdmin] = [RoleNames.TicketAdmin, RoleNames.Admin],
         [PolicyNames.FeedbackAdminOrAdmin] = [RoleNames.FeedbackAdmin, RoleNames.Admin],
         [PolicyNames.FinanceAdminOrAdmin] = [RoleNames.FinanceAdmin, RoleNames.Admin],
+        [PolicyNames.StoreCatalogAdmin] = [RoleNames.StoreAdmin, RoleNames.FinanceAdmin, RoleNames.Admin],
         [PolicyNames.ReviewQueueAccess] = [RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator, RoleNames.Board, RoleNames.Admin],
         [PolicyNames.ConsentCoordinatorBoardOrAdmin] = [RoleNames.ConsentCoordinator, RoleNames.Board, RoleNames.Admin],
         [PolicyNames.ShiftDashboardAccess] = [RoleNames.Admin, RoleNames.NoInfoAdmin, RoleNames.VolunteerCoordinator],
-        [PolicyNames.ShiftDepartmentManager] = [RoleNames.Admin, RoleNames.NoInfoAdmin, RoleNames.VolunteerCoordinator],
+        // ShiftDepartmentManager admits the same admins PLUS any team coordinator /
+        // sub-team manager via IsAnyTeamManagerOrCoordinatorRequirement. The pill shows
+        // the full universe of accessors, not just admin roles.
+        [PolicyNames.ShiftDepartmentManager] = [RoleNames.Admin, RoleNames.NoInfoAdmin, RoleNames.VolunteerCoordinator, TeamCoordinatorPillLabel],
         [PolicyNames.PrivilegedSignupApprover] = [RoleNames.Admin, RoleNames.NoInfoAdmin],
         [PolicyNames.VolunteerManager] = [RoleNames.Admin, RoleNames.VolunteerCoordinator],
         [PolicyNames.MedicalDataViewer] = [RoleNames.Admin, RoleNames.NoInfoAdmin],
@@ -68,18 +80,29 @@ public class AuthorizationPillFilter : IActionFilter
         if (descriptor.MethodInfo.GetCustomAttributes<AllowAnonymousAttribute>(inherit: true).Any())
             return;
 
-        // Collect roles from [Authorize(Roles = "...")] and [Authorize(Policy = "...")] from action then controller
+        // Collect roles from [Authorize(Roles = "...")] and [Authorize(Policy = "...")].
+        // Action-level [Authorize] attributes are an OVERRIDE, not an addition: when an
+        // action carries its own [Authorize], the displayed pill must reflect ONLY that
+        // narrower restriction (otherwise the pill is a misleading union of both layers
+        // — e.g. ShiftDashboard's controller-wide ShiftDepartmentManager would bleed
+        // "Team Coordinator" into the pill on the SearchVolunteers/Voluntell actions
+        // that are actually gated by the narrower ShiftDashboardAccess).
         var roles = new HashSet<string>(StringComparer.Ordinal);
 
-        // Action-level attributes take precedence for display
         var actionAuthAttrs = descriptor.MethodInfo
-            .GetCustomAttributes<AuthorizeAttribute>(inherit: true);
-        CollectRolesFromAttributes(actionAuthAttrs, roles);
+            .GetCustomAttributes<AuthorizeAttribute>(inherit: true)
+            .ToList();
 
-        // Controller-level attributes
-        var controllerAuthAttrs = descriptor.ControllerTypeInfo
-            .GetCustomAttributes<AuthorizeAttribute>(inherit: true);
-        CollectRolesFromAttributes(controllerAuthAttrs, roles);
+        if (actionAuthAttrs.Count > 0)
+        {
+            CollectRolesFromAttributes(actionAuthAttrs, roles);
+        }
+        else
+        {
+            var controllerAuthAttrs = descriptor.ControllerTypeInfo
+                .GetCustomAttributes<AuthorizeAttribute>(inherit: true);
+            CollectRolesFromAttributes(controllerAuthAttrs, roles);
+        }
 
         // If no role-based restrictions, no pill to show
         if (roles.Count == 0)

@@ -20,6 +20,25 @@
 
         <vc:temp-data-alerts />
 
+        @if (Model.HighlightCategory is { } highlight && !highlight.IsAlwaysOn())
+        {
+            // Reuse the controller-built DisplayName (sourced from IClock for Ticketing year).
+            // Avoids a raw DateTime.UtcNow in the view — see memory/code/nodatime-for-dates.md.
+            var highlightName = Model.Categories.FirstOrDefault(c => c.Category == highlight)?.DisplayName
+                ?? highlight.ToDisplayName();
+            <div id="oneClickBanner"
+                 class="alert alert-warning d-flex align-items-center justify-content-between gap-3 mb-4"
+                 data-category="@highlight">
+                <div>
+                    <strong>@string.Format(Localizer["CommPrefs_OneClick_Prompt"].Value, highlightName)</strong>
+                    <div class="form-text mb-0">@Localizer["CommPrefs_OneClick_Hint"]</div>
+                </div>
+                <button type="button" id="oneClickUnsubscribe" class="btn btn-warning text-nowrap">
+                    @string.Format(Localizer["CommPrefs_OneClick_Button"].Value, highlightName)
+                </button>
+            </div>
+        }
+
         <div class="card mb-4">
             <div class="table-responsive">
                 <table class="table table-hover mb-0 align-middle">
@@ -35,7 +54,8 @@
                         {
                             var item = Model.Categories[i];
 
-                            <tr class="@(!item.EmailEditable ? "table-light" : "")">
+                            <tr class="@(!item.EmailEditable ? "table-light" : (Model.HighlightCategory == item.Category ? "table-warning" : ""))"
+                                data-category-row="@item.Category">
                                 <td>
                                     <div class="fw-semibold">@item.DisplayName</div>
                                     <div class="form-text mb-0">@item.Description</div>
@@ -138,6 +158,47 @@
             });
         });
     });
+
+    // One-click unsubscribe banner: fires the same UpdatePreference call with emailEnabled=false
+    // for the highlighted category, then collapses the banner and unchecks the matrix row.
+    var oneClickBtn = document.getElementById('oneClickUnsubscribe');
+    if (oneClickBtn) {
+        oneClickBtn.addEventListener('click', function () {
+            var banner = document.getElementById('oneClickBanner');
+            var category = banner.dataset.category;
+            var row = document.querySelector('[data-category-row="' + category + '"]');
+            var emailCb = row ? row.querySelector('[data-channel="email"]') : null;
+            var alertCb = row ? row.querySelector('[data-channel="alert"]') : null;
+
+            var body = new URLSearchParams();
+            body.append('category', category);
+            body.append('emailEnabled', 'false');
+            body.append('alertEnabled', alertCb ? alertCb.checked : true);
+            body.append('__RequestVerificationToken',
+                document.querySelector('input[name="__RequestVerificationToken"]').value);
+            @if (!string.IsNullOrEmpty(Model.UnsubscribeToken))
+            {
+                @:body.append('utoken', '@Html.Raw(Html.Encode(Model.UnsubscribeToken))');
+            }
+
+            oneClickBtn.disabled = true;
+            fetch('@Url.Action("UpdatePreference")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: body.toString()
+            }).then(function (resp) {
+                if (!resp.ok) throw new Error(resp.statusText);
+                if (emailCb) emailCb.checked = false;
+                banner.classList.remove('alert-warning');
+                banner.classList.add('alert-success');
+                banner.innerHTML = '<strong>@Html.Raw(Html.Encode(Localizer["CommPrefs_OneClick_Done"].Value))</strong>';
+            }).catch(function () {
+                banner.classList.remove('alert-warning');
+                banner.classList.add('alert-danger');
+                oneClickBtn.disabled = false;
+            });
+        });
+    }
 </script>
 }
 

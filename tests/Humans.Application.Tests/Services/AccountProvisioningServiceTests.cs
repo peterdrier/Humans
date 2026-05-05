@@ -170,6 +170,9 @@ public class AccountProvisioningServiceTests
         public Task<IReadOnlyList<EventParticipation>> GetAllParticipationsForYearAsync(
             int year, CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task<IReadOnlyList<EventParticipation>> GetEventParticipationsByUserIdAsync(
+            Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
         public Task<EventParticipation?> UpsertParticipationAsync(
             Guid userId, int year, ParticipationStatus status,
             ParticipationSource source, Instant? declaredAt, CancellationToken ct = default) =>
@@ -347,6 +350,7 @@ public class AccountProvisioningServiceTests
         _service = new AccountProvisioningService(
             _userRepo,
             _userEmailRepo,
+            Substitute.For<Humans.Application.Interfaces.Profiles.IProfileService>(),
             _userManager,
             new StubAuditLog(),
             _clock,

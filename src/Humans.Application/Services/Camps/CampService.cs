@@ -178,21 +178,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     public Task<Camp?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
         _repo.GetBySlugAsync(slug, cancellationToken);
 
-    public async Task<CampDetailData?> GetCampDetailAsync(
-        string slug,
-        int? preferredYear = null,
-        bool fallbackToLatestSeason = true,
-        CancellationToken cancellationToken = default)
-    {
-        var camp = await _repo.GetBySlugAsync(slug, cancellationToken);
-        if (camp is null)
-        {
-            return null;
-        }
-
-        return await BuildCampDetailDataAsync(camp, preferredYear, fallbackToLatestSeason, cancellationToken);
-    }
-
     public async Task<CampDetailData?> BuildCampDetailDataAsync(
         Camp camp,
         int? preferredYear = null,
@@ -283,16 +268,26 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         var year = settings.PublicYear;
         var camps = await GetCampsForYearAsync(year, cancellationToken);
 
+        // Pull the user's currently-led camps once so we can both (a) pin them to the
+        // top of the public listing and (b) build the "my pending camps" panel below.
+        var leadCampIds = new HashSet<Guid>();
+        IReadOnlyList<Camp> leadCamps = Array.Empty<Camp>();
+        if (userId.HasValue)
+        {
+            leadCamps = await _repo.GetCampsByLeadUserIdAsync(userId.Value, cancellationToken);
+            leadCampIds = leadCamps.Select(c => c.Id).ToHashSet();
+        }
+
         var cards = ApplyCampDirectoryFilter(
             camps.Where(c => c.HasPublicSeasonForYear(year)).Select(camp => CreateCampDirectoryCard(camp, year)),
             filter)
-            .OrderBy(card => card.Name, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(card => leadCampIds.Contains(card.Id) ? 0 : 1)
+            .ThenBy(card => card.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var myCamps = new List<CampDirectoryCard>();
         if (userId.HasValue)
         {
-            var leadCamps = await _repo.GetCampsByLeadUserIdAsync(userId.Value, cancellationToken);
             myCamps = leadCamps
                 .Where(camp => camp.Seasons.Any(season =>
                     season.Year == year &&
@@ -371,13 +366,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         return camps.ToList();
     }
 
-    public async Task<List<Camp>> GetCampsByLeadUserIdAsync(
-        Guid userId, CancellationToken cancellationToken = default)
-    {
-        var camps = await _repo.GetCampsByLeadUserIdAsync(userId, cancellationToken);
-        return camps.ToList();
-    }
-
     public async Task<CampSettings> GetSettingsAsync(CancellationToken cancellationToken = default)
     {
         var cached = await _cache.GetOrCreateAsync(
@@ -419,6 +407,13 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         if (filter?.AcceptingMembers == true)
         {
             camps = camps.Where(card => card.AcceptingMembers == YesNoMaybe.Yes);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter?.Search))
+        {
+            var q = filter.Search.Trim();
+            camps = camps.Where(card =>
+                card.Name.Contains(q, StringComparison.OrdinalIgnoreCase));
         }
 
         return camps;
@@ -859,40 +854,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         }
     }
 
-    public async Task SetSeasonFullAsync(Guid seasonId, CancellationToken cancellationToken = default)
-    {
-        var now = _clock.GetCurrentInstant();
-        var year = 0;
-        var campId = Guid.Empty;
-
-        var found = await _repo.UpdateSeasonAsync(seasonId, season =>
-        {
-            if (season.Status != CampSeasonStatus.Active)
-            {
-                throw new InvalidOperationException($"Cannot set full on a season with status {season.Status}.");
-            }
-
-            season.Status = CampSeasonStatus.Full;
-            season.UpdatedAt = now;
-
-            year = season.Year;
-            campId = season.CampId;
-        }, cancellationToken);
-
-        if (!found)
-        {
-            throw new InvalidOperationException("Season not found.");
-        }
-
-        await _auditLog.LogAsync(
-            AuditAction.CampSeasonStatusChanged, nameof(CampSeason), seasonId,
-            $"Season {year} marked as full",
-            "CampService",
-            relatedEntityId: campId, relatedEntityType: nameof(Camp));
-
-        InvalidateCache(year);
-    }
-
     public async Task ReactivateSeasonAsync(Guid seasonId, CancellationToken cancellationToken = default)
     {
         var now = _clock.GetCurrentInstant();
@@ -1114,15 +1075,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
                 kv.Value.CampSlug,
                 kv.Value.SoundZone,
                 kv.Value.SpaceRequirement));
-    }
-
-    public async Task<IReadOnlyList<CampSeasonBrief>> GetCampSeasonBriefsForYearAsync(
-        int year, CancellationToken cancellationToken = default)
-    {
-        var rows = await _repo.GetSeasonBriefsForYearAsync(year, cancellationToken);
-        return rows
-            .Select(r => new CampSeasonBrief(r.Id, r.Name, r.CampSlug, r.SpaceRequirement))
-            .ToList();
     }
 
     public Task<Guid?> GetCampLeadSeasonIdForYearAsync(
@@ -1597,6 +1549,15 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         }
 
         return result.MemberId;
+    }
+
+    public async Task<AssignCampRoleOutcome> AddMemberAndAssignRoleAsync(
+        Guid campSeasonId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var memberId = await AddCampMemberAsLeadAsync(campSeasonId, userId, actorUserId, cancellationToken);
+        return await _campRoleService.Value.AssignAsync(
+            campSeasonId, roleDefinitionId, memberId, actorUserId, cancellationToken);
     }
 
     public async Task WithdrawCampMembershipRequestAsync(

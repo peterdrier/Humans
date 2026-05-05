@@ -93,12 +93,6 @@ public interface IProfileRepository
     Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the count of profiles that are approved and not suspended.
-    /// Used by the admin dashboard "Active humans" stat tile.
-    /// </summary>
-    Task<int> CountActiveApprovedAsync(CancellationToken ct = default);
-
-    /// <summary>
     /// Returns profiles that are in the onboarding review queue: not approved
     /// and not rejected. Ordered by <c>CreatedAt</c> ascending. Read-only.
     /// Used by the onboarding review queue.
@@ -146,6 +140,17 @@ public interface IProfileRepository
     /// Persists a new profile.
     /// </summary>
     Task AddAsync(Profile profile, CancellationToken ct = default);
+
+    /// <summary>
+    /// Idempotent insert keyed on the <c>profiles.UserId</c> unique index.
+    /// Returns <c>true</c> when the row was inserted, <c>false</c> when a
+    /// concurrent caller (e.g. signup/login provisioning racing against
+    /// the admin Stub-Profile backfill) already inserted a profile for this
+    /// user — the underlying Postgres <c>23505</c> unique-violation is
+    /// translated into a successful no-op so callers with check-then-insert
+    /// semantics ("ensure exists") cannot observe the TOCTOU window.
+    /// </summary>
+    Task<bool> AddIfNotExistsByUserIdAsync(Profile profile, CancellationToken ct = default);
 
     /// <summary>
     /// Persists changes to an existing profile. The provided entity is attached
@@ -270,5 +275,21 @@ public interface IProfileRepository
     Task ReconcileCVEntriesAsync(
         Guid profileId,
         IReadOnlyList<CVEntry> entries,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Issue #635 (§15i): lazy-write-back of the computed
+    /// <see cref="Profile.State"/> for a row whose persisted state is currently
+    /// <c>NULL</c>. Issues a single <c>UPDATE</c> conditional on
+    /// <c>State IS NULL</c> so concurrent writers (admin button bulk
+    /// backfill) do not stomp each other. Does NOT bump
+    /// <see cref="Profile.UpdatedAt"/> — lazy backfill should be invisible to
+    /// users.
+    /// </summary>
+    /// <returns>true if a row was updated; false if the row was missing or
+    /// already had a non-null State.</returns>
+    Task<bool> WriteBackStateIfNullAsync(
+        Guid userId,
+        ProfileState state,
         CancellationToken ct = default);
 }

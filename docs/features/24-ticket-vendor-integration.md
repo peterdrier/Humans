@@ -1,6 +1,8 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/Tickets/**
   src/Humans.Web/Controllers/TicketController.cs
+  src/Humans.Web/Controllers/WelcomeController.cs
+  src/Humans.Web/Views/Welcome/**
   src/Humans.Domain/Entities/TicketOrder.cs
   src/Humans.Domain/Entities/TicketAttendee.cs
   src/Humans.Domain/Entities/TicketSyncState.cs
@@ -75,6 +77,18 @@ Tickets priced above 315 EUR (the VIP threshold, `TicketConstants.VipThresholdEu
 | `/Tickets/GateList` | Stub for June implementation |
 | `/Tickets/WhoHasntBought` | Active humans without ticket purchases |
 | `/Tickets/SalesAggregates` | Weekly (Mon–Sun) and quarterly (Spanish tax Q1–Q4) aggregate reports with real VAT/donation data |
+| `/Welcome` | Public post-purchase landing — TicketTailor redirect target, sign-in CTA → `/Shifts` |
+
+## Post-Purchase Landing (`/Welcome`)
+
+Public, anonymous-accessible page used as the redirect target after a buyer completes checkout on TicketTailor. Explains shift participation in the org's voice and routes the buyer toward signing in / claiming shifts.
+
+- **Route**: `/Welcome` (`WelcomeController`, `[AllowAnonymous]`)
+- **Active-member shortcut**: authenticated users with the `ActiveMember` claim are redirected straight to `/Shifts` — they don't need the explainer
+- **CTA**: links to `/Account/Login?returnUrl=/Shifts` so post-login lands on the shifts board
+- **Localization**: `Welcome_*` strings in `SharedResource.{en,es,ca,de,fr,it}.resx`
+
+The TicketTailor "after checkout" redirect URL points at this route.
 
 ## Dashboard Widgets
 

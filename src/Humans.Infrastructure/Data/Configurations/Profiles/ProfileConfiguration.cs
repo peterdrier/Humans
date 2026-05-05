@@ -51,6 +51,13 @@ public class ProfileConfiguration : IEntityTypeConfiguration<Profile>
             .HasDefaultValue(MembershipTier.Volunteer)
             .HasConversion<string>();
 
+        // Issue #635 (§15i): nullable string column. Existing rows hold NULL
+        // until CachingProfileService lazily computes and writes back. A
+        // follow-up PR promotes to NOT NULL after every row is populated.
+        builder.Property(p => p.State)
+            .HasConversion<string>()
+            .HasMaxLength(50);
+
         builder.Property(p => p.ConsentCheckStatus)
             .HasConversion<string>();
 
@@ -85,6 +92,14 @@ public class ProfileConfiguration : IEntityTypeConfiguration<Profile>
 
         builder.HasIndex(p => p.UserId)
             .IsUnique();
+
+        // Issue #635 (§15i): inverse-side FK preservation after the User-side
+        // nav (User.Profile) was stripped. Configures the schema-level FK +
+        // cascade-delete that previously lived on UserConfiguration.HasOne.
+        builder.HasOne<User>()
+            .WithOne()
+            .HasForeignKey<Profile>(p => p.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(p => p.ConsentCheckStatus);
 

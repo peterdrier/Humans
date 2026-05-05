@@ -38,51 +38,17 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.CreatedAt)
             .IsRequired();
 
-        builder.HasOne(u => u.Profile)
-            .WithOne()
-            .HasForeignKey<Profile>(p => p.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        // EF needs the nav ref to configure the cross-section FK relationship.
-        // RoleAssignment.User is [Obsolete] for Application callers.
-#pragma warning disable CS0618
-        builder.HasMany(u => u.RoleAssignments)
-            .WithOne(ra => ra.User)
-            .HasForeignKey(ra => ra.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-#pragma warning restore CS0618
-
-        builder.HasMany(u => u.ConsentRecords)
-            .WithOne(cr => cr.User)
-            .HasForeignKey(cr => cr.UserId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // One-way relationship: User.Applications collection nav is
-        // preserved (still used by ProfileService's admin flow — tracked as
-        // a known incoming violation in Governance.md that the Profile
-        // migration will clean up) but the back-nav Application.User has
-        // been stripped per §6. EF configures the relationship without a
-        // back-reference expression.
-        builder.HasMany(u => u.Applications)
-            .WithOne()
-            .HasForeignKey(a => a.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-#pragma warning disable CS0618 // TeamMember.User is Obsolete per §6c; kept for EF FK + inverse nav.
-        builder.HasMany(u => u.TeamMemberships)
-            .WithOne(tm => tm.User)
-            .HasForeignKey(tm => tm.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-#pragma warning restore CS0618
-
+        // Issue #635 (§15i): the User-side cross-domain navs (Profile,
+        // RoleAssignments, ConsentRecords, Applications, TeamMemberships,
+        // CommunicationPreferences) are stripped. Their FK constraints are
+        // preserved by inverse-side configurations on each owning entity's
+        // *Configuration class — see e.g. ProfileConfiguration,
+        // RoleAssignmentConfiguration, ConsentRecordConfiguration. The
+        // UserEmails nav stays (User.Email override depends on it) and is
+        // configured below.
         builder.HasMany(u => u.UserEmails)
             .WithOne()
             .HasForeignKey(e => e.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        builder.HasMany(u => u.CommunicationPreferences)
-            .WithOne()
-            .HasForeignKey(cp => cp.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(u => u.Email);

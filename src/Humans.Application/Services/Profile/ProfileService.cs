@@ -101,9 +101,10 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         if (user is null) return null;
 
         var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
-        var notificationEmail = userEmails.FirstOrDefault(e => e.IsPrimary && e.IsVerified)?.Email ?? user.Email;
 
-        return FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), notificationEmail);
+        // Issue #635 (§15i): pass userEmails directly so PrimaryEmail /
+        // AllVerifiedEmails / GoogleEmail derive from already-loaded data.
+        return FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), userEmails);
     }
 
     public async Task<IReadOnlyDictionary<Guid, Domain.Entities.Profile>> GetByUserIdsAsync(
@@ -126,6 +127,27 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         await _profileRepository.UpdateAsync(profile, ct);
 
         // Store update handled by CachingProfileService decorator
+    }
+
+    public async Task EnsureStubProfileAsync(Guid userId, CancellationToken ct = default)
+    {
+        var existing = await _profileRepository.GetByUserIdAsync(userId, ct);
+        if (existing is not null) return;
+
+        var now = _clock.GetCurrentInstant();
+        var profile = new Domain.Entities.Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            CreatedAt = now,
+            UpdatedAt = now,
+            State = ProfileState.Stub,
+        };
+        // Use the idempotent insert: a concurrent caller (signup/login provisioning
+        // racing the admin backfill) may insert between our GetByUserId check and
+        // SaveChanges. The repo translates Postgres 23505 on profiles.UserId into
+        // a successful no-op so this method's "ensure exists" contract holds.
+        await _profileRepository.AddIfNotExistsByUserIdAsync(profile, ct);
     }
 
     public async Task SetProfilePictureAsync(
@@ -268,12 +290,18 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
         if (profile is null)
         {
+            // Issue #635 (§15i): newly created profiles always start as Stub.
+            // Transitions to Active happen below once required fields are
+            // populated (BurnerName/FirstName/LastName), giving the
+            // ProfileService_UpdateProfileAsync_TransitionsStubToActive
+            // behavior contract a single home.
             profile = new Domain.Entities.Profile
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
                 CreatedAt = now,
-                UpdatedAt = now
+                UpdatedAt = now,
+                State = ProfileState.Stub,
             };
             await _profileRepository.AddAsync(profile, ct);
         }
@@ -408,6 +436,18 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             }
         }
 
+        // Issue #635 (§15i): Stub → Active transition. When all required
+        // identity fields are populated and the profile is not Suspended,
+        // promote the lifecycle marker. Predicate lives on the Profile
+        // entity so the same rule serves the lazy-compute path in
+        // CachingProfileService.ComputeProfileState.
+        if (profile.State != ProfileState.Suspended)
+        {
+            profile.State = profile.HasRequiredIdentityFields()
+                ? ProfileState.Active
+                : ProfileState.Stub;
+        }
+
         await _profileRepository.UpdateAsync(profile, ct);
 
         // Update display name on user (cross-section → IUserService)
@@ -469,9 +509,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     public Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default) =>
         _profileRepository.GetActiveApprovedUserIdsAsync(ct);
 
-    public Task<int> GetActiveApprovedCountAsync(CancellationToken ct = default) =>
-        _profileRepository.CountActiveApprovedAsync(ct);
-
     public Task<int> GetConsentReviewPendingCountAsync(CancellationToken ct = default) =>
         _profileRepository.GetConsentReviewPendingCountAsync(ct);
 
@@ -522,7 +559,13 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         var userIds = profiles.Select(p => p.UserId).ToList();
         var users = await _userService.GetByIdsAsync(userIds, ct);
 
-        var notificationEmails = await _userEmailRepository.GetAllNotificationTargetEmailsAsync(ct);
+        // Issue #635 (§15i): bulk-load every UserEmail so FullProfile.Create
+        // can populate PrimaryEmail / AllVerifiedEmails / GoogleEmail without
+        // per-user repo calls. Trivial at ~500-user scale.
+        var allUserEmails = await _userEmailRepository.GetAllAsync(ct);
+        var emailsByUserId = allUserEmails
+            .GroupBy(e => e.UserId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<UserEmail>)g.ToList());
 
         var result = new List<FullProfile>(profiles.Count);
         foreach (var profile in profiles)
@@ -530,8 +573,10 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             if (!users.TryGetValue(profile.UserId, out var user))
                 continue;
 
-            notificationEmails.TryGetValue(profile.UserId, out var notificationEmail);
-            result.Add(FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), notificationEmail));
+            var userEmails = emailsByUserId.TryGetValue(profile.UserId, out var list)
+                ? list
+                : Array.Empty<UserEmail>();
+            result.Add(FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), userEmails));
         }
 
         return result;
@@ -723,6 +768,12 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         return SearchHumansFromSnapshot(snapshot, query);
     }
 
+    public async Task<IReadOnlyList<HumanSearchResult>> SearchHumansByNameAsync(string query, CancellationToken ct = default)
+    {
+        var snapshot = await BuildFullProfileSnapshotAsync(ct);
+        return SearchHumansByNameFromSnapshot(snapshot, query);
+    }
+
     /// <summary>
     /// Searches all approved, non-suspended profiles from a pre-built <see cref="FullProfile"/>
     /// snapshot for users whose display name or notification email contains <paramref name="query"/>.
@@ -766,6 +817,29 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         return results
             .OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
             .Take(50)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Narrowed snapshot search for the typeahead picker — matches DisplayName
+    /// (covers first + last) and BurnerName only. Skips bio / city / interests /
+    /// pronouns / CV so callers like the camp role picker get a tight result list.
+    /// </summary>
+    public static IReadOnlyList<HumanSearchResult> SearchHumansByNameFromSnapshot(
+        IEnumerable<FullProfile> snapshot, string query)
+    {
+        return snapshot
+            .Where(p => p.IsApproved && !p.IsSuspended)
+            .Where(p =>
+                p.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                (p.BurnerName?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false))
+            .OrderBy(p => p.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .Take(50)
+            .Select(p => new HumanSearchResult(
+                p.UserId, p.DisplayName, p.BurnerName, p.City, p.Bio, p.ContributionInterests,
+                p.ProfilePictureUrl, p.HasCustomPicture, p.ProfileId, p.UpdatedAtTicks,
+                p.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase) ? "Name" : "Burner Name",
+                null))
             .ToList();
     }
 
@@ -920,61 +994,46 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     public Task<int> GetPendingReviewCountAsync(CancellationToken ct = default) =>
         _profileRepository.GetReviewableCountAsync(ct);
 
-    public async Task<OnboardingResult> ClearConsentCheckAsync(
-        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default)
+    public async Task<OnboardingResult> RecordConsentCheckAsync(
+        Guid userId, Guid reviewerId, ConsentCheckStatus result, string? notes,
+        CancellationToken ct = default)
     {
+        if (result is not ConsentCheckStatus.Cleared and not ConsentCheckStatus.Flagged)
+        {
+            throw new ArgumentException(
+                $"RecordConsentCheckAsync only accepts Cleared or Flagged; use SetConsentCheckPendingAsync for the system-driven Pending transition.",
+                nameof(result));
+        }
+
         var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
         if (profile is null)
             return new OnboardingResult(false, "NotFound");
 
-        if (profile.RejectedAt is not null)
+        var cleared = result == ConsentCheckStatus.Cleared;
+
+        if (cleared && profile.RejectedAt is not null)
             return new OnboardingResult(false, "AlreadyRejected");
 
         var now = _clock.GetCurrentInstant();
 
-        profile.ConsentCheckStatus = ConsentCheckStatus.Cleared;
+        profile.ConsentCheckStatus = result;
         profile.ConsentCheckAt = now;
         profile.ConsentCheckedByUserId = reviewerId;
         profile.ConsentCheckNotes = notes;
-        profile.IsApproved = true;
+        profile.IsApproved = cleared;
         profile.UpdatedAt = now;
 
         await _profileRepository.UpdateAsync(profile, ct);
 
         await _auditLogService.LogAsync(
-            AuditAction.ConsentCheckCleared, nameof(Domain.Entities.Profile), userId,
-            "Consent check cleared",
+            cleared ? AuditAction.ConsentCheckCleared : AuditAction.ConsentCheckFlagged,
+            nameof(Domain.Entities.Profile), userId,
+            cleared ? "Consent check cleared" : $"Consent check flagged: {notes}",
             reviewerId);
 
-        _logger.LogInformation("Consent check cleared for user {UserId} by {ReviewerId}", userId, reviewerId);
-
-        return new OnboardingResult(true);
-    }
-
-    public async Task<OnboardingResult> FlagConsentCheckAsync(
-        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default)
-    {
-        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
-        if (profile is null)
-            return new OnboardingResult(false, "NotFound");
-
-        var now = _clock.GetCurrentInstant();
-
-        profile.ConsentCheckStatus = ConsentCheckStatus.Flagged;
-        profile.ConsentCheckAt = now;
-        profile.ConsentCheckedByUserId = reviewerId;
-        profile.ConsentCheckNotes = notes;
-        profile.IsApproved = false;
-        profile.UpdatedAt = now;
-
-        await _profileRepository.UpdateAsync(profile, ct);
-
-        await _auditLogService.LogAsync(
-            AuditAction.ConsentCheckFlagged, nameof(Domain.Entities.Profile), userId,
-            $"Consent check flagged: {notes}",
-            reviewerId);
-
-        _logger.LogInformation("Consent check flagged for user {UserId} by {ReviewerId}", userId, reviewerId);
+        _logger.LogInformation(
+            "Consent check {Status} for user {UserId} by {ReviewerId}",
+            cleared ? "cleared" : "flagged", userId, reviewerId);
 
         return new OnboardingResult(true);
     }
@@ -1033,47 +1092,49 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         return new OnboardingResult(true);
     }
 
-    public async Task<OnboardingResult> SuspendAsync(
-        Guid userId, Guid adminId, string? notes, CancellationToken ct = default)
+    public async Task<OnboardingResult> SetSuspendedAsync(
+        Guid userId, Guid adminId, bool suspended, string? notes,
+        CancellationToken ct = default)
     {
         var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
         if (profile is null)
             return new OnboardingResult(false, "NotFound");
 
-        profile.IsSuspended = true;
-        profile.AdminNotes = notes;
+#pragma warning disable HUM_PROFILE_ISSUSPENDED
+        profile.IsSuspended = suspended;
+#pragma warning restore HUM_PROFILE_ISSUSPENDED
+
+        // Issue #635 (§15i): mirror the bool into ProfileState. New write paths
+        // go through State; the bool write above is kept dual until the
+        // separate follow-up PR drops the column after prod soak.
+        if (suspended)
+        {
+            profile.State = ProfileState.Suspended;
+        }
+        else
+        {
+            profile.State = profile.HasRequiredIdentityFields()
+                ? ProfileState.Active
+                : ProfileState.Stub;
+        }
+
+        if (suspended)
+            profile.AdminNotes = notes;
         profile.UpdatedAt = _clock.GetCurrentInstant();
 
         await _profileRepository.UpdateAsync(profile, ct);
 
         await _auditLogService.LogAsync(
-            AuditAction.MemberSuspended, nameof(User), userId,
-            $"Suspended{(string.IsNullOrWhiteSpace(notes) ? "" : $": {notes}")}",
+            suspended ? AuditAction.MemberSuspended : AuditAction.MemberUnsuspended,
+            nameof(User), userId,
+            suspended
+                ? $"Suspended{(string.IsNullOrWhiteSpace(notes) ? "" : $": {notes}")}"
+                : "Unsuspended",
             adminId);
 
-        _logger.LogInformation("Admin {AdminId} suspended human {HumanId}", adminId, userId);
-
-        return new OnboardingResult(true);
-    }
-
-    public async Task<OnboardingResult> UnsuspendAsync(
-        Guid userId, Guid adminId, CancellationToken ct = default)
-    {
-        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
-        if (profile is null)
-            return new OnboardingResult(false, "NotFound");
-
-        profile.IsSuspended = false;
-        profile.UpdatedAt = _clock.GetCurrentInstant();
-
-        await _profileRepository.UpdateAsync(profile, ct);
-
-        await _auditLogService.LogAsync(
-            AuditAction.MemberUnsuspended, nameof(User), userId,
-            "Unsuspended",
-            adminId);
-
-        _logger.LogInformation("Admin {AdminId} unsuspended human {HumanId}", adminId, userId);
+        _logger.LogInformation(
+            "Admin {AdminId} {Verb} human {HumanId}",
+            adminId, suspended ? "suspended" : "unsuspended", userId);
 
         return new OnboardingResult(true);
     }

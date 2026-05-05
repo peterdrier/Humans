@@ -66,6 +66,7 @@ public static class RoleChecks
                user.IsInRole(RoleNames.TicketAdmin) ||
                user.IsInRole(RoleNames.NoInfoAdmin) ||
                user.IsInRole(RoleNames.FinanceAdmin) ||
+               user.IsInRole(RoleNames.StoreAdmin) ||
                user.IsInRole(RoleNames.ConsentCoordinator) ||
                user.IsInRole(RoleNames.VolunteerCoordinator);
     }
@@ -102,6 +103,18 @@ public static class RoleChecks
     public static bool CanAccessFinance(ClaimsPrincipal user)
     {
         return IsFinanceAdmin(user);
+    }
+
+    /// <summary>
+    /// Store domain superset (per <c>memory/code/admin-role-superset.md</c>):
+    /// <c>StoreAdmin</c> owns the Store section end-to-end (catalog, orders, payments,
+    /// invoices). <c>FinanceAdmin</c> retains parallel access for accounting workflows.
+    /// </summary>
+    public static bool CanAdministerStore(ClaimsPrincipal user)
+    {
+        return IsAdmin(user)
+            || user.IsInRole(RoleNames.StoreAdmin)
+            || user.IsInRole(RoleNames.FinanceAdmin);
     }
 
     /// <summary>

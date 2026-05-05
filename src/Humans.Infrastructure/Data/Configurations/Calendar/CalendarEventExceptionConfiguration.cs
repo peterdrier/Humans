@@ -18,5 +18,9 @@ public class CalendarEventExceptionConfiguration : IEntityTypeConfiguration<Cale
 
         b.HasIndex(x => new { x.EventId, x.OriginalOccurrenceStartUtc })
          .IsUnique();
+
+        // Match parent CalendarEvent's soft-delete filter so EF doesn't
+        // emit an advisory and orphan exception rows aren't returned.
+        b.HasQueryFilter(ex => ex.Event.DeletedAt == null);
     }
 }

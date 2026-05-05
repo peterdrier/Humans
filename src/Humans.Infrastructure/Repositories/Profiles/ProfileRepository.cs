@@ -166,13 +166,6 @@ public sealed class ProfileRepository : IProfileRepository
             .ToListAsync(ct);
     }
 
-    public async Task<int> CountActiveApprovedAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Profiles
-            .CountAsync(p => p.IsApproved && !p.IsSuspended, ct);
-    }
-
     public async Task<int> GetConsentReviewPendingCountAsync(CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -224,6 +217,23 @@ public sealed class ProfileRepository : IProfileRepository
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task<bool> AddIfNotExistsByUserIdAsync(Profile profile, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        ctx.Profiles.Add(profile);
+        try
+        {
+            await ctx.SaveChangesAsync(ct);
+            return true;
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+        {
+            // Concurrent insert lost the race against the profiles.UserId
+            // unique index — treat as idempotent success per the method contract.
+            return false;
+        }
+    }
+
     public async Task UpdateAsync(Profile profile, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -252,6 +262,7 @@ public sealed class ProfileRepository : IProfileRepository
 
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var userIdList = userIds is IList<Guid> list ? list : userIds.ToList();
+#pragma warning disable HUM_PROFILE_ISSUSPENDED
         var profiles = await ctx.Profiles
             .Where(p => userIdList.Contains(p.UserId) && !p.IsSuspended)
             .ToListAsync(ct);
@@ -259,8 +270,12 @@ public sealed class ProfileRepository : IProfileRepository
         foreach (var profile in profiles)
         {
             profile.IsSuspended = true;
+            // Issue #635 (§15i): dual-write ProfileState alongside the legacy
+            // bool until the follow-up PR drops the IsSuspended column.
+            profile.State = ProfileState.Suspended;
             profile.UpdatedAt = now;
         }
+#pragma warning restore HUM_PROFILE_ISSUSPENDED
 
         if (profiles.Count > 0)
         {
@@ -523,5 +538,21 @@ public sealed class ProfileRepository : IProfileRepository
         }
 
         await ctx.SaveChangesAsync(ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> WriteBackStateIfNullAsync(
+        Guid userId,
+        ProfileState state,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        // ExecuteUpdate with the State IS NULL guard is the lazy-write
+        // discipline: idempotent across concurrent backfill (admin button
+        // + lazy reads), zero impact on already-set rows, no UpdatedAt bump.
+        var rows = await ctx.Profiles
+            .Where(p => p.UserId == userId && p.State == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.State, state), ct);
+        return rows > 0;
     }
 }

@@ -150,7 +150,37 @@ public class Profile
     /// <summary>
     /// Whether the member has been manually suspended.
     /// </summary>
+    /// <remarks>
+    /// Issue #635 (§15i): superseded by <see cref="State"/>. New write paths set
+    /// <c>State = ProfileState.Suspended</c>; reads should consult
+    /// <see cref="State"/> when present (it is the canonical lifecycle marker).
+    /// The underlying DB column stays per
+    /// <c>memory/architecture/no-drops-until-prod-verified.md</c> until a
+    /// follow-up PR drops it after prod soak.
+    /// </remarks>
+    [Obsolete("Use Profile.State (ProfileState.Suspended) for new writes. The DB column stays until a follow-up PR after prod soak.", DiagnosticId = "HUM_PROFILE_ISSUSPENDED", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/635")]
     public bool IsSuspended { get; set; }
+
+    /// <summary>
+    /// Lifecycle state — Stub / Active / Suspended. Issue #635 (§15i): nullable
+    /// while existing rows are lazily populated by
+    /// <c>CachingProfileService</c>. New rows are created with an explicit
+    /// <see cref="ProfileState.Stub"/> via the Stub Profile invariant.
+    /// </summary>
+    public ProfileState? State { get; set; }
+
+    /// <summary>
+    /// True when <see cref="BurnerName"/>, <see cref="FirstName"/>, and
+    /// <see cref="LastName"/> are all populated (non-whitespace). The single
+    /// canonical predicate for Stub→Active eligibility — used by
+    /// <c>ProfileService.SaveProfileAsync</c>, <c>ProfileService.SetSuspendedAsync</c>,
+    /// and <c>CachingProfileService.ComputeProfileState</c> so the rule cannot
+    /// drift between write paths and lazy-compute paths.
+    /// </summary>
+    public bool HasRequiredIdentityFields() =>
+        !string.IsNullOrWhiteSpace(BurnerName)
+        && !string.IsNullOrWhiteSpace(FirstName)
+        && !string.IsNullOrWhiteSpace(LastName);
 
     /// <summary>
     /// Whether the member has been approved for volunteer enrollment.

@@ -12,6 +12,12 @@ public class WorkspaceEmailListViewModel
     public int LinkedAccounts { get; set; }
     public int UnlinkedAccounts { get; set; }
     public int NotPrimaryCount { get; set; }
+
+    /// <summary>
+    /// Count of active accounts that have not completed 2-Step Verification enrollment.
+    /// These accounts cannot sign in and need attention.
+    /// </summary>
+    public int MissingTwoFactorCount { get; set; }
 }
 
 /// <summary>
@@ -36,6 +42,42 @@ public class WorkspaceEmailAccountViewModel
     /// Whether the @nobodies.team email is being used as the notification target.
     /// </summary>
     public bool IsUsedAsPrimary { get; set; }
+
+    /// <summary>
+    /// Whether this account has completed 2-Step Verification enrollment.
+    /// Unenrolled accounts cannot sign in (2FA is enforced org-wide).
+    /// </summary>
+    public bool IsEnrolledIn2Sv { get; set; }
+
+    /// <summary>
+    /// Personal recovery email Google has on file. Surfaced as a sanity
+    /// check so the recovery channel can be validated before lockout.
+    /// <c>null</c> when no recovery email is set.
+    /// </summary>
+    public string? RecoveryEmail { get; set; }
+}
+
+/// <summary>
+/// One-shot recovery credentials shown to the admin in a modal after a
+/// password reset (and optionally a 2FA backup-code grab). Carried in
+/// TempData across the PRG redirect so a refresh after dismissal cannot
+/// re-expose the secret material.
+/// </summary>
+public class WorkspaceRecoveryCredentialsViewModel
+{
+    public string Email { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Freshly generated temporary password for the @nobodies.team account.
+    /// Always populated for both flows (reset-only and reset+2FA).
+    /// </summary>
+    public string TempPassword { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Single backup verification code, populated only when the admin
+    /// requested the combined "Reset + 2FA" flow. Null for password-only.
+    /// </summary>
+    public string? BackupCode { get; set; }
 }
 
 /// <summary>

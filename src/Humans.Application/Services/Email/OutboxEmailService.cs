@@ -68,7 +68,8 @@ public sealed class OutboxEmailService : IEmailService
         CancellationToken cancellationToken = default)
     {
         var content = _renderer.RenderApplicationApproved(userName, tier, culture);
-        await EnqueueAsync(userEmail, userName, content, "application_approved", cancellationToken);
+        await EnqueueAsync(userEmail, userName, content, "application_approved", cancellationToken,
+            category: MessageCategory.Governance);
     }
 
     /// <inheritdoc />
@@ -81,7 +82,8 @@ public sealed class OutboxEmailService : IEmailService
         CancellationToken cancellationToken = default)
     {
         var content = _renderer.RenderApplicationRejected(userName, tier, reason, culture);
-        await EnqueueAsync(userEmail, userName, content, "application_rejected", cancellationToken);
+        await EnqueueAsync(userEmail, userName, content, "application_rejected", cancellationToken,
+            category: MessageCategory.Governance);
     }
 
     /// <inheritdoc />
@@ -253,7 +255,8 @@ public sealed class OutboxEmailService : IEmailService
         CancellationToken cancellationToken = default)
     {
         var content = _renderer.RenderAdminDailyDigest(name, date, counts, culture);
-        await EnqueueAsync(email, name, content, "admin_daily_digest", cancellationToken);
+        await EnqueueAsync(email, name, content, "admin_daily_digest", cancellationToken,
+            category: MessageCategory.Governance);
     }
 
     /// <inheritdoc />
@@ -366,6 +369,47 @@ public sealed class OutboxEmailService : IEmailService
         _logger.LogInformation(
             "Campaign code email queued for grant {GrantId} to {Recipient}",
             request.CampaignGrantId, request.RecipientEmail);
+    }
+
+    /// <inheritdoc />
+    public async Task SendGoogleGroupRemovalLossOfAccessAsync(
+        string removedEmail,
+        string userName,
+        string groupName,
+        string groupEmail,
+        string? culture = null,
+        CancellationToken cancellationToken = default)
+    {
+        var content = _renderer.RenderGoogleGroupRemovalLossOfAccess(userName, groupName, groupEmail, culture);
+        await EnqueueAsync(removedEmail, userName, content, "google_group_removal_loss_of_access", cancellationToken,
+            category: MessageCategory.System);
+    }
+
+    /// <inheritdoc />
+    public async Task SendGoogleDriveRemovalLossOfAccessAsync(
+        string removedEmail,
+        string userName,
+        string folderName,
+        string? culture = null,
+        CancellationToken cancellationToken = default)
+    {
+        var content = _renderer.RenderGoogleDriveRemovalLossOfAccess(userName, folderName, culture);
+        await EnqueueAsync(removedEmail, userName, content, "google_drive_removal_loss_of_access", cancellationToken,
+            category: MessageCategory.System);
+    }
+
+    /// <inheritdoc />
+    public async Task SendGoogleAccessRemovalSecondaryCleanupAsync(
+        string removedEmail,
+        string userName,
+        string currentGoogleEmail,
+        string? culture = null,
+        CancellationToken cancellationToken = default)
+    {
+        var content = _renderer.RenderGoogleAccessRemovalSecondaryCleanup(
+            userName, removedEmail, currentGoogleEmail, culture);
+        await EnqueueAsync(removedEmail, userName, content, "google_access_removal_secondary_cleanup", cancellationToken,
+            category: MessageCategory.System);
     }
 
     /// <inheritdoc />

@@ -67,7 +67,16 @@ public class InterfaceMethodBudgetTests
         // 55→54: account-merge fold final consolidation — removed
         // ReassignAssignmentsToUserAsync from ICampService (moved to
         // IUserMerge.ReassignAsync, dispatched via fan-out).
-        [typeof(ICampService)] = 54,
+        // 54→51: barrio-mgmt-fixes audit (peterdrier#390). Net -3 after
+        // adding AddMemberAndAssignRoleAsync (+1) and removing 4 dead methods:
+        // GetCampDetailAsync (zero prod callers — controllers compose
+        // GetCampBySlugAsync + BuildCampDetailDataAsync directly; the two
+        // tests were repointed to the same composition);
+        // GetCampsByLeadUserIdAsync (zero callers — pure passthrough; the
+        // new lead-pin feature on this branch already calls the repo
+        // method directly); SetSeasonFullAsync and
+        // GetCampSeasonBriefsForYearAsync (both zero callers, zero tests).
+        [typeof(ICampService)] = 51,
         // +1: GetOverallCoverageAsync for admin dashboard shift-coverage tile (peterdrier#349).
         // 50→50: account-merge fold redesign Phase 3.2. Added
         // ReassignProfilesAndTagPrefsToUserAsync; removed CanManageShiftsAsync
@@ -91,7 +100,26 @@ public class InterfaceMethodBudgetTests
         // 41→40: account-merge fold final consolidation — removed
         // ReassignSubAggregatesToUserAsync from IProfileService (moved to
         // IUserMerge.ReassignAsync, dispatched via fan-out).
-        [typeof(IProfileService)] = 40,
+        // 40→39: barrio-mgmt-fixes audit (peterdrier#390). Net -1 after
+        // adding SearchHumansByNameAsync (+1) and merging two pairs of
+        // sibling state-setters (-2):
+        // ClearConsentCheckAsync + FlagConsentCheckAsync → RecordConsentCheckAsync
+        // (takes a ConsentCheckStatus result; the system-driven
+        // SetConsentCheckPendingAsync stays separate — different actor).
+        // SuspendAsync + UnsuspendAsync → SetSuspendedAsync (takes a bool).
+        // 39→39: §15i swap (issue #635). Added EnsureStubProfileAsync to
+        // satisfy design-rules §2a/§2c after Claude PR review (#403):
+        // AccountController and AccountProvisioningService must not inject
+        // IProfileRepository directly; cross-section stub-profile creation
+        // flows through the owning section's service. Removed
+        // GetActiveApprovedCountAsync (sole caller AdminController dashboard
+        // tile, surfaced by /audit-surface IProfileService — the existing
+        // GetActiveApprovedUserIdsAsync method on the same interface returns
+        // the same conceptual data; caller does .Count on the result. The
+        // method's own interface comment said "At ~500-user scale this can
+        // be a simple Count query — no caching required" — i.e. it never
+        // earned its dedicated surface area).
+        [typeof(IProfileService)] = 39,
         // -1 for GetContactUsersAsync removal (/Contacts surface deleted in PR 2 of
         // email-identity-decoupling — only ContactService called it).
         // 31→31: account-merge fold redesign Phase 3.4. Added 3 fold primitives

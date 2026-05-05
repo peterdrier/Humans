@@ -65,6 +65,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     private readonly IUserEmailService _userEmailService;
     private readonly IAuditLogService _auditLogService;
     private readonly ISyncSettingsService _syncSettingsService;
+    private readonly IGoogleRemovalNotificationService _removalNotifications;
     private readonly GoogleWorkspaceOptions _options;
     private readonly IClock _clock;
     private readonly IServiceProvider _serviceProvider;
@@ -83,6 +84,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         IUserEmailService userEmailService,
         IAuditLogService auditLogService,
         ISyncSettingsService syncSettingsService,
+        IGoogleRemovalNotificationService removalNotifications,
         IOptions<GoogleWorkspaceOptions> options,
         IClock clock,
         IServiceProvider serviceProvider,
@@ -100,6 +102,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         _userEmailService = userEmailService;
         _auditLogService = auditLogService;
         _syncSettingsService = syncSettingsService;
+        _removalNotifications = removalNotifications;
         _options = options.Value;
         _clock = clock;
         _serviceProvider = serviceProvider;
@@ -326,11 +329,25 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     /// <remarks>
     /// GATEWAY METHOD: the only path that removes a user from a Google Group.
     /// Respects SyncSettings — skips if GoogleGroups mode is not AddAndRemove.
+    /// Public callers default to <see cref="SyncRemovalReason.Reconciliation"/>;
+    /// the internal email-rotation cleanup in <see cref="AddUserToTeamResourcesAsync"/>
+    /// passes <see cref="SyncRemovalReason.EmailRotation"/> as advisory
+    /// telemetry — the post-removal notification fires either way (issue
+    /// peterdrier/Humans#639). The user receives a Variant 2 ("secondary
+    /// cleanup") email at the rotated-out address.
     /// </remarks>
-    public async Task RemoveUserFromGroupAsync(
+    public Task RemoveUserFromGroupAsync(
         Guid groupResourceId,
         string userEmail,
         CancellationToken cancellationToken = default)
+        => RemoveUserFromGroupAsync(
+            groupResourceId, userEmail, SyncRemovalReason.Reconciliation, cancellationToken);
+
+    private async Task RemoveUserFromGroupAsync(
+        Guid groupResourceId,
+        string userEmail,
+        SyncRemovalReason reason,
+        CancellationToken cancellationToken)
     {
         var mode = await _syncSettingsService.GetModeAsync(SyncServiceType.GoogleGroups, cancellationToken);
         if (mode != SyncMode.AddAndRemove)
@@ -378,6 +395,27 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             $"Removed {userEmail} from Google Group ({resource.Name})",
             nameof(GoogleWorkspaceSyncService),
             userEmail, "MEMBER", GoogleSyncSource.ManualSync, success: true);
+
+        // Issue peterdrier/Humans#639 — notify the affected user only on a
+        // confirmed Google API removal. The notification service applies its
+        // own variant + suppression logic (orphan address, email rotation).
+        try
+        {
+            var groupEmail = TryDeriveGroupEmail(resource);
+            await _removalNotifications.NotifyRemovalAsync(
+                userEmail,
+                GoogleResourceType.Group,
+                resource.Name,
+                groupEmail,
+                reason,
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to enqueue removal notification for {UserEmail} from group {GroupId}",
+                userEmail, resource.GoogleId);
+        }
     }
 
     /// <summary>
@@ -435,13 +473,17 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     /// <summary>
     /// GATEWAY METHOD: the only path that removes a user from a Google Drive
     /// resource. Respects SyncSettings — skips if GoogleDrive mode is not
-    /// AddAndRemove.
+    /// AddAndRemove. The <paramref name="reason"/> defaults to
+    /// <see cref="SyncRemovalReason.Reconciliation"/> and is forwarded to
+    /// the notification service for audit / telemetry; it does not
+    /// currently drive suppression (issue peterdrier/Humans#639).
     /// </summary>
     private async Task RemoveUserFromDriveAsync(
         GoogleResource resource,
         string permissionId,
         string userEmail,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        SyncRemovalReason reason = SyncRemovalReason.Reconciliation)
     {
         var mode = await _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, cancellationToken);
         if (mode != SyncMode.AddAndRemove)
@@ -464,6 +506,56 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             $"Removed Drive access for {userEmail} ({resource.Name})",
             nameof(GoogleWorkspaceSyncService),
             userEmail, resource.DrivePermissionLevel.ToApiRole(), GoogleSyncSource.ManualSync, success: true);
+
+        // Issue peterdrier/Humans#639 — notify only on confirmed delete.
+        try
+        {
+            await _removalNotifications.NotifyRemovalAsync(
+                userEmail,
+                resource.ResourceType,
+                resource.Name,
+                resource.Url,
+                reason,
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to enqueue Drive removal notification for {UserEmail} on {GoogleId}",
+                userEmail, resource.GoogleId);
+        }
+    }
+
+    /// <summary>
+    /// Best-effort derivation of a Google Group's primary email address
+    /// from its resource URL (<c>https://groups.google.com/a/{domain}/g/{prefix}</c>).
+    /// Returns <c>null</c> when the URL is missing or cannot be parsed —
+    /// callers fall back to the resource name in that case (issue
+    /// peterdrier/Humans#639 graceful-fallback acceptance criterion).
+    /// </summary>
+    private string? TryDeriveGroupEmail(GoogleResource resource)
+    {
+        if (resource.ResourceType != GoogleResourceType.Group)
+        {
+            return null;
+        }
+        if (string.IsNullOrWhiteSpace(resource.Url))
+        {
+            return null;
+        }
+
+        const string marker = "/g/";
+        var idx = resource.Url.IndexOf(marker, StringComparison.Ordinal);
+        if (idx < 0)
+        {
+            return null;
+        }
+        var prefix = resource.Url[(idx + marker.Length)..].TrimEnd('/');
+        if (string.IsNullOrWhiteSpace(prefix) || string.IsNullOrWhiteSpace(_options.Domain))
+        {
+            return null;
+        }
+        return $"{prefix}@{_options.Domain}";
     }
 
     // ==========================================================================
@@ -486,8 +578,9 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         // Active team members (skip rejected), resolved via the Teams service
         // so this service does not read team_members directly.
         var teamMembers = await _teamService.GetActiveMembersForTeamsAsync([teamId], cancellationToken);
+        var emailsByUserId = await LoadEmailsForMembersAsync(teamMembers, cancellationToken);
         var teamEmails = teamMembers
-            .Select(TryGetGoogleEmail)
+            .Select(tm => TryGetGoogleEmail(tm, emailsByUserId))
             .OfType<string>()
             .ToList();
 
@@ -540,23 +633,33 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        // GetByIdsWithEmailsAsync so the canonical IsGoogle UserEmail row
-        // resolves below — singular GetByIdAsync does not load UserEmails.
-        var usersById = await _userService.GetByIdsWithEmailsAsync([userId], cancellationToken);
-        usersById.TryGetValue(userId, out var user);
+        // Issue #635 (§15i): read UserEmails through the owning section
+        // service (design-rules §2c) instead of traversing user.UserEmails
+        // cross-domain.
+        var user = await _userService.GetByIdAsync(userId, cancellationToken);
+        var userEmails = user is null
+            ? (IReadOnlyList<UserEmail>)Array.Empty<UserEmail>()
+            : await _userEmailService.GetEntitiesByUserIdAsync(userId, cancellationToken);
 
-        var googleEmail = user?.UserEmails
+        var googleEmail = userEmails
             .Where(e => e.IsVerified && e.IsGoogle)
             .Select(e => e.Email)
             .FirstOrDefault()
-            ?? user?.UserEmails
+            ?? userEmails
                 .Where(e => e.IsVerified && e.Provider != null)
                 .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
                 .Select(e => e.Email)
                 .FirstOrDefault();
         if (googleEmail is null)
         {
-            _logger.LogWarning("User {UserId} not found or has no email", userId);
+            if (user is null)
+            {
+                _logger.LogWarning("Skipped Google provisioning for {UserId}: user no longer exists (likely deleted between outbox enqueue and dequeue)", userId);
+            }
+            else
+            {
+                _logger.LogWarning("Skipped Google provisioning for {UserId}: user exists but has no verified email", userId);
+            }
             return;
         }
 
@@ -582,7 +685,11 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 await AddUserToGroupAsync(resource.Id, googleEmail, cancellationToken);
                 if (previousEmail is not null)
                 {
-                    await RemoveUserFromGroupAsync(resource.Id, previousEmail, cancellationToken);
+                    // Tag the removal as EmailRotation for audit; the recipient
+                    // still gets a Variant 2 ("secondary cleanup") email
+                    // (issue peterdrier/Humans#639).
+                    await RemoveUserFromGroupAsync(
+                        resource.Id, previousEmail, SyncRemovalReason.EmailRotation, cancellationToken);
                 }
             }
             else
@@ -605,7 +712,8 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                     await AddUserToGroupAsync(resource.Id, googleEmail, cancellationToken);
                     if (previousEmail is not null)
                     {
-                        await RemoveUserFromGroupAsync(resource.Id, previousEmail, cancellationToken);
+                        await RemoveUserFromGroupAsync(
+                            resource.Id, previousEmail, SyncRemovalReason.EmailRotation, cancellationToken);
                     }
                 }
                 else
@@ -866,17 +974,20 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     {
         try
         {
+            var allMembers = teamMembers.Concat(childMembers);
+            var emailsByUserId = await LoadEmailsForMembersAsync(allMembers, cancellationToken);
+
             // Expected: team's active members (skip rejected) — include subteam rollup.
             var expectedMembers = new List<ExpectedMember>();
             foreach (var tm in teamMembers)
             {
-                var email = TryGetGoogleEmail(tm);
+                var email = TryGetGoogleEmail(tm, emailsByUserId);
                 if (email is null) continue;
                 expectedMembers.Add(new ExpectedMember(email, GetDisplayName(tm), GetUserId(tm), GetProfilePictureUrl(tm)));
             }
             foreach (var cm in childMembers)
             {
-                var email = TryGetGoogleEmail(cm);
+                var email = TryGetGoogleEmail(cm, emailsByUserId);
                 if (email is null) continue;
                 if (expectedMembers.Any(m => NormalizingEmailComparer.Instance.Equals(m.Email, email)))
                     continue;
@@ -1060,6 +1171,13 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             var membersByEmail = new Dictionary<string, (string DisplayName, Guid UserId, string? ProfilePictureUrl, List<TeamLink> TeamLinks)>(
                 NormalizingEmailComparer.Instance);
 
+            // Issue #635 (§15i): bulk-fetch UserEmails once for all members
+            // across the team union so TryGetGoogleEmail does not traverse
+            // user.UserEmails cross-domain.
+            var allMembersForEmails = membersByTeam.Values.SelectMany(v => v)
+                .Concat(childMembersByTeam.Values.SelectMany(v => v));
+            var emailsByUserId = await LoadEmailsForMembersAsync(allMembersForEmails, cancellationToken);
+
             foreach (var resource in resources)
             {
                 var level = resource.DrivePermissionLevel is DrivePermissionLevel.None
@@ -1069,7 +1187,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 var teamMembers = membersByTeam.GetValueOrDefault(resource.TeamId, []);
                 foreach (var tm in teamMembers)
                 {
-                    var memberEmail = TryGetGoogleEmail(tm);
+                    var memberEmail = TryGetGoogleEmail(tm, emailsByUserId);
                     if (memberEmail is null) continue;
 
                     if (membersByEmail.TryGetValue(memberEmail, out var existing))
@@ -1086,7 +1204,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 var childMembers = childMembersByTeam.GetValueOrDefault(resource.TeamId, []);
                 foreach (var cm in childMembers)
                 {
-                    var memberEmail = TryGetGoogleEmail(cm);
+                    var memberEmail = TryGetGoogleEmail(cm, emailsByUserId);
                     if (memberEmail is null) continue;
 
                     var childTeamLink = new TeamLink(cm.Team.Name, cm.Team.Slug, level);
@@ -2116,14 +2234,14 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     /// <summary>
     /// Gets the canonical Google Workspace email for a team member, returning
     /// null when the user's <c>GoogleEmailStatus</c> is Rejected or when the
-    /// user has no Workspace identity at all. Resolves through the
-    /// <see cref="User.UserEmails"/> collection (the IsGoogle row, falling
-    /// back to any provider-tagged verified row), which is hydrated by
-    /// <c>TeamService.StitchMemberUserSlicesAsync</c> via
-    /// <see cref="IUserService.GetByIdsWithEmailsAsync"/>. Pulls User data
-    /// from the cross-domain nav that the Teams service stitches in-memory.
+    /// user has no Workspace identity at all. Issue #635 (§15i): UserEmails
+    /// are pre-fetched by the caller via <see cref="IUserEmailService.GetEntitiesByUserIdsAsync"/>
+    /// and passed in as <paramref name="emailsByUserId"/> instead of being
+    /// traversed through <c>tm.User.UserEmails</c>.
     /// </summary>
-    private static string? TryGetGoogleEmail(TeamMember tm)
+    private static string? TryGetGoogleEmail(
+        TeamMember tm,
+        IReadOnlyDictionary<Guid, IReadOnlyList<UserEmail>> emailsByUserId)
     {
 #pragma warning disable CS0618 // Cross-domain User nav populated in-memory by ITeamService (§6b).
         var user = tm.User;
@@ -2133,15 +2251,35 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         if (user.GoogleEmailStatus == GoogleEmailStatus.Rejected)
             return null;
 
-        return user.UserEmails
+        var emails = emailsByUserId.TryGetValue(tm.UserId, out var list)
+            ? list
+            : Array.Empty<UserEmail>();
+
+        return emails
             .Where(e => e.IsVerified && e.IsGoogle)
             .Select(e => e.Email)
             .FirstOrDefault()
-            ?? user.UserEmails
+            ?? emails
                 .Where(e => e.IsVerified && e.Provider != null)
                 .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
                 .Select(e => e.Email)
                 .FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Issue #635 (§15i): bulk-fetch UserEmails for a set of team members,
+    /// grouped by userId. The Google sync hot-path calls this once per
+    /// reconcile and passes the result into every <see cref="TryGetGoogleEmail"/>
+    /// call so we never traverse <c>user.UserEmails</c> cross-domain. Routed
+    /// through the owning section service per design-rules §2c.
+    /// </summary>
+    private Task<IReadOnlyDictionary<Guid, IReadOnlyList<UserEmail>>>
+        LoadEmailsForMembersAsync(
+            IEnumerable<TeamMember> members,
+            CancellationToken ct)
+    {
+        var userIds = members.Select(m => m.UserId).Distinct().ToList();
+        return _userEmailService.GetEntitiesByUserIdsAsync(userIds, ct);
     }
 
     private static string GetDisplayName(TeamMember tm)

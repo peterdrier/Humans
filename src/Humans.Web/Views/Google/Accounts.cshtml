@@ -100,7 +100,30 @@
             </div>
         </div>
     </div>
+    <div class="col">
+        <div class="card text-center">
+            <div class="card-body py-2">
+                <h4 class="mb-0 @(Model.MissingTwoFactorCount > 0 ? "text-danger" : "text-success")">@Model.MissingTwoFactorCount</h4>
+                <small class="text-muted">Missing 2FA</small>
+            </div>
+        </div>
+    </div>
 </div>
+
+@if (Model.MissingTwoFactorCount > 0)
+{
+    <div class="alert alert-warning d-flex align-items-center justify-content-between mb-3" role="alert">
+        <div>
+            <i class="fa-solid fa-triangle-exclamation me-2"></i>
+            <strong>@Model.MissingTwoFactorCount</strong> account@(Model.MissingTwoFactorCount == 1 ? "" : "s") missing 2FA setup
+            — these accounts cannot sign in until enrollment is completed.
+        </div>
+        <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" role="switch" id="filter-missing-2fa" />
+            <label class="form-check-label" for="filter-missing-2fa">Show only unenrolled</label>
+        </div>
+    </div>
+}
 
 @* Accounts list *@
 <div class="card">
@@ -114,13 +137,15 @@
         }
         else
         {
-            <table class="table table-hover mb-0">
+            <table class="table table-hover mb-0" id="accounts-table">
                 <thead>
                     <tr>
                         <th>Email</th>
                         <th>Name</th>
                         <th>Linked Human</th>
                         <th>Status</th>
+                        <th>2FA</th>
+                        <th>Recovery Email</th>
                         <th>Created</th>
                         <th>Last Login</th>
                         <th class="text-end">@Localizer["GoogleAccounts_Actions"]</th>
@@ -130,7 +155,9 @@
                     @for (var i = 0; i < Model.Accounts.Count; i++)
                     {
                         var account = Model.Accounts[i];
-                        <tr class="@(account.IsSuspended ? "table-secondary" : "")">
+                        <tr class="@(account.IsSuspended ? "table-secondary" : "")"
+                            data-is-enrolled-2sv="@(account.IsEnrolledIn2Sv ? "true" : "false")"
+                            data-is-suspended="@(account.IsSuspended ? "true" : "false")">
                             <td>
                                 <code>@account.PrimaryEmail</code>
                                 @if (account.MatchedUserId.HasValue && !account.IsUsedAsPrimary)
@@ -170,6 +197,32 @@
                                     <span class="badge bg-success">Active</span>
                                 }
                             </td>
+                            <td>
+                                @if (account.IsEnrolledIn2Sv)
+                                {
+                                    <span class="badge bg-success" title="2-Step Verification is enrolled on this account" data-bs-toggle="tooltip">
+                                        <i class="fa-solid fa-shield-halved me-1"></i>2FA ready
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger" title="Account has not completed 2FA enrollment — cannot sign in" data-bs-toggle="tooltip">
+                                        <i class="fa-solid fa-triangle-exclamation me-1"></i>2FA not set up
+                                    </span>
+                                }
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(account.RecoveryEmail))
+                                {
+                                    <code class="small">@account.RecoveryEmail</code>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning text-dark" title="No personal recovery email on file — recovery requires admin intervention" data-bs-toggle="tooltip">
+                                        <i class="fa-solid fa-triangle-exclamation me-1"></i>None
+                                    </span>
+                                }
+                            </td>
                             <td>@account.CreationTime.ToDisplayDate()</td>
                             <td>
                                 @if (account.LastLoginTime.HasValue)
@@ -184,15 +237,28 @@
                             <td class="text-end">
                                 @if (!account.IsSuspended)
                                 {
-                                    <form asp-action="ResetPassword" method="post" class="d-inline reset-password-form"
-                                          data-email="@account.PrimaryEmail"
-                                          data-confirm="@string.Format(Localizer["GoogleAccounts_ResetPasswordConfirm"].Value, account.PrimaryEmail)">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="email" value="@account.PrimaryEmail" />
-                                        <button type="submit" class="btn btn-outline-warning btn-sm">
-                                            <i class="fa-solid fa-key me-1"></i>@Localizer["GoogleAccounts_ResetPassword"]
-                                        </button>
-                                    </form>
+                                    <div class="d-inline-flex gap-1">
+                                        <form asp-action="ResetPassword" method="post" class="d-inline"
+                                              data-confirm="Reset the password for @account.PrimaryEmail? The new temporary password will be shown once.">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="email" value="@account.PrimaryEmail" />
+                                            <button type="submit" class="btn btn-outline-warning btn-sm"
+                                                    title="Issue a fresh temporary password — shown once after submit"
+                                                    data-bs-toggle="tooltip">
+                                                <i class="fa-solid fa-key me-1"></i>@Localizer["GoogleAccounts_ResetPassword"]
+                                            </button>
+                                        </form>
+                                        <form asp-action="ResetPasswordAndGenerate2Fa" method="post" class="d-inline"
+                                              data-confirm="Reset password and issue a backup verification code for @account.PrimaryEmail? Both will be shown once. Any previously-issued backup codes will be invalidated.">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="email" value="@account.PrimaryEmail" />
+                                            <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                    title="Reset the password AND issue one backup code — for locked-out humans (any 2FA state)"
+                                                    data-bs-toggle="tooltip">
+                                                <i class="fa-solid fa-key me-1"></i>Reset + 2FA
+                                            </button>
+                                        </form>
+                                    </div>
                                 }
                             </td>
                         </tr>
@@ -202,6 +268,61 @@
         }
     </div>
 </div>
+
+@{
+    var recoveryCreds = ViewBag.RecoveryCredentials as WorkspaceRecoveryCredentialsViewModel;
+}
+
+@if (recoveryCreds is not null && !string.IsNullOrEmpty(recoveryCreds.TempPassword))
+{
+    var hasBackupCode = !string.IsNullOrEmpty(recoveryCreds.BackupCode);
+    var clipboardText = hasBackupCode
+        ? $"pw: {recoveryCreds.TempPassword}\n2fa: {recoveryCreds.BackupCode}"
+        : $"pw: {recoveryCreds.TempPassword}";
+    <div class="modal fade" id="recovery-credentials-modal" tabindex="-1" aria-labelledby="recovery-credentials-modal-label" aria-hidden="true"
+         data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="recovery-credentials-modal-label">
+                        <i class="fa-solid fa-key me-2"></i>
+                        @(hasBackupCode ? "Recovery credentials" : "New password") for @recoveryCreds.Email
+                    </h5>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning mb-3">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                        <strong>One-shot delivery.</strong>
+                        Hand these to <code>@recoveryCreds.Email</code> securely — they cannot be retrieved again after you close this dialog.
+                    </div>
+
+                    <pre id="recovery-credentials-text" class="bg-light p-3 border rounded mb-3 small">@clipboardText</pre>
+
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="copy-recovery-credentials">
+                        <i class="fa-solid fa-copy me-1"></i>Copy to clipboard
+                    </button>
+                    <span id="copy-recovery-credentials-feedback" class="text-success ms-2" style="display:none;">
+                        <i class="fa-solid fa-check me-1"></i>Copied
+                    </span>
+
+                    <hr />
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="ack-delivered" />
+                        <label class="form-check-label" for="ack-delivered">
+                            I've delivered these credentials securely to the human
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="close-recovery-credentials" data-bs-dismiss="modal" disabled>
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @section Scripts {
     <script>
@@ -219,5 +340,64 @@
                 }
             });
         });
+
+        // Filter toggle: show only accounts missing 2FA setup (active + unenrolled).
+        (function () {
+            var toggle = document.getElementById('filter-missing-2fa');
+            if (!toggle) return;
+            toggle.addEventListener('change', function () {
+                var onlyUnenrolled = toggle.checked;
+                document.querySelectorAll('#accounts-table tbody tr').forEach(function (row) {
+                    if (!onlyUnenrolled) {
+                        row.style.display = '';
+                        return;
+                    }
+                    var enrolled = row.getAttribute('data-is-enrolled-2sv') === 'true';
+                    var suspended = row.getAttribute('data-is-suspended') === 'true';
+                    // Hide enrolled rows and suspended rows (suspended accounts can't sign in either way)
+                    row.style.display = (!enrolled && !suspended) ? '' : 'none';
+                });
+            });
+        })();
+
+        // Recovery-credentials modal: copy-to-clipboard, acknowledgement gate, and auto-show once.
+        (function () {
+            var modalEl = document.getElementById('recovery-credentials-modal');
+            if (!modalEl) return;
+
+            // Auto-show on load
+            var modal = new bootstrap.Modal(modalEl);
+            modal.show();
+
+            var ackCheckbox = document.getElementById('ack-delivered');
+            var closeBtn = document.getElementById('close-recovery-credentials');
+            if (ackCheckbox && closeBtn) {
+                ackCheckbox.addEventListener('change', function () {
+                    closeBtn.disabled = !ackCheckbox.checked;
+                });
+            }
+
+            var copyBtn = document.getElementById('copy-recovery-credentials');
+            var credsEl = document.getElementById('recovery-credentials-text');
+            var feedback = document.getElementById('copy-recovery-credentials-feedback');
+            if (copyBtn && credsEl) {
+                copyBtn.addEventListener('click', function () {
+                    var text = credsEl.textContent || '';
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(text).then(function () {
+                            if (feedback) {
+                                feedback.style.display = 'inline';
+                                setTimeout(function () { feedback.style.display = 'none'; }, 2000);
+                            }
+                        });
+                    }
+                });
+            }
+
+            // On close, clear the credentials from the DOM so browser back/refresh can't re-expose them.
+            modalEl.addEventListener('hidden.bs.modal', function () {
+                if (credsEl) credsEl.textContent = '';
+            });
+        })();
     </script>
 }

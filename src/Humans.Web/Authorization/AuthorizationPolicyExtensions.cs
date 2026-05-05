@@ -24,7 +24,9 @@ public static class AuthorizationPolicyExtensions
         services.AddScoped<IAuthorizationHandler, AgentRateLimitHandler>();
         services.AddScoped<IAuthorizationHandler, BudgetAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, CampAuthorizationHandler>();
+        services.AddScoped<IAuthorizationHandler, StoreOrderAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, TeamAuthorizationHandler>();
+        services.AddScoped<IAuthorizationHandler, IsAnyTeamManagerOrCoordinatorHandler>();
         services.AddSingleton<IAuthorizationHandler, IssuesAuthorizationHandler>();
 
         // Service-layer enforcement handlers (singleton — no scoped dependencies)
@@ -51,6 +53,7 @@ public static class AuthorizationPolicyExtensions
                     RoleNames.TicketAdmin,
                     RoleNames.FeedbackAdmin,
                     RoleNames.FinanceAdmin,
+                    RoleNames.StoreAdmin,
                     RoleNames.NoInfoAdmin,
                     RoleNames.VolunteerCoordinator,
                     RoleNames.ConsentCoordinator));
@@ -85,6 +88,9 @@ public static class AuthorizationPolicyExtensions
             options.AddPolicy(PolicyNames.FinanceAdminOrAdmin, policy =>
                 policy.RequireRole(RoleNames.FinanceAdmin, RoleNames.Admin));
 
+            options.AddPolicy(PolicyNames.StoreCatalogAdmin, policy =>
+                policy.RequireRole(RoleNames.StoreAdmin, RoleNames.FinanceAdmin, RoleNames.Admin));
+
             options.AddPolicy(PolicyNames.ReviewQueueAccess, policy =>
                 policy.RequireRole(RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator,
                     RoleNames.Board, RoleNames.Admin));
@@ -92,14 +98,19 @@ public static class AuthorizationPolicyExtensions
             options.AddPolicy(PolicyNames.ConsentCoordinatorBoardOrAdmin, policy =>
                 policy.RequireRole(RoleNames.ConsentCoordinator, RoleNames.Board, RoleNames.Admin));
 
-            // ShiftDashboardAccess and ShiftDepartmentManager are intentionally identical today
-            // (both map to ShiftRoleChecks.CanManageDepartment). Kept separate so they can
-            // diverge when per-department manager roles are introduced.
+            // ShiftDashboardAccess stays narrow — gates the privileged sub-panels on the
+            // dashboard (coordinator activity, pending shifts, voluntell action). Only the
+            // role-based admins / volunteer coordinators see those.
             options.AddPolicy(PolicyNames.ShiftDashboardAccess, policy =>
                 policy.RequireRole(RoleNames.Admin, RoleNames.NoInfoAdmin, RoleNames.VolunteerCoordinator));
 
+            // ShiftDepartmentManager is wider: privileged dashboard roles OR anyone who is
+            // a coordinator / manager of any team or sub-team. Gates the dashboard page
+            // entry point and the "open dashboard" button on /Shifts. The role-OR-team-coord
+            // disjunction is encoded inside IsAnyTeamManagerOrCoordinatorHandler so the policy
+            // stays a single requirement (multiple requirements on a policy AND together).
             options.AddPolicy(PolicyNames.ShiftDepartmentManager, policy =>
-                policy.RequireRole(RoleNames.Admin, RoleNames.NoInfoAdmin, RoleNames.VolunteerCoordinator));
+                policy.AddRequirements(new IsAnyTeamManagerOrCoordinatorRequirement()));
 
             options.AddPolicy(PolicyNames.PrivilegedSignupApprover, policy =>
                 policy.RequireRole(RoleNames.Admin, RoleNames.NoInfoAdmin));

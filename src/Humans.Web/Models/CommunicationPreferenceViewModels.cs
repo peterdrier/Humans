@@ -11,6 +11,12 @@ public class CommunicationPreferencesViewModel
     /// The token must be included in AJAX update calls for authorization.
     /// </summary>
     public string? UnsubscribeToken { get; set; }
+
+    /// <summary>
+    /// Category encoded in the unsubscribe token, when present. Drives the one-click
+    /// "Unsubscribe from <category>" banner and pre-focuses that row in the matrix.
+    /// </summary>
+    public MessageCategory? HighlightCategory { get; set; }
 }
 
 public class CategoryPreferenceItem

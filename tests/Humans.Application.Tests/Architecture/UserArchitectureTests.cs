@@ -254,4 +254,48 @@ public class UserArchitectureTests
                      "Offenders: {0}",
             string.Join("; ", offenders));
     }
+
+    // ── §15i nav-strip ───────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Issue #635 (§15i): the User-side cross-domain navs (Profile,
+    /// RoleAssignments, ConsentRecords, Applications, TeamMemberships,
+    /// CommunicationPreferences) and the GetEffectiveEmail() method are
+    /// stripped. UserEmails stays — the User.Email override depends on it
+    /// per AC. EventParticipations is owned by the Users section itself.
+    /// </summary>
+    [HumansFact]
+    public void User_HasNoCrossDomainNavigationProperties()
+    {
+        var userType = typeof(Humans.Domain.Entities.User);
+        var declaredProps = userType
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .Select(p => p.Name)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var forbidden = new[]
+        {
+            "Profile",
+            "RoleAssignments",
+            "ConsentRecords",
+            "Applications",
+            "TeamMemberships",
+            "CommunicationPreferences",
+        };
+
+        var present = forbidden.Where(declaredProps.Contains).ToList();
+        present.Should().BeEmpty(
+            because: "issue #635 (§15i) strips these cross-domain navs from User. The " +
+                     "inverse-side EF configurations on each owning entity preserve the " +
+                     "schema-level FKs. Cross-section access goes through the owning " +
+                     "section's service. Offenders still on User: {0}",
+            string.Join(", ", present));
+
+        userType
+            .GetMethod("GetEffectiveEmail", BindingFlags.Public | BindingFlags.Instance)
+            .Should().BeNull(
+                because: "issue #635 (§15i) replaces User.GetEffectiveEmail() with a " +
+                         "direct read of User.Email. The override already does the " +
+                         "GetEffectiveEmail-equivalent computation.");
+    }
 }

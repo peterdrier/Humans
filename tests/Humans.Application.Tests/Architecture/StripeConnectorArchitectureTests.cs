@@ -49,6 +49,20 @@ public class StripeConnectorArchitectureTests
     }
 
     [HumansFact]
+    public void HumansWebAssembly_HasNoReferenceToStripeNet()
+    {
+        var webAssembly = typeof(Humans.Web.Controllers.StoreStripeWebhookController).Assembly;
+
+        var referenced = webAssembly.GetReferencedAssemblies()
+            .Select(a => a.Name ?? string.Empty)
+            .ToList();
+
+        referenced.Should().NotContain(
+            name => name.StartsWith("Stripe", StringComparison.Ordinal),
+            because: "Humans.Web must not reference the Stripe.net SDK — controllers go through IStripeService, the connector seam (design-rules §15i)");
+    }
+
+    [HumansFact]
     public void IStripeService_ExposesNoStripeSdkTypesOnItsPublicSurface()
     {
         var methodTypes = typeof(IStripeService).GetMethods()

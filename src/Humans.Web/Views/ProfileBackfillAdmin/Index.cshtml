@@ -1,0 +1,66 @@
+@using Humans.Web.Extensions
+@model Humans.Web.Controllers.ProfileBackfillViewModel
+@{
+    ViewData["Title"] = "Stub Profile Backfill";
+    Layout = "_AdminLayout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Stub Profile Backfill</h1>
+    <small class="text-muted">Issue #635 (§15i)</small>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        @if (Model.MissingRows.Count == 0)
+        {
+            <p class="mb-0">All users already have a Profile — nothing to do.</p>
+        }
+        else
+        {
+            <p>
+                <strong>@Model.MissingRows.Count</strong>
+                @(Model.MissingRows.Count == 1 ? "user has" : "users have")
+                no Profile. Click the button below to materialize a Stub Profile
+                for each.
+            </p>
+            <form method="post" asp-action="Run">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i>
+                    Materialize Stub Profiles for all @Model.MissingRows.Count users
+                </button>
+            </form>
+        }
+    </div>
+</div>
+
+@if (Model.MissingRows.Count > 0)
+{
+    <div class="card mb-4">
+        <div class="card-header">Users without a Profile</div>
+        <div class="table-responsive">
+            <table class="table table-striped mb-0">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Display name</th>
+                        <th>Created</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.MissingRows)
+                    {
+                        <tr>
+                            <td>@row.Email</td>
+                            <td>@row.DisplayName</td>
+                            <td>@row.CreatedAt.ToDisplayDateTime()</td>
+                            <td>@(row.ContactSource?.ToString() ?? "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

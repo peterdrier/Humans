@@ -120,10 +120,10 @@ Stored as string via `HasConversion<string>()`.
 | Actor | Capabilities |
 |-------|--------------|
 | Any active human | Browse available shifts (when browsing is open or they have existing signups). Sign up for shifts (single or date-range for build/strike rotas). View own signups and schedule. Bail from own signups (single or whole range). Set general availability. Fill out volunteer event profile. Save preferred rota tags. **Currently** can also see who has signed up for any shift on `/Shifts` (temporary public-signup-list policy — see [feature 26](../features/26-shift-signup-visibility.md)) |
-| Department coordinator | Manage rotas and shifts for their department and all sub-teams. Approve, refuse, and bail signups. Voluntell humans (single or range). Mark no-show. Remove confirmed signups. Manage rota tags. View volunteer event profiles (except medical data) |
-| Sub-team manager | Manage rotas and shifts for their sub-team only. Approve, refuse, and bail signups on their sub-team. Voluntell humans on their sub-team. Cannot manage sibling sub-teams or the parent department |
-| VolunteerCoordinator | All coordinator capabilities across all departments (rotas, shifts, signups, voluntell, no-show, remove). Move rotas between departments. Access the cross-department shift dashboard. Cannot view medical data |
-| NoInfoAdmin | Approve, refuse, and bail signups across all departments. Voluntell humans. Mark no-show. Remove confirmed signups. View volunteer medical data. Access the cross-department shift dashboard. **Cannot create or edit rotas or shifts** (management is gated to Admin/VolunteerCoordinator + dept coordinators) |
+| Department coordinator | Manage rotas and shifts for their department and all sub-teams. Approve, refuse, and bail signups. Voluntell humans (single or range) on their own department's shifts. Mark no-show. Remove confirmed signups. Manage rota tags. View volunteer event profiles (except medical data). View the cross-department shift dashboard, but the coordinator-activity panel and the per-shift voluntell action on it remain gated to VolunteerCoordinator/Admin/NoInfoAdmin |
+| Sub-team manager | Manage rotas and shifts for their sub-team only. Approve, refuse, and bail signups on their sub-team. Voluntell humans on their own sub-team's shifts. Cannot manage sibling sub-teams or the parent department. View the cross-department shift dashboard with the same privileged-panel restrictions as a department coordinator |
+| VolunteerCoordinator | All coordinator capabilities across all departments (rotas, shifts, signups, voluntell, no-show, remove). Move rotas between departments. Access the cross-department shift dashboard including the coordinator-activity panel and per-shift voluntell action. Cannot view medical data |
+| NoInfoAdmin | Approve, refuse, and bail signups across all departments. Voluntell humans. Mark no-show. Remove confirmed signups. View volunteer medical data. Access the cross-department shift dashboard including the privileged sub-panels. **Cannot create or edit rotas or shifts** (management is gated to Admin/VolunteerCoordinator + dept coordinators) |
 | Admin | All NoInfoAdmin capabilities plus full rota/shift management system-wide. Manage event settings (dates, timezone, early-entry capacity, barrios EE allocation, early-entry close, global volunteer cap, reminder lead time, shift browsing toggle). View medical data |
 
 ## Invariants
@@ -152,6 +152,8 @@ Stored as string via `HasConversion<string>()`.
 - Regular humans **cannot** manage rotas or shifts. They can only browse and sign up.
 - Regular humans **cannot** approve, refuse, or bail other humans' signups.
 - Regular humans **cannot** voluntell other humans.
+- Regular humans (no team coordinator / management role anywhere) **cannot** see the cross-department shift dashboard.
+- Department coordinators / sub-team managers **cannot** see the dashboard's coordinator-activity panel or trigger the per-shift voluntell action — those stay on the narrower `ShiftDashboardAccess` policy (Admin / NoInfoAdmin / VolunteerCoordinator). The page entry is on the wider `ShiftDepartmentManager` policy.
 - Department coordinators **cannot** manage rotas or approve signups outside their own department.
 - Sub-team managers **cannot** manage rotas or approve signups outside their own sub-team (not siblings, not parent department).
 - Department coordinators **cannot** view volunteer medical data.
@@ -220,7 +222,7 @@ Stored as string via `HasConversion<string>()`.
 - **Within-section cross-service direct DbContext reads:**
   - `ShiftSignupService` reads `_dbContext.Rotas` (`:326, 510`), `_dbContext.Shifts` (`:55, 257`), and `_dbContext.EventSettings` (via `.Include` chains) — all owned by `ShiftManagementService` per §8. Acceptable once both are behind repos and the dependency is expressed as `IShiftManagementRepository` → `IShiftSignupRepository`.
 - **Inline `IMemoryCache` usage in service methods:**
-  - `ShiftManagementService.cs:97` — `_cache.GetOrCreateAsync(CacheKeys.ShiftAuthorization(userId), ...)` wrapping `TeamService.GetUserCoordinatedTeamIdsAsync(userId)`. Per §4/§5 this cache belongs in the Teams caching decorator, not here. Drop the `shift-auth` cache and let Teams own the result.
+  - `ShiftManagementService.cs:97` — `_cache.GetOrCreateAsync(CacheKeys.ShiftAuthorization(userId), ...)` wrapping `TeamService.GetUserCoordinatedTeamIdsAsync(userId)`. Per §4/§5 this cache belongs in the Teams caching decorator, not here. Drop the `shift-auth` cache and let Teams own the result. (The `IsAnyTeamManagerOrCoordinatorHandler` for `ShiftDepartmentManager` reuses this same cached path through `IShiftManagementService.GetCoordinatorTeamIdsAsync` — when the cache moves into Teams, the handler should be re-pointed at the Teams-owned cached method.)
   - No `_cache.` references in `ShiftSignupService` or `GeneralAvailabilityService`.
 - **Cross-domain nav properties on this section's entities:** all deleted 2026-04-25 (#541 final pass). FKs stay wired in EF via the typed-FK form (`HasOne<Team>().WithMany().HasForeignKey(...)`).
   - ~~`Rota.Team`~~ — deleted 2026-04-25.

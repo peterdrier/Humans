@@ -2177,9 +2177,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             var user = await UserService.GetByIdAsync(userId, cancellationToken);
             if (user is null) return;
 
-#pragma warning disable CS0618 // User.GetEffectiveEmail() cross-domain — tracked in §15i nav-strip follow-up
-            var email = user.GetEffectiveEmail() ?? user.Email!;
-#pragma warning restore CS0618
+            var email = user.Email!;
             var resources = await TeamResourceService.GetTeamResourcesAsync(team.Id, cancellationToken);
 
             await EmailService.SendAddedToTeamAsync(

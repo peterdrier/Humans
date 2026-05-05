@@ -1,0 +1,211 @@
+@model Humans.Web.Models.StoreOrderViewModel
+@{
+    ViewData["Title"] = $"Store order — {Model.CampName}";
+    var order = Model.Order;
+}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">Store</a></li>
+        <li class="breadcrumb-item">@Model.CampName</li>
+        <li class="breadcrumb-item active">@(string.IsNullOrWhiteSpace(order.Label) ? "Order" : order.Label)</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">@(string.IsNullOrWhiteSpace(order.Label) ? "Store order" : order.Label)</h1>
+    <span class="badge bg-secondary fs-6">@order.State</span>
+</div>
+
+<vc:temp-data-alerts />
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Lines subtotal</h6>
+                <h4 class="card-title mb-0">&euro;@order.LinesSubtotalEur.ToString("N2")</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">VAT</h6>
+                <h4 class="card-title mb-0">&euro;@order.VatTotalEur.ToString("N2")</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Deposits</h6>
+                <h4 class="card-title mb-0">&euro;@order.DepositTotalEur.ToString("N2")</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center bg-light">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Balance owed</h6>
+                <h4 class="card-title mb-0 fw-bold">&euro;@order.BalanceEur.ToString("N2")</h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h2 class="h4 mb-3">Lines</h2>
+@if (order.Lines.Any())
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th class="text-end">Qty</th>
+                <th class="text-end">Unit price</th>
+                <th class="text-end">VAT %</th>
+                <th class="text-end">Deposit</th>
+                <th class="text-end">Line total (incl. VAT &amp; deposit)</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var line in order.Lines)
+            {
+                <tr>
+                    <td>@line.ProductName</td>
+                    <td class="text-end">@line.Qty</td>
+                    <td class="text-end">&euro;@line.UnitPriceSnapshot.ToString("N2")</td>
+                    <td class="text-end">@line.VatRateSnapshot.ToString("0.##")%</td>
+                    <td class="text-end">@(line.DepositAmountSnapshot.HasValue ? $"€{line.DepositEur:N2}" : "—")</td>
+                    <td class="text-end">&euro;@line.TotalEur.ToString("N2")</td>
+                    <td class="text-end">
+                        @if (Model.CanEdit)
+                        {
+                            <form asp-action="RemoveLine" asp-route-id="@order.Id" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="lineId" value="@line.Id" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                        data-confirm="Remove this line?">Remove</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <div class="alert alert-secondary">No lines on this order yet.</div>
+}
+
+@if (Model.CanEdit)
+{
+    <h2 class="h4 mb-3">Add line</h2>
+    <form asp-action="AddLine" asp-route-id="@order.Id" method="post" class="row g-2 mb-4">
+        @Html.AntiForgeryToken()
+        <div class="col-md-7">
+            <select name="productId" class="form-select" required>
+                <option value="">Choose a product…</option>
+                @foreach (var product in Model.Catalog)
+                {
+                    <option value="@product.Id">@product.Name — &euro;@product.UnitPriceEur.ToString("N2") (deadline @product.OrderableUntil.ToDisplayDate())</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <input type="number" name="qty" class="form-control" min="1" value="1" required />
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-primary w-100">Add line</button>
+        </div>
+    </form>
+}
+
+<h2 class="h4 mb-3">Counterparty (for invoice)</h2>
+@if (Model.CanEdit)
+{
+    <form asp-action="UpdateCounterparty" asp-route-id="@order.Id" method="post" class="row g-3 mb-4">
+        @Html.AntiForgeryToken()
+        <div class="col-md-6">
+            <label class="form-label">Name</label>
+            <input type="text" name="Name" class="form-control" value="@order.CounterpartyName" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">VAT / NIF / CIF</label>
+            <input type="text" name="VatId" class="form-control" value="@order.CounterpartyVatId" />
+        </div>
+        <div class="col-md-12">
+            <label class="form-label">Address</label>
+            <input type="text" name="Address" class="form-control" value="@order.CounterpartyAddress" />
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Country</label>
+            <input type="text" name="CountryCode" class="form-control" maxlength="2" value="@order.CounterpartyCountryCode" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Email</label>
+            <input type="email" name="Email" class="form-control" value="@order.CounterpartyEmail" />
+        </div>
+        <div class="col-md-12">
+            <button type="submit" class="btn btn-primary">Save counterparty</button>
+        </div>
+    </form>
+}
+else
+{
+    <dl class="row">
+        <dt class="col-sm-3">Name</dt><dd class="col-sm-9">@order.CounterpartyName</dd>
+        <dt class="col-sm-3">VAT / NIF / CIF</dt><dd class="col-sm-9">@order.CounterpartyVatId</dd>
+        <dt class="col-sm-3">Address</dt><dd class="col-sm-9">@order.CounterpartyAddress</dd>
+        <dt class="col-sm-3">Country</dt><dd class="col-sm-9">@order.CounterpartyCountryCode</dd>
+        <dt class="col-sm-3">Email</dt><dd class="col-sm-9">@order.CounterpartyEmail</dd>
+    </dl>
+}
+
+<h2 class="h4 mb-3">Payments</h2>
+@if (order.BalanceEur > 0 && Model.CanPay)
+{
+    if (Model.IsStripeConfigured)
+    {
+        <form asp-action="Pay" asp-route-id="@order.Id" method="post" class="row g-2 mb-3 align-items-end">
+            @Html.AntiForgeryToken()
+            <div class="col-md-4">
+                <label class="form-label">Amount to pay (EUR)</label>
+                <input type="number" name="amountEur" class="form-control"
+                       min="0.01" max="@order.BalanceEur.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
+                       step="0.01"
+                       value="@order.BalanceEur.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" required />
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary">Pay with Stripe</button>
+                <small class="form-text text-muted d-block">You'll be redirected to Stripe Checkout.</small>
+            </div>
+        </form>
+    }
+    else
+    {
+        <div class="alert alert-warning">Stripe checkout is not configured for this environment.</div>
+    }
+}
+else if (order.BalanceEur <= 0)
+{
+    <p class="text-muted">No outstanding balance.</p>
+}
+else
+{
+    <p class="text-muted">Payments are recorded by the finance team.</p>
+}
+
+@section Scripts {
+    <script nonce="@Context.Items["CspNonce"]">
+        document.querySelectorAll('[data-confirm]').forEach(function (button) {
+            button.addEventListener('click', function (e) {
+                if (!confirm(this.getAttribute('data-confirm'))) {
+                    e.preventDefault();
+                }
+            });
+        });
+    </script>
+}

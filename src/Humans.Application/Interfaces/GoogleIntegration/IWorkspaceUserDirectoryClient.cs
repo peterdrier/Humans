@@ -57,4 +57,11 @@ public interface IWorkspaceUserDirectoryClient
     /// password change at next login.
     /// </summary>
     Task ResetPasswordAsync(string primaryEmail, string newPassword, CancellationToken ct = default);
+
+    /// <summary>
+    /// Generates a fresh set of backup verification codes for the account and
+    /// returns them. Google always reissues the full set on generate — any
+    /// previously issued codes are invalidated.
+    /// </summary>
+    Task<IReadOnlyList<string>> GenerateBackupCodesAsync(string primaryEmail, CancellationToken ct = default);
 }

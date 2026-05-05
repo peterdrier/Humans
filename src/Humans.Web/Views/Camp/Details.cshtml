@@ -328,12 +328,23 @@
                     @switch (Model.Membership.Status)
                     {
                         case CampMemberStatusSummaryView.None:
-                            <form asp-controller="Camp" asp-action="RequestMembership" asp-route-slug="@Model.Slug" method="post">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-outline-primary w-100">
-                                    <i class="fa-solid fa-hand me-1"></i> Request to join for @Model.Membership.OpenSeasonYear
-                                </button>
-                            </form>
+                            @if (Model.IsCurrentUserLead)
+                            {
+                                @* Leads are part of the camp by definition — don't prompt them to "request to join". *@
+                                <div class="alert alert-info py-2 mb-0">
+                                    <i class="fa-solid fa-user-shield me-1"></i>
+                                    You are a lead for @Model.Membership.OpenSeasonYear.
+                                </div>
+                            }
+                            else
+                            {
+                                <form asp-controller="Camp" asp-action="RequestMembership" asp-route-slug="@Model.Slug" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-outline-primary w-100">
+                                        <i class="fa-solid fa-hand me-1"></i> Request to join for @Model.Membership.OpenSeasonYear
+                                    </button>
+                                </form>
+                            }
                             break;
                         case CampMemberStatusSummaryView.Pending:
                             <div class="d-grid gap-2">
@@ -375,7 +386,15 @@
                 </div>
                 <div class="card-body d-grid gap-2">
                     <a asp-action="Edit" asp-route-slug="@Model.Slug" class="btn btn-outline-primary">
-                        <i class="fa-solid fa-pen-to-square me-1"></i> Edit @Localizer["Camp_Singular"]
+                        <i class="fa-solid fa-pen-to-square me-1"></i>
+                        @if (Model.IsCurrentUserLead)
+                        {
+                            <text>Edit @Localizer["Camp_Singular"] / Assign roles</text>
+                        }
+                        else
+                        {
+                            <text>Edit @Localizer["Camp_Singular"]</text>
+                        }
                     </a>
                     @if (Model.CurrentSeason != null)
                     {

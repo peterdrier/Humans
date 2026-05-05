@@ -19,12 +19,17 @@ public class ProfileApiController : ControllerBase
     }
 
     [HttpGet("search")]
-    public async Task<IActionResult> Search([FromQuery] string? q)
+    public async Task<IActionResult> Search([FromQuery] string? q, [FromQuery] string? scope = null)
     {
         if (!q.HasSearchTerm())
             return Ok(Array.Empty<HumanLookupSearchResult>());
 
-        var results = await _profileService.SearchHumansAsync(q);
+        // scope=name → narrowed match on display name + burner name only.
+        // anything else (default) → broad match across bio / city / interests / CV / etc.
+        var results = string.Equals(scope, "name", StringComparison.OrdinalIgnoreCase)
+            ? await _profileService.SearchHumansByNameAsync(q)
+            : await _profileService.SearchHumansAsync(q);
+
         return Ok(results
             .Take(10)
             .Select(r => r.ToHumanLookupSearchResult()));

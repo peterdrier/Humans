@@ -51,6 +51,13 @@ public class ApplicationConfiguration : IEntityTypeConfiguration<MemberApplicati
             .HasForeignKey(a => a.ReviewedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Issue #635 (§15i): inverse-side FK preservation for the applicant
+        // after the User-side nav (User.Applications) was stripped.
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(a => a.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasMany(a => a.StateHistory)
             .WithOne(sh => sh.Application)
             .HasForeignKey(sh => sh.ApplicationId)

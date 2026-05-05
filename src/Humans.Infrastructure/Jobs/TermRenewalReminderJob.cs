@@ -114,7 +114,7 @@ public class TermRenewalReminderJob : IRecurringJob
                     continue;
                 }
 
-                var email = applicant.GetEffectiveEmail() ?? applicant.Email;
+                var email = applicant.Email;
                 if (email is null)
                 {
                     continue;
