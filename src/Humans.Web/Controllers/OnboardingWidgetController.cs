@@ -113,24 +113,22 @@ public class OnboardingWidgetController : HumansControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> Shifts(bool showAll = false, CancellationToken ct = default)
+    public async Task<IActionResult> Shifts(string? priority = null, CancellationToken ct = default)
     {
         var es = await _shiftMgmt.GetActiveAsync();
-        ShiftBrowseViewModel browseModel;
         if (es is null)
-        {
-            browseModel = new ShiftBrowseViewModel { EventSettings = null!, ShowSignups = true, Sort = "urgency" };
-        }
-        else
-        {
-            var urgentShifts = await _shiftMgmt.GetBrowseShiftsAsync(
-                es.Id, includeAdminOnly: false, includeSignups: true,
-                includeHidden: false, priorityOnly: !showAll);
-            var (shiftIds, statuses) = await _signupService.GetActiveSignupStatusesAsync(CurrentUserId(), es.Id);
-            browseModel = OnboardingShiftsBrowseModelBuilder.Build(es, urgentShifts, shiftIds, statuses);
-        }
+            return View(OnboardingShiftsBrowseModelBuilder.BuildEmpty(priority ?? string.Empty));
 
-        return View(new ShiftsStepViewModel { ShowAll = showAll, BrowseModel = browseModel });
+        // Stats line ("X% of critical filled, Y important open") needs the full
+        // event-wide set, so we fetch with priorityOnly: false and let the
+        // builder filter for display.
+        var urgentShifts = await _shiftMgmt.GetBrowseShiftsAsync(
+            es.Id, includeAdminOnly: false, includeSignups: true,
+            includeHidden: false, priorityOnly: false);
+        var (shiftIds, statuses) = await _signupService.GetActiveSignupStatusesAsync(CurrentUserId(), es.Id);
+        var vm = OnboardingShiftsBrowseModelBuilder.Build(
+            es, urgentShifts, shiftIds, statuses, priority ?? string.Empty);
+        return View(vm);
     }
 
     [HttpPost]

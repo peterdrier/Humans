@@ -4,20 +4,48 @@
     var browse = Model.BrowseModel;
     var es = browse.EventSettings;
     var hasShifts = es is not null && browse.UrgencyRankedRotas.Count > 0;
+    var selected = Model.SelectedPriority;
+    string PillCss(string key) =>
+        selected == key ? "btn btn-sm btn-danger" : "btn btn-sm btn-outline-secondary";
 }
 
 <div class="container py-4">
     <div class="row justify-content-center">
         <div class="col-lg-10">
             <h1 class="mb-2">Pick a shift</h1>
-            @if (Model.ShowAll)
+
+            @* ─── Proposal copy + pill + Skip (all top-of-page) ─── *@
+            @if (Model.HasAnyCritical)
             {
-                <p class="text-muted mb-4">All shifts.</p>
+                <div class="alert alert-danger" role="alert">
+                    <strong>IMPORTANT:</strong> The event has only @Model.CriticalFilledPercent% of the &ldquo;critical&rdquo; shifts filled. If these are not filled, the event might be cancelled as it would not be viable or safe to run it.
+                    @if (Model.HasAnyImportant)
+                    {
+                        <div class="mt-2 mb-0">There are also @Model.ImportantOpenCount &ldquo;important&rdquo; shifts open.</div>
+                    }
+                    <div class="mt-2 mb-0">If you&rsquo;re able to fill some of those, or you&rsquo;re able to come pre-event or stay for strike, please prioritize those when picking your shifts.</div>
+                </div>
             }
-            else
+            else if (Model.HasAnyImportant)
             {
-                <p class="text-muted mb-4">These are the shifts that need help most. Click a shift to sign up.</p>
+                <div class="alert alert-warning" role="alert">
+                    There are @Model.ImportantOpenCount &ldquo;important&rdquo; shifts open. If you&rsquo;re able to come pre-event or stay for strike, please prioritize those.
+                </div>
             }
+
+            <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                <div class="btn-group" role="group" aria-label="Shift priority filter">
+                    <a asp-action="Shifts" asp-route-priority="critical" class="@PillCss("critical")">Critical</a>
+                    <a asp-action="Shifts" asp-route-priority="important" class="@PillCss("important")">Important</a>
+                    <a asp-action="Shifts" asp-route-priority="all" class="@PillCss("all")">All</a>
+                </div>
+                <form asp-action="Skip" method="post" class="d-inline ms-auto">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">
+                        Not right now
+                    </button>
+                </form>
+            </div>
 
             <vc:temp-data-alerts />
 
@@ -29,9 +57,13 @@
                     {
                         <p class="mb-0">No active event right now. You can finish onboarding without picking a shift.</p>
                     }
-                    else if (!Model.ShowAll)
+                    else if (selected == "critical")
                     {
-                        <p class="mb-0">No priority shifts open at the moment.</p>
+                        <p class="mb-0">No critical shifts open at the moment — try Important or All.</p>
+                    }
+                    else if (selected == "important")
+                    {
+                        <p class="mb-0">No important shifts open at the moment — try All.</p>
                     }
                     else
                     {
@@ -121,25 +153,6 @@
                     </div>
                 }
             }
-
-            <div class="d-flex flex-wrap gap-3 align-items-center mt-4">
-                @if (!Model.ShowAll)
-                {
-                    <a asp-action="Shifts" asp-route-showAll="true" class="btn btn-link">
-                        Show all shifts
-                    </a>
-                }
-
-                <form asp-action="Skip" method="post" class="d-inline ms-auto">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-outline-secondary">
-                        Not right now
-                    </button>
-                    <small class="text-muted d-block mt-1">
-                        Ok — but be sure to come back later. It's more fun when we build this all together.
-                    </small>
-                </form>
-            </div>
         </div>
     </div>
 </div>
