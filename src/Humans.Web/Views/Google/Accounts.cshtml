@@ -248,16 +248,19 @@
                                                 <i class="fa-solid fa-key me-1"></i>@Localizer["GoogleAccounts_ResetPassword"]
                                             </button>
                                         </form>
-                                        <form asp-action="ResetPasswordAndGenerate2Fa" method="post" class="d-inline"
-                                              data-confirm="Reset password and issue a backup verification code for @account.PrimaryEmail? Both will be shown once. Any previously-issued backup codes will be invalidated.">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="email" value="@account.PrimaryEmail" />
-                                            <button type="submit" class="btn btn-outline-danger btn-sm"
-                                                    title="Reset the password AND issue one backup code — for locked-out humans (any 2FA state)"
-                                                    data-bs-toggle="tooltip">
-                                                <i class="fa-solid fa-key me-1"></i>Reset + 2FA
-                                            </button>
-                                        </form>
+                                        @if (!account.IsEnrolledIn2Sv)
+                                        {
+                                            <form asp-action="ResetPasswordAndGenerate2Fa" method="post" class="d-inline"
+                                                  data-confirm="Reset password and issue a backup verification code for @account.PrimaryEmail? Both will be shown once. Any previously-issued backup codes will be invalidated.">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="email" value="@account.PrimaryEmail" />
+                                                <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                        title="Reset the password AND issue one backup code — for locked-out humans not yet enrolled in 2FA"
+                                                        data-bs-toggle="tooltip">
+                                                    <i class="fa-solid fa-key me-1"></i>Reset + 2FA
+                                                </button>
+                                            </form>
+                                        }
                                     </div>
                                 }
                             </td>

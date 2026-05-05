@@ -69,6 +69,7 @@ public enum AuditAction
     // Reserved — was wired briefly during PR #254 development. No code path
     // currently writes this value; do not remove (audit enum is positional).
     WorkspaceAccountBackupCodesInvalidated,
+    WorkspaceAccountResetBlockedFor2Sv,
     AccountMergeRequested,
     AccountMergeAccepted,
     AccountMergeRejected,

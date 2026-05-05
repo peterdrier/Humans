@@ -95,20 +95,21 @@ Nobodies Collective uses Google Workspace for organizational email (@nobodies.te
 ### US-32.7: Reset Password + Get 2FA (combined recovery)
 **As an** admin
 **I want to** reset the password AND grab one fresh backup verification code in a single action
-**So that** I can unblock a locked-out human regardless of their 2SV-enrollment state — they can sign in with the password + code, then enroll/re-enroll a real second factor
+**So that** I can unblock a locked-out human who has not yet enrolled in 2SV — they can sign in with the password + code, then enroll a real second factor
 
 **Acceptance Criteria:**
-- "Reset + 2FA" button per row, Admin-only, CSRF-protected, hidden for suspended accounts
+- "Reset + 2FA" button per row, Admin-only, CSRF-protected, hidden for suspended accounts **and for accounts already enrolled in 2-Step Verification** (the combined flow rotates backup codes destructively, so running it against a working 2FA setup would silently break it)
 - Confirm-before-post explains both will be shown once
 - Calls `IGoogleAdminService.ResetPasswordAndGenerate2FaAsync` which composes the existing password-reset + backup-codes flows; only the **first** code from the freshly-issued set is surfaced (the rest are unused — Google rotates the whole set destructively, but the admin only ever needs one)
 - Confirmed (2026-05-04) to work for accounts that have not yet completed 2SV enrollment
+- **Server-side gate**: `ResetPasswordAndGenerate2FaAsync` re-fetches live Directory state at the top of the method and refuses with a clear error when `IsEnrolledIn2Sv` is true. The refusal is independent of the UI — a hand-crafted POST to `Accounts/ResetPasswordAndGenerate2Fa` for an enrolled email also returns the error path (no password reset, no code rotation). Refusals are logged via `WorkspaceAccountResetBlockedFor2Sv` for audit / abuse-pattern detection. If an admin genuinely needs to rotate 2FA for an enrolled human, that's done in the Google Admin console.
 - Both credentials appear once in the same modal as the password-only flow, with copy-to-clipboard formatted as:
   ```
   pw: <temp password>
   2fa: <single backup code>
   ```
 - Modal text-content is cleared on close so browser back/refresh can't re-expose the secrets
-- Two audit entries recorded: `WorkspaceAccountPasswordReset` then `WorkspaceAccountBackupCodesGenerated`
+- Two audit entries recorded on the success path: `WorkspaceAccountPasswordReset` then `WorkspaceAccountBackupCodesGenerated`. The blocked-by-2SV path records `WorkspaceAccountResetBlockedFor2Sv` instead and performs no Workspace mutation.
 - Requires the `admin.directory.user.security` scope on the service account credential
 
 ## Account-Management Invariants
