@@ -156,10 +156,12 @@
 
             var lo = Math.min(startOffset, endOffset), hi = Math.max(startOffset, endOffset);
             var days = hi - lo + 1;
+            var realRangeOffsets = Object.keys(rotaWindows).map(Number).filter(function(o) { return o >= lo && o <= hi; });
 
             var startDate = startOpt.getAttribute('data-date');
             var endDate = endOpt.getAttribute('data-date');
-            var arriveBy = startOpt.getAttribute('data-arrive-by');
+            var loOpt = startSel.querySelector('option[value="' + lo + '"]') || endSel.querySelector('option[value="' + lo + '"]');
+            var arriveBy = loOpt ? loOpt.getAttribute('data-arrive-by') : '';
 
             var rangeTpl = modalEl.getAttribute('data-range-tpl-multi') || '{0} – {1} ({2} days)';
             var singleTpl = modalEl.getAttribute('data-range-tpl-single') || '{0} (1 day)';
@@ -204,7 +206,7 @@
                 var rowTpl = modalEl.getAttribute('data-conflict-row-tpl')
                     || '{0} — already signed up for {1} ({2}–{3})';
 
-                if (conflictedOffsets.size === days) {
+                if (realRangeOffsets.length > 0 && conflictedOffsets.size === realRangeOffsets.length) {
                     allBlockedAlert.classList.remove('d-none');
                     submitBtn.setAttribute('disabled', 'disabled');
                 } else {
