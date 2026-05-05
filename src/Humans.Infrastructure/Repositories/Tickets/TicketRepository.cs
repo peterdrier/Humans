@@ -476,6 +476,7 @@ public sealed class TicketRepository : ITicketRepository
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.TicketAttendees
+            .AsNoTracking()
             .Include(a => a.TicketOrder)
             .Where(a => a.TicketOrder.MatchedUserId == userId || a.MatchedUserId == userId)
             .OrderBy(a => a.AttendeeName)

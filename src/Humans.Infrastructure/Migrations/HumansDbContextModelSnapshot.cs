@@ -3869,7 +3869,7 @@ namespace Humans.Infrastructure.Migrations
 
                     b.HasIndex("OriginalTicketAttendeeId")
                         .IsUnique()
-                        .HasFilter("status = 'Pending'");
+                        .HasFilter("\"Status\" = 'Pending'");
 
                     b.HasIndex("Status");
 

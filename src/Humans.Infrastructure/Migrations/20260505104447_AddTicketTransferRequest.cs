@@ -48,7 +48,7 @@ namespace Humans.Infrastructure.Migrations
                 table: "ticket_transfer_requests",
                 column: "OriginalTicketAttendeeId",
                 unique: true,
-                filter: "status = 'Pending'");
+                filter: "\"Status\" = 'Pending'");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ticket_transfer_requests_RequesterUserId_Status",

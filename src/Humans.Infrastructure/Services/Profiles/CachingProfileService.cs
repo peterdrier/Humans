@@ -416,6 +416,7 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         string query, int maxResults, CancellationToken ct = default)
     {
         var results = (IReadOnlyList<HumanSearchResult>)_byUserId.Values
+            .Where(p => p.IsApproved && !p.IsSuspended)
             .Where(p => p.BurnerName?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
             .OrderBy(p => p.DisplayName, StringComparer.OrdinalIgnoreCase)
             .Take(maxResults)

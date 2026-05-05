@@ -201,6 +201,7 @@
   <data name="Dashboard_DeclareNotAttending" xml:space="preserve"><value>Not coming this year</value></data>
   <data name="TicketTransfer_Pending" xml:space="preserve"><value>Pending review</value></data>
   <data name="TicketTransfer_RequestButton" xml:space="preserve"><value>Transfer</value></data>
+  <data name="TicketTransfer_CancelButton" xml:space="preserve"><value>Cancel</value></data>
 
   <!-- Guest Dashboard -->
   <data name="Guest_Greeting" xml:space="preserve"><value>Hey, {0}.</value></data>

@@ -57,7 +57,7 @@ Singleton (`Id` always 1) tracking ticket sync operational state. `VendorEventId
 
 **Table:** `ticket_transfer_requests`
 
-Buyer-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_attendees`. `RequesterUserId` / `RecipientUserId` FK → users. `RecipientDisplayName` and `RecipientEmail` are snapshotted at request time. `Status` is `TicketTransferStatus` (`Pending` / `Approved` / `Rejected` / `Cancelled`). `VendorResult` is `VendorWriteResult` (`Success` / `Failure` / `NotAttempted`); `VendorMessage` carries the raw vendor error on failure. `NewVendorTicketId` is populated on successful vendor reissue. `DecidedByUserId` FK → users (the admin who approved/rejected). `AdminNotes` is free-text admin comment. `RequestedAt` / `DecidedAt` are UTC timestamps.
+Buyer-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_attendees`. `RequesterUserId` / `RecipientUserId` FK → users. `RecipientDisplayName` and `RecipientEmail` are snapshotted at request time. `Status` is `TicketTransferStatus` (`Pending` / `Approved` / `Rejected` / `Cancelled`). `VendorResult` is `TicketTransferVendorResult` (`NotAttempted` / `Succeeded` / `VoidSucceededIssueFailed` / `Failed`); `VendorMessage` carries the raw vendor error on failure. `NewVendorTicketId` is populated on successful vendor reissue. `DecidedByUserId` FK → users (the admin who approved/rejected). `AdminNotes` is free-text admin comment. `RequestedAt` / `DecidedAt` are UTC timestamps.
 
 **Indexes / constraints:** Partial unique index on `OriginalTicketAttendeeId` where `Status = Pending` — enforces one pending request per attendee at a time.
 
@@ -89,8 +89,9 @@ Buyer-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_atte
 - Recipient must be a resolved Humans user — looked up by exact email (`IUserEmailService.GetUserIdByExactEmailAsync`) or unique burner name (`IProfileService.SearchByBurnerNameAsync`). Free-text email that does not resolve to a user is rejected.
 - Recipient cannot already hold a `Valid` or `CheckedIn` attendee for the same vendor event.
 - At most one `Pending` `TicketTransferRequest` per attendee at a time (partial unique index on `OriginalTicketAttendeeId` where `Status = Pending`).
-- On approval + vendor success: original `TicketAttendee.Status` flips to `Void` locally; a new `TicketAttendee` is created with `VendorTicketId` from the TT issue response and `MatchedUserId` = recipient, attached to the original `TicketOrderId`. `VendorResult` = `Success`.
-- On approval + vendor failure: no local attendee status changes; `VendorResult` = `Failure`; `VendorMessage` records the error; the request ends in `Approved` state for admin follow-up (Option C). Admin must manually void/reissue in the TT dashboard.
+- On approval + vendor success: original `TicketAttendee.Status` flips to `Void` locally; a new `TicketAttendee` is created with `VendorTicketId` from the TT issue response and `MatchedUserId` = recipient, attached to the original `TicketOrderId`. `VendorResult` = `Succeeded`.
+- On approval + void-then-issue half-failure: original is voided locally and at the vendor; new attendee is **not** created; `VendorResult` = `VoidSucceededIssueFailed`; admin can retry just the issue half. The request ends in `Approved` state for admin follow-up.
+- On approval + vendor failure (neither leg succeeded): no local attendee status changes; `VendorResult` = `Failed`; `VendorMessage` records the error; the request ends in `Approved` state for admin follow-up (Option C). Admin must manually void/reissue in the TT dashboard.
 - `TicketSyncState` is a singleton row (Id = 1). `LastSyncAt` is the resume cursor passed back to the vendor as `updated_at.gte` on the next run. A sync stuck in `Running` for >30 minutes is auto-reset to `Error` by `GetDashboardStatsAsync` (crash recovery).
 
 ## Negative Access Rules
@@ -115,7 +116,7 @@ Buyer-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_atte
 - When an account merge accepts, `ITicketSyncService.ReassignToUserAsync` re-FKs `TicketOrder.MatchedUserId` and `TicketAttendee.MatchedUserId` from source to target. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
 - Audit actions written by ticket transfer: `TicketTransferRequested` (on `CreateRequestAsync`), `TicketTransferCancelled` (on `CancelAsync`), `TicketTransferApproved` (on `ApproveAsync` — includes vendor outcome in metadata), `TicketTransferRejected` (on `RejectAsync`).
 - On transfer approve + vendor success: `TicketAttendee.Status` → `Void`; new `TicketAttendee` created with `VendorTicketId` from TT issue response, `MatchedUserId` = recipient, `TicketOrderId` = original order.
-- On transfer approve + vendor failure: no local attendee changes; `TicketTransferRequest.VendorResult` = `Failure`; audit row includes `"optionC": true` metadata flag for admin visibility.
+- On transfer approve + vendor failure: no local attendee changes; `TicketTransferRequest.VendorResult` = `Failed` (or `VoidSucceededIssueFailed` if only the issue half failed); audit row includes `"optionC": true` metadata flag for admin visibility.
 
 ### TicketDashboardStats cache (ghost cache key)
 

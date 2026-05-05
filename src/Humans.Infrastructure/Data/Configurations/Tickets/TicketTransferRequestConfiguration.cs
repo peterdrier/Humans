@@ -55,7 +55,7 @@ public sealed class TicketTransferRequestConfiguration : IEntityTypeConfiguratio
         // - one Pending row per original attendee (enforces "only one Pending request per ticket")
         builder.HasIndex(x => x.OriginalTicketAttendeeId)
             .IsUnique()
-            .HasFilter("status = 'Pending'");
+            .HasFilter("\"Status\" = 'Pending'");
 
         // - by requester (homepage card)
         builder.HasIndex(x => new { x.RequesterUserId, x.Status });

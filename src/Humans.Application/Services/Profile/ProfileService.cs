@@ -778,6 +778,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     {
         var snapshot = await BuildFullProfileSnapshotAsync(ct);
         return snapshot
+            .Where(p => p.IsApproved && !p.IsSuspended)
             .Where(p => p.BurnerName?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
             .OrderBy(p => p.DisplayName, StringComparer.OrdinalIgnoreCase)
             .Take(maxResults)

@@ -2,6 +2,7 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -103,7 +104,7 @@ public sealed class TicketTransferController : HumansControllerBase
     }
 
     [HttpGet("")]
-    [Authorize(Policy = "TicketAdminOrAdmin")]
+    [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
         var pending = await _service.GetByStatusAsync(TicketTransferStatus.Pending, ct);
@@ -111,7 +112,7 @@ public sealed class TicketTransferController : HumansControllerBase
     }
 
     [HttpGet("Detail/{id:guid}")]
-    [Authorize(Policy = "TicketAdminOrAdmin")]
+    [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
     public async Task<IActionResult> Detail(Guid id, CancellationToken ct)
     {
         var rows = await _service.GetByStatusAsync(TicketTransferStatus.Pending, ct);
@@ -125,7 +126,7 @@ public sealed class TicketTransferController : HumansControllerBase
     }
 
     [HttpPost("Decide")]
-    [Authorize(Policy = "TicketAdminOrAdmin")]
+    [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Decide(
         Guid id, bool approve, string? adminNotes, CancellationToken ct)

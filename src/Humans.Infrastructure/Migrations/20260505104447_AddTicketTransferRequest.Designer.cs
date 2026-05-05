@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260504232919_AddTicketTransferRequest")]
+    [Migration("20260505104447_AddTicketTransferRequest")]
     partial class AddTicketTransferRequest
     {
         /// <inheritdoc />
@@ -3872,7 +3872,7 @@ namespace Humans.Infrastructure.Migrations
 
                     b.HasIndex("OriginalTicketAttendeeId")
                         .IsUnique()
-                        .HasFilter("status = 'Pending'");
+                        .HasFilter("\"Status\" = 'Pending'");
 
                     b.HasIndex("Status");
 

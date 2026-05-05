@@ -205,7 +205,30 @@ public sealed class TicketTransferService : ITicketTransferService
         request.DecidedByUserId = adminUserId;
         request.DecidedAt = now;
         request.AdminNotes = adminNotes;
-        await _transferRepo.UpdateAsync(request, ct);
+        try
+        {
+            await _transferRepo.UpdateAsync(request, ct);
+        }
+        catch (Exception ex) when (request.VendorResult is
+            TicketTransferVendorResult.Succeeded or TicketTransferVendorResult.VoidSucceededIssueFailed)
+        {
+            // Vendor side committed but the local request row failed to persist.
+            // Surface the partial state so an admin can reconcile manually — the new
+            // TicketAttendee row may already exist (Succeeded) and the original is voided
+            // at the vendor (both Succeeded and VoidSucceededIssueFailed paths).
+            _logger.LogError(ex,
+                "Transfer {TransferId} vendor write succeeded ({VendorResult}) but request UpdateAsync failed; manual reconcile required",
+                request.Id, request.VendorResult);
+            await _auditLog.LogAsync(
+                AuditAction.TicketTransferApproved,
+                nameof(TicketTransferRequest),
+                request.Id,
+                $"PARTIAL STATE: vendor writeback {request.VendorResult} but request commit failed: {ex.Message}",
+                adminUserId,
+                request.RequesterUserId,
+                nameof(User));
+            throw;
+        }
 
         await _auditLog.LogAsync(
             AuditAction.TicketTransferApproved,
@@ -232,20 +255,14 @@ public sealed class TicketTransferService : ITicketTransferService
         TicketTransferStatus status, CancellationToken ct = default)
     {
         var rows = await _transferRepo.GetByStatusAsync(status, ct);
-        var result = new List<TicketTransferRowDto>(rows.Count);
-        foreach (var r in rows)
-            result.Add(await BuildRowDtoAsync(r, ct));
-        return result;
+        return await BuildRowDtosAsync(rows, ct);
     }
 
     public async Task<IReadOnlyList<TicketTransferRowDto>> GetByRequesterAsync(
         Guid userId, CancellationToken ct = default)
     {
         var rows = await _transferRepo.GetByRequesterAsync(userId, ct);
-        var result = new List<TicketTransferRowDto>(rows.Count);
-        foreach (var r in rows)
-            result.Add(await BuildRowDtoAsync(r, ct));
-        return result;
+        return await BuildRowDtosAsync(rows, ct);
     }
 
     public Task<int> CountPendingAsync(CancellationToken ct = default) =>
@@ -343,11 +360,47 @@ public sealed class TicketTransferService : ITicketTransferService
 
     private async Task<TicketTransferRowDto> BuildRowDtoAsync(TicketTransferRequest r, CancellationToken ct)
     {
-        var requester = await _userService.GetByIdAsync(r.RequesterUserId, ct);
-        var decider = r.DecidedByUserId is null ? null : await _userService.GetByIdAsync(r.DecidedByUserId.Value, ct);
-        var attendee = r.OriginalTicketAttendee
+        var users = await _userService.GetByIdsAsync(
+            r.DecidedByUserId is null
+                ? new[] { r.RequesterUserId }
+                : new[] { r.RequesterUserId, r.DecidedByUserId.Value },
+            ct);
+        return BuildRowDto(r, users, await ResolveAttendeeAsync(r, ct));
+    }
+
+    private async Task<IReadOnlyList<TicketTransferRowDto>> BuildRowDtosAsync(
+        IReadOnlyList<TicketTransferRequest> rows, CancellationToken ct)
+    {
+        if (rows.Count == 0) return Array.Empty<TicketTransferRowDto>();
+
+        var userIds = new HashSet<Guid>();
+        foreach (var r in rows)
+        {
+            userIds.Add(r.RequesterUserId);
+            if (r.DecidedByUserId is { } decider) userIds.Add(decider);
+        }
+        var users = await _userService.GetByIdsAsync(userIds, ct);
+
+        var result = new List<TicketTransferRowDto>(rows.Count);
+        foreach (var r in rows)
+            result.Add(BuildRowDto(r, users, await ResolveAttendeeAsync(r, ct)));
+        return result;
+    }
+
+    private async Task<TicketAttendee> ResolveAttendeeAsync(
+        TicketTransferRequest r, CancellationToken ct) =>
+        r.OriginalTicketAttendee
             ?? await _ticketRepo.GetAttendeeByIdAsync(r.OriginalTicketAttendeeId, ct)
             ?? throw new InvalidOperationException("Original attendee missing.");
+
+    private static TicketTransferRowDto BuildRowDto(
+        TicketTransferRequest r,
+        IReadOnlyDictionary<Guid, User> users,
+        TicketAttendee attendee)
+    {
+        users.TryGetValue(r.RequesterUserId, out var requester);
+        User? decider = null;
+        if (r.DecidedByUserId is { } deciderId) users.TryGetValue(deciderId, out decider);
 
         return new TicketTransferRowDto(
             Id: r.Id,

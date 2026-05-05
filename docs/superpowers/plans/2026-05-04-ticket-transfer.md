@@ -32,8 +32,7 @@
 - `src/Humans.Infrastructure/Migrations/<timestamp>_AddTicketTransferRequest.cs` (auto-generated)
 - `src/Humans.Web/Controllers/TicketTransferController.cs`
 - `src/Humans.Web/Models/TicketTransferViewModels.cs`
-- `src/Humans.Web/Views/TicketTransfer/Request.cshtml` — buyer flow page
-- `src/Humans.Web/Views/TicketTransfer/Confirm.cshtml` — baseball-card confirmation
+- `src/Humans.Web/Views/TicketTransfer/Request.cshtml` — buyer flow page (lookup form + inline baseball card + submit form)
 - `src/Humans.Web/Views/TicketTransfer/Index.cshtml` — admin review queue
 - `src/Humans.Web/Views/TicketTransfer/Detail.cshtml` — admin per-request decision page
 - `tests/Humans.Application.Tests/Tickets/TicketTransferServiceTests.cs`
