@@ -413,11 +413,21 @@ public sealed class UserEmailRepository : IUserEmailRepository
         // source row was the only IsPrimary=true row — the "exactly one
         // verified IsPrimary per user" invariant is service-enforced (no DB
         // partial unique index) and would otherwise stay broken until some
-        // later repair path runs.
+        // later repair path runs. Also propagate Provider/ProviderKey: the
+        // OAuth rename detector finds sourceRow by (Provider, ProviderKey),
+        // so deleting it without copying the linkage would orphan the OAuth
+        // identity and break future FindByProviderKeyAsync lookups. IsGoogle
+        // is intentionally NOT propagated — it is user-controlled and must
+        // never be auto-derived.
         ctx.UserEmails.Remove(sourceRow);
         if (sourceRow.IsPrimary)
         {
             conflictRow.IsPrimary = true;
+        }
+        if (sourceRow.Provider is not null && conflictRow.Provider is null)
+        {
+            conflictRow.Provider = sourceRow.Provider;
+            conflictRow.ProviderKey = sourceRow.ProviderKey;
         }
         conflictRow.UpdatedAt = updatedAt;
         await ctx.SaveChangesAsync(ct);
