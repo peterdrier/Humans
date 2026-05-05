@@ -6,6 +6,7 @@ using Humans.Infrastructure.Repositories.Profiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.InMemory.Internal;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using Xunit;
 
@@ -26,7 +27,9 @@ public sealed class UserEmailRepositoryTests : IDisposable
             .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
         _dbContext = new HumansDbContext(options);
-        _repo = new UserEmailRepository(new TestDbContextFactory(options));
+        _repo = new UserEmailRepository(
+            new TestDbContextFactory(options),
+            NullLogger<UserEmailRepository>.Instance);
     }
 
     public void Dispose()
