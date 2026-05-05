@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Services.AuditLog;
 using Humans.Infrastructure.Repositories.AuditLog;
 using AuditLogAuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
 
@@ -20,6 +21,11 @@ internal static class AuditLogSectionExtensions
         services.AddScoped<AuditLogAuditLogService>();
         services.AddScoped<IAuditLogService>(sp => sp.GetRequiredService<AuditLogAuditLogService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<AuditLogAuditLogService>());
+
+        // AuditViewerService is the read+render owner used by controllers,
+        // the audit-log view component, and the agent tool. Wraps the
+        // append-side IAuditLogService so name resolution lives once.
+        services.AddScoped<IAuditViewerService, AuditViewerService>();
 
         return services;
     }

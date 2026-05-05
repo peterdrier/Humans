@@ -52,7 +52,7 @@
     </div>
 </div>
 
-@if (Model.Entries.Count == 0)
+@if (Model.Events.Count == 0)
 {
     <div class="alert alert-info">
         No audit log entries found.
@@ -74,43 +74,43 @@ else
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var entry in Model.Entries)
+                    @foreach (var ev in Model.Events)
                     {
-                        var rowClass = entry.Action.ToAuditEntryRowClass();
+                        var rowClass = ev.Action.ToAuditEntryRowClass();
                         <tr class="@rowClass">
-                            <td class="text-nowrap">@entry.OccurredAt.ToAuditTimestamp()</td>
+                            <td class="text-nowrap">@ev.OccurredAt.ToAuditTimestamp()</td>
                             <td>
-                                @if (entry.IsSystemAction)
+                                @if (!ev.ActorUserId.HasValue)
                                 {
                                     <span class="badge bg-info">System</span>
                                 }
-                                else if (entry.ActorUserId.HasValue && Model.UserDisplayNames.TryGetValue(entry.ActorUserId.Value, out var actorName))
+                                else if (!string.IsNullOrEmpty(ev.ActorDisplayName))
                                 {
-                                    <human-link user-id="@entry.ActorUserId.Value" display-name="@actorName" mode="Text" />
+                                    <human-link user-id="@ev.ActorUserId.Value" display-name="@ev.ActorDisplayName" mode="Text" />
                                 }
-                                else if (entry.ActorUserId.HasValue)
+                                else
                                 {
                                     <span class="text-muted">Deleted User</span>
                                 }
                             </td>
                             <td>
-                                <span class="badge @entry.Action.ToAuditBadgeClass()">@entry.Action.ToAuditBadgeLabel()</span>
+                                <span class="badge @ev.Action.ToAuditBadgeClass()">@ev.Action.ToAuditBadgeLabel()</span>
                             </td>
                             <td>
-                                @if (entry.SubjectUserId.HasValue && Model.UserDisplayNames.TryGetValue(entry.SubjectUserId.Value, out var subjectName))
+                                @if (ev.SubjectUserId.HasValue && !string.IsNullOrEmpty(ev.SubjectDisplayName))
                                 {
-                                    <human-link user-id="@entry.SubjectUserId.Value" display-name="@subjectName" mode="Text" />
+                                    <human-link user-id="@ev.SubjectUserId.Value" display-name="@ev.SubjectDisplayName" mode="Text" />
                                 }
-                                else if (entry.SubjectUserId.HasValue)
+                                else if (ev.SubjectUserId.HasValue)
                                 {
                                     <span class="text-muted">Deleted User</span>
                                 }
                             </td>
-                            <td>@entry.Description</td>
+                            <td>@ev.Description</td>
                             <td>
-                                @if (entry.TargetTeamId.HasValue && Model.TeamNames.TryGetValue(entry.TargetTeamId.Value, out var team))
+                                @if (ev.TargetTeamId.HasValue && !string.IsNullOrEmpty(ev.TargetTeamName))
                                 {
-                                    <a asp-controller="Team" asp-action="Details" asp-route-slug="@team.Slug" class="text-decoration-none">@team.Name</a>
+                                    <a asp-controller="Team" asp-action="Details" asp-route-slug="@ev.TargetTeamSlug" class="text-decoration-none">@ev.TargetTeamName</a>
                                 }
                             </td>
                         </tr>

@@ -63,14 +63,14 @@ public class AdminController : HumansControllerBase
         [FromServices] IProfileService profileService,
         [FromServices] IShiftManagementService shifts,
         [FromServices] IFeedbackService feedback,
-        [FromServices] IAuditLogService auditLog,
+        [FromServices] IAuditViewerService auditViewer,
         CancellationToken ct)
     {
         var firstName = User.Identity?.Name?.Split(' ').FirstOrDefault() ?? "";
         var activeHumans = (await profileService.GetActiveApprovedUserIdsAsync(ct)).Count;
         var (filled, total, ratio) = await shifts.GetOverallCoverageAsync(ct);
         var openFeedback = await feedback.GetActionableCountAsync(ct);
-        var recent = (await auditLog.GetRecentAsync(8, ct))
+        var recent = (await auditViewer.GetRecentAsync(8, ct))
             .Select(e => new DashboardActivityRow(e.Action, e.Description, e.OccurredAt))
             .ToArray();
         var staffing = Array.Empty<DepartmentCoverage>();
