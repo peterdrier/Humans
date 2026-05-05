@@ -105,37 +105,9 @@ public class AgentController : HumansControllerBase
         if (missing is not null) return missing;
 
         var isAdmin = User.IsInRole(RoleNames.Admin);
-        IReadOnlyList<AgentConversation> rows;
-
-        if (isAdmin)
-        {
-            const int pageSize = 25;
-            rows = await _agent.ListAllConversationsForAdminAsync(
-                refusalsOnly, handoffsOnly, userId, pageSize, page * pageSize, cancellationToken);
-        }
-        else
-        {
-            // Non-admins see only their own. Admin filters are ignored.
-            rows = await _agent.GetHistoryAsync(currentUser.Id, take: 50, cancellationToken);
-        }
-
-        // Display names are only meaningful for admins (who see other people's
-        // conversations). Stitch them in admin mode; for users the column is
-        // hidden entirely.
-        IReadOnlyDictionary<Guid, User>? users = null;
-        if (isAdmin && rows.Count > 0)
-        {
-            var distinctUserIds = rows.Select(r => r.UserId).Distinct().ToArray();
-            users = await _users.GetByIdsAsync(distinctUserIds, cancellationToken);
-        }
-
-        var listRows = rows.Select(r => new AgentConversationRow(
-            Conversation: r,
-            DisplayName: users is not null && users.TryGetValue(r.UserId, out var u)
-                ? u.DisplayName
-                : null)
-        ).ToList();
-
+        var rows = await LoadConversationsAsync(
+            isAdmin, currentUser.Id, refusalsOnly, handoffsOnly, userId, page, cancellationToken);
+        var listRows = await StitchListRowsAsync(rows, isAdmin, cancellationToken);
         return View(new AgentConversationsViewModel(listRows, IsAdminView: isAdmin));
     }
 
@@ -146,20 +118,53 @@ public class AgentController : HumansControllerBase
         if (missing is not null) return missing;
 
         var isAdmin = User.IsInRole(RoleNames.Admin);
-
-        var conv = isAdmin
-            ? await _agent.GetConversationForAdminAsync(id, cancellationToken)
-            : await _agent.GetConversationForUserAsync(currentUser.Id, id, cancellationToken);
+        var conv = await LoadConversationForViewerAsync(isAdmin, currentUser.Id, id, cancellationToken);
         if (conv is null) return NotFound();
 
-        string? displayName = null;
-        if (isAdmin)
-        {
-            var owner = await _users.GetByIdAsync(conv.UserId, cancellationToken);
-            displayName = owner?.DisplayName ?? conv.UserId.ToString();
-        }
-
+        var displayName = await ResolveOwnerDisplayNameAsync(isAdmin, conv, cancellationToken);
         return View(new AgentConversationDetailViewModel(conv, displayName, IsAdminView: isAdmin));
+    }
+
+    private Task<IReadOnlyList<AgentConversation>> LoadConversationsAsync(
+        bool isAdmin, Guid currentUserId,
+        bool refusalsOnly, bool handoffsOnly, Guid? userId, int page,
+        CancellationToken ct)
+    {
+        const int adminPageSize = 25;
+        return isAdmin
+            ? _agent.ListAllConversationsForAdminAsync(
+                refusalsOnly, handoffsOnly, userId, adminPageSize, page * adminPageSize, ct)
+            : _agent.GetHistoryAsync(currentUserId, take: 50, ct);
+    }
+
+    private async Task<List<AgentConversationRow>> StitchListRowsAsync(
+        IReadOnlyList<AgentConversation> rows, bool isAdmin, CancellationToken ct)
+    {
+        // Display names are only meaningful in admin mode (where the table
+        // shows the Human column). Skip the lookup entirely for non-admins.
+        if (!isAdmin || rows.Count == 0)
+            return rows.Select(r => new AgentConversationRow(r, DisplayName: null)).ToList();
+
+        var distinctUserIds = rows.Select(r => r.UserId).Distinct().ToArray();
+        var users = await _users.GetByIdsAsync(distinctUserIds, ct);
+        return rows.Select(r => new AgentConversationRow(
+            Conversation: r,
+            DisplayName: users.TryGetValue(r.UserId, out var u) ? u.DisplayName : null)
+        ).ToList();
+    }
+
+    private Task<AgentConversation?> LoadConversationForViewerAsync(
+        bool isAdmin, Guid currentUserId, Guid conversationId, CancellationToken ct) =>
+        isAdmin
+            ? _agent.GetConversationForAdminAsync(conversationId, ct)
+            : _agent.GetConversationForUserAsync(currentUserId, conversationId, ct);
+
+    private async Task<string?> ResolveOwnerDisplayNameAsync(
+        bool isAdmin, AgentConversation conv, CancellationToken ct)
+    {
+        if (!isAdmin) return null;
+        var owner = await _users.GetByIdAsync(conv.UserId, ct);
+        return owner?.DisplayName ?? conv.UserId.ToString();
     }
 
     private async Task WriteSse(AgentTurnToken token, CancellationToken cancellationToken)

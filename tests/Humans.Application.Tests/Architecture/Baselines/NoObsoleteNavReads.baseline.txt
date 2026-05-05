@@ -48,8 +48,8 @@ src/Humans.Application/Interfaces/Users/IUserService.cs:25:User
 src/Humans.Application/Services/Agent/AgentService.cs:115:User
 src/Humans.Application/Services/Agent/AgentService.cs:125:User
 src/Humans.Application/Services/Agent/AgentService.cs:141:User
-src/Humans.Application/Services/Agent/AgentService.cs:286:User
-src/Humans.Application/Services/Agent/AgentService.cs:291:User
+src/Humans.Application/Services/Agent/AgentService.cs:299:User
+src/Humans.Application/Services/Agent/AgentService.cs:304:User
 src/Humans.Application/Services/Auth/RoleAssignmentService.cs:36:User
 src/Humans.Application/Services/Auth/RoleAssignmentService.cs:37:CreatedByUser
 src/Humans.Application/Services/Calendar/CalendarService.cs:29:OwningTeam
@@ -176,7 +176,7 @@ src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:726:Team
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:793:Team
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:807:Team
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:905:Team
-src/Humans.Infrastructure/Services/Anthropic/AnthropicClient.cs:193:User
+src/Humans.Infrastructure/Services/Anthropic/AnthropicClient.cs:223:User
 src/Humans.Infrastructure/Services/GoogleWorkspace/GoogleDriveActivityClient.cs:165:User
 src/Humans.Infrastructure/Services/GoogleWorkspace/GoogleDriveActivityClient.cs:195:User
 src/Humans.Web/Authorization/MembershipRequiredFilter.cs:39:User
@@ -227,8 +227,8 @@ src/Humans.Web/TagHelpers/AuthorizeViewTagHelper.cs:50:User
 src/Humans.Web/ViewComponents/AdminNavTree.cs:95:User
 src/Humans.Web/ViewComponents/AdminSidebarViewComponent.cs:47:User
 src/Humans.Web/ViewComponents/AdminSidebarViewComponent.cs:50:User
-src/Humans.Web/ViewComponents/AgentWidgetViewComponent.cs:14:User
-src/Humans.Web/ViewComponents/AgentWidgetViewComponent.cs:19:User
+src/Humans.Web/ViewComponents/HelpWidgetViewComponent.cs:21:User
+src/Humans.Web/ViewComponents/HelpWidgetViewComponent.cs:26:User
 src/Humans.Web/ViewComponents/ProfileCardViewComponent.cs:115:Team
 src/Humans.Web/ViewComponents/ProfileCardViewComponent.cs:116:Team
 src/Humans.Web/ViewComponents/ProfileCardViewComponent.cs:117:Team
