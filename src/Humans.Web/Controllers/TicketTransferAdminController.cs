@@ -36,13 +36,12 @@ public sealed class TicketTransferAdminController : HumansControllerBase
     [HttpGet("Detail/{id:guid}")]
     public async Task<IActionResult> Detail(Guid id, CancellationToken ct)
     {
-        var rows = await _service.GetByStatusAsync(TicketTransferStatus.Pending, ct);
-        var row = rows.FirstOrDefault(r => r.Id == id);
-        if (row is null)
+        var detail = await _service.GetDetailAsync(id, ct);
+        if (detail is null)
         {
             return NotFound();
         }
-        return View(row);
+        return View(detail);
     }
 
     [HttpPost("Decide")]

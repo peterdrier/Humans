@@ -57,5 +57,13 @@ public interface ITicketTransferService
     Task<IReadOnlyList<TicketTransferRowDto>> GetByRequesterAsync(
         Guid userId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Read-side composition for the admin Detail review screen: the row plus
+    /// profile cards for requester and recipient. Returns null if no transfer
+    /// exists with that id.
+    /// </summary>
+    Task<TicketTransferDetailDto?> GetDetailAsync(
+        Guid transferRequestId, CancellationToken ct = default);
+
     Task<int> CountPendingAsync(CancellationToken ct = default);
 }

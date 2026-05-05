@@ -301,6 +301,29 @@ public sealed class TicketTransferService : ITicketTransferService
         return await BuildRowDtosAsync(rows, ct);
     }
 
+    public async Task<TicketTransferDetailDto?> GetDetailAsync(
+        Guid transferRequestId, CancellationToken ct = default)
+    {
+        var request = await _transferRepo.GetByIdAsync(transferRequestId, ct);
+        if (request is null) return null;
+
+        var row = await BuildRowDtoAsync(request, ct);
+        var requesterCard = await BuildRecipientCardAsync(request.RequesterUserId, ct);
+        var recipientCard = await BuildRecipientCardAsync(request.RecipientUserId, ct);
+
+        // Cards fall back to a minimal stub if a profile somehow can't be built
+        // (e.g. user soft-deleted between request and admin review). The row's
+        // snapshot fields still carry the names we need.
+        return new TicketTransferDetailDto(
+            Row: row,
+            RequesterCard: requesterCard ?? StubCard(request.RequesterUserId, row.RequesterDisplayName),
+            RecipientCard: recipientCard ?? StubCard(request.RecipientUserId, row.RecipientDisplayName));
+    }
+
+    private static RecipientLookupResultDto StubCard(Guid userId, string displayName) =>
+        new(userId, displayName, BurnerName: null, PreferredEmail: null,
+            HasCustomProfilePicture: false, ProfilePictureUrl: null);
+
     public Task<int> CountPendingAsync(CancellationToken ct = default) =>
         _transferRepo.CountPendingAsync(ct);
 
@@ -450,6 +473,7 @@ public sealed class TicketTransferService : ITicketTransferService
             OriginalAttendeeId: r.OriginalTicketAttendeeId,
             OriginalAttendeeName: attendee.AttendeeName,
             TicketTypeName: attendee.TicketTypeName,
+            OriginalAttendeeStatus: attendee.Status,
             RequesterUserId: r.RequesterUserId,
             RequesterDisplayName: requester?.DisplayName ?? "(unknown)",
             RecipientUserId: r.RecipientUserId,

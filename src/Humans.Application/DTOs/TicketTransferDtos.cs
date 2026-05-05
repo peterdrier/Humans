@@ -33,6 +33,7 @@ public sealed record TicketTransferRowDto(
     Guid OriginalAttendeeId,
     string OriginalAttendeeName,
     string TicketTypeName,
+    TicketAttendeeStatus OriginalAttendeeStatus,
     Guid RequesterUserId,
     string RequesterDisplayName,
     Guid RecipientUserId,
@@ -47,6 +48,16 @@ public sealed record TicketTransferRowDto(
     string? AdminNotes,
     Instant RequestedAt,
     Instant? DecidedAt);
+
+/// <summary>
+/// Read-side DTO for the admin Detail review screen — adds profile cards for
+/// both sides of the transfer so the admin can sanity-check identities and
+/// catch anything nefarious before approving.
+/// </summary>
+public sealed record TicketTransferDetailDto(
+    TicketTransferRowDto Row,
+    RecipientLookupResultDto RequesterCard,
+    RecipientLookupResultDto RecipientCard);
 
 /// <summary>Outcome of a TT void call.</summary>
 public sealed record VoidIssuedTicketResult(string VendorTicketId, string? HoldId);
