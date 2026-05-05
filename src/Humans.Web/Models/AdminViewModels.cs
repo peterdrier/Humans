@@ -368,6 +368,7 @@ public class ProfileSummaryViewModel
     public string? CountryCode { get; set; }
     public bool IsSuspended { get; set; }
     public List<string> Teams { get; set; } = [];
+    public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];
 }
 
 public class EmailOutboxViewModel
