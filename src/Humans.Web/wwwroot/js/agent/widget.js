@@ -133,11 +133,13 @@
             }
             messagesEl.scrollTop = messagesEl.scrollHeight;
         } else if (event === 'propose' && parsed.issueProposal) {
-            // Agent called route_to_issue. Replace the empty assistant bubble
-            // with a localized "I drafted an issue, please review" message and
-            // open the issue submission modal pre-filled with the proposal.
-            bubble.textContent = panel.dataset.issueProposedText || 'I drafted an issue for you. Please review and submit.';
-            bubble.dataset.rawMarkdown = '';
+            // Agent called route_to_issue. Open the issue submission modal
+            // pre-filled with the proposal. Preserve any answer the agent
+            // already streamed — only fall back to the canned "I drafted
+            // an issue" text when the bubble is empty (escalate-only turn).
+            if (!bubble.dataset.rawMarkdown) {
+                bubble.textContent = panel.dataset.issueProposedText || 'I drafted an issue for you. Please review and submit.';
+            }
             messagesEl.scrollTop = messagesEl.scrollHeight;
             openIssueModalPrefilled(parsed.issueProposal);
         } else if (event === 'final' && parsed.finalizer) {
