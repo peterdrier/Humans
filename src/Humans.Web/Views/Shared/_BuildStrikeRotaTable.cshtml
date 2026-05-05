@@ -36,7 +36,55 @@
             </select>
         </div>
         <div class="col-auto">
-            <button type="submit" class="btn btn-sm btn-success">@string.Format(Localizer["Shifts_SignUpForDates"].Value, rotaGroup.Rota.Period == RotaPeriod.Build ? Localizer["Shifts_SetUp"].Value.ToLowerInvariant() : Localizer["Shifts_Strike"].Value.ToLowerInvariant())</button>
+            <button type="button" class="btn btn-sm btn-success js-open-confirm-signup"
+                    data-bs-toggle="modal" data-bs-target="#confirmSignup-@rotaGroup.Rota.Id">
+                @string.Format(Localizer["Shifts_SignUpForDates"].Value, rotaGroup.Rota.Period == RotaPeriod.Build ? Localizer["Shifts_SetUp"].Value.ToLowerInvariant() : Localizer["Shifts_Strike"].Value.ToLowerInvariant())
+            </button>
+        </div>
+        <div class="modal fade" id="confirmSignup-@rotaGroup.Rota.Id" tabindex="-1" aria-hidden="true"
+             data-range-tpl-multi="@Localizer["Shifts_ConfirmSignup_Range"]"
+             data-range-tpl-single="@Localizer["Shifts_ConfirmSignup_Range_Single"]"
+             data-arrive-tpl="@Localizer["Shifts_ConfirmSignup_ArriveBy"]"
+             data-conflict-row-tpl="@Localizer["Shifts_ConfirmSignup_Conflicts_Row"]">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            @string.Format(Localizer["Shifts_ConfirmSignup_Title"].Value,
+                                rotaGroup.Rota.Period == RotaPeriod.Build ? Localizer["Shifts_SetUp"].Value.ToLowerInvariant() : Localizer["Shifts_Strike"].Value.ToLowerInvariant())
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="js-phase-line">
+                            @string.Format(Localizer["Shifts_ConfirmSignup_Phase"].Value,
+                                rotaGroup.Rota.Period == RotaPeriod.Build ? Localizer["Shifts_SetUp"].Value.ToLowerInvariant() : Localizer["Shifts_Strike"].Value.ToLowerInvariant())
+                        </p>
+                        <p class="js-range-line"></p>
+
+                        <div class="alert alert-info d-none js-conflicts-partial">
+                            <strong>@Localizer["Shifts_ConfirmSignup_Conflicts_Heading"]</strong>
+                            <ul class="mb-2 js-conflicts-list"></ul>
+                            <small class="text-muted">@Localizer["Shifts_ConfirmSignup_Conflicts_PartialNote"]</small>
+                        </div>
+
+                        <div class="alert alert-warning d-none js-conflicts-all">
+                            @Localizer["Shifts_ConfirmSignup_Conflicts_AllBlocked"]
+                        </div>
+
+                        <div class="alert alert-warning js-arrival-callout">
+                            <i class="fa-solid fa-circle-info me-1"></i>
+                            <span class="js-arrive-by-line"></span>
+                        </div>
+
+                        <p class="text-muted small mb-0">@Localizer["Shifts_ConfirmSignup_Prompt"]</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Common_Cancel"]</button>
+                        <button type="submit" class="btn btn-success js-confirm-submit">@Localizer["Shifts_ConfirmSignup_Confirm"]</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </form>
 }
