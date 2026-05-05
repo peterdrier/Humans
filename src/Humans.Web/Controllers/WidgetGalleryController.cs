@@ -46,6 +46,7 @@ public sealed class WidgetGalleryController : HumansControllerBase
 
         var sampleTeam = await ResolveSampleTeamAsync();
         var sampleVolunteerProfile = await TryGetVolunteerProfileAsync(currentUser.Id);
+        var (eventSettings, sampleRota, staffingData, staffingHours) = await ResolveShiftsSamplesAsync();
 
         var displayName = string.IsNullOrEmpty(currentUser.DisplayName)
             ? currentUser.UserName ?? "Current user"
@@ -59,6 +60,10 @@ public sealed class WidgetGalleryController : HumansControllerBase
             SampleTeamSlug = sampleTeam?.Slug,
             SampleTeamName = sampleTeam?.Name,
             SampleVolunteerProfile = sampleVolunteerProfile,
+            SampleEventSettings = eventSettings,
+            SampleRota = sampleRota,
+            SampleStaffingData = staffingData,
+            SampleStaffingHours = staffingHours,
             SampleShiftsSummary = new ShiftsSummaryCardViewModel
             {
                 TotalSlots = 24,
@@ -114,6 +119,33 @@ public sealed class WidgetGalleryController : HumansControllerBase
             return null;
         }
     }
+
+    private async Task<(EventSettings?, Rota?, IReadOnlyList<DailyStaffingData>, IReadOnlyList<DailyStaffingHours>)> ResolveShiftsSamplesAsync()
+    {
+        try
+        {
+            var es = await _shiftMgmt.GetActiveAsync();
+            if (es is null)
+                return (null, null, Array.Empty<DailyStaffingData>(), Array.Empty<DailyStaffingHours>());
+
+            Rota? rota = null;
+            var depts = await _shiftMgmt.GetDepartmentsWithRotasAsync(es.Id);
+            if (depts.Count > 0)
+            {
+                var rotas = await _shiftMgmt.GetRotasByDepartmentAsync(depts[0].TeamId, es.Id);
+                rota = rotas.FirstOrDefault();
+            }
+
+            var staffing = await _shiftMgmt.GetStaffingDataAsync(es.Id);
+            var hours = await _shiftMgmt.GetStaffingHoursAsync(es.Id);
+            return (es, rota, staffing, hours);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Failed to resolve shifts samples for widget gallery: {Reason}", ex.Message);
+            return (null, null, Array.Empty<DailyStaffingData>(), Array.Empty<DailyStaffingHours>());
+        }
+    }
 }
 
 public sealed class WidgetGalleryViewModel
@@ -124,6 +156,10 @@ public sealed class WidgetGalleryViewModel
     public string? SampleTeamSlug { get; init; }
     public string? SampleTeamName { get; init; }
     public VolunteerEventProfile? SampleVolunteerProfile { get; init; }
+    public EventSettings? SampleEventSettings { get; init; }
+    public Rota? SampleRota { get; init; }
+    public required IReadOnlyList<DailyStaffingData> SampleStaffingData { get; init; }
+    public required IReadOnlyList<DailyStaffingHours> SampleStaffingHours { get; init; }
     public required ShiftsSummaryCardViewModel SampleShiftsSummary { get; init; }
     public required PagerViewModel SamplePager { get; init; }
     public required ProfileSummaryViewModel SampleProfileSummary { get; init; }
