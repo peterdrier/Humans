@@ -386,8 +386,11 @@ public class UserEmailServiceTests
         var rowId = Guid.NewGuid();
         var row = new UserEmail
         {
-            Id = rowId, UserId = userId, Email = "a@x.test",
-            IsVerified = true, IsGoogle = false,
+            Id = rowId,
+            UserId = userId,
+            Email = "a@x.test",
+            IsVerified = true,
+            IsGoogle = false,
         };
         _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
@@ -408,8 +411,11 @@ public class UserEmailServiceTests
         var rowAId = Guid.NewGuid();
         var rowA = new UserEmail
         {
-            Id = rowAId, UserId = userId, Email = "a@x.test",
-            IsVerified = true, IsGoogle = true,
+            Id = rowAId,
+            UserId = userId,
+            Email = "a@x.test",
+            IsVerified = true,
+            IsGoogle = true,
         };
         _repository.GetByIdAndUserIdAsync(rowAId, userId, Arg.Any<CancellationToken>())
             .Returns(rowA);
@@ -432,8 +438,11 @@ public class UserEmailServiceTests
         var rowId = Guid.NewGuid();
         var row = new UserEmail
         {
-            Id = rowId, UserId = userId, Email = "a@x.test",
-            IsVerified = true, IsPrimary = true,
+            Id = rowId,
+            UserId = userId,
+            Email = "a@x.test",
+            IsVerified = true,
+            IsPrimary = true,
         };
         _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
@@ -461,8 +470,11 @@ public class UserEmailServiceTests
         var rowId = Guid.NewGuid();
         var row = new UserEmail
         {
-            Id = rowId, UserId = userId, Email = "a@x.test",
-            IsVerified = true, IsPrimary = true,
+            Id = rowId,
+            UserId = userId,
+            Email = "a@x.test",
+            IsVerified = true,
+            IsPrimary = true,
         };
         _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);

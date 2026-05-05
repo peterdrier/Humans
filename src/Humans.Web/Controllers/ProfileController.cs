@@ -828,6 +828,74 @@ public class ProfileController : HumansControllerBase
         return RedirectToAction(nameof(Emails));
     }
 
+    [HttpPost("Me/Emails/ClearGoogle")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ClearGoogle(Guid emailId, CancellationToken ct)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return NotFound();
+
+        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        try
+        {
+            var ok = await _userEmailService.ClearGoogleAsync(user.Id, emailId, user.Id, ct);
+            if (ok)
+            {
+                _cache.InvalidateNobodiesTeamEmails();
+                SetSuccess(_localizer["EmailGrid_GoogleFlagCleared"].Value);
+            }
+            else
+            {
+                SetError(_localizer["EmailGrid_ClearGoogleRejected"].Value);
+            }
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Failed to clear Google flag on email {EmailId} for user {UserId}", emailId, user.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Emails));
+    }
+
+    [HttpPost("Me/Emails/ClearPrimary")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ClearPrimary(Guid emailId, CancellationToken ct)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return NotFound();
+
+        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        try
+        {
+            var ok = await _userEmailService.ClearPrimaryAsync(user.Id, emailId, user.Id, ct);
+            if (ok)
+            {
+                _cache.InvalidateNobodiesTeamEmails();
+                SetSuccess(_localizer["EmailGrid_PrimaryFlagCleared"].Value);
+            }
+            else
+            {
+                SetError(_localizer["EmailGrid_ClearPrimaryRejected"].Value);
+            }
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Failed to clear primary flag on email {EmailId} for user {UserId}", emailId, user.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Emails));
+    }
+
     [HttpPost("Me/Emails/Link/{provider}")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Link(string provider, string? returnUrl = null)
