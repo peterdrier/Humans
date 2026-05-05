@@ -220,8 +220,10 @@ test.describe('Admin shell — chrome', () => {
     // Per src/Humans.Web/wwwroot/css/admin-shell.css the sub-768px design is a
     // horizontal scroll strip beneath the topbar (NOT a Bootstrap offcanvas).
     // We assert the shell still renders cleanly at narrow viewport.
-    await page.setViewportSize({ width: 480, height: 800 });
+    // Log in at desktop width first — the nav dropdown the auth helper waits
+    // for is collapsed behind the mobile hamburger at <768px.
     await loginAsAdmin(page);
+    await page.setViewportSize({ width: 480, height: 800 });
     await page.goto('/Admin');
 
     await expect(page.locator('aside.sidebar')).toBeVisible();
