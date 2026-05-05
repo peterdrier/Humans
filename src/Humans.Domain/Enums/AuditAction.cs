@@ -124,4 +124,6 @@ public enum AuditAction
     StoreProductUpdated,
     StoreProductDeactivated,
     StorePaymentRecorded,
+    OrphanUserEmailDeleted,
+    GhostExternalLoginsDeleted,
 }
