@@ -253,17 +253,77 @@ public sealed class TicketTransferService : ITicketTransferService
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Phase 3 / Task 3.4 wires real TT calls in here. For Phase 2 this method
-    /// runs the state machine without actually calling the vendor, marking
-    /// VendorResult as NotAttempted.
-    /// </summary>
     private async Task WriteToVendorAsync(TicketTransferRequest request, CancellationToken ct)
     {
-        // PHASE-3-PLACEHOLDER: leave as no-op. Phase 3 / Task 3.4 replaces this
-        // with the real void+reissue flow; tests in Phase 8 cover both branches.
-        await Task.CompletedTask;
-        request.VendorResult = TicketTransferVendorResult.NotAttempted;
+        var attendee = request.OriginalTicketAttendee
+            ?? await _ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, ct)
+            ?? throw new InvalidOperationException("Original attendee missing during vendor writeback.");
+
+        // Sub-step 1: void the original (with hold so reissue can't race a sold-out event).
+        VoidIssuedTicketResult voidResult;
+        try
+        {
+            voidResult = await _vendor.VoidIssuedTicketAsync(
+                attendee.VendorTicketId, voidToHold: true, ct);
+        }
+        catch (TicketVendorWriteException ex)
+        {
+            request.VendorResult = TicketTransferVendorResult.Failed;
+            request.VendorMessage = $"Void failed ({ex.Kind}): {ex.Message}";
+            _logger.LogWarning(ex,
+                "TT void failed for transfer {TransferId} attendee {AttendeeId}; falling back to Option-C",
+                request.Id, request.OriginalTicketAttendeeId);
+            return;
+        }
+
+        // Sub-step 2: issue the replacement against the hold.
+        VendorTicketDto issued;
+        try
+        {
+            issued = await _vendor.IssueTicketAsync(new IssueTicketRequest(
+                EventId: null,
+                TicketTypeId: null,
+                HoldId: voidResult.HoldId,
+                FullName: request.RecipientDisplayName,
+                Email: request.RecipientEmail,
+                SendEmail: true,
+                ExternalReference: request.Id.ToString("N")), ct);
+        }
+        catch (TicketVendorWriteException ex)
+        {
+            request.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
+            request.VendorMessage = $"Issue failed ({ex.Kind}): {ex.Message} (hold {voidResult.HoldId})";
+            _logger.LogError(ex,
+                "TT issue failed for transfer {TransferId} after successful void; hold {HoldId} retained",
+                request.Id, voidResult.HoldId);
+            return;
+        }
+
+        // Sub-step 3: pre-populate the new TicketAttendee row so the homepage card
+        // updates immediately for the recipient. The next sync will upsert by VendorTicketId.
+        var now = _clock.GetCurrentInstant();
+        await _ticketRepo.UpsertAttendeeAsync(new TicketAttendee
+        {
+            Id = Guid.NewGuid(),
+            VendorTicketId = issued.VendorTicketId,
+            TicketOrderId = attendee.TicketOrderId, // attach to the original order locally
+            AttendeeName = request.RecipientDisplayName,
+            AttendeeEmail = request.RecipientEmail,
+            TicketTypeName = attendee.TicketTypeName,
+            Price = attendee.Price, // local snapshot — TT may rebill differently, see probe Open Questions
+            Status = TicketAttendeeStatus.Valid,
+            VendorEventId = attendee.VendorEventId,
+            SyncedAt = now,
+            MatchedUserId = request.RecipientUserId,
+        }, ct);
+
+        // Pre-populate locally that the original is now Void so the requester's card flips immediately.
+        attendee.Status = TicketAttendeeStatus.Void;
+        await _ticketRepo.UpsertAttendeeAsync(attendee, ct);
+
+        request.VendorResult = TicketTransferVendorResult.Succeeded;
+        request.NewVendorTicketId = issued.VendorTicketId;
+        request.VendorMessage = voidResult.HoldId is null ? null : $"hold {voidResult.HoldId}";
     }
 
     private async Task<RecipientLookupResultDto?> BuildRecipientCardAsync(Guid userId, CancellationToken ct)
