@@ -509,6 +509,25 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     public Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default) =>
         _profileRepository.GetActiveApprovedUserIdsAsync(ct);
 
+    public async Task<IReadOnlyList<FullProfile>> GetFullProfileSnapshotAsync(CancellationToken ct = default)
+    {
+        var profiles = await _profileRepository.GetAllAsync(ct);
+        var userIds = profiles.Select(p => p.UserId).ToList();
+        var users = await _userService.GetByIdsAsync(userIds, ct);
+        var allUserEmails = await _userEmailRepository.GetAllAsync(ct);
+        var emailsByUser = allUserEmails.GroupBy(e => e.UserId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<UserEmail>)g.ToList());
+
+        var result = new List<FullProfile>(profiles.Count);
+        foreach (var profile in profiles)
+        {
+            if (!users.TryGetValue(profile.UserId, out var user)) continue;
+            var emails = emailsByUser.GetValueOrDefault(profile.UserId, Array.Empty<UserEmail>());
+            result.Add(FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), emails));
+        }
+        return result;
+    }
+
     public Task<int> GetConsentReviewPendingCountAsync(CancellationToken ct = default) =>
         _profileRepository.GetConsentReviewPendingCountAsync(ct);
 

@@ -157,6 +157,14 @@ public interface IProfileService : IUserMerge
     /// </summary>
     Task SaveProfileLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns a snapshot of every <see cref="FullProfile"/> currently materialized.
+    /// Used by admin scans (EmailProblems) that need to enumerate the full set
+    /// of users with their per-row UserEmail flags. Decorator returns the cache
+    /// dict's Values; inner impl rebuilds from repositories.
+    /// </summary>
+    Task<IReadOnlyList<FullProfile>> GetFullProfileSnapshotAsync(CancellationToken ct = default);
+
     // ==========================================================================
     // Onboarding-section support methods — exposed so OnboardingService can
     // coordinate profile mutations without touching the Profile section's
