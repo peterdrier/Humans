@@ -390,6 +390,44 @@ public class GoogleAdminServiceTests
     }
 
     [HumansFact]
+    public async Task ResetPasswordAsync_ReturnsPasswordEvenWhenAuditWriteFails()
+    {
+        // Workspace has already rotated the password — if the audit-side
+        // lookup or LogAsync throws (DB outage, timeout), the caller still
+        // needs the new temporary password back. Otherwise they retry the
+        // reset, lock the human out further, and we own the confusion.
+        _auditLogService.LogAsync(
+                AuditAction.WorkspaceAccountPasswordReset,
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<Guid?>(), Arg.Any<string?>())
+            .ThrowsAsync(new InvalidOperationException("Audit DB unavailable"));
+
+        var result = await _service.ResetPasswordAsync(
+            "alice@nobodies.team", _actorUserId);
+
+        result.Success.Should().BeTrue();
+        result.TemporaryPassword.Should().NotBeNullOrEmpty();
+        result.Message.Should().Contain("Password reset");
+    }
+
+    [HumansFact]
+    public async Task ResetPasswordAsync_ReturnsPasswordEvenWhenLinkedUserLookupFails()
+    {
+        // Same as above for the email-match leg: a DB outage in
+        // MatchByEmailsAsync must not convert a successful Workspace reset
+        // into a failure result.
+        _userEmailService.MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("user_emails query failed"));
+
+        var result = await _service.ResetPasswordAsync(
+            "alice@nobodies.team", _actorUserId);
+
+        result.Success.Should().BeTrue();
+        result.TemporaryPassword.Should().NotBeNullOrEmpty();
+    }
+
+    [HumansFact]
     public async Task ResetPasswordAsync_AuditsLinkedHumanAsSubject()
     {
         // When the workspace address resolves to a human, the audit row's

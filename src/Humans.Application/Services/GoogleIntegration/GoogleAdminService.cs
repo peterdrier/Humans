@@ -312,26 +312,11 @@ public sealed class GoogleAdminService : IGoogleAdminService
         string email, Guid actorUserId,
         CancellationToken ct = default)
     {
+        string newPassword;
         try
         {
-            var newPassword = PasswordGenerator.GenerateTemporary();
+            newPassword = PasswordGenerator.GenerateTemporary();
             await _workspaceUserService.ResetPasswordAsync(email, newPassword, ct);
-
-            // Audit AFTER Google API success — the "business save" here is the
-            // Workspace-side password reset. No local DB write happens in this flow.
-            // EntityId carries the linked human's UserId when the address resolves
-            // to one, so the audit row renders with the human's name as subject;
-            // unlinked accounts log with Guid.Empty and fall back to the email tail.
-            var linkedUserId = await TryFindLinkedUserIdAsync(email, ct);
-            await _auditLogService.LogAsync(
-                AuditAction.WorkspaceAccountPasswordReset,
-                "WorkspaceAccount", linkedUserId ?? Guid.Empty,
-                email,
-                actorUserId);
-
-            return new WorkspaceAccountActionResult(true,
-                Message: $"Password reset for {email}. New temporary password: {newPassword}",
-                TemporaryPassword: newPassword);
         }
         catch (Exception ex)
         {
@@ -339,6 +324,37 @@ public sealed class GoogleAdminService : IGoogleAdminService
             return new WorkspaceAccountActionResult(false,
                 ErrorMessage: $"Failed to reset password for {email}.");
         }
+
+        // Audit AFTER Google API success — the "business save" here is the
+        // Workspace-side password reset. No local DB write happens in this flow.
+        // EntityId carries the linked human's UserId when the address resolves
+        // to one, so the audit row renders with the human's name as subject;
+        // unlinked accounts log with Guid.Empty and fall back to the email tail.
+        // Isolate from the outer flow: if the linked-user lookup or audit
+        // persistence throws (DB outage, timeout, cancellation), the password
+        // has already been rotated in Workspace and the caller MUST still
+        // receive the new temporary password — otherwise they retry, lock
+        // the human out further, and we own the confusion. Surface the audit
+        // failure loudly via a critical log for out-of-band reconciliation.
+        try
+        {
+            var linkedUserId = await TryFindLinkedUserIdAsync(email, ct);
+            await _auditLogService.LogAsync(
+                AuditAction.WorkspaceAccountPasswordReset,
+                "WorkspaceAccount", linkedUserId ?? Guid.Empty,
+                email,
+                actorUserId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical(ex,
+                "Audit-log write failed AFTER password reset for {Email} by actor {ActorUserId}. Password was rotated; reconcile audit trail manually.",
+                email, actorUserId);
+        }
+
+        return new WorkspaceAccountActionResult(true,
+            Message: $"Password reset for {email}. New temporary password: {newPassword}",
+            TemporaryPassword: newPassword);
     }
 
     private async Task<WorkspaceBackupCodesResult> GenerateBackupCodesAsync(
