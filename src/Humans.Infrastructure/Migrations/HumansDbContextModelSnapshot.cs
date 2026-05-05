@@ -3804,80 +3804,6 @@ namespace Humans.Infrastructure.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.TicketTransferRequest", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("AdminNotes")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<Instant?>("DecidedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("DecidedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("NewVendorTicketId")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<Guid>("OriginalTicketAttendeeId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("RecipientDisplayName")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<string>("RecipientEmail")
-                        .IsRequired()
-                        .HasMaxLength(320)
-                        .HasColumnType("character varying(320)");
-
-                    b.Property<Guid>("RecipientUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("RequestedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("RequesterReason")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<Guid>("RequesterUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.Property<string>("VendorMessage")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<string>("VendorResult")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OriginalTicketAttendeeId")
-                        .IsUnique()
-                        .HasFilter("\"Status\" = 'Pending'");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("RequesterUserId", "Status");
-
-                    b.ToTable("ticket_transfer_requests", (string)null);
-                });
-
             modelBuilder.Entity("Humans.Domain.Entities.TicketingProjection", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4276,7 +4202,7 @@ namespace Humans.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("DataProtectionKeys");
+                    b.ToTable("DataProtectionKeys", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
@@ -5345,17 +5271,6 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("MatchedUser");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.TicketTransferRequest", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.TicketAttendee", "OriginalTicketAttendee")
-                        .WithMany()
-                        .HasForeignKey("OriginalTicketAttendeeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("OriginalTicketAttendee");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.TicketingProjection", b =>
