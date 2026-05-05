@@ -91,6 +91,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`triage-fetch-full-history`](process/triage-fetch-full-history.md) — `/triage` must `GET /api/feedback/{id}/messages` for every report; list-endpoint counts can be stale
 - [`triage-show-verbatim`](process/triage-show-verbatim.md) — `/triage` always shows reporter's verbatim Description text alongside the analysis
 - [`user-feedback-spec-changes-need-review`](process/user-feedback-spec-changes-need-review.md) — when an issue originated from end-user feedback (triage→issue chain) and proposes a behavioral / policy / capability / spec change beyond a mechanical fix, route to Peter for review before sprint/batch dispatch. Mechanical fixes (typos, broken links, error-message wording) flow normally.
+- [`widget-gallery-up-to-date`](process/widget-gallery-up-to-date.md) — adding/removing a TagHelper, ViewComponent, or user-facing shared partial under `src/Humans.Web/` → also update `Views/WidgetGallery/Index.cshtml` (and the controller if real sample data is needed). Skipped section is the explicit allowlist for non-rendered widgets.
 - [`worktree-removal-git-only`](process/worktree-removal-git-only.md) — HARD RULE. Worktree cleanup is `git worktree remove` only. Failure → report and stop. Narrow exception: if git emptied contents but left an empty parent dir, `rmdir` (non-recursive) is allowed. Otherwise no PowerShell `Remove-Item -Recurse`, no rm -rf, no process kills, no retries.
 
 ## product/

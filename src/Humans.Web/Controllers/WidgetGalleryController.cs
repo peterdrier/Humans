@@ -1,0 +1,228 @@
+using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Teams;
+using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using Humans.Web.Authorization;
+using Humans.Web.Models;
+using Humans.Web.ViewComponents;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Humans.Web.Controllers;
+
+/// <summary>
+/// Admin-only catalog of every reusable UI widget — TagHelpers, ViewComponents, and
+/// shared partials — rendered against real data so designers and developers can see
+/// what exists, what it's called, and how it looks filled in. Companion to
+/// <c>/ColorPalette</c>. Admin dev tool — no nav link, access via URL directly.
+/// </summary>
+[Authorize(Policy = PolicyNames.AdminOnly)]
+[Route("WidgetGallery")]
+public sealed class WidgetGalleryController : HumansControllerBase
+{
+    private readonly ITeamService _teamService;
+    private readonly IShiftManagementService _shiftMgmt;
+    private readonly ILogger<WidgetGalleryController> _logger;
+
+    public WidgetGalleryController(
+        UserManager<User> userManager,
+        ITeamService teamService,
+        IShiftManagementService shiftMgmt,
+        ILogger<WidgetGalleryController> logger)
+        : base(userManager)
+    {
+        _teamService = teamService;
+        _shiftMgmt = shiftMgmt;
+        _logger = logger;
+    }
+
+    [HttpGet("")]
+    public async Task<IActionResult> Index()
+    {
+        var (error, currentUser) = await RequireCurrentUserAsync();
+        if (error is not null)
+            return error;
+
+        var sampleTeam = await ResolveSampleTeamAsync();
+        var sampleVolunteerProfile = await TryGetVolunteerProfileAsync(currentUser.Id);
+        var shifts = await ResolveShiftsSamplesAsync(currentUser.Id);
+
+        var displayName = string.IsNullOrEmpty(currentUser.DisplayName)
+            ? currentUser.UserName ?? "Current user"
+            : currentUser.DisplayName;
+
+        var model = new WidgetGalleryViewModel
+        {
+            CurrentUserId = currentUser.Id,
+            CurrentUserDisplayName = displayName,
+            SampleTeamId = sampleTeam?.Id,
+            SampleTeamSlug = sampleTeam?.Slug,
+            SampleTeamName = sampleTeam?.Name,
+            SampleVolunteerProfile = sampleVolunteerProfile,
+            SampleEventSettings = shifts.EventSettings,
+            SampleRota = shifts.Rota,
+            SampleStaffingData = shifts.StaffingData,
+            SampleStaffingHours = shifts.StaffingHours,
+            SampleRotaShifts = shifts.RotaShifts,
+            SampleUserSignupShiftIds = shifts.UserSignupShiftIds,
+            SampleShiftsSummary = new ShiftsSummaryCardViewModel
+            {
+                TotalSlots = 24,
+                ConfirmedCount = 17,
+                PendingCount = 3,
+                UniqueVolunteerCount = 12,
+                ShiftsUrl = Url.Action(nameof(ShiftsController.Index), "Shifts") ?? "#",
+                CanManageShifts = true,
+                IncludesSubTeamCount = 2,
+            },
+            SamplePager = new PagerViewModel
+            {
+                CurrentPage = 3,
+                TotalPages = 8,
+                Action = "Index",
+                Window = 2,
+            },
+            SampleProfileSummary = new ProfileSummaryViewModel
+            {
+                UserId = currentUser.Id,
+                DisplayName = displayName,
+                Email = currentUser.Email,
+                MembershipStatus = "Active",
+                MembershipTier = "Volunteer",
+                IsSuspended = false,
+                PreferredLanguage = currentUser.PreferredLanguage,
+                Teams = sampleTeam is null ? new() : new() { sampleTeam.Name },
+            },
+        };
+
+        return View(model);
+    }
+
+    private async Task<Team?> ResolveSampleTeamAsync()
+    {
+        var allTeams = await _teamService.GetAllTeamsAsync();
+        return allTeams
+            .Where(t => !t.IsSystemTeam && !t.IsHidden)
+            .OrderBy(t => t.Name, StringComparer.Ordinal)
+            .FirstOrDefault()
+            ?? allTeams.FirstOrDefault();
+    }
+
+    private async Task<VolunteerEventProfile?> TryGetVolunteerProfileAsync(Guid userId)
+    {
+        try
+        {
+            return await _shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Failed to fetch shift profile for user {UserId}: {Reason}", userId, ex.Message);
+            return null;
+        }
+    }
+
+    private async Task<ShiftsSamples> ResolveShiftsSamplesAsync(Guid currentUserId)
+    {
+        try
+        {
+            var es = await _shiftMgmt.GetActiveAsync();
+            if (es is null)
+                return ShiftsSamples.Empty;
+
+            Rota? rota = null;
+            Guid? sampleDeptId = null;
+            var depts = await _shiftMgmt.GetDepartmentsWithRotasAsync(es.Id);
+            if (depts.Count > 0)
+            {
+                sampleDeptId = depts[0].TeamId;
+                var rotas = await _shiftMgmt.GetRotasByDepartmentAsync(sampleDeptId.Value, es.Id);
+                rota = rotas.FirstOrDefault();
+            }
+
+            var staffing = await _shiftMgmt.GetStaffingDataAsync(es.Id);
+            var hours = await _shiftMgmt.GetStaffingHoursAsync(es.Id);
+
+            var sampleRotaShifts = new List<ShiftDisplayItem>();
+            if (rota is not null && sampleDeptId is not null)
+            {
+                var browse = await _shiftMgmt.GetBrowseShiftsAsync(
+                    es.Id, departmentId: sampleDeptId.Value, includeSignups: true);
+                sampleRotaShifts = browse
+                    .Where(u => u.Shift.RotaId == rota.Id)
+                    .OrderBy(u => u.Shift.DayOffset)
+                    .ThenBy(u => u.Shift.StartTime)
+                    .Take(8)
+                    .Select(u => MapToDisplayItem(u, es))
+                    .ToList();
+            }
+
+            var userSignupShiftIds = sampleRotaShifts
+                .Where(s => s.Signups.Any(sig => sig.UserId == currentUserId))
+                .Select(s => s.Shift.Id)
+                .ToHashSet();
+
+            return new ShiftsSamples(es, rota, staffing, hours, sampleRotaShifts, userSignupShiftIds);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Failed to resolve shifts samples for widget gallery: {Reason}", ex.Message);
+            return ShiftsSamples.Empty;
+        }
+    }
+
+    private ShiftDisplayItem MapToDisplayItem(UrgentShift u, EventSettings es)
+    {
+        var (start, end, period) = _shiftMgmt.ResolveShiftTimes(u.Shift, es);
+        return new ShiftDisplayItem
+        {
+            Shift = u.Shift,
+            AbsoluteStart = start,
+            AbsoluteEnd = end,
+            Period = period,
+            ConfirmedCount = u.ConfirmedCount,
+            RemainingSlots = u.RemainingSlots,
+            UrgencyScore = u.UrgencyScore,
+            Signups = u.Signups
+                .Select(s => new ShiftSignupInfo(
+                    s.UserId, s.DisplayName, s.Status,
+                    s.HasProfilePicture ? $"/Profile/Picture?id={s.UserId}" : null))
+                .ToList(),
+        };
+    }
+
+    private sealed record ShiftsSamples(
+        EventSettings? EventSettings,
+        Rota? Rota,
+        IReadOnlyList<DailyStaffingData> StaffingData,
+        IReadOnlyList<DailyStaffingHours> StaffingHours,
+        IReadOnlyList<ShiftDisplayItem> RotaShifts,
+        IReadOnlySet<Guid> UserSignupShiftIds)
+    {
+        public static readonly ShiftsSamples Empty = new(
+            null, null,
+            Array.Empty<DailyStaffingData>(),
+            Array.Empty<DailyStaffingHours>(),
+            Array.Empty<ShiftDisplayItem>(),
+            new HashSet<Guid>());
+    }
+}
+
+public sealed class WidgetGalleryViewModel
+{
+    public required Guid CurrentUserId { get; init; }
+    public required string CurrentUserDisplayName { get; init; }
+    public Guid? SampleTeamId { get; init; }
+    public string? SampleTeamSlug { get; init; }
+    public string? SampleTeamName { get; init; }
+    public VolunteerEventProfile? SampleVolunteerProfile { get; init; }
+    public EventSettings? SampleEventSettings { get; init; }
+    public Rota? SampleRota { get; init; }
+    public required IReadOnlyList<DailyStaffingData> SampleStaffingData { get; init; }
+    public required IReadOnlyList<DailyStaffingHours> SampleStaffingHours { get; init; }
+    public required IReadOnlyList<ShiftDisplayItem> SampleRotaShifts { get; init; }
+    public required IReadOnlySet<Guid> SampleUserSignupShiftIds { get; init; }
+    public required ShiftsSummaryCardViewModel SampleShiftsSummary { get; init; }
+    public required PagerViewModel SamplePager { get; init; }
+    public required ProfileSummaryViewModel SampleProfileSummary { get; init; }
+}

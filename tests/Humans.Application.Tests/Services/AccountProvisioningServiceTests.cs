@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Users;
@@ -307,7 +308,7 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<bool> RewriteLinkedEmailAsync(Guid userId, string newEmail, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<bool> RewriteEmailAddressAsync(
+        public Task<RewriteEmailAddressOutcome> RewriteEmailAddressAsync(
             Guid userId, string oldEmail, string newEmail, Instant now, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlyList<UserEmail>> FindAllByProviderKeyAsync(

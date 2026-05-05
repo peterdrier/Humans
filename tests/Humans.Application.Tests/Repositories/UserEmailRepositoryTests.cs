@@ -62,6 +62,16 @@ public sealed class UserEmailRepositoryTests : IDisposable
         reloadedC.UpdatedAt.Should().Be(SeedInstant);
     }
 
+    // Note: RewriteEmailAddressAsync is not unit-tested at the repository level —
+    // its conflict-detection branches use EF.Functions.ILike which is a
+    // Npgsql-specific translation and does not evaluate against the InMemory
+    // provider (see UserRepositoryTests note for GetByEmailOrAlternateAsync).
+    // The three branches (no-conflict, same-user, cross-user) are covered at
+    // the service layer in UserEmailServiceTests via a substitute repo, plus
+    // the controller-level CrossUserConflict path in
+    // AccountControllerOAuthRenameDetectionTests. End-to-end behavior against
+    // Postgres is verified in preview/QA.
+
     private static readonly Instant SeedInstant = Instant.FromUtc(2026, 3, 1, 12, 0);
 
     private async Task<UserEmail> SeedVerifiedAsync(Guid userId, string email, bool isGoogle)
