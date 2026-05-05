@@ -1819,8 +1819,6 @@
   <!-- Agent Widget -->
   <data name="Agent_ConsentPrompt" xml:space="preserve"><value>Abans d'usar l'assistent, accepta les condicions.</value></data>
   <data name="Agent_ConsentReviewButton" xml:space="preserve"><value>Revisar condicions</value></data>
-  <data name="Agent_HistoryActions" xml:space="preserve"><value>Accions</value></data>
-  <data name="Agent_HistoryDelete" xml:space="preserve"><value>Elimina</value></data>
   <data name="Agent_HistoryEmpty" xml:space="preserve"><value>Encara no hi ha converses.</value></data>
   <data name="Agent_HistoryLastMessage" xml:space="preserve"><value>Últim missatge</value></data>
   <data name="Agent_HistoryMessages" xml:space="preserve"><value>Missatges</value></data>

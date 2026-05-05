@@ -3,7 +3,9 @@ using System.Text.Json;
 using Humans.Application.Constants;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Consent;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Models;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Web.Models.Agent;
@@ -27,12 +29,14 @@ public class AgentController : HumansControllerBase
     private readonly IAuthorizationService _auth;
     private readonly IConsentService _consents;
     private readonly IAgentSettingsService _settings;
+    private readonly IUserService _users;
 
     public AgentController(
         IAgentService agent,
         IAuthorizationService auth,
         IConsentService consents,
         IAgentSettingsService settings,
+        IUserService users,
         UserManager<User> userManager)
         : base(userManager)
     {
@@ -40,6 +44,7 @@ public class AgentController : HumansControllerBase
         _auth = auth;
         _consents = consents;
         _settings = settings;
+        _users = users;
     }
 
     [HttpPost("Ask")]
@@ -91,25 +96,70 @@ public class AgentController : HumansControllerBase
         }
     }
 
-    [HttpGet("History")]
-    public async Task<IActionResult> History(CancellationToken cancellationToken)
+    [HttpGet("Conversations")]
+    public async Task<IActionResult> Conversations(
+        bool refusalsOnly = false, bool handoffsOnly = false, Guid? userId = null,
+        int page = 0, CancellationToken cancellationToken = default)
     {
-        var (missing, user) = await RequireCurrentUserAsync();
+        var (missing, currentUser) = await RequireCurrentUserAsync();
         if (missing is not null) return missing;
 
-        var history = await _agent.GetHistoryAsync(user.Id, take: 50, cancellationToken);
-        return View(history);
+        var isAdmin = User.IsInRole(RoleNames.Admin);
+        IReadOnlyList<AgentConversation> rows;
+
+        if (isAdmin)
+        {
+            const int pageSize = 25;
+            rows = await _agent.ListAllConversationsForAdminAsync(
+                refusalsOnly, handoffsOnly, userId, pageSize, page * pageSize, cancellationToken);
+        }
+        else
+        {
+            // Non-admins see only their own. Admin filters are ignored.
+            rows = await _agent.GetHistoryAsync(currentUser.Id, take: 50, cancellationToken);
+        }
+
+        // Display names are only meaningful for admins (who see other people's
+        // conversations). Stitch them in admin mode; for users the column is
+        // hidden entirely.
+        IReadOnlyDictionary<Guid, User>? users = null;
+        if (isAdmin && rows.Count > 0)
+        {
+            var distinctUserIds = rows.Select(r => r.UserId).Distinct().ToArray();
+            users = await _users.GetByIdsAsync(distinctUserIds, cancellationToken);
+        }
+
+        var listRows = rows.Select(r => new AgentConversationRow(
+            Conversation: r,
+            DisplayName: users is not null && users.TryGetValue(r.UserId, out var u)
+                ? u.DisplayName
+                : null)
+        ).ToList();
+
+        return View(new AgentConversationsViewModel(listRows, IsAdminView: isAdmin));
     }
 
-    [HttpDelete("Conversation/{id:guid}")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteConversation(Guid id, CancellationToken cancellationToken)
+    [HttpGet("Conversations/{id:guid}")]
+    public async Task<IActionResult> ConversationDetail(Guid id, CancellationToken cancellationToken)
     {
-        var (missing, user) = await RequireCurrentUserAsync();
+        var (missing, currentUser) = await RequireCurrentUserAsync();
         if (missing is not null) return missing;
 
-        await _agent.DeleteConversationAsync(user.Id, id, cancellationToken);
-        return NoContent();
+        var isAdmin = User.IsInRole(RoleNames.Admin);
+
+        var conv = isAdmin
+            ? await _agent.GetConversationForAdminAsync(id, cancellationToken)
+            : await _agent.GetConversationForUserAsync(currentUser.Id, id, cancellationToken);
+        if (conv is null) return NotFound();
+
+        string? displayName = null;
+        if (isAdmin)
+        {
+            var owner = await _users.GetByIdAsync(conv.UserId, cancellationToken);
+            displayName = owner?.DisplayName ?? conv.UserId.ToString();
+        }
+
+        return View(new AgentConversationDetailViewModel(conv, displayName, IsAdminView: isAdmin));
     }
 
     private async Task WriteSse(AgentTurnToken token, CancellationToken cancellationToken)
@@ -125,3 +175,22 @@ public class AgentController : HumansControllerBase
         await Response.Body.FlushAsync(cancellationToken);
     }
 }
+
+/// <summary>List of conversations + an admin flag the view uses to decide whether
+/// to surface admin-only chrome (Human column, refusal/handoff filters).</summary>
+public sealed record AgentConversationsViewModel(
+    IReadOnlyList<AgentConversationRow> Rows,
+    bool IsAdminView);
+
+/// <summary>One row in the conversations list. <see cref="DisplayName"/> is null
+/// for non-admin views (the column is hidden) and stitched in from
+/// <c>IUserService</c> for admin views.</summary>
+public sealed record AgentConversationRow(AgentConversation Conversation, string? DisplayName);
+
+/// <summary>Conversation detail with display name (admin only) and an admin flag
+/// the view uses to gate token counts, tool invocations, and the prompt-preview
+/// link.</summary>
+public sealed record AgentConversationDetailViewModel(
+    AgentConversation Conversation,
+    string? DisplayName,
+    bool IsAdminView);

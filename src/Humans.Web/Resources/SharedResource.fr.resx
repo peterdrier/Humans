@@ -1817,8 +1817,6 @@
   <!-- Agent Widget -->
   <data name="Agent_ConsentPrompt" xml:space="preserve"><value>Avant d'utiliser l'assistant, veuillez accepter les conditions.</value></data>
   <data name="Agent_ConsentReviewButton" xml:space="preserve"><value>Consulter les conditions</value></data>
-  <data name="Agent_HistoryActions" xml:space="preserve"><value>Actions</value></data>
-  <data name="Agent_HistoryDelete" xml:space="preserve"><value>Supprimer</value></data>
   <data name="Agent_HistoryEmpty" xml:space="preserve"><value>Aucune conversation.</value></data>
   <data name="Agent_HistoryLastMessage" xml:space="preserve"><value>Dernier message</value></data>
   <data name="Agent_HistoryMessages" xml:space="preserve"><value>Messages</value></data>

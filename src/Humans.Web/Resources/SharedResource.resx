@@ -1361,8 +1361,6 @@
   <!-- Agent Widget -->
   <data name="Agent_ConsentPrompt" xml:space="preserve"><value>Before using the in-app helper, please review and accept the Agent Chat Terms.</value></data>
   <data name="Agent_ConsentReviewButton" xml:space="preserve"><value>Review Agent Chat Terms</value></data>
-  <data name="Agent_HistoryActions" xml:space="preserve"><value>Actions</value></data>
-  <data name="Agent_HistoryDelete" xml:space="preserve"><value>Delete</value></data>
   <data name="Agent_HistoryEmpty" xml:space="preserve"><value>No conversations yet.</value></data>
   <data name="Agent_HistoryLastMessage" xml:space="preserve"><value>Last message</value></data>
   <data name="Agent_HistoryMessages" xml:space="preserve"><value>Messages</value></data>

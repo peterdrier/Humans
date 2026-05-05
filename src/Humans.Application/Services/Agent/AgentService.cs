@@ -265,6 +265,13 @@ public sealed class AgentService : IAgentService, IUserDataContributor
         await _repo.DeleteConversationAsync(conversationId, ct);
     }
 
+    public async Task<AgentConversation?> GetConversationForUserAsync(
+        Guid userId, Guid conversationId, CancellationToken ct)
+    {
+        var conv = await _repo.GetConversationByIdAsync(conversationId, ct);
+        return conv is not null && conv.UserId == userId ? conv : null;
+    }
+
     public Task<IReadOnlyList<AgentConversation>> ListAllConversationsForAdminAsync(
         bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
         CancellationToken ct) =>
