@@ -61,7 +61,7 @@ const sidebarMatrix: SidebarExpectation[] = [
     login: loginAsBoard,
     groups: [
       { label: 'Operations', items: ['Tickets', 'Scanner'] },
-      { label: 'Members', items: ['Review'] },
+      { label: 'Members', items: ['Humans', 'Review'] },
       { label: 'Governance', items: ['Voting', 'Board'] },
     ],
   },
@@ -102,6 +102,9 @@ const sidebarMatrix: SidebarExpectation[] = [
   },
 ];
 
+// Note: 'Dev' is intentionally omitted — its items are env-gated
+// (!env.IsProduction()), so the group renders for admins in QA/Preview, and
+// the comment at the top of this file scopes us to role-based-policy items.
 const ALL_GROUP_LABELS = [
   'Operations',
   'Members',
@@ -111,7 +114,6 @@ const ALL_GROUP_LABELS = [
   'Agent',
   'People data',
   'Diagnostics',
-  'Dev',
 ];
 
 test.describe('Admin shell — sidebar visibility matrix', () => {
@@ -200,7 +202,11 @@ test.describe('Admin shell — maintenance + backfill pages', () => {
     await page.goto('/Admin/BackfillUserEmailProviders');
 
     expect(page.url()).toContain('/Admin/BackfillUserEmailProviders');
-    await expect(page.locator('form[action*="BackfillUserEmailProvidersRun"]')).toBeVisible();
+    // Form is asp-action="BackfillUserEmailProvidersRun" but that POST is
+    // attribute-routed as [HttpPost("BackfillUserEmailProviders")], so the
+    // rendered action attribute resolves to /Admin/BackfillUserEmailProviders.
+    await expect(page.locator('form[action*="BackfillUserEmailProviders"]')).toBeVisible();
+    await expect(page.locator('form button[type="submit"]', { hasText: 'Run backfill' })).toBeVisible();
 
     // Backfill is idempotent — re-running over already-backfilled rows is safe.
     const response = await postWithCsrf(page, '/Admin/BackfillUserEmailProviders', '');
