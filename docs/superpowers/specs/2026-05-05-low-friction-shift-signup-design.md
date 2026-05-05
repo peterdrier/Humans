@@ -17,17 +17,25 @@ The product problem this addresses: today's onboarding is several steps long and
 
 ## User flow
 
+**Entry point — `/Welcome` (post-ticket-purchase landing):**
+
+`/Welcome` is the public, `[AllowAnonymous]` thank-you page TicketTailor redirects buyers to (added in peterdrier/Humans #363). It explains shift participation and offers a sign-in CTA. This widget piggybacks on it as the natural entry point for new ticket holders:
+
+- Anonymous visitor lands on `/Welcome` from TicketTailor → reads the explainer → clicks "Sign in" → goes to `Account/Login?returnUrl=/OnboardingWidget` (today: `returnUrl=/Shifts`) → completes auth → `/OnboardingWidget` dispatcher routes them to Step 1.
+- Authenticated active member visiting `/Welcome` → redirected to `/Shifts` (existing behavior, unchanged).
+- Authenticated non-active visitor (mid-widget, has clicked through `/Welcome` once before) → redirected to `/OnboardingWidget` (today: falls through to the explainer view; we change this so they don't see the explainer twice).
+
 **Brand-new ticket holder, never logged in:**
 
-1. Auth (Google OAuth or magic link) → `User` created, email captured, OAuth `given_name` / `family_name` captured if available.
-2. Post-login landing detects no `Profile` → redirect to `/OnboardingWidget/Names`.
+1. Land on `/Welcome` from TicketTailor (or a marketing link). Click the sign-in CTA.
+2. Auth (Google OAuth or magic link) → `User` created, email captured, OAuth `given_name` / `family_name` captured if available. Post-auth `returnUrl` lands them on `/OnboardingWidget`, which dispatches to Step 1.
 3. **Step 1 — Names.** One screen, three fields: Legal First, Legal Last, Burner Name. Pre-filled from OAuth claims when present. Submit creates `Profile` (empty for everything else) → redirect to Step 2.
 4. **Step 2 — Shifts.** Default view shows priority shifts only — `Rota.Priority` ∈ {Important, Essential} ∪ understaffed (`confirmed_count < MinVolunteers`). "Show all" link expands to the full browse partial. "Not right now" button → friendly nag ("ok but be sure to come back later — it's more fun when we build this all together") → advances to Step 3 with a session-flag set so Step 2 isn't re-prompted in the same browser session. Picking ≥1 shift creates `ShiftSignup` rows in **Pending** state regardless of `Rota.Policy` (one new branch in `ShiftSignupService.SignUp` — see Architecture). Range signups in Step 2 use the existing `SignupBlockId` mechanism unchanged.
 5. **Step 3 — Consents.** Required Volunteer docs listed; user signs each. Existing `ConsentService.SubmitConsentAsync` triggers — on the last required consent, `OnboardingService.SetConsentCheckPendingIfEligibleAsync` flips `ConsentCheckStatus` to `Pending` and `SyncVolunteersMembershipForUserAsync` admits the user to the Volunteers system team per the existing predicate. **One new hook**: after admission, mid-widget Pending signups are re-evaluated against `Rota.Policy`. Public-rota signups promote to Confirmed; RequireApproval-rota signups stay Pending awaiting coordinator. Redirect to Home.
 
 **Returning user, mid-widget:**
 
-`Home/Index` and `Guest/Index` check `IOnboardingWidgetState.GetCurrentStepAsync(userId)`. If the result is not `Complete`, redirect to `/OnboardingWidget/<currentStep>`. Otherwise behave as today.
+`Home/Index` and `Guest/Index` check `IOnboardingWidgetState.GetCurrentStepAsync(userId)`. If the result is not `Complete`, redirect to `/OnboardingWidget` (the dispatcher routes from there). Otherwise behave as today.
 
 Evaluate top-down; first match wins:
 
@@ -58,7 +66,7 @@ Signup sits Pending. A new "Incomplete onboarding" filter on the existing coordi
 
 ### New surfaces (Web layer)
 
-- `src/Humans.Web/Controllers/OnboardingWidgetController.cs` — `[Authorize]`, no role gate. Actions: `Names` (GET/POST), `Shifts` (GET, POST `SignUp`, POST `Skip`), `Consents` (GET, POST `Sign`), `Finish` (redirect to Home).
+- `src/Humans.Web/Controllers/OnboardingWidgetController.cs` — `[Authorize]`, no role gate. Actions: `Index` (dispatcher — calls `IOnboardingWidgetState` and redirects to the appropriate step, or to `/Home` if `Complete`), `Names` (GET/POST), `Shifts` (GET, POST `SignUp`, POST `Skip`), `Consents` (GET, POST `Sign`), `Finish` (redirect to Home). The dispatcher is the canonical entry point — `/Welcome`, `Home/Index`'s redirect, `Guest/Index`'s redirect, and the layout banner all link here, not to a specific step.
 - `src/Humans.Web/Views/OnboardingWidget/Names.cshtml`, `Shifts.cshtml`, `Consents.cshtml`. The Shifts view uses a slimmed wrapper around `_EventRotaTable` / `_BuildStrikeRotaTable`. The Consents view reuses the existing required-docs partial.
 - `src/Humans.Web/Models/OnboardingWidget*ViewModel.cs` — one VM per step.
 - `src/Humans.Web/Views/Shared/_OnboardingProgressBanner.cshtml` — rendered from `_Layout.cshtml` based on `IOnboardingWidgetState`. No-op when `currentStep == Complete`.
@@ -91,8 +99,10 @@ Walks the user's current-event Pending signups, promotes to `Confirmed` for Publ
 
 ### Existing surfaces touched
 
-- `src/Humans.Web/Controllers/HomeController.cs` (`Index`) — at the top of the action, call `IOnboardingWidgetState.GetCurrentStepAsync`. If not `Complete`, redirect to `/OnboardingWidget/<currentStep>`. Otherwise existing behavior.
+- `src/Humans.Web/Controllers/HomeController.cs` (`Index`) — at the top of the action, call `IOnboardingWidgetState.GetCurrentStepAsync`. If not `Complete`, redirect to `/OnboardingWidget`. Otherwise existing behavior.
 - `src/Humans.Web/Controllers/GuestController.cs` (`Index`) — same redirect at the top. Otherwise existing behavior; Guest dashboard's other concerns (comms preferences, GDPR tools, ticket status) remain untouched.
+- `src/Humans.Web/Controllers/WelcomeController.cs` (`Index`) — for authenticated visitors who are *not* active members, redirect to `/OnboardingWidget` instead of returning the explainer view. The active-member redirect to `/Shifts` and the anonymous-visitor explainer-view path are preserved.
+- `src/Humans.Web/Views/Welcome/Index.cshtml` — change the sign-in CTA's `returnUrl` from `Url.Action("Index", "Shifts")` to `Url.Action("Index", "OnboardingWidget")`. Localized strings for the explainer copy are unchanged.
 - `src/Humans.Web/Views/Shared/_Layout.cshtml` — render `_OnboardingProgressBanner` partial.
 - `src/Humans.Application/Services/Shifts/ShiftSignupService.cs` (`SignUp`, `SignUpRange`) — add the force-Pending branch and the new `PromoteWidgetPendingSignupsAfterAdmissionAsync` method.
 - `src/Humans.Application/Services/Consent/ConsentService.cs` (`SubmitConsentAsync`) — call `PromoteWidgetPendingSignupsAfterAdmissionAsync` after the existing admission call.
@@ -203,6 +213,9 @@ Pre-fill is a hint. User edits Step 1 fields freely before submitting. Magic-lin
 
 **Integration tests (`OnboardingWidgetIntegrationTests`):**
 
+- Anonymous visitor lands on `/Welcome` → clicks sign-in CTA → `Account/Login` returnUrl is `/OnboardingWidget` → completes auth → dispatcher routes to `/OnboardingWidget/Names`.
+- Authenticated active member visits `/Welcome` → redirected to `/Shifts` (existing behavior, not regressed).
+- Authenticated mid-widget user visits `/Welcome` → redirected to `/OnboardingWidget` (does not see the explainer view a second time).
 - Brand-new OAuth signup → magic link → lands on `/OnboardingWidget/Names` (not `Guest/Index`).
 - Submit names → `/OnboardingWidget/Shifts` with priority filter applied.
 - Pick a shift → Pending signup created → `/OnboardingWidget/Consents`.
@@ -250,7 +263,8 @@ If a problem emerges in production — coordinators confused by stale mid-widget
 | `Home/Index` + `Guest/Index` redirect-into-widget | XS |
 | Profile-completion percent on Home | XS |
 | Coordinator Pending-list "Incomplete onboarding" filter | XS |
-| Tests (state, force-Pending, promotion, integration) | M |
-| Docs: `Onboarding.md` / `Shifts.md` invariant amendments | XS |
+| `WelcomeController` redirect for non-active visitors + Welcome view returnUrl swap | XS |
+| Tests (state, force-Pending, promotion, integration, /Welcome) | M |
+| Docs: `Onboarding.md` / `Shifts.md` invariant amendments + `docs/features/24-ticket-vendor-integration.md` `/Welcome` section update | XS |
 
 Total: **small-to-medium.** One PR.
