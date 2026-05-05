@@ -221,12 +221,13 @@ public class ConsentServiceTests : IDisposable
         await _shiftSignupService.Received(1).PromoteWidgetPendingSignupsAfterAdmissionAsync(
             userId, Arg.Any<CancellationToken>());
 
-        // Sequence: SyncVolunteersMembershipForUserAsync must precede the promote hook.
+        // Sequence: Volunteers sync → promote hook → Coordinators sync.
         // Record-only calls inside InOrder; discards keep the analyzers happy.
         Received.InOrder(() =>
         {
             _ = _syncJob.SyncVolunteersMembershipForUserAsync(userId, Arg.Any<CancellationToken>());
             _ = _shiftSignupService.PromoteWidgetPendingSignupsAfterAdmissionAsync(userId, Arg.Any<CancellationToken>());
+            _ = _syncJob.SyncCoordinatorsMembershipForUserAsync(userId, Arg.Any<CancellationToken>());
         });
     }
 
