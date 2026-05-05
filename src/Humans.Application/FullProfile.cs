@@ -4,6 +4,18 @@ using Humans.Domain.Enums;
 namespace Humans.Application;
 
 /// <summary>
+/// Compact projection of a <see cref="Domain.Entities.UserEmail"/> row carried
+/// inside <see cref="FullProfile"/> so consumers can inspect per-row flags
+/// (IsPrimary / IsGoogle / IsVerified) without going back to the repository.
+/// </summary>
+public sealed record UserEmailSnapshot(
+    Guid Id,
+    string Email,
+    bool IsVerified,
+    bool IsPrimary,
+    bool IsGoogle);
+
+/// <summary>
 /// Denormalized profile projection used by the caching decorator and its
 /// consumers (avatar, link tag helper, profile card). Stitched from
 /// <see cref="Profile"/>, the owning <see cref="User"/>, and the profile's
@@ -28,6 +40,7 @@ public record FullProfile(
     string? PrimaryEmail = null,
     IReadOnlyList<string>? AllVerifiedEmails = null,
     string? GoogleEmail = null,
+    IReadOnlyList<UserEmailSnapshot>? UserEmails = null,
     ProfileState? State = null)
 {
     /// <summary>
@@ -44,6 +57,12 @@ public record FullProfile(
     /// </summary>
     public IReadOnlyList<string> VerifiedEmails =>
         AllVerifiedEmails ?? Array.Empty<string>();
+
+    /// <summary>
+    /// Defensive non-null projection of <see cref="UserEmails"/>.
+    /// </summary>
+    public IReadOnlyList<UserEmailSnapshot> AllUserEmails =>
+        UserEmails ?? Array.Empty<UserEmailSnapshot>();
 
     /// <summary>
     /// Overload that accepts an explicit volunteer-history list and the loaded
