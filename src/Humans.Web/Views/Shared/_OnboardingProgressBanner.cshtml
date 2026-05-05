@@ -2,11 +2,25 @@
 @using Microsoft.AspNetCore.Mvc.Localization
 @inject IOnboardingWidgetState WidgetState
 @inject IHtmlLocalizer<SharedResource> BannerLocalizer
+@inject ILogger<SharedResource> BannerLogger
 @{
     if (User?.Identity?.IsAuthenticated != true) { return; }
     var userIdRaw = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
     if (!Guid.TryParse(userIdRaw, out var userId)) { return; }
-    var step = await WidgetState.GetCurrentStepAsync(userId);
+
+    // Banner is purely advisory — it must never break the layout. If state lookup
+    // throws (DbContext disposed mid-render, transient query failure, half-logout
+    // cookie state, etc.) swallow the error so the page still renders.
+    OnboardingWidgetStep step;
+    try
+    {
+        step = await WidgetState.GetCurrentStepAsync(userId);
+    }
+    catch (Exception ex)
+    {
+        BannerLogger.LogWarning(ex, "OnboardingProgressBanner: GetCurrentStepAsync failed for user {UserId}; suppressing banner", userId);
+        return;
+    }
     if (step == OnboardingWidgetStep.Complete) { return; }
 }
 <div class="alert alert-info mb-0 rounded-0 text-center">
