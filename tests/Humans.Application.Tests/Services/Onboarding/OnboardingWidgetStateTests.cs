@@ -116,6 +116,21 @@ public class OnboardingWidgetStateTests
         Assert.Equal(OnboardingWidgetStep.Consents, step);
     }
 
+    [HumansFact]
+    public async Task ProfileWithNoActiveEvent_ReturnsShifts()
+    {
+        var userId = Guid.NewGuid();
+        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, default)
+            .Returns(false);
+        _profile.GetProfileAsync(userId, default)
+            .Returns(new Profile { UserId = userId });
+        _shiftMgmt.GetActiveAsync().Returns((EventSettings?)null);
+
+        var step = await BuildSut().GetCurrentStepAsync(userId);
+
+        Assert.Equal(OnboardingWidgetStep.Shifts, step);
+    }
+
     private sealed class TestSession : ISession
     {
         private readonly Dictionary<string, byte[]> _store = new(StringComparer.Ordinal);
