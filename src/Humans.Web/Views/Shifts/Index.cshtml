@@ -373,7 +373,13 @@
                                 FilterPeriod = Model.FilterPeriod,
                                 FilterPeriods = Model.FilterPeriods,
                                 FilterTagIds = Model.FilterTagIds,
-                                Sort = Model.Sort
+                                Sort = Model.Sort,
+                                UserActiveSignups = Model.UserActiveSignups,
+                                RotaWindowsByDayOffset = rotaGroup.Shifts
+                                    .Where(s => s.Shift.IsAllDay)
+                                    .ToDictionary(
+                                        s => s.Shift.DayOffset,
+                                        s => new ShiftWindow(s.AbsoluteStart, s.AbsoluteEnd))
                             })
                         }
                         @if (!isBuildStrike || hasTimedShifts)
@@ -522,7 +528,13 @@
                                                     FilterPeriod = Model.FilterPeriod,
                                                     FilterPeriods = Model.FilterPeriods,
                                                     FilterTagIds = Model.FilterTagIds,
-                                                    Sort = Model.Sort
+                                                    Sort = Model.Sort,
+                                                    UserActiveSignups = Model.UserActiveSignups,
+                                                    RotaWindowsByDayOffset = rotaGroup.Shifts
+                                                        .Where(s => s.Shift.IsAllDay)
+                                                        .ToDictionary(
+                                                            s => s.Shift.DayOffset,
+                                                            s => new ShiftWindow(s.AbsoluteStart, s.AbsoluteEnd))
                                                 })
                                             }
                                             @if (!isBuildStrike || hasTimedShifts)
