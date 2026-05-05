@@ -86,7 +86,7 @@ public class OnboardingWidgetControllerConsentsTests
         var docId = Guid.NewGuid();
         IReadOnlyList<RequiredConsentRow> rows = new List<RequiredConsentRow>
         {
-            new(docId, "Code of Conduct", $"/Consent/Review/{docId}", Signed: false),
+            new(docId, "Code of Conduct", Signed: false),
         };
         _consents.GetRequiredConsentRowsForUserAsync(
                 userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())

@@ -374,10 +374,10 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
             rows.Add(new RequiredConsentRow(
                 DocumentVersionId: currentVersion.Id,
                 Title: doc.Name,
-                Url: $"/Consent/Review/{currentVersion.Id}",
                 Signed: consentedVersionIds.Contains(currentVersion.Id)));
         }
 
+        // Unsigned-first so the user sees outstanding work at the top of the widget.
         return rows
             .OrderBy(r => r.Signed)
             .ThenBy(r => r.Title, StringComparer.Ordinal)

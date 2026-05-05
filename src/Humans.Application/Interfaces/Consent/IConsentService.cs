@@ -8,7 +8,7 @@ public record ConsentSubmitResult(bool Success, string? DocumentName = null, str
 /// One row in the onboarding-widget Consents step: a single required document
 /// (current version) for the user, with whether they have already signed it.
 /// </summary>
-public record RequiredConsentRow(Guid DocumentVersionId, string Title, string Url, bool Signed);
+public record RequiredConsentRow(Guid DocumentVersionId, string Title, bool Signed);
 
 public interface IConsentService
 {
