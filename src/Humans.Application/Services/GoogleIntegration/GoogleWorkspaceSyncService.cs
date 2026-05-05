@@ -637,6 +637,23 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         // service (design-rules §2c) instead of traversing user.UserEmails
         // cross-domain.
         var user = await _userService.GetByIdAsync(userId, cancellationToken);
+
+        // Merge-fold redirect (issue peterdrier/Humans#646): if the source
+        // user has been folded into a target via AccountMergeService, the
+        // outbox event was enqueued before the merge but is being dequeued
+        // after. The team_members row was re-FK'd to the target, and the
+        // source's UserEmails were also re-FK'd, so a lookup against the
+        // source returns "no verified email" even though the target has one.
+        // Follow MergedToUserId so the provisioning runs against the target.
+        if (user is { MergedToUserId: { } targetUserId })
+        {
+            _logger.LogInformation(
+                "Following merge-fold redirect for AddUserToTeamResources: source {SourceUserId} → target {TargetUserId} (team {TeamId})",
+                userId, targetUserId, teamId);
+            userId = targetUserId;
+            user = await _userService.GetByIdAsync(userId, cancellationToken);
+        }
+
         var userEmails = user is null
             ? (IReadOnlyList<UserEmail>)Array.Empty<UserEmail>()
             : await _userEmailService.GetEntitiesByUserIdAsync(userId, cancellationToken);
@@ -654,11 +671,15 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             if (user is null)
             {
-                _logger.LogWarning("Skipped Google provisioning for {UserId}: user no longer exists (likely deleted between outbox enqueue and dequeue)", userId);
+                _logger.LogWarning(
+                    "Skipped Google provisioning for {UserId} on team {TeamId}: user no longer exists (likely deleted between outbox enqueue and dequeue)",
+                    userId, teamId);
             }
             else
             {
-                _logger.LogWarning("Skipped Google provisioning for {UserId}: user exists but has no verified email", userId);
+                _logger.LogWarning(
+                    "Skipped Google provisioning for {UserId} on team {TeamId}: user exists but has no verified email",
+                    userId, teamId);
             }
             return;
         }
@@ -750,6 +771,17 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             _logger.LogWarning("User {UserId} not found for access restoration", userId);
             return;
+        }
+
+        // Merge-fold redirect (issue peterdrier/Humans#646): if the caller
+        // passed a folded source id, follow MergedToUserId so restoration
+        // runs against the target — team_members were re-FK'd at merge time.
+        if (user.MergedToUserId is { } targetUserId)
+        {
+            _logger.LogInformation(
+                "Following merge-fold redirect for RestoreUserToAllTeams: source {SourceUserId} → target {TargetUserId}",
+                userId, targetUserId);
+            userId = targetUserId;
         }
 
         var memberships = await _teamService.GetUserTeamsAsync(userId, cancellationToken);
