@@ -391,9 +391,6 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         return await inner.GetEmailCooldownInfoAsync(pendingEmailId, ct);
     }
 
-    public Task<IReadOnlyList<FullProfile>> GetFullProfileSnapshotAsync(CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<FullProfile>>(_byUserId.Values.ToList());
-
     public Task<IReadOnlyList<UserSearchResult>> SearchApprovedUsersAsync(
         string query, CancellationToken ct = default)
     {

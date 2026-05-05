@@ -28,7 +28,13 @@ public sealed class EmailProblemsService : IEmailProblemsService
     {
         var problems = new List<EmailProblem>();
 
-        var profiles = await _profileService.GetFullProfileSnapshotAsync(ct);
+        var users = await _userService.GetAllUsersAsync(ct);
+        var profiles = new List<FullProfile>(users.Count);
+        foreach (var u in users)
+        {
+            var fp = await _profileService.GetFullProfileAsync(u.Id, ct);
+            if (fp is not null) profiles.Add(fp);
+        }
 
         foreach (var p in profiles)
         {

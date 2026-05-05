@@ -30,9 +30,20 @@ public class EmailProblemsServiceTests
             CVEntries: Array.Empty<CVEntry>(),
             UserEmails: emails);
 
-    private void SetProfiles(params FullProfile[] profiles) =>
-        _profileService.GetFullProfileSnapshotAsync(Arg.Any<CancellationToken>())
-            .Returns(profiles);
+    private void SetProfiles(params FullProfile[] profiles)
+    {
+        var users = profiles
+            .Select(p => new User { Id = p.UserId })
+            .ToList();
+        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
+            .Returns(users);
+
+        foreach (var p in profiles)
+        {
+            _profileService.GetFullProfileAsync(p.UserId, Arg.Any<CancellationToken>())
+                .Returns(new ValueTask<FullProfile?>(p));
+        }
+    }
 
     private void SetOrphans(params UserEmail[] orphans) =>
         _userEmailService.GetOrphanUserEmailsAsync(Arg.Any<CancellationToken>())
