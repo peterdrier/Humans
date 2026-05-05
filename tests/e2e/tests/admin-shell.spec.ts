@@ -52,8 +52,8 @@ const sidebarMatrix: SidebarExpectation[] = [
       { label: 'Governance', items: ['Voting', 'Board'] },
       { label: 'Integrations', items: ['Google', 'Email preview', 'Email outbox', 'Campaigns', 'Workspace accounts'] },
       { label: 'Agent', items: ['Agent Config', 'Agent History'] },
-      { label: 'People data', items: ['Merge requests', 'Duplicate detection', 'Audience segmentation', 'Legal documents'] },
-      { label: 'Diagnostics', items: ['Logs', 'DB stats', 'Cache stats', 'Configuration', 'Maintenance', 'Hangfire', 'Health'] },
+      { label: 'People data', items: ['Merge requests', 'Duplicate detection', 'Audience segmentation', 'Legal documents', 'Backfill Provider/IsGoogle', 'Stub Profile Backfill'] },
+      { label: 'Diagnostics', items: ['Logs', 'DB stats', 'Cache stats', 'Configuration', 'Maintenance', 'Orphan signups', 'Hangfire', 'Health'] },
     ],
   },
   {
