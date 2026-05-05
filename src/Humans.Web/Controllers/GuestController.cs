@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.Onboarding;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Models;
@@ -23,6 +24,7 @@ public class GuestController : HumansControllerBase
     private readonly IProfileService _profileService;
     private readonly ITicketQueryService _ticketQueryService;
     private readonly IGdprExportService _gdprExportService;
+    private readonly IOnboardingWidgetState _widgetState;
     private readonly IClock _clock;
     private readonly ILogger<GuestController> _logger;
 
@@ -39,6 +41,7 @@ public class GuestController : HumansControllerBase
         IProfileService profileService,
         ITicketQueryService ticketQueryService,
         IGdprExportService gdprExportService,
+        IOnboardingWidgetState widgetState,
         IClock clock,
         ILogger<GuestController> logger)
         : base(userManager)
@@ -47,16 +50,24 @@ public class GuestController : HumansControllerBase
         _profileService = profileService;
         _ticketQueryService = ticketQueryService;
         _gdprExportService = gdprExportService;
+        _widgetState = widgetState;
         _clock = clock;
         _logger = logger;
     }
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
         var user = await GetCurrentUserAsync();
         if (user is null)
         {
             return Challenge();
+        }
+
+        // Route through the onboarding widget until the user has completed every required step.
+        var step = await _widgetState.GetCurrentStepAsync(user.Id, cancellationToken);
+        if (step != OnboardingWidgetStep.Complete)
+        {
+            return RedirectToAction("Index", "OnboardingWidget");
         }
 
         try
