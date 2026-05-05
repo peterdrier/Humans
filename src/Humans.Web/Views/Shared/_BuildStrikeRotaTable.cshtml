@@ -112,6 +112,110 @@
             </div>
         </div>
     </form>
+    <script>
+    (function () {
+        var modalEl = document.getElementById('confirmSignup-@rotaGroup.Rota.Id');
+        if (!modalEl) return;
+        var form = modalEl.closest('form');
+        if (!form) return;
+
+        var userSignups = JSON.parse(form.querySelector('.js-user-signups-data').textContent || '[]');
+        var rotaWindows = JSON.parse(form.querySelector('.js-rota-windows-data').textContent || '{}');
+        var startSel = form.querySelector('select[name="startDayOffset"]');
+        var endSel = form.querySelector('select[name="endDayOffset"]');
+
+        function fmt(tpl, args) {
+            // Replace ALL occurrences of {0}, {1}, ... — guards future translations
+            // that might repeat a placeholder. JS String.replace replaces first only.
+            return Object.keys(args).reduce(function (s, k) {
+                return s.split('{' + k + '}').join(String(args[k]));
+            }, tpl);
+        }
+
+        function findConflictsForOffset(offset) {
+            var win = rotaWindows[offset];
+            if (!win) return [];
+            // overlap rule: existing.absStart < win.absEnd && existing.absEnd > win.absStart
+            // string comparison works on ISO-8601 UTC strings.
+            return userSignups.filter(function (s) {
+                return s.absStart < win.absEnd && s.absEnd > win.absStart;
+            });
+        }
+
+        modalEl.addEventListener('show.bs.modal', function () {
+            var startOpt = startSel.options[startSel.selectedIndex];
+            var endOpt = endSel.options[endSel.selectedIndex];
+            var startOffset = parseInt(startSel.value, 10);
+            var endOffset = parseInt(endSel.value, 10);
+
+            var lo = Math.min(startOffset, endOffset), hi = Math.max(startOffset, endOffset);
+            var days = hi - lo + 1;
+
+            var startDate = startOpt.getAttribute('data-date');
+            var endDate = endOpt.getAttribute('data-date');
+            var arriveBy = startOpt.getAttribute('data-arrive-by');
+
+            var rangeTpl = modalEl.getAttribute('data-range-tpl-multi') || '{0} – {1} ({2} days)';
+            var singleTpl = modalEl.getAttribute('data-range-tpl-single') || '{0} (1 day)';
+            var rangeLine = days === 1
+                ? fmt(singleTpl, { 0: startDate })
+                : fmt(rangeTpl, { 0: startDate, 1: endDate, 2: days });
+            modalEl.querySelector('.js-range-line').textContent = rangeLine;
+
+            var arriveTpl = modalEl.getAttribute('data-arrive-tpl') || "You'll be expected on site by {0}.";
+            modalEl.querySelector('.js-arrive-by-line').textContent = fmt(arriveTpl, { 0: arriveBy });
+
+            var allConflicts = [];
+            for (var off = lo; off <= hi; off++) {
+                var conflicts = findConflictsForOffset(off);
+                if (conflicts.length > 0) {
+                    var opt = startSel.querySelector('option[value="' + off + '"]')
+                            || endSel.querySelector('option[value="' + off + '"]');
+                    var dateLabel = opt ? opt.getAttribute('data-date') : String(off);
+                    conflicts.forEach(function (c) {
+                        allConflicts.push({ date: dateLabel, conflict: c });
+                    });
+                }
+            }
+
+            var partialAlert = modalEl.querySelector('.js-conflicts-partial');
+            var allBlockedAlert = modalEl.querySelector('.js-conflicts-all');
+            var list = modalEl.querySelector('.js-conflicts-list');
+            var submitBtn = modalEl.querySelector('.js-confirm-submit');
+
+            partialAlert.classList.add('d-none');
+            allBlockedAlert.classList.add('d-none');
+            list.innerHTML = '';
+            submitBtn.removeAttribute('disabled');
+
+            if (allConflicts.length > 0) {
+                var conflictedOffsets = new Set();
+                for (var off2 = lo; off2 <= hi; off2++) {
+                    if (findConflictsForOffset(off2).length > 0) conflictedOffsets.add(off2);
+                }
+                var rowTpl = modalEl.getAttribute('data-conflict-row-tpl')
+                    || '{0} — already signed up for {1} ({2}–{3})';
+
+                if (conflictedOffsets.size === days) {
+                    allBlockedAlert.classList.remove('d-none');
+                    submitBtn.setAttribute('disabled', 'disabled');
+                } else {
+                    allConflicts.forEach(function (c) {
+                        var li = document.createElement('li');
+                        li.textContent = fmt(rowTpl, {
+                            0: c.date,
+                            1: c.conflict.rota,
+                            2: c.conflict.displayStart,
+                            3: c.conflict.displayEnd
+                        });
+                        list.appendChild(li);
+                    });
+                    partialAlert.classList.remove('d-none');
+                }
+            }
+        });
+    })();
+    </script>
 }
 else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s.ConfirmedCount < s.Shift.MinVolunteers))
 {
