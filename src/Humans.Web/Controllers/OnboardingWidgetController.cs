@@ -109,17 +109,9 @@ public class OnboardingWidgetController : Controller
         }
         else
         {
-            // Onboarding only surfaces Event-period rotas. Build/Strike rotas
-            // use a multi-day SignUpRange action that the widget doesn't
-            // implement, and they're typically pre-organized through camp/
-            // department channels — not the right thing to show a brand-new
-            // volunteer on their first signup. Hidden + AdminOnly rotas are
-            // already filtered at the data layer.
-            var urgentShifts = (await _shiftMgmt.GetBrowseShiftsAsync(
+            var urgentShifts = await _shiftMgmt.GetBrowseShiftsAsync(
                 es.Id, includeAdminOnly: false, includeSignups: true,
-                includeHidden: false, priorityOnly: !showAll))
-                .Where(u => u.Shift.Rota.Period == Humans.Domain.Enums.RotaPeriod.Event)
-                .ToList();
+                includeHidden: false, priorityOnly: !showAll);
             var (shiftIds, statuses) = await _signupService.GetActiveSignupStatusesAsync(GetUserId(), es.Id);
             browseModel = OnboardingShiftsBrowseModelBuilder.Build(es, urgentShifts, shiftIds, statuses);
         }
@@ -136,6 +128,24 @@ public class OnboardingWidgetController : Controller
         if (!result.Success)
         {
             TempData["Error"] = result.Error ?? "Could not sign up.";
+            return RedirectToAction(nameof(Shifts));
+        }
+        return RedirectToAction(nameof(Consents));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SignUpRange(Guid rotaId, int startDayOffset, int endDayOffset, CancellationToken ct)
+    {
+        // Multi-day signup for Build/Strike rotas. Mirrors ShiftsController's
+        // SignUpRange but routes back through the widget dispatcher so the
+        // user lands on Consents (or Home, if all consents are signed)
+        // instead of /Shifts/Index.
+        var userId = GetUserId();
+        var result = await _signupService.SignUpRangeAsync(userId, rotaId, startDayOffset, endDayOffset, isPrivileged: false);
+        if (!result.Success)
+        {
+            TempData["Error"] = result.Error ?? "Could not sign up for date range.";
             return RedirectToAction(nameof(Shifts));
         }
         return RedirectToAction(nameof(Consents));

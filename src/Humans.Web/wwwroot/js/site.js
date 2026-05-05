@@ -373,3 +373,22 @@ function showToast(message, type) {
     }
     update();
 })();
+
+// Expand/collapse compressed date ranges in _BuildStrikeRotaTable.
+// Used by /Shifts/Index and /OnboardingWidget/Shifts; no-op elsewhere.
+(function () {
+    document.querySelectorAll('.shift-range-header').forEach(function (el) {
+        el.addEventListener('click', function () {
+            var rangeKey = this.getAttribute('data-range');
+            var icon = this.querySelector('.range-icon');
+            var rows = document.querySelectorAll('.range-detail-' + rangeKey);
+            if (rows.length === 0) return;
+            var expanding = rows[0].classList.contains('d-none');
+            rows.forEach(function (row) { row.classList.toggle('d-none', !expanding); });
+            if (icon) {
+                icon.classList.toggle('fa-chevron-right', !expanding);
+                icon.classList.toggle('fa-chevron-down', expanding);
+            }
+        });
+    });
+})();

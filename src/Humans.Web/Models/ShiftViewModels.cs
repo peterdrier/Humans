@@ -597,6 +597,12 @@ public class BuildStrikeRotaTableViewModel
     public List<string> FilterPeriods { get; set; } = [];
     public List<Guid> FilterTagIds { get; set; } = [];
     public string? Sort { get; set; }
+
+    /// <summary>Controller the date-range Sign Up form posts to. Default = the
+    /// public Shifts controller; the onboarding widget overrides this so the
+    /// inline rota table posts back into the widget flow.</summary>
+    public string SignUpRangeController { get; set; } = "Shifts";
+    public string SignUpRangeAction { get; set; } = "SignUpRange";
 }
 
 public class EventRotaTableViewModel
