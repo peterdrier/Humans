@@ -22,7 +22,11 @@
             <select name="startDayOffset" class="form-select form-select-sm">
                 @foreach (var s in availableShifts)
                 {
-                    <option value="@s.Shift.DayOffset">@es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayShiftDate()</option>
+                    <option value="@s.Shift.DayOffset"
+                            data-date="@es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayShiftDate()"
+                            data-arrive-by="@es.GateOpeningDate.PlusDays(s.Shift.DayOffset - 1).ToDisplayShiftDate()">
+                        @es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayShiftDate()
+                    </option>
                 }
             </select>
         </div>
@@ -31,7 +35,11 @@
             <select name="endDayOffset" class="form-select form-select-sm">
                 @foreach (var s in availableShifts)
                 {
-                    <option value="@s.Shift.DayOffset" selected="@(s == availableShifts.Last() ? "selected" : null)">@es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayShiftDate()</option>
+                    <option value="@s.Shift.DayOffset"
+                            data-date="@es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayShiftDate()"
+                            selected="@(s == availableShifts.Last() ? "selected" : null)">
+                        @es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayShiftDate()
+                    </option>
                 }
             </select>
         </div>
@@ -41,6 +49,23 @@
                 @string.Format(Localizer["Shifts_SignUpForDates"].Value, rotaGroup.Rota.Period == RotaPeriod.Build ? Localizer["Shifts_SetUp"].Value.ToLowerInvariant() : Localizer["Shifts_Strike"].Value.ToLowerInvariant())
             </button>
         </div>
+        <script type="application/json" class="js-user-signups-data">
+            @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                Model.UserActiveSignups.Select(u => new {
+                    date = u.Date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+                    rota = u.RotaName,
+                    absStart = u.AbsoluteStart.ToString(),
+                    absEnd = u.AbsoluteEnd.ToString(),
+                    displayStart = u.DisplayStart,
+                    displayEnd = u.DisplayEnd
+                })))
+        </script>
+        <script type="application/json" class="js-rota-windows-data">
+            @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                Model.RotaWindowsByDayOffset.ToDictionary(
+                    kv => kv.Key.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    kv => new { absStart = kv.Value.AbsoluteStart.ToString(), absEnd = kv.Value.AbsoluteEnd.ToString() })))
+        </script>
         <div class="modal fade" id="confirmSignup-@rotaGroup.Rota.Id" tabindex="-1" aria-hidden="true"
              data-range-tpl-multi="@Localizer["Shifts_ConfirmSignup_Range"]"
              data-range-tpl-single="@Localizer["Shifts_ConfirmSignup_Range_Single"]"
