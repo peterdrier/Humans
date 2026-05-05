@@ -38,7 +38,9 @@ Event shifts, rotas, signups, range blocks, event settings, general availability
 
 ### EventSettings
 
-Singleton per event — dates (gate-opening date, build/event/strike offsets), timezone, early-entry capacity (step function), barrios EE allocation, early-entry close instant, global volunteer cap, reminder lead time hours, shift browsing toggle, IsActive flag, and event name/year.
+Singleton per event — dates (gate-opening date, build/event/strike offsets, build sub-period offsets), timezone, early-entry capacity (step function), barrios EE allocation, early-entry close instant, global volunteer cap, reminder lead time hours, shift browsing toggle, IsActive flag, and event name/year.
+
+The build period is split into four named sub-phases via four day-offset fields on EventSettings: `FirstCrewStartOffset` (default -25), `SetupWeekStartOffset` (-16), `PreEventWeekStartOffset` (-9), `FinishingWeekendStartOffset` (-4). Offsets are inclusive starts; the next sub-period's start is the exclusive end. All four must be negative and ascending: `BuildStartOffset ≤ FirstCrew ≤ Set-up week ≤ Pre-event week ≤ Finishing weekend < 0`. Coordinators reconfigure per event so the absolute calendar dates auto-shift with `GateOpeningDate`.
 
 **Table:** `event_settings`
 
@@ -115,6 +117,19 @@ Explicit period set on a Rota. Drives creation UX (all-day vs time-slotted) and 
 
 Stored as string via `HasConversion<string>()`.
 
+### BuildSubPeriod
+
+Computed sub-classification of a Build-period shift, narrowed by the four day-offset boundaries on `EventSettings`. **NOT stored in DB** — derived per shift on read via `BuildSubPeriodClassifier.Classify(dayOffset, eventSettings)` (lives in `Humans.Domain.Helpers`, pure mapping, no framework deps). Returns `null` for offsets outside the build window (≥ 0).
+
+| Value | Int | Range |
+|-------|-----|-------|
+| FirstCrew | 0 | `FirstCrewStartOffset ≤ DayOffset < SetupWeekStartOffset` |
+| SetupWeek | 1 | `SetupWeekStartOffset ≤ DayOffset < PreEventWeekStartOffset` |
+| PreEventWeek | 2 | `PreEventWeekStartOffset ≤ DayOffset < FinishingWeekendStartOffset` |
+| FinishingWeekend | 3 | `FinishingWeekendStartOffset ≤ DayOffset < 0` |
+
+Used by the shift dashboard's set-up sub-filter to narrow per-day staffing data, urgency lists, coverage heatmap, etc. when the user drills from the Build period into a specific phase.
+
 ## Actors & Roles
 
 | Actor | Capabilities |
@@ -145,6 +160,8 @@ Stored as string via `HasConversion<string>()`.
 - Voluntelling and signup overlap detection rejects a target shift whose absolute time range intersects any of the user's existing Confirmed signups. The check uses event-timezone-resolved absolute instants.
 - All-day shifts cover the standard work block **08:00–18:00** local time (`Shift.AllDayWindowStart` / `Shift.AllDayWindowEnd`). Patterns outside this window must be modeled as regular time-slotted shifts, not as `IsAllDay = true`. The window is computed at read time by `GetAbsoluteStart` / `GetAbsoluteEnd`; the `StartTime` and `Duration` columns on `IsAllDay` rows are don't-care and must never be used directly for overlap math or staffing calculations.
 - All dashboard endpoints on `ShiftDashboardController` (and its analytics methods on `IShiftManagementService`: `GetDashboardOverviewAsync`, `GetCoordinatorActivityAsync`, `GetDashboardTrendsAsync`, `GetCoverageHeatmapAsync`, `GetDailyDepartmentStaffingAsync`, `GetShiftDurationBreakdownAsync`) require the `ShiftDashboardAccess` policy at the controller (Admin/NoInfoAdmin/VolunteerCoordinator). The services themselves are auth-free per design rules.
+- The dashboard filter has two mutually exclusive modes selected via the same UI: **period mode** (Set-up / Event / Strike with optional sub-period for Build) and **date-range mode** (start + end inputs). Picking a period auto-populates the date inputs as a visual cue but the server still uses period+sub-period as the filter. Manually editing a date clears the period+sub-period selection so the date range becomes the filter. The server defends the same mutex: when both period and dates arrive on a single request, period wins for filtering (dates round-trip back to the inputs but are not applied as bounds). End-date input enforces `min = startDate` so the user cannot pick an end date before the start.
+- All 9 dashboard analytics methods on `IShiftManagementService` accept an optional `BuildSubPeriod? subPeriod = null` parameter. When set, it narrows the filter to that sub-window using `BuildSubPeriodClassifier.BoundsFor`. Sub-period is meaningful only when `period == ShiftPeriod.Build` — calls with sub-period set against any other period are treated as if sub-period is null. Sub-period bypasses the dashboard cache (4× key fan-out is not worth it for a side filter).
 - `DevelopmentDashboardSeeder` and its `POST /dev/seed/dashboard` endpoint are gated to `IWebHostEnvironment.IsDevelopment()` AND the `DevAuth:Enabled` setting. QA, preview, and production environments cannot invoke it regardless of role. The endpoint also requires `ShiftDashboardAccess`.
 
 ## Negative Access Rules

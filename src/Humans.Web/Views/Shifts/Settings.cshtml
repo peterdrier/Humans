@@ -62,6 +62,30 @@
                                 <input asp-for="StrikeEndOffset" type="number" class="form-control" />
                             </div>
                         </div>
+                        <hr />
+                        <p class="small text-muted mb-2">Build sub-period boundaries — the dashboard splits the build window into four named sub-phases. Each offset is the inclusive start day of its sub-period; the next sub-period's start is the exclusive end. All four must be negative and ascending: BuildStartOffset ≤ FirstCrew ≤ Set-up week ≤ Pre-event week ≤ Finishing weekend &lt; 0.</p>
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label asp-for="FirstCrewStartOffset" class="form-label">First Crew Start</label>
+                                <input asp-for="FirstCrewStartOffset" type="number" min="-365" max="-1" class="form-control" />
+                                <small class="form-text text-muted">e.g., -25</small>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label asp-for="SetupWeekStartOffset" class="form-label">Set-up Week Start</label>
+                                <input asp-for="SetupWeekStartOffset" type="number" min="-365" max="-1" class="form-control" />
+                                <small class="form-text text-muted">e.g., -16</small>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label asp-for="PreEventWeekStartOffset" class="form-label">Pre-event Week Start</label>
+                                <input asp-for="PreEventWeekStartOffset" type="number" min="-365" max="-1" class="form-control" />
+                                <small class="form-text text-muted">e.g., -9</small>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label asp-for="FinishingWeekendStartOffset" class="form-label">Finishing Weekend Start</label>
+                                <input asp-for="FinishingWeekendStartOffset" type="number" min="-365" max="-1" class="form-control" />
+                                <small class="form-text text-muted">e.g., -4</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

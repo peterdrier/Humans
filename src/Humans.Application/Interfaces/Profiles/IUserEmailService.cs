@@ -300,6 +300,47 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Clears <see cref="UserEmail.IsGoogle"/> on a single row without promoting
+    /// any sibling — admin recovery path for the data-corruption case where
+    /// multiple rows have <c>IsGoogle = true</c> for the same user (an
+    /// invariant violation that bypasses <see cref="SetGoogleAsync"/>).
+    /// Returns <c>false</c> when the row is not found for this user or is
+    /// already cleared. Owner-gated via
+    /// <see cref="IUserEmailRepository.GetByIdAndUserIdAsync"/>.
+    /// </summary>
+    Task<bool> ClearGoogleAsync(
+        Guid userId, Guid userEmailId, Guid actorUserId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Clears <see cref="UserEmail.IsPrimary"/> on a single row without
+    /// promoting any sibling — admin recovery path for cases where multiple
+    /// rows are flagged primary or where the admin needs to deliberately
+    /// pick a new primary after dropping the current one. Leaves the user
+    /// in the temporarily-no-primary state; the admin is expected to call
+    /// <see cref="SetPrimaryAsync"/> afterward (or
+    /// <c>EnsurePrimaryInvariantAsync</c> will fire on the next mutating
+    /// path). Returns <c>false</c> when the row is not found for this user
+    /// or is already cleared.
+    /// </summary>
+    Task<bool> ClearPrimaryAsync(
+        Guid userId, Guid userEmailId, Guid actorUserId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns one entry per user whose UserEmail rows currently violate the
+    /// admin-visible flag invariants:
+    /// <list type="bullet">
+    /// <item>more than one row with <c>IsGoogle = true</c>; or</item>
+    /// <item>verified rows present but the count of <c>IsPrimary = true</c>
+    /// verified rows is not exactly 1.</item>
+    /// </list>
+    /// Used by the Google admin "email flag violations" remediation screen.
+    /// </summary>
+    Task<IReadOnlyList<UserEmailFlagViolation>> GetEmailFlagViolationsAsync(
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Find-or-create. Attaches the OAuth identity (<paramref name="provider"/>,
     /// <paramref name="providerKey"/>) to the user's email row matching
     /// <paramref name="email"/> (Ordinal/case-insensitive); creates a new
@@ -360,3 +401,30 @@ public record UserEmailMatch(
     bool IsPrimary,
     bool IsVerified,
     Instant UpdatedAt);
+
+/// <summary>
+/// Per-user summary of UserEmail flag-invariant violations. Returned by
+/// <see cref="IUserEmailService.GetEmailFlagViolationsAsync"/> for the
+/// admin remediation screen.
+/// </summary>
+/// <param name="UserId">The user with the violation.</param>
+/// <param name="DisplayName">Display name (for the admin grid). May be null
+/// if the User row is missing or has no display name.</param>
+/// <param name="IsGoogleCount">How many rows have <c>IsGoogle = true</c>.
+/// A healthy value is 0 or 1; values &gt; 1 are violations.</param>
+/// <param name="VerifiedCount">How many rows are verified.</param>
+/// <param name="VerifiedPrimaryCount">How many verified rows have
+/// <c>IsPrimary = true</c>. A healthy value is 1 (when verified rows exist)
+/// or 0 (when no verified rows exist).</param>
+/// <param name="HasMultipleGoogle">Convenience flag — true when
+/// <see cref="IsGoogleCount"/> &gt; 1.</param>
+/// <param name="HasPrimaryProblem">Convenience flag — true when verified
+/// rows exist and <see cref="VerifiedPrimaryCount"/> is not exactly 1.</param>
+public record UserEmailFlagViolation(
+    Guid UserId,
+    string? DisplayName,
+    int IsGoogleCount,
+    int VerifiedCount,
+    int VerifiedPrimaryCount,
+    bool HasMultipleGoogle,
+    bool HasPrimaryProblem);

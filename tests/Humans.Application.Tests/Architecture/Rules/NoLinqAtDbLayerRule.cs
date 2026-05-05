@@ -47,19 +47,16 @@ public class NoLinqAtDbLayerRule
             var content = File.ReadAllText(path);
             if (!DbFieldAccess.IsMatch(content)) continue;
             var rel = RatchetTestRunner.ToRelativePath(repoRoot, path);
+            // Per-(file, match-text) ordinal so identical accesses on different
+            // lines remain distinct keys without using line numbers.
+            var counts = new Dictionary<string, int>(StringComparer.Ordinal);
             foreach (var match in DbFieldAccess.Matches(content).Cast<Match>())
             {
-                var lineNumber = LineNumberAt(content, match.Index);
-                yield return $"{rel}:{lineNumber}:{match.Value}";
+                counts.TryGetValue(match.Value, out var n);
+                counts[match.Value] = ++n;
+                var line = RatchetTestRunner.LineNumberAt(content, match.Index);
+                yield return $"{rel}:{match.Value}#{n} # L{line}";
             }
         }
-    }
-
-    private static int LineNumberAt(string source, int offset)
-    {
-        var line = 1;
-        for (var i = 0; i < offset && i < source.Length; i++)
-            if (source[i] == '\n') line++;
-        return line;
     }
 }

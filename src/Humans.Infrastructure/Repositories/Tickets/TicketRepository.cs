@@ -71,9 +71,12 @@ public sealed class TicketRepository : ITicketRepository
         CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
+        // Verified-only: an unverified email isn't trustworthy enough to drive
+        // ticket → user matching (issue nobodies-collective/Humans#645).
         return await ctx.Set<UserEmail>()
             .AsNoTracking()
-            .Select(ue => new UserEmailLookupEntry(ue.Email, ue.UserId, ue.IsGoogle))
+            .Where(ue => ue.IsVerified)
+            .Select(ue => new UserEmailLookupEntry(ue.Email, ue.UserId))
             .ToListAsync(ct);
     }
 

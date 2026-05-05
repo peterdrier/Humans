@@ -1853,6 +1853,13 @@
   <data name="ShiftDash_PeriodFilter_EventShifts" xml:space="preserve"><value>Evento</value></data>
   <data name="ShiftDash_PeriodFilter_Strike" xml:space="preserve"><value>Desmontaje</value></data>
 
+  <data name="ShiftDash_SubPeriodFilter_Label" xml:space="preserve"><value>Fase de montaje:</value></data>
+  <data name="ShiftDash_SubPeriodFilter_All" xml:space="preserve"><value>Todo el montaje</value></data>
+  <data name="ShiftDash_SubPeriodFilter_FirstCrew" xml:space="preserve"><value>Primer equipo</value></data>
+  <data name="ShiftDash_SubPeriodFilter_SetupWeek" xml:space="preserve"><value>Semana de montaje</value></data>
+  <data name="ShiftDash_SubPeriodFilter_PreEventWeek" xml:space="preserve"><value>Semana previa al evento</value></data>
+  <data name="ShiftDash_SubPeriodFilter_FinishingWeekend" xml:space="preserve"><value>Fin de semana final</value></data>
+
   <data name="ShiftDash_Departments_Title" xml:space="preserve"><value>Departamentos</value></data>
   <data name="ShiftDash_Countdown_Label" xml:space="preserve"><value>Cuenta regresiva a pies en el suelo</value></data>
   <data name="ShiftDash_Countdown_Days" xml:space="preserve"><value>{0} días</value></data>

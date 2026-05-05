@@ -668,10 +668,23 @@ public class TeamController : HumansControllerBase
     {
         var result = await _teamService.GetAdminTeamListAsync(1, 500, ct);
 
-        var viewModel = new AdminTeamListViewModel
+        var viewModel = new AdminTeamListViewModel();
+
+        // GetAdminTeamListAsync returns a flat list ordered as parent-then-its-children.
+        // Each parent's classification determines the bucket; children inherit so subteams
+        // stay grouped under their parent — including in Hidden.
+        List<AdminTeamViewModel>? currentBucket = null;
+        foreach (var team in result.Teams.Select(MapAdminTeamSummary))
         {
-            Teams = result.Teams.Select(MapAdminTeamSummary).ToList()
-        };
+            if (!team.IsChildTeam)
+            {
+                currentBucket = team.IsHidden ? viewModel.Hidden
+                              : team.IsSystemTeam ? viewModel.System
+                              : viewModel.Departments;
+            }
+
+            (currentBucket ?? viewModel.Departments).Add(team);
+        }
 
         return View(viewModel);
     }

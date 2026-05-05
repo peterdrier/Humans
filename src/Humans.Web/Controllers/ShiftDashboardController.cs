@@ -50,13 +50,35 @@ public class ShiftDashboardController : HumansControllerBase
         _logger = logger;
     }
 
+    private static LocalDate? ParseIsoDateOrNull(string? raw)
+    {
+        if (string.IsNullOrEmpty(raw)) return null;
+        var parsed = LocalDatePattern.Iso.Parse(raw);
+        return parsed.Success ? parsed.Value : null;
+    }
+
+    // When a period/sub-period is selected, JS auto-populates the date inputs
+    // with that range as a visual cue — dates are display-only in that case.
+    // Only when period is null AND a date is present do dates take over as the
+    // filter on the urgent-shifts list.
+    private static (LocalDate? activeStart, LocalDate? activeEnd) ResolveActiveDateRange(
+        ShiftPeriod? period, LocalDate? filterStartDate, LocalDate? filterEndDate)
+    {
+        var datesAreFilter = !period.HasValue && (filterStartDate.HasValue || filterEndDate.HasValue);
+        return (
+            datesAreFilter ? filterStartDate : null,
+            datesAreFilter ? filterEndDate : null);
+    }
+
     [HttpGet("")]
     public async Task<IActionResult> Index(
         Guid? departmentId,
         Guid? rotaId,
-        string? date,
+        string? startDate,
+        string? endDate,
         TrendWindow? trendWindow,
-        ShiftPeriod? period)
+        ShiftPeriod? period,
+        BuildSubPeriod? subPeriod)
     {
         var es = await _shiftMgmt.GetActiveAsync();
         if (es is null)
@@ -65,28 +87,24 @@ public class ShiftDashboardController : HumansControllerBase
             return RedirectToAction(nameof(HomeController.Index), "Home");
         }
 
-        LocalDate? filterDate = null;
-        if (!string.IsNullOrEmpty(date))
-        {
-            var parseResult = LocalDatePattern.Iso.Parse(date);
-            if (parseResult.Success)
-                filterDate = parseResult.Value;
-        }
+        LocalDate? filterStartDate = ParseIsoDateOrNull(startDate);
+        LocalDate? filterEndDate = ParseIsoDateOrNull(endDate);
+        var (activeStart, activeEnd) = ResolveActiveDateRange(period, filterStartDate, filterEndDate);
 
         var window = trendWindow ?? TrendWindow.Last30Days;
 
         // Sequential awaits — shared scoped DbContext is not safe for concurrent queries.
-        var shifts = await _shiftMgmt.GetUrgentShiftsAsync(es.Id, limit: null, departmentId, filterDate, period);
-        var staffingData = await _shiftMgmt.GetStaffingDataAsync(es.Id, departmentId, period);
-        var staffingHours = await _shiftMgmt.GetStaffingHoursAsync(es.Id, departmentId, period);
-        var overview = await _shiftMgmt.GetDashboardOverviewAsync(es.Id, period);
-        var coordinatorActivity = await _shiftMgmt.GetCoordinatorActivityAsync(es.Id, period);
+        var shifts = await _shiftMgmt.GetUrgentShiftsAsync(es.Id, limit: null, departmentId, activeStart, activeEnd, period, subPeriod);
+        var staffingData = await _shiftMgmt.GetStaffingDataAsync(es.Id, departmentId, period, subPeriod);
+        var staffingHours = await _shiftMgmt.GetStaffingHoursAsync(es.Id, departmentId, period, subPeriod);
+        var overview = await _shiftMgmt.GetDashboardOverviewAsync(es.Id, period, subPeriod);
+        var coordinatorActivity = await _shiftMgmt.GetCoordinatorActivityAsync(es.Id, period, subPeriod);
         // Always fetch the full history; the partial slices client-side on window toggle
         // so the user doesn't incur a full page reload to change the trend range.
-        var trends = await _shiftMgmt.GetDashboardTrendsAsync(es.Id, TrendWindow.All, period);
-        var dailyDeptStaffing = await _shiftMgmt.GetDailyDepartmentStaffingAsync(es.Id, period);
-        var shiftDurationBreakdown = await _shiftMgmt.GetShiftDurationBreakdownAsync(es.Id, period);
-        var coverageHeatmap = await _shiftMgmt.GetCoverageHeatmapAsync(es.Id, period);
+        var trends = await _shiftMgmt.GetDashboardTrendsAsync(es.Id, TrendWindow.All, period, subPeriod);
+        var dailyDeptStaffing = await _shiftMgmt.GetDailyDepartmentStaffingAsync(es.Id, period, subPeriod);
+        var shiftDurationBreakdown = await _shiftMgmt.GetShiftDurationBreakdownAsync(es.Id, period, subPeriod);
+        var coverageHeatmap = await _shiftMgmt.GetCoverageHeatmapAsync(es.Id, period, subPeriod);
         var deptTuples = await _shiftMgmt.GetDepartmentsWithRotasAsync(es.Id);
 
         var departments = deptTuples.Select(d => new DepartmentOption
@@ -114,8 +132,12 @@ public class ShiftDashboardController : HumansControllerBase
             Departments = departments,
             SelectedDepartmentId = departmentId,
             SelectedRotaId = rotaId,
-            SelectedDate = date,
+            SelectedStartDate = startDate,
+            SelectedEndDate = endDate,
             SelectedPeriod = period,
+            SelectedSubPeriod = subPeriod,
+            FilterStartDate = filterStartDate,
+            FilterEndDate = filterEndDate,
             EventSettings = es,
             StaffingData = staffingData.ToList(),
             StaffingHours = staffingHours.ToList(),

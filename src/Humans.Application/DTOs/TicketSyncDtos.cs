@@ -8,8 +8,10 @@ namespace Humans.Application.DTOs;
 /// email → userId lookup that <see cref="Humans.Application.Services.Tickets.TicketSyncService"/>
 /// uses to match vendor buyer/attendee emails to users.
 /// Read-only projection owned by <c>ITicketRepository</c>.
+/// Only verified emails are included — unverified emails are not trustworthy
+/// enough to drive ticket-to-user matching (issue nobodies-collective/Humans#645).
 /// </summary>
-public record UserEmailLookupEntry(string Email, Guid UserId, bool IsGoogle);
+public record UserEmailLookupEntry(string Email, Guid UserId);
 
 /// <summary>
 /// An attendee row projected for the event-participation reconciliation pass.

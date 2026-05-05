@@ -9,6 +9,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
+using NodaTime;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Xunit;
@@ -50,6 +51,19 @@ public class GoogleAdminServiceTests
 
         _teamResourceService.GetActiveResourceCountsByTeamAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, int>());
+
+        // Default: Reset+2FA gate sees the account as not-yet-enrolled in 2SV,
+        // so the recovery flow runs end-to-end. Tests that need the enrolled
+        // path override this per-test.
+        _workspaceUserService.GetAccountAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ci => new WorkspaceUserAccount(
+                PrimaryEmail: ci.ArgAt<string>(0),
+                FirstName: "Test",
+                LastName: "User",
+                IsSuspended: false,
+                CreationTime: DateTime.UtcNow,
+                LastLoginTime: null,
+                IsEnrolledIn2Sv: false));
 
         _service = new GoogleAdminService(
             _workspaceUserService,
@@ -375,6 +389,69 @@ public class GoogleAdminServiceTests
             .ResetPasswordAsync("test@nobodies.team", Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task ResetPasswordAsync_ReturnsPasswordEvenWhenAuditWriteFails()
+    {
+        // Workspace has already rotated the password — if the audit-side
+        // lookup or LogAsync throws (DB outage, timeout), the caller still
+        // needs the new temporary password back. Otherwise they retry the
+        // reset, lock the human out further, and we own the confusion.
+        _auditLogService.LogAsync(
+                AuditAction.WorkspaceAccountPasswordReset,
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<Guid?>(), Arg.Any<string?>())
+            .ThrowsAsync(new InvalidOperationException("Audit DB unavailable"));
+
+        var result = await _service.ResetPasswordAsync(
+            "alice@nobodies.team", _actorUserId);
+
+        result.Success.Should().BeTrue();
+        result.TemporaryPassword.Should().NotBeNullOrEmpty();
+        result.Message.Should().Contain("Password reset");
+    }
+
+    [HumansFact]
+    public async Task ResetPasswordAsync_ReturnsPasswordEvenWhenLinkedUserLookupFails()
+    {
+        // Same as above for the email-match leg: a DB outage in
+        // MatchByEmailsAsync must not convert a successful Workspace reset
+        // into a failure result.
+        _userEmailService.MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("user_emails query failed"));
+
+        var result = await _service.ResetPasswordAsync(
+            "alice@nobodies.team", _actorUserId);
+
+        result.Success.Should().BeTrue();
+        result.TemporaryPassword.Should().NotBeNullOrEmpty();
+    }
+
+    [HumansFact]
+    public async Task ResetPasswordAsync_AuditsLinkedHumanAsSubject()
+    {
+        // When the workspace address resolves to a human, the audit row's
+        // EntityId must carry that UserId so the activity feed renders the
+        // human's name as subject instead of "Unknown".
+        var linkedUserId = Guid.NewGuid();
+        _userEmailService.MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns([
+                new UserEmailMatch(
+                    "ben.tree@nobodies.team", linkedUserId,
+                    IsPrimary: false, IsVerified: true,
+                    UpdatedAt: SystemClock.Instance.GetCurrentInstant())
+            ]);
+
+        await _service.ResetPasswordAsync("ben.tree@nobodies.team", _actorUserId);
+
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.WorkspaceAccountPasswordReset,
+            "WorkspaceAccount", linkedUserId,
+            Arg.Is<string>(s => s.Contains("ben.tree@nobodies.team")),
+            _actorUserId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
     // --- GenerateBackupCodesAsync (tested via ResetPasswordAndGenerate2FaAsync) ---
 
     [HumansFact]
@@ -397,7 +474,7 @@ public class GoogleAdminServiceTests
         await _auditLogService.Received(1).LogAsync(
             AuditAction.WorkspaceAccountBackupCodesGenerated,
             "WorkspaceAccount", Guid.Empty,
-            Arg.Is<string>(s => s.Contains("alice@nobodies.team") && s.Contains("3 backup code")),
+            Arg.Is<string>(s => s.Contains("alice@nobodies.team") && s.Contains("3 code")),
             _actorUserId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -546,6 +623,91 @@ public class GoogleAdminServiceTests
         result.TempPassword.Should().NotBeNullOrEmpty();
         result.BackupCode.Should().BeNull();
         result.Message.Should().Contain("Backup-code generation failed");
+    }
+
+    [HumansFact]
+    public async Task ResetPasswordAndGenerate2FaAsync_RefusesAndAuditsWhenAlreadyEnrolledIn2Sv()
+    {
+        // Live Directory state says the human already has 2-Step Verification.
+        // Running the combined flow would destructively rotate their working
+        // 2FA setup, so the service must refuse — even if the UI button was
+        // somehow bypassed by a hand-crafted POST.
+        _workspaceUserService.GetAccountAsync(
+                "alice@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(new WorkspaceUserAccount(
+                "alice@nobodies.team", "Alice", "Smith", IsSuspended: false,
+                CreationTime: DateTime.UtcNow, LastLoginTime: null,
+                IsEnrolledIn2Sv: true));
+
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+            "alice@nobodies.team", _actorUserId);
+
+        result.Success.Should().BeFalse();
+        result.TempPassword.Should().BeNull();
+        result.BackupCode.Should().BeNull();
+        result.ErrorMessage.Should().Contain("already enrolled in 2FA");
+
+        // No password reset, no backup-code rotation.
+        await _workspaceUserService.DidNotReceive().ResetPasswordAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _workspaceUserService.DidNotReceive().GenerateBackupCodesAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+
+        // Refusal is audited so the attempt shows up in the trail.
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.WorkspaceAccountResetBlockedFor2Sv,
+            "WorkspaceAccount", Guid.Empty,
+            Arg.Is<string>(s => s.Contains("alice@nobodies.team")),
+            _actorUserId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task ResetPasswordAndGenerate2FaAsync_StillRefusesWhenAuditWriteFailsOnEnrolledAccount()
+    {
+        // The 2SV refusal happens BEFORE any Workspace mutation, so an audit
+        // outage must not turn a safe refusal into a 500 — we surface the
+        // refusal regardless and log the audit failure as Critical.
+        _workspaceUserService.GetAccountAsync(
+                "alice@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(new WorkspaceUserAccount(
+                "alice@nobodies.team", "Alice", "Smith", IsSuspended: false,
+                CreationTime: DateTime.UtcNow, LastLoginTime: null,
+                IsEnrolledIn2Sv: true));
+        _auditLogService.LogAsync(
+                AuditAction.WorkspaceAccountResetBlockedFor2Sv,
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<Guid?>(), Arg.Any<string?>())
+            .ThrowsAsync(new InvalidOperationException("Audit DB unavailable"));
+
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+            "alice@nobodies.team", _actorUserId);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("already enrolled in 2FA");
+
+        await _workspaceUserService.DidNotReceive().ResetPasswordAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _workspaceUserService.DidNotReceive().GenerateBackupCodesAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ResetPasswordAndGenerate2FaAsync_ReturnsErrorWhenAccountNotFound()
+    {
+        _workspaceUserService.GetAccountAsync(
+                "ghost@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns((WorkspaceUserAccount?)null);
+
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+            "ghost@nobodies.team", _actorUserId);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("not found");
+
+        await _workspaceUserService.DidNotReceive().ResetPasswordAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     // --- LinkAccountAsync ---

@@ -60,6 +60,7 @@ All Google integration management is consolidated in `GoogleController` (`/Googl
 | `/Google/Human/{id}/SyncAudit` | Per-human sync audit |
 | `/Google/Sync/Resource/{id}/Audit` | Per-resource sync audit |
 | `/Google/CheckGroupSettings`, `/Google/CheckEmailMismatches` | Diagnostic tools |
+| `/Google/EmailFlagViolations` | Admin remediation — list users whose `UserEmail` rows violate the at-most-one `IsGoogle` / exactly-one verified `IsPrimary` invariants; deep-links to per-user admin email grid |
 
 Team-level resource linking stays at `/Teams/{slug}/Resources` in `TeamAdminController`.
 

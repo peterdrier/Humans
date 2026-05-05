@@ -1,0 +1,115 @@
+@using Microsoft.AspNetCore.Authorization
+@using Humans.Web.Authorization
+@inject IAuthorizationService AuthService
+@model Humans.Web.Models.AdminTeamViewModel
+
+<tr>
+    <td>
+        @if (Model.IsChildTeam)
+        {
+            <span class="text-muted ms-3">└</span>
+        }
+        <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.Slug">@Model.Name</a>
+    </td>
+    <td>
+        @if (Model.IsSystemTeam)
+        {
+            <span class="badge bg-secondary">@Model.SystemTeamType</span>
+        }
+        else if (Model.RequiresApproval)
+        {
+            <span class="badge bg-info">@Localizer["Teams_RequiresApproval"]</span>
+        }
+        else
+        {
+            <span class="badge bg-success">@Localizer["AdminTeams_Open"]</span>
+        }
+    </td>
+    <td>@Model.MemberCount</td>
+    <td>
+        @if (Model.PendingRequestCount > 0)
+        {
+            <a asp-controller="TeamAdmin" asp-action="Members" asp-route-slug="@Model.Slug">
+                <span class="badge bg-warning">@Model.PendingRequestCount</span>
+            </a>
+        }
+        else
+        {
+            <span class="text-muted">0</span>
+        }
+    </td>
+    <td>
+        @if (Model.PendingShiftSignupCount > 0)
+        {
+            @if ((await AuthService.AuthorizeAsync(User, PolicyNames.BoardOrAdmin)).Succeeded)
+            {
+                <a asp-controller="ShiftAdmin" asp-action="Index" asp-route-slug="@Model.Slug">
+                    <span class="badge bg-warning">@Model.PendingShiftSignupCount</span>
+                </a>
+            }
+            else
+            {
+                <span class="badge bg-warning">@Model.PendingShiftSignupCount</span>
+            }
+        }
+        else
+        {
+            <span class="text-muted">0</span>
+        }
+    </td>
+    <td>
+        @if (Model.GoogleGroupEmail != null)
+        {
+            <small>@(Model.GoogleGroupEmail.Split('@')[0])@@</small>
+        }
+        else
+        {
+            <span class="text-muted">—</span>
+        }
+    </td>
+    <td>@Model.RoleSlotCount</td>
+    <td>
+        @if (Model.DriveResourceCount > 0)
+        {
+            <span>@Model.DriveResourceCount</span>
+        }
+        else
+        {
+            <span class="text-muted">0</span>
+        }
+    </td>
+    <td>
+        @if (Model.IsActive)
+        {
+            <span class="badge bg-success">@Localizer["AdminHuman_Active"]</span>
+        }
+        else
+        {
+            <span class="badge bg-secondary">@Localizer["AdminTeams_Inactive"]</span>
+        }
+        @if (Model.IsHidden)
+        {
+            <span class="badge bg-dark" title="This team is hidden from non-admin users"><i class="fa-solid fa-eye-slash me-1"></i>Hidden</span>
+        }
+    </td>
+    <td>@Model.CreatedAt.ToDisplayCompactDate()</td>
+    <td authorize-policy="BoardOrAdmin">
+        @if (!Model.IsSystemTeam)
+        {
+            <div class="d-flex gap-1" role="group">
+                <a asp-action="EditTeam" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-primary">@Localizer["Common_Edit"]</a>
+                @if (Model.IsActive)
+                {
+                    <form asp-action="DeleteTeam" asp-route-id="@Model.Id" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="@Localizer["AdminTeams_DeactivateConfirm"].Value">@Localizer["AdminTeams_Deactivate"]</button>
+                    </form>
+                }
+            </div>
+        }
+        else
+        {
+            <span class="text-muted">@Localizer["AdminTeams_SystemManaged"]</span>
+        }
+    </td>
+</tr>

@@ -828,6 +828,74 @@ public class ProfileController : HumansControllerBase
         return RedirectToAction(nameof(Emails));
     }
 
+    [HttpPost("Me/Emails/ClearGoogle")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ClearGoogle(Guid emailId, CancellationToken ct)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return NotFound();
+
+        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        try
+        {
+            var ok = await _userEmailService.ClearGoogleAsync(user.Id, emailId, user.Id, ct);
+            if (ok)
+            {
+                _cache.InvalidateNobodiesTeamEmails();
+                SetSuccess(_localizer["EmailGrid_GoogleFlagCleared"].Value);
+            }
+            else
+            {
+                SetError(_localizer["EmailGrid_ClearGoogleRejected"].Value);
+            }
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Failed to clear Google flag on email {EmailId} for user {UserId}", emailId, user.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Emails));
+    }
+
+    [HttpPost("Me/Emails/ClearPrimary")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ClearPrimary(Guid emailId, CancellationToken ct)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return NotFound();
+
+        var authz = await _authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        try
+        {
+            var ok = await _userEmailService.ClearPrimaryAsync(user.Id, emailId, user.Id, ct);
+            if (ok)
+            {
+                _cache.InvalidateNobodiesTeamEmails();
+                SetSuccess(_localizer["EmailGrid_PrimaryFlagCleared"].Value);
+            }
+            else
+            {
+                SetError(_localizer["EmailGrid_ClearPrimaryRejected"].Value);
+            }
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Failed to clear primary flag on email {EmailId} for user {UserId}", emailId, user.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Emails));
+    }
+
     [HttpPost("Me/Emails/Link/{provider}")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Link(string provider, string? returnUrl = null)
@@ -967,6 +1035,74 @@ public class ProfileController : HumansControllerBase
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
             _logger.LogWarning(ex, "Admin failed to set primary email {EmailId} for user {UserId}", emailId, id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(AdminEmails), new { id });
+    }
+
+    [HttpPost("{id:guid}/Admin/Emails/ClearGoogle")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AdminClearGoogle(Guid id, Guid emailId, CancellationToken ct)
+    {
+        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        var actor = await GetCurrentUserAsync();
+        if (actor is null)
+            return Forbid();
+
+        try
+        {
+            var ok = await _userEmailService.ClearGoogleAsync(id, emailId, actor.Id, ct);
+            if (ok)
+            {
+                _cache.InvalidateNobodiesTeamEmails();
+                SetSuccess(_localizer["EmailGrid_GoogleFlagCleared"].Value);
+            }
+            else
+            {
+                SetError(_localizer["EmailGrid_ClearGoogleRejected"].Value);
+            }
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Admin failed to clear Google flag on email {EmailId} for user {UserId}", emailId, id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(AdminEmails), new { id });
+    }
+
+    [HttpPost("{id:guid}/Admin/Emails/ClearPrimary")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AdminClearPrimary(Guid id, Guid emailId, CancellationToken ct)
+    {
+        var authz = await _authorizationService.AuthorizeAsync(User, id, UserEmailOperations.Edit);
+        if (!authz.Succeeded)
+            return Forbid();
+
+        var actor = await GetCurrentUserAsync();
+        if (actor is null)
+            return Forbid();
+
+        try
+        {
+            var ok = await _userEmailService.ClearPrimaryAsync(id, emailId, actor.Id, ct);
+            if (ok)
+            {
+                _cache.InvalidateNobodiesTeamEmails();
+                SetSuccess(_localizer["EmailGrid_PrimaryFlagCleared"].Value);
+            }
+            else
+            {
+                SetError(_localizer["EmailGrid_ClearPrimaryRejected"].Value);
+            }
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(ex, "Admin failed to clear primary flag on email {EmailId} for user {UserId}", emailId, id);
             SetError(ex.Message);
         }
 
@@ -1609,6 +1745,7 @@ public class ProfileController : HumansControllerBase
 
             var popoverUser = await _userService.GetByIdAsync(id, ct);
             var teams = await _teamService.GetActiveTeamNamesForUserAsync(id, ct);
+            var profileLanguages = await _profileService.GetProfileLanguagesAsync(profile.Id, ct);
 
             var effectivePictureUrl = profile.HasCustomProfilePicture
                 ? Url.Action(nameof(Picture), "Profile",
@@ -1621,13 +1758,20 @@ public class ProfileController : HumansControllerBase
                 DisplayName = popoverUser?.DisplayName ?? "Unknown",
                 Email = popoverUser?.Email,
                 ProfilePictureUrl = effectivePictureUrl,
+                PreferredLanguage = popoverUser?.PreferredLanguage,
                 MembershipTier = profile.MembershipTier.ToString(),
                 MembershipStatus = profile.IsSuspended ? "Suspended"
                     : profile.IsApproved ? "Active" : "Pending",
                 City = profile.City,
                 CountryCode = profile.CountryCode,
                 IsSuspended = profile.IsSuspended,
-                Teams = teams.ToList()
+                Teams = teams.ToList(),
+                Languages = profileLanguages.Select(pl => new ProfileLanguageDisplayViewModel
+                {
+                    LanguageCode = pl.LanguageCode,
+                    LanguageName = Helpers.LanguageCatalog.GetDisplayName(pl.LanguageCode),
+                    Proficiency = pl.Proficiency
+                }).ToList()
             };
 
             return PartialView("_HumanPopover", vm);

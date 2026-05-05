@@ -10,7 +10,7 @@ namespace Humans.Web.Models;
 
 // === EventSettings ===
 
-public class EventSettingsViewModel
+public class EventSettingsViewModel : IValidatableObject
 {
     public Guid? Id { get; set; }
 
@@ -27,6 +27,19 @@ public class EventSettingsViewModel
     public int EventEndOffset { get; set; } = 6;
     public int StrikeEndOffset { get; set; } = 9;
 
+    // Build sub-period boundaries — defaults match the entity defaults set by EF config.
+    [Range(int.MinValue, -1, ErrorMessage = "First crew start must be a negative offset relative to gate-opening day.")]
+    public int FirstCrewStartOffset { get; set; } = -25;
+
+    [Range(int.MinValue, -1, ErrorMessage = "Set-up week start must be a negative offset relative to gate-opening day.")]
+    public int SetupWeekStartOffset { get; set; } = -16;
+
+    [Range(int.MinValue, -1, ErrorMessage = "Pre-event week start must be a negative offset relative to gate-opening day.")]
+    public int PreEventWeekStartOffset { get; set; } = -9;
+
+    [Range(int.MinValue, -1, ErrorMessage = "Finishing weekend start must be a negative offset relative to gate-opening day.")]
+    public int FinishingWeekendStartOffset { get; set; } = -4;
+
     public string EarlyEntryCapacityJson { get; set; } = "{}";
     public string? BarriosEarlyEntryAllocationJson { get; set; }
 
@@ -36,6 +49,31 @@ public class EventSettingsViewModel
     public int? GlobalVolunteerCap { get; set; }
     public int ReminderLeadTimeHours { get; set; } = 24;
     public bool IsActive { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (FirstCrewStartOffset < BuildStartOffset)
+        {
+            yield return new ValidationResult(
+                $"First crew offset cannot be earlier than build start offset ({nameof(BuildStartOffset)}).",
+                [nameof(FirstCrewStartOffset)]);
+        }
+
+        if (FirstCrewStartOffset >= SetupWeekStartOffset
+            || SetupWeekStartOffset >= PreEventWeekStartOffset
+            || PreEventWeekStartOffset >= FinishingWeekendStartOffset)
+        {
+            yield return new ValidationResult(
+                "Build sub-period offsets must be strictly ascending: First crew < Set-up week < Pre-event week < Finishing weekend.",
+                new[]
+                {
+                    nameof(FirstCrewStartOffset),
+                    nameof(SetupWeekStartOffset),
+                    nameof(PreEventWeekStartOffset),
+                    nameof(FinishingWeekendStartOffset),
+                });
+        }
+    }
 }
 
 // === Rota ===
@@ -454,8 +492,16 @@ public class ShiftDashboardViewModel
     public List<DepartmentOption> Departments { get; set; } = [];
     public Guid? SelectedDepartmentId { get; set; }
     public Guid? SelectedRotaId { get; set; }
-    public string? SelectedDate { get; set; }
+    /// <summary>ISO date string passed via query — round-trips through the form input.</summary>
+    public string? SelectedStartDate { get; set; }
+    /// <summary>ISO date string passed via query — round-trips through the form input.</summary>
+    public string? SelectedEndDate { get; set; }
+    /// <summary>Parsed start date if <see cref="SelectedStartDate"/> was a valid ISO date.</summary>
+    public LocalDate? FilterStartDate { get; set; }
+    /// <summary>Parsed end date if <see cref="SelectedEndDate"/> was a valid ISO date.</summary>
+    public LocalDate? FilterEndDate { get; set; }
     public ShiftPeriod? SelectedPeriod { get; set; }
+    public BuildSubPeriod? SelectedSubPeriod { get; set; }
     public EventSettings EventSettings { get; set; } = null!;
     public List<DailyStaffingData> StaffingData { get; set; } = [];
     public List<DailyStaffingHours> StaffingHours { get; set; } = [];
