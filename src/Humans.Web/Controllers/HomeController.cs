@@ -7,7 +7,9 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Services;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Dashboard;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
@@ -20,6 +22,8 @@ public class HomeController : HumansControllerBase
     private readonly IConfiguration _configuration;
     private readonly ConfigurationRegistry _configRegistry;
     private readonly ILogger<HomeController> _logger;
+    private readonly ITicketRepository _ticketRepository;
+    private readonly ITicketTransferService _ticketTransferService;
 
     public HomeController(
         UserManager<User> userManager,
@@ -28,7 +32,9 @@ public class HomeController : HumansControllerBase
         IUserService userService,
         IConfiguration configuration,
         ConfigurationRegistry configRegistry,
-        ILogger<HomeController> logger)
+        ILogger<HomeController> logger,
+        ITicketRepository ticketRepository,
+        ITicketTransferService ticketTransferService)
         : base(userManager)
     {
         _dashboardService = dashboardService;
@@ -37,6 +43,8 @@ public class HomeController : HumansControllerBase
         _configuration = configuration;
         _configRegistry = configRegistry;
         _logger = logger;
+        _ticketRepository = ticketRepository;
+        _ticketTransferService = ticketTransferService;
     }
 
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
@@ -138,6 +146,26 @@ public class HomeController : HumansControllerBase
                 .ToList(),
             PendingCount = data.PendingSignupCount,
         };
+
+        var visibleAttendees = await _ticketRepository.GetAttendeesVisibleToUserAsync(user.Id, cancellationToken);
+
+        var pendingTransfers = (await _ticketTransferService.GetByRequesterAsync(user.Id, cancellationToken))
+            .Where(t => t.Status == TicketTransferStatus.Pending)
+            .ToDictionary(t => t.OriginalAttendeeId, t => t.Id);
+
+        viewModel.MyAttendees = visibleAttendees
+            .Select(a => new MyAttendeeRowVm(
+                AttendeeId: a.Id,
+                AttendeeName: a.AttendeeName,
+                TicketTypeName: a.TicketTypeName,
+                CanRequestTransfer: a.Status == TicketAttendeeStatus.Valid &&
+                                    a.TicketOrder.MatchedUserId == user.Id &&
+                                    !pendingTransfers.ContainsKey(a.Id),
+                HasPendingOutgoingTransfer: pendingTransfers.ContainsKey(a.Id),
+                PendingTransferRequestId: pendingTransfers.GetValueOrDefault(a.Id)))
+            .ToList();
+
+        viewModel.PendingTransferOutCount = pendingTransfers.Count;
 
         return View("Dashboard", viewModel);
     }

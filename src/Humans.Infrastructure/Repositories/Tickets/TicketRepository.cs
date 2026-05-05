@@ -471,6 +471,17 @@ public sealed class TicketRepository : ITicketRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<TicketAttendee>> GetAttendeesVisibleToUserAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.TicketAttendees
+            .Include(a => a.TicketOrder)
+            .Where(a => a.TicketOrder.MatchedUserId == userId || a.MatchedUserId == userId)
+            .OrderBy(a => a.AttendeeName)
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<Instant>> GetPaidOrderDatesInWindowAsync(
         Instant fromInclusive,
         Instant toExclusive,

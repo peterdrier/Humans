@@ -137,6 +137,14 @@ public interface ITicketRepository
     Task<TicketAttendee?> GetAttendeeByIdAsync(Guid attendeeId, CancellationToken ct = default);
 
     /// <summary>
+    /// Get all TicketAttendees the user is attached to: either as the buyer
+    /// (TicketOrder.MatchedUserId == userId) or as the matched recipient
+    /// (TicketAttendee.MatchedUserId == userId). Used by the homepage ticket
+    /// card to enumerate visible attendees, including ones transferred in.
+    /// </summary>
+    Task<IReadOnlyList<TicketAttendee>> GetAttendeesVisibleToUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns matched-attendee rows (MatchedUserId non-null) for a single
     /// vendor event. Read-only projection used by the event-participation
     /// reconciliation pass.
