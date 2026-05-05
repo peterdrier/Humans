@@ -766,7 +766,6 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
                 x.VerifiedPrimaryCount,
                 x.HasMultipleGoogle,
                 x.HasPrimaryProblem))
-            .OrderBy(v => v.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 

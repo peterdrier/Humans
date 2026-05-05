@@ -1,12 +1,12 @@
 @using Humans.Application.Interfaces.Profiles
 @model IReadOnlyList<UserEmailFlagViolation>
 @{
-    ViewData["Title"] = Localizer["GoogleEmailViolations_Title"].Value;
+    ViewData["Title"] = "Email flag violations";
 }
 
 <div class="container-fluid px-4">
     <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
-        <h1>@Localizer["GoogleEmailViolations_Title"]</h1>
+        <h1>Email flag violations</h1>
         <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
             <i class="fa-solid fa-arrow-left me-1"></i>Back to Google
         </a>
@@ -14,12 +14,12 @@
 
     <vc:temp-data-alerts />
 
-    <p class="text-muted">@Localizer["GoogleEmailViolations_Description"]</p>
+    <p class="text-muted">Users whose email rows violate the at-most-one IsGoogle / exactly-one IsPrimary invariants. Open each user's email grid to remediate.</p>
 
     @if (Model.Count == 0)
     {
         <div class="alert alert-success">
-            <i class="fa-solid fa-check-circle me-1"></i>@Localizer["GoogleEmailViolations_NoneFound"]
+            <i class="fa-solid fa-check-circle me-1"></i>No invariant violations found. All users have at most one Google identity row and exactly one primary verified email.
         </div>
     }
     else
@@ -29,12 +29,12 @@
                 <table class="table table-sm table-hover mb-0">
                     <thead>
                         <tr>
-                            <th>@Localizer["GoogleEmailViolations_ColumnUser"]</th>
-                            <th>@Localizer["GoogleEmailViolations_ColumnIsGoogle"]</th>
-                            <th>@Localizer["GoogleEmailViolations_ColumnVerified"]</th>
-                            <th>@Localizer["GoogleEmailViolations_ColumnPrimary"]</th>
-                            <th>@Localizer["GoogleEmailViolations_ColumnIssue"]</th>
-                            <th class="text-end">@Localizer["GoogleEmailViolations_ColumnAction"]</th>
+                            <th>User</th>
+                            <th>IsGoogle rows</th>
+                            <th>Verified rows</th>
+                            <th>Primary verified rows</th>
+                            <th>Issue</th>
+                            <th class="text-end">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -70,7 +70,7 @@
                             <td>
                                 @if (v.HasMultipleGoogle)
                                 {
-                                    <div><i class="fa-brands fa-google me-1 text-danger"></i>@Localizer["GoogleEmailViolations_IssueMultipleGoogle"]</div>
+                                    <div><i class="fa-brands fa-google me-1 text-danger"></i>Multiple Google rows</div>
                                 }
                                 @if (v.HasPrimaryProblem)
                                 {
@@ -78,18 +78,18 @@
                                         <i class="fa-solid fa-star me-1 text-warning"></i>
                                         @if (v.VerifiedPrimaryCount == 0)
                                         {
-                                            @Localizer["GoogleEmailViolations_IssueNoPrimary"]
+                                            <text>No primary among verified rows</text>
                                         }
                                         else
                                         {
-                                            @Localizer["GoogleEmailViolations_IssueMultiplePrimary"]
+                                            <text>Multiple primary verified rows</text>
                                         }
                                     </div>
                                 }
                             </td>
                             <td class="text-end">
                                 <a asp-controller="Profile" asp-action="AdminEmails" asp-route-id="@v.UserId" class="btn btn-outline-primary btn-sm">
-                                    <i class="fa-solid fa-envelope me-1"></i>@Localizer["GoogleEmailViolations_OpenAdminEmails"]
+                                    <i class="fa-solid fa-envelope me-1"></i>Open admin emails
                                 </a>
                             </td>
                         </tr>

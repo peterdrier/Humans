@@ -927,7 +927,10 @@ public class GoogleController : HumansControllerBase
         CancellationToken ct)
     {
         var violations = await userEmailService.GetEmailFlagViolationsAsync(ct);
-        return View(violations);
+        var sorted = violations
+            .OrderBy(v => v.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        return View(sorted);
     }
 
     // --- Index ---
