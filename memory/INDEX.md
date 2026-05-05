@@ -15,7 +15,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`display-sort-in-controllers`](architecture/display-sort-in-controllers.md) — display ordering is the controller's job; repo-layer `OrderBy` allowed only for pagination tie-breakers, top-N, identity-ordered streams (mark with `// arch:db-sort-ok`)
 - [`interface-method-budget-ratchet`](architecture/interface-method-budget-ratchet.md) — HARD RULE. Add a method to a budgeted interface → remove one from the SAME interface, same PR. No splits to dodge.
 - [`migration-regen-after-rebase`](architecture/migration-regen-after-rebase.md) — HARD RULE. Once main's migrations interleave with yours, `migrations remove` is broken for your branch-migrations. Stop and ask. Don't hand-edit snapshot. Regen BEFORE rebase, not after.
-- [`no-admin-url-section`](architecture/no-admin-url-section.md) — new admin pages live at `/<Section>/Admin/*`, never `/Admin/<Section>/*`
+- [`no-admin-url-section`](architecture/no-admin-url-section.md) — HARD RULE: top-level `/Admin/*` is legacy/frozen; never add new `/Admin/foo` routes. New admin pages live at `/<Section>/Admin/*` only
 - [`no-business-logic-in-controllers`](architecture/no-business-logic-in-controllers.md) — controllers parse input, authorize, dispatch, return; no domain branching/loops/derived values. Heuristic threshold: action methods >50 lines or cyclomatic ≥6.
 - [`no-column-drops-for-decoupling`](architecture/no-column-drops-for-decoupling.md) — HARD RULE. Property override IS the migration; column drop waits for a separate PR after prod verification
 - [`no-concurrency-tokens`](architecture/no-concurrency-tokens.md) — HARD RULE. No `IsConcurrencyToken` / `[ConcurrencyCheck]` / row versioning. Single server, ~500 users.

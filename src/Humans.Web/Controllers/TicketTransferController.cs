@@ -1,8 +1,6 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
-using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -101,51 +99,5 @@ public sealed class TicketTransferController : HumansControllerBase
             SetError(ex.Message);
         }
         return RedirectToAction(nameof(HomeController.Index), "Home");
-    }
-
-    [HttpGet("")]
-    [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
-    public async Task<IActionResult> Index(CancellationToken ct)
-    {
-        var pending = await _service.GetByStatusAsync(TicketTransferStatus.Pending, ct);
-        return View(pending);
-    }
-
-    [HttpGet("Detail/{id:guid}")]
-    [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
-    public async Task<IActionResult> Detail(Guid id, CancellationToken ct)
-    {
-        var rows = await _service.GetByStatusAsync(TicketTransferStatus.Pending, ct);
-        var row = rows.FirstOrDefault(r => r.Id == id);
-        if (row is null)
-        {
-            // Could be already-decided — for brevity 404; admins reach Detail only via the queue link.
-            return NotFound();
-        }
-        return View(row);
-    }
-
-    [HttpPost("Decide")]
-    [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Decide(
-        Guid id, bool approve, string? adminNotes, CancellationToken ct)
-    {
-        var (errorResult, user) = await RequireCurrentUserAsync();
-        if (errorResult is not null) return errorResult;
-
-        try
-        {
-            if (approve)
-                await _service.ApproveAsync(id, user.Id, adminNotes, ct);
-            else
-                await _service.RejectAsync(id, user.Id, adminNotes, ct);
-            SetSuccess(approve ? "Transfer approved." : "Transfer rejected.");
-        }
-        catch (InvalidOperationException ex)
-        {
-            SetError(ex.Message);
-        }
-        return RedirectToAction(nameof(Index));
     }
 }

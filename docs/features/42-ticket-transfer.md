@@ -55,7 +55,7 @@ Tracked in: peterdrier/Humans#382.
 **So that** I can approve legitimate transfers and reject suspicious ones
 
 **Acceptance Criteria:**
-- `Tickets/Transfers` index lists all `Pending` rows with requester / recipient display + reason
+- `Tickets/Admin/Transfers` index lists all `Pending` rows with requester / recipient display + reason
 - Detail page surfaces the same baseball-card recipient view + an Admin Notes textarea
 - Approve and Reject actions are policy-gated to `TicketAdminOrAdmin`
 - Decision (with notes) is captured on the `TicketTransferRequest` row and audit-logged
@@ -73,7 +73,7 @@ Tracked in: peterdrier/Humans#382.
   - `Succeeded` — both legs OK; original `TicketAttendee` flips to `Void` locally, new attendee row materializes, recipient sees the ticket on their dashboard
   - `VoidSucceededIssueFailed` — original is voided at the vendor and locally; admin can retry just the issue half. Hold ID is preserved in `VendorMessage`
   - `Failed` — neither leg succeeded; no local attendee changes; transfer is recorded as `Approved` with vendor failure visible to admin (Option-C fallback)
-- Vendor errors are wrapped in `TicketVendorWriteException` with a `Kind` enum (Validation / NotFound / Conflict / Network / Auth / Unknown) for structured logging
+- Vendor errors are wrapped in `TicketVendorWriteException` with a `Kind` enum (`Validation` / `AuthFailed` / `NotFound` / `RateLimited` / `Transient`) for structured logging
 
 ### US-42.5: Option-C admin fallback
 **As a** Ticket Admin facing a vendor outage during transfer approval
@@ -146,10 +146,10 @@ Buyer dashboard (Home/Index → Dashboard.cshtml)
 
 Admin queue (TicketAdminOrAdmin)
   ├─ AdminNavTree "Transfer requests" badge (count from CountPendingAsync)
-  │     → TicketTransferController.Index
+  │     → TicketTransferAdminController.Index
   │        → TicketTransferService.GetByStatusAsync(Pending) → Index.cshtml
   └─ Detail link
-        → TicketTransferController.Detail
+        → TicketTransferAdminController.Detail
            → Detail.cshtml (admin notes + Approve/Reject)
               → Decide (POST)
                  → ApproveAsync / RejectAsync

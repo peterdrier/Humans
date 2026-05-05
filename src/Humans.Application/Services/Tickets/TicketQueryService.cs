@@ -872,7 +872,12 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
     private static bool ContainsIgnoreCase(string? source, string value) =>
         source?.Contains(value, StringComparison.OrdinalIgnoreCase) == true;
 
-    public Task<IReadOnlyList<TicketAttendee>> GetAttendeesVisibleToUserAsync(
-        Guid userId, CancellationToken ct = default) =>
-        _ticketRepository.GetAttendeesVisibleToUserAsync(userId, ct);
+    public async Task<IReadOnlyList<TicketAttendee>> GetAttendeesVisibleToUserAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var rows = await _ticketRepository.GetAttendeesVisibleToUserAsync(userId, ct);
+        return rows
+            .OrderBy(a => a.AttendeeName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
 }

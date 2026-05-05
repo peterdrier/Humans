@@ -479,7 +479,6 @@ public sealed class TicketRepository : ITicketRepository
             .AsNoTracking()
             .Include(a => a.TicketOrder)
             .Where(a => a.TicketOrder.MatchedUserId == userId || a.MatchedUserId == userId)
-            .OrderBy(a => a.AttendeeName)
             .ToListAsync(ct);
     }
 

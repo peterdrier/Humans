@@ -258,14 +258,18 @@ public sealed class TicketTransferService : ITicketTransferService
     public async Task<IReadOnlyList<TicketTransferRowDto>> GetByStatusAsync(
         TicketTransferStatus status, CancellationToken ct = default)
     {
-        var rows = await _transferRepo.GetByStatusAsync(status, ct);
+        var rows = (await _transferRepo.GetByStatusAsync(status, ct))
+            .OrderBy(r => r.RequestedAt) // FIFO admin queue
+            .ToList();
         return await BuildRowDtosAsync(rows, ct);
     }
 
     public async Task<IReadOnlyList<TicketTransferRowDto>> GetByRequesterAsync(
         Guid userId, CancellationToken ct = default)
     {
-        var rows = await _transferRepo.GetByRequesterAsync(userId, ct);
+        var rows = (await _transferRepo.GetByRequesterAsync(userId, ct))
+            .OrderByDescending(r => r.RequestedAt) // newest-first history
+            .ToList();
         return await BuildRowDtosAsync(rows, ct);
     }
 
@@ -291,9 +295,9 @@ public sealed class TicketTransferService : ITicketTransferService
         {
             request.VendorResult = TicketTransferVendorResult.Failed;
             request.VendorMessage = $"Void failed ({ex.Kind}): {ex.Message}";
-            _logger.LogWarning(ex,
-                "TT void failed for transfer {TransferId} attendee {AttendeeId}; falling back to Option-C",
-                request.Id, request.OriginalTicketAttendeeId);
+            _logger.LogWarning(
+                "TT void failed for transfer {TransferId} attendee {AttendeeId} ({Kind}); falling back to Option-C",
+                request.Id, request.OriginalTicketAttendeeId, ex.Kind);
             return;
         }
 
