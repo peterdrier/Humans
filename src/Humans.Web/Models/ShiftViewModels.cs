@@ -323,6 +323,13 @@ public class ShiftAdminViewModel
     /// All available tags for the tag picker UI.
     /// </summary>
     public List<ShiftTag> AllTags { get; set; } = [];
+
+    /// <summary>
+    /// True when the coordinator has activated the "Incomplete onboarding" filter
+    /// chip on the Pending Approvals list (only show signups whose users are
+    /// missing required Volunteer consents).
+    /// </summary>
+    public bool IncompleteOnboardingFilter { get; set; }
 }
 
 // === Homepage ===

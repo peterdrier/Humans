@@ -135,6 +135,16 @@ public interface IShiftSignupService
     /// Pending signups.
     /// </summary>
     Task PromoteWidgetPendingSignupsAfterAdmissionAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Filters a coordinator-side list of signups to only those whose users are
+    /// missing required Volunteer consents (i.e., they completed sign-up via the
+    /// onboarding widget but have not finished consents yet, so the signup is
+    /// force-Pending awaiting promotion). Used by the coordinator Pending-list
+    /// "Incomplete onboarding" filter chip.
+    /// </summary>
+    Task<IReadOnlyList<ShiftSignup>> FilterToIncompleteOnboardingAsync(
+        IReadOnlyList<ShiftSignup> signups, CancellationToken ct = default);
 }
 
 /// <summary>

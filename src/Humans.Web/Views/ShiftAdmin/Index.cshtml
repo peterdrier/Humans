@@ -36,16 +36,35 @@
     @await Html.PartialAsync("_StaffingHoursChart", (Model.StaffingHours, "deptStaffingHoursChart"))
 
     @* Pending Approvals *@
-    @if (Model.PendingSignups.Count > 0 && Model.CanApproveSignups)
+    @if (Model.CanApproveSignups && (Model.PendingSignups.Count > 0 || Model.IncompleteOnboardingFilter))
     {
         var pendingGroups = Model.PendingSignups
             .GroupBy(s => s.SignupBlockId.HasValue ? $"{s.UserId}|{s.SignupBlockId}" : s.Id.ToString())
             .ToList();
+        var indexUrl = Url.Action(nameof(ShiftAdminController.Index), "ShiftAdmin", new { slug = Model.Department.Slug });
+        var incompleteFilterUrl = Url.Action(nameof(ShiftAdminController.Index), "ShiftAdmin", new { slug = Model.Department.Slug, incompleteOnboarding = true });
         <div class="card mb-4 border-warning">
-            <div class="card-header bg-warning text-dark">
+            <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h5 class="mb-0">Pending Approvals (@pendingGroups.Count)</h5>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Pending filter">
+                    <a href="@indexUrl"
+                       class="btn @(Model.IncompleteOnboardingFilter ? "btn-outline-dark" : "btn-dark")">
+                        All
+                    </a>
+                    <a href="@incompleteFilterUrl"
+                       class="btn @(Model.IncompleteOnboardingFilter ? "btn-dark" : "btn-outline-dark")"
+                       title="Show only signups whose users have not completed the required Volunteer consents.">
+                        Incomplete onboarding
+                    </a>
+                </div>
             </div>
             <div class="card-body">
+                @if (pendingGroups.Count == 0)
+                {
+                    <p class="text-muted mb-0">No pending signups match the "Incomplete onboarding" filter.</p>
+                }
+                else
+                {
                 <div class="table-responsive">
                     <table class="table table-sm">
                         <thead>
@@ -135,6 +154,7 @@
                         </tbody>
                     </table>
                 </div>
+                }
             </div>
         </div>
     }

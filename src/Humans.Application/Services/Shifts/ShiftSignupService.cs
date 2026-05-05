@@ -1183,6 +1183,18 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         }
     }
 
+    public async Task<IReadOnlyList<ShiftSignup>> FilterToIncompleteOnboardingAsync(
+        IReadOnlyList<ShiftSignup> signups, CancellationToken ct = default)
+    {
+        if (signups.Count == 0) return signups;
+
+        var userIds = signups.Select(s => s.UserId).Distinct().ToList();
+        var withConsents = await _membership.GetUsersWithAllRequiredConsentsForTeamAsync(
+            userIds, SystemTeamIds.Volunteers, ct);
+
+        return signups.Where(s => !withConsents.Contains(s.UserId)).ToList();
+    }
+
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {
