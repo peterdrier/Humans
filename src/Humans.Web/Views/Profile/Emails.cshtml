@@ -238,6 +238,19 @@
                                     }
                                 </td>
                                 <td class="text-end">
+                                    @if (Model.IsAdminContext && !row.IsVerified && string.IsNullOrEmpty(row.Provider))
+                                    {
+                                        <form asp-action="AdminVerifyEmail"
+                                              asp-route-id="@Model.TargetUserId"
+                                              method="post" class="d-inline me-1"
+                                              data-confirm="@Localizer["EmailGrid_ConfirmAdminVerify"].Value">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="emailId" value="@row.Id" />
+                                            <button type="submit" class="btn btn-outline-success btn-sm">
+                                                <i class="fa-solid fa-check me-1"></i>@Localizer["EmailGrid_AdminVerify"]
+                                            </button>
+                                        </form>
+                                    }
                                     @* Never offer a destructive action on the only remaining email — *@
                                     @* removing the last row would leave the user with no email at all, *@
                                     @* regardless of whether the row is provider-linked. *@

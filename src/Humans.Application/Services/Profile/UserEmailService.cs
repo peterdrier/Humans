@@ -225,6 +225,64 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: false);
     }
 
+    public async Task<VerifyEmailResult> AdminMarkVerifiedAsync(
+        Guid userId, Guid emailId, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var pendingEmail = await _repository.GetByIdAndUserIdAsync(emailId, userId, cancellationToken);
+        if (pendingEmail is null || pendingEmail.IsVerified || pendingEmail.Provider is not null)
+        {
+            throw new ValidationException("No email pending verification.");
+        }
+
+        // Mirror VerifyEmailAsync's duplicate-handling: if the address is
+        // already verified on another account, create a merge request rather
+        // than silently completing verification — the duplicate-account flow
+        // owns reconciliation.
+        var normalizedPendingEmail = EmailNormalization.NormalizeForComparison(pendingEmail.Email);
+        var alternatePendingEmail = GetAlternateComparableEmail(normalizedPendingEmail);
+        var conflictingEmail = await _repository.GetConflictingVerifiedEmailAsync(
+            pendingEmail.Id, normalizedPendingEmail, alternatePendingEmail, cancellationToken);
+
+        if (conflictingEmail is not null)
+        {
+            if (!await MergeService.HasPendingForEmailIdAsync(pendingEmail.Id, cancellationToken))
+            {
+                var now = _clock.GetCurrentInstant();
+                var mergeRequest = new AccountMergeRequest
+                {
+                    Id = Guid.NewGuid(),
+                    TargetUserId = userId,
+                    SourceUserId = conflictingEmail.UserId,
+                    Email = pendingEmail.Email,
+                    PendingEmailId = pendingEmail.Id,
+                    Status = AccountMergeRequestStatus.Pending,
+                    CreatedAt = now
+                };
+
+                await MergeService.CreateAsync(mergeRequest, cancellationToken);
+            }
+
+            return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: true);
+        }
+
+        pendingEmail.IsVerified = true;
+        pendingEmail.UpdatedAt = _clock.GetCurrentInstant();
+        await _repository.UpdateAsync(pendingEmail, cancellationToken);
+
+        await TryBackfillGoogleEmailAsync(userId, cancellationToken);
+        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+
+        await _auditLogService.LogAsync(
+            AuditAction.UserEmailManuallyVerified,
+            nameof(User), userId,
+            $"Admin manually verified email {pendingEmail.Email}",
+            actorUserId,
+            relatedEntityId: pendingEmail.Id, relatedEntityType: nameof(UserEmail));
+
+        return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: false);
+    }
+
     public async Task SetPrimaryAsync(
         Guid userId, Guid emailId, CancellationToken cancellationToken = default)
     {
