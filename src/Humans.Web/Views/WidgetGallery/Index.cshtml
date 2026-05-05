@@ -581,6 +581,36 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
+                            <span class="wg-card-name">_EventRotaTable.cshtml</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_EventRotaTable.cshtml</span>
+                    </div>
+                    <div class="wg-card-note">The shifts table — one row per shift with phase badge, slot count, and signup chips. Rendered here for the first rota of the first department in the active event (up to 8 shifts).</div>
+                    @ParamsBlock(
+                        ("@@model", "<code>EventRotaTableViewModel</code> — Shifts (List&lt;ShiftDisplayItem&gt;), EventSettings, UserSignupShiftIds, UserSignupStatuses, ShowSignups, plus filter state (FilterDepartmentId, FilterFromDate/ToDate, FilterPeriod, FilterPeriods, FilterTagIds, Sort)")
+                    )
+                    <div class="wg-card-example @(Model.SampleRotaShifts.Count == 0 ? "is-empty" : "")">
+                        @if (Model.SampleRotaShifts.Count > 0 && Model.SampleEventSettings is not null)
+                        {
+                            @await Html.PartialAsync("_EventRotaTable", new EventRotaTableViewModel
+                            {
+                                Shifts = Model.SampleRotaShifts.ToList(),
+                                EventSettings = Model.SampleEventSettings,
+                                UserSignupShiftIds = Model.SampleUserSignupShiftIds.ToHashSet(),
+                                ShowSignups = true,
+                            })
+                        }
+                        else
+                        {
+                            <text>(No rota with shifts found in the active event — create a rota under any department in <a href="/Admin/Events">/Admin/Events</a> with at least one shift.)</text>
+                        }
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
                             <span class="wg-card-name">_StaffingChart.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
@@ -984,7 +1014,7 @@
                 <ul>
                     <li><strong>Admin shell chrome</strong> — <code>AdminSidebarViewComponent</code>, <code>AdminNavTree</code>, <code>AdminNav</code>: this page is rendered inside the admin shell, so the sidebar is already on screen around you.</li>
                     <li><strong>Layout partials</strong> — <code>_Layout</code>, <code>_AdminLayout</code>, <code>_GuideLayout</code>, <code>_AdminTopbarUserMenu</code>, <code>_LoginPartial</code>, <code>_VersionInfo</code>: page chrome that doesn't render in isolation.</li>
-                    <li><strong>Rota tables</strong> — <code>_BuildStrikeRotaTable</code>, <code>_EventRotaTable</code>: deeply context-bound view models (<code>RotaShiftGroup</code>, <code>List&lt;ShiftDisplayItem&gt;</code> with filter+sort state). See <a href="/Shifts">/Shifts</a> for live examples.</li>
+                    <li><strong>Build/Strike sign-up form</strong> — <code>_BuildStrikeRotaTable</code>: a sign-up form (not a display widget) keyed to all-day shifts under one rota; submits to <code>/Shifts/SignUpRange</code>. Rendering it standalone is misleading because it's an inert form here. See <a href="/Shifts">/Shifts</a>.</li>
                     <li><strong>Coordinator dashboard</strong> — <code>_DashboardActivity</code>, <code>_DashboardStats</code>, <code>_DashboardStaffing</code>: take an <code>AdminDashboardViewModel</code> built by the dashboard controller. See <a href="/Admin/Dashboard">/Admin/Dashboard</a>.</li>
                     <li><strong>Form fragments</strong> — <code>_LegalDocumentFormFields</code>, <code>_TabbedMarkdownDocuments</code>, <code>_TeamDescriptionAndApprovalFields</code>, <code>_TeamGoogleAndParentFields</code>: form sub-views inside parent forms; see Team admin and Legal pages.</li>
                     <li><strong>Audit/list partials</strong> — <code>_AuditLogContent</code>, <code>_AuditLogScripts</code>, <code>_RolesListContent</code>, <code>_ApplicationHistory</code>, <code>_ApplicationsListContent</code>, <code>_ApplicationResponseSections</code>: pieces of larger pages, exercised via the <code>vc:audit-log</code> entry above and the Applications/Roles admin pages.</li>
