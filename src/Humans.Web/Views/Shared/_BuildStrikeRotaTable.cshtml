@@ -66,7 +66,8 @@
                     kv => kv.Key.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     kv => new {
                         absStart = kv.Value.AbsoluteStart.ToString("uuuu'-'MM'-'dd'T'HH':'mm':'ss'Z'", System.Globalization.CultureInfo.InvariantCulture),
-                        absEnd = kv.Value.AbsoluteEnd.ToString("uuuu'-'MM'-'dd'T'HH':'mm':'ss'Z'", System.Globalization.CultureInfo.InvariantCulture)
+                        absEnd = kv.Value.AbsoluteEnd.ToString("uuuu'-'MM'-'dd'T'HH':'mm':'ss'Z'", System.Globalization.CultureInfo.InvariantCulture),
+                        displayDate = es.GateOpeningDate.PlusDays(kv.Key).ToDisplayShiftDate()
                     })))
         </script>
         <div class="modal fade" id="confirmSignup-@rotaGroup.Rota.Id" tabindex="-1"
@@ -87,6 +88,7 @@
                     <div class="modal-body">
                         <p class="js-phase-line">
                             @string.Format(Localizer["Shifts_ConfirmSignup_Phase"].Value,
+                                rotaGroup.Rota.Name,
                                 rotaGroup.Rota.Period == RotaPeriod.Build ? Localizer["Shifts_SetUp"].Value.ToLowerInvariant() : Localizer["Shifts_Strike"].Value.ToLowerInvariant())
                         </p>
                         <p class="js-range-line"></p>
@@ -175,7 +177,9 @@
                 if (conflicts.length > 0) {
                     var opt = startSel.querySelector('option[value="' + off + '"]')
                             || endSel.querySelector('option[value="' + off + '"]');
-                    var dateLabel = opt ? opt.getAttribute('data-date') : String(off);
+                    var dateLabel = opt
+                        ? opt.getAttribute('data-date')
+                        : (rotaWindows[off] && rotaWindows[off].displayDate) || String(off);
                     conflicts.forEach(function (c) {
                         allConflicts.push({ date: dateLabel, conflict: c });
                     });
