@@ -24,10 +24,25 @@ public sealed class EmailProblemsService : IEmailProblemsService
         _clock = clock;
     }
 
-    public Task<EmailProblemsReport> ScanAsync(CancellationToken ct = default)
+    public async Task<EmailProblemsReport> ScanAsync(CancellationToken ct = default)
     {
         var problems = new List<EmailProblem>();
-        // Tasks 8–13 fill this in.
-        return Task.FromResult(new EmailProblemsReport(_clock.GetCurrentInstant(), problems));
+
+        var profiles = await _profileService.GetFullProfileSnapshotAsync(ct);
+
+        foreach (var p in profiles)
+        {
+            var emails = p.AllUserEmails;
+
+            if (emails.Count(e => e.IsPrimary) > 1)
+                problems.Add(new EmailProblem(
+                    EmailProblemKind.MultipleIsPrimary, p.UserId, null, null, null, null));
+
+            if (emails.Count(e => e.IsGoogle) > 1)
+                problems.Add(new EmailProblem(
+                    EmailProblemKind.MultipleIsGoogle, p.UserId, null, null, null, null));
+        }
+
+        return new EmailProblemsReport(_clock.GetCurrentInstant(), problems);
     }
 }
