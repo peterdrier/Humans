@@ -86,6 +86,12 @@ public class DevLoginController : Controller
         if (info is null)
             return NotFound();
 
+        // Guest is non-deterministic: mint a brand-new profileless user every
+        // click so multiple testers can onboard in parallel without colliding
+        // on a single shared Guest account.
+        if (string.Equals(info.Slug, "guest", StringComparison.OrdinalIgnoreCase))
+            return await SignInAsFreshGuestAsync(info, returnUrl);
+
         var id = DevPersonaSeeder.PersonaGuid(info.Slug);
         Guid resolvedUserId;
 
@@ -172,6 +178,27 @@ public class DevLoginController : Controller
 
         return _config.GetSettingValue(
             _configRegistry, "DevAuth:Enabled", "Development", defaultValue: false);
+    }
+
+    /// <summary>
+    /// Mints a brand-new profileless guest user via the seeder and signs in as
+    /// them. Each click of the Guest button creates a fresh account so multiple
+    /// testers can run the onboarding flow in parallel.
+    /// </summary>
+    private async Task<IActionResult> SignInAsFreshGuestAsync(DevPersonaInfo info, string? returnUrl)
+    {
+        var newId = await _personaSeeder.EnsureFreshGuestAsync(info.DisplayName);
+
+        var user = await _userManager.FindByIdAsync(newId.ToString());
+        if (user is null)
+        {
+            _logger.LogError("Fresh guest persona ({Id}) not found after seeding", newId);
+            return StatusCode(500, "Dev guest seeding failed");
+        }
+
+        await _signInManager.SignInAsync(user, isPersistent: false);
+        _logger.LogWarning("DEV LOGIN: signed in as fresh guest {Email} ({Id})", user.Email, user.Id);
+        return RedirectToLocalOrHome(returnUrl);
     }
 
     // ============================================================
