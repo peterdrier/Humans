@@ -103,6 +103,7 @@ Stored as string in the database. New values can be appended without migration.
 - `WorkspaceAccountReactivated` — Workspace account reactivated
 - `WorkspaceAccountPasswordReset` — Workspace account password reset
 - `WorkspaceAccountLinked` — Existing workspace account linked to a human
+- `WorkspaceAccountBackupCodesGenerated` — 2-Step Verification backup codes rotated for a Workspace account
 
 **Other features:**
 - `FacilitatedMessageSent` — User-to-user message sent via Humans
