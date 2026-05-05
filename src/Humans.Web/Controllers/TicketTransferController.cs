@@ -36,27 +36,44 @@ public sealed class TicketTransferController : HumansControllerBase
     [HttpPost("Lookup")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Lookup(
-        Guid attendeeId, string query, CancellationToken ct)
+        Guid attendeeId, string query, Guid? selectedUserId, CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var match = await _service.LookupRecipientAsync(query, user.Id, ct);
+        // Two flows hit this action:
+        //  1. Free-text query → service returns 0..N candidates
+        //  2. selectedUserId set → user picked one from a multi-match list,
+        //     resolve that single id directly so we render a single card
+        //     (skips re-running the search).
+        IReadOnlyList<RecipientLookupResultDto> matches;
+        if (selectedUserId is { } pickedId)
+        {
+            var card = await _service.GetRecipientCardAsync(pickedId, user.Id, ct);
+            matches = card is null
+                ? Array.Empty<RecipientLookupResultDto>()
+                : new[] { card };
+        }
+        else
+        {
+            matches = await _service.LookupRecipientsAsync(query, user.Id, ct);
+        }
+
         var vm = new TicketTransferRequestPageViewModel
         {
             AttendeeId = attendeeId,
             Query = query,
-            Recipient = match is null ? null : new RecipientCardViewModel
+            Recipients = matches.Select(m => new RecipientCardViewModel
             {
-                UserId = match.UserId,
-                DisplayName = match.DisplayName,
-                BurnerName = match.BurnerName,
-                PreferredEmail = match.PreferredEmail,
-                HasCustomProfilePicture = match.HasCustomProfilePicture,
-                ProfilePictureUrl = match.ProfilePictureUrl,
-            },
-            LookupError = match is null
-                ? "No unique match. Try a full email address or a more specific burner name."
+                UserId = m.UserId,
+                DisplayName = m.DisplayName,
+                BurnerName = m.BurnerName,
+                PreferredEmail = m.PreferredEmail,
+                HasCustomProfilePicture = m.HasCustomProfilePicture,
+                ProfilePictureUrl = m.ProfilePictureUrl,
+            }).ToList(),
+            LookupError = matches.Count == 0
+                ? "No match. Try a full email address or a different burner name."
                 : null,
         };
         return View("Request", vm);

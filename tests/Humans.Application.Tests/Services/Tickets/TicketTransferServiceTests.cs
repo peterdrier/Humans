@@ -88,18 +88,18 @@ public sealed class TicketTransferServiceTests
     }
 
     // ============================================================================
-    // LookupRecipientAsync
+    // LookupRecipientsAsync
     // ============================================================================
 
     [HumansFact]
-    public async Task LookupRecipientAsync_NullOnWhitespace()
+    public async Task LookupRecipientsAsync_EmptyOnWhitespace()
     {
-        var result = await _service.LookupRecipientAsync("   ", _requesterId);
-        result.Should().BeNull();
+        var result = await _service.LookupRecipientsAsync("   ", _requesterId);
+        result.Should().BeEmpty();
     }
 
     [HumansFact]
-    public async Task LookupRecipientAsync_EmailHeuristic_ReturnsCard()
+    public async Task LookupRecipientsAsync_EmailHeuristic_ReturnsSingleCard()
     {
         var userId = Guid.NewGuid();
         _userEmailService.GetUserIdByExactEmailAsync("alice@example.com", Arg.Any<CancellationToken>())
@@ -111,37 +111,37 @@ public sealed class TicketTransferServiceTests
         _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
             .Returns((Profile?)null);
 
-        var result = await _service.LookupRecipientAsync("alice@example.com", _requesterId);
+        var result = await _service.LookupRecipientsAsync("alice@example.com", _requesterId);
 
-        result.Should().NotBeNull();
-        result!.UserId.Should().Be(userId);
-        result.DisplayName.Should().Be("Alice");
+        result.Should().HaveCount(1);
+        result[0].UserId.Should().Be(userId);
+        result[0].DisplayName.Should().Be("Alice");
     }
 
     [HumansFact]
-    public async Task LookupRecipientAsync_EmailHeuristic_NullWhenMatchIsRequester()
+    public async Task LookupRecipientsAsync_EmailHeuristic_EmptyWhenMatchIsRequester()
     {
         _userEmailService.GetUserIdByExactEmailAsync("self@example.com", Arg.Any<CancellationToken>())
             .Returns(_requesterId);
 
-        var result = await _service.LookupRecipientAsync("self@example.com", _requesterId);
+        var result = await _service.LookupRecipientsAsync("self@example.com", _requesterId);
 
-        result.Should().BeNull();
+        result.Should().BeEmpty();
     }
 
     [HumansFact]
-    public async Task LookupRecipientAsync_EmailHeuristic_NullWhenNoMatch()
+    public async Task LookupRecipientsAsync_EmailHeuristic_EmptyWhenNoMatch()
     {
         _userEmailService.GetUserIdByExactEmailAsync("nobody@example.com", Arg.Any<CancellationToken>())
             .Returns((Guid?)null);
 
-        var result = await _service.LookupRecipientAsync("nobody@example.com", _requesterId);
+        var result = await _service.LookupRecipientsAsync("nobody@example.com", _requesterId);
 
-        result.Should().BeNull();
+        result.Should().BeEmpty();
     }
 
     [HumansFact]
-    public async Task LookupRecipientAsync_BurnerName_UniqueMatch_ReturnsCard()
+    public async Task LookupRecipientsAsync_BurnerName_SingleMatch_ReturnsOne()
     {
         var userId = Guid.NewGuid();
         _profileService.SearchProfilesAsync(Arg.Any<Func<FullProfile, bool>>(), Arg.Any<CancellationToken>())
@@ -153,36 +153,45 @@ public sealed class TicketTransferServiceTests
         _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
             .Returns((Profile?)null);
 
-        var result = await _service.LookupRecipientAsync("sparkle", _requesterId);
+        var result = await _service.LookupRecipientsAsync("sparkle", _requesterId);
 
-        result.Should().NotBeNull();
-        result!.UserId.Should().Be(userId);
+        result.Should().HaveCount(1);
+        result[0].UserId.Should().Be(userId);
     }
 
     [HumansFact]
-    public async Task LookupRecipientAsync_BurnerName_AmbiguousMatch_ReturnsNull()
+    public async Task LookupRecipientsAsync_BurnerName_AmbiguousMatch_ReturnsAll()
     {
+        var aId = Guid.NewGuid();
+        var bId = Guid.NewGuid();
         _profileService.SearchProfilesAsync(Arg.Any<Func<FullProfile, bool>>(), Arg.Any<CancellationToken>())
             .Returns(new[]
             {
-                MakeSearchResult(Guid.NewGuid(), "A"),
-                MakeSearchResult(Guid.NewGuid(), "B"),
+                MakeSearchResult(aId, "A"),
+                MakeSearchResult(bId, "B"),
             });
+        _userService.GetByIdAsync(aId, Arg.Any<CancellationToken>()).Returns(MakeUser(aId, "A"));
+        _userService.GetByIdAsync(bId, Arg.Any<CancellationToken>()).Returns(MakeUser(bId, "B"));
+        _userEmailService.GetPrimaryEmailAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((string?)null);
+        _profileService.GetProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((Profile?)null);
 
-        var result = await _service.LookupRecipientAsync("popular", _requesterId);
+        var result = await _service.LookupRecipientsAsync("popular", _requesterId);
 
-        result.Should().BeNull();
+        result.Should().HaveCount(2);
+        result.Select(r => r.UserId).Should().BeEquivalentTo(new[] { aId, bId });
     }
 
     [HumansFact]
-    public async Task LookupRecipientAsync_BurnerName_MatchIsRequester_ReturnsNull()
+    public async Task LookupRecipientsAsync_BurnerName_ExcludesRequester()
     {
         _profileService.SearchProfilesAsync(Arg.Any<Func<FullProfile, bool>>(), Arg.Any<CancellationToken>())
             .Returns(new[] { MakeSearchResult(_requesterId, "Me") });
 
-        var result = await _service.LookupRecipientAsync("me", _requesterId);
+        var result = await _service.LookupRecipientsAsync("me", _requesterId);
 
-        result.Should().BeNull();
+        result.Should().BeEmpty();
     }
 
     // ============================================================================

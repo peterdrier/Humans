@@ -60,30 +60,51 @@ public sealed class TicketTransferService : ITicketTransferService
         _logger = logger;
     }
 
-    public async Task<RecipientLookupResultDto?> LookupRecipientAsync(
+    private const int MaxBurnerNameMatches = 10;
+
+    public async Task<IReadOnlyList<RecipientLookupResultDto>> LookupRecipientsAsync(
         string query, Guid requesterUserId, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(query)) return null;
+        if (string.IsNullOrWhiteSpace(query)) return Array.Empty<RecipientLookupResultDto>();
         var trimmed = query.Trim();
 
-        // Heuristic: contains '@' → email exact match; else burner-name wildcard.
+        // Email queries: exact match only, never fuzzy — don't leak addresses.
         if (trimmed.Contains('@'))
         {
             var userId = await _userEmailService.GetUserIdByExactEmailAsync(trimmed, ct);
-            if (userId is null || userId == requesterUserId) return null;
-            return await BuildRecipientCardAsync(userId.Value, ct);
+            if (userId is null || userId == requesterUserId)
+                return Array.Empty<RecipientLookupResultDto>();
+            var card = await BuildRecipientCardAsync(userId.Value, ct);
+            return card is null
+                ? Array.Empty<RecipientLookupResultDto>()
+                : new[] { card };
         }
 
+        // Burner-name queries: case-insensitive contains, return up to N
+        // candidates so the user can pick the right one.
         var hits = await _profileService.SearchProfilesAsync(
             p => !string.IsNullOrEmpty(p.BurnerName) &&
                  p.BurnerName.Contains(trimmed, StringComparison.OrdinalIgnoreCase),
             ct);
-        var matches = hits
+        var candidates = hits
             .Where(h => h.UserId != requesterUserId)
-            .Take(2)
+            .Take(MaxBurnerNameMatches)
             .ToList();
-        if (matches.Count != 1) return null;
-        return await BuildRecipientCardAsync(matches[0].UserId, ct);
+
+        var cards = new List<RecipientLookupResultDto>(candidates.Count);
+        foreach (var h in candidates)
+        {
+            var card = await BuildRecipientCardAsync(h.UserId, ct);
+            if (card is not null) cards.Add(card);
+        }
+        return cards;
+    }
+
+    public async Task<RecipientLookupResultDto?> GetRecipientCardAsync(
+        Guid recipientUserId, Guid requesterUserId, CancellationToken ct = default)
+    {
+        if (recipientUserId == requesterUserId) return null;
+        return await BuildRecipientCardAsync(recipientUserId, ct);
     }
 
     public async Task<TicketTransferRowDto> CreateRequestAsync(

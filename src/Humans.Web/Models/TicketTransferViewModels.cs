@@ -6,7 +6,14 @@ public sealed class TicketTransferRequestPageViewModel
     public string AttendeeName { get; set; } = string.Empty;
     public string TicketTypeName { get; set; } = string.Empty;
     public string? Query { get; set; }
-    public RecipientCardViewModel? Recipient { get; set; }
+
+    /// <summary>
+    /// Lookup candidates. Email queries return 0 or 1; burner-name queries
+    /// return 0..10. View renders accordingly: 0 → not-found message, 1 →
+    /// confirm + reason form, &gt;1 → picker with "Choose" buttons.
+    /// </summary>
+    public List<RecipientCardViewModel> Recipients { get; set; } = new();
+
     public string? LookupError { get; set; }
 }
 

@@ -6,12 +6,23 @@ namespace Humans.Application.Interfaces.Tickets;
 public interface ITicketTransferService
 {
     /// <summary>
-    /// Resolve a recipient by email (exact, case-insensitive against UserEmails)
-    /// or burner-name wildcard. Returns null for zero or ambiguous matches —
-    /// the caller is required to render exactly-one before allowing submission.
+    /// Resolve recipient candidates for a free-text query. Email queries
+    /// (containing '@') are exact, case-insensitive against verified UserEmails
+    /// and return at most one candidate so we don't fuzzy-leak addresses.
+    /// Non-email queries match burner names (case-insensitive contains) and
+    /// return up to 10 candidates ordered by display name — the caller renders
+    /// the list and lets the user pick.
     /// </summary>
-    Task<RecipientLookupResultDto?> LookupRecipientAsync(
+    Task<IReadOnlyList<RecipientLookupResultDto>> LookupRecipientsAsync(
         string query, Guid requesterUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Build the recipient card for a specific UserId — used after the user
+    /// picks one entry from a multi-match burner-name search. Returns null
+    /// if the user is the requester themselves or doesn't exist.
+    /// </summary>
+    Task<RecipientLookupResultDto?> GetRecipientCardAsync(
+        Guid recipientUserId, Guid requesterUserId, CancellationToken ct = default);
 
     /// <summary>
     /// Create a Pending TicketTransferRequest. Validates: requester owns the
