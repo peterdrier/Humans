@@ -123,7 +123,7 @@
             }
 
             <div class="d-flex flex-wrap gap-3 align-items-center mt-4">
-                @if (!Model.ShowAll && hasShifts)
+                @if (!Model.ShowAll)
                 {
                     <a asp-action="Shifts" asp-route-showAll="true" class="btn btn-link">
                         Show all shifts

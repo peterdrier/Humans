@@ -128,7 +128,7 @@
                 </div>
             </div>
         </nav>
-        <partial name="_OnboardingProgressBanner" />
+        @await Component.InvokeAsync("OnboardingProgressBanner")
     </header>
     <environment exclude="Production">
         <div class="env-banner">

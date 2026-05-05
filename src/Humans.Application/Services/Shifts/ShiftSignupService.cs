@@ -1134,8 +1134,10 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         // Range blocks promote together: if any signup in a block is held back
         // by capacity or non-Public policy, every signup in that block stays
-        // Pending. Group by SignupBlockId, treating null block as a singleton.
-        var groups = pending.GroupBy(s => s.SignupBlockId);
+        // Pending. Null SignupBlockId means a single-shift signup with no block,
+        // and each one must be evaluated independently — group keys are the
+        // block id, or the signup's own id when there is no block.
+        var groups = pending.GroupBy(s => s.SignupBlockId ?? s.Id);
 
         var promoted = new List<ShiftSignup>();
         foreach (var group in groups)

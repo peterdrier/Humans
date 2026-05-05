@@ -6,11 +6,16 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Testing;
+using Humans.Web.Constants;
 using Humans.Web.Controllers;
 using Humans.Web.Models.OnboardingWidget;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
 
@@ -25,6 +30,7 @@ namespace Humans.Web.Tests.Controllers;
 /// </summary>
 public class OnboardingWidgetControllerConsentsTests
 {
+    private readonly UserManager<User> _userManager;
     private readonly IOnboardingWidgetState _state = Substitute.For<IOnboardingWidgetState>();
     private readonly IProfileService _profile = Substitute.For<IProfileService>();
     private readonly IShiftSignupService _signups = Substitute.For<IShiftSignupService>();
@@ -32,14 +38,33 @@ public class OnboardingWidgetControllerConsentsTests
     private readonly IConsentService _consents = Substitute.For<IConsentService>();
     private readonly DefaultHttpContext _http = new();
 
+    public OnboardingWidgetControllerConsentsTests()
+    {
+        var userStore = Substitute.For<IUserStore<User>>();
+        _userManager = Substitute.For<UserManager<User>>(
+            userStore, null, null, null, null, null, null, null, null);
+    }
+
     private OnboardingWidgetController BuildSut(Guid userId)
     {
+        var user = new User { Id = userId };
+        _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(user);
         _http.User = new ClaimsPrincipal(new ClaimsIdentity(
             new[] { new Claim(ClaimTypes.NameIdentifier, userId.ToString()) },
             "test"));
-        var ctrl = new OnboardingWidgetController(_state, _profile, _signups, _shiftMgmt, _consents);
-        ctrl.ControllerContext = new ControllerContext { HttpContext = _http };
+        // SetError on HumansControllerBase resolves ILoggerFactory from RequestServices.
+        var services = new ServiceCollection();
+        services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
+        _http.RequestServices = services.BuildServiceProvider();
+        var ctrl = new OnboardingWidgetController(_userManager, _state, _profile, _signups, _shiftMgmt, _consents);
+        ctrl.ControllerContext = new ControllerContext
+        {
+            HttpContext = _http,
+            ActionDescriptor = new Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor { ActionName = "Test" },
+        };
         ctrl.TempData = new TempDataDictionary(_http, Substitute.For<ITempDataProvider>());
+        // Pre-set Url so RedirectToAction doesn't try to resolve IUrlHelperFactory from RequestServices.
+        ctrl.Url = Substitute.For<IUrlHelper>();
         return ctrl;
     }
 
@@ -84,7 +109,7 @@ public class OnboardingWidgetControllerConsentsTests
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
-        Assert.Equal("AlreadyConsented", ctrl.TempData["Error"]);
+        Assert.Equal("AlreadyConsented", ctrl.TempData[TempDataKeys.ErrorMessage]);
     }
 
     [HumansFact]
@@ -101,7 +126,7 @@ public class OnboardingWidgetControllerConsentsTests
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(OnboardingWidgetController.Consents), redirect.ActionName);
-        Assert.Equal("MustCheck", ctrl.TempData["Error"]);
+        Assert.Equal("MustCheck", ctrl.TempData[TempDataKeys.ErrorMessage]);
         await _consents.DidNotReceive().SubmitConsentAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(),
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());

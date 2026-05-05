@@ -40,7 +40,9 @@ public class ProfileCompletionTests
         var withoutPicture = new Profile { BurnerName = "x", FirstName = "y", LastName = "z" };
         var withPicture = new Profile
         {
-            BurnerName = "x", FirstName = "y", LastName = "z",
+            BurnerName = "x",
+            FirstName = "y",
+            LastName = "z",
             ProfilePictureData = new byte[] { 1, 2, 3 },
         };
 
@@ -59,7 +61,9 @@ public class ProfileCompletionTests
         // question, which is what the bar is asking about.
         var profile = new Profile
         {
-            BurnerName = "x", FirstName = "y", LastName = "z",
+            BurnerName = "x",
+            FirstName = "y",
+            LastName = "z",
             NoPriorBurnExperience = true,
         };
 

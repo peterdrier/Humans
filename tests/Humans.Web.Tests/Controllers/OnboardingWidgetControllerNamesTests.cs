@@ -4,10 +4,12 @@ using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Domain.Entities;
 using Humans.Testing;
 using Humans.Web.Controllers;
 using Humans.Web.Models.OnboardingWidget;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NSubstitute;
 using Xunit;
@@ -16,15 +18,26 @@ namespace Humans.Web.Tests.Controllers;
 
 public class OnboardingWidgetControllerNamesTests
 {
+    private readonly UserManager<User> _userManager;
     private readonly IOnboardingWidgetState _state = Substitute.For<IOnboardingWidgetState>();
     private readonly IProfileService _profile = Substitute.For<IProfileService>();
     private readonly IShiftSignupService _signups = Substitute.For<IShiftSignupService>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IConsentService _consents = Substitute.For<IConsentService>();
 
-    private OnboardingWidgetController BuildSut(Guid userId, string lang = "en")
+    public OnboardingWidgetControllerNamesTests()
     {
-        var ctrl = new OnboardingWidgetController(_state, _profile, _signups, _shiftMgmt, _consents);
+        var userStore = Substitute.For<IUserStore<User>>();
+        _userManager = Substitute.For<UserManager<User>>(
+            userStore, null, null, null, null, null, null, null, null);
+    }
+
+    private OnboardingWidgetController BuildSut(Guid userId, string lang = "en", OnboardingWidgetStep currentStep = OnboardingWidgetStep.Names)
+    {
+        var user = new User { Id = userId };
+        _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(user);
+        _state.GetCurrentStepAsync(userId, Arg.Any<CancellationToken>()).Returns(currentStep);
+        var ctrl = new OnboardingWidgetController(_userManager, _state, _profile, _signups, _shiftMgmt, _consents);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
@@ -65,6 +78,26 @@ public class OnboardingWidgetControllerNamesTests
                 r.BurnerName == "Burner1"),
             Arg.Any<string>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Names_Post_RedirectsToIndex_AndDoesNotSave_WhenAlreadyPastNamesStep()
+    {
+        // Names POST is reachable directly. SaveProfileAsync does a full
+        // overwrite, so re-posting with a Names-only viewmodel would clobber
+        // existing City/Bio/EmergencyContact/etc. Guard: bail out when the
+        // user is past the Names step.
+        var userId = Guid.NewGuid();
+        var ctrl = BuildSut(userId, currentStep: OnboardingWidgetStep.Shifts);
+        var vm = new NamesViewModel { BurnerName = "Burner1", FirstName = "First", LastName = "Last" };
+
+        var result = await ctrl.Names(vm, CancellationToken.None);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
+
+        await _profile.DidNotReceiveWithAnyArgs().SaveProfileAsync(
+            default, default!, default!, default!, default);
     }
 
     [HumansFact]

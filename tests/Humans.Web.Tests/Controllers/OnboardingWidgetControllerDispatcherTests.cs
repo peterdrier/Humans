@@ -3,9 +3,11 @@ using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Domain.Entities;
 using Humans.Testing;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NSubstitute;
 using Xunit;
@@ -20,15 +22,25 @@ namespace Humans.Web.Tests.Controllers;
 /// </summary>
 public class OnboardingWidgetControllerDispatcherTests
 {
+    private readonly UserManager<User> _userManager;
     private readonly IOnboardingWidgetState _state = Substitute.For<IOnboardingWidgetState>();
     private readonly IProfileService _profile = Substitute.For<IProfileService>();
     private readonly IShiftSignupService _signups = Substitute.For<IShiftSignupService>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IConsentService _consents = Substitute.For<IConsentService>();
 
+    public OnboardingWidgetControllerDispatcherTests()
+    {
+        var userStore = Substitute.For<IUserStore<User>>();
+        _userManager = Substitute.For<UserManager<User>>(
+            userStore, null, null, null, null, null, null, null, null);
+    }
+
     private OnboardingWidgetController BuildSut(Guid userId)
     {
-        var ctrl = new OnboardingWidgetController(_state, _profile, _signups, _shiftMgmt, _consents);
+        var user = new User { Id = userId };
+        _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(user);
+        var ctrl = new OnboardingWidgetController(_userManager, _state, _profile, _signups, _shiftMgmt, _consents);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(

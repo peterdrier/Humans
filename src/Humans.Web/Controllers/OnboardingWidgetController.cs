@@ -6,9 +6,11 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Services.Onboarding;
 using Humans.Domain.Constants;
+using Humans.Domain.Entities;
 using Humans.Web.Models;
 using Humans.Web.Models.OnboardingWidget;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers;
@@ -19,7 +21,7 @@ namespace Humans.Web.Controllers;
 /// layout banner all link here without needing to know which step a user is on.
 /// </summary>
 [Authorize]
-public class OnboardingWidgetController : Controller
+public class OnboardingWidgetController : HumansControllerBase
 {
     private readonly IOnboardingWidgetState _state;
     private readonly IProfileService _profileService;
@@ -28,11 +30,13 @@ public class OnboardingWidgetController : Controller
     private readonly IConsentService _consents;
 
     public OnboardingWidgetController(
+        UserManager<User> userManager,
         IOnboardingWidgetState state,
         IProfileService profileService,
         IShiftSignupService signupService,
         IShiftManagementService shiftMgmt,
         IConsentService consents)
+        : base(userManager)
     {
         _state = state;
         _profileService = profileService;
@@ -43,7 +47,9 @@ public class OnboardingWidgetController : Controller
 
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var userId = GetUserId();
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+        var userId = user.Id;
         var step = await _state.GetCurrentStepAsync(userId, ct);
 
         return step switch
@@ -75,7 +81,18 @@ public class OnboardingWidgetController : Controller
         if (!ModelState.IsValid)
             return View(vm);
 
-        var userId = GetUserId();
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+        var userId = user.Id;
+
+        // Guard: this endpoint is reachable directly. ProfileService.SaveProfileAsync
+        // does a full-field overwrite, and the request below leaves most fields null.
+        // If the user is past the Names step, dispatch them onward instead of wiping
+        // their already-populated profile data (bio, location, emergency contact, …).
+        var currentStep = await _state.GetCurrentStepAsync(userId, ct);
+        if (currentStep != OnboardingWidgetStep.Names)
+            return RedirectToAction(nameof(Index));
+
         var acceptLang = HttpContext.Request.Headers["Accept-Language"].ToString()
             .Split(',', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
         var language = string.IsNullOrEmpty(acceptLang) ? "en" : acceptLang;
@@ -109,10 +126,12 @@ public class OnboardingWidgetController : Controller
         }
         else
         {
+            var (errorResult, user) = await RequireCurrentUserAsync();
+            if (errorResult is not null) return errorResult;
             var urgentShifts = await _shiftMgmt.GetBrowseShiftsAsync(
                 es.Id, includeAdminOnly: false, includeSignups: true,
                 includeHidden: false, priorityOnly: !showAll);
-            var (shiftIds, statuses) = await _signupService.GetActiveSignupStatusesAsync(GetUserId(), es.Id);
+            var (shiftIds, statuses) = await _signupService.GetActiveSignupStatusesAsync(user.Id, es.Id);
             browseModel = OnboardingShiftsBrowseModelBuilder.Build(es, urgentShifts, shiftIds, statuses);
         }
 
@@ -123,11 +142,13 @@ public class OnboardingWidgetController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SignUp(Guid shiftId, CancellationToken ct)
     {
-        var userId = GetUserId();
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+        var userId = user.Id;
         var result = await _signupService.SignUpAsync(userId, shiftId, userId, false);
         if (!result.Success)
         {
-            TempData["Error"] = result.Error ?? "Could not sign up.";
+            SetError(result.Error ?? "Could not sign up.");
             return RedirectToAction(nameof(Shifts));
         }
         return RedirectToAction(nameof(Consents));
@@ -141,11 +162,12 @@ public class OnboardingWidgetController : Controller
         // SignUpRange but routes back through the widget dispatcher so the
         // user lands on Consents (or Home, if all consents are signed)
         // instead of /Shifts/Index.
-        var userId = GetUserId();
-        var result = await _signupService.SignUpRangeAsync(userId, rotaId, startDayOffset, endDayOffset, isPrivileged: false);
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+        var result = await _signupService.SignUpRangeAsync(user.Id, rotaId, startDayOffset, endDayOffset, isPrivileged: false);
         if (!result.Success)
         {
-            TempData["Error"] = result.Error ?? "Could not sign up for date range.";
+            SetError(result.Error ?? "Could not sign up for date range.");
             return RedirectToAction(nameof(Shifts));
         }
         return RedirectToAction(nameof(Consents));
@@ -162,7 +184,9 @@ public class OnboardingWidgetController : Controller
     [HttpGet]
     public async Task<IActionResult> Consents(CancellationToken ct)
     {
-        var userId = GetUserId();
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+        var userId = user.Id;
         var rows = await _consents.GetRequiredConsentRowsForUserAsync(userId, SystemTeamIds.Volunteers, ct);
         var unsigned = rows.Where(r => !r.Signed).ToList();
         if (unsigned.Count == 0)
@@ -195,19 +219,21 @@ public class OnboardingWidgetController : Controller
     {
         if (!explicitConsent)
         {
-            TempData["Error"] = "MustCheck";
+            SetError("MustCheck");
             return RedirectToAction(nameof(Consents));
         }
 
-        var userId = GetUserId();
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+        var userId = user.Id;
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         var userAgent = Request.Headers.UserAgent.ToString();
 
         var result = await _consents.SubmitConsentAsync(
             userId, documentVersionId, explicitConsent: true, ipAddress, userAgent, ct);
 
-        if (!result.Success)
-            TempData["Error"] = result.ErrorKey;
+        if (!result.Success && !string.IsNullOrEmpty(result.ErrorKey))
+            SetError(result.ErrorKey);
 
         // Always go through the dispatcher so the user is routed Home once
         // the final required consent is signed, instead of stranded on the
@@ -215,7 +241,4 @@ public class OnboardingWidgetController : Controller
         // carries the error if the dispatcher routes back to Consents.
         return RedirectToAction(nameof(Index));
     }
-
-    private Guid GetUserId() =>
-        Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 }
