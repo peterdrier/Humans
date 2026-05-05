@@ -1,7 +1,7 @@
 @{
     ViewData["Title"] = Localizer["Welcome_Title"].Value;
-    var shiftsUrl = Url.Action("Index", "Shifts");
-    var loginUrl = Url.Action("Login", "Account", new { returnUrl = shiftsUrl });
+    var widgetUrl = Url.Action("Index", "OnboardingWidget");
+    var loginUrl = Url.Action("Login", "Account", new { returnUrl = widgetUrl });
 }
 
 <div class="row justify-content-center">

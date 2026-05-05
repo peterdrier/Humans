@@ -35,7 +35,8 @@ public class ThingsToDoViewComponent : ViewComponent
     public async Task<IViewComponentResult> InvokeAsync(
         Guid userId,
         bool isVolunteerMember,
-        bool hasShiftSignups)
+        bool hasShiftSignups,
+        int profileCompletionPercent)
     {
         var model = new ThingsToDoViewModel();
 
@@ -44,7 +45,10 @@ public class ThingsToDoViewComponent : ViewComponent
             var profile = await _profileService.GetProfileAsync(userId);
             var membershipSnapshot = await _membershipCalculator.GetMembershipSnapshotAsync(userId);
 
-            var profileComplete = profile is not null && !string.IsNullOrEmpty(profile.FirstName);
+            // Profile is "done" only at 100% — the bar is the nudge, not just
+            // FirstName presence (which trips after the Names step and would
+            // strike the item through with a half-empty profile).
+            var profileComplete = profileCompletionPercent >= 100;
             var consentsComplete = membershipSnapshot.PendingConsentCount == 0
                                    && membershipSnapshot.RequiredConsentCount > 0;
 
@@ -55,11 +59,14 @@ public class ThingsToDoViewComponent : ViewComponent
                 Title = _localizer["Todo_Profile_Title"].Value,
                 Description = profileComplete
                     ? _localizer["Todo_Profile_Done"].Value
-                    : _localizer["Todo_Profile_Pending"].Value,
+                    : string.Format(CultureInfo.CurrentCulture,
+                        _localizer["Dashboard_ProfileCompletionPercent"].Value,
+                        profileCompletionPercent),
                 IsDone = profileComplete,
                 ActionUrl = profileComplete ? null : Url.Action("Edit", "Profile"),
                 ActionText = profileComplete ? null : _localizer["Todo_Profile_Action"].Value,
-                IconClass = "fa-solid fa-user"
+                IconClass = "fa-solid fa-user",
+                PercentComplete = profileComplete ? null : profileCompletionPercent,
             });
 
             // 2. Accept agreements

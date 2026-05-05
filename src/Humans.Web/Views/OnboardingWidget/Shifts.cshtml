@@ -1,0 +1,158 @@
+@model Humans.Web.Models.OnboardingWidget.ShiftsStepViewModel
+@{
+    ViewData["Title"] = "Pick a shift";
+    var browse = Model.BrowseModel;
+    var es = browse.EventSettings;
+    var hasShifts = es is not null && browse.UrgencyRankedRotas.Count > 0;
+    var selected = Model.SelectedPriority;
+    string PillCss(string key) =>
+        selected == key ? "btn btn-sm btn-danger" : "btn btn-sm btn-outline-secondary";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <h1 class="mb-2">Pick a shift</h1>
+
+            @* ─── Proposal copy + pill + Skip (all top-of-page) ─── *@
+            @if (Model.HasAnyCritical)
+            {
+                <div class="alert alert-danger" role="alert">
+                    <strong>IMPORTANT:</strong> The event has only @Model.CriticalFilledPercent% of the &ldquo;critical&rdquo; shifts filled. If these are not filled, the event might be cancelled as it would not be viable or safe to run it.
+                    @if (Model.HasAnyImportant)
+                    {
+                        <div class="mt-2 mb-0">There are also @Model.ImportantOpenCount &ldquo;important&rdquo; shifts open.</div>
+                    }
+                    <div class="mt-2 mb-0">If you&rsquo;re able to fill some of those, or you&rsquo;re able to come pre-event or stay for strike, please prioritize those when picking your shifts.</div>
+                </div>
+            }
+            else if (Model.HasAnyImportant)
+            {
+                <div class="alert alert-warning" role="alert">
+                    There are @Model.ImportantOpenCount &ldquo;important&rdquo; shifts open. If you&rsquo;re able to come pre-event or stay for strike, please prioritize those.
+                </div>
+            }
+
+            <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                <div class="btn-group" role="group" aria-label="Shift priority filter">
+                    <a asp-action="Shifts" asp-route-priority="critical" class="@PillCss("critical")">Critical</a>
+                    <a asp-action="Shifts" asp-route-priority="important" class="@PillCss("important")">Important</a>
+                    <a asp-action="Shifts" asp-route-priority="all" class="@PillCss("all")">All</a>
+                </div>
+                <form asp-action="Skip" method="post" class="d-inline ms-auto">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">
+                        Not right now
+                    </button>
+                </form>
+            </div>
+
+            <vc:temp-data-alerts />
+
+            @if (!hasShifts)
+            {
+                @* Empty-state — mirrors Shifts/BrowsingClosed. Either no active event or nothing matches the priority filter. *@
+                <div class="alert alert-info text-center my-4">
+                    @if (es is null)
+                    {
+                        <p class="mb-0">No active event right now. You can finish onboarding without picking a shift.</p>
+                    }
+                    else if (selected == "critical")
+                    {
+                        <p class="mb-0">No critical shifts open at the moment — try Important or All.</p>
+                    }
+                    else if (selected == "important")
+                    {
+                        <p class="mb-0">No important shifts open at the moment — try All.</p>
+                    }
+                    else
+                    {
+                        <p class="mb-0">No shifts available at the moment.</p>
+                    }
+                </div>
+            }
+            else
+            {
+                @foreach (var rotaGroup in browse.UrgencyRankedRotas)
+                {
+                    var rotaFillPercent = rotaGroup.TotalSlots > 0
+                        ? (int)Math.Round(100.0 * rotaGroup.TotalConfirmed / rotaGroup.TotalSlots)
+                        : 0;
+                    var rotaFillColor = rotaFillPercent >= 80 ? "bg-success"
+                        : rotaFillPercent >= 40 ? "bg-warning"
+                        : "bg-danger";
+
+                    <div class="card mb-3">
+                        <div class="card-header bg-transparent">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <div>
+                                    <span class="fw-semibold">@rotaGroup.Rota.Name</span>
+                                    @if (rotaGroup.Rota.Priority == ShiftPriority.Essential)
+                                    {
+                                        <span class="badge bg-danger ms-2">@Localizer["Shifts_Essential"]</span>
+                                    }
+                                    else if (rotaGroup.Rota.Priority == ShiftPriority.Important)
+                                    {
+                                        <span class="badge bg-warning text-dark ms-2">@Localizer["Shifts_Important"]</span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(rotaGroup.DepartmentName))
+                                    {
+                                        <small class="text-muted ms-2">@rotaGroup.DepartmentName</small>
+                                    }
+                                </div>
+                                <div class="d-flex align-items-center gap-2" style="min-width: 140px;">
+                                    <div class="progress flex-grow-1" style="height: 6px;">
+                                        <div class="progress-bar @rotaFillColor" role="progressbar" style="width: @rotaFillPercent%;"></div>
+                                    </div>
+                                    <small class="text-muted text-nowrap">@rotaGroup.TotalConfirmed/@rotaGroup.TotalSlots</small>
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrEmpty(rotaGroup.Rota.Description))
+                            {
+                                <div class="text-muted small mt-2">@Html.SanitizedMarkdown(rotaGroup.Rota.Description)</div>
+                            }
+                        </div>
+                        <div class="card-body pt-2">
+                            @{
+                                var hasAllDayShifts = rotaGroup.Shifts.Any(s => s.Shift.IsAllDay);
+                                var hasTimedShifts = rotaGroup.Shifts.Any(s => !s.Shift.IsAllDay);
+                                var isBuildStrike = rotaGroup.Rota.Period != RotaPeriod.Event;
+                            }
+                            @* Both partials post back to OnboardingWidget so signup success
+                               flows through the widget dispatcher (→ Consents) instead of
+                               bouncing the user out to /Shifts/Index. *@
+                            @if (isBuildStrike || hasAllDayShifts)
+                            {
+                                @await Html.PartialAsync("_BuildStrikeRotaTable", new BuildStrikeRotaTableViewModel
+                                {
+                                    RotaGroup = rotaGroup,
+                                    EventSettings = es!,
+                                    UserSignupShiftIds = browse.UserSignupShiftIds,
+                                    ShowSignups = browse.ShowSignups,
+                                    SignUpRangeController = "OnboardingWidget",
+                                    SignUpRangeAction = "SignUpRange",
+                                })
+                            }
+                            @if (!isBuildStrike || hasTimedShifts)
+                            {
+                                var timedShifts = isBuildStrike
+                                    ? rotaGroup.Shifts.Where(s => !s.Shift.IsAllDay).ToList()
+                                    : rotaGroup.Shifts.ToList();
+                                @await Html.PartialAsync("_EventRotaTable", new EventRotaTableViewModel
+                                {
+                                    Shifts = timedShifts,
+                                    EventSettings = es!,
+                                    UserSignupShiftIds = browse.UserSignupShiftIds,
+                                    UserSignupStatuses = browse.UserSignupStatuses,
+                                    ShowSignups = browse.ShowSignups,
+                                    SignUpController = "OnboardingWidget",
+                                    SignUpAction = "SignUp",
+                                })
+                            }
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>

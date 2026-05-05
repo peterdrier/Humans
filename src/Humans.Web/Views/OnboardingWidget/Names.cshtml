@@ -1,0 +1,34 @@
+@model Humans.Web.Models.OnboardingWidget.NamesViewModel
+@{
+    ViewData["Title"] = "Welcome — let's start with your name";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <h1 class="mb-3">Welcome — let's start with your name</h1>
+        <p class="text-muted mb-4">Two short steps before you pick a shift.</p>
+
+        <form asp-action="Names" method="post">
+            <div class="mb-3">
+                <label asp-for="FirstName" class="form-label"></label>
+                <input asp-for="FirstName" class="form-control" autocomplete="given-name" />
+                <span asp-validation-for="FirstName" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="LastName" class="form-label"></label>
+                <input asp-for="LastName" class="form-control" autocomplete="family-name" />
+                <span asp-validation-for="LastName" class="text-danger"></span>
+            </div>
+
+            <div class="mb-4">
+                <label asp-for="BurnerName" class="form-label"></label>
+                <input asp-for="BurnerName" class="form-control" />
+                <small class="form-text text-muted">The name everyone will know you by.</small>
+                <span asp-validation-for="BurnerName" class="text-danger"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg">Continue</button>
+        </form>
+    </div>
+</div>

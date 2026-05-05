@@ -123,6 +123,28 @@ public interface IShiftSignupService
     /// orphan-signup reconciliation screen. Admin-only diagnostic.
     /// </summary>
     Task<IReadOnlyList<ShiftSignup>> GetAllForOrphanScanAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// After Volunteers admission lands for a user, promotes their
+    /// current-event Pending signups: Public-rota signups whose shift still
+    /// has capacity flip to Confirmed; RequireApproval-rota signups stay
+    /// Pending awaiting coordinator review. Range blocks promote together
+    /// (every signup sharing the same <c>SignupBlockId</c>). Capacity is
+    /// re-checked at promotion time — Public signups whose shift has filled
+    /// since creation stay Pending. No-op when the user has no current-event
+    /// Pending signups.
+    /// </summary>
+    Task PromoteWidgetPendingSignupsAfterAdmissionAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Filters a coordinator-side list of signups to only those whose users are
+    /// missing required Volunteer consents (i.e., they completed sign-up via the
+    /// onboarding widget but have not finished consents yet, so the signup is
+    /// force-Pending awaiting promotion). Used by the coordinator Pending-list
+    /// "Incomplete onboarding" filter chip.
+    /// </summary>
+    Task<IReadOnlyList<ShiftSignup>> FilterToIncompleteOnboardingAsync(
+        IReadOnlyList<ShiftSignup> signups, CancellationToken ct = default);
 }
 
 /// <summary>

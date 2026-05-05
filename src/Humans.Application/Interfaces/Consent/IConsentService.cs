@@ -4,6 +4,12 @@ namespace Humans.Application.Interfaces.Consent;
 
 public record ConsentSubmitResult(bool Success, string? DocumentName = null, string? ErrorKey = null);
 
+/// <summary>
+/// One row in the onboarding-widget Consents step: a single required document
+/// (current version) for the user, with whether they have already signed it.
+/// </summary>
+public record RequiredConsentRow(Guid DocumentVersionId, string Title, bool Signed);
+
 public interface IConsentService
 {
     Task<(List<(Team Team, List<(DocumentVersion Version, ConsentRecord? Consent)> Documents)> Groups,
@@ -49,4 +55,13 @@ public interface IConsentService
     /// Used by the agent snapshot provider.
     /// </summary>
     Task<IReadOnlyList<string>> GetPendingDocumentNamesAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns one row per active+required document scoped to <paramref name="teamId"/>:
+    /// the current document version, its display title, the review URL, and whether
+    /// the user has already signed it. Pure read — no side effects. Used by the
+    /// onboarding widget Consents step to render the per-document sign list.
+    /// </summary>
+    Task<IReadOnlyList<RequiredConsentRow>> GetRequiredConsentRowsForUserAsync(
+        Guid userId, Guid teamId, CancellationToken ct = default);
 }

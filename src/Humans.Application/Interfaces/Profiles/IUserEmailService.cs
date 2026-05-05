@@ -52,6 +52,27 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Admin-only: marks a pending plain (non-OAuth) UserEmail row verified
+    /// without consuming a verification token. Used when the user can't
+    /// complete the token flow themselves (mailbox unreachable, lost link,
+    /// expired link) but the admin has confirmed ownership through other
+    /// means. Mirrors <see cref="VerifyEmailAsync"/>'s duplicate-email
+    /// branch — if the address is already verified on another account, a
+    /// merge request is created instead of completing verification.
+    /// Writes an audit entry attributing the action to
+    /// <paramref name="actorUserId"/>. Throws
+    /// <see cref="System.ComponentModel.DataAnnotations.ValidationException"/>
+    /// when the row is not found, already verified, or has a non-null
+    /// <see cref="UserEmail.Provider"/> (provider-attached rows are verified
+    /// through the OAuth callback, not this path).
+    /// </summary>
+    Task<VerifyEmailResult> AdminMarkVerifiedAsync(
+        Guid userId,
+        Guid emailId,
+        Guid actorUserId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Sets which email is the notification target.
     /// The email must be verified.
     /// </summary>

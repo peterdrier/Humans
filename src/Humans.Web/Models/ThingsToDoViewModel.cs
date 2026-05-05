@@ -18,4 +18,9 @@ public class TodoItem
     public string? ActionUrl { get; set; }
     public string? ActionText { get; set; }
     public required string IconClass { get; set; }
+
+    // 0–100 progress for items that have a graded completion (currently the
+    // profile item). Null = no bar; rendered as a thin progress bar under the
+    // description by the ThingsToDo template.
+    public int? PercentComplete { get; set; }
 }

@@ -1,0 +1,27 @@
+@model Humans.Web.Models.OnboardingWidget.ConsentsStepViewModel
+@{ ViewData["Title"] = $"{Model.DocumentName} — please review and sign"; }
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <p class="text-muted small mb-2">Document @Model.CurrentIndex of @Model.TotalRequired</p>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h1 class="mb-0">@Model.DocumentName</h1>
+                <span class="badge bg-info">@Localizer["Consent_Version"] @Model.VersionNumber</span>
+            </div>
+        </div>
+
+        <vc:temp-data-alerts />
+
+
+        <partial name="_ConsentReviewBody" model="@(new ConsentReviewFormViewModel
+        {
+            DocumentVersionId = Model.DocumentVersionId,
+            Content = Model.Content,
+            ChangesSummary = Model.ChangesSummary,
+            SubmitAction = "SignConsent",
+            SubmitController = "OnboardingWidget",
+            SubmitButtonText = Localizer["ConsentReview_GiveConsent"].Value,
+        })" />
+    </div>
+</div>

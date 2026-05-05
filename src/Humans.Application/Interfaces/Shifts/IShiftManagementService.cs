@@ -152,12 +152,16 @@ public interface IShiftManagementService
 
     /// <summary>
     /// Gets all active shifts for browse page, with optional filtering. Includes full shifts.
+    /// When <paramref name="priorityOnly"/> is true, results are restricted to shifts whose
+    /// rota is <see cref="ShiftPriority.Important"/> or <see cref="ShiftPriority.Essential"/>,
+    /// or whose rota has any shift where confirmed-signup count is below
+    /// <see cref="Shift.MinVolunteers"/> (i.e. understaffed).
     /// </summary>
     Task<IReadOnlyList<UrgentShift>> GetBrowseShiftsAsync(
         Guid eventSettingsId, Guid? departmentId = null,
         LocalDate? fromDate = null, LocalDate? toDate = null,
         bool includeAdminOnly = false, bool includeSignups = false,
-        bool includeHidden = false);
+        bool includeHidden = false, bool priorityOnly = false);
 
     /// <summary>
     /// Calculates the urgency score for a single shift.

@@ -1183,6 +1183,39 @@ public class ProfileController : HumansControllerBase
         return RedirectToAction(nameof(AdminEmails), new { id });
     }
 
+    [HttpPost("{id:guid}/Admin/Emails/Verify")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AdminVerifyEmail(Guid id, Guid emailId, CancellationToken ct)
+    {
+        var actor = await GetCurrentUserAsync();
+        if (actor is null)
+            return Forbid();
+
+        try
+        {
+            var result = await _userEmailService.AdminMarkVerifiedAsync(id, emailId, actor.Id, ct);
+            _cache.InvalidateNobodiesTeamEmails();
+            if (result.MergeRequestCreated)
+            {
+                SetSuccess(_localizer["EmailGrid_AdminVerifyMergeRequested"].Value);
+            }
+            else
+            {
+                SetSuccess(_localizer["EmailGrid_AdminVerifySuccess"].Value);
+            }
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(
+                "Admin failed to manually verify email {EmailId} for user {UserId}: {Reason}",
+                emailId, id, ex.Message);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(AdminEmails), new { id });
+    }
+
     [HttpPost("{id:guid}/Admin/Emails/Unlink/{emailId:guid}")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AdminUnlink(Guid id, Guid emailId, CancellationToken ct)

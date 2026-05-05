@@ -39,6 +39,7 @@ public sealed class ProfileRepository : IProfileRepository
         return await ctx.Profiles
             .AsNoTracking()
             .Include(p => p.VolunteerHistory)
+            .Include(p => p.Languages)
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
     }
 

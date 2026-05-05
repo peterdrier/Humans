@@ -1347,6 +1347,8 @@
   <data name="Emails_ManageEmails" xml:space="preserve"><value>Indirizzi e-mail</value></data>
   <data name="Emails_ManageEmailsHelp" xml:space="preserve"><value>Aggiungi indirizzi e-mail aggiuntivi, gestisci le notifiche e imposta la visibilità del profilo.</value></data>
   <data name="Emails_ManageLater" xml:space="preserve"><value>Puoi aggiungere e gestire indirizzi e-mail aggiuntivi dal tuo profilo dopo aver completato la configurazione.</value></data>
+  <data name="Emails_MergeWarningBody" xml:space="preserve"><value>L'unione degli account serve a combinare due account che appartengono alla stessa persona (per esempio, una vecchia e una nuova e-mail, entrambe tue). Non è un modo per condividere o trasferire biglietti, prenotazioni o altri elementi tra due persone diverse. Il trasferimento di biglietti tra umani è una funzionalità separata, in arrivo a breve.</value></data>
+  <data name="Emails_MergeWarningTitle" xml:space="preserve"><value>Unire account?</value></data>
   <data name="Emails_ResendCooldown" xml:space="preserve"><value>Puoi richiedere una nuova e-mail di verifica tra {0} minuto/i.</value></data>
   <data name="Emails_SendVerification" xml:space="preserve"><value>Invia e-mail di verifica</value></data>
   <data name="Emails_Title" xml:space="preserve"><value>Indirizzi e-mail</value></data>
@@ -2027,5 +2029,11 @@
 &lt;p&gt;Il tuo indirizzo principale di Nobodies ora è &lt;strong&gt;{2}&lt;/strong&gt;, e il tuo accesso ai gruppi e alle cartelle condivise tramite quell'indirizzo è invariato. Questo messaggio serve solo a darti traccia dell'indirizzo che è stato ripulito.&lt;/p&gt;
 &lt;p&gt;Se pensi che {1} dovesse ancora avere accesso, contatta la persona coordinatrice del tuo team.&lt;/p&gt;
 &lt;p&gt;Il team di Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = removed email, {2} = current Google email</comment></data>
+
+  <!-- ======================== -->
+  <!-- Onboarding Widget Banner -->
+  <!-- ======================== -->
+  <data name="OnboardingBanner_Text" xml:space="preserve"><value>Finish setting up your account to access shifts and team features.</value><comment>TODO: translate</comment></data>
+  <data name="OnboardingBanner_Cta" xml:space="preserve"><value>Continue setup →</value><comment>TODO: translate</comment></data>
 
 </root>

@@ -244,6 +244,23 @@ public sealed class DevPersonaSeeder
     }
 
     /// <summary>
+    /// Mints a brand-new profileless guest user (random id + unique email) and
+    /// returns its id. Each call creates a fresh account so multiple testers
+    /// can run the onboarding widget in parallel without colliding on a single
+    /// shared Guest account.
+    /// </summary>
+    public async Task<Guid> EnsureFreshGuestAsync(string displayNameSuffix)
+    {
+        var newId = Guid.NewGuid();
+        var shortId = newId.ToString("N")[..8];
+        var email = $"dev-guest-{shortId}@localhost";
+        var displayName = $"Dev {displayNameSuffix} {shortId}";
+        var now = _clock.GetCurrentInstant();
+        await SeedProfilelessUserAsync(newId, email, displayName, now);
+        return newId;
+    }
+
+    /// <summary>
     /// Seeds a profileless user — just User + UserEmail, no Profile, no teams, no roles.
     /// Used for testing the Guest dashboard and profileless account flows.
     /// </summary>

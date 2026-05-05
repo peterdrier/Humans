@@ -1,11 +1,13 @@
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
@@ -48,6 +50,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 {
     private readonly IShiftSignupRepository _repo;
     private readonly IShiftManagementService _shiftMgmt;
+    private readonly IMembershipCalculator _membership;
     private readonly IAuditLogService _auditLogService;
     private readonly INotificationService _notificationService;
     private readonly IServiceProvider _serviceProvider;
@@ -61,6 +64,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
     public ShiftSignupService(
         IShiftSignupRepository repo,
         IShiftManagementService shiftMgmt,
+        IMembershipCalculator membership,
         IAuditLogService auditLogService,
         INotificationService notificationService,
         IServiceProvider serviceProvider,
@@ -69,6 +73,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
     {
         _repo = repo;
         _shiftMgmt = shiftMgmt;
+        _membership = membership;
         _auditLogService = auditLogService;
         _notificationService = notificationService;
         _serviceProvider = serviceProvider;
@@ -123,7 +128,14 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         // Determine initial status — Admin, NoInfoAdmin, and Dept Coordinators auto-confirm
         var canApprove = await _shiftMgmt.CanApproveSignupsAsync(userId, shift.Rota.TeamId);
-        var autoConfirm = shift.Rota.Policy == SignupPolicy.Public || canApprove;
+
+        // Force Pending for users missing required Volunteer consents.
+        // The ConsentService promotion hook upgrades to Confirmed once admission fires.
+        // See: docs/superpowers/specs/2026-05-05-low-friction-shift-signup-design.md
+        var hasConsents = await _membership.HasAllRequiredConsentsForTeamAsync(
+            userId, SystemTeamIds.Volunteers, default);
+        var publicAutoConfirm = shift.Rota.Policy == SignupPolicy.Public && hasConsents;
+        var autoConfirm = publicAutoConfirm || canApprove;
 
         var signup = new ShiftSignup
         {
@@ -643,7 +655,14 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         // Create signups
         var blockId = Guid.NewGuid();
-        var autoConfirm = rota.Policy == SignupPolicy.Public ||
+
+        // Force Pending for users missing required Volunteer consents.
+        // The ConsentService promotion hook upgrades to Confirmed once admission fires.
+        // See: docs/superpowers/specs/2026-05-05-low-friction-shift-signup-design.md
+        var hasConsents = await _membership.HasAllRequiredConsentsForTeamAsync(
+            userId, SystemTeamIds.Volunteers, default);
+        var publicAutoConfirm = rota.Policy == SignupPolicy.Public && hasConsents;
+        var autoConfirm = publicAutoConfirm ||
                           await _shiftMgmt.CanApproveSignupsAsync(userId, rota.TeamId);
         ShiftSignup? lastSignup = null;
 
@@ -1103,6 +1122,87 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
     public Task<IReadOnlyList<ShiftSignup>> GetAllForOrphanScanAsync(CancellationToken ct = default) =>
         _repo.GetAllForOrphanScanAsync(ct);
+
+    public async Task PromoteWidgetPendingSignupsAfterAdmissionAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        // Called from ConsentService.SubmitConsentAsync after every consent.
+        // The Confirmed-implies-admitted-Volunteer invariant requires that we
+        // only promote once the user has signed all required Volunteer consents
+        // — admission to Volunteers is gated on the same predicate.
+        if (!await _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, ct))
+            return;
+
+        var activeEvent = await _shiftMgmt.GetActiveAsync();
+        if (activeEvent is null) return;
+
+        var pending = await _repo.GetPendingForUserInEventForMutationAsync(userId, activeEvent.Id, ct);
+        if (pending.Count == 0) return;
+
+        // Range blocks promote together: if any signup in a block is held back
+        // by capacity or non-Public policy, every signup in that block stays
+        // Pending. Null SignupBlockId means a single-shift signup with no block,
+        // and each one must be evaluated independently — group keys are the
+        // block id, or the signup's own id when there is no block.
+        var groups = pending.GroupBy(s => s.SignupBlockId ?? s.Id);
+
+        var promoted = new List<ShiftSignup>();
+        foreach (var group in groups)
+        {
+            var block = group.ToList();
+
+            // Public-only — RequireApproval signups stay Pending awaiting coordinator.
+            if (block.Any(s => s.Shift.Rota.Policy != SignupPolicy.Public))
+                continue;
+
+            // Capacity re-check per shift; exclude this user's own Pending row
+            // from the count so a user-Pending row doesn't block its own promotion.
+            var blockedByCapacity = false;
+            foreach (var signup in block)
+            {
+                var confirmed = signup.Shift.ShiftSignups
+                    .Count(ss => ss.Status == SignupStatus.Confirmed);
+                if (confirmed >= signup.Shift.MaxVolunteers)
+                {
+                    blockedByCapacity = true;
+                    break;
+                }
+            }
+            if (blockedByCapacity)
+                continue;
+
+            foreach (var signup in block)
+            {
+                signup.Confirm(userId, _clock);
+                promoted.Add(signup);
+            }
+        }
+
+        if (promoted.Count == 0) return;
+
+        await _repo.SaveChangesAsync(ct);
+
+        foreach (var signup in promoted)
+        {
+            await _auditLogService.LogAsync(
+                AuditAction.ShiftSignupConfirmed, nameof(ShiftSignup), signup.Id,
+                $"shift '{signup.Shift.Rota.Name}' day {signup.Shift.DayOffset} (auto-promoted on admission)",
+                userId,
+                signup.UserId, nameof(User));
+        }
+    }
+
+    public async Task<IReadOnlyList<ShiftSignup>> FilterToIncompleteOnboardingAsync(
+        IReadOnlyList<ShiftSignup> signups, CancellationToken ct = default)
+    {
+        if (signups.Count == 0) return signups;
+
+        var userIds = signups.Select(s => s.UserId).Distinct().ToList();
+        var withConsents = await _membership.GetUsersWithAllRequiredConsentsForTeamAsync(
+            userIds, SystemTeamIds.Volunteers, ct);
+
+        return signups.Where(s => !withConsents.Contains(s.UserId)).ToList();
+    }
 
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)

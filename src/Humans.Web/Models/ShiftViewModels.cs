@@ -323,6 +323,13 @@ public class ShiftAdminViewModel
     /// All available tags for the tag picker UI.
     /// </summary>
     public List<ShiftTag> AllTags { get; set; } = [];
+
+    /// <summary>
+    /// True when the coordinator has activated the "Incomplete onboarding" filter
+    /// chip on the Pending Approvals list (only show signups whose users are
+    /// missing required Volunteer consents).
+    /// </summary>
+    public bool IncompleteOnboardingFilter { get; set; }
 }
 
 // === Homepage ===
@@ -590,6 +597,12 @@ public class BuildStrikeRotaTableViewModel
     public List<string> FilterPeriods { get; set; } = [];
     public List<Guid> FilterTagIds { get; set; } = [];
     public string? Sort { get; set; }
+
+    /// <summary>Controller the date-range Sign Up form posts to. Default = the
+    /// public Shifts controller; the onboarding widget overrides this so the
+    /// inline rota table posts back into the widget flow.</summary>
+    public string SignUpRangeController { get; set; } = "Shifts";
+    public string SignUpRangeAction { get; set; } = "SignUpRange";
 }
 
 public class EventRotaTableViewModel
@@ -606,6 +619,12 @@ public class EventRotaTableViewModel
     public List<string> FilterPeriods { get; set; } = [];
     public List<Guid> FilterTagIds { get; set; } = [];
     public string? Sort { get; set; }
+
+    /// <summary>Controller the per-shift Sign Up form posts to. Default = the
+    /// public Shifts controller; the onboarding widget overrides this so its
+    /// inline rota table posts back into the widget flow.</summary>
+    public string SignUpController { get; set; } = "Shifts";
+    public string SignUpAction { get; set; } = "SignUp";
 }
 
 // === No-Show History ===

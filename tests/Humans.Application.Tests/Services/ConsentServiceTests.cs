@@ -18,6 +18,7 @@ using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Consent;
 
@@ -35,6 +36,7 @@ public class ConsentServiceTests : IDisposable
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
     private readonly IProfileService _profileService = Substitute.For<IProfileService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IShiftSignupService _shiftSignupService = Substitute.For<IShiftSignupService>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
 
     public ConsentServiceTests()
@@ -48,6 +50,7 @@ public class ConsentServiceTests : IDisposable
 
         var serviceProvider = Substitute.For<IServiceProvider>();
         serviceProvider.GetService(typeof(IMembershipCalculator)).Returns(_membershipCalculator);
+        serviceProvider.GetService(typeof(IShiftSignupService)).Returns(_shiftSignupService);
 
         _legalDocumentSyncService
             .GetVersionByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -204,6 +207,28 @@ public class ConsentServiceTests : IDisposable
 
         await _syncJob.Received().SyncVolunteersMembershipForUserAsync(userId, Arg.Any<CancellationToken>());
         await _syncJob.Received().SyncCoordinatorsMembershipForUserAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SubmitConsentAsync_AfterAdmission_CallsPromoteHookOnceAfterSync()
+    {
+        var userId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
+
+        await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent");
+
+        await _shiftSignupService.Received(1).PromoteWidgetPendingSignupsAfterAdmissionAsync(
+            userId, Arg.Any<CancellationToken>());
+
+        // Sequence: Volunteers sync → promote hook → Coordinators sync.
+        // Record-only calls inside InOrder; discards keep the analyzers happy.
+        Received.InOrder(() =>
+        {
+            _ = _syncJob.SyncVolunteersMembershipForUserAsync(userId, Arg.Any<CancellationToken>());
+            _ = _shiftSignupService.PromoteWidgetPendingSignupsAfterAdmissionAsync(userId, Arg.Any<CancellationToken>());
+            _ = _syncJob.SyncCoordinatorsMembershipForUserAsync(userId, Arg.Any<CancellationToken>());
+        });
     }
 
     [HumansFact]
