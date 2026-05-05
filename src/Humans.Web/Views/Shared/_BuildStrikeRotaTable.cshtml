@@ -54,8 +54,8 @@
                 Model.UserActiveSignups.Select(u => new {
                     date = u.Date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
                     rota = u.RotaName,
-                    absStart = u.AbsoluteStart.ToString(),
-                    absEnd = u.AbsoluteEnd.ToString(),
+                    absStart = u.AbsoluteStart.ToString("uuuu'-'MM'-'dd'T'HH':'mm':'ss'Z'", System.Globalization.CultureInfo.InvariantCulture),
+                    absEnd = u.AbsoluteEnd.ToString("uuuu'-'MM'-'dd'T'HH':'mm':'ss'Z'", System.Globalization.CultureInfo.InvariantCulture),
                     displayStart = u.DisplayStart,
                     displayEnd = u.DisplayEnd
                 })))
@@ -64,9 +64,13 @@
             @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
                 Model.RotaWindowsByDayOffset.ToDictionary(
                     kv => kv.Key.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                    kv => new { absStart = kv.Value.AbsoluteStart.ToString(), absEnd = kv.Value.AbsoluteEnd.ToString() })))
+                    kv => new {
+                        absStart = kv.Value.AbsoluteStart.ToString("uuuu'-'MM'-'dd'T'HH':'mm':'ss'Z'", System.Globalization.CultureInfo.InvariantCulture),
+                        absEnd = kv.Value.AbsoluteEnd.ToString("uuuu'-'MM'-'dd'T'HH':'mm':'ss'Z'", System.Globalization.CultureInfo.InvariantCulture)
+                    })))
         </script>
-        <div class="modal fade" id="confirmSignup-@rotaGroup.Rota.Id" tabindex="-1" aria-hidden="true"
+        <div class="modal fade" id="confirmSignup-@rotaGroup.Rota.Id" tabindex="-1"
+             aria-hidden="true" aria-labelledby="confirmSignupTitle-@rotaGroup.Rota.Id"
              data-range-tpl-multi="@Localizer["Shifts_ConfirmSignup_Range"]"
              data-range-tpl-single="@Localizer["Shifts_ConfirmSignup_Range_Single"]"
              data-arrive-tpl="@Localizer["Shifts_ConfirmSignup_ArriveBy"]"
@@ -74,7 +78,7 @@
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">
+                        <h5 class="modal-title" id="confirmSignupTitle-@rotaGroup.Rota.Id">
                             @string.Format(Localizer["Shifts_ConfirmSignup_Title"].Value,
                                 rotaGroup.Rota.Period == RotaPeriod.Build ? Localizer["Shifts_SetUp"].Value.ToLowerInvariant() : Localizer["Shifts_Strike"].Value.ToLowerInvariant())
                         </h5>
@@ -136,7 +140,7 @@
             var win = rotaWindows[offset];
             if (!win) return [];
             // overlap rule: existing.absStart < win.absEnd && existing.absEnd > win.absStart
-            // string comparison works on ISO-8601 UTC strings.
+            // String comparison works on fixed-length ISO-8601 UTC strings (always whole seconds + 'Z').
             return userSignups.filter(function (s) {
                 return s.absStart < win.absEnd && s.absEnd > win.absStart;
             });
