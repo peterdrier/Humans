@@ -282,7 +282,7 @@ public class ProfileControllerEmailGridTests
         _userManager.FindByIdAsync(targetUserId.ToString())
             .Returns(new User { Id = targetUserId, DisplayName = "Target User", PreferredLanguage = "en" });
         _userEmailService.AddEmailAsync(targetUserId, newEmail, Arg.Any<CancellationToken>())
-            .Returns(new Humans.Application.DTOs.AddEmailResult("token", IsConflict: false));
+            .Returns(new Humans.Application.DTOs.AddEmailResult(Guid.NewGuid(), "token", IsConflict: false));
 
         var result = await _controller.AdminAddEmail(targetUserId, newEmail, CancellationToken.None);
 
@@ -300,7 +300,7 @@ public class ProfileControllerEmailGridTests
         _userManager.FindByIdAsync(targetUserId.ToString())
             .Returns(new User { Id = targetUserId, DisplayName = "Target User", PreferredLanguage = "en" });
         _userEmailService.AddEmailAsync(targetUserId, newEmail, Arg.Any<CancellationToken>())
-            .Returns(new Humans.Application.DTOs.AddEmailResult("token", IsConflict: false));
+            .Returns(new Humans.Application.DTOs.AddEmailResult(Guid.NewGuid(), "token", IsConflict: false));
 
         var result = await _controller.AdminAddEmail(targetUserId, newEmail, CancellationToken.None);
 
@@ -338,7 +338,7 @@ public class ProfileControllerEmailGridTests
         _userManager.FindByIdAsync(targetUserId.ToString())
             .Returns(new User { Id = targetUserId, DisplayName = "Target User", PreferredLanguage = "es" });
         _userEmailService.AddEmailAsync(targetUserId, newEmail, Arg.Any<CancellationToken>())
-            .Returns(new Humans.Application.DTOs.AddEmailResult(token, IsConflict: false));
+            .Returns(new Humans.Application.DTOs.AddEmailResult(Guid.NewGuid(), token, IsConflict: false));
 
         var result = await _controller.AdminAddEmail(targetUserId, newEmail, CancellationToken.None);
 

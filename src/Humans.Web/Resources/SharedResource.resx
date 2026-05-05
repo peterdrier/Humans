@@ -1955,6 +1955,15 @@
   <data name="EmailGrid_SetGoogleRejected" xml:space="preserve"><value>Could not set Google service email — the row is unknown or not verified.</value></data>
   <data name="EmailGrid_UnlinkRejected" xml:space="preserve"><value>Could not unlink — the row is unknown or has no sign-in provider.</value></data>
   <data name="EmailGrid_GoogleServiceUpdated" xml:space="preserve"><value>Google service email updated. Sync will be retried with the new email.</value></data>
+  <data name="EmailGrid_GoogleFlagCleared" xml:space="preserve"><value>Google identity flag cleared from that row.</value></data>
+  <data name="EmailGrid_SetPrimary" xml:space="preserve"><value>Set primary</value></data>
+  <data name="EmailGrid_SetGoogle" xml:space="preserve"><value>Set Google</value></data>
+  <data name="EmailGrid_ClearGoogleRejected" xml:space="preserve"><value>Could not clear Google flag — the row is unknown or not currently flagged.</value></data>
+  <data name="EmailGrid_PrimaryFlagCleared" xml:space="preserve"><value>Primary flag cleared from that row.</value></data>
+  <data name="EmailGrid_ClearPrimaryRejected" xml:space="preserve"><value>Could not clear primary flag — the row is unknown or not currently flagged.</value></data>
+  <data name="EmailGrid_Clear" xml:space="preserve"><value>Clear</value></data>
+  <data name="EmailGrid_ConfirmClearGoogle" xml:space="preserve"><value>Clear the Google identity flag from this email row?</value></data>
+  <data name="EmailGrid_ConfirmClearPrimary" xml:space="preserve"><value>Clear the primary flag from this email row?</value></data>
   <data name="EmailGrid_UnlinkSuccess" xml:space="preserve"><value>Sign-in provider unlinked.</value></data>
   <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve"><value>This email is linked to a sign-in provider. Use Unlink instead.</value></data>
   <data name="EmailGrid_AdminAddSentVerification" xml:space="preserve"><value>Verification email sent to the user.</value></data>

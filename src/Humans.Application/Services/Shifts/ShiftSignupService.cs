@@ -251,6 +251,12 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         if (!isOwner && !isPrivileged)
             return SignupResult.Fail("Not authorized to bail this signup.");
 
+        if (signup.Status == SignupStatus.Bailed)
+        {
+            _logger.LogWarning("Bail attempted on already-bailed signup {SignupId} by actor {ActorUserId}", signupId, actorUserId);
+            return SignupResult.Fail("This signup has already been bailed.");
+        }
+
         // EE freeze check for build shifts
         if (signup.Shift.IsEarlyEntry && es.EarlyEntryClose.HasValue && now >= es.EarlyEntryClose.Value && !isPrivileged)
             return SignupResult.Fail("Cannot bail from build shifts after early entry close.");

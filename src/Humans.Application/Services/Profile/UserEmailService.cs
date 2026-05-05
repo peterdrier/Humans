@@ -156,27 +156,26 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             TokenOptions.DefaultEmailProvider,
             $"{EmailVerificationTokenPurpose}:{userEmail.Id}");
 
-        return new AddEmailResult(token, isConflict);
+        return new AddEmailResult(userEmail.Id, token, isConflict);
     }
 
     public async Task<VerifyEmailResult> VerifyEmailAsync(
-        Guid userId, string token, CancellationToken cancellationToken = default)
+        Guid userId, Guid emailId, string token, CancellationToken cancellationToken = default)
     {
         var user = await _userService.GetByIdAsync(userId, cancellationToken)
             ?? throw new InvalidOperationException("User not found.");
 
-        var userEmails = await _repository.GetByUserIdForMutationAsync(userId, cancellationToken);
-        // TODO(nobodies-collective#611): VerifyEmailAsync uses FirstOrDefault on
-        // (!IsVerified && Provider == null), which is ambiguous when multiple pending
-        // plain rows exist for the same user. The token IS bound to a specific row Id
-        // (purpose = "{EmailVerificationTokenPurpose}:{pendingEmail.Id}"), so a row
-        // mismatch causes token validation to fail against the wrong row, surfacing as
-        // a confusing user error even when the token is valid for ANOTHER pending row.
-        // Surfaced during PR 4 review (peterdrier/Humans#376) — AdminAddEmail amplifies
-        // the multi-pending-row scenario. Fix: load the row by the Id embedded in the
-        // token's purpose suffix, not via FirstOrDefault.
-        var pendingEmail = userEmails.FirstOrDefault(e => !e.IsVerified && e.Provider == null)
-            ?? throw new ValidationException("No email pending verification.");
+        // Issue nobodies-collective/Humans#611: load the specific pending row
+        // the verification link was issued for, not "any non-verified plain
+        // row". The token is bound to this row's Id via the purpose suffix
+        // ("{EmailVerificationTokenPurpose}:{emailId}"), so picking a
+        // different row would cause token validation to fail against the
+        // wrong row even when the token is valid.
+        var pendingEmail = await _repository.GetByIdAndUserIdAsync(emailId, userId, cancellationToken);
+        if (pendingEmail is null || pendingEmail.IsVerified || pendingEmail.Provider is not null)
+        {
+            throw new ValidationException("No email pending verification.");
+        }
 
         var isValid = await _userManager.VerifyUserTokenAsync(
             user,
@@ -687,6 +686,100 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             relatedEntityId: row.Id, relatedEntityType: nameof(UserEmail));
 
         return true;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> ClearGoogleAsync(
+        Guid userId, Guid userEmailId, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var row = await _repository.GetByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
+        if (row is null || !row.IsGoogle) return false;
+
+        row.IsGoogle = false;
+        row.UpdatedAt = _clock.GetCurrentInstant();
+        await _repository.UpdateAsync(row, cancellationToken);
+        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+
+        await _auditLogService.LogAsync(
+            AuditAction.UserEmailGoogleCleared,
+            nameof(User), userId,
+            $"Cleared Google identity flag from {row.Email}",
+            actorUserId,
+            relatedEntityId: row.Id, relatedEntityType: nameof(UserEmail));
+
+        return true;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> ClearPrimaryAsync(
+        Guid userId, Guid userEmailId, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var row = await _repository.GetByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
+        if (row is null || !row.IsPrimary) return false;
+
+        row.IsPrimary = false;
+        row.UpdatedAt = _clock.GetCurrentInstant();
+        await _repository.UpdateAsync(row, cancellationToken);
+        // Don't auto-promote a successor — the admin is using this path
+        // specifically to recover from a duplicate-IsPrimary state and may
+        // want to pick the new primary deliberately.
+        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+
+        await _auditLogService.LogAsync(
+            AuditAction.UserEmailPrimaryCleared,
+            nameof(User), userId,
+            $"Cleared primary flag from {row.Email}",
+            actorUserId,
+            relatedEntityId: row.Id, relatedEntityType: nameof(UserEmail));
+
+        return true;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<UserEmailFlagViolation>> GetEmailFlagViolationsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var allEmails = await _repository.GetAllAsync(cancellationToken);
+
+        var perUser = allEmails
+            .GroupBy(e => e.UserId)
+            .Select(g =>
+            {
+                var verified = g.Where(e => e.IsVerified).ToList();
+                var isGoogleCount = g.Count(e => e.IsGoogle);
+                var verifiedPrimaryCount = verified.Count(e => e.IsPrimary);
+                var hasMultipleGoogle = isGoogleCount > 1;
+                var hasPrimaryProblem = verified.Count > 0 && verifiedPrimaryCount != 1;
+                return (
+                    UserId: g.Key,
+                    IsGoogleCount: isGoogleCount,
+                    VerifiedCount: verified.Count,
+                    VerifiedPrimaryCount: verifiedPrimaryCount,
+                    HasMultipleGoogle: hasMultipleGoogle,
+                    HasPrimaryProblem: hasPrimaryProblem);
+            })
+            .Where(x => x.HasMultipleGoogle || x.HasPrimaryProblem)
+            .ToList();
+
+        if (perUser.Count == 0)
+            return [];
+
+        var users = await _userService.GetByIdsAsync(
+            perUser.Select(x => x.UserId).ToList(),
+            cancellationToken);
+
+        return perUser
+            .Select(x => new UserEmailFlagViolation(
+                x.UserId,
+                users.TryGetValue(x.UserId, out var user) ? user.DisplayName : null,
+                x.IsGoogleCount,
+                x.VerifiedCount,
+                x.VerifiedPrimaryCount,
+                x.HasMultipleGoogle,
+                x.HasPrimaryProblem))
+            .ToList();
     }
 
     /// <inheritdoc />

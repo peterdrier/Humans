@@ -108,6 +108,7 @@ service has no data for this user are omitted.
 | Section | Contributor | Shape |
 |---------|-------------|-------|
 | `Account` | `UserService` | Single object with user identity, display name, preferred language, Google email, deletion request/scheduled instants, created/last-login instants. |
+| `EventParticipations` | `UserService` | Array of `{ Year, Status, Source, DeclaredAt }` covering every event-year the user has a participation row for (Ticketed / Attended / NoShow / NotAttending). |
 | `UserEmails` | `ProfileService` | Array of `{ Email, IsVerified, IsOAuth, IsNotificationTarget, Visibility }`. |
 | `Profile` | `ProfileService` | Single object with burner name, legal name, birthday (month/day only), city/country, lat/lng, bio, pronouns, contribution interests, board notes, membership tier, approval/suspension state, consent check state, emergency contact, created/updated instants. |
 | `ContactFields` | `ProfileService` | Array of `{ FieldType, Label, Value, Visibility }`. |

@@ -285,6 +285,14 @@ public interface IUserRepository
     Task<IReadOnlyList<EventParticipation>> GetAllParticipationsForYearAsync(
         int year, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns all participation records for a given user (across all years),
+    /// ordered by year ascending. Read-only (AsNoTracking). Used by the GDPR
+    /// export contributor under <c>GdprExportSections.EventParticipations</c>.
+    /// </summary>
+    Task<IReadOnlyList<EventParticipation>> GetEventParticipationsByUserIdAsync(
+        Guid userId, CancellationToken ct = default);
+
     // ==========================================================================
     // Writes — EventParticipation
     // ==========================================================================
