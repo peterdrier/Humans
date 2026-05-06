@@ -41,7 +41,6 @@
                     {
                         @foreach (var role in Model.RolesPanel.Rows)
                         {
-                            var assignedMemberIds = role.FilledSlots.Select(s => s.CampMemberId).ToHashSet();
                             <div class="mb-3">
                                 <h6 class="mb-1">
                                     @role.Name

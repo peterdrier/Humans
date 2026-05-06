@@ -399,15 +399,6 @@ public class CampController : HumansCampControllerBase
         }
 
         var viewModel = MapToEditViewModel(editData);
-        await PopulateEditMembersAsync(viewModel);
-
-        // Build per-camp roles panel against the camp's open season (if any).
-        // canManage is implicitly true here: ResolveCampManagementAsync already
-        // returned Forbid for callers without CampOperationRequirement.Manage.
-        var openSeason = camp.Seasons.FirstOrDefault(s => s.Status == CampSeasonStatus.Active);
-        viewModel.RolesPanel = openSeason is null
-            ? null
-            : await BuildRolesPanelAsync(camp.Slug, openSeason.Id, canManage: true, ct);
 
         return View(viewModel);
     }
