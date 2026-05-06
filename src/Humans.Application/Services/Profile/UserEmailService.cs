@@ -867,6 +867,10 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     }
 
     /// <inheritdoc />
+    public Task<bool> DeleteByIdAsync(Guid emailId, CancellationToken ct = default) =>
+        _repository.RemoveByIdAsync(emailId, ct);
+
+    /// <inheritdoc />
     public async Task<bool> LinkAsync(
         Guid userId, string provider, string providerKey, string email, Guid actorUserId,
         CancellationToken cancellationToken = default)

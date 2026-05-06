@@ -9,6 +9,7 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Models.EmailProblems;
 
@@ -213,5 +214,28 @@ public class ProfileAdminController : HumansControllerBase
             return RedirectToAction(nameof(EmailProblemsCompare),
                 new { userId1 = user1Id, userId2 = user2Id });
         }
+    }
+
+    [HttpPost("EmailProblems/DeleteOrphanEmail")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteOrphanEmail(Guid emailId, CancellationToken ct)
+    {
+        var (error, currentUser) = await RequireCurrentUserAsync();
+        if (error is not null) return error;
+
+        var deleted = await _userEmails.DeleteByIdAsync(emailId, ct);
+        if (deleted)
+        {
+            await _audit.LogAsync(
+                AuditAction.OrphanUserEmailDeleted, nameof(UserEmail), emailId,
+                $"Orphan UserEmail row {emailId} deleted by EmailProblems action",
+                currentUser.Id);
+            SetSuccess("Orphan email row deleted.");
+        }
+        else
+        {
+            SetInfo("Already cleaned up — no row to delete.");
+        }
+        return RedirectToAction(nameof(EmailProblems));
     }
 }
