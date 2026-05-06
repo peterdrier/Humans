@@ -213,22 +213,29 @@ public sealed class DevelopmentDashboardSeeder
         }
 
         // Shifts: 8–12 per rota with varied min/max/duration and day offsets by period.
+        // All-day rotas (Build/Strike) get distinct offsets — duplicate same-date all-day
+        // shifts surface as duplicate dropdown options in the range-signup form and
+        // confuse the confirmation modal's overlap math.
         var shifts = new List<(Shift Shift, double ConfirmedRate)>();
         foreach (var (rota, rate) in allRotas)
         {
-            var count = _rng.Next(8, 13);
-            for (var i = 0; i < count; i++)
+            var requested = _rng.Next(8, 13);
+            var isAllDay = rota.Period != RotaPeriod.Event;
+            var (offsetMin, offsetMaxExclusive) = rota.Period switch
             {
-                var dayOffset = rota.Period switch
-                {
-                    RotaPeriod.Build => _rng.Next(-14, 0),
-                    RotaPeriod.Event => _rng.Next(0, 7),
-                    RotaPeriod.Strike => _rng.Next(7, 10),
-                    _ => 0,
-                };
+                RotaPeriod.Build => (-14, 0),
+                RotaPeriod.Event => (0, 7),
+                RotaPeriod.Strike => (7, 10),
+                _ => (0, 1),
+            };
+            var allowedOffsets = Enumerable.Range(offsetMin, offsetMaxExclusive - offsetMin).ToList();
+            var dayOffsets = isAllDay
+                ? allowedOffsets.OrderBy(_ => _rng.Next()).Take(Math.Min(requested, allowedOffsets.Count)).ToList()
+                : Enumerable.Range(0, requested).Select(_ => allowedOffsets[_rng.Next(allowedOffsets.Count)]).ToList();
+            foreach (var dayOffset in dayOffsets)
+            {
                 var min = _rng.Next(2, 6);
                 var max = min + _rng.Next(1, 4);
-                var isAllDay = rota.Period != RotaPeriod.Event;
                 var shift = new Shift
                 {
                     Id = Guid.NewGuid(),

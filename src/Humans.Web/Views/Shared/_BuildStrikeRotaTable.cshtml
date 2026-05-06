@@ -22,7 +22,11 @@
             <select name="startDayOffset" class="form-select form-select-sm">
                 @foreach (var s in availableShifts)
                 {
-                    <option value="@s.Shift.DayOffset">@es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayShiftDate()</option>
+                    <option value="@s.Shift.DayOffset"
+                            data-date="@es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayShiftDate()"
+                            data-arrive-by="@es.GateOpeningDate.PlusDays(s.Shift.DayOffset - 1).ToDisplayShiftDate()">
+                        @es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayShiftDate()
+                    </option>
                 }
             </select>
         </div>
@@ -31,14 +35,197 @@
             <select name="endDayOffset" class="form-select form-select-sm">
                 @foreach (var s in availableShifts)
                 {
-                    <option value="@s.Shift.DayOffset" selected="@(s == availableShifts.Last() ? "selected" : null)">@es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayShiftDate()</option>
+                    <option value="@s.Shift.DayOffset"
+                            data-date="@es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayShiftDate()"
+                            selected="@(s == availableShifts.Last() ? "selected" : null)">
+                        @es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayShiftDate()
+                    </option>
                 }
             </select>
         </div>
         <div class="col-auto">
-            <button type="submit" class="btn btn-sm btn-success">@string.Format(Localizer["Shifts_SignUpForDates"].Value, rotaGroup.Rota.Period == RotaPeriod.Build ? Localizer["Shifts_SetUp"].Value.ToLowerInvariant() : Localizer["Shifts_Strike"].Value.ToLowerInvariant())</button>
+            <button type="button" class="btn btn-sm btn-success js-open-confirm-signup"
+                    data-bs-toggle="modal" data-bs-target="#confirmSignup-@rotaGroup.Rota.Id">
+                @string.Format(Localizer["Shifts_SignUpForDates"].Value, rotaGroup.Rota.Period == RotaPeriod.Build ? Localizer["Shifts_SetUp"].Value.ToLowerInvariant() : Localizer["Shifts_Strike"].Value.ToLowerInvariant())
+            </button>
+        </div>
+        <script type="application/json" class="js-user-signups-data">
+            @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                Model.UserActiveSignups.Select(u => new {
+                    date = u.Date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+                    rota = u.RotaName,
+                    absStart = u.AbsoluteStart.ToString("uuuu'-'MM'-'dd'T'HH':'mm':'ss'Z'", System.Globalization.CultureInfo.InvariantCulture),
+                    absEnd = u.AbsoluteEnd.ToString("uuuu'-'MM'-'dd'T'HH':'mm':'ss'Z'", System.Globalization.CultureInfo.InvariantCulture),
+                    displayStart = u.DisplayStart,
+                    displayEnd = u.DisplayEnd
+                })))
+        </script>
+        <script type="application/json" class="js-rota-windows-data">
+            @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                Model.RotaWindowsByDayOffset.ToDictionary(
+                    kv => kv.Key.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    kv => new {
+                        absStart = kv.Value.AbsoluteStart.ToString("uuuu'-'MM'-'dd'T'HH':'mm':'ss'Z'", System.Globalization.CultureInfo.InvariantCulture),
+                        absEnd = kv.Value.AbsoluteEnd.ToString("uuuu'-'MM'-'dd'T'HH':'mm':'ss'Z'", System.Globalization.CultureInfo.InvariantCulture),
+                        displayDate = es.GateOpeningDate.PlusDays(kv.Key).ToDisplayShiftDate()
+                    })))
+        </script>
+        <div class="modal fade" id="confirmSignup-@rotaGroup.Rota.Id" tabindex="-1"
+             aria-hidden="true" aria-labelledby="confirmSignupTitle-@rotaGroup.Rota.Id"
+             data-range-tpl-multi="@Localizer["Shifts_ConfirmSignup_Range"]"
+             data-range-tpl-single="@Localizer["Shifts_ConfirmSignup_Range_Single"]"
+             data-arrive-tpl="@Localizer["Shifts_ConfirmSignup_ArriveBy"]"
+             data-conflict-row-tpl="@Localizer["Shifts_ConfirmSignup_Conflicts_Row"]">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="confirmSignupTitle-@rotaGroup.Rota.Id">
+                            @string.Format(Localizer["Shifts_ConfirmSignup_Title"].Value,
+                                rotaGroup.Rota.Period == RotaPeriod.Build ? Localizer["Shifts_SetUp"].Value.ToLowerInvariant() : Localizer["Shifts_Strike"].Value.ToLowerInvariant())
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="js-phase-line">
+                            @string.Format(Localizer["Shifts_ConfirmSignup_Phase"].Value,
+                                rotaGroup.Rota.Name,
+                                rotaGroup.Rota.Period == RotaPeriod.Build ? Localizer["Shifts_SetUp"].Value.ToLowerInvariant() : Localizer["Shifts_Strike"].Value.ToLowerInvariant())
+                        </p>
+                        <p class="js-range-line"></p>
+
+                        <div class="alert alert-info d-none js-conflicts-partial">
+                            <strong>@Localizer["Shifts_ConfirmSignup_Conflicts_Heading"]</strong>
+                            <ul class="mb-2 js-conflicts-list"></ul>
+                            <small class="text-muted">@Localizer["Shifts_ConfirmSignup_Conflicts_PartialNote"]</small>
+                        </div>
+
+                        <div class="alert alert-warning d-none js-conflicts-all">
+                            @Localizer["Shifts_ConfirmSignup_Conflicts_AllBlocked"]
+                        </div>
+
+                        <div class="alert alert-warning js-arrival-callout">
+                            <i class="fa-solid fa-circle-info me-1"></i>
+                            <span class="js-arrive-by-line"></span>
+                        </div>
+
+                        <p class="text-muted small mb-0">@Localizer["Shifts_ConfirmSignup_Prompt"]</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Common_Cancel"]</button>
+                        <button type="submit" class="btn btn-success js-confirm-submit">@Localizer["Shifts_ConfirmSignup_Confirm"]</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </form>
+    <script>
+    (function () {
+        var modalEl = document.getElementById('confirmSignup-@rotaGroup.Rota.Id');
+        if (!modalEl) return;
+        var form = modalEl.closest('form');
+        if (!form) return;
+
+        var userSignups = JSON.parse(form.querySelector('.js-user-signups-data').textContent || '[]');
+        var rotaWindows = JSON.parse(form.querySelector('.js-rota-windows-data').textContent || '{}');
+        var startSel = form.querySelector('select[name="startDayOffset"]');
+        var endSel = form.querySelector('select[name="endDayOffset"]');
+
+        function fmt(tpl, args) {
+            // Replace ALL occurrences of {0}, {1}, ... — guards future translations
+            // that might repeat a placeholder. JS String.replace replaces first only.
+            return Object.keys(args).reduce(function (s, k) {
+                return s.split('{' + k + '}').join(String(args[k]));
+            }, tpl);
+        }
+
+        function findConflictsForOffset(offset) {
+            var win = rotaWindows[offset];
+            if (!win) return [];
+            // overlap rule: existing.absStart < win.absEnd && existing.absEnd > win.absStart
+            // String comparison works on fixed-length ISO-8601 UTC strings (always whole seconds + 'Z').
+            return userSignups.filter(function (s) {
+                return s.absStart < win.absEnd && s.absEnd > win.absStart;
+            });
+        }
+
+        modalEl.addEventListener('show.bs.modal', function () {
+            var startOpt = startSel.options[startSel.selectedIndex];
+            var endOpt = endSel.options[endSel.selectedIndex];
+            var startOffset = parseInt(startSel.value, 10);
+            var endOffset = parseInt(endSel.value, 10);
+
+            var lo = Math.min(startOffset, endOffset), hi = Math.max(startOffset, endOffset);
+            var days = hi - lo + 1;
+            var realRangeOffsets = Object.keys(rotaWindows).map(Number).filter(function(o) { return o >= lo && o <= hi; });
+
+            var startDate = startOpt.getAttribute('data-date');
+            var endDate = endOpt.getAttribute('data-date');
+            var loOpt = startSel.querySelector('option[value="' + lo + '"]') || endSel.querySelector('option[value="' + lo + '"]');
+            var arriveBy = loOpt ? loOpt.getAttribute('data-arrive-by') : '';
+
+            var rangeTpl = modalEl.getAttribute('data-range-tpl-multi') || '{0} – {1} ({2} days)';
+            var singleTpl = modalEl.getAttribute('data-range-tpl-single') || '{0} (1 day)';
+            var rangeLine = days === 1
+                ? fmt(singleTpl, { 0: startDate })
+                : fmt(rangeTpl, { 0: startDate, 1: endDate, 2: days });
+            modalEl.querySelector('.js-range-line').textContent = rangeLine;
+
+            var arriveTpl = modalEl.getAttribute('data-arrive-tpl') || "You'll be expected on site by {0}.";
+            modalEl.querySelector('.js-arrive-by-line').textContent = fmt(arriveTpl, { 0: arriveBy });
+
+            var allConflicts = [];
+            for (var off = lo; off <= hi; off++) {
+                var conflicts = findConflictsForOffset(off);
+                if (conflicts.length > 0) {
+                    var opt = startSel.querySelector('option[value="' + off + '"]')
+                            || endSel.querySelector('option[value="' + off + '"]');
+                    var dateLabel = opt
+                        ? opt.getAttribute('data-date')
+                        : (rotaWindows[off] && rotaWindows[off].displayDate) || String(off);
+                    conflicts.forEach(function (c) {
+                        allConflicts.push({ date: dateLabel, conflict: c });
+                    });
+                }
+            }
+
+            var partialAlert = modalEl.querySelector('.js-conflicts-partial');
+            var allBlockedAlert = modalEl.querySelector('.js-conflicts-all');
+            var list = modalEl.querySelector('.js-conflicts-list');
+            var submitBtn = modalEl.querySelector('.js-confirm-submit');
+
+            partialAlert.classList.add('d-none');
+            allBlockedAlert.classList.add('d-none');
+            list.innerHTML = '';
+            submitBtn.removeAttribute('disabled');
+
+            if (allConflicts.length > 0) {
+                var conflictedOffsets = new Set();
+                for (var off2 = lo; off2 <= hi; off2++) {
+                    if (findConflictsForOffset(off2).length > 0) conflictedOffsets.add(off2);
+                }
+                var rowTpl = modalEl.getAttribute('data-conflict-row-tpl')
+                    || '{0} — already signed up for {1} ({2}–{3})';
+
+                if (realRangeOffsets.length > 0 && conflictedOffsets.size === realRangeOffsets.length) {
+                    allBlockedAlert.classList.remove('d-none');
+                    submitBtn.setAttribute('disabled', 'disabled');
+                } else {
+                    allConflicts.forEach(function (c) {
+                        var li = document.createElement('li');
+                        li.textContent = fmt(rowTpl, {
+                            0: c.date,
+                            1: c.conflict.rota,
+                            2: c.conflict.displayStart,
+                            3: c.conflict.displayEnd
+                        });
+                        list.appendChild(li);
+                    });
+                    partialAlert.classList.remove('d-none');
+                }
+            }
+        });
+    })();
+    </script>
 }
 else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s.ConfirmedCount < s.Shift.MinVolunteers))
 {

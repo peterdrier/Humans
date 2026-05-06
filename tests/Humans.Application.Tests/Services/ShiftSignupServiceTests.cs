@@ -426,6 +426,297 @@ public class ShiftSignupServiceTests : IDisposable
         result.Error.Should().Contain("Already signed up");
     }
 
+    [HumansFact]
+    public async Task SignUpRange_SkipConflicts_FiltersAlreadySignedUpDays()
+    {
+        // Arrange: rota with 3 all-day shifts; user already signed up to day -2 in same rota.
+        var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
+        rota.Period = RotaPeriod.Build;
+        for (var day = -3; day <= -1; day++)
+            SeedAllDayShift(rota, day);
+        var userId = Guid.NewGuid();
+        await _dbContext.SaveChangesAsync();
+
+        var dayMinus2Shift = await _dbContext.Shifts
+            .FirstAsync(s => s.RotaId == rota.Id && s.DayOffset == -2);
+        var existingSignup = SeedSignup(userId, dayMinus2Shift.Id, SignupStatus.Confirmed);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var result = await _service.SignUpRangeAsync(userId, rota.Id, -3, -1, skipConflicts: true);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        result.Warning.Should().NotBeNull();
+        result.Warning.Should().Contain("Already signed up");
+
+        var signups = await _dbContext.ShiftSignups
+            .Where(s => s.UserId == userId)
+            .ToListAsync();
+        signups.Should().HaveCount(3); // 1 pre-existing + 2 new
+        var newOffsets = signups
+            .Where(s => s.Id != existingSignup.Id)
+            .Join(_dbContext.Shifts, s => s.ShiftId, sh => sh.Id, (s, sh) => sh.DayOffset)
+            .OrderBy(o => o)
+            .ToList();
+        newOffsets.Should().Equal(-3, -1);
+    }
+
+    [HumansFact]
+    public async Task SignUpRange_SkipConflicts_PreservesBothSkipAndCapacityWarnings()
+    {
+        // Arrange: rota with 4 all-day shifts (days -4 to -1).
+        // User is already signed up to day -3 (skipConflicts case).
+        // Day -2 is at capacity from other users (capacity-warning case).
+        var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
+        rota.Period = RotaPeriod.Build;
+        for (var day = -4; day <= -1; day++)
+            SeedAllDayShift(rota, day);
+        var userId = Guid.NewGuid();
+        await _dbContext.SaveChangesAsync();
+
+        var dayMinus3Shift = await _dbContext.Shifts
+            .FirstAsync(s => s.RotaId == rota.Id && s.DayOffset == -3);
+        SeedSignup(userId, dayMinus3Shift.Id, SignupStatus.Confirmed);
+
+        var dayMinus2Shift = await _dbContext.Shifts
+            .FirstAsync(s => s.RotaId == rota.Id && s.DayOffset == -2);
+        // SeedAllDayShift sets MaxVolunteers = 5; fill day -2 with 5 distinct other users.
+        for (var i = 0; i < dayMinus2Shift.MaxVolunteers; i++)
+            SeedSignup(Guid.NewGuid(), dayMinus2Shift.Id, SignupStatus.Confirmed);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var result = await _service.SignUpRangeAsync(userId, rota.Id, -4, -1, skipConflicts: true);
+
+        // Assert: both warnings preserved, exactly 2 new signups (offsets -4 and -1).
+        result.Success.Should().BeTrue();
+        result.Warning.Should().NotBeNull();
+        result.Warning.Should().Contain("Already signed up");
+        result.Warning.Should().Contain("at capacity");
+
+        var newSignups = await _dbContext.ShiftSignups
+            .Where(s => s.UserId == userId && s.SignupBlockId != null)
+            .Join(_dbContext.Shifts, s => s.ShiftId, sh => sh.Id, (s, sh) => sh.DayOffset)
+            .OrderBy(o => o)
+            .ToListAsync();
+        newSignups.Should().Equal(-4, -1);
+    }
+
+    [HumansFact]
+    public async Task SignUpRange_SkipConflicts_FiltersTimeOverlappingDays()
+    {
+        // Arrange: Build rota + a separate Event rota with a 12:00-14:00 shift on day -2.
+        // All-day Build/Strike window is 08:00-18:00 (Shift.AllDayWindowStart/End).
+        var (es, buildRota, _) = SeedShiftScenario(SignupPolicy.Public);
+        buildRota.Period = RotaPeriod.Build;
+        for (var day = -3; day <= -1; day++)
+            SeedAllDayShift(buildRota, day);
+
+        var otherRota = new Rota
+        {
+            Id = Guid.NewGuid(),
+            Name = "Kitchen",
+            EventSettingsId = es.Id,
+            Period = RotaPeriod.Event,
+            Policy = SignupPolicy.Public,
+            TeamId = buildRota.TeamId,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        otherRota.EventSettings = es; // nav property for in-memory provider
+        _dbContext.Rotas.Add(otherRota);
+
+        var conflictingShift = new Shift
+        {
+            Id = Guid.NewGuid(),
+            RotaId = otherRota.Id,
+            DayOffset = -2,
+            StartTime = new LocalTime(12, 0),
+            Duration = Duration.FromHours(2),
+            MinVolunteers = 1,
+            MaxVolunteers = 5,
+            IsAllDay = false,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        conflictingShift.Rota = otherRota; // nav property for in-memory provider
+        _dbContext.Shifts.Add(conflictingShift);
+
+        var userId = Guid.NewGuid();
+        SeedSignup(userId, conflictingShift.Id, SignupStatus.Confirmed);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var result = await _service.SignUpRangeAsync(userId, buildRota.Id, -3, -1, skipConflicts: true);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        result.Warning.Should().NotBeNull();
+        result.Warning.Should().Contain("Time conflict");
+
+        var newOffsets = await _dbContext.ShiftSignups
+            .Where(s => s.UserId == userId && s.Shift!.RotaId == buildRota.Id)
+            .Join(_dbContext.Shifts, s => s.ShiftId, sh => sh.Id, (s, sh) => sh.DayOffset)
+            .OrderBy(o => o)
+            .ToListAsync();
+        newOffsets.Should().Equal(-3, -1);
+    }
+
+    [HumansFact]
+    public async Task SignUpRange_SkipConflicts_AllDaysConflict_ReturnsFailWithSummary()
+    {
+        // Arrange: rota with 3 all-day shifts, user already signed up to ALL three.
+        var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
+        rota.Period = RotaPeriod.Build;
+        var userId = Guid.NewGuid();
+        var shifts = new List<Shift>();
+        for (var day = -3; day <= -1; day++)
+            shifts.Add(SeedAllDayShift(rota, day));
+        await _dbContext.SaveChangesAsync();
+
+        foreach (var shift in shifts)
+            SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var result = await _service.SignUpRangeAsync(userId, rota.Id, -3, -1, skipConflicts: true);
+
+        // Assert
+        result.Success.Should().BeFalse();
+        result.Error.Should().NotBeNull();
+        result.Error.Should().Contain("Nothing to add");
+
+        var totalSignups = await _dbContext.ShiftSignups.CountAsync(s => s.UserId == userId);
+        totalSignups.Should().Be(3); // only the 3 pre-existing
+    }
+
+    [HumansFact]
+    public async Task SignUpRange_SkipConflicts_MixedKinds_AddsFreeDaysWithBothWarnings()
+    {
+        // Arrange: range -4..-1.
+        //   day -4: free
+        //   day -3: already signed up to this same Build rota
+        //   day -2: cross-rota 12:00-14:00 conflict
+        //   day -1: free
+        var (es, buildRota, _) = SeedShiftScenario(SignupPolicy.Public);
+        buildRota.Period = RotaPeriod.Build;
+        for (var day = -4; day <= -1; day++)
+            SeedAllDayShift(buildRota, day);
+
+        var otherRota = new Rota
+        {
+            Id = Guid.NewGuid(),
+            Name = "Kitchen",
+            EventSettingsId = es.Id,
+            Period = RotaPeriod.Event,
+            Policy = SignupPolicy.Public,
+            TeamId = buildRota.TeamId,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        otherRota.EventSettings = es;
+        _dbContext.Rotas.Add(otherRota);
+
+        var crossRotaShift = new Shift
+        {
+            Id = Guid.NewGuid(),
+            RotaId = otherRota.Id,
+            DayOffset = -2,
+            StartTime = new LocalTime(12, 0),
+            Duration = Duration.FromHours(2),
+            MinVolunteers = 1,
+            MaxVolunteers = 5,
+            IsAllDay = false,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        crossRotaShift.Rota = otherRota;
+        _dbContext.Shifts.Add(crossRotaShift);
+
+        var userId = Guid.NewGuid();
+        await _dbContext.SaveChangesAsync();
+
+        var dayMinus3Shift = await _dbContext.Shifts
+            .FirstAsync(s => s.RotaId == buildRota.Id && s.DayOffset == -3);
+        SeedSignup(userId, dayMinus3Shift.Id, SignupStatus.Confirmed);  // already-signed-up case
+        SeedSignup(userId, crossRotaShift.Id, SignupStatus.Confirmed);  // time-conflict case
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var result = await _service.SignUpRangeAsync(userId, buildRota.Id, -4, -1, skipConflicts: true);
+
+        // Assert: -4 and -1 added; both warning kinds present
+        result.Success.Should().BeTrue();
+        result.Warning.Should().NotBeNull();
+        result.Warning.Should().Contain("Already signed up");
+        result.Warning.Should().Contain("Time conflict");
+
+        var newOffsets = await _dbContext.ShiftSignups
+            .Where(s => s.UserId == userId && s.Shift!.RotaId == buildRota.Id && s.ShiftId != dayMinus3Shift.Id)
+            .Join(_dbContext.Shifts, s => s.ShiftId, sh => sh.Id, (s, sh) => sh.DayOffset)
+            .OrderBy(o => o)
+            .ToListAsync();
+        newOffsets.Should().Equal(-4, -1);
+    }
+
+    [HumansFact]
+    public async Task SignUpRange_StrictMode_TimeOverlap_PreservesHardFail()
+    {
+        // Arrange: cross-rota time conflict on day -2 (same shape as the skipConflicts time-overlap test).
+        var (es, buildRota, _) = SeedShiftScenario(SignupPolicy.Public);
+        buildRota.Period = RotaPeriod.Build;
+        for (var day = -3; day <= -1; day++)
+            SeedAllDayShift(buildRota, day);
+
+        var otherRota = new Rota
+        {
+            Id = Guid.NewGuid(),
+            Name = "Kitchen",
+            EventSettingsId = es.Id,
+            Period = RotaPeriod.Event,
+            Policy = SignupPolicy.Public,
+            TeamId = buildRota.TeamId,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        otherRota.EventSettings = es;
+        _dbContext.Rotas.Add(otherRota);
+
+        var conflictingShift = new Shift
+        {
+            Id = Guid.NewGuid(),
+            RotaId = otherRota.Id,
+            DayOffset = -2,
+            StartTime = new LocalTime(12, 0),
+            Duration = Duration.FromHours(2),
+            MinVolunteers = 1,
+            MaxVolunteers = 5,
+            IsAllDay = false,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        conflictingShift.Rota = otherRota;
+        _dbContext.Shifts.Add(conflictingShift);
+
+        var userId = Guid.NewGuid();
+        SeedSignup(userId, conflictingShift.Id, SignupStatus.Confirmed);
+        await _dbContext.SaveChangesAsync();
+
+        // Act — no skipConflicts argument; defaults to false.
+        var result = await _service.SignUpRangeAsync(userId, buildRota.Id, -3, -1);
+
+        // Assert: hard-fails with the legacy error message; nothing new written.
+        result.Success.Should().BeFalse();
+        result.Error.Should().NotBeNull();
+        result.Error.Should().Contain("Time conflict");
+
+        var newSignupCount = await _dbContext.ShiftSignups
+            .Where(s => s.UserId == userId && s.Shift!.RotaId == buildRota.Id)
+            .CountAsync();
+        newSignupCount.Should().Be(0);
+    }
+
     // ============================================================
     // BailRange
     // ============================================================

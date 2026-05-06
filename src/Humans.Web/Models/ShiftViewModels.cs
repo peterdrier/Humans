@@ -219,6 +219,12 @@ public class ShiftBrowseViewModel
     /// Count of the current user's active signups (confirmed + pending), shown as badge on "My Shifts" tab.
     /// </summary>
     public int MySignupCount { get; set; }
+
+    /// <summary>
+    /// All active signups across all events for the current user, projected for the
+    /// build/strike conflict-confirmation modal in the dashboard view.
+    /// </summary>
+    public IReadOnlyList<UserSignupConflictItem> UserActiveSignups { get; set; } = [];
 }
 
 public class DepartmentOption
@@ -584,6 +590,16 @@ public class RotaHeaderViewModel
     public bool ShowPreferenceStar { get; set; }
 }
 
+public record UserSignupConflictItem(
+    LocalDate Date,
+    string RotaName,
+    Instant AbsoluteStart,
+    Instant AbsoluteEnd,
+    string DisplayStart,
+    string DisplayEnd);
+
+public record ShiftWindow(Instant AbsoluteStart, Instant AbsoluteEnd);
+
 public class BuildStrikeRotaTableViewModel
 {
     public RotaShiftGroup RotaGroup { get; set; } = null!;
@@ -597,6 +613,8 @@ public class BuildStrikeRotaTableViewModel
     public List<string> FilterPeriods { get; set; } = [];
     public List<Guid> FilterTagIds { get; set; } = [];
     public string? Sort { get; set; }
+    public IReadOnlyList<UserSignupConflictItem> UserActiveSignups { get; set; } = [];
+    public IReadOnlyDictionary<int, ShiftWindow> RotaWindowsByDayOffset { get; set; } = new Dictionary<int, ShiftWindow>();
 
     /// <summary>Controller the date-range Sign Up form posts to. Default = the
     /// public Shifts controller; the onboarding widget overrides this so the

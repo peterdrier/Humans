@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Shifts;
@@ -66,6 +67,8 @@ public class ShiftsController : HumansControllerBase
 
         var userSignups = await _signupService.GetByUserAsync(user.Id, es.Id);
         var hasSignups = userSignups.Count > 0;
+
+        var userActiveSignupsForUi = await LoadUserActiveSignupsForUiAsync(user.Id);
 
         if (!es.IsShiftBrowsingOpen && !isPrivileged && !hasSignups)
             return View("BrowsingClosed");
@@ -219,7 +222,8 @@ public class ShiftsController : HumansControllerBase
             AllTags = allTags.ToList(),
             FilterTagIds = activeTagFilter,
             UserPreferredTagIds = userPreferredTags.Select(t => t.Id).ToHashSet(),
-            MySignupCount = userSignups.Count(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
+            MySignupCount = userSignups.Count(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending),
+            UserActiveSignups = userActiveSignupsForUi
         };
 
         return View(model);
@@ -262,7 +266,7 @@ public class ShiftsController : HumansControllerBase
         }
 
         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-        var result = await _signupService.SignUpRangeAsync(user.Id, rotaId, startDayOffset, endDayOffset, isPrivileged: privileged);
+        var result = await _signupService.SignUpRangeAsync(user.Id, rotaId, startDayOffset, endDayOffset, isPrivileged: privileged, skipConflicts: true);
 
         if (!result.Success)
         {
@@ -606,6 +610,30 @@ public class ShiftsController : HumansControllerBase
 
         SetSuccess("Event settings saved.");
         return RedirectToAction(nameof(Settings));
+    }
+
+    private async Task<IReadOnlyList<UserSignupConflictItem>> LoadUserActiveSignupsForUiAsync(Guid userId)
+    {
+        var allActiveSignups = await _signupService.GetActiveSignupsForUserAsync(userId);
+        return allActiveSignups
+            .Where(s => s.Shift?.Rota?.EventSettings is not null)
+            .Select(s =>
+            {
+                var sEs = s.Shift!.Rota!.EventSettings!;
+                var absStart = s.Shift.GetAbsoluteStart(sEs);
+                var absEnd = s.Shift.GetAbsoluteEnd(sEs);
+                var tz = DateTimeZoneProviders.Tzdb[sEs.TimeZoneId];
+                var localStart = absStart.InZone(tz).LocalDateTime;
+                var localEnd = absEnd.InZone(tz).LocalDateTime;
+                return new UserSignupConflictItem(
+                    Date: localStart.Date,
+                    RotaName: s.Shift.Rota.Name,
+                    AbsoluteStart: absStart,
+                    AbsoluteEnd: absEnd,
+                    DisplayStart: localStart.TimeOfDay.ToString("HH:mm", CultureInfo.InvariantCulture),
+                    DisplayEnd: localEnd.TimeOfDay.ToString("HH:mm", CultureInfo.InvariantCulture));
+            })
+            .ToList();
     }
 
     private static (LocalDate From, LocalDate To) GetPeriodDateRange(EventSettings es, ShiftPeriod period)

@@ -173,11 +173,12 @@ Per-user email addresses (login, verified, notifications). Cross-domain nav `Use
 | UserId | Guid | FK → User (Cascade) — **FK only**, no nav |
 | Email | string (256) | Required |
 | IsVerified | bool | Required |
-| IsOAuth | bool | True for the OAuth login email; cannot be deleted |
-| IsNotificationTarget | bool | Exactly one verified email per user is the system-notification target |
+| Provider | string? (50) | OAuth provider that owns this row when the user signed in via OIDC ("Google" today; future Apple/Microsoft). Null when no OAuth identity is linked. Single-row-per-(Provider, ProviderKey) is service-enforced |
+| ProviderKey | string? (256) | OAuth subject/key (OIDC `sub`) for the linked identity. Stable across Google Workspace email renames; OAuth callback updates `Email` when claims diverge. Same-user merge in `UserEmailRepository.RewriteEmailAddressAsync` propagates `Provider`/`ProviderKey` to the surviving row to preserve OAuth linkage |
+| IsGoogle | bool | User-controlled flag for the canonical Google Workspace identity (used by Google sync and Workspace admin). At-most-one-true-per-UserId is service-enforced. **Never auto-derived** — set only via explicit user action in the Profile email grid |
+| IsPrimary | bool | Exactly one verified email per user is the system-notification target. Service-enforced via `EnsurePrimaryInvariantAsync`; column persists under legacy name `IsNotificationTarget` per `no-column-drops-for-decoupling.md` |
 | Visibility | ContactFieldVisibility? | Stored as string (max 50); null hides the email from profile view |
 | VerificationSentAt | Instant? | Last time a verification email was sent (rate limiting) |
-| DisplayOrder | int | Sort order in the UI |
 | CreatedAt / UpdatedAt | Instant | Maintained by `UserEmailService` |
 
 **Indexes:** `UserId`; **unique partial index** on `Email` filtered to `IsVerified = true` (Postgres `"IsVerified" = true`) — prevents email squatting across accounts.

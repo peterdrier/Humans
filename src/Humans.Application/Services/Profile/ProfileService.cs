@@ -295,7 +295,14 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             // populated (BurnerName/FirstName/LastName), giving the
             // ProfileService_UpdateProfileAsync_TransitionsStubToActive
             // behavior contract a single home.
-            profile = new Domain.Entities.Profile
+            //
+            // Issue #651: use the idempotent insert. If a concurrent caller
+            // wins the race against profiles.UserId's unique index, re-fetch
+            // the winner's row by UserId and apply this caller's field
+            // updates to that entity — otherwise UpdateAsync would attach a
+            // detached entity with a non-matching Id and silently update
+            // zero rows.
+            var newProfile = new Domain.Entities.Profile
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
@@ -303,7 +310,24 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
                 UpdatedAt = now,
                 State = ProfileState.Stub,
             };
-            await _profileRepository.AddAsync(profile, ct);
+            var inserted = await _profileRepository.AddIfNotExistsByUserIdAsync(newProfile, ct);
+            if (inserted)
+            {
+                profile = newProfile;
+            }
+            else
+            {
+                profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+                if (profile is null)
+                {
+                    // Should not happen — AddIfNotExistsByUserIdAsync returned
+                    // false because a row exists. Re-fetch one more time in
+                    // case of a transient repeatable-read; if still missing,
+                    // surface as an exception rather than silently dropping.
+                    throw new InvalidOperationException(
+                        $"AddIfNotExistsByUserIdAsync reported a duplicate for user {userId} but no profile row could be re-read.");
+                }
+            }
         }
 
         profile.BurnerName = request.BurnerName;
