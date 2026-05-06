@@ -275,6 +275,12 @@ public interface IUserService
     /// UserEmail rows. Used by EmailProblems admin scan.
     /// </summary>
     Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes every <c>AspNetUserLogins</c> row for the given user. Returns the
+    /// number of rows deleted. Used by EmailProblems ghost-login cleanup.
+    /// </summary>
+    Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default);
 }
 
 /// <summary>

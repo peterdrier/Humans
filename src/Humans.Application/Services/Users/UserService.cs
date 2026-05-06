@@ -391,4 +391,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
 
     public Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default) =>
         _repo.GetUsersWithLoginsButNoEmailsAsync(ct);
+
+    public Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default) =>
+        _repo.DeleteAllExternalLoginsForUserAsync(userId, ct);
 }

@@ -189,6 +189,12 @@ public interface IUserRepository
     Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Deletes every <c>AspNetUserLogins</c> row for the given user. Returns the
+    /// number of rows deleted. Used by EmailProblems ghost-login cleanup.
+    /// </summary>
+    Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// Migrates every <c>AspNetUserLogins</c> row from
     /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
     /// <c>IdentityUserLogin&lt;Guid&gt;</c>'s primary key is

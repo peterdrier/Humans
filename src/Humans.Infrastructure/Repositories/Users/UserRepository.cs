@@ -401,6 +401,14 @@ public sealed class UserRepository : IUserRepository
         return true;
     }
 
+    public async Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Set<IdentityUserLogin<Guid>>()
+            .Where(l => l.UserId == userId)
+            .ExecuteDeleteAsync(ct);
+    }
+
     public async Task<int> ReassignLoginsToUserAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
     {

@@ -238,4 +238,27 @@ public class ProfileAdminController : HumansControllerBase
         }
         return RedirectToAction(nameof(EmailProblems));
     }
+
+    [HttpPost("EmailProblems/DeleteGhostLogins")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteGhostLogins(Guid userId, CancellationToken ct)
+    {
+        var (error, currentUser) = await RequireCurrentUserAsync();
+        if (error is not null) return error;
+
+        var count = await _users.DeleteAllExternalLoginsForUserAsync(userId, ct);
+        if (count > 0)
+        {
+            await _audit.LogAsync(
+                AuditAction.GhostExternalLoginsDeleted, nameof(User), userId,
+                $"Deleted {count} ghost AspNetUserLogins row(s) for userId {userId}",
+                currentUser.Id);
+            SetSuccess($"Deleted {count} ghost login row(s).");
+        }
+        else
+        {
+            SetInfo("Already cleaned up — no rows to delete.");
+        }
+        return RedirectToAction(nameof(EmailProblems));
+    }
 }
