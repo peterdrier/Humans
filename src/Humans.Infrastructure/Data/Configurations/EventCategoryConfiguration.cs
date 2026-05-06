@@ -23,7 +23,9 @@ public class EventCategoryConfiguration : IEntityTypeConfiguration<EventCategory
             new { Id = Guid.Parse("00000000-0000-0000-0026-000000000003"), Name = "Food and drink", Slug = "food-and-drink", IsSensitive = false, IsActive = true, DisplayOrder = 3 },
             new { Id = Guid.Parse("00000000-0000-0000-0026-000000000004"), Name = "Chillout", Slug = "chillout", IsSensitive = false, IsActive = true, DisplayOrder = 4 },
             new { Id = Guid.Parse("00000000-0000-0000-0026-000000000005"), Name = "Spiritual / Healing", Slug = "spiritual-healing", IsSensitive = true, IsActive = true, DisplayOrder = 5 },
-            new { Id = Guid.Parse("00000000-0000-0000-0026-000000000006"), Name = "Other", Slug = "other", IsSensitive = false, IsActive = true, DisplayOrder = 6 }
+            new { Id = Guid.Parse("00000000-0000-0000-0026-000000000007"), Name = "Adults", Slug = "adults", IsSensitive = true, IsActive = true, DisplayOrder = 6 },
+            new { Id = Guid.Parse("00000000-0000-0000-0026-000000000008"), Name = "Kids", Slug = "kids", IsSensitive = false, IsActive = true, DisplayOrder = 7 },
+            new { Id = Guid.Parse("00000000-0000-0000-0026-000000000006"), Name = "Other", Slug = "other", IsSensitive = false, IsActive = true, DisplayOrder = 8 }
         );
     }
 }

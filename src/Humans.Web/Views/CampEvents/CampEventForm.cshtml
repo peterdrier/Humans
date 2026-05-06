@@ -98,6 +98,30 @@
                 </div>
             </div>
 
+            <div class="mb-3 form-check">
+                <input asp-for="IsRecurring" class="form-check-input" id="IsRecurring" />
+                <label asp-for="IsRecurring" class="form-check-label">This event repeats on multiple days</label>
+            </div>
+
+            <div class="mb-3" id="recurrence-days-section" style="display: none;">
+                <label class="form-label">Recurrence days</label>
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach (var day in Model.EventDays)
+                    {
+                        var checkedDays = Model.RecurrenceDays?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                            .Select(s => int.TryParse(s, out var n) ? n : -1).ToHashSet() ?? [];
+                        var isChecked = checkedDays.Contains(day.DayOffset);
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input recurrence-day-check" type="checkbox"
+                                   id="recDay@(day.DayOffset)" value="@day.DayOffset" @(isChecked ? "checked" : "") />
+                            <label class="form-check-label" for="recDay@(day.DayOffset)">@day.Label</label>
+                        </div>
+                    }
+                </div>
+                <input type="hidden" asp-for="RecurrenceDays" id="RecurrenceDaysHidden" />
+                <span asp-validation-for="RecurrenceDays" class="text-danger"></span>
+            </div>
+
             <div class="mb-3">
                 <label asp-for="LocationNote" class="form-label"></label>
                 <input asp-for="LocationNote" class="form-control" maxlength="120" placeholder="e.g. near the fire pit" />
@@ -111,18 +135,6 @@
                 <span asp-validation-for="PriorityRank" class="text-danger"></span>
             </div>
 
-            <div class="mb-3 form-check">
-                <input asp-for="IsRecurring" class="form-check-input" id="IsRecurring" />
-                <label asp-for="IsRecurring" class="form-check-label">This event repeats on multiple days</label>
-            </div>
-
-            <div class="mb-3" id="recurrence-days-section" style="display: none;">
-                <label asp-for="RecurrenceDays" class="form-label">Recurrence day offsets</label>
-                <input asp-for="RecurrenceDays" class="form-control" placeholder="e.g. 0,2,4" />
-                <div class="form-text">Comma-separated day offsets from event start (0 = first day).</div>
-                <span asp-validation-for="RecurrenceDays" class="text-danger"></span>
-            </div>
-
             <button type="submit" class="btn btn-primary">
                 <i class="fa-solid fa-paper-plane me-1"></i>@(isEdit ? "Resubmit" : "Submit for Review")
             </button>
@@ -134,15 +146,39 @@
 @section Scripts {
     <script>
         (function () {
-            var checkbox = document.getElementById('IsRecurring');
-            var section = document.getElementById('recurrence-days-section');
-            if (!checkbox || !section) return;
+            var recurringCheck = document.getElementById('IsRecurring');
+            var recSection = document.getElementById('recurrence-days-section');
+            var recHidden = document.getElementById('RecurrenceDaysHidden');
+            var dayCheckboxes = document.querySelectorAll('.recurrence-day-check');
 
-            function toggle() {
-                section.style.display = checkbox.checked ? 'block' : 'none';
+            function syncRecurrenceDays() {
+                var selected = [];
+                dayCheckboxes.forEach(function (cb) {
+                    if (cb.checked) selected.push(cb.value);
+                });
+                if (recHidden) recHidden.value = selected.join(',');
             }
-            toggle();
-            checkbox.addEventListener('change', toggle);
+
+            function toggleRecurrence() {
+                if (!recurringCheck || !recSection) return;
+                recSection.style.display = recurringCheck.checked ? 'block' : 'none';
+            }
+
+            if (recurringCheck) {
+                toggleRecurrence();
+                recurringCheck.addEventListener('change', toggleRecurrence);
+            }
+
+            dayCheckboxes.forEach(function (cb) {
+                cb.addEventListener('change', syncRecurrenceDays);
+            });
+
+            var form = document.querySelector('form[method="post"]');
+            if (form) {
+                form.addEventListener('submit', syncRecurrenceDays);
+            }
+
+            syncRecurrenceDays();
         })();
     </script>
 }

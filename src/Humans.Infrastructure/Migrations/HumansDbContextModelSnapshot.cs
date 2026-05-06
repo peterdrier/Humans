@@ -1831,8 +1831,26 @@ namespace Humans.Infrastructure.Migrations
                         },
                         new
                         {
-                            Id = new Guid("00000000-0000-0000-0026-000000000006"),
+                            Id = new Guid("00000000-0000-0000-0026-000000000007"),
                             DisplayOrder = 6,
+                            IsActive = true,
+                            IsSensitive = true,
+                            Name = "Adults",
+                            Slug = "adults"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0026-000000000008"),
+                            DisplayOrder = 7,
+                            IsActive = true,
+                            IsSensitive = false,
+                            Name = "Kids",
+                            Slug = "kids"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0026-000000000006"),
+                            DisplayOrder = 8,
                             IsActive = true,
                             IsSensitive = false,
                             Name = "Other",
