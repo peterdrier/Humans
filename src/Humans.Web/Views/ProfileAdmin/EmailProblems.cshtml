@@ -1,0 +1,108 @@
+@using Humans.Web.Models.EmailProblems
+@using Humans.Application.DTOs.EmailProblems
+@model EmailProblemsListViewModel
+@{
+    ViewData["Title"] = "Email Problems";
+}
+
+<h1>Email Problems</h1>
+<p class="text-muted">
+    Scanned at @Model.ScannedAt.ToDateTimeUtc().ToString("HH:mm:ss") · @Model.TotalProblems total problems
+</p>
+
+<h2>Cross-user conflicts</h2>
+@if (Model.CrossUserConflicts.Count == 0)
+{
+    <p class="text-success">No problems found</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr><th>Email</th><th>User A</th><th>User B</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var row in Model.CrossUserConflicts)
+            {
+                <tr>
+                    <td><code>@row.Email</code></td>
+                    <td>@row.User1DisplayName</td>
+                    <td>@row.User2DisplayName</td>
+                    <td>
+                        <a class="btn btn-sm btn-primary"
+                           asp-action="EmailProblemsCompare"
+                           asp-route-userId1="@row.User1Id"
+                           asp-route-userId2="@row.User2Id">Compare</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<h2>Single-user issues</h2>
+@if (Model.SingleUserIssues.Count == 0)
+{
+    <p class="text-success">No problems found</p>
+}
+else
+{
+    <table class="table">
+        <thead><tr><th>User</th><th>Problems</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var row in Model.SingleUserIssues)
+            {
+                <tr>
+                    <td>@row.DisplayName</td>
+                    <td>@string.Join(", ", row.ProblemSummaries)</td>
+                    <td>
+                        <a class="btn btn-sm btn-secondary"
+                           href="/Profile/@row.UserId/Admin/Emails">Open emails ▸</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<h2>System-level issues</h2>
+@if (Model.SystemLevelIssues.Count == 0)
+{
+    <p class="text-success">No problems found</p>
+}
+else
+{
+    <table class="table">
+        <thead><tr><th>Issue</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var row in Model.SystemLevelIssues)
+            {
+                <tr>
+                    <td>@row.Detail</td>
+                    <td>
+                        @if (row.Kind == EmailProblemKind.OrphanUserEmail)
+                        {
+                            <form method="post" asp-action="DeleteOrphanEmail"
+                                  onsubmit="return confirm('Delete orphan UserEmail row? This is irreversible.');"
+                                  class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="emailId" value="@row.UserEmailId" />
+                                <button type="submit" class="btn btn-sm btn-danger">Delete row ✕</button>
+                            </form>
+                        }
+                        else if (row.Kind == EmailProblemKind.GhostExternalLogins)
+                        {
+                            <form method="post" asp-action="DeleteGhostLogins"
+                                  onsubmit="return confirm('Delete ghost AspNetUserLogins rows? This is irreversible.');"
+                                  class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="userId" value="@row.UserId" />
+                                <button type="submit" class="btn btn-sm btn-danger">Delete logins ✕</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
