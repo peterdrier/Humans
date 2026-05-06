@@ -644,14 +644,17 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         // after. The team_members row was re-FK'd to the target, and the
         // source's UserEmails were also re-FK'd, so a lookup against the
         // source returns "no verified email" even though the target has one.
-        // Follow MergedToUserId so the provisioning runs against the target.
-        if (user is { MergedToUserId: { } targetUserId })
+        // Follow the MergedToUserId chain to the terminal target — A→B→C
+        // possible if B was later merged into C.
+        var hops = 0;
+        while (user is { MergedToUserId: { } targetUserId } && hops < 16)
         {
             _logger.LogInformation(
                 "Following merge-fold redirect for AddUserToTeamResources: source {SourceUserId} → target {TargetUserId} (team {TeamId})",
                 userId, targetUserId, teamId);
             userId = targetUserId;
             user = await _userService.GetByIdAsync(userId, cancellationToken);
+            hops++;
         }
 
         var userEmails = user is null
@@ -774,14 +777,17 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         }
 
         // Merge-fold redirect (issue peterdrier/Humans#646): if the caller
-        // passed a folded source id, follow MergedToUserId so restoration
-        // runs against the target — team_members were re-FK'd at merge time.
-        if (user.MergedToUserId is { } targetUserId)
+        // passed a folded source id, follow the MergedToUserId chain to the
+        // terminal target — A→B→C possible if B was later merged into C.
+        var hops = 0;
+        while (user is { MergedToUserId: { } targetUserId } && hops < 16)
         {
             _logger.LogInformation(
                 "Following merge-fold redirect for RestoreUserToAllTeams: source {SourceUserId} → target {TargetUserId}",
                 userId, targetUserId);
             userId = targetUserId;
+            user = await _userService.GetByIdAsync(userId, cancellationToken);
+            hops++;
         }
 
         var memberships = await _teamService.GetUserTeamsAsync(userId, cancellationToken);
