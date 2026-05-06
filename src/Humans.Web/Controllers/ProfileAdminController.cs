@@ -179,4 +179,39 @@ public class ProfileAdminController : HumansControllerBase
 
         return View(vm);
     }
+
+    [HttpPost("EmailProblems/Merge")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Merge(
+        Guid user1Id, Guid user2Id, Guid targetUserId, string? notes,
+        CancellationToken ct)
+    {
+        var (error, currentUser) = await RequireCurrentUserAsync();
+        if (error is not null) return error;
+
+        Guid sourceUserId;
+        if (targetUserId == user1Id) sourceUserId = user2Id;
+        else if (targetUserId == user2Id) sourceUserId = user1Id;
+        else
+        {
+            SetError("Target must be one of the two compared accounts.");
+            return RedirectToAction(nameof(EmailProblemsCompare),
+                new { userId1 = user1Id, userId2 = user2Id });
+        }
+
+        try
+        {
+            await _accountMerge.AdminMergeAsync(sourceUserId, targetUserId, currentUser.Id, notes, ct);
+            SetSuccess("Accounts merged. The source account has been tombstoned.");
+            return RedirectToAction(nameof(EmailProblems));
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Admin-initiated merge failed: source {Source}, target {Target}",
+                sourceUserId, targetUserId);
+            SetError($"Merge failed: {ex.Message}");
+            return RedirectToAction(nameof(EmailProblemsCompare),
+                new { userId1 = user1Id, userId2 = user2Id });
+        }
+    }
 }
