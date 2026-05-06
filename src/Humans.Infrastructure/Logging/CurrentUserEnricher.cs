@@ -14,16 +14,22 @@ namespace Humans.Infrastructure.Logging;
 /// </summary>
 public sealed class CurrentUserEnricher : ILogEventEnricher
 {
-    private readonly IHttpContextAccessor? _httpContextAccessor;
+    public const string UserIdProperty = "UserId";
+
+    private readonly IHttpContextAccessor? _explicitAccessor;
+    private readonly bool _useExplicit;
 
     /// <summary>
     /// Default constructor used by Serilog's <c>.Enrich.With&lt;T&gt;()</c> activator.
-    /// Resolves <see cref="IHttpContextAccessor"/> lazily via the static accessor seeded at
-    /// app startup. Out-of-request and pre-startup emissions yield a null <c>UserId</c>.
+    /// Resolves <see cref="IHttpContextAccessor"/> lazily via <see cref="StaticAccessor"/>
+    /// on each enrich call — Serilog instantiates the enricher when the logger is built,
+    /// which happens before <c>builder.Build()</c> runs and seeds <see cref="StaticAccessor"/>,
+    /// so the static must be read at enrich time, not captured in the ctor.
     /// </summary>
     public CurrentUserEnricher()
     {
-        _httpContextAccessor = StaticAccessor;
+        _explicitAccessor = null;
+        _useExplicit = false;
     }
 
     /// <summary>
@@ -32,7 +38,8 @@ public sealed class CurrentUserEnricher : ILogEventEnricher
     /// </summary>
     public CurrentUserEnricher(IHttpContextAccessor? httpContextAccessor)
     {
-        _httpContextAccessor = httpContextAccessor;
+        _explicitAccessor = httpContextAccessor;
+        _useExplicit = true;
     }
 
     /// <summary>
@@ -46,12 +53,35 @@ public sealed class CurrentUserEnricher : ILogEventEnricher
     {
         var userId = TryGetUserId();
         var value = userId.HasValue ? (object)userId.Value : null!;
-        logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("UserId", value));
+        logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty(UserIdProperty, value));
+    }
+
+    /// <summary>
+    /// Reads the <c>UserId</c> property off a <see cref="LogEvent"/>, accepting both
+    /// <see cref="Guid"/> and string-form scalars (Serilog's destructurer may pick either
+    /// depending on how the value was attached). Centralized so log consumers
+    /// (admin views, log API) don't duplicate the extraction.
+    /// </summary>
+    public static Guid? ExtractFromEvent(LogEvent logEvent)
+    {
+        if (!logEvent.Properties.TryGetValue(UserIdProperty, out var prop))
+            return null;
+
+        if (prop is not ScalarValue scalar || scalar.Value is null)
+            return null;
+
+        return scalar.Value switch
+        {
+            Guid g => g,
+            string s when Guid.TryParse(s, out var parsed) => parsed,
+            _ => null,
+        };
     }
 
     private Guid? TryGetUserId()
     {
-        var httpContext = _httpContextAccessor?.HttpContext;
+        var accessor = _useExplicit ? _explicitAccessor : StaticAccessor;
+        var httpContext = accessor?.HttpContext;
         if (httpContext is null)
             return null;
 

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Humans.Infrastructure.Logging;
 using Humans.Web.Filters;
 using Humans.Web.Infrastructure;
 using Serilog.Events;
@@ -45,25 +46,9 @@ public class LogApiController : ControllerBase
             Level = e.Level.ToString(),
             Message = e.RenderMessage(),
             Exception = e.Exception?.ToString(),
-            UserId = ExtractUserId(e),
+            UserId = CurrentUserEnricher.ExtractFromEvent(e),
         });
 
         return Ok(result);
-    }
-
-    private static Guid? ExtractUserId(LogEvent logEvent)
-    {
-        if (!logEvent.Properties.TryGetValue("UserId", out var prop))
-            return null;
-
-        if (prop is not ScalarValue scalar || scalar.Value is null)
-            return null;
-
-        return scalar.Value switch
-        {
-            Guid g => g,
-            string s when Guid.TryParse(s, out var parsed) => parsed,
-            _ => null,
-        };
     }
 }
