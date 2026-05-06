@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Humans.Application;
 using Humans.Application.DTOs.EmailProblems;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
@@ -21,6 +24,9 @@ public class ProfileAdminController : HumansControllerBase
     private readonly IUserService _users;
     private readonly IAuditLogService _audit;
     private readonly ILogger<ProfileAdminController> _logger;
+    private readonly IProfileService _profileService;
+    private readonly ITeamService _teamService;
+    private readonly IRoleAssignmentService _roleAssignmentService;
 
     public ProfileAdminController(
         UserManager<User> userManager,
@@ -29,7 +35,10 @@ public class ProfileAdminController : HumansControllerBase
         IUserEmailService userEmails,
         IUserService users,
         IAuditLogService audit,
-        ILogger<ProfileAdminController> logger)
+        ILogger<ProfileAdminController> logger,
+        IProfileService profileService,
+        ITeamService teamService,
+        IRoleAssignmentService roleAssignmentService)
         : base(userManager)
     {
         _emailProblems = emailProblems;
@@ -38,6 +47,9 @@ public class ProfileAdminController : HumansControllerBase
         _users = users;
         _audit = audit;
         _logger = logger;
+        _profileService = profileService;
+        _teamService = teamService;
+        _roleAssignmentService = roleAssignmentService;
     }
 
     [HttpGet("EmailProblems")]
@@ -111,6 +123,58 @@ public class ProfileAdminController : HumansControllerBase
             CrossUserConflicts = crossUser,
             SingleUserIssues = singleUser,
             SystemLevelIssues = systemLevel
+        };
+
+        return View(vm);
+    }
+
+    [HttpGet("EmailProblems/Compare")]
+    public async Task<IActionResult> EmailProblemsCompare(Guid userId1, Guid userId2, CancellationToken ct)
+    {
+        if (userId1 == userId2)
+        {
+            SetError("Cannot compare a user against themselves.");
+            return RedirectToAction(nameof(EmailProblems));
+        }
+
+        var ids = new[] { userId1, userId2 };
+        var users = await _users.GetByIdsAsync(ids, ct);
+        if (!users.TryGetValue(userId1, out var u1) || !users.TryGetValue(userId2, out var u2))
+        {
+            SetError("One or both users not found.");
+            return RedirectToAction(nameof(EmailProblems));
+        }
+
+        var p1 = await _profileService.GetFullProfileAsync(userId1, ct);
+        var p2 = await _profileService.GetFullProfileAsync(userId2, ct);
+
+        var sharedEmail = (p1?.AllUserEmails ?? Array.Empty<UserEmailSnapshot>())
+            .Select(e => e.Email)
+            .Intersect((p2?.AllUserEmails ?? Array.Empty<UserEmailSnapshot>()).Select(e => e.Email),
+                       StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault() ?? "(no exact match — see normalized)";
+
+        CompareSide BuildSide(User user, FullProfile? profile, int teamCount, int roleCount) =>
+            new(user.Id, user.DisplayName, user.ProfilePictureUrl,
+                profile?.AllUserEmails ?? Array.Empty<UserEmailSnapshot>(),
+                teamCount, roleCount,
+                user.LastLoginAt?.ToDateTimeUtc(),
+                !string.IsNullOrEmpty(profile?.BurnerName));
+
+        var memberships1 = await _teamService.GetUserTeamsAsync(userId1, ct);
+        var memberships2 = await _teamService.GetUserTeamsAsync(userId2, ct);
+        var roles1 = await _roleAssignmentService.GetByUserIdAsync(userId1, ct);
+        var roles2 = await _roleAssignmentService.GetByUserIdAsync(userId2, ct);
+
+        var vm = new EmailProblemsCompareViewModel
+        {
+            SharedEmail = sharedEmail,
+            Account1 = BuildSide(u1, p1,
+                memberships1.Count(m => m.LeftAt is null),
+                roles1.Count(r => r.ValidTo is null)),
+            Account2 = BuildSide(u2, p2,
+                memberships2.Count(m => m.LeftAt is null),
+                roles2.Count(r => r.ValidTo is null))
         };
 
         return View(vm);
