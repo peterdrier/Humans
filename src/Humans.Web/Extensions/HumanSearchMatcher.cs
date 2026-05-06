@@ -1,6 +1,6 @@
 using Humans.Application.DTOs;
 
-namespace Humans.Application.Services.Profile;
+namespace Humans.Web.Extensions;
 
 /// <summary>
 /// Caller-side helper for the broad-search UI: given a query and a

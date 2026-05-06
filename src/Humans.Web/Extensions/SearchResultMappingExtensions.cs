@@ -1,6 +1,5 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
-using Humans.Application.Services.Profile;
 using Humans.Web.Controllers;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Mvc;
