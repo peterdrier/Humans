@@ -13,6 +13,8 @@ As a **signed-in human** I want to **type a question about how the system works*
 - The Assistant panel is reachable from the floating "Help" launcher whenever `AgentSettings.Enabled = true`.
 - An "AI Terms" link below the composer opens `/Legal/agent-chat`. There is no explicit consent gate — opening the panel and sending a message constitutes use; the linked Terms describe what's sent, retention, admin visibility, and rights.
 - Response streams token-by-token within 2s of submission (SSE).
+- Per-turn user context attached to the prompt includes: profile basics, governance roles, **team memberships in `TeamName: RoleName` per-team format** (so the agent can answer "what teams am I on?" without a tool call), **open ticket IDs**, and an **upcoming-shifts tail** (confirmed/pending signups in the active event with `EndDate >= today`, multi-day range signups conflated to one entry per `SignupBlockId`).
+- The agent has a `get_shift_details` tool that takes a `Key` from the upcoming-shifts tail and returns rota/date-range/hours/practical-info for that signup. Lookups are scoped to the calling user's own signups (privacy guard) and filtered to upcoming-only days, matching the `UpcomingShifts` row the user selected.
 - When the docs don't cover the question, the agent calls `route_to_issue` with a proposed `{title, category, description}`. The server emits an `AgentIssueProposal` SSE frame; the client opens the Issues submission modal pre-filled. The user reviews and submits via `/Issues/Submit` — no row is written server-side from the agent.
 
 ### US-40.2 — See my past conversations
@@ -45,7 +47,10 @@ Legacy: `FeedbackReport.Source` (`AgentUnresolved`) and `FeedbackReport.AgentCon
 ## Workflows
 
 ### Turn workflow
-`User submits` → `enabled gate` → `rate-limit check` → `abuse check` → `prompt assembly` → `Anthropic streaming call (with cached prefix)` → `[tool loop, max 3]` → `persist messages` → `stream finalizer`.
+`User submits` → `enabled gate` → `rate-limit check` → `abuse check` → `prompt assembly` (includes the per-turn user-context snapshot — profile, governance roles, team memberships in `TeamName: RoleName` form, open ticket IDs, upcoming-shifts tail) → `Anthropic streaming call (with cached prefix)` → `[tool loop, max 3]` → `persist messages` → `stream finalizer`.
+
+### `get_shift_details` lookup
+Agent calls `get_shift_details({shiftId: <Key>})` with the `Key` from a row in the upcoming-shifts tail → `IAgentToolDispatcher` resolves against the user's own signups (privacy guard), filtered to upcoming-only days via the same `GetAbsoluteEnd > now` filter that built the tail → returns rota name + date range + day count + status + description + hours + practical info as a text block. Returns "Shift not found." on any miss (unknown id, other user's signup, fully-past block).
 
 ### Handoff workflow (propose-only)
 Tool call `route_to_issue` with `{title, category, description}` → dispatcher returns a proposal-marker without DB writes → `AgentService.ParseIssueProposalArgs` decodes the args → `AgentService` yields an `AgentIssueProposal` SSE frame → client opens the Issues modal pre-filled → user submits via `/Issues/Submit`. The agent never writes Issue or FeedbackReport rows itself.

@@ -142,7 +142,8 @@ public class AgentToolDispatcherTests
 
     private static Humans.Infrastructure.Services.Agent.AgentToolDispatcher MakeDispatcher(
         IShiftManagementService? shiftMgr = null,
-        IShiftSignupService? signupSvc = null)
+        IShiftSignupService? signupSvc = null,
+        IClock? clock = null)
     {
         var env = new TestHostEnvironment();
         var sections = new Humans.Infrastructure.Services.Preload.AgentSectionDocReader(env);
@@ -153,6 +154,7 @@ public class AgentToolDispatcherTests
             features,
             signupSvc ?? new FakeShiftSignupService(Guid.Empty, Array.Empty<ShiftSignup>()),
             shiftMgr ?? new FakeShiftManagementService(eventSettings: null),
+            clock ?? SystemClock.Instance,
             logger);
     }
 

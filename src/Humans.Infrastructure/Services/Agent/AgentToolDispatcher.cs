@@ -9,6 +9,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Services.Preload;
 using Microsoft.Extensions.Logging;
+using NodaTime;
 
 namespace Humans.Infrastructure.Services.Agent;
 
@@ -18,6 +19,7 @@ public sealed class AgentToolDispatcher : IAgentToolDispatcher
     private readonly AgentFeatureSpecReader _features;
     private readonly IShiftSignupService _shiftSignups;
     private readonly IShiftManagementService _shiftManagement;
+    private readonly IClock _clock;
     private readonly ILogger<AgentToolDispatcher> _logger;
 
     public AgentToolDispatcher(
@@ -25,12 +27,14 @@ public sealed class AgentToolDispatcher : IAgentToolDispatcher
         AgentFeatureSpecReader features,
         IShiftSignupService shiftSignups,
         IShiftManagementService shiftManagement,
+        IClock clock,
         ILogger<AgentToolDispatcher> logger)
     {
         _sections = sections;
         _features = features;
         _shiftSignups = shiftSignups;
         _shiftManagement = shiftManagement;
+        _clock = clock;
         _logger = logger;
     }
 
@@ -107,13 +111,22 @@ public sealed class AgentToolDispatcher : IAgentToolDispatcher
         // (singleton). Filtering through the user's own signup list is the
         // privacy guard — anything that doesn't belong to the caller gets a
         // "not found" result.
+        //
+        // For multi-day blocks already in progress, filter to upcoming-only
+        // days using the same `GetAbsoluteEnd > now` filter that
+        // AgentUserSnapshotProvider applies when building UpcomingShifts —
+        // otherwise the tool's day-count/date-range can disagree with the
+        // row the user selected.
         var signups = await _shiftSignups.GetByUserAsync(userId, eventSettings.Id);
+        var now = _clock.GetCurrentInstant();
 
-        var blockMatches = signups.Where(s => s.SignupBlockId == shiftId).ToList();
+        var blockMatches = signups
+            .Where(s => s.SignupBlockId == shiftId && s.Shift.GetAbsoluteEnd(eventSettings) > now)
+            .ToList();
         if (blockMatches.Count > 0)
             return new AnthropicToolResult(callId, RenderBlock(blockMatches, eventSettings), IsError: false);
 
-        var singleton = signups.FirstOrDefault(s => s.Id == shiftId);
+        var singleton = signups.FirstOrDefault(s => s.Id == shiftId && s.Shift.GetAbsoluteEnd(eventSettings) > now);
         if (singleton is not null)
             return new AnthropicToolResult(callId, RenderSingleton(singleton, eventSettings), IsError: false);
 
