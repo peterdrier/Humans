@@ -56,7 +56,7 @@ public interface IShiftSignupService
     /// Creates signups for a date range of all-day shifts (build/strike).
     /// All signups share a SignupBlockId for grouped bail.
     /// </summary>
-    Task<SignupResult> SignUpRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid? actorUserId = null, bool isPrivileged = false);
+    Task<SignupResult> SignUpRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid? actorUserId = null, bool isPrivileged = false, bool skipConflicts = false);
 
     /// <summary>
     /// Approves all pending signups sharing a SignupBlockId.
@@ -77,6 +77,13 @@ public interface IShiftSignupService
     /// Gets all signups for a user, optionally filtered by event.
     /// </summary>
     Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null);
+
+    /// <summary>
+    /// Gets all active (Confirmed or Pending) signups for a user across every event,
+    /// with Shift.Rota.EventSettings included. Used by the dashboard to detect
+    /// cross-event conflicts when signing up for a date range.
+    /// </summary>
+    Task<IReadOnlyList<ShiftSignup>> GetActiveSignupsForUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Gets a signup by primary key with Shift.Rota included.

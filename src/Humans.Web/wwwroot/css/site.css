@@ -1043,6 +1043,15 @@ hr {
     animation: fadeInUp 0.3s ease-out both;
 }
 
+/* fadeInUp uses `transform` with `animation-fill-mode: both`, which leaves a
+   non-default transform on every .card permanently — that creates a stacking
+   context and traps any modal nested inside a card *under* .modal-backdrop,
+   visibly dimming the dialog. Collapse the context while a modal is open. */
+body.modal-open .card {
+    transform: none !important;
+    animation: none !important;
+}
+
 .row .col:nth-child(2) .card,
 .row .col-md-6:nth-child(2) .card {
     animation-delay: 0.05s;
