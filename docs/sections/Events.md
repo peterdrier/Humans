@@ -141,7 +141,7 @@ Unique constraint on (UserId, GuideEventId).
 | `ModerationController` | `/Events/Moderate/` | GuideModerator, Admin |
 | `EventGuideDashboardController` | `/Events/Dashboard/` | GuideModerator, Admin |
 | `EventGuideExportController` | `/Events/Export/` | GuideModerator, Admin |
-| `GuideAdminController` | `/Admin/Guide*/` | Admin |
+| `GuideAdminController` | `/Admin/Guide*/` | GuideModerator, Admin |
 | `GuideApiController` | `/api/events/` | Public (CORS) + authenticated same-origin |
 
 ## Actors & Roles
@@ -150,8 +150,7 @@ Unique constraint on (UserId, GuideEventId).
 |-------|--------------|
 | Any active member | Browse approved events; submit individual events during open window; manage own favourites and category preferences; view own submissions |
 | Barrio coordinator (CampAdmin role) | Submit events on behalf of their barrio |
-| GuideModerator, Admin | All active member capabilities. Additionally: view moderation queue, approve/reject/request-resubmit events, view dashboard, download CSV export, print guide |
-| Admin | All moderator capabilities. Additionally: manage guide settings, event categories, shared venues |
+| GuideModerator, Admin | All active member capabilities. Additionally: view moderation queue, approve/reject/request-resubmit events, view dashboard, download CSV export, print guide; manage guide settings, event categories, shared venues |
 
 ## Invariants
 

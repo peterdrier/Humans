@@ -30,6 +30,12 @@ public static class AdminNavTree
         {
             new("Finance", "Finance", "Index", null, null, "fa-solid fa-coins", PolicyNames.FinanceAdminOrAdmin),
         }),
+        new("Events", new AdminNavItem[]
+        {
+            new("Guide settings", "GuideAdmin", "GuideSettings", null, null, "fa-solid fa-calendar-days", PolicyNames.GuideModeratorOrAdmin),
+            new("Guide categories", "GuideAdmin", "GuideCategories", null, null, "fa-solid fa-tags", PolicyNames.GuideModeratorOrAdmin),
+            new("Guide venues", "GuideAdmin", "GuideVenues", null, null, "fa-solid fa-location-dot", PolicyNames.GuideModeratorOrAdmin),
+        }),
         new("Governance", new AdminNavItem[]
         {
             new("Voting", "OnboardingReview", "BoardVoting", null, null, "fa-solid fa-check-to-slot", PolicyNames.BoardOrAdmin,

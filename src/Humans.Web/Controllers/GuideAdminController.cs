@@ -10,7 +10,7 @@ using NodaTime;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = RoleNames.Admin)]
+[Authorize(Roles = RoleGroups.GuideModeratorOrAdmin)]
 [Route("Admin")]
 [ServiceFilter(typeof(EventGuideFeatureFilter))]
 public class GuideAdminController : HumansControllerBase

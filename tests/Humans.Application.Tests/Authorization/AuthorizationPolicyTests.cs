@@ -83,6 +83,7 @@ public class AuthorizationPolicyTests : IDisposable
     [InlineData(RoleNames.TeamsAdmin, true)]
     [InlineData(RoleNames.CampAdmin, true)]
     [InlineData(RoleNames.TicketAdmin, true)]
+    [InlineData(RoleNames.GuideModerator, true)]
     [InlineData(RoleNames.FeedbackAdmin, true)]
     [InlineData(RoleNames.FinanceAdmin, true)]
     [InlineData(RoleNames.NoInfoAdmin, true)]
@@ -247,6 +248,19 @@ public class AuthorizationPolicyTests : IDisposable
     public async Task FinanceAdminOrAdmin_ChecksCorrectRoles(string role, bool expected)
     {
         var result = await AuthorizeAsync(PolicyNames.FinanceAdminOrAdmin, role);
+        result.Succeeded.Should().Be(expected);
+    }
+
+    // --- GuideModeratorOrAdmin ---
+
+    [HumansTheory]
+    [InlineData(RoleNames.GuideModerator, true)]
+    [InlineData(RoleNames.Admin, true)]
+    [InlineData(RoleNames.Board, false)]
+    [InlineData(RoleNames.TeamsAdmin, false)]
+    public async Task GuideModeratorOrAdmin_ChecksCorrectRoles(string role, bool expected)
+    {
+        var result = await AuthorizeAsync(PolicyNames.GuideModeratorOrAdmin, role);
         result.Succeeded.Should().Be(expected);
     }
 

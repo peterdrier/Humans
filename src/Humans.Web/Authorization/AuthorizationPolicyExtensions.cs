@@ -37,7 +37,7 @@ public static class AuthorizationPolicyExtensions
             options.AddPolicy(PolicyNames.AdminOnly, policy =>
                 policy.RequireRole(RoleNames.Admin));
 
-            // AnyAdminRole gates the admin-shell entry point (/Admin). The 11 roles
+            // AnyAdminRole gates the admin-shell entry point (/Admin). The 12 roles
             // mirror the composite OR-chain in _Layout.cshtml that decides whether
             // to show the "Admin" top-nav link. Sidebar items inside /Admin are
             // filtered per-item, so each role only sees what they can act on.
@@ -49,6 +49,7 @@ public static class AuthorizationPolicyExtensions
                     RoleNames.TeamsAdmin,
                     RoleNames.CampAdmin,
                     RoleNames.TicketAdmin,
+                    RoleNames.GuideModerator,
                     RoleNames.FeedbackAdmin,
                     RoleNames.FinanceAdmin,
                     RoleNames.NoInfoAdmin,
@@ -84,6 +85,9 @@ public static class AuthorizationPolicyExtensions
 
             options.AddPolicy(PolicyNames.FinanceAdminOrAdmin, policy =>
                 policy.RequireRole(RoleNames.FinanceAdmin, RoleNames.Admin));
+
+            options.AddPolicy(PolicyNames.GuideModeratorOrAdmin, policy =>
+                policy.RequireRole(RoleNames.GuideModerator, RoleNames.Admin));
 
             options.AddPolicy(PolicyNames.ReviewQueueAccess, policy =>
                 policy.RequireRole(RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator,
