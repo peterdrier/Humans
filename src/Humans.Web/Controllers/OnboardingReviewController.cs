@@ -132,6 +132,58 @@ public class OnboardingReviewController : HumansControllerBase
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpPost("BulkClear")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]
+    public async Task<IActionResult> BulkClear([FromForm] List<Guid> selectedUserIds, CancellationToken ct)
+    {
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser is null)
+            return NotFound();
+
+        if (selectedUserIds.Count == 0)
+        {
+            SetInfo("No humans selected.");
+            return RedirectToAction(nameof(Index));
+        }
+
+        try
+        {
+            var selected = selectedUserIds.ToHashSet();
+            var data = await _onboardingService.GetReviewQueueAsync(ct);
+            var eligibleUserIds = data.Pending
+                .Concat(data.Flagged)
+                .Where(p => selected.Contains(p.UserId) && !string.IsNullOrWhiteSpace(p.FullName))
+                .Select(p => p.UserId)
+                .ToList();
+
+            var approved = 0;
+            foreach (var userId in eligibleUserIds)
+            {
+                var result = await _onboardingService.ClearConsentCheckAsync(
+                    userId, currentUser.Id, notes: null, ct);
+                if (result.Success)
+                    approved++;
+            }
+
+            if (approved == 0)
+            {
+                SetInfo("No selected humans were approved.");
+            }
+            else
+            {
+                SetSuccess($"Approved {approved} selected human{(approved == 1 ? "" : "s")}.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to bulk clear consent checks for selected users");
+            SetError(_localizer["Common_Error"].Value);
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
     [HttpPost("{userId:guid}/Flag")]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]
