@@ -141,39 +141,11 @@ public class OnboardingReviewController : HumansControllerBase
         if (currentUser is null)
             return NotFound();
 
-        if (selectedUserIds.Count == 0)
-        {
-            SetInfo("No humans selected.");
-            return RedirectToAction(nameof(Index));
-        }
-
         try
         {
-            var selected = selectedUserIds.ToHashSet();
-            var data = await _onboardingService.GetReviewQueueAsync(ct);
-            var eligibleUserIds = data.Pending
-                .Concat(data.Flagged)
-                .Where(p => selected.Contains(p.UserId) && !string.IsNullOrWhiteSpace(p.FullName))
-                .Select(p => p.UserId)
-                .ToList();
-
-            var approved = 0;
-            foreach (var userId in eligibleUserIds)
-            {
-                var result = await _onboardingService.ClearConsentCheckAsync(
-                    userId, currentUser.Id, notes: null, ct);
-                if (result.Success)
-                    approved++;
-            }
-
-            if (approved == 0)
-            {
-                SetInfo("No selected humans were approved.");
-            }
-            else
-            {
-                SetSuccess($"Approved {approved} selected human{(approved == 1 ? "" : "s")}.");
-            }
+            var result = await _onboardingService.BulkClearConsentChecksAsync(
+                selectedUserIds, currentUser.Id, ct);
+            SetBulkClearResultMessage(result);
         }
         catch (Exception ex)
         {
@@ -182,6 +154,18 @@ public class OnboardingReviewController : HumansControllerBase
         }
 
         return RedirectToAction(nameof(Index));
+    }
+
+    private void SetBulkClearResultMessage(BulkOnboardingResult result)
+    {
+        if (result.ApprovedCount == 0)
+        {
+            SetInfo("No selected humans were approved.");
+        }
+        else
+        {
+            SetSuccess($"Approved {result.ApprovedCount} selected human{(result.ApprovedCount == 1 ? "" : "s")}.");
+        }
     }
 
     [HttpPost("{userId:guid}/Flag")]
