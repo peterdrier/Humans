@@ -25,16 +25,29 @@ A new sub-page of the Shift Dashboard that:
 
 ## User-facing scope
 
-- **Read access:** Admin, NoInfoAdmin, VolunteerCoordinator (existing `ShiftDashboardAccess` policy).
-- **Write access** (mark/clear camp set-up date): Admin, VolunteerCoordinator only — a new `VolunteerTrackingWrite` policy. NoInfoAdmin can view but not change set-up status; this is a coordination workflow, not a moderation one.
+- **Read access:** existing `ShiftDashboardAccess` policy — admits Admin, NoInfoAdmin, VolunteerCoordinator. No new read policy; the page is just another `ShiftDashboardAccess` page (matches `/ShiftDashboard` itself).
+- **Write access** (mark/clear camp set-up date): new `VolunteerTrackingWrite` policy in `AuthorizationPolicyExtensions`, defined as `policy.RequireRole(RoleNames.Admin, RoleNames.VolunteerCoordinator)` — a pure role-list policy, no custom requirement/handler. **Excluded explicitly:** NoInfoAdmin (can view but not coordinate), department coordinators and sub-team managers (this page is a cross-event volunteer-coordination tool, not a per-team management surface; the existing `ShiftDepartmentManager` policy is intentionally not used).
 
 ## Definitions
 
-- **Active window** for a volunteer: `[firstSignupDay, lastExpectedDay)` where
-  - `firstSignupDay` = the earliest day-offset on which they have a Confirmed or Pending Build-period signup.
-  - `lastExpectedDay = min(BarrioSetupStartDate→offset (if set), EventStartOffset, today + 1)`.
-- **Gap** for a volunteer: a day inside the active window, *strictly before today*, on which they have no signup of any kind. Future empty days inside the active window are *expected*, not gaps — the page is about people who already fell off, not people who haven't signed up yet for tomorrow.
-- **Camp set-up day** for a volunteer: `BarrioSetupStartDate` and any later day. These days are blue and never count as gaps.
+- **Day offset → calendar date conversion** (matches `EventSettings.GateOpeningDate` semantics — gate-open day is day-offset 0):
+  - `DateFor(offset) = es.GateOpeningDate.PlusDays(offset)`
+  - `OffsetFor(date) = Period.Between(es.GateOpeningDate, date, PeriodUnits.Days).Days`
+- **Build period day-offset range:** `[BuildStartOffset, 0)` (exclusive of 0, since offset 0 is the start of the Event period). Matches the `< 0` upper bound used by `BuildSubPeriodClassifier` ranges in `Shifts.md`.
+- **`todayOffset`:** `OffsetFor(today)` where `today = clock.GetCurrentInstant().InZone(es.TimeZoneId).Date`.
+- **Eligible signup state:** Confirmed or Pending. Refused, Bailed, Cancelled, NoShow are excluded from the per-day "has signup" check. (Rationale: a Bail or NoShow leaves the day visually empty in the heatmap because no actual coverage occurred — that's the gap the coordinator is looking at.)
+- **Active window** for a volunteer:
+  - `firstSignupDay` = the earliest Build-period day-offset on which they have *any* eligible signup.
+  - `lastExpectedDay` (exclusive upper bound) `= min(setupOffset (if set), 0, todayOffset + 1)` where `setupOffset = OffsetFor(BarrioSetupStartDate)` if set, else +∞.
+  - Active window = `[firstSignupDay, lastExpectedDay)`. The window includes today (so a confirmed/pending today renders correctly) but `Gap` flagging requires the day to be **strictly before** today (see cell-state below).
+- **Volunteer eligibility for the page:** A user is listed iff they have ≥1 eligible Build-period signup *and* their `EventParticipation` for the year is not `NotAttending`. Volunteers whose only Build-period signups are in non-eligible states (all Bailed/Refused/Cancelled/NoShow) are **excluded** — the page is keyed off Confirmed/Pending intent. (Surfacing volunteers who bailed every signup is a follow-up; out of scope here.)
+- **Cell states** (for a day inside the active window):
+  - has Confirmed signup → `Confirmed`
+  - else has Pending signup → `Pending`
+  - else day < `todayOffset` → `Gap`
+  - else → `Expected` (not a gap; rendered grey)
+  Days outside the active window are `Outside` (rendered grey, never a gap). Days at offset ≥ `setupOffset` (if set) override to `CampSetup` (blue).
+- **Gap count** = number of `Gap` cells in the active window.
 
 ## Architecture & Data Model
 
@@ -42,21 +55,25 @@ A new sub-page of the Shift Dashboard that:
 
 Owned by Shifts.
 
+**Source location:** `src/Humans.Domain/Entities/VolunteerBuildStatus.cs`.
+**EF configuration:** `src/Humans.Infrastructure/Data/Configurations/Shifts/VolunteerBuildStatusConfiguration.cs`.
+**DbSet:** `HumansDbContext.VolunteerBuildStatuses`.
+
 | Field | Type | Notes |
 |---|---|---|
 | `Id` | `Guid` | PK |
-| `UserId` | `Guid` | FK to `users` (typed-FK form, no nav per project rules) |
+| `UserId` | `Guid` | FK to `users` (typed-FK form, no nav, per project rules) |
 | `EventSettingsId` | `Guid` | FK to `event_settings` |
 | `BarrioSetupStartDate` | `LocalDate?` | Calendar date the volunteer left for barrio set-up. Null = not yet on set-up. |
-| `Notes` | `string?` (≤500) | Optional free-text from the coordinator who set the status. |
+| `Notes` | `string?` (≤500, server-side `[StringLength(500)]`) | Optional free-text from the coordinator who set the status. |
 | `SetByUserId` | `Guid?` | Coordinator who last modified the row. |
 | `SetAt` | `Instant?` | When the row was last modified. |
 
-- Table: `volunteer_build_statuses`.
-- Unique constraint on `(UserId, EventSettingsId)` — at most one row per volunteer per event.
-- No row = "no special status" (default). A row with `BarrioSetupStartDate = null` is treated identically to no row by the gap detector; the row exists only to retain a `Notes` value.
-- No cross-domain navigation properties on the entity (FK only). Display data resolves through `IUserService.GetByIdsAsync`.
-- No concurrency token (per `memory/architecture/no-concurrency-tokens.md`).
+- **Table:** `volunteer_build_statuses`.
+- **Indices:** PK on `Id`. Unique on `(UserId, EventSettingsId)`.
+- **Nav properties:** none (FK only). Display data resolves via `IUserService.GetByIdsAsync`.
+- **No concurrency token** (per `memory/architecture/no-concurrency-tokens.md`).
+- A row with `BarrioSetupStartDate = null` is treated identically to no row by the gap detector; the row exists only to retain a `Notes` value.
 
 ### Service & repository
 
@@ -79,56 +96,78 @@ Add `volunteer_build_statuses` to the Shifts table list in the same commit as th
 
 `VolunteerTrackingController` (`Humans.Web.Controllers`).
 
-- Class-level: `[Authorize(Policy = ShiftDashboardAccess)]`.
-- `GET /ShiftDashboard/VolunteerTracking` → `Index(includeNoGaps: bool = false, hideCampSetup: bool = false)` — renders the page.
-- `POST /ShiftDashboard/VolunteerTracking/SetCampSetup(userId, date, notes?)` — sets or updates the row. `[Authorize(Policy = VolunteerTrackingWrite)]`.
-- `POST /ShiftDashboard/VolunteerTracking/ClearCampSetup(userId)` — clears `BarrioSetupStartDate`. `[Authorize(Policy = VolunteerTrackingWrite)]`.
-- All mutations write an `AuditLogService` entry (`AuditAction.VolunteerCampSetupSet` and `VolunteerCampSetupCleared` — new enum values) and return a redirect with TempData success/error.
+- Class-level: `[Authorize(Policy = PolicyNames.ShiftDashboardAccess)]`.
+- `GET /ShiftDashboard/VolunteerTracking` → `Index(hideNoGaps: bool = false, hideCampSetup: bool = false)` — renders the page.
+- `POST /ShiftDashboard/VolunteerTracking/SetCampSetup` — sets or updates the row. `[Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]`.
+- `POST /ShiftDashboard/VolunteerTracking/ClearCampSetup(userId)` — clears `BarrioSetupStartDate`. `[Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]`.
 
-### View & view component
+**`SetCampSetup` form binding (NodaTime `LocalDate` cannot bind directly from form input — the project does not register an MVC `LocalDate` model binder; `Program.cs` only configures NodaTime for JSON serialization and Npgsql):**
+
+```csharp
+public sealed class SetCampSetupForm
+{
+    [Required]
+    public Guid UserId { get; set; }
+
+    /// Wire format: "yyyy-MM-dd" (ISO 8601 calendar date).
+    [Required]
+    [RegularExpression(@"^\d{4}-\d{2}-\d{2}$")]
+    public string Date { get; set; } = "";
+
+    [StringLength(500)]
+    public string? Notes { get; set; }
+}
+```
+
+The action parses `Date` with `LocalDatePattern.Iso.Parse`, returns a `BadRequest` view-model error on parse failure, and forwards the parsed `LocalDate` to the service. View renders the input as `<input type="date">` whose value is `yyyy-MM-dd`.
+
+**Audit & redirect:** All mutations write an `AuditLogService` entry (new `AuditAction` enum values: `VolunteerCampSetupSet`, `VolunteerCampSetupCleared` — appended to the enum; per the enum's docstring "new values can be appended without migration"). The action returns `RedirectToAction(nameof(Index))` with TempData success/error.
+
+### View & partial
 
 - `Views/VolunteerTracking/Index.cshtml`
   - Breadcrumb: `Shifts › Shift Dashboard › Volunteer Tracking`.
-  - Header card: counts of volunteers tracked, with at least one gap, on camp set-up. Filter toggles `Hide volunteers with no gaps` (default off) and `Hide volunteers already on camp set-up`.
-  - Main panel renders `_VolunteerHeatmap.cshtml` view component.
+  - Header card: counts of volunteers tracked, with at least one gap, on camp set-up. Filter toggles `Hide volunteers with no gaps` (default off) and `Hide volunteers already on camp set-up` (default off).
+  - Main panel renders the `_VolunteerHeatmap` partial.
   - Footer: legend explaining cell colors.
-- `_VolunteerHeatmap.cshtml` view component:
-  - Pure rendering off `VolunteerHeatmapViewModel` (rows, day columns, cell states).
+- **`Views/VolunteerTracking/_VolunteerHeatmap.cshtml`** — a Razor partial view (matches the existing dashboard convention: `_CoverageHeatmap.cshtml`, `_DepartmentsTable.cshtml`, etc. are partials, not view components). Pure rendering off `VolunteerHeatmapViewModel` (rows, day columns, cell states).
   - Sticky left column: avatar, name, gap-count badge, set-up date if any.
   - Cells, color-coded:
     - Green (`bg-success`) — Confirmed signup
     - Light green (`bg-success-subtle`) — Pending signup
-    - Red (`bg-danger`) — Gap (inside active window, before today, no signup)
-    - Grey (`bg-secondary-subtle`) — Outside active window (before first signup, or future days not yet expected)
-    - Blue (`bg-primary`) — On/after `BarrioSetupStartDate`
-  - Cell click → popover with date, signup details (rota name(s) if any), and (write-policy gated) "Mark went to camp set-up from this day" button + optional notes.
-  - Default sort: gap count desc, tiebreak by last-signup-day asc (earliest drop-offs surface first).
-- All strings localized via `Localizer["VolTrack_*"]`.
-- Add an entry-point card or link on `/ShiftDashboard` Index gated on `ShiftDashboardAccess`.
+    - Red (`bg-danger`) — `Gap`
+    - Grey (`bg-secondary-subtle`) — `Outside` or `Expected`
+    - Blue (`bg-primary`) — `CampSetup`
+  - Cell click → popover with date, signup rota name(s), and (write-policy gated) `<input type="date">` defaulted to that day plus a "Mark went to camp set-up from this day" submit button and optional Notes field.
+  - **Default sort:** gap count desc, tiebreak by `lastEligibleSignupOffset` asc, then by display name asc. `lastEligibleSignupOffset` = MAX day-offset across the volunteer's Confirmed + Pending Build signups. (Defining the tiebreak deterministically; the page should never re-order on refresh.)
+- All strings localized via `Localizer["VolTrack_*"]`. Audit-log display strings for the new `AuditAction` values added to the audit-log resource keys used in `Views/AuditLog/`.
+- Add an entry-point card or link on `Views/ShiftDashboard/Index.cshtml` (immediately below the existing top-of-page header block, above the period filter row) gated on `ShiftDashboardAccess` — visible to all viewers of the dashboard.
 
 ## Gap-Detection Algorithm
 
-In `VolunteerTrackingService.GetTrackingDataAsync(eventSettingsId, ct)`:
+In `VolunteerTrackingService.GetTrackingDataAsync(ct)`:
 
-1. Load active `EventSettings`. If none, return an empty `VolunteerHeatmapViewModel`.
-2. Compute build-day-offset range `[BuildStartOffset, EventStartOffset)`. Resolve absolute dates using event timezone.
-3. Load Confirmed and Pending `ShiftSignup` rows joined to `Shift.DayOffset` for shifts in any Build-period rota for the event. Group by `UserId` → set of `(dayOffset, status)`. Skip Refused, Bailed, Cancelled, NoShow.
+1. Load the singleton active `EventSettings` via `IShiftManagementRepository.GetActiveEventSettingsAsync()`. If none, return an empty `VolunteerHeatmapViewModel`.
+2. Build-period day-offset range = `[es.BuildStartOffset, 0)` (exclusive of 0). Compute `todayOffset = OffsetFor(today)` where `today` is in the event timezone via `clock.GetCurrentInstant().InZone(es.TimeZoneId).Date`.
+3. Load eligible Build-period signups via the repository: rows where `Shift.DayOffset ∈ [BuildStartOffset, 0)`, the rota's period ∈ `{Build, All}`, and `ShiftSignup.Status ∈ {Confirmed, Pending}`. Group in-memory by `UserId` → `Dictionary<int, ShiftSignupStatus>` (per-user, day-offset → status). Skip Refused, Bailed, Cancelled, NoShow.
 4. Load `VolunteerBuildStatus` rows for the event into a dictionary keyed by `UserId`.
-5. Exclude users with `EventParticipation.Status = NotAttending` for the event year (read via `IUserService` projection).
-6. For each remaining user with ≥1 Build signup:
-   - `firstSignupDay = MIN(dayOffset)`.
-   - `setupOffset = BarrioSetupStartDate.HasValue ? OffsetFor(BarrioSetupStartDate) : null`.
-   - `lastExpectedDay = MIN(setupOffset ?? +∞, EventStartOffset, todayOffset + 1)`.
+5. **Exclude `NotAttending`:** the plan adds a new method `Task<IReadOnlySet<Guid>> GetNonAttendingUserIdsAsync(int year, CancellationToken ct)` on `IUserService` (returns user ids with `EventParticipation.Status = NotAttending` for the year), implemented in `UserService` against the existing `event_participations` repository read it already does for `TicketQueryService`. Filter out those user ids.
+6. For each remaining user with ≥1 eligible Build signup, build a row:
+   - `firstSignupDay = MIN(eligibleDayOffsets)`.
+   - `lastEligibleSignupOffset = MAX(eligibleDayOffsets)`.
+   - `setupOffset = bs.BarrioSetupStartDate.HasValue ? OffsetFor(bs.BarrioSetupStartDate.Value) : (int?) null`.
+   - `lastExpectedDay = min(setupOffset ?? int.MaxValue, 0, todayOffset + 1)` (exclusive upper bound on the active window — see Definitions for why `+1`).
    - Active window = `[firstSignupDay, lastExpectedDay)`.
-   - For each day in active window:
-     - has confirmed signup → cell `Confirmed`
-     - else has pending signup → cell `Pending`
-     - else day < today → cell `Gap`
-     - else → cell `Expected` (rendered grey, not counted as a gap)
-   - For each day outside active window: cell `Outside`. For each day ≥ `setupOffset` (if set): cell `CampSetup`.
-   - `gapCount = active-window cells flagged Gap`.
-7. Resolve user display data (name, avatar) via `IUserService.GetByIdsAsync`.
-8. Sort: gap count desc, then last-signup-day asc.
+   - For each day-offset `d` in `[BuildStartOffset, 0)`:
+     - if `setupOffset.HasValue && d >= setupOffset.Value` → cell `CampSetup`
+     - else if `d < firstSignupDay || d >= lastExpectedDay` → cell `Outside`
+     - else if has `Confirmed` for `d` → cell `Confirmed`
+     - else if has `Pending` for `d` → cell `Pending`
+     - else if `d < todayOffset` → cell `Gap`
+     - else → cell `Expected`
+   - `gapCount = count of Gap cells`.
+7. Resolve user display data (name, avatar, slug) via `IUserService.GetByIdsAsync`.
+8. Sort rows: gap count desc, then `lastEligibleSignupOffset` asc, then display name asc.
 
 The repository layer scopes the query to the active event's Build-period rotas to keep the result set tight; in-memory grouping is fine at the project's `~500 users` scale (per `CLAUDE.md` "Prefer in-memory caching over query optimization").
 
@@ -136,13 +175,15 @@ The repository layer scopes the query to the active event's Build-period rotas t
 
 - **No active event** → page renders an empty state: "No active event."
 - **Volunteer declared `NotAttending`** → excluded from list. (They are not a gap because they explicitly opted out.)
-- **Volunteer has no Build-period signups** → excluded (per scoping decision).
-- **`BarrioSetupStartDate` < volunteer's `firstSignupDay`** → reject at controller validation: "Set-up date must be on or after the volunteer's first build signup."
-- **`BarrioSetupStartDate` ≥ event-start date** → reject: "Set-up date must be before the event starts."
-- **Concurrent set/clear** → repository upsert by `(UserId, EventSettingsId)` (insert or update single row). No concurrency token required.
-- **Clearing the set-up date** → does not retroactively re-flag past days as gaps unless they were genuinely empty inside the original active window. The algorithm recomputes from scratch on each load; it carries no historical state of prior set-up dates.
-- **Volunteer has signups but range fully overlaps the set-up window** → all days from set-up onward are blue; the active window collapses if `firstSignupDay >= setupOffset`. The volunteer renders with zero gaps and a single blue stripe. This is intentional: they signed up after going to set-up, which is fine.
-- **Set-up date is changed earlier** → some previously blue days may now be red gaps (the volunteer was *not* on set-up on those days). The recompute handles this naturally.
+- **Volunteer has no eligible Build-period signups** → excluded. Volunteers whose only Build signups are Refused/Bailed/Cancelled/NoShow are also excluded (out of scope; future iteration).
+- **`BarrioSetupStartDate` < volunteer's `firstSignupDay`** → reject at controller-level validation: "Set-up date must be on or after the volunteer's first build signup."
+- **`BarrioSetupStartDate` at offset ≥ 0** (i.e. on or after gate-open day) → reject: "Set-up date must be inside the build period (before gate-open day)."
+- **`BarrioSetupStartDate` parses but is not a valid `LocalDate`** → return BadRequest with a localized error.
+- **Concurrent set/clear** → repository upsert by `(UserId, EventSettingsId)` (insert or update single row in one transaction). No concurrency token (per project rule).
+- **Clearing the set-up date** → nulls `BarrioSetupStartDate` and `Notes`, leaves the row in place to preserve audit lineage via `SetByUserId` / `SetAt`. The next algorithm run treats the user as never marked.
+- **Volunteer signups all fall on/after `setupOffset`** → `firstSignupDay >= setupOffset`, so `lastExpectedDay <= firstSignupDay` and the active window is empty. The row renders with all `CampSetup` cells from set-up onward and no gaps. Intentional.
+- **Set-up date moved earlier** → days that were previously `CampSetup` may become `Gap` or `Confirmed` etc.; recompute handles it naturally on the next page load.
+- **Audit log:** every `SetCampSetup` and `ClearCampSetup` writes one entry. Failures in the audit write log a warning but do not roll back the status change (audit is best-effort, matching the existing `ShiftAssigned` pattern in `Shifts.md`).
 
 ## Localization
 
@@ -199,9 +240,11 @@ Cover:
 ## Acceptance
 
 - [ ] New `volunteer_build_statuses` table created via EF migration.
-- [ ] `design-rules.md` §8 lists the new table.
+- [ ] `design-rules.md` §8 lists the new table under Shifts (same commit as the migration).
 - [ ] `Shifts.md` section invariant doc mentions the new entity and its read-only relationship to existing Shifts data.
-- [ ] `VolunteerTrackingWrite` policy added in `AuthorizationPolicyExtensions`.
+- [ ] `PolicyNames.VolunteerTrackingWrite` constant added; policy registered in `AuthorizationPolicyExtensions` as a pure role-list policy (`Admin`, `VolunteerCoordinator`).
+- [ ] `AuditAction.VolunteerCampSetupSet` and `AuditAction.VolunteerCampSetupCleared` appended to the enum, and audit-log display strings added to the audit-log resource keys.
+- [ ] `IUserService.GetNonAttendingUserIdsAsync(int year, ct)` added (signature in §Algorithm step 5).
 - [ ] All unit, repository, controller, and E2E tests pass.
 - [ ] `dotnet build Humans.slnx -v quiet` clean. `dotnet test Humans.slnx -v quiet` clean.
 - [ ] Localization resources updated for all `VolTrack_*` keys.
