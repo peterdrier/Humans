@@ -1165,6 +1165,64 @@ public class ProfileServiceTests : IDisposable
         results[0].UserId.Should().Be(userId);
     }
 
+    [HumansFact]
+    public async Task SearchProfilesAsync_AdminBit_ExactUserIdLookup()
+    {
+        var userId = Guid.NewGuid();
+        var user = await SeedUserAsync(userId);
+        var profile = MakeProfile(userId, isApproved: true);
+        profile.BurnerName = "Embers";
+        _dbContext.Profiles.Add(profile);
+        await _dbContext.SaveChangesAsync();
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User> { [userId] = user });
+
+        var results = await _service.SearchProfilesAsync(
+            userId.ToString(), PersonSearchFields.AdminAll, limit: 50);
+
+        results.Should().HaveCount(1);
+        results[0].UserId.Should().Be(userId);
+        results[0].MatchField.Should().Be("User ID");
+    }
+
+    [HumansFact]
+    public async Task SearchProfilesAsync_PublicAll_GuidDoesNotShortCircuitById()
+    {
+        var userId = Guid.NewGuid();
+        var user = await SeedUserAsync(userId);
+        var profile = MakeProfile(userId, isApproved: true);
+        profile.BurnerName = "Embers";
+        _dbContext.Profiles.Add(profile);
+        await _dbContext.SaveChangesAsync();
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User> { [userId] = user });
+
+        // Public callers must not be able to enumerate IDs — even a valid
+        // UserId pasted as the query falls through to text matching, which
+        // can't match it.
+        var results = await _service.SearchProfilesAsync(
+            userId.ToString(), PersonSearchFields.PublicAll, limit: 50);
+
+        results.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task SearchProfilesAsync_AdminBit_GuidNotFound_ReturnsEmpty()
+    {
+        var userId = Guid.NewGuid();
+        var user = await SeedUserAsync(userId);
+        var profile = MakeProfile(userId, isApproved: true);
+        _dbContext.Profiles.Add(profile);
+        await _dbContext.SaveChangesAsync();
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User> { [userId] = user });
+
+        var results = await _service.SearchProfilesAsync(
+            Guid.NewGuid().ToString(), PersonSearchFields.AdminAll, limit: 50);
+
+        results.Should().BeEmpty();
+    }
+
     // --- DB-backed fallback paths (§15 invariant: base service must work without decorator) ---
 
     [HumansFact]

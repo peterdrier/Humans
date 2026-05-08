@@ -54,6 +54,27 @@ public static class PersonSearchMatcher
 
         var includeAdmin = (fields & PersonSearchFields.Admin) != PersonSearchFields.None;
 
+        // Admin-only exact-UserId lookup. Lets an admin paste a UserId from
+        // logs / audit trails / URLs and jump straight to that human. Public
+        // callers fall through to text matching so they can't enumerate IDs.
+        if (includeAdmin && Guid.TryParse(query, out var idGuid))
+        {
+            var byId = snapshot.FirstOrDefault(p => p.UserId == idGuid);
+            if (byId is null) return Array.Empty<HumanSearchResult>();
+
+            var idBurnerName = string.IsNullOrWhiteSpace(byId.BurnerName)
+                ? byId.DisplayName
+                : byId.BurnerName!;
+
+            return new[] { new HumanSearchResult(
+                UserId: byId.UserId,
+                BurnerName: idBurnerName,
+                ProfilePictureUrl: byId.ProfilePictureUrl,
+                MatchField: "User ID",
+                MatchSnippet: null,
+                MatchedEmail: null) };
+        }
+
         var results = new List<HumanSearchResult>();
 
         foreach (var p in snapshot)
