@@ -1817,6 +1817,16 @@
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>Se non sei soddisfatto della nostra risposta, hai il diritto di presentare un reclamo all'Agenzia Spagnola per la Protezione dei Dati (AEPD) a {0}.</value><comment>{0} = AEPD URL</comment></data>
 
   <!-- Agent Widget -->
+  <data name="Agent_ConversationBackToHistory" xml:space="preserve"><value>Torna alla cronologia</value></data>
+  <data name="Agent_ConversationEmpty" xml:space="preserve"><value>Nessun messaggio in questa conversazione.</value></data>
+  <data name="Agent_ConversationHandedOffToFeedback" xml:space="preserve"><value>Trasferito a un rapporto di feedback</value></data>
+  <data name="Agent_ConversationRefusedLabel" xml:space="preserve"><value>L'assistente ha rifiutato di rispondere in questo turno.</value></data>
+  <data name="Agent_ConversationTitle" xml:space="preserve"><value>Conversazione con l'assistente</value></data>
+  <data name="Agent_ConversationToolCallsSummary" xml:space="preserve"><value>{0} chiamata(e) a strumento</value></data>
+  <data name="Agent_ConversationTranscript" xml:space="preserve"><value>Trascrizione</value></data>
+  <data name="Agent_ContextCardCaveat" xml:space="preserve"><value>Questo è il tuo contesto attuale. Se i tuoi ruoli o team sono cambiati da questa conversazione, l'assistente ha visto una versione diversa in quel momento.</value></data>
+  <data name="Agent_ContextCardEmpty" xml:space="preserve"><value>Attualmente non viene inviato alcun contesto personale all'assistente.</value></data>
+  <data name="Agent_ContextCardSummary" xml:space="preserve"><value>Il tuo contesto (come l'assistente ti vede ora)</value></data>
   <data name="Agent_HistoryEmpty" xml:space="preserve"><value>Nessuna conversazione.</value></data>
   <data name="Agent_HistoryLastMessage" xml:space="preserve"><value>Ultimo messaggio</value></data>
   <data name="Agent_HistoryMessages" xml:space="preserve"><value>Messaggi</value></data>
