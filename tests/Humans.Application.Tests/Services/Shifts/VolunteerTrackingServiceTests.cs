@@ -441,6 +441,59 @@ public class VolunteerTrackingServiceTests
         second.Changed.Should().BeFalse();
     }
 
+    [HumansFact]
+    public async Task SaveOwnBlockedDaysAsync_rejects_offset_outside_build_window()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var sut = BuildSut(es);
+
+        var result = await sut.SaveOwnBlockedDaysAsync(Guid.NewGuid(), new[] { -3, 0 });
+
+        result.Ok.Should().BeFalse();
+        result.ErrorMessageKey.Should().Be("VolTrack_Err_DayOffsetOutsideBuild");
+    }
+
+    [HumansFact]
+    public async Task SaveOwnBlockedDaysAsync_diff_returns_added_removed_resulting()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var bs = new VolunteerBuildStatus
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            EventSettingsId = es.Id,
+            BlockedDayOffsets = new List<int> { -5 },
+        };
+        var trackingRepo = new FakeVolunteerTrackingRepository(
+            Array.Empty<EligibleBuildSignup>(), new[] { bs });
+        var sut = BuildSut(es, buildStatuses: new[] { bs }, trackingRepo: trackingRepo);
+
+        var result = await sut.SaveOwnBlockedDaysAsync(userId, new[] { -4, -3 });
+
+        result.Ok.Should().BeTrue();
+        result.Added.Should().BeEquivalentTo(new[] { -4, -3 });
+        result.Removed.Should().BeEquivalentTo(new[] { -5 });
+        result.ResultingList.Should().Equal(new[] { -4, -3 });
+    }
+
+    [HumansFact]
+    public async Task SaveOwnBlockedDaysAsync_normalizes_input_dedupe_and_sort()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var trackingRepo = new FakeVolunteerTrackingRepository(
+            Array.Empty<EligibleBuildSignup>(), Array.Empty<VolunteerBuildStatus>());
+        var sut = BuildSut(es, trackingRepo: trackingRepo);
+
+        var result = await sut.SaveOwnBlockedDaysAsync(userId, new[] { -3, -5, -3, -4 });
+
+        result.Ok.Should().BeTrue();
+        result.ResultingList.Should().Equal(new[] { -5, -4, -3 });
+        trackingRepo.ReplaceCalls.Should().HaveCount(1);
+        trackingRepo.ReplaceCalls[0].Offsets.Should().Equal(new[] { -5, -4, -3 });
+    }
+
     private static GeneralAvailability Availability(Guid userId, Guid eventSettingsId, IReadOnlyList<int> days)
         => new()
         {

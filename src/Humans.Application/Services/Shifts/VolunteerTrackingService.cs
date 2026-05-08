@@ -286,9 +286,32 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
         return new SetBlockResult(true, changed, null);
     }
 
-    public Task<SaveOwnBlockedDaysResult> SaveOwnBlockedDaysAsync(
+    public async Task<SaveOwnBlockedDaysResult> SaveOwnBlockedDaysAsync(
         Guid ownerUserId, IReadOnlyList<int> dayOffsets, CancellationToken ct = default)
-        => throw new NotSupportedException("Not yet implemented.");
+    {
+        var es = await _shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false)
+            ?? throw new InvalidOperationException("No active event");
+
+        var normalized = dayOffsets.Distinct().OrderBy(x => x).ToList();
+        if (normalized.Any(d => d < es.BuildStartOffset || d >= 0))
+        {
+            return new SaveOwnBlockedDaysResult(
+                false,
+                Array.Empty<int>(),
+                Array.Empty<int>(),
+                Array.Empty<int>(),
+                "VolTrack_Err_DayOffsetOutsideBuild");
+        }
+
+        var prior = await _trackingRepo
+            .ReplaceBlockedDaysAsync(ownerUserId, es.Id, normalized, ct)
+            .ConfigureAwait(false);
+        var priorSet = prior.ToHashSet();
+        var newSet = normalized.ToHashSet();
+        var added = normalized.Where(d => !priorSet.Contains(d)).ToList();
+        var removed = prior.Where(d => !newSet.Contains(d)).ToList();
+        return new SaveOwnBlockedDaysResult(true, added, removed, normalized, null);
+    }
 
     public Task<MineBlockedDaysSummary> GetMineBlockedDaysSummaryAsync(
         Guid userId, CancellationToken ct = default)
