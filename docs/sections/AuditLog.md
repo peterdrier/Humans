@@ -72,7 +72,7 @@ Note: `BudgetAuditLog` is a separate per-section append-only log owned by Budget
 | Actor | Capabilities |
 |-------|--------------|
 | Any service / job | Write audit entries via `IAuditLogService.LogAsync(...)` (human or job overload) and `IAuditLogService.LogGoogleSyncAsync(...)`. No authorization check at the log site — the caller has already authorized the underlying action |
-| Board, Admin | View the system audit log via `GET /Board/AuditLog` (`[Authorize(Policy = PolicyNames.BoardOrAdmin)]`), with filter + pagination via `IAuditLogService.GetAuditLogPageAsync` |
+| Board, Admin | View the system audit log via `GET /Board/AuditLog` (`[Authorize(Policy = PolicyNames.BoardOrAdmin)]`), with filter + pagination via `IAuditViewerService.GetPageAsync` |
 | Any authenticated viewer of an entity page | See per-entity audit history rendered through the shared `AuditLogViewComponent` (e.g. on Profile, Team, Calendar, Google resource pages) — entries are scoped by `entityType` / `entityId` / `userId` / `actions` filters and inherit the host page's authorization |
 
 No one reads audit entries anonymously. The `/Board/AuditLog` dashboard is gated to BoardOrAdmin; per-entity audit history is gated by the host page's policy.

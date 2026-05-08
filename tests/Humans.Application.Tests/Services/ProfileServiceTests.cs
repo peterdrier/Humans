@@ -1825,9 +1825,20 @@ public class ProfileServiceTests : IDisposable
         {
             if (!_bothInitialGetsArrived.Task.IsCompleted)
             {
+                // Snapshot the dict state for THIS caller before the barrier releases.
+                // Without the snapshot, the race-loser's continuation can wake up after
+                // the race-winner has already completed Add+Update — its post-barrier
+                // dict lookup would then find the winner's row and skip the Add path
+                // entirely, dropping AddIfNotExistsFalseCount to 0.
+                Profile? snapshot;
+                lock (_gate)
+                {
+                    snapshot = _byUserId.TryGetValue(userId, out var p) ? Clone(p) : null;
+                }
                 if (Interlocked.Increment(ref _initialGetArrivals) >= 2)
                     _bothInitialGetsArrived.TrySetResult();
                 await _bothInitialGetsArrived.Task.WaitAsync(ct).ConfigureAwait(false);
+                return snapshot;
             }
             lock (_gate)
             {
