@@ -249,7 +249,7 @@ Each section's service owns these tables. Cross-service access goes through the 
 | **Camps** | `CampService`, `CampContactService` | `camps`, `camp_seasons`, `camp_leads`, `camp_images`, `camp_historical_names`, `camp_settings` |
 | **City Planning** | `CityPlanningService` | `city_planning_settings`, `camp_polygons`, `camp_polygon_histories` |
 | **Calendar** | `CalendarService` | `calendar_events`, `calendar_event_exceptions` |
-| **Shifts** | `ShiftManagementService`, `ShiftSignupService`, `GeneralAvailabilityService` | `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availabilities`, `volunteer_event_profiles`, `shift_tags`, `volunteer_tag_preferences` |
+| **Shifts** | `ShiftManagementService`, `ShiftSignupService`, `GeneralAvailabilityService` | `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availabilities`, `volunteer_event_profiles`, `volunteer_build_statuses`, `shift_tags`, `volunteer_tag_preferences` |
 | **Budget** | `BudgetService` | `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections` |
 | **Finance** | `HoldedSyncService`, `HoldedTransactionService` | `holded_transactions`, `holded_sync_states` |
 | **Tickets** | `TicketQueryService`, `TicketSyncService`, `TicketingBudgetService`, `TicketTransferService` | `ticket_orders`, `ticket_attendees`, `ticket_sync_states`, `ticket_transfer_requests` |
