@@ -66,6 +66,161 @@ public class VolunteerTrackingServiceTests
         row.Cells.Single(c => c.DayOffset == -1).State.Should().BeOneOf(VolunteerCellState.Expected, VolunteerCellState.Outside);
     }
 
+    [HumansFact]
+    public async Task MainCohort_mid_window_gap_renders_red_cell()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        // Signups at -5, -4, -2: missing -3. Today is offset -1.
+        var signups = new List<EligibleBuildSignup>
+        {
+            new(userId, -5, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -4, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -2, SignupStatus.Confirmed, "Cleanup"),
+        };
+        var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
+
+        var sut = BuildSut(es, signups: signups, participations: participations);
+
+        var result = await sut.GetTrackingDataAsync();
+
+        var row = result.MainCohort.Single();
+        row.GapCount.Should().Be(1);
+        row.Cells.Single(c => c.DayOffset == -3).State.Should().Be(VolunteerCellState.Gap);
+        row.Cells.Single(c => c.DayOffset == -5).State.Should().Be(VolunteerCellState.Confirmed);
+        row.Cells.Single(c => c.DayOffset == -4).State.Should().Be(VolunteerCellState.Confirmed);
+        row.Cells.Single(c => c.DayOffset == -2).State.Should().Be(VolunteerCellState.Confirmed);
+    }
+
+    [HumansFact]
+    public async Task MainCohort_NotAttending_volunteer_excluded()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var signups = new List<EligibleBuildSignup>
+        {
+            new(userId, -5, SignupStatus.Confirmed, "Cleanup"),
+        };
+        var participations = new[] { Participation(userId, ParticipationStatus.NotAttending, es.Year) };
+
+        var sut = BuildSut(es, signups: signups, participations: participations);
+
+        var result = await sut.GetTrackingDataAsync();
+
+        result.MainCohort.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task MainCohort_pending_signup_renders_pending_not_gap()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var signups = new List<EligibleBuildSignup>
+        {
+            new(userId, -5, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -4, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -3, SignupStatus.Pending, "Cleanup"),
+            new(userId, -2, SignupStatus.Confirmed, "Cleanup"),
+        };
+        var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
+
+        var sut = BuildSut(es, signups: signups, participations: participations);
+
+        var result = await sut.GetTrackingDataAsync();
+
+        var row = result.MainCohort.Single();
+        row.GapCount.Should().Be(0);
+        row.Cells.Single(c => c.DayOffset == -3).State.Should().Be(VolunteerCellState.Pending);
+    }
+
+    [HumansFact]
+    public async Task MainCohort_camp_setup_cuts_active_window()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var signups = new List<EligibleBuildSignup>
+        {
+            new(userId, -5, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -4, SignupStatus.Confirmed, "Cleanup"),
+        };
+        var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
+        var bs = new VolunteerBuildStatus
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            EventSettingsId = es.Id,
+            BarrioSetupStartDate = es.GateOpeningDate.PlusDays(-3), // setupOffset = -3
+        };
+
+        var sut = BuildSut(es, signups: signups, participations: participations, buildStatuses: new[] { bs });
+
+        var result = await sut.GetTrackingDataAsync();
+
+        var row = result.MainCohort.Single();
+        row.GapCount.Should().Be(0);
+        row.Cells.Single(c => c.DayOffset == -5).State.Should().Be(VolunteerCellState.Confirmed);
+        row.Cells.Single(c => c.DayOffset == -4).State.Should().Be(VolunteerCellState.Confirmed);
+        row.Cells.Single(c => c.DayOffset == -3).State.Should().Be(VolunteerCellState.CampSetup);
+        row.Cells.Single(c => c.DayOffset == -2).State.Should().Be(VolunteerCellState.CampSetup);
+        row.Cells.Single(c => c.DayOffset == -1).State.Should().Be(VolunteerCellState.CampSetup);
+    }
+
+    [HumansFact]
+    public async Task MainCohort_block_on_empty_day_suppresses_gap()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var signups = new List<EligibleBuildSignup>
+        {
+            new(userId, -5, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -4, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -2, SignupStatus.Confirmed, "Cleanup"),
+        };
+        var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
+        var bs = new VolunteerBuildStatus
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            EventSettingsId = es.Id,
+            BlockedDayOffsets = new List<int> { -3 },
+        };
+
+        var sut = BuildSut(es, signups: signups, participations: participations, buildStatuses: new[] { bs });
+
+        var result = await sut.GetTrackingDataAsync();
+
+        var row = result.MainCohort.Single();
+        row.GapCount.Should().Be(0);
+        row.Cells.Single(c => c.DayOffset == -3).State.Should().Be(VolunteerCellState.Blocked);
+    }
+
+    [HumansFact]
+    public async Task MainCohort_camp_setup_wins_over_block_on_overlap()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var signups = new List<EligibleBuildSignup>
+        {
+            new(userId, -5, SignupStatus.Confirmed, "Cleanup"),
+        };
+        var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
+        var bs = new VolunteerBuildStatus
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            EventSettingsId = es.Id,
+            BarrioSetupStartDate = es.GateOpeningDate.PlusDays(-3),
+            BlockedDayOffsets = new List<int> { -3 },
+        };
+
+        var sut = BuildSut(es, signups: signups, participations: participations, buildStatuses: new[] { bs });
+
+        var result = await sut.GetTrackingDataAsync();
+
+        var row = result.MainCohort.Single();
+        row.Cells.Single(c => c.DayOffset == -3).State.Should().Be(VolunteerCellState.CampSetup);
+    }
+
     private static EventParticipation Participation(Guid userId, ParticipationStatus status, int year)
         => new()
         {
