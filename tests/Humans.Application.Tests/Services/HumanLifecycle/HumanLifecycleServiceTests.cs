@@ -179,4 +179,26 @@ public class HumanLifecycleServiceTests
         result.Success.Should().BeTrue();
         _metrics.Received(1).RecordMemberSuspended("admin");
     }
+
+    [HumansFact]
+    public async Task UnsuspendAsync_WhenInboxResolutionThrows_StillReturnsSuccess()
+    {
+        // Inbox-resolution failures must not surface to the caller — the
+        // profile write already succeeded and unsuspension is durable.
+        // Mirrors the try/catch contract on the SuspendAsync notification path.
+        var userId = Guid.NewGuid();
+        var adminId = Guid.NewGuid();
+
+        _profileService.SetSuspendedAsync(userId, adminId, suspended: false, null, Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(true));
+        _notificationInboxService
+            .ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new InvalidOperationException("inbox down"));
+
+        var sut = BuildSut();
+
+        var result = await sut.UnsuspendAsync(userId, adminId);
+
+        result.Success.Should().BeTrue();
+    }
 }
