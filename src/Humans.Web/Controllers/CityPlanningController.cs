@@ -388,7 +388,7 @@ public class CityPlanningController : HumansControllerBase
 
         var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
         var allContainers = await _containerService.GetAllByYearAsync(year, cancellationToken);
-        var seasonBriefs = await _campService.GetCampSeasonBriefsForYearAsync(year, cancellationToken);
+        var seasonDisplayData = await _campService.GetCampSeasonDisplayDataForYearAsync(year, cancellationToken);
 
         var bySeasonId = allContainers
             .Where(c => c.CampSeasonId is not null)
@@ -403,14 +403,14 @@ public class CityPlanningController : HumansControllerBase
                 .Where(c => c.CampSeasonId is null)
                 .Select(ToContainerViewModel)
                 .ToList(),
-            BarrioGroups = seasonBriefs
-                .OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(s => new BarrioContainerGroup
+            BarrioGroups = seasonDisplayData
+                .OrderBy(kvp => kvp.Value.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(kvp => new BarrioContainerGroup
                 {
-                    SeasonId = s.CampSeasonId,
-                    CampName = s.Name,
-                    CampSlug = s.CampSlug,
-                    Containers = bySeasonId.TryGetValue(s.CampSeasonId, out var cs)
+                    SeasonId = kvp.Key,
+                    CampName = kvp.Value.Name,
+                    CampSlug = kvp.Value.CampSlug,
+                    Containers = bySeasonId.TryGetValue(kvp.Key, out var cs)
                         ? cs.Select(ToContainerViewModel).ToList()
                         : []
                 })
