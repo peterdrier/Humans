@@ -205,7 +205,7 @@
                         ["InstanceKey"] = "team-add-member",
                         ["Placeholder"] = Localizer["TeamAdmin_SearchPlaceholder"].Value,
                         ["Scope"] = "name",
-                        ["ExcludeUserIds"] = Model.Members.Select(m => m.UserId).ToList(),
+                        ["ExcludeUserIds"] = Model.AllMemberUserIds,
                     })
                 </div>
                 <div class="col-md-4">

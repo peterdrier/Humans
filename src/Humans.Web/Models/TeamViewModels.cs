@@ -271,6 +271,14 @@ public class TeamMembersViewModel
     public string TeamSlug { get; set; } = string.Empty;
     public bool IsSystemTeam { get; set; }
     public List<TeamMemberViewModel> Members { get; set; } = [];
+
+    /// <summary>
+    /// Every active member's UserId across all pages. Used by the add-member
+    /// picker to exclude already-members from typeahead — Members is paginated,
+    /// so it can't be the source of truth for exclusion.
+    /// </summary>
+    public List<Guid> AllMemberUserIds { get; set; } = [];
+
     public List<TeamJoinRequestViewModel> PendingRequests { get; set; } = [];
     public bool CanManageRoles { get; set; }
     public bool CanProvisionEmails { get; set; }

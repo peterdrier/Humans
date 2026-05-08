@@ -272,6 +272,7 @@ public class TeamAdminController : HumansTeamControllerBase
             CanManageRoles = !team.IsSystemTeam,
             CanProvisionEmails = true,
             Members = members,
+            AllMemberUserIds = allMembers.Select(m => m.UserId).ToList(),
             PendingRequests = pendingRequestViewModels,
             TotalCount = totalCount,
             PageNumber = page,
