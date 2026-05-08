@@ -494,6 +494,54 @@ public class VolunteerTrackingServiceTests
         trackingRepo.ReplaceCalls[0].Offsets.Should().Equal(new[] { -5, -4, -3 });
     }
 
+    [HumansFact]
+    public async Task GetMineBlockedDaysSummaryAsync_no_active_event_returns_inactive()
+    {
+        var sut = BuildSut(activeEvent: null);
+
+        var result = await sut.GetMineBlockedDaysSummaryAsync(Guid.NewGuid());
+
+        result.HasActiveBuildPeriod.Should().BeFalse();
+        result.BuildStartOffset.Should().Be(0);
+        result.BlockedDayOffsets.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetMineBlockedDaysSummaryAsync_no_row_yet_returns_empty_list_with_bounds()
+    {
+        var es = MakeEvent(buildStartOffset: -7);
+        var sut = BuildSut(es);
+
+        var result = await sut.GetMineBlockedDaysSummaryAsync(Guid.NewGuid());
+
+        result.HasActiveBuildPeriod.Should().BeTrue();
+        result.BuildStartOffset.Should().Be(-7);
+        result.GateOpeningDate.Should().Be(es.GateOpeningDate);
+        result.BlockedDayOffsets.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetMineBlockedDaysSummaryAsync_returns_existing_row_blocks()
+    {
+        var es = MakeEvent(buildStartOffset: -7);
+        var userId = Guid.NewGuid();
+        var bs = new VolunteerBuildStatus
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            EventSettingsId = es.Id,
+            BlockedDayOffsets = new List<int> { -3, -1 },
+        };
+        var sut = BuildSut(es, buildStatuses: new[] { bs });
+
+        var result = await sut.GetMineBlockedDaysSummaryAsync(userId);
+
+        result.HasActiveBuildPeriod.Should().BeTrue();
+        result.BuildStartOffset.Should().Be(-7);
+        result.GateOpeningDate.Should().Be(es.GateOpeningDate);
+        result.BlockedDayOffsets.Should().Equal(new[] { -3, -1 });
+    }
+
     private static GeneralAvailability Availability(Guid userId, Guid eventSettingsId, IReadOnlyList<int> days)
         => new()
         {

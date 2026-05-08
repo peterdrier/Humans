@@ -313,7 +313,20 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
         return new SaveOwnBlockedDaysResult(true, added, removed, normalized, null);
     }
 
-    public Task<MineBlockedDaysSummary> GetMineBlockedDaysSummaryAsync(
+    public async Task<MineBlockedDaysSummary> GetMineBlockedDaysSummaryAsync(
         Guid userId, CancellationToken ct = default)
-        => throw new NotSupportedException("Not yet implemented.");
+    {
+        var es = await _shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
+        if (es is null || es.BuildStartOffset >= 0)
+        {
+            return new MineBlockedDaysSummary(false, 0, default, Array.Empty<int>());
+        }
+
+        var row = await _trackingRepo.GetAsync(userId, es.Id, ct).ConfigureAwait(false);
+        return new MineBlockedDaysSummary(
+            true,
+            es.BuildStartOffset,
+            es.GateOpeningDate,
+            row?.BlockedDayOffsets ?? new List<int>());
+    }
 }
