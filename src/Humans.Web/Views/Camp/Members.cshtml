@@ -1,6 +1,6 @@
 @model Humans.Web.Models.CampEditViewModel
 @{
-    ViewData["Title"] = $"Members & Roles — {Model.Name}";
+    ViewData["Title"] = $"Humans & Roles — {Model.Name}";
 }
 
 <nav aria-label="breadcrumb">
@@ -8,11 +8,11 @@
         <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Camp_Plural"]</a></li>
         <li class="breadcrumb-item"><a asp-action="Details" asp-route-slug="@Model.Slug">@Model.Name</a></li>
         <li class="breadcrumb-item"><a asp-action="Edit" asp-route-slug="@Model.Slug">Edit</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Members</li>
+        <li class="breadcrumb-item active" aria-current="page">Humans</li>
     </ol>
 </nav>
 
-<h1 class="mb-4">Members &amp; Roles — @Model.Name <small class="text-muted">(@Model.Year)</small></h1>
+<h1 class="mb-4">Humans &amp; Roles — @Model.Name <small class="text-muted">(@Model.Year)</small></h1>
 
 <vc:temp-data-alerts />
 
