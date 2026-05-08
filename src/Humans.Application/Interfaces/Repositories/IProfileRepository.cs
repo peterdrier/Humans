@@ -142,17 +142,6 @@ public interface IProfileRepository
     Task AddAsync(Profile profile, CancellationToken ct = default);
 
     /// <summary>
-    /// Idempotent insert keyed on the <c>profiles.UserId</c> unique index.
-    /// Returns <c>true</c> when the row was inserted, <c>false</c> when a
-    /// concurrent caller (e.g. signup/login provisioning racing against
-    /// the admin Stub-Profile backfill) already inserted a profile for this
-    /// user — the underlying Postgres <c>23505</c> unique-violation is
-    /// translated into a successful no-op so callers with check-then-insert
-    /// semantics ("ensure exists") cannot observe the TOCTOU window.
-    /// </summary>
-    Task<bool> AddIfNotExistsByUserIdAsync(Profile profile, CancellationToken ct = default);
-
-    /// <summary>
     /// Persists changes to an existing profile. The provided entity is attached
     /// to a fresh context and saved. Use after mutating an entity obtained from
     /// <see cref="GetByUserIdAsync"/>.

@@ -27,7 +27,6 @@ src/Humans.Web/Controllers/CampController.cs:AssignRole/4
 src/Humans.Web/Controllers/CampController.cs:AssignRoleByUser/4
 src/Humans.Web/Controllers/CampController.cs:Contact/2
 src/Humans.Web/Controllers/CampController.cs:Edit/2
-src/Humans.Web/Controllers/CampController.cs:Edit/3
 src/Humans.Web/Controllers/CampController.cs:LeaveMembership/2
 src/Humans.Web/Controllers/CampController.cs:Register/1
 src/Humans.Web/Controllers/CampController.cs:RequestMembership/1

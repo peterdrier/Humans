@@ -1,0 +1,21 @@
+@model string[]
+@*
+    Renders the list of tool-call entries (name + JSON args) under an assistant
+    message in the user-facing transcript at /Agent/Conversation/{id}. Each
+    entry in FetchedDocs is stored as "<toolName>:<jsonArgs>".
+*@
+<ul class="agent-tool-calls-list small mb-0 mt-1">
+    @foreach (var entry in Model)
+    {
+        var colon = entry.IndexOf(':');
+        var toolName = colon > 0 ? entry[..colon] : entry;
+        var toolArgs = colon > 0 ? entry[(colon + 1)..] : "";
+        <li>
+            <code>@toolName</code>
+            @if (!string.IsNullOrWhiteSpace(toolArgs))
+            {
+                <pre class="agent-tool-args">@toolArgs</pre>
+            }
+        </li>
+    }
+</ul>

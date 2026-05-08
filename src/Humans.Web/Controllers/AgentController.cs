@@ -101,6 +101,21 @@ public class AgentController : HumansControllerBase
         return View(new AgentConversationsViewModel(listRows, IsAdminView: isAdmin));
     }
 
+    [HttpGet("Conversation/{id:guid}")]
+    public async Task<IActionResult> Conversation(Guid id, CancellationToken cancellationToken)
+    {
+        var (missing, currentUser) = await RequireCurrentUserAsync();
+        if (missing is not null) return missing;
+
+        // Ownership mismatch returns 404 (not 403) per Agent.md invariant 7
+        // and the issue #632 spec — the existence of someone else's
+        // conversation must not be inferable from the response code.
+        var view = await _agent.GetMyConversationAsync(currentUser.Id, id, cancellationToken);
+        if (view is null) return NotFound();
+
+        return View(new AgentMyConversationViewModel(view.Conversation, view.CurrentUserContextTail));
+    }
+
     [HttpGet("Conversations/{id:guid}")]
     public async Task<IActionResult> ConversationDetail(Guid id, CancellationToken cancellationToken)
     {

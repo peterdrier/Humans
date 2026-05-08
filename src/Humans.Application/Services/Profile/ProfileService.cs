@@ -46,6 +46,20 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     private readonly IClock _clock;
     private readonly ILogger<ProfileService> _logger;
 
+    // Per-user serialization for create-or-update on profiles.UserId. Single-server
+    // deployment, so a process-local striped semaphore is sufficient — no Postgres
+    // 23505 race can land if all writes for a given userId are sequentialized here.
+    // Striped (32 buckets) so unrelated users never contend.
+    private static readonly SemaphoreSlim[] _userLocks = CreateUserLocks(32);
+    private static SemaphoreSlim[] CreateUserLocks(int count)
+    {
+        var locks = new SemaphoreSlim[count];
+        for (var i = 0; i < count; i++) locks[i] = new SemaphoreSlim(1, 1);
+        return locks;
+    }
+    private static SemaphoreSlim LockFor(Guid userId)
+        => _userLocks[(uint)userId.GetHashCode() % (uint)_userLocks.Length];
+
     public ProfileService(
         IProfileRepository profileRepository,
         IUserService userService,
@@ -131,23 +145,28 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
     public async Task EnsureStubProfileAsync(Guid userId, CancellationToken ct = default)
     {
-        var existing = await _profileRepository.GetByUserIdAsync(userId, ct);
-        if (existing is not null) return;
-
-        var now = _clock.GetCurrentInstant();
-        var profile = new Domain.Entities.Profile
+        var gate = LockFor(userId);
+        await gate.WaitAsync(ct).ConfigureAwait(false);
+        try
         {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            CreatedAt = now,
-            UpdatedAt = now,
-            State = ProfileState.Stub,
-        };
-        // Use the idempotent insert: a concurrent caller (signup/login provisioning
-        // racing the admin backfill) may insert between our GetByUserId check and
-        // SaveChanges. The repo translates Postgres 23505 on profiles.UserId into
-        // a successful no-op so this method's "ensure exists" contract holds.
-        await _profileRepository.AddIfNotExistsByUserIdAsync(profile, ct);
+            var existing = await _profileRepository.GetByUserIdAsync(userId, ct);
+            if (existing is not null) return;
+
+            var now = _clock.GetCurrentInstant();
+            var profile = new Domain.Entities.Profile
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                CreatedAt = now,
+                UpdatedAt = now,
+                State = ProfileState.Stub,
+            };
+            await _profileRepository.AddAsync(profile, ct);
+        }
+        finally
+        {
+            gate.Release();
+        }
     }
 
     public async Task SetProfilePictureAsync(
@@ -284,6 +303,25 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         Guid userId, string displayName, ProfileSaveRequest request, string language,
         CancellationToken ct = default)
     {
+        // Serialize per-user so two concurrent first-time saves can't both pass
+        // the GetByUserIdAsync null check and race on the profiles.UserId unique
+        // index. Single-server deployment, so a process-local lock is sufficient.
+        var gate = LockFor(userId);
+        await gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            return await SaveProfileCoreAsync(userId, displayName, request, language, ct);
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    private async Task<Guid> SaveProfileCoreAsync(
+        Guid userId, string displayName, ProfileSaveRequest request, string language,
+        CancellationToken ct)
+    {
         var now = _clock.GetCurrentInstant();
 
         var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
@@ -295,14 +333,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             // populated (BurnerName/FirstName/LastName), giving the
             // ProfileService_UpdateProfileAsync_TransitionsStubToActive
             // behavior contract a single home.
-            //
-            // Issue #651: use the idempotent insert. If a concurrent caller
-            // wins the race against profiles.UserId's unique index, re-fetch
-            // the winner's row by UserId and apply this caller's field
-            // updates to that entity — otherwise UpdateAsync would attach a
-            // detached entity with a non-matching Id and silently update
-            // zero rows.
-            var newProfile = new Domain.Entities.Profile
+            profile = new Domain.Entities.Profile
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
@@ -310,24 +341,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
                 UpdatedAt = now,
                 State = ProfileState.Stub,
             };
-            var inserted = await _profileRepository.AddIfNotExistsByUserIdAsync(newProfile, ct);
-            if (inserted)
-            {
-                profile = newProfile;
-            }
-            else
-            {
-                profile = await _profileRepository.GetByUserIdAsync(userId, ct);
-                if (profile is null)
-                {
-                    // Should not happen — AddIfNotExistsByUserIdAsync returned
-                    // false because a row exists. Re-fetch one more time in
-                    // case of a transient repeatable-read; if still missing,
-                    // surface as an exception rather than silently dropping.
-                    throw new InvalidOperationException(
-                        $"AddIfNotExistsByUserIdAsync reported a duplicate for user {userId} but no profile row could be re-read.");
-                }
-            }
+            await _profileRepository.AddAsync(profile, ct);
         }
 
         profile.BurnerName = request.BurnerName;
