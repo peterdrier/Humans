@@ -27,7 +27,7 @@ A new sub-page of the Shift Dashboard that:
 
 ## Privilege Grant — Approved 2026-05-08
 
-The `VolunteerTrackingWrite` policy adds a new capability: Admin and VolunteerCoordinator may mutate another volunteer's `BarrioSetupStartDate` and `BlockedDayOffsets` on the volunteer's behalf. Per `memory/process/privilege-changes-need-explicit-approval.md`, this is a privilege change that needs Peter's explicit per-change approval. **Approved by Peter on 2026-05-08.**
+The `VolunteerTrackingWrite` policy adds a new capability: Admin and VolunteerCoordinator may mutate another volunteer's `BarrioSetupStartDate` and `BlockedDayOffsets` on the volunteer's behalf. Per `memory/process/privilege-changes-need-explicit-approval.md`, this is a privilege change that needs explicit per-change approval. **Approved by Frank on 2026-05-08.**
 
 ## User-facing scope
 
@@ -400,7 +400,7 @@ Volunteer self-service flow:
 - [ ] `docs/features/47-volunteer-tracking.md` created with business context, user stories, data model, workflows, related-feature cross-links (per `memory/process/feature-spec-on-new-feature.md`); committed in the same PR as the implementation.
 
 ### Auth & audit
-- [ ] `PolicyNames.VolunteerTrackingWrite` constant added; policy registered in `AuthorizationPolicyExtensions` as a pure role-list policy (`Admin`, `VolunteerCoordinator`). **Privilege grant pre-approved by Peter on 2026-05-08** (per `memory/process/privilege-changes-need-explicit-approval.md`).
+- [ ] `PolicyNames.VolunteerTrackingWrite` constant added; policy registered in `AuthorizationPolicyExtensions` as a pure role-list policy (`Admin`, `VolunteerCoordinator`). **Privilege grant pre-approved by Frank on 2026-05-08** (per `memory/process/privilege-changes-need-explicit-approval.md`).
 - [ ] `AuditAction` enum gains `VolunteerCampSetupSet`, `VolunteerCampSetupCleared`, `VolunteerDayBlocked`, `VolunteerDayUnblocked`, `VolunteerOwnBlockedDaysSaved`. Audit-log display strings added.
 - [ ] `AuditLogEntityTypes.VolunteerBuildStatus` constant added; controllers use it for the `EntityType` parameter (per `memory/code/no-magic-strings.md`).
 
