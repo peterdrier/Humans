@@ -37,6 +37,7 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
             return new VolunteerTrackingViewModel(
                 false,
                 0,
+                default,
                 Array.Empty<VolunteerHeatmapRow>(),
                 Array.Empty<VolunteerCohortRow>());
         }
@@ -215,6 +216,7 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
         return new VolunteerTrackingViewModel(
             true,
             es.BuildStartOffset,
+            es.GateOpeningDate,
             mainRows,
             unbookedRows);
     }

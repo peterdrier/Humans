@@ -85,6 +85,7 @@ public sealed class VolunteerTrackingController : HumansControllerBase
 
         var model = new VolunteerTrackingPageViewModel(
             data.BuildStartOffset,
+            data.GateOpeningDate,
             mainSorted,
             unbookedSorted,
             users,

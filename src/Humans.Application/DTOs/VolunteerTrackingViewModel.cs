@@ -44,5 +44,6 @@ public sealed record VolunteerCohortRow(
 public sealed record VolunteerTrackingViewModel(
     bool HasActiveEvent,
     int BuildStartOffset,
+    LocalDate GateOpeningDate,
     IReadOnlyList<VolunteerHeatmapRow> MainCohort,
     IReadOnlyList<VolunteerCohortRow> UnbookedCohort);

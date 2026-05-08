@@ -154,6 +154,7 @@ public class VolunteerTrackingControllerTests
             .Returns(new VolunteerTrackingViewModel(
                 HasActiveEvent: false,
                 BuildStartOffset: 0,
+                GateOpeningDate: default,
                 MainCohort: Array.Empty<VolunteerHeatmapRow>(),
                 UnbookedCohort: Array.Empty<VolunteerCohortRow>()));
         var ctrl = BuildSut(current);
@@ -193,7 +194,7 @@ public class VolunteerTrackingControllerTests
                 Cells: Array.Empty<VolunteerCell>()),
         };
         _service.GetTrackingDataAsync(Arg.Any<CancellationToken>())
-            .Returns(new VolunteerTrackingViewModel(true, -10, rows,
+            .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24), rows,
                 Array.Empty<VolunteerCohortRow>()));
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User>
@@ -220,7 +221,7 @@ public class VolunteerTrackingControllerTests
             new(b, -10, -2, null, GapCount: 1, Array.Empty<VolunteerCell>()),
         };
         _service.GetTrackingDataAsync(Arg.Any<CancellationToken>())
-            .Returns(new VolunteerTrackingViewModel(true, -10, rows,
+            .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24), rows,
                 Array.Empty<VolunteerCohortRow>()));
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User>());
@@ -246,7 +247,7 @@ public class VolunteerTrackingControllerTests
             new(b, -10, -2, null, GapCount: 5, Array.Empty<VolunteerCell>()),
         };
         _service.GetTrackingDataAsync(Arg.Any<CancellationToken>())
-            .Returns(new VolunteerTrackingViewModel(true, -10, rows,
+            .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24), rows,
                 Array.Empty<VolunteerCohortRow>()));
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User>());
@@ -271,7 +272,7 @@ public class VolunteerTrackingControllerTests
                 UnbookedCount: 2, Cells: Array.Empty<VolunteerCell>()),
         };
         _service.GetTrackingDataAsync(Arg.Any<CancellationToken>())
-            .Returns(new VolunteerTrackingViewModel(true, -10,
+            .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24),
                 Array.Empty<VolunteerHeatmapRow>(), unbooked));
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User>());
