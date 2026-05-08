@@ -140,8 +140,8 @@ public class ProfileAdminController : HumansControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "Admin-initiated merge failed: source {Source}, target {Target}",
-                sourceUserId, targetUserId);
+            _logger.LogWarning("Admin-initiated merge failed: source {Source}, target {Target}: {Reason}",
+                sourceUserId, targetUserId, ex.Message);
             SetError($"Merge failed: {ex.Message}");
             return RedirectToAction(nameof(EmailProblemsCompare),
                 new { userId1 = user1Id, userId2 = user2Id });
