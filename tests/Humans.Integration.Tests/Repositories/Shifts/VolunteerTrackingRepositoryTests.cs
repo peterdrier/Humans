@@ -178,6 +178,31 @@ public class VolunteerTrackingRepositoryTests : IClassFixture<HumansWebApplicati
         row.Should().BeNull();
     }
 
+    [HumansFact]
+    public async Task GetByEventAsync_returns_only_rows_for_requested_event()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var es1 = await SeedActiveEventAsync(db);
+        var es2 = await SeedActiveEventAsync(db);
+        var sut = new VolunteerTrackingRepository(db);
+
+        var u1 = Guid.NewGuid();
+        var u2 = Guid.NewGuid();
+        var u3 = Guid.NewGuid();
+
+        // Two rows on es1, one on es2.
+        await sut.UpsertCampSetupAsync(u1, es1.Id, new LocalDate(2026, 6, 30), null, null, null);
+        await sut.UpsertCampSetupAsync(u2, es1.Id, new LocalDate(2026, 7, 1), null, null, null);
+        await sut.UpsertCampSetupAsync(u3, es2.Id, new LocalDate(2026, 6, 25), null, null, null);
+
+        var rows = await sut.GetByEventAsync(es1.Id);
+
+        rows.Should().HaveCount(2);
+        rows.Select(r => r.UserId).Should().BeEquivalentTo(new[] { u1, u2 });
+        rows.Should().OnlyContain(r => r.EventSettingsId == es1.Id);
+    }
+
     /// <summary>
     /// Seeds a fresh <see cref="EventSettings"/> row with a unique name so each
     /// test gets an isolated event id (the test container is shared across

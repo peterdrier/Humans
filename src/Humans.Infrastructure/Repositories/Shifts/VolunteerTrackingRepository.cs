@@ -29,9 +29,11 @@ public sealed class VolunteerTrackingRepository : IVolunteerTrackingRepository
                 x => x.UserId == userId && x.EventSettingsId == eventSettingsId,
                 ct);
 
-    public Task<IReadOnlyList<VolunteerBuildStatus>> GetByEventAsync(
+    public async Task<IReadOnlyList<VolunteerBuildStatus>> GetByEventAsync(
         Guid eventSettingsId, CancellationToken ct = default) =>
-        throw new NotSupportedException("GetByEventAsync is implemented in a follow-up TDD step.");
+        await _db.VolunteerBuildStatuses
+            .Where(x => x.EventSettingsId == eventSettingsId)
+            .ToListAsync(ct);
 
     public async Task<VolunteerBuildStatus> UpsertCampSetupAsync(
         Guid userId, Guid eventSettingsId, LocalDate? barrioSetupStartDate,
