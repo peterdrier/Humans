@@ -50,7 +50,7 @@
 - `tests/Humans.Application.Tests/Services/Shifts/VolunteerTrackingServiceTests.cs`
 - `tests/Humans.Integration.Tests/Repositories/Shifts/VolunteerTrackingRepositoryTests.cs`
 - `tests/Humans.Web.Tests/Controllers/VolunteerTrackingControllerTests.cs`
-- `tests/e2e/VolunteerTracking.spec.ts` (Playwright)
+- `tests/e2e/tests/volunteer-tracking.spec.ts` (Playwright; lowercase under `tests/e2e/tests/`, matches existing project layout)
 - `docs/features/47-volunteer-tracking.md`
 
 **Modified files:**
@@ -360,7 +360,7 @@ git commit -m "Register VolunteerTrackingWrite policy (Admin + VolunteerCoordina
 
 ## Chunk 3: Repository — interface, implementation, integration tests
 
-Goal: `IVolunteerTrackingRepository` exposes the I/O the service needs: get the row, upsert, replace blocked-days list, set/remove a single offset, get all rows for an event, and load eligible Build-period signups for an event. Integration tests use the existing test infrastructure (`TestDbContextFactory`).
+Goal: `IVolunteerTrackingRepository` exposes the I/O the service needs: get the row, upsert, replace blocked-days list, set/remove a single offset, get all rows for an event, and load eligible Build-period signups for an event. Integration tests inherit `tests/Humans.Integration.Tests/Infrastructure/IntegrationTestBase.cs` (read it first to confirm the actual API).
 
 ### Task 3.1: Define the interface
 
@@ -1110,8 +1110,8 @@ var today = _clock.GetCurrentInstant().InZone(DateTimeZoneProviders.Tzdb[es.Time
 var todayOffset = Period.Between(es.GateOpeningDate, today, PeriodUnits.Days).Days;
 
 var signups = await _trackingRepo.GetEligibleBuildSignupsAsync(es.Id, ct);
-var statusByUser = await _userService.GetAllParticipationsForYearAsync(es.Year, ct);
-var statusMap = statusByUser
+var participations = await _userService.GetAllParticipationsForYearAsync(es.Year, ct);
+var statusMap = participations
     .Where(p => p.Status == ParticipationStatus.NotAttending
              || p.Status == ParticipationStatus.Ticketed
              || p.Status == ParticipationStatus.Attended)
@@ -1253,7 +1253,7 @@ var availabilityByUser = availabilityRows
     .ToDictionary(g => g.UserId, g => g.AvailableDayOffsets.ToHashSet());
 
 var unbookedRows = new List<VolunteerCohortRow>();
-foreach (var participation in statusByUser)
+foreach (var participation in participations)
 {
     if (participation.Status != ParticipationStatus.Ticketed
         && participation.Status != ParticipationStatus.Attended) continue;
@@ -1805,33 +1805,36 @@ public async Task<IActionResult> SaveBlockedDays([FromForm] List<int>? dayOffset
     var result = await _trackingService.SaveOwnBlockedDaysAsync(current.Id, input, ct);
     if (!result.Ok)
     {
-        SetError(Localizer[result.ErrorMessageKey ?? "VolTrack_Err_Unknown"]);
+        SetError(_localizer[result.ErrorMessageKey ?? "VolTrack_Err_Unknown"]);
         return RedirectToAction(nameof(Mine));
     }
 
     foreach (var d in result.Added)
     {
-        await _audit.LogAsync(AuditAction.VolunteerDayBlocked,
+        await _auditLogService.LogAsync(AuditAction.VolunteerDayBlocked,
             nameof(VolunteerBuildStatus), current.Id,
             $"DayOffset={d}; self", current.Id.ToString());
     }
     foreach (var d in result.Removed)
     {
-        await _audit.LogAsync(AuditAction.VolunteerDayUnblocked,
+        await _auditLogService.LogAsync(AuditAction.VolunteerDayUnblocked,
             nameof(VolunteerBuildStatus), current.Id,
             $"DayOffset={d}; self", current.Id.ToString());
     }
-    await _audit.LogAsync(AuditAction.VolunteerOwnBlockedDaysSaved,
+    await _auditLogService.LogAsync(AuditAction.VolunteerOwnBlockedDaysSaved,
         nameof(VolunteerBuildStatus), current.Id,
         $"Resulting list: [{string.Join(",", result.ResultingList)}]",
         current.Id.ToString());
 
-    SetSuccess(Localizer["VolTrack_Msg_BlockedDaysSaved"]);
+    SetSuccess(_localizer["VolTrack_Msg_BlockedDaysSaved"]);
     return RedirectToAction(nameof(Mine));
 }
 ```
 
-- [ ] **Step 7.1.2:** Inject `IVolunteerTrackingService` into `ShiftsController` ctor.
+- [ ] **Step 7.1.2:** Add ctor parameters and private fields:
+  - Add `IVolunteerTrackingService _trackingService` to `ShiftsController`. Inject in the constructor.
+  - Add `IStringLocalizer<SharedResource> _localizer` if not already present (read the existing ctor first — `ShiftsController.cs:24-30`; add the field & param if missing).
+  - The audit-log field already exists as `_auditLogService` (project convention; do not introduce a different name). The snippet above uses that field.
 
 - [ ] **Step 7.1.3:** Build. Commit.
 
