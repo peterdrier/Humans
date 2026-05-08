@@ -1,5 +1,6 @@
 using Humans.Application;
 using Humans.Domain.Entities;
+using NodaTime;
 
 namespace Humans.Web.Models.EmailProblems;
 
@@ -17,5 +18,5 @@ public sealed record CompareSide(
     IReadOnlyList<UserEmailSnapshot> AllUserEmails,
     int TeamCount,
     int RoleAssignmentCount,
-    DateTime? LastLogin,
+    Instant? LastLogin,
     bool IsProfileComplete);

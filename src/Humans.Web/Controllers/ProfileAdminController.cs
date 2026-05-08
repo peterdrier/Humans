@@ -97,7 +97,7 @@ public class ProfileAdminController : HumansControllerBase
             new(user.Id, user.DisplayName, user.ProfilePictureUrl,
                 profile?.AllUserEmails ?? Array.Empty<UserEmailSnapshot>(),
                 teamCount, roleCount,
-                user.LastLoginAt?.ToDateTimeUtc(),
+                user.LastLoginAt,
                 !string.IsNullOrEmpty(profile?.BurnerName));
 
         var memberships1 = await _teamService.GetUserTeamsAsync(userId1, ct);
@@ -125,24 +125,12 @@ public class ProfileAdminController : HumansControllerBase
         Guid user1Id, Guid user2Id, Guid targetUserId, string? notes,
         CancellationToken ct)
     {
-        var (error, currentUser) = await RequireCurrentUserAsync();
-        if (error is not null) return error;
+        var (authError, currentUser) = await RequireCurrentUserAsync();
+        if (authError is not null) return authError;
 
-        Guid sourceUserId;
-        if (targetUserId == user1Id) sourceUserId = user2Id;
-        else if (targetUserId == user2Id) sourceUserId = user1Id;
-        else
-        {
-            SetError("Target must be one of the two compared accounts.");
-            return RedirectToAction(nameof(EmailProblemsCompare),
-                new { userId1 = user1Id, userId2 = user2Id });
-        }
-
-        if (!await _emailProblems.UsersShareAnyEmailAsync(user1Id, user2Id, ct))
-        {
-            SetError("These accounts no longer share an email and cannot be merged here.");
-            return RedirectToAction(nameof(EmailProblems));
-        }
+        var (sourceUserId, validationError) =
+            await ResolveAndValidateMergePairAsync(user1Id, user2Id, targetUserId, ct);
+        if (validationError is not null) return validationError;
 
         try
         {
@@ -158,6 +146,28 @@ public class ProfileAdminController : HumansControllerBase
             return RedirectToAction(nameof(EmailProblemsCompare),
                 new { userId1 = user1Id, userId2 = user2Id });
         }
+    }
+
+    private async Task<(Guid SourceUserId, IActionResult? Error)> ResolveAndValidateMergePairAsync(
+        Guid user1Id, Guid user2Id, Guid targetUserId, CancellationToken ct)
+    {
+        Guid sourceUserId;
+        if (targetUserId == user1Id) sourceUserId = user2Id;
+        else if (targetUserId == user2Id) sourceUserId = user1Id;
+        else
+        {
+            SetError("Target must be one of the two compared accounts.");
+            return (Guid.Empty, RedirectToAction(nameof(EmailProblemsCompare),
+                new { userId1 = user1Id, userId2 = user2Id }));
+        }
+
+        if (!await _emailProblems.UsersShareAnyEmailAsync(user1Id, user2Id, ct))
+        {
+            SetError("These accounts no longer share an email and cannot be merged here.");
+            return (Guid.Empty, RedirectToAction(nameof(EmailProblems)));
+        }
+
+        return (sourceUserId, null);
     }
 
     [HttpPost("EmailProblems/DeleteOrphanEmail")]
