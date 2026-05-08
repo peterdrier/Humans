@@ -221,6 +221,43 @@ public class VolunteerTrackingServiceTests
         row.Cells.Single(c => c.DayOffset == -3).State.Should().Be(VolunteerCellState.CampSetup);
     }
 
+    [HumansFact]
+    public async Task UnbookedCohort_volunteer_with_availability_no_signups_appears()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
+        var availability = new[] { Availability(userId, es.Id, new[] { -5, -4, -3 }) };
+
+        var sut = BuildSut(es, participations: participations, availabilities: availability);
+
+        var result = await sut.GetTrackingDataAsync();
+
+        result.MainCohort.Should().BeEmpty();
+        result.UnbookedCohort.Should().HaveCount(1);
+        var row = result.UnbookedCohort[0];
+        row.UserId.Should().Be(userId);
+        row.UnbookedCount.Should().Be(3);
+        row.FirstAvailableDay.Should().Be(-5);
+        row.Cells.Single(c => c.DayOffset == -5).State.Should().Be(VolunteerCellState.AvailableUnbooked);
+        row.Cells.Single(c => c.DayOffset == -4).State.Should().Be(VolunteerCellState.AvailableUnbooked);
+        row.Cells.Single(c => c.DayOffset == -3).State.Should().Be(VolunteerCellState.AvailableUnbooked);
+        // -2, -1: not in availability so NotAvailable.
+        row.Cells.Single(c => c.DayOffset == -2).State.Should().Be(VolunteerCellState.NotAvailable);
+        row.Cells.Single(c => c.DayOffset == -1).State.Should().Be(VolunteerCellState.NotAvailable);
+    }
+
+    private static GeneralAvailability Availability(Guid userId, Guid eventSettingsId, IReadOnlyList<int> days)
+        => new()
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            EventSettingsId = eventSettingsId,
+            AvailableDayOffsets = days.ToList(),
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow,
+        };
+
     private static EventParticipation Participation(Guid userId, ParticipationStatus status, int year)
         => new()
         {

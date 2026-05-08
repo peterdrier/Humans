@@ -137,11 +137,86 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
                 cells));
         }
 
+        var availabilityRows = await _availability.GetByEventAsync(es.Id, ct).ConfigureAwait(false);
+        var availabilityByUser = availabilityRows
+            .ToDictionary(g => g.UserId, g => g.AvailableDayOffsets.ToHashSet());
+
+        var unbookedRows = new List<VolunteerCohortRow>();
+        foreach (var participation in participations)
+        {
+            if (participation.Status != ParticipationStatus.Ticketed
+                && participation.Status != ParticipationStatus.Attended)
+            {
+                continue;
+            }
+
+            var userId = participation.UserId;
+            if (perUserSignups.ContainsKey(userId))
+            {
+                continue; // already in main cohort
+            }
+
+            if (!availabilityByUser.TryGetValue(userId, out var avail))
+            {
+                continue;
+            }
+
+            var inBuild = avail.Where(d => d >= es.BuildStartOffset && d < 0).ToHashSet();
+            if (inBuild.Count == 0)
+            {
+                continue;
+            }
+
+            var firstAvailableDay = inBuild.Min();
+            bsByUser.TryGetValue(userId, out var bs);
+            int? setupOffset = bs?.BarrioSetupStartDate is { } d2
+                ? Period.Between(es.GateOpeningDate, d2, PeriodUnits.Days).Days
+                : null;
+            var blockedSet = bs?.BlockedDayOffsets.ToHashSet() ?? new HashSet<int>();
+
+            var cells = new List<VolunteerCell>(-es.BuildStartOffset);
+            int unbookedCount = 0;
+            for (int d3 = es.BuildStartOffset; d3 < 0; d3++)
+            {
+                VolunteerCellState s;
+                if (setupOffset.HasValue && d3 >= setupOffset.Value)
+                {
+                    s = VolunteerCellState.CampSetup;
+                }
+                else if (blockedSet.Contains(d3))
+                {
+                    s = VolunteerCellState.Blocked;
+                }
+                else if (inBuild.Contains(d3) && d3 < todayOffset)
+                {
+                    s = VolunteerCellState.AvailableUnbooked;
+                    unbookedCount++;
+                }
+                else if (inBuild.Contains(d3))
+                {
+                    s = VolunteerCellState.AvailableExpected;
+                }
+                else
+                {
+                    s = VolunteerCellState.NotAvailable;
+                }
+
+                cells.Add(new VolunteerCell(d3, s, Array.Empty<string>()));
+            }
+
+            unbookedRows.Add(new VolunteerCohortRow(
+                userId,
+                firstAvailableDay,
+                bs?.BarrioSetupStartDate,
+                unbookedCount,
+                cells));
+        }
+
         return new VolunteerTrackingViewModel(
             true,
             es.BuildStartOffset,
             mainRows,
-            Array.Empty<VolunteerCohortRow>());
+            unbookedRows);
     }
 
     public Task<SetCampSetupResult> SetCampSetupAsync(
