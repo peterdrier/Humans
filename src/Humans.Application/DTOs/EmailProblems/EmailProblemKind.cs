@@ -9,5 +9,6 @@ public enum EmailProblemKind
     SharedAcrossUsers = 5,
     Unverified = 6,
     OrphanUserEmail = 7,
-    GhostExternalLogins = 8
+    GhostExternalLogins = 8,
+    LegacyIdentityEmailNotInUserEmails = 9
 }

@@ -205,6 +205,42 @@ public class ProfileAdminControllerTests
     }
 
     [HumansFact]
+    public async Task BackfillLegacyEmails_AuditsEachReturnedRow()
+    {
+        var u1 = Guid.NewGuid();
+        var u2 = Guid.NewGuid();
+        _emailProblems.BackfillLegacyIdentityEmailsAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<(Guid, string)> { (u1, "a@x.com"), (u2, "b@x.com") });
+
+        var result = await BuildController().BackfillLegacyEmails(default);
+
+        await _audit.Received(1).LogAsync(
+            AuditAction.LegacyIdentityEmailBackfilled, nameof(User), u1,
+            Arg.Is<string>(s => s.Contains("a@x.com")),
+            _adminUserId);
+        await _audit.Received(1).LogAsync(
+            AuditAction.LegacyIdentityEmailBackfilled, nameof(User), u2,
+            Arg.Is<string>(s => s.Contains("b@x.com")),
+            _adminUserId);
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be(nameof(ProfileAdminController.EmailProblems));
+    }
+
+    [HumansFact]
+    public async Task BackfillLegacyEmails_NoneToBackfill_NoAudit()
+    {
+        _emailProblems.BackfillLegacyIdentityEmailsAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<(Guid, string)>());
+
+        var result = await BuildController().BackfillLegacyEmails(default);
+
+        await _audit.DidNotReceive().LogAsync(
+            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>());
+        result.Should().BeOfType<RedirectToActionResult>();
+    }
+
+    [HumansFact]
     public async Task DeleteGhostLogins_NotInGhostSet_NoOpsAndNoAudit()
     {
         var userId = Guid.NewGuid();

@@ -193,6 +193,30 @@ public class ProfileAdminController : HumansControllerBase
         return RedirectToAction(nameof(EmailProblems));
     }
 
+    [HttpPost("EmailProblems/BackfillLegacyEmails")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BackfillLegacyEmails(CancellationToken ct)
+    {
+        var (error, currentUser) = await RequireCurrentUserAsync();
+        if (error is not null) return error;
+
+        var backfilled = await _emailProblems.BackfillLegacyIdentityEmailsAsync(ct);
+        foreach (var (userId, email) in backfilled)
+        {
+            await _audit.LogAsync(
+                AuditAction.LegacyIdentityEmailBackfilled, nameof(User), userId,
+                $"Backfilled verified UserEmail row from legacy User.Email column: {email}",
+                currentUser.Id);
+        }
+
+        if (backfilled.Count == 0)
+            SetInfo("No legacy User.Email values to backfill.");
+        else
+            SetSuccess($"Backfilled {backfilled.Count} verified UserEmail row(s) from legacy User.Email columns.");
+
+        return RedirectToAction(nameof(EmailProblems));
+    }
+
     [HttpPost("EmailProblems/DeleteGhostLogins")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteGhostLogins(Guid userId, CancellationToken ct)

@@ -113,6 +113,27 @@ public sealed class EmailProblemsService : IEmailProblemsService
                 EmailProblemKind.GhostExternalLogins, ghostId, null, null, null, null));
         }
 
+        // Case 9: legacy AspNetIdentity Email column populated but no matching
+        // verified UserEmail row exists. Pre-decoupling users whose row was
+        // never written when the spec switched. Detect via the raw column
+        // (IdentityEmailColumn) so the User.Email override's UserEmails-based
+        // resolution doesn't mask it.
+        foreach (var u in users)
+        {
+            var legacy = u.IdentityEmailColumn;
+            if (string.IsNullOrEmpty(legacy)) continue;
+
+            var profile = profiles.FirstOrDefault(p => p.UserId == u.Id);
+            var emails = profile?.AllUserEmails ?? Array.Empty<UserEmailSnapshot>();
+            var hasMatchingVerifiedRow = emails.Any(e =>
+                e.IsVerified && string.Equals(e.Email, legacy, StringComparison.OrdinalIgnoreCase));
+            if (hasMatchingVerifiedRow) continue;
+
+            problems.Add(new EmailProblem(
+                EmailProblemKind.LegacyIdentityEmailNotInUserEmails,
+                u.Id, null, null, legacy, null));
+        }
+
         return new EmailProblemsReport(_clock.GetCurrentInstant(), problems);
     }
 
@@ -135,5 +156,29 @@ public sealed class EmailProblemsService : IEmailProblemsService
     {
         var ghosts = await _userService.GetUsersWithLoginsButNoEmailsAsync(ct);
         return ghosts.Contains(userId);
+    }
+
+    public async Task<IReadOnlyList<(Guid UserId, string Email)>> BackfillLegacyIdentityEmailsAsync(
+        CancellationToken ct = default)
+    {
+        var users = await _userService.GetAllUsersAsync(ct);
+        var backfilled = new List<(Guid, string)>();
+
+        foreach (var u in users)
+        {
+            var legacy = u.IdentityEmailColumn;
+            if (string.IsNullOrEmpty(legacy)) continue;
+
+            var profile = await _profileService.GetFullProfileAsync(u.Id, ct);
+            var emails = profile?.AllUserEmails ?? Array.Empty<UserEmailSnapshot>();
+            if (emails.Any(e => e.IsVerified
+                && string.Equals(e.Email, legacy, StringComparison.OrdinalIgnoreCase)))
+                continue;
+
+            await _userEmailService.AddVerifiedEmailAsync(u.Id, legacy, ct);
+            backfilled.Add((u.Id, legacy));
+        }
+
+        return backfilled;
     }
 }

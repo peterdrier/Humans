@@ -29,4 +29,17 @@ public interface IEmailProblemsService
     /// are client-controlled and the report may be stale.
     /// </summary>
     Task<bool> IsGhostExternalLoginsUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Backfills a verified <c>UserEmail</c> row from
+    /// <c>User.IdentityEmailColumn</c> (the raw legacy AspNetIdentity column)
+    /// for every user currently flagged by case 9
+    /// (<see cref="EmailProblemKind.LegacyIdentityEmailNotInUserEmails"/>).
+    /// Idempotent — relies on
+    /// <c>IUserEmailService.AddVerifiedEmailAsync</c>'s existing skip-if-exists
+    /// check. Returns the (userId, email) pairs that received a new row, so
+    /// the caller can audit per row.
+    /// </summary>
+    Task<IReadOnlyList<(Guid UserId, string Email)>> BackfillLegacyIdentityEmailsAsync(
+        CancellationToken ct = default);
 }

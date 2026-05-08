@@ -7,11 +7,13 @@ namespace Humans.Web.Models.EmailProblems;
 public sealed class EmailProblemsListViewModel
 {
     public Instant ScannedAt { get; init; }
-    public int TotalProblems => CrossUserConflicts.Count + SingleUserIssues.Count + SystemLevelIssues.Count;
+    public int TotalProblems =>
+        CrossUserConflicts.Count + SingleUserIssues.Count + SystemLevelIssues.Count + LegacyEmailRows.Count;
 
     public IReadOnlyList<CrossUserConflictRow> CrossUserConflicts { get; init; } = Array.Empty<CrossUserConflictRow>();
     public IReadOnlyList<SingleUserIssueRow> SingleUserIssues { get; init; } = Array.Empty<SingleUserIssueRow>();
     public IReadOnlyList<SystemLevelIssueRow> SystemLevelIssues { get; init; } = Array.Empty<SystemLevelIssueRow>();
+    public IReadOnlyList<LegacyEmailRow> LegacyEmailRows { get; init; } = Array.Empty<LegacyEmailRow>();
 
     public static EmailProblemsListViewModel From(
         EmailProblemsReport report,
@@ -23,6 +25,7 @@ public sealed class EmailProblemsListViewModel
         var crossUser = new List<CrossUserConflictRow>();
         var singleUserMap = new Dictionary<Guid, List<string>>();
         var systemLevel = new List<SystemLevelIssueRow>();
+        var legacyEmails = new List<LegacyEmailRow>();
 
         foreach (var p in report.Problems)
         {
@@ -63,6 +66,10 @@ public sealed class EmailProblemsListViewModel
                         p.Kind, null, p.UserId,
                         $"Ghost AspNetUserLogins for userId {p.UserId}"));
                     break;
+
+                case EmailProblemKind.LegacyIdentityEmailNotInUserEmails when p.UserId is Guid uid:
+                    legacyEmails.Add(new LegacyEmailRow(uid, DisplayName(uid), p.Email ?? "(unknown)"));
+                    break;
             }
         }
 
@@ -76,7 +83,10 @@ public sealed class EmailProblemsListViewModel
             ScannedAt = report.ScannedAt,
             CrossUserConflicts = crossUser,
             SingleUserIssues = singleUser,
-            SystemLevelIssues = systemLevel
+            SystemLevelIssues = systemLevel,
+            LegacyEmailRows = legacyEmails
+                .OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .ToList()
         };
     }
 }
@@ -95,3 +105,8 @@ public sealed record SystemLevelIssueRow(
     Guid? UserEmailId,
     Guid? UserId,
     string Detail);
+
+public sealed record LegacyEmailRow(
+    Guid UserId,
+    string DisplayName,
+    string LegacyEmail);

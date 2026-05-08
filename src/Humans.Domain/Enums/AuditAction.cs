@@ -126,4 +126,5 @@ public enum AuditAction
     StorePaymentRecorded,
     OrphanUserEmailDeleted,
     GhostExternalLoginsDeleted,
+    LegacyIdentityEmailBackfilled,
 }
