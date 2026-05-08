@@ -247,6 +247,67 @@ public class VolunteerTrackingServiceTests
         row.Cells.Single(c => c.DayOffset == -1).State.Should().Be(VolunteerCellState.NotAvailable);
     }
 
+    [HumansFact]
+    public async Task UnbookedCohort_volunteer_with_first_signup_moves_to_main_cohort()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
+        var availability = new[] { Availability(userId, es.Id, new[] { -5, -4, -3 }) };
+        var signups = new List<EligibleBuildSignup>
+        {
+            new(userId, -3, SignupStatus.Confirmed, "Cleanup"),
+        };
+
+        var sut = BuildSut(es, signups: signups, participations: participations, availabilities: availability);
+
+        var result = await sut.GetTrackingDataAsync();
+
+        result.MainCohort.Should().HaveCount(1);
+        result.MainCohort[0].UserId.Should().Be(userId);
+        result.UnbookedCohort.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task UnbookedCohort_NotAttending_excluded()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var participations = new[] { Participation(userId, ParticipationStatus.NotAttending, es.Year) };
+        var availability = new[] { Availability(userId, es.Id, new[] { -5, -4, -3 }) };
+
+        var sut = BuildSut(es, participations: participations, availabilities: availability);
+
+        var result = await sut.GetTrackingDataAsync();
+
+        result.MainCohort.Should().BeEmpty();
+        result.UnbookedCohort.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task UnbookedCohort_blocked_day_renders_blocked_not_available()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
+        var availability = new[] { Availability(userId, es.Id, new[] { -5, -4 }) };
+        var bs = new VolunteerBuildStatus
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            EventSettingsId = es.Id,
+            BlockedDayOffsets = new List<int> { -5 },
+        };
+
+        var sut = BuildSut(es, participations: participations, availabilities: availability, buildStatuses: new[] { bs });
+
+        var result = await sut.GetTrackingDataAsync();
+
+        var row = result.UnbookedCohort.Single();
+        row.Cells.Single(c => c.DayOffset == -5).State.Should().Be(VolunteerCellState.Blocked);
+        row.Cells.Single(c => c.DayOffset == -4).State.Should().Be(VolunteerCellState.AvailableUnbooked);
+    }
+
     private static GeneralAvailability Availability(Guid userId, Guid eventSettingsId, IReadOnlyList<int> days)
         => new()
         {
