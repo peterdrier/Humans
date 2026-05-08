@@ -2127,4 +2127,97 @@
   <data name="OnboardingBanner_Text" xml:space="preserve"><value>Finish setting up your account to access shifts and team features.</value></data>
   <data name="OnboardingBanner_Cta" xml:space="preserve"><value>Continue setup →</value></data>
 
+
+  <!-- ======================== -->
+  <!-- Volunteer Tracking       -->
+  <!-- ======================== -->
+  <data name="VolTrack_Title" xml:space="preserve"><value>Volunteer Tracking</value></data>
+  <data name="VolTrack_Breadcrumb_Shifts" xml:space="preserve"><value>Shifts</value></data>
+  <data name="VolTrack_Breadcrumb_ShiftDashboard" xml:space="preserve"><value>Shift Dashboard</value></data>
+  <data name="VolTrack_Breadcrumb_VolunteerTracking" xml:space="preserve"><value>Volunteer Tracking</value></data>
+  <data name="VolTrack_NoActiveEvent" xml:space="preserve"><value>No active event.</value></data>
+  <data name="VolTrack_AllClear" xml:space="preserve"><value>Everyone is on track.</value></data>
+  <data name="VolTrack_UnknownUser" xml:space="preserve"><value>(unknown)</value></data>
+
+  <data name="VolTrack_Counts_MainTotal" xml:space="preserve"><value>{0} volunteers tracked</value><comment>{0} = count</comment></data>
+  <data name="VolTrack_Counts_WithGaps" xml:space="preserve"><value>{0} with gaps</value><comment>{0} = count</comment></data>
+  <data name="VolTrack_Counts_OnCampSetup" xml:space="preserve"><value>{0} on camp set-up</value><comment>{0} = count</comment></data>
+  <data name="VolTrack_Counts_Unbooked" xml:space="preserve"><value>{0} declared but unbooked</value><comment>{0} = count</comment></data>
+
+  <data name="VolTrack_Filter_HideNoGaps" xml:space="preserve"><value>Hide volunteers with no gaps</value></data>
+  <data name="VolTrack_Filter_HideCampSetup" xml:space="preserve"><value>Hide volunteers already on camp set-up</value></data>
+  <data name="VolTrack_Filter_HideUnbookedSection" xml:space="preserve"><value>Hide declared-but-unbooked section</value></data>
+  <data name="VolTrack_Filter_Apply" xml:space="preserve"><value>Apply</value></data>
+
+  <data name="VolTrack_Main_Title" xml:space="preserve"><value>Schedule gaps</value></data>
+  <data name="VolTrack_Main_Subtitle" xml:space="preserve"><value>{0} volunteers shown</value><comment>{0} = count</comment></data>
+  <data name="VolTrack_Main_Empty" xml:space="preserve"><value>No volunteers with build-period signups.</value></data>
+  <data name="VolTrack_Col_Volunteer" xml:space="preserve"><value>Volunteer</value></data>
+  <data name="VolTrack_GapBadge" xml:space="preserve"><value>{0} gaps</value><comment>{0} = count</comment></data>
+  <data name="VolTrack_CampSetupTooltip" xml:space="preserve"><value>On camp set-up since {0}</value><comment>{0} = date</comment></data>
+
+  <data name="VolTrack_Unbooked_Heading" xml:space="preserve"><value>Declared participating, not booked yet</value></data>
+  <data name="VolTrack_Unbooked_Subtitle" xml:space="preserve"><value>Volunteers who said they're attending and have availability filled in but haven't signed up for any shifts.</value></data>
+  <data name="VolTrack_Unbooked_Title" xml:space="preserve"><value>Available but unbooked</value></data>
+  <data name="VolTrack_Unbooked_Subtitle_Count" xml:space="preserve"><value>{0} volunteers shown</value><comment>{0} = count</comment></data>
+  <data name="VolTrack_Unbooked_Empty" xml:space="preserve"><value>No declared-but-unbooked volunteers.</value></data>
+  <data name="VolTrack_AvailableDaysBadge" xml:space="preserve"><value>{0} avail.</value><comment>{0} = count</comment></data>
+  <data name="VolTrack_AvailableDaysTooltip" xml:space="preserve"><value>Available days inside build period</value></data>
+  <data name="VolTrack_UnbookedBadge" xml:space="preserve"><value>{0} unbooked</value><comment>{0} = count</comment></data>
+  <data name="VolTrack_UnbookedTooltip" xml:space="preserve"><value>Available days that aren't booked</value></data>
+
+  <data name="VolTrack_State_Confirmed" xml:space="preserve"><value>Confirmed</value></data>
+  <data name="VolTrack_State_Pending" xml:space="preserve"><value>Pending</value></data>
+  <data name="VolTrack_State_Gap" xml:space="preserve"><value>Gap</value></data>
+  <data name="VolTrack_State_Blocked" xml:space="preserve"><value>Blocked</value></data>
+  <data name="VolTrack_State_CampSetup" xml:space="preserve"><value>Camp set-up</value></data>
+  <data name="VolTrack_State_Outside" xml:space="preserve"><value>Outside window</value></data>
+  <data name="VolTrack_State_Expected" xml:space="preserve"><value>Expected</value></data>
+  <data name="VolTrack_State_AvailableUnbooked" xml:space="preserve"><value>Available, not booked</value></data>
+  <data name="VolTrack_State_AvailableExpected" xml:space="preserve"><value>Available (future)</value></data>
+  <data name="VolTrack_State_NotAvailable" xml:space="preserve"><value>Not available</value></data>
+
+  <data name="VolTrack_Popover_Rotas" xml:space="preserve"><value>Rotas:</value></data>
+  <data name="VolTrack_Popover_Available" xml:space="preserve"><value>Volunteer marked available</value></data>
+  <data name="VolTrack_Popover_MarkCampSetup" xml:space="preserve"><value>Mark went to camp set-up from this day</value></data>
+  <data name="VolTrack_Popover_Block" xml:space="preserve"><value>Block this day</value></data>
+  <data name="VolTrack_Popover_Unblock" xml:space="preserve"><value>Unblock this day</value></data>
+
+  <data name="VolTrack_Legend_Title" xml:space="preserve"><value>Legend</value></data>
+  <data name="VolTrack_Legend_Confirmed" xml:space="preserve"><value>Confirmed signup</value></data>
+  <data name="VolTrack_Legend_Pending" xml:space="preserve"><value>Pending signup</value></data>
+  <data name="VolTrack_Legend_Gap" xml:space="preserve"><value>No coverage on a day they should have been here</value></data>
+  <data name="VolTrack_Legend_Blocked" xml:space="preserve"><value>Blocked by volunteer or coordinator</value></data>
+  <data name="VolTrack_Legend_AvailableUnbooked" xml:space="preserve"><value>Available, no signup yet</value></data>
+  <data name="VolTrack_Legend_BlockedUnbooked" xml:space="preserve"><value>Blocked (unbooked cohort)</value></data>
+  <data name="VolTrack_Legend_CampSetup" xml:space="preserve"><value>On camp set-up</value></data>
+  <data name="VolTrack_Legend_OutsideOrExpected" xml:space="preserve"><value>Outside their active window</value></data>
+
+  <data name="VolTrack_Mine_BlockedTitle" xml:space="preserve"><value>Days you can't volunteer</value></data>
+  <data name="VolTrack_Mine_BlockedHelp" xml:space="preserve"><value>Mark days you can't volunteer (doctor, rest day, etc.). Blocked days won't be flagged as missing on the coordinator dashboard.</value></data>
+  <data name="VolTrack_Mine_BlockedSave" xml:space="preserve"><value>Save blocked days</value></data>
+
+  <data name="VolTrack_Msg_CampSetupSaved" xml:space="preserve"><value>Camp set-up date saved.</value></data>
+  <data name="VolTrack_Msg_CampSetupCleared" xml:space="preserve"><value>Camp set-up date cleared.</value></data>
+  <data name="VolTrack_Msg_DayBlocked" xml:space="preserve"><value>Day blocked.</value></data>
+  <data name="VolTrack_Msg_DayUnblocked" xml:space="preserve"><value>Day unblocked.</value></data>
+  <data name="VolTrack_Msg_BlockedDaysSaved" xml:space="preserve"><value>Blocked days saved.</value></data>
+
+  <data name="VolTrack_Err_BadRequest" xml:space="preserve"><value>Invalid request.</value></data>
+  <data name="VolTrack_Err_BadDate" xml:space="preserve"><value>Invalid date format.</value></data>
+  <data name="VolTrack_Err_Unknown" xml:space="preserve"><value>Something went wrong. Please try again.</value></data>
+  <data name="VolTrack_Err_SetupAtOrAfterGateOpen" xml:space="preserve"><value>Set-up date must be inside the build period (before gate-open day).</value></data>
+  <data name="VolTrack_Err_SetupBeforeFirstSignup" xml:space="preserve"><value>Set-up date must be on or after the volunteer's first build signup.</value></data>
+  <data name="VolTrack_Err_DayOffsetOutsideBuild" xml:space="preserve"><value>Blocked days must be inside the build period.</value></data>
+
+  <data name="ShiftDash_VolTrackEntry_Title" xml:space="preserve"><value>Volunteer Tracking</value></data>
+  <data name="ShiftDash_VolTrackEntry_Subtitle" xml:space="preserve"><value>Identify gaps, mark camp set-up dates, surface declared-but-unbooked volunteers.</value></data>
+  <data name="ShiftDash_VolTrackEntry_Open" xml:space="preserve"><value>Open</value></data>
+
+  <data name="VolTrack_AuditAction_CampSetupSet" xml:space="preserve"><value>Camp set-up date set</value></data>
+  <data name="VolTrack_AuditAction_CampSetupCleared" xml:space="preserve"><value>Camp set-up date cleared</value></data>
+  <data name="VolTrack_AuditAction_DayBlocked" xml:space="preserve"><value>Day blocked</value></data>
+  <data name="VolTrack_AuditAction_DayUnblocked" xml:space="preserve"><value>Day unblocked</value></data>
+  <data name="VolTrack_AuditAction_OwnBlockedDaysSaved" xml:space="preserve"><value>Self-saved blocked days</value></data>
+
 </root>
