@@ -1,4 +1,6 @@
 @model IReadOnlyList<Serilog.Events.LogEvent>
+@using Humans.Infrastructure.Logging
+@using Serilog.Events
 @{
     ViewData["Title"] = "Application Logs";
     var lifetimeCounts = ViewBag.LifetimeCounts as IReadOnlyDictionary<Serilog.Events.LogEventLevel, long>
@@ -51,6 +53,7 @@
                     <tr>
                         <th style="width: 160px;">Timestamp (UTC)</th>
                         <th style="width: 80px;">Level</th>
+                        <th style="width: 160px;">User</th>
                         <th>Message</th>
                     </tr>
                 </thead>
@@ -64,9 +67,20 @@
                             Serilog.Events.LogEventLevel.Warning => "table-warning",
                             _ => ""
                         };
+                        var evtUserId = CurrentUserEnricher.ExtractFromEvent(evt);
                         <tr class="@levelClass">
                             <td class="text-nowrap">@evt.Timestamp.UtcDateTime.ToAuditTimestamp()</td>
                             <td>@evt.Level</td>
+                            <td>
+                                @if (evtUserId.HasValue)
+                                {
+                                    <human-link user-id="@evtUserId.Value"></human-link>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
                             <td>
                                 @evt.RenderMessage()
                                 @if (evt.Exception != null)

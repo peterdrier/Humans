@@ -107,40 +107,65 @@ jobs:
 
             ## How to post the review (STRICT)
 
-            Do ALL of your analysis before calling `gh pr comment`. Do every
+            Do ALL of your analysis before posting anything. Do every
             review pass — atom rules, code-review-rules, design-rules,
             section invariants, feature spec — entirely in your head /
-            scratch reasoning, NOT as separate posted comments. Inline
-            comments via the inline-comment MCP tool are fine while you
-            work; top-level summary comments are NOT.
+            scratch reasoning, NOT as posted comments.
 
-            When (and only when) every pass is complete, call `gh pr comment`
-            EXACTLY ONCE with the final consolidated summary. Posting more
-            than one top-level summary comment per run is forbidden. No
-            "interim" summaries, no "round 1 / round 2" posts, no extra
-            comments after the final one. One run → one terminal summary
-            comment.
+            Findings post in TWO channels:
+
+            1. **Inline review comments** (the default — use this for
+               anything tied to a specific file + line). Post each
+               finding via
+               `mcp__github_inline_comment__create_inline_comment` with
+               `confirmed: true` so the comment posts immediately rather
+               than buffering. These create review threads that carry
+               GitHub's `isResolved` flag, which downstream tooling and
+               reviewers rely on to track which findings have been
+               addressed.
+
+               Body format: start with `BLOCK — <one-line title>` or
+               `WARN — <one-line title>`, then the rule reference
+               (atom path or doc anchor), then what's wrong, then the
+               suggested fix. Use a ```suggestion``` block when the fix
+               is a drop-in line replacement. One inline comment per
+               finding — do NOT batch multiple findings into one comment.
+
+            2. **Top-level summary** via `gh pr comment`. Posted EXACTLY
+               ONCE per run, AFTER all inline comments. Posting more
+               than one top-level summary comment is forbidden — no
+               "interim" summaries, no "round 1 / round 2", no extra
+               comments after the final one.
 
             ## What the summary comment must say (and must NOT say)
 
-            The comment MUST reference the head commit SHA. Two formats:
+            The summary MUST reference the head commit SHA. Three formats:
 
-            - Clean run (no findings): post EXACTLY this, nothing else —
+            - No findings: post EXACTLY
               `Reviewed commit <sha> — no issues found.`
-              Do not list what was checked, do not list "Clean" areas, do
-              not enumerate rules that passed, do not add a checklist of
-              things that looked fine. If there are no findings, the
-              one-line "no issues found" message is the entire comment.
+              and nothing else. Do not list what was checked, do not list
+              "Clean" areas, do not enumerate rules that passed.
 
-            - With findings: start with `Reviewed commit <sha>.` then list
-              ONLY the findings (BLOCK / WARN, file refs, what's wrong,
-              suggested fix). Do NOT include a "Clean" section, a "What I
-              checked" section, a list of rules that passed, or any
-              reassurance about areas without issues. Findings only.
+            - Inline findings only (the typical case): post EXACTLY
+              `Reviewed commit <sha>. <N> inline finding(s) posted.`
+              where N is the count of inline comments you posted. Do NOT
+              re-list the inline findings in the summary — inline is the
+              source of truth.
 
-            Rationale: a reviewer wants to know what's broken, nothing
-            else. Listing clean areas is noise that buries real findings
-            and wastes the reader's time.
+            - Cross-cutting findings (architecture, missing files,
+              repo-wide concerns that don't attach to one line): include
+              them in the summary AFTER the count line, prefixed
+              `BLOCK —` / `WARN —` with the same rule-ref / what's wrong
+              / fix structure as inline. Use this channel sparingly —
+              prefer attaching findings to a representative line when
+              one exists.
+
+            Rationale: a reviewer wants to know what's broken, where, and
+            be able to mark each finding "resolved" once fixed. Inline
+            threads support that workflow; a wall of findings in a
+            top-level comment doesn't, because top-level comments have no
+            `isResolved` flag. Listing clean areas is noise that buries
+            real findings.
           claude_args: |
             --max-turns 100
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr checks:*)"

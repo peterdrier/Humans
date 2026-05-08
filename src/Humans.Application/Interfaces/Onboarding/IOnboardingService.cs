@@ -6,6 +6,7 @@ using MemberApplication = Humans.Domain.Entities.Application;
 namespace Humans.Application.Interfaces.Onboarding;
 
 public record OnboardingResult(bool Success, string? ErrorKey = null);
+public record BulkOnboardingResult(int ApprovedCount);
 
 public interface IOnboardingService : IOnboardingEligibilityQuery
 {
@@ -18,6 +19,8 @@ public interface IOnboardingService : IOnboardingEligibilityQuery
     // --- Consent check mutations ---
     Task<OnboardingResult> ClearConsentCheckAsync(
         Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default);
+    Task<BulkOnboardingResult> BulkClearConsentChecksAsync(
+        IReadOnlyCollection<Guid> userIds, Guid reviewerId, CancellationToken ct = default);
     Task<OnboardingResult> FlagConsentCheckAsync(
         Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default);
 

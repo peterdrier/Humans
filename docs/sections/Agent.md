@@ -82,6 +82,18 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 - Withdrawal of use: there is no in-app revoke button; users who want their conversation history deleted contact the Board via the email in the Terms.
 - Admin CANNOT see a conversation that belongs to a user who has deleted it.
 
+## Tooling API — `/api/agent`
+
+Read-only HTTP surface for QA/prod chat-history review by dev tooling and a dev-side Claude (issue #631). Mounted at `AgentApiController`, gated by `AgentApiKeyAuthFilter` against header `X-Api-Key` matching env var `AGENT_API_KEY`. Bound to its own config key so a leaked `FEEDBACK_API_KEY` or `LOG_API_KEY` cannot read agent transcripts.
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/agent/conversations?refusalsOnly&handoffsOnly&userId&take&skip` | Conversation summaries. `take` clamped 1–200 (default 50). Each row includes `RefusalCount`, `HandoffCount`, `LastUserMessagePreview` (200 char cap), `UserDisplayName` resolved via `IUserService.GetByIdsAsync`. |
+| `GET /api/agent/conversations/{id}` | Full conversation envelope + ordered messages (Role, Content, CreatedAt, Model, RefusalReason, HandedOffToFeedbackId, FetchedDocs). |
+| `GET /api/agent/conversations/{id}/messages` | Messages-only view (same per-message shape). |
+
+Missing or wrong key → 401 (503 if the key is not configured). Unknown id → 404. Mutations (deletion, settings) stay on the admin web UI. Anything purged by `AgentConversationRetentionJob` is gone from this API too — there is no separate archive.
+
 ## Triggers
 
 - On `route_to_issue` tool call: no server-side write. `AgentService` yields an `AgentIssueProposal` token; the client opens the Issues modal pre-filled. The user submits (or doesn't) via `/Issues/Submit` — admin triage filtering hooks into the Issues section, not Agent.

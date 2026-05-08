@@ -1,6 +1,9 @@
 @model Humans.Web.Models.OnboardingReviewIndexViewModel
 @{
     ViewData["Title"] = Localizer["OnboardingReview_Title"].Value;
+    var hasSelectableReviews = Model.PendingReviews
+        .Concat(Model.FlaggedReviews)
+        .Any(item => !string.IsNullOrWhiteSpace(item.LegalName));
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -17,89 +20,153 @@
     </div>
 }
 
-@if (Model.PendingReviews.Count > 0)
+@if (Model.PendingReviews.Count > 0 || Model.FlaggedReviews.Count > 0)
 {
-    <h4 class="mt-4 mb-3">
-        @Localizer["OnboardingReview_PendingSection"]
-        <span class="badge bg-warning">@Model.PendingReviews.Count</span>
-    </h4>
-
-    <div class="list-group mb-4">
-        @foreach (var item in Model.PendingReviews)
+    <form asp-action="BulkClear" method="post">
+        @if (Model.PendingReviews.Count > 0)
         {
-            <div class="list-group-item">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="d-flex align-items-center">
-                        <human-link user-id="@item.UserId" display-name="@item.DisplayName"
-                                    mode="AvatarName" size="40"
-                                    profile-picture-url="@item.ProfilePictureUrl">
-                            <small class="text-muted">@item.Email</small>
-                        </human-link>
+            <h4 class="mt-4 mb-3">
+                @Localizer["OnboardingReview_PendingSection"]
+                <span class="badge bg-warning">@Model.PendingReviews.Count</span>
+            </h4>
+
+            <div class="list-group mb-4">
+                @foreach (var item in Model.PendingReviews)
+                {
+                    var hasLegalName = !string.IsNullOrWhiteSpace(item.LegalName);
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                @if (hasLegalName)
+                                {
+                                    <input class="form-check-input me-3" type="checkbox" name="selectedUserIds"
+                                           value="@item.UserId" aria-label="Select @item.DisplayName" />
+                                }
+                                else
+                                {
+                                    <span class="form-check-input me-3 invisible" aria-hidden="true"></span>
+                                }
+                                <human-link user-id="@item.UserId" display-name="@item.DisplayName"
+                                            mode="Avatar" size="40" show-popover="false"
+                                            profile-picture-url="@item.ProfilePictureUrl" />
+                                <a asp-controller="Profile" asp-action="ViewProfile" asp-route-id="@item.UserId"
+                                   class="ms-2 text-decoration-none text-reset"
+                                   data-human-popover="true"
+                                   data-user-id="@item.UserId">
+                                    <span class="fw-semibold">@item.DisplayName</span>
+                                    @if (hasLegalName)
+                                    {
+                                        <span class="fw-normal text-muted"> - @item.LegalName</span>
+                                    }
+                                    else if (!string.IsNullOrWhiteSpace(item.Email))
+                                    {
+                                        <small class="text-muted"> @item.Email</small>
+                                    }
+                                </a>
+                            </div>
+                            <div class="text-end">
+                                @if (item.MembershipTier != MembershipTier.Volunteer)
+                                {
+                                    <span class="badge bg-info me-1">@item.MembershipTier</span>
+                                }
+                                @if (item.RequiredConsentCount > 0)
+                                {
+                                    var allSigned = item.ConsentCount >= item.RequiredConsentCount;
+                                    <span class="badge @(allSigned ? "bg-success" : "bg-secondary")">
+                                        <i class="fa-solid fa-file-signature me-1"></i>@item.ConsentCount/@item.RequiredConsentCount
+                                    </span>
+                                }
+                                <br />
+                                <small class="text-muted">@item.ProfileCreatedAt.ToDisplayDate()</small>
+                                <a asp-action="Detail" asp-route-userId="@item.UserId" class="btn btn-sm btn-outline-primary ms-2">
+                                    <i class="fa-solid fa-eye me-1"></i>Review
+                                </a>
+                            </div>
+                        </div>
                     </div>
-                    <div class="text-end">
-                        @if (item.MembershipTier != MembershipTier.Volunteer)
-                        {
-                            <span class="badge bg-info me-1">@item.MembershipTier</span>
-                        }
-                        @if (item.RequiredConsentCount > 0)
-                        {
-                            var allSigned = item.ConsentCount >= item.RequiredConsentCount;
-                            <span class="badge @(allSigned ? "bg-success" : "bg-secondary")">
-                                <i class="fa-solid fa-file-signature me-1"></i>@item.ConsentCount/@item.RequiredConsentCount
-                            </span>
-                        }
-                        <br />
-                        <small class="text-muted">@item.ProfileCreatedAt.ToDisplayDate()</small>
-                        <a asp-action="Detail" asp-route-userId="@item.UserId" class="btn btn-sm btn-outline-primary ms-2">
-                            <i class="fa-solid fa-eye me-1"></i>Review
-                        </a>
-                    </div>
-                </div>
+                }
             </div>
         }
-    </div>
-}
 
-@if (Model.FlaggedReviews.Count > 0)
-{
-    <h4 class="mt-4 mb-3">
-        @Localizer["OnboardingReview_FlaggedSection"]
-        <span class="badge bg-danger">@Model.FlaggedReviews.Count</span>
-    </h4>
-
-    <div class="list-group mb-4">
-        @foreach (var item in Model.FlaggedReviews)
+        @if (Model.FlaggedReviews.Count > 0)
         {
-            <div class="list-group-item list-group-item-danger">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="d-flex align-items-center">
-                        <human-link user-id="@item.UserId" display-name="@item.DisplayName"
-                                    mode="AvatarName" size="40"
-                                    profile-picture-url="@item.ProfilePictureUrl">
-                            <small class="text-muted">@item.Email</small>
-                        </human-link>
+            <h4 class="mt-4 mb-3">
+                @Localizer["OnboardingReview_FlaggedSection"]
+                <span class="badge bg-danger">@Model.FlaggedReviews.Count</span>
+            </h4>
+
+            <div class="list-group mb-4">
+                @foreach (var item in Model.FlaggedReviews)
+                {
+                    var hasLegalName = !string.IsNullOrWhiteSpace(item.LegalName);
+                    <div class="list-group-item list-group-item-danger">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                @if (hasLegalName)
+                                {
+                                    <input class="form-check-input me-3" type="checkbox" name="selectedUserIds"
+                                           value="@item.UserId" aria-label="Select @item.DisplayName" />
+                                }
+                                else
+                                {
+                                    <span class="form-check-input me-3 invisible" aria-hidden="true"></span>
+                                }
+                                <human-link user-id="@item.UserId" display-name="@item.DisplayName"
+                                            mode="Avatar" size="40" show-popover="false"
+                                            profile-picture-url="@item.ProfilePictureUrl" />
+                                <a asp-controller="Profile" asp-action="ViewProfile" asp-route-id="@item.UserId"
+                                   class="ms-2 text-decoration-none text-reset"
+                                   data-human-popover="true"
+                                   data-user-id="@item.UserId">
+                                    <span class="fw-semibold">@item.DisplayName</span>
+                                    @if (hasLegalName)
+                                    {
+                                        <span class="fw-normal text-muted"> - @item.LegalName</span>
+                                    }
+                                    else if (!string.IsNullOrWhiteSpace(item.Email))
+                                    {
+                                        <small class="text-muted"> @item.Email</small>
+                                    }
+                                </a>
+                            </div>
+                            <div class="text-end">
+                                @if (item.MembershipTier != MembershipTier.Volunteer)
+                                {
+                                    <span class="badge bg-info me-1">@item.MembershipTier</span>
+                                }
+                                <span class="badge bg-danger">@Localizer["OnboardingReview_FlaggedBadge"]</span>
+                                @if (item.RequiredConsentCount > 0)
+                                {
+                                    var allSigned = item.ConsentCount >= item.RequiredConsentCount;
+                                    <span class="badge @(allSigned ? "bg-success" : "bg-secondary")">
+                                        <i class="fa-solid fa-file-signature me-1"></i>@item.ConsentCount/@item.RequiredConsentCount
+                                    </span>
+                                }
+                                <br />
+                                <small class="text-muted">@item.ProfileCreatedAt.ToDisplayDate()</small>
+                                <a asp-action="Detail" asp-route-userId="@item.UserId" class="btn btn-sm btn-outline-primary ms-2">
+                                    <i class="fa-solid fa-eye me-1"></i>Review
+                                </a>
+                            </div>
+                        </div>
                     </div>
-                    <div class="text-end">
-                        @if (item.MembershipTier != MembershipTier.Volunteer)
-                        {
-                            <span class="badge bg-info me-1">@item.MembershipTier</span>
-                        }
-                        <span class="badge bg-danger">@Localizer["OnboardingReview_FlaggedBadge"]</span>
-                        @if (item.RequiredConsentCount > 0)
-                        {
-                            var allSigned = item.ConsentCount >= item.RequiredConsentCount;
-                            <span class="badge @(allSigned ? "bg-success" : "bg-secondary")">
-                                <i class="fa-solid fa-file-signature me-1"></i>@item.ConsentCount/@item.RequiredConsentCount
-                            </span>
-                        }
-                        <br />
-                        <small class="text-muted">@item.ProfileCreatedAt.ToDisplayDate()</small>
-                        <a asp-action="Detail" asp-route-userId="@item.UserId" class="btn btn-sm btn-outline-primary ms-2">
-                            <i class="fa-solid fa-eye me-1"></i>Review
-                        </a>
-                    </div>
-                </div>
+                }
             </div>
         }
-    </div>
+
+        <div class="d-flex justify-content-end mb-4">
+            @if (hasSelectableReviews)
+            {
+                <button type="submit" class="btn btn-success">
+                    <i class="fa-solid fa-check me-1"></i>@Localizer["OnboardingReview_BulkClearButton"]
+                </button>
+            }
+            else
+            {
+                <button type="submit" class="btn btn-success" disabled>
+                    <i class="fa-solid fa-check me-1"></i>@Localizer["OnboardingReview_BulkClearButton"]
+                </button>
+            }
+        </div>
+    </form>
 }

@@ -158,6 +158,40 @@ public sealed class OnboardingService : IOnboardingService
         return result;
     }
 
+    public async Task<BulkOnboardingResult> BulkClearConsentChecksAsync(
+        IReadOnlyCollection<Guid> userIds, Guid reviewerId, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return new BulkOnboardingResult(0);
+
+        var selected = userIds.ToHashSet();
+        var data = await GetReviewQueueAsync(ct);
+        var eligibleUserIds = data.Pending
+            .Concat(data.Flagged)
+            .Where(p => selected.Contains(p.UserId) && !string.IsNullOrWhiteSpace(p.FullName))
+            .Select(p => p.UserId)
+            .ToList();
+
+        var approved = 0;
+        foreach (var userId in eligibleUserIds)
+        {
+            var result = await ClearConsentCheckAsync(userId, reviewerId, notes: null, ct);
+            if (result.Success)
+            {
+                approved++;
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "BulkClearConsentChecks: skipped user {UserId}: {ErrorKey}",
+                    userId,
+                    result.ErrorKey);
+            }
+        }
+
+        return new BulkOnboardingResult(approved);
+    }
+
     public async Task<OnboardingResult> FlagConsentCheckAsync(
         Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default)
     {

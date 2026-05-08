@@ -1021,6 +1021,10 @@
   <data name="OnboardingReview_FlagConfirm" xml:space="preserve"><value>Això marcarà aquesta persona per a revisió addicional. Vols continuar?</value></data>
   <data name="OnboardingReview_AlreadyCleared" xml:space="preserve"><value>Aquesta persona ja ha estat aprovada.</value></data>
   <data name="OnboardingReview_Cleared" xml:space="preserve"><value>Revisió del perfil aprovada.</value></data>
+  <data name="OnboardingReview_BulkClearedNone" xml:space="preserve"><value>No s'ha aprovat cap persona seleccionada.</value></data>
+  <data name="OnboardingReview_BulkCleared" xml:space="preserve"><value>S'han aprovat {0} persones seleccionades.</value></data>
+  <data name="OnboardingReview_BulkClearedPartial" xml:space="preserve"><value>S'han aprovat {0} de {1} seleccionades — les altres ja no són elegibles.</value></data>
+  <data name="OnboardingReview_BulkClearButton" xml:space="preserve"><value>Aprova totes les seleccionades</value></data>
   <data name="OnboardingReview_Flagged" xml:space="preserve"><value>Persona marcada per a revisió addicional.</value></data>
   <data name="OnboardingReview_RejectButton" xml:space="preserve"><value>Rebutja el registre</value></data>
   <data name="OnboardingReview_RejectReasonPlaceholder" xml:space="preserve"><value>Motiu del rebuig...</value></data>

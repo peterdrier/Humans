@@ -27,6 +27,10 @@ The auto-memory system can still capture session-ephemeral context (current task
 
 Pattern + format spec: [`memory/META.md`](memory/META.md). Maintenance loop: [`memory/process/rules-maintenance.md`](memory/process/rules-maintenance.md).
 
+## Design Dialogue — 95% Confidence Loop
+
+When drafting an issue/spec/API/refactor proposal: audit from code (not memory), draft, self-assess. If <95% confident, ask focused clarifying questions on the load-bearing guesses (`AskUserQuestion`, multi-question batches, include a "let the implementer decide" option where genuine), update, repeat. *Then* ask to submit. Catches cow-path-as-design and hallucinated requirements. Cap at ~2 rounds; punt minor stuff to the implementer.
+
 ## Concepts — Volunteer vs Tier Applications
 
 These are SEPARATE concepts; do not conflate them.

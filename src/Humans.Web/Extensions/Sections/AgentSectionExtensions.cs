@@ -10,6 +10,7 @@ using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services.Agent;
 using Humans.Infrastructure.Services.Preload;
 using Humans.Infrastructure.Stores;
+using Humans.Web.Filters;
 using Humans.Web.Services.Agent;
 
 namespace Humans.Web.Extensions.Sections;
@@ -43,6 +44,14 @@ internal static class AgentSectionExtensions
 
         services.AddScoped<AgentConversationRetentionJob>();
         services.AddHostedService<AgentSettingsStoreWarmupHostedService>();
+
+        // Agent API key — gates GET /api/agent (read-only chat-history review).
+        // Bound to its own env var so a leaked feedback/log key cannot read transcripts.
+        services.Configure<AgentApiSettings>(opts =>
+        {
+            opts.ApiKey = Environment.GetEnvironmentVariable("AGENT_API_KEY") ?? string.Empty;
+        });
+        services.AddScoped<AgentApiKeyAuthFilter>();
 
         return services;
     }

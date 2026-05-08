@@ -163,7 +163,8 @@ Three controllers serve this section. The MVC URL surface is dual-routed under `
 | `/Camps/{slug}` | `CampController` | Camp detail (current season, leads, images, history) |
 | `/Camps/{slug}/Season/{year}` | `CampController` | Past-season detail |
 | `/Camps/{slug}/Contact` | `CampController` | Facilitated message to camp leads |
-| `/Camps/{slug}/Edit` | `CampController` | Lead-only edit of season copy / images / leads |
+| `/Camps/{slug}/Edit` | `CampController` | Lead-only edit of season copy / images / leads (links through to Members for role/membership management) |
+| `/Camps/{slug}/Edit/Members` | `CampController.Members` | Lead-only members + roles management (pending requests, active members, role assignments) |
 | `/Camps/Register` | `CampController` | New camp registration |
 | `/Camps/{slug}/OptIn/{year}`, `.../Withdraw/{seasonId}`, `.../Rejoin/{seasonId}` | `CampController` | Per-season participation toggles |
 | `/Camps/{slug}/Leads/*` | `CampController` | Lead add/remove |

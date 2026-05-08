@@ -266,9 +266,14 @@ public sealed class AgentService : IAgentService, IUserDataContributor
     }
 
     public Task<IReadOnlyList<AgentConversation>> ListAllConversationsForAdminAsync(
+        bool refusalsOnly, Guid? userId, int take, int skip,
+        CancellationToken ct) =>
+        _repo.ListAllConversationsAsync(refusalsOnly, userId, take, skip, ct);
+
+    public Task<IReadOnlyList<AgentConversation>> ListAllConversationsForAdminWithMessagesAsync(
         bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
         CancellationToken ct) =>
-        _repo.ListAllConversationsAsync(refusalsOnly, handoffsOnly, userId, take, skip, ct);
+        _repo.ListAllConversationsWithMessagesAsync(refusalsOnly, handoffsOnly, userId, take, skip, ct);
 
     public Task<AgentConversation?> GetConversationForAdminAsync(Guid id, CancellationToken ct) =>
         _repo.GetConversationByIdAsync(id, ct);

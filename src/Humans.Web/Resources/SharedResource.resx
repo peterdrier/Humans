@@ -1043,6 +1043,10 @@
   <data name="OnboardingReview_FlagConfirm" xml:space="preserve"><value>This will flag this human for further review. Continue?</value></data>
   <data name="OnboardingReview_AlreadyCleared" xml:space="preserve"><value>This human has already been cleared.</value></data>
   <data name="OnboardingReview_Cleared" xml:space="preserve"><value>Profile review cleared.</value></data>
+  <data name="OnboardingReview_BulkClearedNone" xml:space="preserve"><value>No selected humans were approved.</value></data>
+  <data name="OnboardingReview_BulkCleared" xml:space="preserve"><value>Approved {0} selected humans.</value></data>
+  <data name="OnboardingReview_BulkClearedPartial" xml:space="preserve"><value>Approved {0} of {1} selected — the others are no longer eligible.</value></data>
+  <data name="OnboardingReview_BulkClearButton" xml:space="preserve"><value>Approve all selected</value></data>
   <data name="OnboardingReview_Flagged" xml:space="preserve"><value>Human flagged for further review.</value></data>
   <data name="OnboardingReview_RejectButton" xml:space="preserve"><value>Reject Signup</value></data>
   <data name="OnboardingReview_RejectReasonPlaceholder" xml:space="preserve"><value>Reason for rejection...</value></data>

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Humans.Infrastructure.Logging;
 using Humans.Web.Filters;
 using Humans.Web.Infrastructure;
 using Serilog.Events;
@@ -44,7 +45,8 @@ public class LogApiController : ControllerBase
             Timestamp = e.Timestamp.UtcDateTime,
             Level = e.Level.ToString(),
             Message = e.RenderMessage(),
-            Exception = e.Exception?.ToString()
+            Exception = e.Exception?.ToString(),
+            UserId = CurrentUserEnricher.ExtractFromEvent(e),
         });
 
         return Ok(result);
