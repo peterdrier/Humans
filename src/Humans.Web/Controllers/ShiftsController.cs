@@ -3,6 +3,7 @@ using System.Text.Json;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -674,60 +675,68 @@ public class ShiftsController : HumansControllerBase
 
     [HttpGet("OrphanSignups")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
-    public async Task<IActionResult> OrphanSignups(CancellationToken ct)
+    public async Task<IActionResult> OrphanSignups(
+        [FromServices] IUserService userService,
+        CancellationToken ct)
     {
         var allSignups = await _signupService.GetAllForOrphanScanAsync(ct);
         var auditedIds = await _auditLogService.GetEntityIdsForEntityTypeActionsAsync(
             nameof(ShiftSignup),
-            [
-                AuditAction.ShiftSignupCreated,
-                AuditAction.ShiftSignupVoluntold,
-                AuditAction.ShiftSignupConfirmed,
-            ],
+            [AuditAction.ShiftSignupCreated, AuditAction.ShiftSignupVoluntold, AuditAction.ShiftSignupConfirmed],
             ct);
 
-        var orphans = allSignups
-            .Where(s => !auditedIds.Contains(s.Id))
-            .ToList();
+        var orphans = allSignups.Where(s => !auditedIds.Contains(s.Id)).ToList();
+        var users = await ResolveOrphanActorsAsync(orphans, userService, ct);
+        var rows = BuildOrphanRows(orphans, users);
 
+        return View(new OrphanSignupsViewModel(
+            TotalSignups: allSignups.Count,
+            OrphanCount: rows.Count,
+            UniqueUsers: rows.Select(r => r.UserId).Distinct().Count(),
+            Rows: rows));
+    }
+
+    private static async Task<IReadOnlyDictionary<Guid, User>> ResolveOrphanActorsAsync(
+        IReadOnlyList<ShiftSignup> orphans, IUserService userService, CancellationToken ct)
+    {
+        // Display-name resolution goes through the Users section directly —
+        // OrphanSignups is a §2c cross-section consumer of audit-log
+        // entity-ids, not a render-the-audit-log view, so the names belong
+        // to IUserService rather than IAuditViewerService.
         var userIds = orphans
             .SelectMany(s => new[] { s.UserId, s.ReviewedByUserId, s.EnrolledByUserId })
             .Where(id => id.HasValue)
             .Select(id => id!.Value)
             .Distinct()
             .ToList();
+        return userIds.Count == 0
+            ? new Dictionary<Guid, User>()
+            : await userService.GetByIdsAsync(userIds, ct);
+    }
 
-        var userDisplayNames = await _auditLogService.GetUserDisplayNamesAsync(userIds, ct);
+    private static List<OrphanSignupRow> BuildOrphanRows(
+        IReadOnlyList<ShiftSignup> orphans,
+        IReadOnlyDictionary<Guid, User> users)
+    {
+        string? GetName(Guid? id) => id.HasValue && users.TryGetValue(id.Value, out var u) ? u.DisplayName : null;
 
-        var rows = orphans
+        return orphans
             .Select(s => new OrphanSignupRow(
                 SignupId: s.Id,
                 UserId: s.UserId,
-                UserDisplayName: userDisplayNames.GetValueOrDefault(s.UserId) ?? s.UserId.ToString(),
+                UserDisplayName: GetName(s.UserId) ?? s.UserId.ToString(),
                 RotaName: s.Shift.Rota.Name,
                 ShiftDate: s.Shift.Rota.EventSettings.GateOpeningDate.PlusDays(s.Shift.DayOffset),
                 Status: s.Status,
                 CreatedAt: s.CreatedAt,
                 ReviewedByUserId: s.ReviewedByUserId,
-                ReviewedByDisplayName: s.ReviewedByUserId.HasValue
-                    ? userDisplayNames.GetValueOrDefault(s.ReviewedByUserId.Value)
-                    : null,
+                ReviewedByDisplayName: GetName(s.ReviewedByUserId),
                 EnrolledByUserId: s.EnrolledByUserId,
-                EnrolledByDisplayName: s.EnrolledByUserId.HasValue
-                    ? userDisplayNames.GetValueOrDefault(s.EnrolledByUserId.Value)
-                    : null,
+                EnrolledByDisplayName: GetName(s.EnrolledByUserId),
                 SignupBlockId: s.SignupBlockId))
             .OrderBy(r => r.UserDisplayName, StringComparer.OrdinalIgnoreCase)
             .ThenBy(r => r.CreatedAt)
             .ToList();
-
-        var vm = new OrphanSignupsViewModel(
-            TotalSignups: allSignups.Count,
-            OrphanCount: rows.Count,
-            UniqueUsers: rows.Select(r => r.UserId).Distinct().Count(),
-            Rows: rows);
-
-        return View(vm);
     }
 }
 

@@ -1,7 +1,5 @@
 using Microsoft.Extensions.Logging;
-using NodaTime;
 using Humans.Application.DTOs;
-using Humans.Application.DTOs.Governance;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Governance;
 using Humans.Domain.Constants;
@@ -11,21 +9,26 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Services.Onboarding;
 
 /// <summary>
-/// Onboarding orchestrator. Owns no tables — coordinates
-/// <see cref="IProfileService"/> (profile mutations), <see cref="IUserService"/>
-/// (user purge + admin dashboard aggregates), <see cref="IApplicationDecisionService"/>
-/// (tier application + board voting reads, board vote recording),
-/// <see cref="IRoleAssignmentService"/> (Board member resolution), and
+/// Onboarding orchestrator (intake funnel only). Owns no tables —
+/// coordinates <see cref="IProfileService"/> (profile mutations),
+/// <see cref="IUserService"/> (user reads for rejection email),
+/// <see cref="IApplicationDecisionService"/> (review-queue cross-section
+/// reads only — pending-application lookup, approved-tier lookup), and
 /// <see cref="ISystemTeamSync"/> (system team membership sync). All reads
 /// and writes flow through the owning-section service interfaces, never
 /// through DbContext. Cache invalidation is owned by the target services'
 /// decorators/invalidators — this orchestrator never touches caches directly.
+///
+/// Out of scope (handled by sibling services):
+/// suspend/unsuspend (→ <c>IHumanLifecycleService</c>),
+/// board voting (→ <see cref="IApplicationDecisionService"/>), admin
+/// dashboard aggregation (→ <see cref="Dashboard.IAdminDashboardService"/>),
+/// and account deletion (→ future <c>IAccountDeletionService</c>).
 /// </summary>
 public sealed class OnboardingService : IOnboardingService
 {
@@ -114,18 +117,6 @@ public sealed class OnboardingService : IOnboardingService
     }
 
     // ==========================================================================
-    // Queries — Board voting
-    // ==========================================================================
-
-    public Task<BoardVotingDashboardData> GetBoardVotingDashboardAsync(
-        CancellationToken ct = default) =>
-        _applicationDecisionService.GetBoardVotingDashboardAsync(ct);
-
-    public Task<BoardVotingDetailData?> GetBoardVotingDetailAsync(
-        Guid applicationId, CancellationToken ct = default) =>
-        _applicationDecisionService.GetBoardVotingDetailAsync(applicationId, ct);
-
-    // ==========================================================================
     // Consent-check mutations
     // ==========================================================================
 
@@ -199,24 +190,6 @@ public sealed class OnboardingService : IOnboardingService
 
         await DeprovisionApprovalGatedSystemTeamsAsync(userId);
         return result;
-    }
-
-    // ==========================================================================
-    // Board vote
-    // ==========================================================================
-
-    public Task<bool> HasBoardVotesAsync(Guid applicationId, CancellationToken ct = default) =>
-        _applicationDecisionService.HasBoardVotesAsync(applicationId, ct);
-
-    public async Task<OnboardingResult> CastBoardVoteAsync(
-        Guid applicationId, Guid boardMemberUserId, VoteChoice vote, string? note,
-        CancellationToken ct = default)
-    {
-        var result = await _applicationDecisionService.CastBoardVoteAsync(
-            applicationId, boardMemberUserId, vote, note, ct);
-        // Map ApplicationDecisionResult → OnboardingResult so callers keep a
-        // single error-key vocabulary during the migration.
-        return new OnboardingResult(result.Success, result.ErrorKey);
     }
 
     // ==========================================================================
@@ -345,66 +318,6 @@ public sealed class OnboardingService : IOnboardingService
         }
 
         return true;
-    }
-
-    // ==========================================================================
-    // Badge counts
-    // ==========================================================================
-
-    public Task<int> GetPendingReviewCountAsync(CancellationToken ct = default) =>
-        _profileService.GetPendingReviewCountAsync(ct);
-
-    public Task<int> GetUnvotedApplicationCountAsync(
-        Guid boardMemberUserId, CancellationToken ct = default) =>
-        _applicationDecisionService.GetUnvotedApplicationCountAsync(boardMemberUserId, ct);
-
-    // ==========================================================================
-    // Admin dashboard
-    // ==========================================================================
-
-    public async Task<AdminDashboardData> GetAdminDashboardAsync(CancellationToken ct = default)
-    {
-        var allUsers = await _userService.GetAllUsersAsync(ct);
-        var allUserIds = allUsers.Select(u => u.Id).ToList();
-        var totalMembers = allUserIds.Count;
-        var partition = await _membershipCalculator.PartitionUsersAsync(allUserIds, ct);
-
-        var pendingApplications =
-            await _applicationDecisionService.GetPendingApplicationCountAsync(ct);
-        var appStats = await _applicationDecisionService.GetAdminStatsAsync(ct);
-
-        // Language distribution for the admin dashboard chart — approved,
-        // non-suspended humans, grouped by PreferredLanguage. Union
-        // Active + MissingConsents; pending-deletion users are not counted
-        // (bucket is split off earlier by PartitionUsersAsync). This is a
-        // visualization, not an audit count, so sub-user-count drift from
-        // the pre-partition predicate is acceptable. Pass to the User
-        // section, which owns preferred language — no cross-domain join
-        // (design-rules §6).
-        var approvedNotSuspended = partition.Active
-            .Concat(partition.MissingConsents)
-            .ToList();
-        var rawLanguageDistribution = await _userService.GetLanguageDistributionForUserIdsAsync(
-            approvedNotSuspended, ct);
-        var languageDistribution = rawLanguageDistribution
-            .Select(x => new LanguageCount(x.Language, x.Count))
-            .ToList();
-
-        return new AdminDashboardData(
-            totalMembers,
-            partition.IncompleteSignup.Count,
-            partition.PendingApproval.Count,
-            partition.Active.Count,
-            partition.MissingConsents.Count,
-            partition.Suspended.Count,
-            partition.PendingDeletion.Count,
-            pendingApplications,
-            appStats.Total,
-            appStats.Approved,
-            appStats.Rejected,
-            appStats.ColaboradorApplied,
-            appStats.AsociadoApplied,
-            languageDistribution);
     }
 
     // ==========================================================================

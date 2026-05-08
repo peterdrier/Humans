@@ -1,0 +1,72 @@
+@using Humans.Web.Models.EmailProblems
+@model EmailProblemsCompareViewModel
+@{
+    ViewData["Title"] = "Compare accounts";
+}
+
+<h1>Compare for shared email</h1>
+<p class="text-muted">Shared email: <code>@Model.SharedEmail</code></p>
+
+<form method="post" asp-action="Merge">
+    @Html.AntiForgeryToken()
+
+    <div class="row">
+        @foreach (var (side, label, isLeft) in new[] {
+            (Model.Account1, "Account A", true),
+            (Model.Account2, "Account B", false) })
+        {
+            <div class="col-md-6">
+                <h2>@label — @side.DisplayName</h2>
+                <p>
+                    Teams: @side.TeamCount · Roles: @side.RoleAssignmentCount
+                    · Last login: @(side.LastLogin?.ToDisplayDate() ?? "—")
+                    · Profile complete: @(side.IsProfileComplete ? "yes" : "no")
+                </p>
+
+                <table class="table table-sm">
+                    <thead>
+                        <tr><th>Email</th><th>Verified</th><th>Primary</th><th>Google</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var e in side.AllUserEmails)
+                        {
+                            <tr>
+                                <td><code>@e.Email</code></td>
+                                <td>@(e.IsVerified ? "✓" : "")</td>
+                                <td>@(e.IsPrimary ? "✓" : "")</td>
+                                <td>@(e.IsGoogle ? "✓" : "")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <label class="form-check">
+                    <input class="form-check-input" type="radio" name="targetUserId" value="@side.UserId" required />
+                    Keep <strong>@side.DisplayName</strong> as target
+                </label>
+            </div>
+        }
+    </div>
+
+    <div class="mt-3">
+        <label for="notes" class="form-label">Admin notes (optional)</label>
+        <textarea id="notes" name="notes" class="form-control" rows="2"></textarea>
+    </div>
+
+    <input type="hidden" name="user1Id" value="@Model.Account1.UserId" />
+    <input type="hidden" name="user2Id" value="@Model.Account2.UserId" />
+
+    <button type="submit" class="btn btn-danger mt-3"
+            data-confirm="Merge these accounts? The selected SOURCE will be tombstoned. This is irreversible.">Merge</button>
+    <a class="btn btn-secondary mt-3" asp-action="EmailProblems">Cancel</a>
+</form>
+
+<script>
+    document.querySelectorAll('[data-confirm]').forEach(function (button) {
+        button.addEventListener('click', function (e) {
+            if (!confirm(this.getAttribute('data-confirm'))) {
+                e.preventDefault();
+            }
+        });
+    });
+</script>

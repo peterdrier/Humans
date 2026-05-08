@@ -19,7 +19,12 @@
 
 Pure orchestrator over Profiles, Legal & Consent, Teams, and Governance. Owns no tables.
 
-> **Three-concerns split (umbrella nobodies-collective#563).** Onboarding is the *intake funnel* (signup → profile → consents → first-team admission). Its sibling state-machine — admin-initiated suspend/unsuspend on already-onboarded humans — lives on `IHumanLifecycleService` (`Humans.Application.Services.HumanLifecycle`). Future re-consent suspensions, term-renewals, and external-event status recomputes will accrue on the lifecycle service. Account deletion is a third sibling tracked under nobodies-collective#582.
+> **Three-concerns split (umbrella nobodies-collective#563).** `OnboardingService` is the *intake funnel only* (signup → profile → consents → first-team admission, plus CC review queue). Sibling services own the other workflow stages so onboarding stays narrow:
+>
+> - **Lifecycle state-machine** (suspend/unsuspend, future re-consent suspensions and term-renewals) → `IHumanLifecycleService` (nobodies-collective#583).
+> - **Board voting** (`GetBoardVotingDashboardAsync`, `GetBoardVotingDetailAsync`, `HasBoardVotesAsync`, `CastBoardVoteAsync`, `GetUnvotedApplicationCountAsync`) → `IApplicationDecisionService` (Governance owns the `applications` + `board_votes` tables; this PR removed the OnboardingService delegating wrappers).
+> - **Admin dashboard aggregation** (`GetAdminDashboardAsync`, `GetPendingReviewCountAsync`) → `IAdminDashboardService` (`Humans.Application.Services.Dashboard`). Distinct from `IDashboardService` (single-user member dashboard) — different shapes, different consumers.
+> - **Account deletion cascade** → future `IAccountDeletionService` (nobodies-collective#582).
 
 ## Concepts
 
@@ -74,19 +79,21 @@ The only onboarding-specific value type is the narrow `IOnboardingEligibilityQue
 
 ## Cross-Section Dependencies
 
-- **Profiles:** `IProfileService` — profile reads, review-queue reads, profile mutations (clear/flag consent check, reject signup, approve/suspend/unsuspend). The Profile caching decorator handles `FullProfile` + nav/notification cache invalidation.
-- **Users/Identity:** `IUserService` — user reads, all-user-ids enumeration, language distribution. Admin-initiated account purge is NOT here — it lives on `IAccountDeletionService` (see Users/Profiles for the deletion lifecycle).
-- **Governance:** `IApplicationDecisionService` — pending-application lookup, board voting dashboard/detail, board vote recording, unvoted-count, admin stats, pending-application count.
-- **Auth:** `IRoleAssignmentService` — cross-section Board-member resolution (`GetActiveUserIdsInRoleAsync`). Used from within `IApplicationDecisionService.GetBoardVotingDashboardAsync`.
+After the nobodies-collective#584 narrowing, `OnboardingService` injects only what the 5 onboarding-proper methods (clear / flag / reject / approve / set-pending) need:
+
+- **Profiles:** `IProfileService` — profile reads, review-queue reads, profile mutations (clear/flag consent check, reject signup, approve volunteer). The Profile caching decorator handles `FullProfile` + nav/notification cache invalidation.
+- **Users/Identity:** `IUserService` — user reads (rejection email recipient hydration). Admin-initiated account purge is NOT here — it lives on `IAccountDeletionService`.
+- **Governance:** `IApplicationDecisionService` — pending-application lookup (review queue) and approved-tier lookup (consent-check clear path). Board-voting methods are now consumed directly by callers, not via OnboardingService.
 - **Teams:** `ISystemTeamSync` — Volunteers / Colaboradors / Asociados system team membership sync.
-- **Notifications / Email:** `IEmailService` (`SendSignupRejectedAsync`), `INotificationService` (`VolunteerApproved`, `ProfileRejected`, `AccessSuspended`, `ConsentReviewNeeded` dispatch), `INotificationInboxService` (resolve `AccessSuspended` on unsuspend / consents complete).
-- **Cross-cutting:** `IMembershipCalculator` (consent-check eligibility + admin-dashboard partition), `IHumansMetrics`, `ILogger`.
+- **Notifications / Email:** `IEmailService` (`SendSignupRejectedAsync`), `INotificationService` (`VolunteerApproved`, `ProfileRejected`, `ConsentReviewNeeded` dispatch). `INotificationInboxService` moved out with `UnsuspendAsync` (now on `IHumanLifecycleService`).
+- **Cross-cutting:** `IMembershipCalculator` (consent-check eligibility + review-queue snapshots), `IHumansMetrics`, `ILogger`.
 
 ## Architecture
 
-**Owning services:** `OnboardingService` (intake funnel), `HumanLifecycleService` (suspend/unsuspend state-machine — extracted in nobodies-collective#583).
+**Owning services:** `OnboardingService` (intake funnel only after the nobodies-collective#584 narrowing).
+**Sibling services in the three-concerns split:** `HumanLifecycleService` (state-machine), `ApplicationDecisionService` (board voting), `AdminDashboardService` (dashboard aggregation), future `AccountDeletionService` (cascade).
 **Owned tables:** None — orchestrator over Profiles, Legal & Consent, Teams, Governance.
-**Status:** (A) Migrated (peterdrier/Humans PR #285 for issue nobodies-collective/Humans#553, 2026-04-22). Lifecycle split landed for nobodies-collective#583.
+**Status:** (A) Migrated (peterdrier/Humans PR #285 for issue nobodies-collective/Humans#553, 2026-04-22). Three-concerns narrowing complete with nobodies-collective#583 (lifecycle) and nobodies-collective#584 (board voting + admin dashboard).
 
 - `OnboardingService` lives in `src/Humans.Application/Services/Onboarding/OnboardingService.cs` and depends only on interfaces (plus `IClock`).
 - `HumanLifecycleService` lives in `src/Humans.Application/Services/HumanLifecycle/HumanLifecycleService.cs` and exposes `IHumanLifecycleService` — the **single entry point** for admin-initiated `SuspendAsync` / `UnsuspendAsync`. Same orchestrator shape as `OnboardingService`: owns no tables, depends only on cross-section service interfaces (`IProfileService`, `INotificationService`, `INotificationInboxService`, `IHumansMetrics`). Suspend writes flow through `IProfileService.SetSuspendedAsync`; unsuspend resolves the user's `AccessSuspended` notifications via `INotificationInboxService.ResolveBySourceAsync`. The bulk grace-period suspension path used by `SuspendNonCompliantMembersJob` continues to use `IProfileService.SuspendForMissingConsentAsync` directly — that path has job-specific notification, audit, and per-team Google-removal side effects that don't fit the per-user lifecycle entry point.

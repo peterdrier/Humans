@@ -1,8 +1,10 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Services.Profiles;
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
 using Xunit;
 using ProfileService = Humans.Application.Services.Profile.ProfileService;
 using ContactFieldService = Humans.Application.Services.Profile.ContactFieldService;
@@ -10,6 +12,7 @@ using UserEmailService = Humans.Application.Services.Profile.UserEmailService;
 using CommunicationPreferenceService = Humans.Application.Services.Profile.CommunicationPreferenceService;
 using AccountMergeService = Humans.Application.Services.Profile.AccountMergeService;
 using DuplicateAccountService = Humans.Application.Services.Profile.DuplicateAccountService;
+using EmailProblemsService = Humans.Application.Services.Profile.EmailProblemsService;
 using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Tests.Architecture;
@@ -272,5 +275,25 @@ public class ProfileArchitectureTests
         typeof(IAccountMergeRepository).Namespace
             .Should().Be("Humans.Application.Interfaces.Repositories",
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
+    }
+
+    // ── EmailProblemsService (issue #660) ─────────────────────────────────────
+
+    [HumansFact]
+    public void EmailProblemsService_DependsOnlyOnSectionServices_NotRepositories()
+    {
+        var ctor = typeof(EmailProblemsService).GetConstructors().Single();
+        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
+
+        var allowed = new[]
+        {
+            typeof(IProfileService),
+            typeof(IUserEmailService),
+            typeof(IUserService),
+            typeof(IClock)
+        };
+
+        paramTypes.Should().OnlyContain(t => allowed.Contains(t),
+            "EmailProblemsService must use existing section services, never repositories or DbContext");
     }
 }

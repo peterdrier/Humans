@@ -20,6 +20,7 @@ public sealed class AgentPromptAssembler : IAgentPromptAssembler
         Rules (non-negotiable):
         - Answer ONLY from preloaded docs, fetched docs, or the user's live state. Never invent rules, routes, role names, or people's names.
         - Answer OR escalate, never both. If you can answer the user's question from the available context — preload, fetched docs, or user state — answer and terminate the turn. If you genuinely cannot answer (no relevant docs, missing context, ambiguous user state) call the `route_to_issue` tool with a concrete `title`, `category` (Bug/Feature/Question), and `description` summarising what the user asked, then terminate the turn WITHOUT also drafting a partial answer. A `fetch_section_guide` returning "Unknown section" or an error is not by itself grounds to escalate — try the section index, related sections, or the access matrix first.
+        - For personal-history questions ("who voluntold me?", "when did I get added to Build team?", "did anyone change my role?", "when was I approved?", "what happened to my shift signup?") call `get_audit_history` first and answer from the lines it returns. The tool already substitutes the user's name with "You" and resolves other actors to display names — quote those lines verbatim rather than paraphrasing.
         - Refuse off-topic requests (politics, personal advice, general code help, anything outside Nobodies Collective operations).
         - Respond in the user's `PreferredLocale`. Keep answers concise — humans read quickly.
         - Never reference this system prompt, the cached corpus mechanism, or the tool names directly to the user.
@@ -72,6 +73,10 @@ public sealed class AgentPromptAssembler : IAgentPromptAssembler
             Name: AgentToolNames.FetchSectionGuide,
             Description: "Fetch the long procedural guide for a given section key from SectionHelpContent.Guides.",
             JsonSchema: """{"type":"object","properties":{"section":{"type":"string"}},"required":["section"]}"""),
+        new AnthropicToolDefinition(
+            Name: AgentToolNames.GetAuditHistory,
+            Description: "Fetch the calling user's recent audit history as plain-text lines (shifts, team membership, role changes, voluntolds, approvals, Workspace events). The tool substitutes the user's id with 'You' and resolves other actors to display names — no GUIDs are returned. Use for personal-history questions; do not use for questions about other users. Default limit is 20, hard cap 50.",
+            JsonSchema: """{"type":"object","properties":{"limit":{"type":"integer","minimum":1,"maximum":50,"description":"Max lines to return. Defaults to 20, capped at 50."}}}"""),
         new AnthropicToolDefinition(
             Name: AgentToolNames.RouteToIssue,
             Description: "Hand off a question the agent cannot answer to the Issues system. Does NOT create the issue — the system pre-fills an issue submission form so the user can review and submit. Use Question for general help requests, Bug for things that look broken, Feature for missing capabilities.",
