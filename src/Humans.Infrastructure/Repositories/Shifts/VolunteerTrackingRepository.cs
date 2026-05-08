@@ -80,6 +80,7 @@ public sealed class VolunteerTrackingRepository : IVolunteerTrackingRepository
                 x => x.UserId == userId && x.EventSettingsId == eventSettingsId,
                 ct);
 
+        // arch:db-sort-ok normalization for canonical jsonb storage (sorted+deduped), not a display sort
         var normalized = dayOffsets.Distinct().OrderBy(x => x).ToList();
 
         if (existing is null)
