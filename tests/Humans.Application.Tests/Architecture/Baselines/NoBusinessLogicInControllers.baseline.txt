@@ -137,3 +137,4 @@ src/Humans.Web/Controllers/TeamController.cs:Join/2
 src/Humans.Web/Controllers/TeamController.cs:Leave/1
 src/Humans.Web/Controllers/TicketController.cs:Index/0
 src/Humans.Web/Controllers/TicketController.cs:ParticipationBackfill/1
+src/Humans.Web/Controllers/WidgetGalleryController.cs:Index/0

@@ -30,6 +30,7 @@ public class CachingProfileServiceTests
     private readonly IProfileRepository _profileRepository = Substitute.For<IProfileRepository>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailRepository _userEmailRepository = Substitute.For<IUserEmailRepository>();
+    private readonly IContactFieldRepository _contactFieldRepository = Substitute.For<IContactFieldRepository>();
     private readonly INavBadgeCacheInvalidator _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
     private readonly INotificationMeterCacheInvalidator _notificationMeter = Substitute.For<INotificationMeterCacheInvalidator>();
 
@@ -43,7 +44,7 @@ public class CachingProfileServiceTests
         services.AddScoped(_ => _notificationMeter);
         var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
         var logger = Substitute.For<Microsoft.Extensions.Logging.ILogger<CachingProfileService>>();
-        return new CachingProfileService(_profileRepository, _userEmailRepository, scopeFactory, logger);
+        return new CachingProfileService(_profileRepository, _userEmailRepository, _contactFieldRepository, scopeFactory, logger);
     }
 
     [HumansFact]

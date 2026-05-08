@@ -182,6 +182,19 @@ public interface IUserRepository
         Guid targetUserId, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns userIds of users that have at least one row in
+    /// <c>AspNetUserLogins</c> but zero rows in <c>user_emails</c>. Used by the
+    /// EmailProblems admin scan to surface ghost auth artifacts (case 8).
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes every <c>AspNetUserLogins</c> row for the given user. Returns the
+    /// number of rows deleted. Used by EmailProblems ghost-login cleanup.
+    /// </summary>
+    Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// Migrates every <c>AspNetUserLogins</c> row from
     /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
     /// <c>IdentityUserLogin&lt;Guid&gt;</c>'s primary key is

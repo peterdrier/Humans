@@ -68,7 +68,7 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 1. **Terms link, not gate.** The Assistant panel shows a persistent "AI Terms" link below the composer that opens `/Legal/agent-chat` (the rendered Agent Chat Terms from `nobodies-collective/legal`). There is no explicit consent step — opening the panel and sending a message constitutes use; the terms describe what's sent, retention, and rights. The team-required-doc consent flow (`IConsentService.GetPendingDocumentNamesAsync`) is intentionally NOT used here; agent use is opt-in, not a membership precondition.
 2. **Enabled gate.** If `AgentSettings.Enabled = false`, widget is hidden and `POST /Agent/Ask` returns `503 ServiceUnavailable`.
 3. **Rate limit.** Per-user daily and hourly caps from `AgentSettings`. Over-cap requests return `429 TooManyRequests` without hitting the provider.
-4. **Tool whitelist.** Only `fetch_feature_spec`, `fetch_section_guide`, `route_to_issue` are valid tool names. Unknown names return a tool error; filesystem is never touched outside `docs/sections/` and `docs/features/`.
+4. **Tool whitelist.** Only `fetch_feature_spec`, `fetch_section_guide`, `route_to_issue`, `get_audit_history` are valid tool names. Unknown names return a tool error; filesystem is never touched outside `docs/sections/` and `docs/features/`.
 5. **Tool loop bound.** At most `AnthropicOptions.MaxToolCallsPerTurn` (default 3) tool calls per turn, enforced server-side.
 6. **Refusal logging.** Every refused turn writes an `AgentMessage` with `RefusalReason != null`.
 7. **Append-only conversations per user.** A user can only post to conversations they own. `AgentController` rejects cross-user access with 404.

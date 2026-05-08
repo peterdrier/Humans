@@ -117,12 +117,18 @@ Stored as string in the database. New values can be appended without migration.
 
 ## Service Design
 
-`IAuditLogService` provides two overloads:
+The section splits into a write side and a read+render side:
+
+**`IAuditLogService` (write)** provides two `LogAsync` overloads:
 
 1. **Job overload** — no human actor, accepts job name (prefixed to description)
 2. **Human overload** — accepts actor user ID
 
-The service adds entries to the `DbContext` without calling `SaveChangesAsync`. Entries are saved atomically with the caller's business operation.
+Each call is self-persisting via `IAuditLogRepository.AddAsync`, which opens a fresh `DbContext` via `IDbContextFactory<HumansDbContext>` and saves immediately (design-rules §7a). Callers do not need to flush audit, and audit does not roll back if a later business step fails. `LogGoogleSyncAsync` is the third overload for permission-change events with the Google-specific nullable fields.
+
+**`IAuditViewerService` (read+render)** owns the read path. It returns resolved `AuditEvent` records — actor/subject/target-team display names are batch-resolved inside the section (no per-call-site dance with `GetUserDisplayNamesAsync` / `GetTeamNamesAsync`). Overloads cover the global `/Board/AuditLog` page, per-entity history (Profile/Team/Calendar/etc.), per-user history (MemberDetail), and the agent's `get_audit_history` tool. Verb tables (`GetActionVerb`, `GetActionSelfVerb`, `ShouldRenderDescriptionTail`) live in the stateless `AuditEventTextualizer` helper, which backs both `AuditEvent.RenderPlainText` (agent tool output, with viewer-GUID → "You" substitution) and `RenderStructured` (the view-component HTML composition path).
+
+`IAuditLogService` no longer exposes display-name lookups to controllers — `GetUserDisplayNamesAsync` / `GetTeamNamesAsync` are reached only through `IAuditViewerService`.
 
 ## Phase 1 Coverage (Current)
 
@@ -208,7 +214,11 @@ Displays the 50 most recent audit entries affecting a user, queried by:
 - `EntityType = 'User' AND EntityId = @userId` (direct entries)
 - `RelatedEntityId = @userId` (related entries, e.g., team membership changes)
 
-Each entry renders structurally as: `[timestamp] — [actor] [verb] [subject] in [team] — [description]`. Verbs are mapped per `AuditAction` in `AuditLogViewComponent.GetActionVerb`; a self-form (`GetActionSelfVerb`) is used when actor == subject to avoid dangling prepositions. Actor and subject are resolved as clickable `<human-link>` from `UserDisplayNames` (batch-loaded). Unmapped actions fall back to a rough `[actor] · [ActionName] · [subject] — [description]` form so attribution is never lost.
+Each entry renders structurally as: `[timestamp] — [actor] [verb] [subject] in [team] — [description]`. The verb tables (`GetActionVerb` / `GetActionSelfVerb`) live in `AuditEventTextualizer`; the self-form is used when actor == subject to avoid dangling prepositions. `IAuditViewerService` resolves the page, batch-loading actor/subject/target-team display names inside the section and returning `AuditEvent` records; the shared `AuditLogViewComponent` then composes HTML around `AuditEvent.RenderStructured`, which produces the field bundle (actor/subject as clickable `<human-link>` data, verb, description tail). Unmapped actions fall back to `[actor] · [ActionName] · [subject] — [description]` so attribution is never lost.
+
+### Agent tool — `get_audit_history`
+
+Agent dispatcher tool that returns the calling user's audit history as plain text. Default 20 lines, hard-capped at 50 (limit clamped server-side; minimum 1). Empty result returns "No audit history for this user." Each line is the `RenderPlainText` of an `AuditEvent`, with the calling user's GUID rewritten to "You" so the agent never echoes the user's id. Used by the system prompt for personal-history questions ("who voluntold me?", "when did I get added to the Build team?", role changes, approvals).
 
 ## Authorization
 

@@ -208,46 +208,15 @@ public class EndRoleAssignmentViewModel
     public string? Notes { get; set; }
 }
 
-public class AuditLogEntryViewModel
-{
-    public AuditAction Action { get; set; }
-    public string Description { get; set; } = string.Empty;
-    public DateTime OccurredAt { get; set; }
-    public Guid? ActorUserId { get; set; }
-    public bool IsSystemAction { get; set; }
-    public string EntityType { get; set; } = string.Empty;
-    public Guid EntityId { get; set; }
-    public string? RelatedEntityType { get; set; }
-    public Guid? RelatedEntityId { get; set; }
-
-    /// <summary>
-    /// Returns the subject user ID (the person acted upon), based on entity type patterns.
-    /// </summary>
-    public Guid? SubjectUserId =>
-        EntityType is "User" or "Profile" or "WorkspaceAccount" ? EntityId :
-        string.Equals(RelatedEntityType, "User", StringComparison.Ordinal) ? RelatedEntityId :
-        null;
-
-    /// <summary>
-    /// Returns the target entity ID (team, resource, etc.), if applicable.
-    /// </summary>
-    public Guid? TargetTeamId =>
-        string.Equals(EntityType, "Team", StringComparison.Ordinal) ? EntityId :
-        string.Equals(RelatedEntityType, "Team", StringComparison.Ordinal) ? RelatedEntityId :
-        null;
-}
-
 public class AuditLogListViewModel : PagedListViewModel
 {
     public AuditLogListViewModel() : base(50)
     {
     }
 
-    public List<AuditLogEntryViewModel> Entries { get; set; } = [];
+    public IReadOnlyList<Humans.Application.Services.AuditLog.AuditEvent> Events { get; set; } = [];
     public string? ActionFilter { get; set; }
     public int AnomalyCount { get; set; }
-    public Dictionary<Guid, string> UserDisplayNames { get; set; } = new();
-    public Dictionary<Guid, (string Name, string Slug)> TeamNames { get; set; } = new();
 }
 
 public class GoogleSyncAuditEntryViewModel

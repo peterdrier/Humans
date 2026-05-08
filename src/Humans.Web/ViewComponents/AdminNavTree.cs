@@ -55,6 +55,7 @@ public static class AdminNavTree
         {
             new("Merge requests",        "AdminMerge", "Index",            null, null, "fa-solid fa-code-merge", PolicyNames.AdminOnly),
             new("Duplicate detection",   "AdminDuplicateAccounts", "Index", null, null, "fa-solid fa-clone",      PolicyNames.AdminOnly),
+            new("Email problems",        "ProfileAdmin", "EmailProblems", null, null, "fa-solid fa-envelope-circle-check", PolicyNames.AdminOnly),
             new("Audience segmentation", "Admin", "AudienceSegmentation",   null, null, "fa-solid fa-chart-pie",  PolicyNames.AdminOnly),
             new("Legal documents",       "AdminLegalDocuments", "LegalDocuments", null, null, "fa-solid fa-scale-balanced", PolicyNames.AdminOnly),
             new("Backfill Provider/IsGoogle", "Admin", "BackfillUserEmailProviders", null, null, "fa-solid fa-key", PolicyNames.AdminOnly),

@@ -75,6 +75,7 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
 
     private readonly IProfileRepository _profileRepository;
     private readonly IUserEmailRepository _userEmailRepository;
+    private readonly IContactFieldRepository _contactFieldRepository;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CachingProfileService> _logger;
 
@@ -83,11 +84,13 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
     public CachingProfileService(
         IProfileRepository profileRepository,
         IUserEmailRepository userEmailRepository,
+        IContactFieldRepository contactFieldRepository,
         IServiceScopeFactory scopeFactory,
         ILogger<CachingProfileService> logger)
     {
         _profileRepository = profileRepository;
         _userEmailRepository = userEmailRepository;
+        _contactFieldRepository = contactFieldRepository;
         _scopeFactory = scopeFactory;
         _logger = logger;
     }
@@ -392,10 +395,7 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         IReadOnlyDictionary<Guid, IReadOnlyList<ContactField>>? contactFieldsByProfileId = null;
         if ((fields & (PersonSearchFields.Bio | PersonSearchFields.Admin)) != PersonSearchFields.None)
         {
-            await using var scope = _scopeFactory.CreateAsyncScope();
-            var contactFieldRepository =
-                scope.ServiceProvider.GetRequiredService<IContactFieldRepository>();
-            var all = await contactFieldRepository.GetAllAsync(ct);
+            var all = await _contactFieldRepository.GetAllAsync(ct);
             contactFieldsByProfileId = all
                 .GroupBy(cf => cf.ProfileId)
                 .ToDictionary(

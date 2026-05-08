@@ -1,0 +1,149 @@
+@using Humans.Web.Models.EmailProblems
+@using Humans.Application.DTOs.EmailProblems
+@model EmailProblemsListViewModel
+@{
+    ViewData["Title"] = "Email Problems";
+}
+
+<h1>Email Problems</h1>
+<p class="text-muted">
+    Scanned at @Model.ScannedAt.ToAuditTimestamp() · @Model.TotalProblems total problems
+</p>
+
+<h2>Cross-user conflicts</h2>
+@if (Model.CrossUserConflicts.Count == 0)
+{
+    <p class="text-success">No problems found</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr><th>Email</th><th>User A</th><th>User B</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var row in Model.CrossUserConflicts)
+            {
+                <tr>
+                    <td><code>@row.Email</code></td>
+                    <td>@row.User1DisplayName</td>
+                    <td>@row.User2DisplayName</td>
+                    <td>
+                        <a class="btn btn-sm btn-primary"
+                           asp-action="EmailProblemsCompare"
+                           asp-route-userId1="@row.User1Id"
+                           asp-route-userId2="@row.User2Id">Compare</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<h2>Single-user issues</h2>
+@if (Model.SingleUserIssues.Count == 0)
+{
+    <p class="text-success">No problems found</p>
+}
+else
+{
+    <table class="table">
+        <thead><tr><th>User</th><th>Problems</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var row in Model.SingleUserIssues)
+            {
+                <tr>
+                    <td>@row.DisplayName</td>
+                    <td>@string.Join(", ", row.ProblemSummaries)</td>
+                    <td>
+                        <a class="btn btn-sm btn-secondary"
+                           href="/Profile/@row.UserId/Admin/Emails">Open emails ▸</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<h2>Legacy User.Email column not in user_emails</h2>
+<p class="text-muted">
+    Pre-decoupling users whose <code>User.Email</code> AspNetIdentity column was populated but
+    no matching verified <code>UserEmail</code> row exists. Backfill creates a verified row from
+    the legacy column (idempotent — skips users whose row already exists).
+</p>
+@if (Model.LegacyEmailRows.Count == 0)
+{
+    <p class="text-success">No problems found</p>
+}
+else
+{
+    <form method="post" asp-action="BackfillLegacyEmails" class="mb-2">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-warning"
+                data-confirm="Backfill verified UserEmail rows for @Model.LegacyEmailRows.Count user(s) from their legacy User.Email column?">
+            Backfill all (@Model.LegacyEmailRows.Count)
+        </button>
+    </form>
+    <table class="table table-sm">
+        <thead><tr><th>User</th><th>Legacy User.Email</th></tr></thead>
+        <tbody>
+            @foreach (var row in Model.LegacyEmailRows)
+            {
+                <tr>
+                    <td>@row.DisplayName</td>
+                    <td><code>@row.LegacyEmail</code></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<h2>System-level issues</h2>
+@if (Model.SystemLevelIssues.Count == 0)
+{
+    <p class="text-success">No problems found</p>
+}
+else
+{
+    <table class="table">
+        <thead><tr><th>Issue</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var row in Model.SystemLevelIssues)
+            {
+                <tr>
+                    <td>@row.Detail</td>
+                    <td>
+                        @if (row.Kind == EmailProblemKind.OrphanUserEmail)
+                        {
+                            <form method="post" asp-action="DeleteOrphanEmail" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="emailId" value="@row.UserEmailId" />
+                                <button type="submit" class="btn btn-sm btn-danger"
+                                        data-confirm="Delete orphan UserEmail row? This is irreversible.">Delete row ✕</button>
+                            </form>
+                        }
+                        else if (row.Kind == EmailProblemKind.GhostExternalLogins)
+                        {
+                            <form method="post" asp-action="DeleteGhostLogins" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="userId" value="@row.UserId" />
+                                <button type="submit" class="btn btn-sm btn-danger"
+                                        data-confirm="Delete ghost AspNetUserLogins rows? This is irreversible.">Delete logins ✕</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<script>
+    document.querySelectorAll('[data-confirm]').forEach(function (button) {
+        button.addEventListener('click', function (e) {
+            if (!confirm(this.getAttribute('data-confirm'))) {
+                e.preventDefault();
+            }
+        });
+    });
+</script>
