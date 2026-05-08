@@ -42,6 +42,10 @@
                             {
                                 <span class="fw-normal text-muted"> - @item.LegalName</span>
                             }
+                            else if (!string.IsNullOrWhiteSpace(item.Email))
+                            {
+                                <small class="text-muted"> @item.Email</small>
+                            }
                         </a>
                     </div>
                     <div class="text-end">
@@ -92,6 +96,10 @@
                             @if (!string.IsNullOrWhiteSpace(item.LegalName))
                             {
                                 <span class="fw-normal text-muted"> - @item.LegalName</span>
+                            }
+                            else if (!string.IsNullOrWhiteSpace(item.Email))
+                            {
+                                <small class="text-muted"> @item.Email</small>
                             }
                         </a>
                     </div>
