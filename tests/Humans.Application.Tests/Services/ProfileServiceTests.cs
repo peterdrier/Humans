@@ -1717,4 +1717,41 @@ public class ProfileServiceTests : IDisposable
         json.Should().Contain("\"IsNotificationTarget\":true");
         json.Should().NotContain("\"IsPrimary\":");
     }
+
+    // Smoke test for the per-userId service-side lock that replaced the
+    // AddIfNotExistsByUserIdAsync 23505-translating repo method. Asserts the
+    // lock serializes two concurrent EnsureStubProfileAsync callers so that
+    // only one AddAsync fires for a given userId.
+    [HumansFact(Timeout = 5000)]
+    public async Task EnsureStubProfileAsync_TwoConcurrentCallers_OnlyOneAddAsync()
+    {
+        var userId = Guid.NewGuid();
+
+        var fakeRepo = Substitute.For<IProfileRepository>();
+        Profile? stored = null;
+        fakeRepo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult(stored));
+        fakeRepo.When(r => r.AddAsync(Arg.Any<Profile>(), Arg.Any<CancellationToken>()))
+            .Do(call => stored = call.Arg<Profile>());
+
+        var service = new ProfileService(
+            fakeRepo, _userService,
+            _userEmailRepository,
+            _contactFieldRepository, _communicationPreferenceRepository,
+            _onboardingService, _auditLogService,
+            _membershipCalculator, _consentService, _ticketQueryService,
+            _applicationDecisionService, _campaignService,
+            _roleAssignmentService, _accountDeletionService,
+            _fileStorage,
+            _clock,
+            NullLogger<ProfileService>.Instance);
+
+#pragma warning disable VSTHRD003 // Avoid awaiting foreign Tasks
+        await Task.WhenAll(
+            Task.Run(() => service.EnsureStubProfileAsync(userId)),
+            Task.Run(() => service.EnsureStubProfileAsync(userId)));
+#pragma warning restore VSTHRD003
+
+        await fakeRepo.Received(1).AddAsync(Arg.Any<Profile>(), Arg.Any<CancellationToken>());
+    }
 }
