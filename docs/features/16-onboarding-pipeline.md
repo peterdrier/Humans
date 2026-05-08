@@ -165,6 +165,7 @@ The default Volunteer flow uses the **onboarding widget** (Names → Shifts → 
 - **Clear**: ConsentCheckStatus = Cleared, IsApproved = true
   - If all legal docs also signed → Volunteers team → ActiveMember
   - If legal docs still pending → admission deferred until docs are signed
+- **Bulk Clear**: Coordinators can multi-select rows that have a legal name and clear them in one action. The server re-checks each selection against the live queue and only clears those that are still pending and still have a legal name; users no longer eligible (already cleared, profile rejected, legal name went blank) are silently skipped and surfaced in the flash message as "Approved X of Y selected".
 - **Flag**: ConsentCheckStatus = Flagged with notes → access blocked, can be resolved later
 
 `IsApproved = true` is set on clearance even if legal docs are incomplete — it marks profile review approval, not full activation. The Volunteers team membership is the true activation gate, and `SyncVolunteersMembershipForUserAsync` independently checks both `IsApproved` AND `HasAllRequiredConsents`.

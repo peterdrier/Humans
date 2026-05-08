@@ -177,7 +177,16 @@ public sealed class OnboardingService : IOnboardingService
         {
             var result = await ClearConsentCheckAsync(userId, reviewerId, notes: null, ct);
             if (result.Success)
+            {
                 approved++;
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "BulkClearConsentChecks: skipped user {UserId}: {ErrorKey}",
+                    userId,
+                    result.ErrorKey);
+            }
         }
 
         return new BulkOnboardingResult(approved);
