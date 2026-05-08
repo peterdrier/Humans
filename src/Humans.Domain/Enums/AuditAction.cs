@@ -135,4 +135,9 @@ public enum AuditAction
     CampEarlyEntryRevoked,
     CampSeasonEeSlotCountChanged,
     CampSettingsEeStartDateChanged,
+    VolunteerCampSetupSet,
+    VolunteerCampSetupCleared,
+    VolunteerDayBlocked,
+    VolunteerDayUnblocked,
+    VolunteerOwnBlockedDaysSaved,
 }
