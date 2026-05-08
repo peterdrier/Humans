@@ -1,7 +1,4 @@
-using Humans.Application.DTOs.Governance;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Application.Interfaces.Onboarding;
 
@@ -13,8 +10,6 @@ public interface IOnboardingService : IOnboardingEligibilityQuery
     // --- Queries ---
     Task<DTOs.ReviewQueueData> GetReviewQueueAsync(CancellationToken ct = default);
     Task<DTOs.ReviewDetailData> GetReviewDetailAsync(Guid userId, CancellationToken ct = default);
-    Task<DTOs.BoardVotingDashboardData> GetBoardVotingDashboardAsync(CancellationToken ct = default);
-    Task<BoardVotingDetailData?> GetBoardVotingDetailAsync(Guid applicationId, CancellationToken ct = default);
 
     // --- Consent check mutations ---
     Task<OnboardingResult> ClearConsentCheckAsync(
@@ -23,11 +18,6 @@ public interface IOnboardingService : IOnboardingEligibilityQuery
         IReadOnlyCollection<Guid> userIds, Guid reviewerId, CancellationToken ct = default);
     Task<OnboardingResult> FlagConsentCheckAsync(
         Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default);
-
-    // --- Board vote ---
-    Task<bool> HasBoardVotesAsync(Guid applicationId, CancellationToken ct = default);
-    Task<OnboardingResult> CastBoardVoteAsync(
-        Guid applicationId, Guid boardMemberUserId, VoteChoice vote, string? note, CancellationToken ct = default);
 
     // --- Signup reject (consolidates OnboardingReview + Admin paths, FIXES deprovision bug) ---
     Task<OnboardingResult> RejectSignupAsync(
@@ -38,22 +28,10 @@ public interface IOnboardingService : IOnboardingEligibilityQuery
         Guid userId, Guid adminId, CancellationToken ct = default);
 
     // --- Suspend / Unsuspend ---
+    // Lifecycle state-machine operations slated to move to IHumanLifecycleService
+    // in nobodies-collective#583 (sibling PR landing in parallel).
     Task<OnboardingResult> SuspendAsync(
         Guid userId, Guid adminId, string? notes, CancellationToken ct = default);
     Task<OnboardingResult> UnsuspendAsync(
         Guid userId, Guid adminId, CancellationToken ct = default);
-
-    // --- Badge counts ---
-    /// <summary>
-    /// Gets the count of profiles pending consent review (not yet approved, not rejected).
-    /// </summary>
-    Task<int> GetPendingReviewCountAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Gets the count of submitted applications that the given board member has not yet voted on.
-    /// </summary>
-    Task<int> GetUnvotedApplicationCountAsync(Guid boardMemberUserId, CancellationToken ct = default);
-
-    // --- Admin ---
-    Task<DTOs.AdminDashboardData> GetAdminDashboardAsync(CancellationToken ct = default);
 }

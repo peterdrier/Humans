@@ -6,7 +6,7 @@ using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces.Dashboard;
 
 namespace Humans.Web.Controllers;
 
@@ -15,22 +15,22 @@ namespace Humans.Web.Controllers;
 public class BoardController : HumansControllerBase
 {
     private readonly IAuditLogService _auditLogService;
-    private readonly IOnboardingService _onboardingService;
+    private readonly IAdminDashboardService _adminDashboardService;
 
     public BoardController(
         IAuditLogService auditLogService,
-        IOnboardingService onboardingService,
+        IAdminDashboardService adminDashboardService,
         UserManager<User> userManager)
         : base(userManager)
     {
         _auditLogService = auditLogService;
-        _onboardingService = onboardingService;
+        _adminDashboardService = adminDashboardService;
     }
 
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        var dashboardData = await _onboardingService.GetAdminDashboardAsync();
+        var dashboardData = await _adminDashboardService.GetAdminDashboardAsync();
         var recentEntries = await _auditLogService.GetRecentAsync(15);
 
         var viewModel = new BoardDashboardViewModel

@@ -2,16 +2,18 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Application;
+using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Feedback;
+using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Issues;
-using Humans.Application.Interfaces.Onboarding;
 using Humans.Domain.Constants;
 
 namespace Humans.Web.ViewComponents;
 
 public class NavBadgesViewComponent : ViewComponent
 {
-    private readonly IOnboardingService _onboardingService;
+    private readonly IAdminDashboardService _adminDashboardService;
+    private readonly IApplicationDecisionService _applicationDecisionService;
     private readonly IFeedbackService _feedbackService;
     private readonly IIssuesService _issuesService;
     private readonly IMemoryCache _cache;
@@ -19,12 +21,14 @@ public class NavBadgesViewComponent : ViewComponent
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(2);
 
     public NavBadgesViewComponent(
-        IOnboardingService onboardingService,
+        IAdminDashboardService adminDashboardService,
+        IApplicationDecisionService applicationDecisionService,
         IFeedbackService feedbackService,
         IIssuesService issuesService,
         IMemoryCache cache)
     {
-        _onboardingService = onboardingService;
+        _adminDashboardService = adminDashboardService;
+        _applicationDecisionService = applicationDecisionService;
         _feedbackService = feedbackService;
         _issuesService = issuesService;
         _cache = cache;
@@ -36,7 +40,7 @@ public class NavBadgesViewComponent : ViewComponent
         {
             entry.AbsoluteExpirationRelativeToNow = CacheDuration;
 
-            var reviewCount = await _onboardingService.GetPendingReviewCountAsync();
+            var reviewCount = await _adminDashboardService.GetPendingReviewCountAsync();
             var feedbackCount = await _feedbackService.GetActionableCountAsync();
 
             return (Review: reviewCount, Feedback: feedbackCount);
@@ -74,7 +78,7 @@ public class NavBadgesViewComponent : ViewComponent
         {
             entry.AbsoluteExpirationRelativeToNow = CacheDuration;
 
-            return await _onboardingService.GetUnvotedApplicationCountAsync(currentUserId);
+            return await _applicationDecisionService.GetUnvotedApplicationCountAsync(currentUserId);
         });
     }
 
