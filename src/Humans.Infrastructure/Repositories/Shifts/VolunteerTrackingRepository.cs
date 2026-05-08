@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -140,7 +141,28 @@ public sealed class VolunteerTrackingRepository : IVolunteerTrackingRepository
         return true;
     }
 
-    public Task<IReadOnlyList<EligibleBuildSignup>> GetEligibleBuildSignupsAsync(
-        Guid eventSettingsId, CancellationToken ct = default) =>
-        throw new NotSupportedException("GetEligibleBuildSignupsAsync is implemented in a follow-up TDD step.");
+    public async Task<IReadOnlyList<EligibleBuildSignup>> GetEligibleBuildSignupsAsync(
+        Guid eventSettingsId, CancellationToken ct = default)
+    {
+        var es = await _db.EventSettings
+            .Where(x => x.Id == eventSettingsId)
+            .Select(x => new { x.BuildStartOffset })
+            .FirstOrDefaultAsync(ct);
+
+        if (es is null) return Array.Empty<EligibleBuildSignup>();
+
+        // SignupStatus and RotaPeriod are stored as strings via
+        // HasConversion<string>(). Per memory/code/no-enum-compare-in-ef.md, we
+        // avoid `>=`/`<=` on those enums and use an explicit `||` chain so the
+        // SQL stays a literal-IN match (no lexicographic comparison).
+        // DayOffset is an int — direct numeric comparison is safe.
+        return await _db.ShiftSignups
+            .Where(s => s.Status == SignupStatus.Confirmed || s.Status == SignupStatus.Pending)
+            .Where(s => s.Shift.DayOffset >= es.BuildStartOffset && s.Shift.DayOffset < 0)
+            .Where(s => s.Shift.Rota.Period == RotaPeriod.Build || s.Shift.Rota.Period == RotaPeriod.All)
+            .Where(s => s.Shift.Rota.EventSettingsId == eventSettingsId)
+            .Select(s => new EligibleBuildSignup(
+                s.UserId, s.Shift.DayOffset, s.Status, s.Shift.Rota.Name))
+            .ToListAsync(ct);
+    }
 }

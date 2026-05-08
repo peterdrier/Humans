@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Shifts;
 using Humans.Integration.Tests.Infrastructure;
@@ -203,6 +204,47 @@ public class VolunteerTrackingRepositoryTests : IClassFixture<HumansWebApplicati
         rows.Should().OnlyContain(r => r.EventSettingsId == es1.Id);
     }
 
+    [HumansFact]
+    public async Task GetEligibleBuildSignupsAsync_returns_only_build_period_active_signups_in_event()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var es = await SeedActiveEventAsync(db);   // BuildStartOffset = -10
+        var sut = new VolunteerTrackingRepository(db);
+
+        var teamId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+
+        // Build-period rota with a shift at -7 — shift exists but no signup,
+        // so this should NOT appear in the result.
+        var buildRotaA = SeedRota(db, es.Id, teamId, RotaPeriod.Build);
+        var shiftBuildAA = SeedShift(db, buildRotaA.Id, dayOffset: -7);
+
+        // Event-period rota with a shift at +1 and a Confirmed signup.
+        // Period is Event → NOT eligible.
+        var eventRota = SeedRota(db, es.Id, teamId, RotaPeriod.Event);
+        var shiftEvent = SeedShift(db, eventRota.Id, dayOffset: 1);
+        SeedSignup(db, userId, shiftEvent.Id, SignupStatus.Confirmed);
+
+        // Build-period rota with a shift at -3 (Confirmed signup) and another
+        // at -2 (Bailed signup). Only the -3 Confirmed should be returned.
+        var buildRotaB = SeedRota(db, es.Id, teamId, RotaPeriod.Build, name: "BuildB");
+        var shiftBuildBNeg3 = SeedShift(db, buildRotaB.Id, dayOffset: -3);
+        var shiftBuildBNeg2 = SeedShift(db, buildRotaB.Id, dayOffset: -2);
+        SeedSignup(db, userId, shiftBuildBNeg3.Id, SignupStatus.Confirmed);
+        SeedSignup(db, userId, shiftBuildBNeg2.Id, SignupStatus.Bailed);
+
+        await db.SaveChangesAsync();
+
+        var result = await sut.GetEligibleBuildSignupsAsync(es.Id);
+
+        result.Should().HaveCount(1);
+        result[0].UserId.Should().Be(userId);
+        result[0].DayOffset.Should().Be(-3);
+        result[0].Status.Should().Be(SignupStatus.Confirmed);
+        result[0].RotaName.Should().Be("BuildB");
+    }
+
     /// <summary>
     /// Seeds a fresh <see cref="EventSettings"/> row with a unique name so each
     /// test gets an isolated event id (the test container is shared across
@@ -228,5 +270,65 @@ public class VolunteerTrackingRepositoryTests : IClassFixture<HumansWebApplicati
         db.EventSettings.Add(es);
         await db.SaveChangesAsync();
         return es;
+    }
+
+    private static Rota SeedRota(
+        HumansDbContext db, Guid eventSettingsId, Guid teamId,
+        RotaPeriod period, string? name = null)
+    {
+        var now = SystemClock.Instance.GetCurrentInstant();
+        var rota = new Rota
+        {
+            Id = Guid.NewGuid(),
+            EventSettingsId = eventSettingsId,
+            TeamId = teamId,
+            Name = name ?? $"Rota-{Guid.NewGuid():N}".Substring(0, 12),
+            Priority = ShiftPriority.Normal,
+            Policy = SignupPolicy.Public,
+            Period = period,
+            IsVisibleToVolunteers = true,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        db.Rotas.Add(rota);
+        return rota;
+    }
+
+    private static Shift SeedShift(
+        HumansDbContext db, Guid rotaId, int dayOffset)
+    {
+        var now = SystemClock.Instance.GetCurrentInstant();
+        var shift = new Shift
+        {
+            Id = Guid.NewGuid(),
+            RotaId = rotaId,
+            DayOffset = dayOffset,
+            IsAllDay = true,
+            StartTime = new LocalTime(8, 0),
+            Duration = Duration.FromHours(10),
+            MinVolunteers = 1,
+            MaxVolunteers = 10,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        db.Shifts.Add(shift);
+        return shift;
+    }
+
+    private static ShiftSignup SeedSignup(
+        HumansDbContext db, Guid userId, Guid shiftId, SignupStatus status)
+    {
+        var now = SystemClock.Instance.GetCurrentInstant();
+        var signup = new ShiftSignup
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            ShiftId = shiftId,
+            Status = status,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        db.ShiftSignups.Add(signup);
+        return signup;
     }
 }
