@@ -27,19 +27,19 @@ public sealed class ContainerService : IContainerService
     public async Task<IReadOnlyList<ContainerDto>> GetBySeasonAsync(Guid campSeasonId, CancellationToken ct = default)
     {
         var containers = await _repo.GetBySeasonAsync(campSeasonId, ct);
-        return containers.Select(ToDto).ToList();
+        return containers.Select(ToDto).OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
     public async Task<IReadOnlyList<ContainerDto>> GetOrgByYearAsync(int year, CancellationToken ct = default)
     {
         var containers = await _repo.GetOrgByYearAsync(year, ct);
-        return containers.Select(ToDto).ToList();
+        return containers.Select(ToDto).OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
     public async Task<IReadOnlyList<ContainerDto>> GetAllByYearAsync(int year, CancellationToken ct = default)
     {
         var containers = await _repo.GetAllByYearAsync(year, ct);
-        return containers.Select(ToDto).ToList();
+        return containers.Select(ToDto).OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
     public async Task<ContainerDto?> GetByIdAsync(Guid id, CancellationToken ct = default)
