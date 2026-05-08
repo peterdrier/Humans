@@ -281,25 +281,18 @@ Run: dispatch the agent at `.claude/agents/ef-migration-reviewer.md` with the pa
 Run: `dotnet build Humans.slnx -v quiet`
 Expected: Build succeeds.
 
-- [ ] **Step 1.4.5:** Commit.
-
-```bash
-git add src/Humans.Infrastructure/Migrations/
-git commit -m "EF migration: AddVolunteerBuildStatus"
-```
-
-### Task 1.5: Update `design-rules.md` §8 (same commit as the migration when squashed; separately for now)
+### Task 1.5: Update `design-rules.md` §8 — same commit as the migration
 
 **Files:**
 - Modify: `docs/architecture/design-rules.md`
 
 - [ ] **Step 1.5.1:** Open the file, locate the `## §8` (or similar) heading that lists the Shifts-owned tables. Add `volunteer_build_statuses` next to `general_availability` / `volunteer_event_profiles` in the list.
 
-- [ ] **Step 1.5.2:** Commit.
+- [ ] **Step 1.5.2:** Commit the migration **and** the §8 update together (per the spec acceptance line: "design-rules.md §8 lists the new table under Shifts (same commit as the migration)").
 
 ```bash
-git add docs/architecture/design-rules.md
-git commit -m "design-rules §8: list volunteer_build_statuses under Shifts"
+git add src/Humans.Infrastructure/Migrations/ docs/architecture/design-rules.md
+git commit -m "EF migration: AddVolunteerBuildStatus + design-rules §8"
 ```
 
 ### Chunk 1 review
@@ -445,11 +438,14 @@ public interface IVolunteerTrackingRepository
 
 /// <summary>
 /// Projection: just what the gap-detector needs for a single eligible signup.
+/// RotaName is the parent rota's display name, used by the heatmap partial
+/// to populate cell-click popovers.
 /// </summary>
 public sealed record EligibleBuildSignup(
     Guid UserId,
     int DayOffset,
-    ShiftSignupStatus Status);
+    SignupStatus Status,
+    string RotaName);
 ```
 
 - [ ] **Step 3.1.2:** Build.
@@ -469,35 +465,36 @@ git commit -m "IVolunteerTrackingRepository interface + EligibleBuildSignup DTO"
 **Files:**
 - Create: `tests/Humans.Integration.Tests/Repositories/Shifts/VolunteerTrackingRepositoryTests.cs`
 
-- [ ] **Step 3.2.1:** Skim an existing integration test in `tests/Humans.Integration.Tests/Repositories/` for the project's test-fixture pattern (likely `TestDbContextFactory` or similar). Mirror it.
+- [ ] **Step 3.2.1:** Read `tests/Humans.Integration.Tests/Infrastructure/IntegrationTestBase.cs` to confirm the project's actual test-base pattern. Inherit from it (NOT a `TestDbContextFactory`); the base typically exposes a `DbContext` (or its factory) and supplies a clean DB per test.
 
-- [ ] **Step 3.2.2:** Write the failing test:
+- [ ] **Step 3.2.2:** Read one or two existing repository tests under `tests/Humans.Integration.Tests/` (e.g. anything under `Repositories/`) to confirm the seed/teardown shape and the namespace conventions actually in use, then mirror them.
+
+- [ ] **Step 3.2.3:** Write the failing test:
 
 ```csharp
 using FluentAssertions;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Entities;
 using Humans.Infrastructure.Repositories.Shifts;
-using Humans.Testing;            // adjust to project's actual fixture namespace
+using Humans.Integration.Tests.Infrastructure;
 using Xunit;
 
 namespace Humans.Integration.Tests.Repositories.Shifts;
 
-public sealed class VolunteerTrackingRepositoryTests : IClassFixture<TestDbContextFactory>
+public sealed class VolunteerTrackingRepositoryTests : IntegrationTestBase
 {
-    private readonly TestDbContextFactory _factory;
-    public VolunteerTrackingRepositoryTests(TestDbContextFactory factory) => _factory = factory;
+    public VolunteerTrackingRepositoryTests(/* base ctor args per IntegrationTestBase */) { }
 
     [Fact]
     public async Task GetAsync_returns_null_when_no_row_exists()
     {
-        await using var db = _factory.Create();
-        var sut = new VolunteerTrackingRepository(db);
+        var sut = new VolunteerTrackingRepository(DbContext);
         var result = await sut.GetAsync(Guid.NewGuid(), Guid.NewGuid());
         result.Should().BeNull();
     }
 }
 ```
+
+Replace the constructor signature and the `DbContext` access pattern with whatever the actual `IntegrationTestBase` exposes (the engineer will see this when they read the base class in Step 3.2.1).
 
 - [ ] **Step 3.2.3:** Run — expect compile failure (`VolunteerTrackingRepository` doesn't exist).
 
@@ -577,8 +574,8 @@ git commit -m "VolunteerTrackingRepository skeleton + first GetAsync test green"
 [Fact]
 public async Task UpsertCampSetupAsync_inserts_when_no_row_exists()
 {
-    await using var db = _factory.Create();
-    var es = await TestData.SeedActiveEventAsync(db);  // helper your factory provides; if not, inline create
+    var db = DbContext;  // inherited from IntegrationTestBase
+    var es = SeedActiveEvent(db);  // small helper local to this test file: creates an EventSettings row, saves, returns it
     var userId = Guid.NewGuid();
     var sut = new VolunteerTrackingRepository(db);
 
@@ -646,26 +643,11 @@ git add tests/Humans.Integration.Tests/Repositories/Shifts/VolunteerTrackingRepo
 git commit -m "Repo: UpsertCampSetupAsync insert path"
 ```
 
-### Task 3.5: `UpsertCampSetupAsync` — update path
+### Task 3.5: `UpsertCampSetupAsync` — update path (deferred test until Task 3.6)
 
-- [ ] **Step 3.5.1:** Add failing test for the update path (second call should not duplicate; should update fields and preserve `BlockedDayOffsets`).
+This test depends on `ReplaceBlockedDaysAsync` (added in Task 3.6). To preserve TDD bisect cleanliness, write the test in Task 3.6 only — don't commit a pre-failing test now.
 
-Test outline:
-```csharp
-[Fact]
-public async Task UpsertCampSetupAsync_updates_existing_row_and_preserves_blocked_days()
-{
-    // Seed via UpsertCampSetupAsync, then ReplaceBlockedDaysAsync (blocked days exist),
-    // then UpsertCampSetupAsync again with different date → only camp-setup fields change,
-    // BlockedDayOffsets preserved, single row in table.
-}
-```
-
-(Use `TestData.SeedActiveEventAsync` plus Repository chained calls.)
-
-- [ ] **Step 3.5.2:** Run; expect failure (the implementation already updates camp-setup fields, but `ReplaceBlockedDaysAsync` is still NotImplemented — implement that next per Task 3.6, then return to verify this test).
-
-- [ ] **Step 3.5.3:** Commit (move on, return after Task 3.6).
+- [ ] **Step 3.5.1:** Skip — test is interleaved with Task 3.6 below.
 
 ### Task 3.6: `ReplaceBlockedDaysAsync` + idempotent normalization
 
@@ -675,8 +657,8 @@ public async Task UpsertCampSetupAsync_updates_existing_row_and_preserves_blocke
 [Fact]
 public async Task ReplaceBlockedDaysAsync_persists_sorted_deduped_list_and_returns_prior()
 {
-    await using var db = _factory.Create();
-    var es = await TestData.SeedActiveEventAsync(db);
+    var db = DbContext;
+    var es = SeedActiveEvent(db);
     var userId = Guid.NewGuid();
     var sut = new VolunteerTrackingRepository(db);
 
@@ -729,9 +711,32 @@ public async Task<IReadOnlyList<int>> ReplaceBlockedDaysAsync(
 }
 ```
 
-- [ ] **Step 3.6.4:** Run test (and re-run Task 3.5's test). Expected: both PASS.
+- [ ] **Step 3.6.4:** Add the deferred Task 3.5 update-path test in the same file:
 
-- [ ] **Step 3.6.5:** Commit.
+```csharp
+[Fact]
+public async Task UpsertCampSetupAsync_updates_existing_row_and_preserves_blocked_days()
+{
+    var db = DbContext;
+    var es = SeedActiveEvent(db);
+    var userId = Guid.NewGuid();
+    var sut = new VolunteerTrackingRepository(db);
+
+    await sut.UpsertCampSetupAsync(userId, es.Id, new LocalDate(2026, 6, 30), "first", null, null);
+    await sut.ReplaceBlockedDaysAsync(userId, es.Id, new[] { -3 });
+    await sut.UpsertCampSetupAsync(userId, es.Id, new LocalDate(2026, 7, 1), "second", null, null);
+
+    var rows = await db.VolunteerBuildStatuses.ToListAsync();
+    rows.Should().HaveCount(1);
+    rows[0].BarrioSetupStartDate.Should().Be(new LocalDate(2026, 7, 1));
+    rows[0].Notes.Should().Be("second");
+    rows[0].BlockedDayOffsets.Should().Equal(-3);   // preserved
+}
+```
+
+- [ ] **Step 3.6.5:** Run both tests; expect both PASS.
+
+- [ ] **Step 3.6.6:** Commit.
 
 ```bash
 git add tests/Humans.Integration.Tests/Repositories/Shifts/VolunteerTrackingRepositoryTests.cs src/Humans.Infrastructure/Repositories/Shifts/VolunteerTrackingRepository.cs
@@ -839,7 +844,7 @@ public async Task<IReadOnlyList<EligibleBuildSignup>> GetEligibleBuildSignupsAsy
 
     if (es is null) return Array.Empty<EligibleBuildSignup>();
 
-    var allowedStatuses = new[] { ShiftSignupStatus.Confirmed, ShiftSignupStatus.Pending };
+    var allowedStatuses = new[] { SignupStatus.Confirmed, SignupStatus.Pending };
     var allowedPeriods = new[] { RotaPeriod.Build, RotaPeriod.All };
 
     return await _db.ShiftSignups
@@ -847,7 +852,8 @@ public async Task<IReadOnlyList<EligibleBuildSignup>> GetEligibleBuildSignupsAsy
         .Where(s => s.Shift.DayOffset >= es.BuildStartOffset && s.Shift.DayOffset < 0)
         .Where(s => allowedPeriods.Contains(s.Shift.Rota.Period))
         .Where(s => s.Shift.Rota.EventSettingsId == eventSettingsId)
-        .Select(s => new EligibleBuildSignup(s.UserId, s.Shift.DayOffset, s.Status))
+        .Select(s => new EligibleBuildSignup(
+            s.UserId, s.Shift.DayOffset, s.Status, s.Shift.Rota.Name))
         .ToListAsync(ct);
 }
 ```
@@ -857,7 +863,7 @@ Note: `ShiftSignup.UserId` is bare-Guid (the `.User` nav was stripped — see `S
 If `Contains(allowedStatuses)` materializes incorrectly because of the string-conversion enum (per `memory/code/no-enum-compare-in-ef.md`), spell out the explicit allowed-values check:
 
 ```csharp
-.Where(s => s.Status == ShiftSignupStatus.Confirmed || s.Status == ShiftSignupStatus.Pending)
+.Where(s => s.Status == SignupStatus.Confirmed || s.Status == SignupStatus.Pending)
 ```
 
 (Same for Period — explicit `==` chain.)
@@ -925,7 +931,15 @@ public enum VolunteerCellState
     NotAvailable,         // grey — unbooked cohort only
 }
 
-public sealed record VolunteerCell(int DayOffset, VolunteerCellState State);
+/// <summary>
+/// One cell in the heatmap. RotaNames is non-empty only when there is a
+/// Confirmed/Pending signup on that day; the partial uses it to render the
+/// cell-click popover (which rotas the volunteer is signed up for).
+/// </summary>
+public sealed record VolunteerCell(
+    int DayOffset,
+    VolunteerCellState State,
+    IReadOnlyList<string> RotaNames);
 
 public sealed record VolunteerHeatmapRow(
     Guid UserId,
@@ -994,6 +1008,14 @@ public interface IVolunteerTrackingService
     /// </summary>
     Task<SaveOwnBlockedDaysResult> SaveOwnBlockedDaysAsync(
         Guid ownerUserId, IReadOnlyList<int> dayOffsets, CancellationToken ct = default);
+
+    /// <summary>
+    /// Read-side helper for /Shifts/Mine: returns the user's current blocked
+    /// offsets plus the build-period bounds for rendering the calendar grid.
+    /// Resolves "no active event" / "no row yet" itself.
+    /// </summary>
+    Task<MineBlockedDaysSummary> GetMineBlockedDaysSummaryAsync(
+        Guid userId, CancellationToken ct = default);
 }
 
 public sealed record SetCampSetupResult(bool Ok, string? ErrorMessageKey);
@@ -1001,6 +1023,11 @@ public sealed record SetBlockResult(bool Ok, bool Changed, string? ErrorMessageK
 public sealed record SaveOwnBlockedDaysResult(
     bool Ok, IReadOnlyList<int> Added, IReadOnlyList<int> Removed,
     IReadOnlyList<int> ResultingList, string? ErrorMessageKey);
+public sealed record MineBlockedDaysSummary(
+    bool HasActiveBuildPeriod,
+    int BuildStartOffset,
+    LocalDate GateOpeningDate,
+    IReadOnlyList<int> BlockedDayOffsets);
 ```
 
 - [ ] **Step 4.2.2:** Build. Commit.
@@ -1090,9 +1117,20 @@ var statusMap = statusByUser
              || p.Status == ParticipationStatus.Attended)
     .ToDictionary(p => p.UserId, p => p.Status);
 
+// Per-user, per-day: (best status across signups on that day, rota names).
+// "Best status" prefers Confirmed over Pending because the cell-state branch
+// order checks Confirmed first.
 var perUserSignups = signups
     .GroupBy(s => s.UserId)
-    .ToDictionary(g => g.Key, g => g.ToDictionary(x => x.DayOffset, x => x.Status));
+    .ToDictionary(g => g.Key, g => g
+        .GroupBy(x => x.DayOffset)
+        .ToDictionary(
+            dg => dg.Key,
+            dg => (
+                Status: dg.Any(x => x.Status == SignupStatus.Confirmed)
+                    ? SignupStatus.Confirmed : SignupStatus.Pending,
+                RotaNames: (IReadOnlyList<string>)dg.Select(x => x.RotaName).Distinct().ToList()
+            )));
 
 var bsRows = await _trackingRepo.GetByEventAsync(es.Id, ct);
 var bsByUser = bsRows.ToDictionary(r => r.UserId);
@@ -1119,15 +1157,21 @@ foreach (var (userId, daySignups) in perUserSignups)
     for (int d2 = es.BuildStartOffset; d2 < 0; d2++)
     {
         VolunteerCellState s;
+        IReadOnlyList<string> rotaNames = Array.Empty<string>();
         if (setupOffset.HasValue && d2 >= setupOffset.Value) s = VolunteerCellState.CampSetup;
         else if (d2 < firstSignupDay || d2 >= lastExpectedDay) s = VolunteerCellState.Outside;
         else if (blockedSet.Contains(d2)) s = VolunteerCellState.Blocked;
-        else if (daySignups.TryGetValue(d2, out var ss) && ss == ShiftSignupStatus.Confirmed) s = VolunteerCellState.Confirmed;
-        else if (daySignups.TryGetValue(d2, out var ss2) && ss2 == ShiftSignupStatus.Pending) s = VolunteerCellState.Pending;
+        else if (daySignups.TryGetValue(d2, out var info))
+        {
+            s = info.Status == SignupStatus.Confirmed
+                ? VolunteerCellState.Confirmed
+                : VolunteerCellState.Pending;
+            rotaNames = info.RotaNames;
+        }
         else if (d2 < todayOffset) { s = VolunteerCellState.Gap; gapCount++; }
         else s = VolunteerCellState.Expected;
 
-        cells.Add(new VolunteerCell(d2, s));
+        cells.Add(new VolunteerCell(d2, s, rotaNames));
     }
 
     mainRows.Add(new VolunteerHeatmapRow(
@@ -1243,7 +1287,8 @@ foreach (var participation in statusByUser)
         else if (inBuild.Contains(d3)) s = VolunteerCellState.AvailableExpected;
         else s = VolunteerCellState.NotAvailable;
 
-        cells.Add(new VolunteerCell(d3, s));
+        // Unbooked cohort never has signups → empty rota-name list.
+        cells.Add(new VolunteerCell(d3, s, Array.Empty<string>()));
     }
 
     unbookedRows.Add(new VolunteerCohortRow(
@@ -1388,6 +1433,34 @@ public async Task<SaveOwnBlockedDaysResult> SaveOwnBlockedDaysAsync(
 
 - [ ] **Step 4.19.3:** Run. PASS. Commit.
 
+### Task 4.19b: `GetMineBlockedDaysSummaryAsync`
+
+- [ ] **Step 4.19b.1:** Failing tests:
+  - No active event → `HasActiveBuildPeriod = false`, empty list, defaults.
+  - Active event, no `VolunteerBuildStatus` row → `HasActiveBuildPeriod = true`, empty list, correct `BuildStartOffset` and `GateOpeningDate`.
+  - Active event, row with `BlockedDayOffsets = [-3, -1]` → returned as-is.
+
+- [ ] **Step 4.19b.2:** Implement:
+
+```csharp
+public async Task<MineBlockedDaysSummary> GetMineBlockedDaysSummaryAsync(
+    Guid userId, CancellationToken ct = default)
+{
+    var es = await _shiftManagement.GetActiveEventSettingsAsync(ct);
+    if (es is null || es.BuildStartOffset >= 0)
+        return new MineBlockedDaysSummary(false, 0, default, Array.Empty<int>());
+
+    var row = await _trackingRepo.GetAsync(userId, es.Id, ct);
+    return new MineBlockedDaysSummary(
+        true,
+        es.BuildStartOffset,
+        es.GateOpeningDate,
+        row?.BlockedDayOffsets ?? new List<int>());
+}
+```
+
+- [ ] **Step 4.19b.3:** Run; PASS. Commit.
+
 ### Task 4.20: DI registration for the service
 
 - [ ] **Step 4.20.1:** Add `services.AddScoped<IVolunteerTrackingService, VolunteerTrackingService>();` next to the other Shifts service registrations.
@@ -1434,7 +1507,7 @@ public sealed class SetCampSetupForm
 **Files:**
 - Create: `src/Humans.Web/Controllers/VolunteerTrackingController.cs`
 
-- [ ] **Step 5.2.1:** Write the class. Inherit `HumansControllerBase`. Class-level `[Authorize(Policy = PolicyNames.ShiftDashboardAccess)]`. `Index` action calls `_service.GetTrackingDataAsync()`, sorts both cohorts (per spec), filters per query parameters, projects to `VolunteerTrackingPageViewModel`, returns `View(model)`.
+- [ ] **Step 5.2.1:** Write the class. Inherit `HumansControllerBase`. Class-level `[Authorize(Policy = PolicyNames.ShiftDashboardAccess)]`. Inject `IVolunteerTrackingService`, `IUserService`, `IAuditLogService`, and `IStringLocalizer<SharedResource> Localizer`. `HumansControllerBase` does NOT expose these — every existing controller injects its own (`grep -n "IStringLocalizer" src/Humans.Web/Controllers/*.cs` for examples). `Index` action calls `_service.GetTrackingDataAsync()`, sorts both cohorts (per spec), filters per query parameters, projects to `VolunteerTrackingPageViewModel`, returns `View(model)`.
 
 ```csharp
 [Route("ShiftDashboard/[controller]")]
@@ -1443,9 +1516,20 @@ public sealed class VolunteerTrackingController : HumansControllerBase
 {
     private readonly IVolunteerTrackingService _service;
     private readonly IUserService _userService;
+    private readonly IAuditLogService _auditLogService;
+    private readonly IStringLocalizer<SharedResource> _localizer;
 
-    public VolunteerTrackingController(IVolunteerTrackingService service, IUserService userService)
-        => (_service, _userService) = (service, userService);
+    public VolunteerTrackingController(
+        IVolunteerTrackingService service,
+        IUserService userService,
+        IAuditLogService auditLogService,
+        IStringLocalizer<SharedResource> localizer)
+    {
+        _service = service;
+        _userService = userService;
+        _auditLogService = auditLogService;
+        _localizer = localizer;
+    }
 
     [HttpGet("")]
     public async Task<IActionResult> Index(
@@ -1522,12 +1606,19 @@ public sealed class VolunteerTrackingController : HumansControllerBase
 [ValidateAntiForgeryToken]
 public async Task<IActionResult> SetCampSetup(SetCampSetupForm form, CancellationToken ct)
 {
-    if (!ModelState.IsValid) { SetError(Localizer["VolTrack_Err_BadRequest"]); return RedirectToAction(nameof(Index)); }
-    if (!LocalDatePattern.Iso.Parse(form.Date).TryGetValue(default, out var parsed))
+    if (!ModelState.IsValid)
     {
-        SetError(Localizer["VolTrack_Err_BadDate"]);
+        SetError(_localizer["VolTrack_Err_BadRequest"]);
         return RedirectToAction(nameof(Index));
     }
+
+    var parseResult = LocalDatePattern.Iso.Parse(form.Date);
+    if (!parseResult.Success)
+    {
+        SetError(_localizer["VolTrack_Err_BadDate"]);
+        return RedirectToAction(nameof(Index));
+    }
+    var parsed = parseResult.Value;
 
     var current = await GetCurrentUserAsync();
     if (current is null) return Forbid();
@@ -1535,21 +1626,26 @@ public async Task<IActionResult> SetCampSetup(SetCampSetupForm form, Cancellatio
     var result = await _service.SetCampSetupAsync(form.UserId, parsed, form.Notes, current.Id, ct);
     if (!result.Ok)
     {
-        SetError(Localizer[result.ErrorMessageKey ?? "VolTrack_Err_Unknown"]);
+        SetError(_localizer[result.ErrorMessageKey ?? "VolTrack_Err_Unknown"]);
         return RedirectToAction(nameof(Index));
     }
-    await _audit.LogAsync(AuditAction.VolunteerCampSetupSet,
+    await _auditLogService.LogAsync(AuditAction.VolunteerCampSetupSet,
         nameof(VolunteerBuildStatus), form.UserId,
         $"BarrioSetupStartDate set to {form.Date}; notes={form.Notes ?? "—"}",
         current.Id.ToString());
-    SetSuccess(Localizer["VolTrack_Msg_CampSetupSaved"]);
+    SetSuccess(_localizer["VolTrack_Msg_CampSetupSaved"]);
     return RedirectToAction(nameof(Index));
 }
 ```
 
-- [ ] **Step 5.6.2:** Test (per spec controller-tests block): NoInfoAdmin → 403; VolunteerCoordinator + Admin → 302 with success TempData; audit entry written.
+- [ ] **Step 5.6.2:** Tests (per spec controller-tests block):
+  - NoInfoAdmin → 403.
+  - VolunteerCoordinator + Admin → 302 with success TempData; audit entry written.
+  - Form `Date` that fails the `RegularExpression` (e.g. `"not-a-date"`) → ModelState invalid → 302 to Index with `SetError("VolTrack_Err_BadRequest")`.
+  - Form `Date` that matches the regex but is not a valid `LocalDate` (e.g. `"2026-13-40"`) → 302 to Index with `SetError("VolTrack_Err_BadDate")` (covers the `parseResult.Success == false` branch).
+  - Service-layer rejection (`SetCampSetupAsync` returns `Ok = false`) → 302 to Index with `SetError(localizedReason)`.
 
-- [ ] **Step 5.6.3:** Run; PASS. Commit.
+- [ ] **Step 5.6.3:** Run; all PASS. Commit.
 
 ### Task 5.7: `ClearCampSetup`
 
@@ -1582,18 +1678,18 @@ public async Task<IActionResult> SetBlock(SetBlockForm form, CancellationToken c
     var result = await _service.SetBlockAsync(form.UserId, form.DayOffset, form.Block, current.Id, ct);
     if (!result.Ok)
     {
-        SetError(Localizer[result.ErrorMessageKey ?? "VolTrack_Err_Unknown"]);
+        SetError(_localizer[result.ErrorMessageKey ?? "VolTrack_Err_Unknown"]);
         return BadRequest();
     }
     if (result.Changed)
     {
-        await _audit.LogAsync(
+        await _auditLogService.LogAsync(
             form.Block ? AuditAction.VolunteerDayBlocked : AuditAction.VolunteerDayUnblocked,
             nameof(VolunteerBuildStatus), form.UserId,
             $"DayOffset={form.DayOffset}; by coordinator",
             current.Id.ToString());
     }
-    SetSuccess(Localizer[form.Block ? "VolTrack_Msg_DayBlocked" : "VolTrack_Msg_DayUnblocked"]);
+    SetSuccess(_localizer[form.Block ? "VolTrack_Msg_DayBlocked" : "VolTrack_Msg_DayUnblocked"]);
     return RedirectToAction(nameof(Index));
 }
 ```
@@ -1645,8 +1741,8 @@ public async Task<IActionResult> SetBlock(SetBlockForm form, CancellationToken c
   - `Outside` / `Expected` → `bg-secondary-subtle`
 
 - [ ] **Step 6.3.4:** Cell click opens a Bootstrap popover (or a modal) containing:
-  - Date label (`@DateFor(offset)` rendered via `ToDisplayDate`),
-  - Signup rota names (data flowed in via the cohort row — extend `VolunteerHeatmapRow.Cells` to carry rota name strings; or look up via partial-injected service if too heavy on the row).
+  - Date label rendered via `ToDisplayDate(date)` (per `memory/code/datetime-display-formatting.md` — never inline format strings).
+  - Signup rota names — read directly from `cell.RotaNames` (already populated by the service in Chunk 4 — `VolunteerCell.RotaNames` is the third constructor arg). Empty list = render nothing.
   - When `canWrite`: a `SetCampSetupForm` form (POST to `/ShiftDashboard/VolunteerTracking/SetCampSetup`), and a `SetBlockForm` toggle button (POST to `/ShiftDashboard/VolunteerTracking/SetBlock`).
 
 - [ ] **Step 6.3.5:** Icons `fa-solid fa-*` only (e.g. `fa-solid fa-check`, `fa-solid fa-ban`).
@@ -1655,7 +1751,23 @@ public async Task<IActionResult> SetBlock(SetBlockForm form, CancellationToken c
 
 ### Task 6.4: `_VolunteerUnbookedHeatmap.cshtml`
 
-- [ ] Mirror 6.3 with the unbooked cohort's color mapping. Commit.
+- [ ] **Step 6.4.1:** Razor partial. Same shape as Task 6.3 (sticky-left column, day-offset columns, popover on click, `@inject IAuthorizationService AuthService` + `canWrite` resolution, `fa-solid fa-*` icons only, all strings via `Localizer["VolTrack_*"]`).
+
+- [ ] **Step 6.4.2:** Sticky left column: `<vc:user-avatar />`, display name, "available days" count badge, "unbooked" count badge.
+
+- [ ] **Step 6.4.3:** Cell color mapping:
+  - `AvailableUnbooked` → `bg-warning`
+  - `AvailableExpected` → `bg-warning-subtle`
+  - `Blocked` → `bg-warning-subtle striped` (custom CSS class for diagonal stripe to differentiate from `AvailableExpected`)
+  - `CampSetup` → `bg-primary`
+  - `NotAvailable` → `bg-secondary-subtle`
+
+- [ ] **Step 6.4.4:** Cell click → popover with:
+  - Date label rendered via `ToDisplayDate(date)`.
+  - "Available" badge if the cell state is `AvailableUnbooked` or `AvailableExpected`.
+  - When `canWrite`: same `SetBlockForm` toggle and `SetCampSetupForm` controls as Task 6.3.
+
+- [ ] **Step 6.4.5:** Sanity-check in browser. Commit.
 
 ### Task 6.5: Dashboard entry point
 
@@ -1766,7 +1878,7 @@ Each test → run → PASS → commit.
                         <label class="btn btn-sm @(isBlocked ? "btn-warning" : "btn-outline-secondary")">
                             <input type="checkbox" name="dayOffsets" value="@d" autocomplete="off"
                                    @(isBlocked ? "checked" : "") class="d-none" />
-                            @date.ToString("ddd MMM d", null)
+                            @date.ToDisplayDate()
                         </label>
                     }
                 </div>
@@ -1779,7 +1891,7 @@ Each test → run → PASS → commit.
 }
 ```
 
-- [ ] **Step 7.4.2:** Add `BlockedDayOffsets`, `HasActiveBuildPeriod`, `BuildStartOffset`, `GateOpeningDate` to `ShiftsController.Mine` view model. Populate them from a single `IVolunteerTrackingRepository.GetAsync(currentUser.Id, es.Id)` call.
+- [ ] **Step 7.4.2:** Add `BlockedDayOffsets`, `HasActiveBuildPeriod`, `BuildStartOffset`, `GateOpeningDate` to the `ShiftsController.Mine` view model. Resolve them via `IVolunteerTrackingService` — add a small method `Task<MineBlockedDaysSummary> GetMineBlockedDaysSummaryAsync(Guid userId, CancellationToken ct)` to `IVolunteerTrackingService` (this is a brand-new interface so growing it does not touch any budgeted interface). The service handles "no active event" / "no row yet" and returns a populated DTO. Service does the I/O via `IVolunteerTrackingRepository.GetAsync` and `IShiftManagementRepository.GetActiveEventSettingsAsync`. Controllers should orchestrate via services, not reach into repositories directly for view-model assembly.
 
 - [ ] **Step 7.4.3:** Sanity-check in browser. Commit.
 
@@ -1875,7 +1987,7 @@ VolTrack_NoActiveEvent
 ### Task 8.4: E2E — Playwright tests
 
 **Files:**
-- Create: `tests/e2e/VolunteerTracking.spec.ts` (path/name follows the project's existing E2E naming).
+- Create: `tests/e2e/tests/volunteer-tracking.spec.ts` (path/name matches the project's existing E2E naming — see `tests/e2e/tests/shifts.spec.ts`, `teams.spec.ts`, etc. — lowercase under `tests/e2e/tests/`).
 
 - [ ] **Step 8.4.1:** Two flows from the spec §E2E tests:
   - VC flow: sign in as VC, navigate, identify red cell, mark camp set-up, verify blue, clear, verify revert; block / unblock cell; scroll to unbooked section.
@@ -1892,10 +2004,10 @@ VolTrack_NoActiveEvent
 - [ ] **Step 8.5.1:** `dotnet build Humans.slnx -v quiet` — clean.
 - [ ] **Step 8.5.2:** `dotnet test Humans.slnx -v quiet` — all green.
 - [ ] **Step 8.5.3:** Run `/freshness-sweep` to regenerate any drift-prone docs (per `CLAUDE.md`).
-- [ ] **Step 8.5.4:** Push branch.
+- [ ] **Step 8.5.4:** Push branch. The remote is `origin` per `CLAUDE.md` (`origin = peterdrier/Humans`). If the local clone uses a different remote name (e.g. a contributor's `fork` for their own GitHub fork), substitute that name; default to `origin`.
 
 ```bash
-git push -u fork feat/volunteer-tracking
+git push -u origin feat/volunteer-tracking
 ```
 
 - [ ] **Step 8.5.5:** Open PR against `peterdrier/Humans` `main` (per `memory/process/no-direct-to-main.md`).
