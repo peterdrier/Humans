@@ -42,5 +42,15 @@ public interface IAgentRepository
         bool refusalsOnly, Guid? userId, int take, int skip,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Admin-listing variant of <see cref="ListAllConversationsAsync"/> that
+    /// eagerly loads each conversation's messages so callers can compute
+    /// per-conversation aggregates (refusal/handoff counts, last-message
+    /// preview) without N+1 round trips. Used by <c>/api/agent/conversations</c>.
+    /// </summary>
+    Task<IReadOnlyList<AgentConversation>> ListAllConversationsWithMessagesAsync(
+        bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
+        CancellationToken cancellationToken);
+
     Task<int> PurgeConversationsOlderThanAsync(Instant cutoff, CancellationToken cancellationToken);
 }
