@@ -32,6 +32,50 @@ public class VolunteerTrackingServiceTests
         result.UnbookedCohort.Should().BeEmpty();
     }
 
+    [HumansFact]
+    public async Task MainCohort_single_volunteer_fully_covered_has_zero_gaps()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var signups = new List<EligibleBuildSignup>
+        {
+            new(userId, -5, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -4, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -3, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -2, SignupStatus.Confirmed, "Cleanup"),
+        };
+        var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
+
+        var sut = BuildSut(es, signups: signups, participations: participations);
+
+        var result = await sut.GetTrackingDataAsync();
+
+        result.HasActiveEvent.Should().BeTrue();
+        result.MainCohort.Should().HaveCount(1);
+        var row = result.MainCohort[0];
+        row.UserId.Should().Be(userId);
+        row.GapCount.Should().Be(0);
+        row.FirstSignupDay.Should().Be(-5);
+        row.LastEligibleSignupOffset.Should().Be(-2);
+        row.Cells.Should().HaveCount(5);
+        // Cells -5..-2 are Confirmed; cell -1 is Expected (today inside active window).
+        row.Cells.Single(c => c.DayOffset == -5).State.Should().Be(VolunteerCellState.Confirmed);
+        row.Cells.Single(c => c.DayOffset == -4).State.Should().Be(VolunteerCellState.Confirmed);
+        row.Cells.Single(c => c.DayOffset == -3).State.Should().Be(VolunteerCellState.Confirmed);
+        row.Cells.Single(c => c.DayOffset == -2).State.Should().Be(VolunteerCellState.Confirmed);
+        row.Cells.Single(c => c.DayOffset == -1).State.Should().BeOneOf(VolunteerCellState.Expected, VolunteerCellState.Outside);
+    }
+
+    private static EventParticipation Participation(Guid userId, ParticipationStatus status, int year)
+        => new()
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Year = year,
+            Status = status,
+            Source = ParticipationSource.UserDeclared,
+        };
+
     // ----------------------------------------------------------------------
     // Test SUT builder with fakes
     // ----------------------------------------------------------------------
