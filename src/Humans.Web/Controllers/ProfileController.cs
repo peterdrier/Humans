@@ -31,6 +31,7 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Governance;
@@ -57,6 +58,7 @@ public class ProfileController : HumansControllerBase
     private readonly ICommunicationPreferenceService _commPrefService;
     private readonly IAuditLogService _auditLogService;
     private readonly IOnboardingService _onboardingService;
+    private readonly IHumanLifecycleService _humanLifecycleService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IShiftSignupService _shiftSignupService;
     private readonly IShiftManagementService _shiftMgmt;
@@ -112,6 +114,7 @@ public class ProfileController : HumansControllerBase
         ICommunicationPreferenceService commPrefService,
         IAuditLogService auditLogService,
         IOnboardingService onboardingService,
+        IHumanLifecycleService humanLifecycleService,
         IRoleAssignmentService roleAssignmentService,
         IShiftSignupService shiftSignupService,
         IShiftManagementService shiftMgmt,
@@ -142,6 +145,7 @@ public class ProfileController : HumansControllerBase
         _commPrefService = commPrefService;
         _auditLogService = auditLogService;
         _onboardingService = onboardingService;
+        _humanLifecycleService = humanLifecycleService;
         _roleAssignmentService = roleAssignmentService;
         _shiftSignupService = shiftSignupService;
         _shiftMgmt = shiftMgmt;
@@ -2183,7 +2187,7 @@ public class ProfileController : HumansControllerBase
         if (currentUser is null)
             return NotFound();
 
-        var result = await _onboardingService.SuspendAsync(id, currentUser.Id, notes);
+        var result = await _humanLifecycleService.SuspendAsync(id, currentUser.Id, notes);
         if (!result.Success)
             return NotFound();
 
@@ -2200,7 +2204,7 @@ public class ProfileController : HumansControllerBase
         if (currentUser is null)
             return NotFound();
 
-        var result = await _onboardingService.UnsuspendAsync(id, currentUser.Id);
+        var result = await _humanLifecycleService.UnsuspendAsync(id, currentUser.Id);
         if (!result.Success)
             return NotFound();
 

@@ -252,7 +252,7 @@ public interface IProfileService : IUserMerge
     /// <summary>
     /// Sets <see cref="Profile.IsSuspended"/> to true and stamps
     /// <see cref="Profile.UpdatedAt"/> for users whose consent grace period has
-    /// expired. Unlike <see cref="SuspendAsync"/>, this variant does not
+    /// expired. Unlike <see cref="SetSuspendedAsync"/>, this variant does not
     /// require an admin actor, skip-list already-suspended profiles (so the
     /// caller can pre-filter with the returned set), and does not write an
     /// audit log entry — the caller is expected to emit the

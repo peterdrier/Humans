@@ -5,6 +5,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Users.AccountLifecycle;
 using Humans.Infrastructure.Repositories.Users;
+using DashboardAdminDashboardService = Humans.Application.Services.Dashboard.AdminDashboardService;
 using DashboardDashboardService = Humans.Application.Services.Dashboard.DashboardService;
 using GovernanceMembershipCalculator = Humans.Application.Services.Governance.MembershipCalculator;
 using GovernanceMembershipQuery = Humans.Application.Services.Governance.MembershipQuery;
@@ -42,6 +43,10 @@ internal static class UsersSectionExtensions
         services.AddScoped<IMembershipQuery, GovernanceMembershipQuery>();
         services.AddScoped<IMembershipCalculator, GovernanceMembershipCalculator>();
         services.AddScoped<IDashboardService, DashboardDashboardService>();
+        // Admin dashboard aggregator — owns no tables; aggregates user
+        // partition, application stats, and language distribution from
+        // the relevant section services.
+        services.AddScoped<IAdminDashboardService, DashboardAdminDashboardService>();
 
         return services;
     }

@@ -242,7 +242,7 @@ public class OnboardingReviewController : HumansControllerBase
     [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     public async Task<IActionResult> BoardVoting(CancellationToken ct)
     {
-        var (applications, boardMembers) = await _onboardingService.GetBoardVotingDashboardAsync(ct);
+        var (applications, boardMembers) = await _applicationDecisionService.GetBoardVotingDashboardAsync(ct);
 
         var viewModel = new BoardVotingDashboardViewModel
         {
@@ -285,7 +285,7 @@ public class OnboardingReviewController : HumansControllerBase
     [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     public async Task<IActionResult> BoardVotingDetail(Guid applicationId, CancellationToken ct)
     {
-        var application = await _onboardingService.GetBoardVotingDetailAsync(applicationId, ct);
+        var application = await _applicationDecisionService.GetBoardVotingDetailAsync(applicationId, ct);
         if (application is null)
             return NotFound();
 
@@ -344,7 +344,7 @@ public class OnboardingReviewController : HumansControllerBase
 
         try
         {
-            var result = await _onboardingService.CastBoardVoteAsync(
+            var result = await _applicationDecisionService.CastBoardVoteAsync(
                 applicationId, currentUser.Id, vote, note);
 
             if (!result.Success)
@@ -395,7 +395,7 @@ public class OnboardingReviewController : HumansControllerBase
         }
 
         // Require at least one board vote before finalization
-        var hasVotes = await _onboardingService.HasBoardVotesAsync(model.ApplicationId);
+        var hasVotes = await _applicationDecisionService.HasBoardVotesAsync(model.ApplicationId);
         if (!hasVotes)
         {
             SetError(_localizer["BoardVoting_NoVotes"].Value);

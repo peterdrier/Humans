@@ -87,6 +87,7 @@ graph LR
     DriveMon[DriveActivityMonitorService]:::google
 
     Onboard[OnboardingService]:::onboarding
+    HumanLifecycle[HumanLifecycleService]:::onboarding
     Feedback[FeedbackService]:::feedback
     Budget[BudgetService]:::budget
 
@@ -249,8 +250,12 @@ graph LR
     Onboard --> MembershipCalc
     Onboard --> Email
     Onboard --> Notif
-    Onboard --> NotifInbox
     Onboard --> Metrics
+
+    HumanLifecycle --> Prof
+    HumanLifecycle --> Notif
+    HumanLifecycle --> NotifInbox
+    HumanLifecycle --> Metrics
 
     %% Feedback section
     Feedback --> User
@@ -381,7 +386,7 @@ Threshold: services with >= 3 incoming edges (eager + lazy combined).
 | `CommunicationPreferenceService` | 6 | 0 | Consent + unsubscribe gating for any outbound message. |
 | `TeamResourceService` | 3 | 2 | Teams-owned Google resources. |
 | `AccountDeletionService` | 1 | 0 | New as of peterdrier/Humans PR #314 (nobodies-collective/Humans#582). Single eager dependent: `ProfileService`. Lazy-resolves `IProfileService` itself to invoke the cascade's profile-anonymization step. Owns the User-section deletion cascade so foundational User/Profile services stay outbound-edge-free. |
-| `HumansMetricsService` | 4 | 0 | Invoked from Application services that emit counter events (ConsentService, OnboardingService, AppDec, OutboxEmail). Scheduled for push-model inversion in #580 — after that, HumansMetricsService becomes zero-section-knowledge infrastructure. |
+| `HumansMetricsService` | 5 | 0 | Invoked from Application services that emit counter events (ConsentService, OnboardingService, HumanLifecycleService, AppDec, OutboxEmail). Scheduled for push-model inversion in #580 — after that, HumansMetricsService becomes zero-section-knowledge infrastructure. |
 | `NotificationEmitter` | 4 | 0 | Lower-level enqueue surface used by Team/Role/Camp/Notif. |
 | `ApplicationDecisionService` | 4 | 0 | Tier-application decisions; read by Prof, Onboard, Dash, NotifMeter. |
 | `MembershipCalculator` | 3 | 1 | Membership-status snapshot consumed by Prof, Onboard, Dash; lazy half of the Consent cycle. |
