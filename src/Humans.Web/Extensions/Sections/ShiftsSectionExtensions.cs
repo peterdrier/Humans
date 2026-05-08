@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.Repositories;
 using ShiftsShiftManagementService = Humans.Application.Services.Shifts.ShiftManagementService;
 using ShiftsShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
 using ShiftsGeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
+using ShiftsVolunteerTrackingService = Humans.Application.Services.Shifts.VolunteerTrackingService;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Shifts;
@@ -47,8 +48,9 @@ internal static class ShiftsSectionExtensions
         // Volunteer Tracking — §15 repository pattern (volunteer-tracking feature).
         // Repository is Scoped (uses HumansDbContext directly, same pattern as
         // ShiftSignupRepository) so multi-step camp-setup + blocked-day mutations
-        // share one EF change-tracker. Service is registered in Chunk 4.
+        // share one EF change-tracker.
         services.AddScoped<IVolunteerTrackingRepository, VolunteerTrackingRepository>();
+        services.AddScoped<IVolunteerTrackingService, ShiftsVolunteerTrackingService>();
 
         return services;
     }
