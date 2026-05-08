@@ -34,7 +34,6 @@ public sealed class OnboardingService : IOnboardingService
     private readonly IApplicationDecisionService _applicationDecisionService;
     private readonly IEmailService _emailService;
     private readonly INotificationService _notificationService;
-    private readonly INotificationInboxService _notificationInboxService;
     private readonly ISystemTeamSync _syncJob;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IHumansMetrics _metrics;
@@ -46,7 +45,6 @@ public sealed class OnboardingService : IOnboardingService
         IApplicationDecisionService applicationDecisionService,
         IEmailService emailService,
         INotificationService notificationService,
-        INotificationInboxService notificationInboxService,
         ISystemTeamSync syncJob,
         IMembershipCalculator membershipCalculator,
         IHumansMetrics metrics,
@@ -57,7 +55,6 @@ public sealed class OnboardingService : IOnboardingService
         _applicationDecisionService = applicationDecisionService;
         _emailService = emailService;
         _notificationService = notificationService;
-        _notificationInboxService = notificationInboxService;
         _syncJob = syncJob;
         _membershipCalculator = membershipCalculator;
         _metrics = metrics;
@@ -304,61 +301,6 @@ public sealed class OnboardingService : IOnboardingService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to dispatch VolunteerApproved notification for user {UserId}", userId);
-        }
-
-        return result;
-    }
-
-    // ==========================================================================
-    // Suspend / unsuspend
-    // ==========================================================================
-
-    public async Task<OnboardingResult> SuspendAsync(
-        Guid userId, Guid adminId, string? notes, CancellationToken ct = default)
-    {
-        var result = await _profileService.SetSuspendedAsync(userId, adminId, suspended: true, notes, ct);
-        if (!result.Success)
-            return result;
-
-        try
-        {
-            await _notificationService.SendAsync(
-                NotificationSource.AccessSuspended,
-                NotificationClass.Actionable,
-                NotificationPriority.Critical,
-                "Your access has been suspended",
-                [userId],
-                body: string.IsNullOrWhiteSpace(notes)
-                    ? "Your access has been suspended by an administrator."
-                    : $"Your access has been suspended: {notes}",
-                actionUrl: "/Profile",
-                actionLabel: "View profile",
-                cancellationToken: ct);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to dispatch AccessSuspended notification for user {UserId}", userId);
-        }
-
-        _metrics.RecordMemberSuspended("admin");
-
-        return result;
-    }
-
-    public async Task<OnboardingResult> UnsuspendAsync(
-        Guid userId, Guid adminId, CancellationToken ct = default)
-    {
-        var result = await _profileService.SetSuspendedAsync(userId, adminId, suspended: false, notes: null, ct);
-        if (!result.Success)
-            return result;
-
-        try
-        {
-            await _notificationInboxService.ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, ct);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to resolve AccessSuspended notifications for user {UserId}", userId);
         }
 
         return result;

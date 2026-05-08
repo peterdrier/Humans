@@ -37,12 +37,6 @@ public interface IOnboardingService : IOnboardingEligibilityQuery
     Task<OnboardingResult> ApproveVolunteerAsync(
         Guid userId, Guid adminId, CancellationToken ct = default);
 
-    // --- Suspend / Unsuspend ---
-    Task<OnboardingResult> SuspendAsync(
-        Guid userId, Guid adminId, string? notes, CancellationToken ct = default);
-    Task<OnboardingResult> UnsuspendAsync(
-        Guid userId, Guid adminId, CancellationToken ct = default);
-
     // --- Badge counts ---
     /// <summary>
     /// Gets the count of profiles pending consent review (not yet approved, not rejected).

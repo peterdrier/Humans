@@ -1,5 +1,6 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/Onboarding/**
+  src/Humans.Application/Services/HumanLifecycle/**
   src/Humans.Application/Services/Profile/ProfileService.cs
   src/Humans.Application/Services/Users/UserService.cs
   src/Humans.Application/Services/Users/AccountProvisioningService.cs
@@ -17,6 +18,8 @@
 # Onboarding — Section Invariants
 
 Pure orchestrator over Profiles, Legal & Consent, Teams, and Governance. Owns no tables.
+
+> **Three-concerns split (umbrella nobodies-collective#563).** Onboarding is the *intake funnel* (signup → profile → consents → first-team admission). Its sibling state-machine — admin-initiated suspend/unsuspend on already-onboarded humans — lives on `IHumanLifecycleService` (`Humans.Application.Services.HumanLifecycle`). Future re-consent suspensions, term-renewals, and external-event status recomputes will accrue on the lifecycle service. Account deletion is a third sibling tracked under nobodies-collective#582.
 
 ## Concepts
 
@@ -81,11 +84,12 @@ The only onboarding-specific value type is the narrow `IOnboardingEligibilityQue
 
 ## Architecture
 
-**Owning services:** `OnboardingService`
+**Owning services:** `OnboardingService` (intake funnel), `HumanLifecycleService` (suspend/unsuspend state-machine — extracted in nobodies-collective#583).
 **Owned tables:** None — orchestrator over Profiles, Legal & Consent, Teams, Governance.
-**Status:** (A) Migrated (peterdrier/Humans PR #285 for issue nobodies-collective/Humans#553, 2026-04-22).
+**Status:** (A) Migrated (peterdrier/Humans PR #285 for issue nobodies-collective/Humans#553, 2026-04-22). Lifecycle split landed for nobodies-collective#583.
 
 - `OnboardingService` lives in `src/Humans.Application/Services/Onboarding/OnboardingService.cs` and depends only on interfaces (plus `IClock`).
+- `HumanLifecycleService` lives in `src/Humans.Application/Services/HumanLifecycle/HumanLifecycleService.cs` and exposes `IHumanLifecycleService` — the **single entry point** for admin-initiated `SuspendAsync` / `UnsuspendAsync`. Same orchestrator shape as `OnboardingService`: owns no tables, depends only on cross-section service interfaces (`IProfileService`, `INotificationService`, `INotificationInboxService`, `IHumansMetrics`). Suspend writes flow through `IProfileService.SetSuspendedAsync`; unsuspend resolves the user's `AccessSuspended` notifications via `INotificationInboxService.ResolveBySourceAsync`. The bulk grace-period suspension path used by `SuspendNonCompliantMembersJob` continues to use `IProfileService.SuspendForMissingConsentAsync` directly — that path has job-specific notification, audit, and per-team Google-removal side effects that don't fit the per-user lifecycle entry point.
 - **Decorator decision — no caching decorator.** Onboarding owns no cached data. Every cache invalidation for an Onboarding-driven write happens inside the owning section's service or decorator (Profile decorator refreshes `_byUserId` after clear/flag/reject/approve/suspend/unsuspend; `INavBadgeCacheInvalidator` and `INotificationMeterCacheInvalidator` fire from the same write path; `IVotingBadgeCacheInvalidator` fires from `IApplicationDecisionService.CastBoardVoteAsync`).
 - **Cross-domain navs stripped:** N/A — Onboarding owns no entities.
 - **DI-cycle break:** `IOnboardingEligibilityQuery` is the narrow interface `ProfileService` depends on (`IOnboardingService` extends it; `OnboardingService` implements it). `ConsentService` still depends on the full `IOnboardingService` — narrowing it to `IOnboardingEligibilityQuery` is a follow-up. Reviewers should reject any change that widens the interface `ProfileService` depends on.

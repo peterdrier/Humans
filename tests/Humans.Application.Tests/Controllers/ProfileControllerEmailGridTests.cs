@@ -8,6 +8,7 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
@@ -83,6 +84,7 @@ public class ProfileControllerEmailGridTests
             Substitute.For<ICommunicationPreferenceService>(),
             _auditLogService,
             Substitute.For<IOnboardingService>(),
+            Substitute.For<IHumanLifecycleService>(),
             Substitute.For<IRoleAssignmentService>(),
             Substitute.For<IShiftSignupService>(),
             Substitute.For<IShiftManagementService>(),
