@@ -44,6 +44,12 @@ internal static class ShiftsSectionExtensions
         services.AddScoped<IGeneralAvailabilityService>(sp => sp.GetRequiredService<ShiftsGeneralAvailabilityService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ShiftsGeneralAvailabilityService>());
 
+        // Volunteer Tracking — §15 repository pattern (volunteer-tracking feature).
+        // Repository is Scoped (uses HumansDbContext directly, same pattern as
+        // ShiftSignupRepository) so multi-step camp-setup + blocked-day mutations
+        // share one EF change-tracker. Service is registered in Chunk 4.
+        services.AddScoped<IVolunteerTrackingRepository, VolunteerTrackingRepository>();
+
         return services;
     }
 }
