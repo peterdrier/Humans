@@ -33,10 +33,40 @@ public sealed class VolunteerTrackingRepository : IVolunteerTrackingRepository
         Guid eventSettingsId, CancellationToken ct = default) =>
         throw new NotSupportedException("GetByEventAsync is implemented in a follow-up TDD step.");
 
-    public Task<VolunteerBuildStatus> UpsertCampSetupAsync(
+    public async Task<VolunteerBuildStatus> UpsertCampSetupAsync(
         Guid userId, Guid eventSettingsId, LocalDate? barrioSetupStartDate,
-        string? notes, Guid? setByUserId, Instant? setAt, CancellationToken ct = default) =>
-        throw new NotSupportedException("UpsertCampSetupAsync is implemented in a follow-up TDD step.");
+        string? notes, Guid? setByUserId, Instant? setAt, CancellationToken ct = default)
+    {
+        var existing = await _db.VolunteerBuildStatuses
+            .FirstOrDefaultAsync(
+                x => x.UserId == userId && x.EventSettingsId == eventSettingsId,
+                ct);
+
+        if (existing is null)
+        {
+            var row = new VolunteerBuildStatus
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                EventSettingsId = eventSettingsId,
+                BarrioSetupStartDate = barrioSetupStartDate,
+                Notes = notes,
+                SetByUserId = setByUserId,
+                SetAt = setAt,
+                BlockedDayOffsets = new(),
+            };
+            _db.VolunteerBuildStatuses.Add(row);
+            await _db.SaveChangesAsync(ct);
+            return row;
+        }
+
+        existing.BarrioSetupStartDate = barrioSetupStartDate;
+        existing.Notes = notes;
+        existing.SetByUserId = setByUserId;
+        existing.SetAt = setAt;
+        await _db.SaveChangesAsync(ct);
+        return existing;
+    }
 
     public Task<IReadOnlyList<int>> ReplaceBlockedDaysAsync(
         Guid userId, Guid eventSettingsId, IReadOnlyList<int> dayOffsets,
