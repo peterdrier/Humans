@@ -22,6 +22,7 @@ public static class PolicyNames
     public const string ReviewQueueAccess = nameof(ReviewQueueAccess);
     public const string ConsentCoordinatorBoardOrAdmin = nameof(ConsentCoordinatorBoardOrAdmin);
     public const string ShiftDashboardAccess = nameof(ShiftDashboardAccess);
+    public const string VolunteerTrackingWrite = nameof(VolunteerTrackingWrite);
     public const string ShiftDepartmentManager = nameof(ShiftDepartmentManager);
     public const string PrivilegedSignupApprover = nameof(PrivilegedSignupApprover);
     public const string VolunteerManager = nameof(VolunteerManager);
