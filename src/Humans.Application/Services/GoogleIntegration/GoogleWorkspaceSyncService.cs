@@ -657,6 +657,13 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             hops++;
         }
 
+        if (hops >= 16 && user is { MergedToUserId: not null })
+        {
+            _logger.LogWarning(
+                "Merge-fold chain exceeded 16 hops for user {UserId} on team {TeamId}; provisioning against intermediate node",
+                userId, teamId);
+        }
+
         var userEmails = user is null
             ? (IReadOnlyList<UserEmail>)Array.Empty<UserEmail>()
             : await _userEmailService.GetEntitiesByUserIdAsync(userId, cancellationToken);
@@ -788,6 +795,21 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             userId = targetUserId;
             user = await _userService.GetByIdAsync(userId, cancellationToken);
             hops++;
+        }
+
+        if (user is null)
+        {
+            _logger.LogWarning(
+                "RestoreUserToAllTeams: terminal merge target {UserId} not found after following redirect chain",
+                userId);
+            return;
+        }
+
+        if (hops >= 16 && user.MergedToUserId is not null)
+        {
+            _logger.LogWarning(
+                "Merge-fold chain exceeded 16 hops for user {UserId} on RestoreUserToAllTeams; provisioning against intermediate node",
+                userId);
         }
 
         var memberships = await _teamService.GetUserTeamsAsync(userId, cancellationToken);
