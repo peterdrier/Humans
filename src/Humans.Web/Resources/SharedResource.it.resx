@@ -1016,6 +1016,9 @@
   <data name="OnboardingReview_FlagConfirm" xml:space="preserve"><value>Questo human verr&#xE0; segnalato per ulteriore revisione. Continuare?</value></data>
   <data name="OnboardingReview_AlreadyCleared" xml:space="preserve"><value>Questo human &#xE8; gi&#xE0; stato approvato.</value></data>
   <data name="OnboardingReview_Cleared" xml:space="preserve"><value>Revisione del profilo approvata.</value></data>
+  <data name="OnboardingReview_BulkClearedNone" xml:space="preserve"><value>Nessun human selezionato &#xE8; stato approvato.</value></data>
+  <data name="OnboardingReview_BulkCleared" xml:space="preserve"><value>Approvati {0} humans selezionati.</value></data>
+  <data name="OnboardingReview_BulkClearedPartial" xml:space="preserve"><value>Approvati {0} di {1} selezionati — gli altri non sono pi&#xF9; idonei.</value></data>
   <data name="OnboardingReview_Flagged" xml:space="preserve"><value>Human segnalato per ulteriore revisione.</value></data>
   <data name="OnboardingReview_RejectButton" xml:space="preserve"><value>Rifiuta registrazione</value></data>
   <data name="OnboardingReview_RejectReasonPlaceholder" xml:space="preserve"><value>Motivo del rifiuto...</value></data>

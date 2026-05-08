@@ -145,26 +145,34 @@ public class OnboardingReviewController : HumansControllerBase
         {
             var result = await _onboardingService.BulkClearConsentChecksAsync(
                 selectedUserIds, currentUser.Id, ct);
-            SetBulkClearResultMessage(result);
+            SetBulkClearResultMessage(result, selectedUserIds.Count);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to bulk clear consent checks for selected users");
+            _logger.LogError(
+                ex,
+                "Failed to bulk clear consent checks for {Count} users: {UserIds}",
+                selectedUserIds.Count,
+                selectedUserIds);
             SetError(_localizer["Common_Error"].Value);
         }
 
         return RedirectToAction(nameof(Index));
     }
 
-    private void SetBulkClearResultMessage(BulkOnboardingResult result)
+    private void SetBulkClearResultMessage(BulkOnboardingResult result, int selectedCount)
     {
         if (result.ApprovedCount == 0)
         {
-            SetInfo("No selected humans were approved.");
+            SetInfo(_localizer["OnboardingReview_BulkClearedNone"].Value);
+        }
+        else if (result.ApprovedCount < selectedCount)
+        {
+            SetSuccess(_localizer["OnboardingReview_BulkClearedPartial", result.ApprovedCount, selectedCount].Value);
         }
         else
         {
-            SetSuccess($"Approved {result.ApprovedCount} selected human{(result.ApprovedCount == 1 ? "" : "s")}.");
+            SetSuccess(_localizer["OnboardingReview_BulkCleared", result.ApprovedCount].Value);
         }
     }
 
