@@ -1,5 +1,6 @@
 using Humans.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Humans.Infrastructure.Data.Configurations.Shifts;
@@ -26,7 +27,11 @@ internal sealed class VolunteerBuildStatusConfiguration
         builder.Property(x => x.BarrioSetupStartDate);
 
         builder.Property(x => x.BlockedDayOffsets)
-            .HasColumnType("jsonb");
+            .HasColumnType("jsonb")
+            .Metadata.SetValueComparer(new ValueComparer<List<int>>(
+                (a, b) => a != null && b != null && a.SequenceEqual(b),
+                c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
+                c => c.ToList()));
 
         builder.Property(x => x.Notes).HasMaxLength(500);
 
