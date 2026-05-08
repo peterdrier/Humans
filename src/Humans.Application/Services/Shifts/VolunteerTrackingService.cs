@@ -269,10 +269,22 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
             ct).ConfigureAwait(false);
     }
 
-    public Task<SetBlockResult> SetBlockAsync(
+    public async Task<SetBlockResult> SetBlockAsync(
         Guid targetUserId, int dayOffset, bool block,
         Guid coordinatorUserId, CancellationToken ct = default)
-        => throw new NotSupportedException("Not yet implemented.");
+    {
+        var es = await _shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false)
+            ?? throw new InvalidOperationException("No active event");
+        if (dayOffset < es.BuildStartOffset || dayOffset >= 0)
+        {
+            return new SetBlockResult(false, false, "VolTrack_Err_DayOffsetOutsideBuild");
+        }
+
+        var changed = await _trackingRepo
+            .SetBlockAsync(targetUserId, es.Id, dayOffset, block, ct)
+            .ConfigureAwait(false);
+        return new SetBlockResult(true, changed, null);
+    }
 
     public Task<SaveOwnBlockedDaysResult> SaveOwnBlockedDaysAsync(
         Guid ownerUserId, IReadOnlyList<int> dayOffsets, CancellationToken ct = default)

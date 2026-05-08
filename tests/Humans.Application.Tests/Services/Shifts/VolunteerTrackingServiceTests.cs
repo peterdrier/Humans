@@ -408,6 +408,39 @@ public class VolunteerTrackingServiceTests
         stored.BlockedDayOffsets.Should().BeEquivalentTo(new[] { -2 });
     }
 
+    [HumansFact]
+    public async Task SetBlockAsync_rejects_offset_outside_build_window()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var sut = BuildSut(es);
+
+        var below = await sut.SetBlockAsync(Guid.NewGuid(), -6, block: true, Guid.NewGuid());
+        var above = await sut.SetBlockAsync(Guid.NewGuid(), 0, block: true, Guid.NewGuid());
+
+        below.Ok.Should().BeFalse();
+        below.ErrorMessageKey.Should().Be("VolTrack_Err_DayOffsetOutsideBuild");
+        above.Ok.Should().BeFalse();
+        above.ErrorMessageKey.Should().Be("VolTrack_Err_DayOffsetOutsideBuild");
+    }
+
+    [HumansFact]
+    public async Task SetBlockAsync_first_block_returns_changed_true_second_returns_false()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var trackingRepo = new FakeVolunteerTrackingRepository(
+            Array.Empty<EligibleBuildSignup>(), Array.Empty<VolunteerBuildStatus>());
+        var sut = BuildSut(es, trackingRepo: trackingRepo);
+
+        var first = await sut.SetBlockAsync(userId, -3, block: true, Guid.NewGuid());
+        var second = await sut.SetBlockAsync(userId, -3, block: true, Guid.NewGuid());
+
+        first.Ok.Should().BeTrue();
+        first.Changed.Should().BeTrue();
+        second.Ok.Should().BeTrue();
+        second.Changed.Should().BeFalse();
+    }
+
     private static GeneralAvailability Availability(Guid userId, Guid eventSettingsId, IReadOnlyList<int> days)
         => new()
         {
