@@ -455,33 +455,33 @@ public class ShiftsController : HumansControllerBase
         var current = await GetCurrentUserAsync();
         if (current is null) return Challenge();
 
-        var input = dayOffsets ?? new();
-        var result = await _trackingService.SaveOwnBlockedDaysAsync(current.Id, input, ct);
+        var result = await _trackingService.SaveOwnBlockedDaysAsync(current.Id, dayOffsets ?? new(), ct);
         if (!result.Ok)
         {
             SetError(_localizer[result.ErrorMessageKey ?? "VolTrack_Err_Unknown"]);
             return RedirectToAction(nameof(Mine));
         }
 
+        await EmitSelfBlockedDaysAuditAsync(current.Id, result);
+        SetSuccess(_localizer["VolTrack_Msg_BlockedDaysSaved"]);
+        return RedirectToAction(nameof(Mine));
+    }
+
+    private async Task EmitSelfBlockedDaysAuditAsync(Guid userId, SaveOwnBlockedDaysResult result)
+    {
         foreach (var d in result.Added)
         {
             await _auditLogService.LogAsync(AuditAction.VolunteerDayBlocked,
-                nameof(VolunteerBuildStatus), current.Id,
-                $"DayOffset={d}; self", current.Id);
+                nameof(VolunteerBuildStatus), userId, $"DayOffset={d}; self", userId);
         }
         foreach (var d in result.Removed)
         {
             await _auditLogService.LogAsync(AuditAction.VolunteerDayUnblocked,
-                nameof(VolunteerBuildStatus), current.Id,
-                $"DayOffset={d}; self", current.Id);
+                nameof(VolunteerBuildStatus), userId, $"DayOffset={d}; self", userId);
         }
         await _auditLogService.LogAsync(AuditAction.VolunteerOwnBlockedDaysSaved,
-            nameof(VolunteerBuildStatus), current.Id,
-            $"Resulting list: [{string.Join(",", result.ResultingList)}]",
-            current.Id);
-
-        SetSuccess(_localizer["VolTrack_Msg_BlockedDaysSaved"]);
-        return RedirectToAction(nameof(Mine));
+            nameof(VolunteerBuildStatus), userId,
+            $"Resulting list: [{string.Join(",", result.ResultingList)}]", userId);
     }
 
     [HttpPost("Mine/Availability")]
