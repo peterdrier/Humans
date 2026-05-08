@@ -136,16 +136,11 @@
             var li = document.createElement('li');
             li.className = 'list-group-item list-group-item-action py-2 px-3';
             li.style.cursor = 'pointer';
-            // Both fields escaped — they end up in innerHTML alongside trusted markup.
-            var label = escapeHtml(r.displayName);
-            if (r.burnerName) {
-                label += ' <span class="text-muted small">(' + escapeHtml(r.burnerName) + ')</span>';
-            }
-            li.innerHTML = label;
+            li.innerHTML = escapeHtml(r.displayName);
             li.addEventListener('mousedown', function (e) {
                 e.preventDefault();
                 hiddenInput.value = r.userId;
-                textInput.value = r.displayName + (r.burnerName ? ' (' + r.burnerName + ')' : '');
+                textInput.value = r.displayName;
                 hideDropdown();
             });
             dropdown.appendChild(li);

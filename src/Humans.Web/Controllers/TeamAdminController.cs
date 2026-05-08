@@ -421,7 +421,7 @@ public class TeamAdminController : HumansTeamControllerBase
             .Where(r => !existingMemberIds.Contains(r.UserId))
             .OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase)
             .Take(10)
-            .Select(r => new HumanLookupSearchResult(r.UserId, r.BurnerName, BurnerName: null))
+            .Select(r => new HumanLookupSearchResult(r.UserId, r.BurnerName))
             .ToList();
 
         return Json(filtered);

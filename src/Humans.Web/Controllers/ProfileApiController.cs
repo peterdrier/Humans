@@ -42,6 +42,6 @@ public class ProfileApiController : ControllerBase
         // memory/architecture/display-sort-in-controllers.md.
         return Ok(results
             .OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase)
-            .Select(r => new HumanLookupSearchResult(r.UserId, r.BurnerName, BurnerName: null)));
+            .Select(r => new HumanLookupSearchResult(r.UserId, r.BurnerName)));
     }
 }
