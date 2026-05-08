@@ -254,9 +254,20 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
         return new SetCampSetupResult(true, null);
     }
 
-    public Task ClearCampSetupAsync(
+    public async Task ClearCampSetupAsync(
         Guid targetUserId, Guid coordinatorUserId, CancellationToken ct = default)
-        => throw new NotSupportedException("Not yet implemented.");
+    {
+        var es = await _shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false)
+            ?? throw new InvalidOperationException("No active event");
+        await _trackingRepo.UpsertCampSetupAsync(
+            targetUserId,
+            es.Id,
+            barrioSetupStartDate: null,
+            notes: null,
+            setByUserId: null,
+            setAt: null,
+            ct).ConfigureAwait(false);
+    }
 
     public Task<SetBlockResult> SetBlockAsync(
         Guid targetUserId, int dayOffset, bool block,

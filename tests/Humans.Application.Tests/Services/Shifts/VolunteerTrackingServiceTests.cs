@@ -370,6 +370,44 @@ public class VolunteerTrackingServiceTests
         call.SetAt.Should().Be(TestNow);
     }
 
+    [HumansFact]
+    public async Task ClearCampSetupAsync_nulls_camp_setup_fields()
+    {
+        var es = MakeEvent(buildStartOffset: -10);
+        var userId = Guid.NewGuid();
+        var coordinatorId = Guid.NewGuid();
+        var bs = new VolunteerBuildStatus
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            EventSettingsId = es.Id,
+            BarrioSetupStartDate = es.GateOpeningDate.PlusDays(-3),
+            Notes = "left",
+            SetByUserId = Guid.NewGuid(),
+            SetAt = TestNow,
+            BlockedDayOffsets = new List<int> { -2 },
+        };
+        var trackingRepo = new FakeVolunteerTrackingRepository(
+            Array.Empty<EligibleBuildSignup>(), new[] { bs });
+        var sut = BuildSut(es, buildStatuses: new[] { bs }, trackingRepo: trackingRepo);
+
+        await sut.ClearCampSetupAsync(userId, coordinatorId);
+
+        trackingRepo.UpsertCalls.Should().HaveCount(1);
+        var call = trackingRepo.UpsertCalls[0];
+        call.Date.Should().BeNull();
+        call.Notes.Should().BeNull();
+        call.SetByUserId.Should().BeNull();
+        call.SetAt.Should().BeNull();
+        var stored = trackingRepo.BuildStatuses.Single();
+        stored.BarrioSetupStartDate.Should().BeNull();
+        stored.Notes.Should().BeNull();
+        stored.SetByUserId.Should().BeNull();
+        stored.SetAt.Should().BeNull();
+        // BlockedDayOffsets untouched.
+        stored.BlockedDayOffsets.Should().BeEquivalentTo(new[] { -2 });
+    }
+
     private static GeneralAvailability Availability(Guid userId, Guid eventSettingsId, IReadOnlyList<int> days)
         => new()
         {
