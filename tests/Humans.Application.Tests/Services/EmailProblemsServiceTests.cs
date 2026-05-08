@@ -235,4 +235,68 @@ public class EmailProblemsServiceTests
         report.Problems.Should().ContainSingle(p =>
             p.Kind == EmailProblemKind.GhostExternalLogins && p.UserId == ghostUserId);
     }
+
+    [HumansFact]
+    public async Task UsersShareAnyEmail_ExactMatch_True()
+    {
+        var u1 = Guid.NewGuid();
+        var u2 = Guid.NewGuid();
+        SetProfiles(
+            MakeProfile(u1, new UserEmailSnapshot(Guid.NewGuid(), "joe@x.com", true, true, false)),
+            MakeProfile(u2, new UserEmailSnapshot(Guid.NewGuid(), "joe@x.com", true, true, false)));
+
+        (await Sut.UsersShareAnyEmailAsync(u1, u2)).Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task UsersShareAnyEmail_GmailGooglemailEquivalent_True()
+    {
+        var u1 = Guid.NewGuid();
+        var u2 = Guid.NewGuid();
+        SetProfiles(
+            MakeProfile(u1, new UserEmailSnapshot(Guid.NewGuid(), "joe@gmail.com", true, true, false)),
+            MakeProfile(u2, new UserEmailSnapshot(Guid.NewGuid(), "joe@googlemail.com", true, true, false)));
+
+        (await Sut.UsersShareAnyEmailAsync(u1, u2)).Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task UsersShareAnyEmail_NoOverlap_False()
+    {
+        var u1 = Guid.NewGuid();
+        var u2 = Guid.NewGuid();
+        SetProfiles(
+            MakeProfile(u1, new UserEmailSnapshot(Guid.NewGuid(), "alice@x.com", true, true, false)),
+            MakeProfile(u2, new UserEmailSnapshot(Guid.NewGuid(), "bob@x.com", true, true, false)));
+
+        (await Sut.UsersShareAnyEmailAsync(u1, u2)).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task UsersShareAnyEmail_SameUserId_False()
+    {
+        var u = Guid.NewGuid();
+        SetProfiles(MakeProfile(u, new UserEmailSnapshot(Guid.NewGuid(), "joe@x.com", true, true, false)));
+
+        (await Sut.UsersShareAnyEmailAsync(u, u)).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task IsGhostExternalLoginsUser_InSet_True()
+    {
+        var ghostUserId = Guid.NewGuid();
+        SetGhosts(ghostUserId);
+
+        (await Sut.IsGhostExternalLoginsUserAsync(ghostUserId)).Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task IsGhostExternalLoginsUser_NotInSet_False()
+    {
+        var ghostUserId = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+        SetGhosts(ghostUserId);
+
+        (await Sut.IsGhostExternalLoginsUserAsync(otherUserId)).Should().BeFalse();
+    }
 }

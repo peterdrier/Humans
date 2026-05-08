@@ -119,6 +119,7 @@ public class ProfileAdminControllerTests
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
+        _emailProblems.UsersShareAnyEmailAsync(u1, u2, Arg.Any<CancellationToken>()).Returns(true);
 
         var result = await BuildController().Merge(u1, u2, targetUserId: u1, notes: null, ct: default);
 
@@ -140,6 +141,21 @@ public class ProfileAdminControllerTests
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be(nameof(ProfileAdminController.EmailProblemsCompare));
+    }
+
+    [HumansFact]
+    public async Task Merge_UsersDoNotShareEmail_RedirectsToList_NoMergeCall()
+    {
+        var u1 = Guid.NewGuid();
+        var u2 = Guid.NewGuid();
+        _emailProblems.UsersShareAnyEmailAsync(u1, u2, Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await BuildController().Merge(u1, u2, targetUserId: u1, notes: null, ct: default);
+
+        await _accountMerge.DidNotReceive().AdminMergeAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        result.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be(nameof(ProfileAdminController.EmailProblems));
     }
 
     [HumansFact]
@@ -176,6 +192,7 @@ public class ProfileAdminControllerTests
     public async Task DeleteGhostLogins_RowsDeleted_AuditsWithCount()
     {
         var userId = Guid.NewGuid();
+        _emailProblems.IsGhostExternalLoginsUserAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
         _users.DeleteAllExternalLoginsForUserAsync(userId, Arg.Any<CancellationToken>()).Returns(3);
 
         var result = await BuildController().DeleteGhostLogins(userId, default);
@@ -184,6 +201,22 @@ public class ProfileAdminControllerTests
             AuditAction.GhostExternalLoginsDeleted, nameof(User), userId,
             Arg.Is<string>(s => s.Contains("3")),
             _adminUserId);
+        result.Should().BeOfType<RedirectToActionResult>();
+    }
+
+    [HumansFact]
+    public async Task DeleteGhostLogins_NotInGhostSet_NoOpsAndNoAudit()
+    {
+        var userId = Guid.NewGuid();
+        _emailProblems.IsGhostExternalLoginsUserAsync(userId, Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await BuildController().DeleteGhostLogins(userId, default);
+
+        await _users.DidNotReceive().DeleteAllExternalLoginsForUserAsync(
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _audit.DidNotReceive().LogAsync(
+            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>());
         result.Should().BeOfType<RedirectToActionResult>();
     }
 }

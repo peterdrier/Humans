@@ -82,22 +82,20 @@ else
                     <td>
                         @if (row.Kind == EmailProblemKind.OrphanUserEmail)
                         {
-                            <form method="post" asp-action="DeleteOrphanEmail"
-                                  onsubmit="return confirm('Delete orphan UserEmail row? This is irreversible.');"
-                                  class="d-inline">
+                            <form method="post" asp-action="DeleteOrphanEmail" class="d-inline">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="emailId" value="@row.UserEmailId" />
-                                <button type="submit" class="btn btn-sm btn-danger">Delete row ✕</button>
+                                <button type="submit" class="btn btn-sm btn-danger"
+                                        data-confirm="Delete orphan UserEmail row? This is irreversible.">Delete row ✕</button>
                             </form>
                         }
                         else if (row.Kind == EmailProblemKind.GhostExternalLogins)
                         {
-                            <form method="post" asp-action="DeleteGhostLogins"
-                                  onsubmit="return confirm('Delete ghost AspNetUserLogins rows? This is irreversible.');"
-                                  class="d-inline">
+                            <form method="post" asp-action="DeleteGhostLogins" class="d-inline">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="userId" value="@row.UserId" />
-                                <button type="submit" class="btn btn-sm btn-danger">Delete logins ✕</button>
+                                <button type="submit" class="btn btn-sm btn-danger"
+                                        data-confirm="Delete ghost AspNetUserLogins rows? This is irreversible.">Delete logins ✕</button>
                             </form>
                         }
                     </td>
@@ -106,3 +104,13 @@ else
         </tbody>
     </table>
 }
+
+<script>
+    document.querySelectorAll('[data-confirm]').forEach(function (button) {
+        button.addEventListener('click', function (e) {
+            if (!confirm(this.getAttribute('data-confirm'))) {
+                e.preventDefault();
+            }
+        });
+    });
+</script>

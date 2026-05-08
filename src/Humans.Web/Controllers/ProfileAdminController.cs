@@ -138,6 +138,12 @@ public class ProfileAdminController : HumansControllerBase
                 new { userId1 = user1Id, userId2 = user2Id });
         }
 
+        if (!await _emailProblems.UsersShareAnyEmailAsync(user1Id, user2Id, ct))
+        {
+            SetError("These accounts no longer share an email and cannot be merged here.");
+            return RedirectToAction(nameof(EmailProblems));
+        }
+
         try
         {
             await _accountMerge.AdminMergeAsync(sourceUserId, targetUserId, currentUser.Id, notes, ct);
@@ -183,6 +189,12 @@ public class ProfileAdminController : HumansControllerBase
     {
         var (error, currentUser) = await RequireCurrentUserAsync();
         if (error is not null) return error;
+
+        if (!await _emailProblems.IsGhostExternalLoginsUserAsync(userId, ct))
+        {
+            SetInfo("Already cleaned up — user is no longer in the ghost set.");
+            return RedirectToAction(nameof(EmailProblems));
+        }
 
         var count = await _users.DeleteAllExternalLoginsForUserAsync(userId, ct);
         if (count > 0)

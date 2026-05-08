@@ -115,4 +115,25 @@ public sealed class EmailProblemsService : IEmailProblemsService
 
         return new EmailProblemsReport(_clock.GetCurrentInstant(), problems);
     }
+
+    public async Task<bool> UsersShareAnyEmailAsync(Guid user1Id, Guid user2Id, CancellationToken ct = default)
+    {
+        if (user1Id == user2Id) return false;
+
+        var p1 = await _profileService.GetFullProfileAsync(user1Id, ct);
+        var p2 = await _profileService.GetFullProfileAsync(user2Id, ct);
+        if (p1 is null || p2 is null) return false;
+
+        var norms1 = p1.AllUserEmails
+            .Select(e => EmailNormalization.NormalizeForComparison(e.Email))
+            .ToHashSet(StringComparer.Ordinal);
+        return p2.AllUserEmails
+            .Any(e => norms1.Contains(EmailNormalization.NormalizeForComparison(e.Email)));
+    }
+
+    public async Task<bool> IsGhostExternalLoginsUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        var ghosts = await _userService.GetUsersWithLoginsButNoEmailsAsync(ct);
+        return ghosts.Contains(userId);
+    }
 }
