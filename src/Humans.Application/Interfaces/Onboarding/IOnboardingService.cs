@@ -28,8 +28,7 @@ public interface IOnboardingService : IOnboardingEligibilityQuery
         Guid userId, Guid adminId, CancellationToken ct = default);
 
     // --- Suspend / Unsuspend ---
-    // Lifecycle state-machine operations slated to move to IHumanLifecycleService
-    // in nobodies-collective#583 (sibling PR landing in parallel).
+    // Lifecycle state-machine operations slated to move to IHumanLifecycleService.
     Task<OnboardingResult> SuspendAsync(
         Guid userId, Guid adminId, string? notes, CancellationToken ct = default);
     Task<OnboardingResult> UnsuspendAsync(

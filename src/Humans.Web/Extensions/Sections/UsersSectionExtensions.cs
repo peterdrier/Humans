@@ -43,10 +43,9 @@ internal static class UsersSectionExtensions
         services.AddScoped<IMembershipQuery, GovernanceMembershipQuery>();
         services.AddScoped<IMembershipCalculator, GovernanceMembershipCalculator>();
         services.AddScoped<IDashboardService, DashboardDashboardService>();
-        // Admin dashboard aggregator — extracted from OnboardingService in
-        // nobodies-collective#584. Owns no tables; aggregates user partition,
-        // application stats, and language distribution from the relevant
-        // section services.
+        // Admin dashboard aggregator — owns no tables; aggregates user
+        // partition, application stats, and language distribution from
+        // the relevant section services.
         services.AddScoped<IAdminDashboardService, DashboardAdminDashboardService>();
 
         return services;

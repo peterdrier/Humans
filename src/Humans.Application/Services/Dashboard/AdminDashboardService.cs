@@ -13,7 +13,6 @@ namespace Humans.Application.Services.Dashboard;
 /// tables; all reads route through the owning section services
 /// (<see cref="IUserService"/>, <see cref="IProfileService"/>,
 /// <see cref="IMembershipCalculator"/>, <see cref="IApplicationDecisionService"/>).
-/// Extracted from <c>OnboardingService</c> in nobodies-collective#584.
 /// </summary>
 public sealed class AdminDashboardService : IAdminDashboardService
 {

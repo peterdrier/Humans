@@ -9,11 +9,6 @@ namespace Humans.Application.Interfaces.Dashboard;
 /// (single-user view vs. global aggregates) so they don't share a budget
 /// or a service implementation.
 /// </summary>
-/// <remarks>
-/// Extracted from <c>OnboardingService</c> in nobodies-collective#584
-/// (umbrella nobodies-collective#563) — admin-dashboard aggregation isn't
-/// onboarding orchestration and doesn't belong on <see cref="Onboarding.IOnboardingService"/>.
-/// </remarks>
 public interface IAdminDashboardService
 {
     /// <summary>

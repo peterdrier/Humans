@@ -24,8 +24,8 @@ namespace Humans.Application.Services.Onboarding;
 /// through DbContext. Cache invalidation is owned by the target services'
 /// decorators/invalidators — this orchestrator never touches caches directly.
 ///
-/// Out of scope after the three-concerns split (umbrella nobodies-collective#563):
-/// suspend/unsuspend (→ <see cref="HumanLifecycle.IHumanLifecycleService"/>),
+/// Out of scope (handled by sibling services):
+/// suspend/unsuspend (→ <c>IHumanLifecycleService</c>),
 /// board voting (→ <see cref="IApplicationDecisionService"/>), admin
 /// dashboard aggregation (→ <see cref="Dashboard.IAdminDashboardService"/>),
 /// and account deletion (→ future <c>IAccountDeletionService</c>).
