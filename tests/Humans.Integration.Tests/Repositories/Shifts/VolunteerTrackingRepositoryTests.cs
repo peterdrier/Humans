@@ -3,6 +3,7 @@ using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Shifts;
 using Humans.Integration.Tests.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Xunit;
@@ -62,6 +63,51 @@ public class VolunteerTrackingRepositoryTests : IClassFixture<HumansWebApplicati
         var fetched = await sut.GetAsync(userId, es.Id);
         fetched.Should().NotBeNull();
         fetched!.Id.Should().Be(result.Id);
+    }
+
+    [HumansFact]
+    public async Task ReplaceBlockedDaysAsync_persists_sorted_deduped_list_and_returns_prior()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var es = await SeedActiveEventAsync(db);
+        var userId = Guid.NewGuid();
+        var sut = new VolunteerTrackingRepository(db);
+
+        // Seed an empty row first.
+        await sut.UpsertCampSetupAsync(userId, es.Id, null, null, null, null);
+
+        var prior = await sut.ReplaceBlockedDaysAsync(userId, es.Id, new[] { -3, -5, -3 });
+        prior.Should().BeEmpty();
+
+        var row = await sut.GetAsync(userId, es.Id);
+        row.Should().NotBeNull();
+        row!.BlockedDayOffsets.Should().Equal(-5, -3);   // sorted ascending, deduped
+
+        var prior2 = await sut.ReplaceBlockedDaysAsync(userId, es.Id, new[] { -7 });
+        prior2.Should().Equal(-5, -3);
+    }
+
+    [HumansFact]
+    public async Task UpsertCampSetupAsync_updates_existing_row_and_preserves_blocked_days()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var es = await SeedActiveEventAsync(db);
+        var userId = Guid.NewGuid();
+        var sut = new VolunteerTrackingRepository(db);
+
+        await sut.UpsertCampSetupAsync(userId, es.Id, new LocalDate(2026, 6, 30), "first", null, null);
+        await sut.ReplaceBlockedDaysAsync(userId, es.Id, new[] { -3 });
+        await sut.UpsertCampSetupAsync(userId, es.Id, new LocalDate(2026, 7, 1), "second", null, null);
+
+        var rows = await db.VolunteerBuildStatuses
+            .Where(x => x.UserId == userId && x.EventSettingsId == es.Id)
+            .ToListAsync();
+        rows.Should().HaveCount(1);
+        rows[0].BarrioSetupStartDate.Should().Be(new LocalDate(2026, 7, 1));
+        rows[0].Notes.Should().Be("second");
+        rows[0].BlockedDayOffsets.Should().Equal(-3);   // preserved
     }
 
     /// <summary>
