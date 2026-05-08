@@ -110,6 +110,74 @@ public class VolunteerTrackingRepositoryTests : IClassFixture<HumansWebApplicati
         rows[0].BlockedDayOffsets.Should().Equal(-3);   // preserved
     }
 
+    [HumansFact]
+    public async Task SetBlockAsync_add_when_absent_creates_row_and_returns_true()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var es = await SeedActiveEventAsync(db);
+        var userId = Guid.NewGuid();
+        var sut = new VolunteerTrackingRepository(db);
+
+        var changed = await sut.SetBlockAsync(userId, es.Id, -3, block: true);
+
+        changed.Should().BeTrue();
+        var row = await sut.GetAsync(userId, es.Id);
+        row.Should().NotBeNull();
+        row!.BlockedDayOffsets.Should().Equal(-3);
+    }
+
+    [HumansFact]
+    public async Task SetBlockAsync_add_when_already_present_is_idempotent_and_returns_false()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var es = await SeedActiveEventAsync(db);
+        var userId = Guid.NewGuid();
+        var sut = new VolunteerTrackingRepository(db);
+
+        await sut.SetBlockAsync(userId, es.Id, -3, block: true);
+        var changed = await sut.SetBlockAsync(userId, es.Id, -3, block: true);
+
+        changed.Should().BeFalse();
+        var row = await sut.GetAsync(userId, es.Id);
+        row!.BlockedDayOffsets.Should().Equal(-3);   // still single entry
+    }
+
+    [HumansFact]
+    public async Task SetBlockAsync_remove_when_present_returns_true_and_drops_offset()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var es = await SeedActiveEventAsync(db);
+        var userId = Guid.NewGuid();
+        var sut = new VolunteerTrackingRepository(db);
+
+        await sut.ReplaceBlockedDaysAsync(userId, es.Id, new[] { -5, -3 });
+        var changed = await sut.SetBlockAsync(userId, es.Id, -3, block: false);
+
+        changed.Should().BeTrue();
+        var row = await sut.GetAsync(userId, es.Id);
+        row!.BlockedDayOffsets.Should().Equal(-5);
+    }
+
+    [HumansFact]
+    public async Task SetBlockAsync_remove_when_absent_is_idempotent_and_returns_false()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var es = await SeedActiveEventAsync(db);
+        var userId = Guid.NewGuid();
+        var sut = new VolunteerTrackingRepository(db);
+
+        // No row exists at all — removing should be a no-op.
+        var changed = await sut.SetBlockAsync(userId, es.Id, -3, block: false);
+
+        changed.Should().BeFalse();
+        var row = await sut.GetAsync(userId, es.Id);
+        row.Should().BeNull();
+    }
+
     /// <summary>
     /// Seeds a fresh <see cref="EventSettings"/> row with a unique name so each
     /// test gets an isolated event id (the test container is shared across

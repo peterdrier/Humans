@@ -99,10 +99,44 @@ public sealed class VolunteerTrackingRepository : IVolunteerTrackingRepository
         return prior;
     }
 
-    public Task<bool> SetBlockAsync(
+    public async Task<bool> SetBlockAsync(
         Guid userId, Guid eventSettingsId, int dayOffset, bool block,
-        CancellationToken ct = default) =>
-        throw new NotSupportedException("SetBlockAsync is implemented in a follow-up TDD step.");
+        CancellationToken ct = default)
+    {
+        var existing = await _db.VolunteerBuildStatuses
+            .FirstOrDefaultAsync(
+                x => x.UserId == userId && x.EventSettingsId == eventSettingsId,
+                ct);
+
+        if (existing is null)
+        {
+            if (!block) return false;
+            _db.VolunteerBuildStatuses.Add(new VolunteerBuildStatus
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                EventSettingsId = eventSettingsId,
+                BlockedDayOffsets = new() { dayOffset },
+            });
+            await _db.SaveChangesAsync(ct);
+            return true;
+        }
+
+        var contained = existing.BlockedDayOffsets.Contains(dayOffset);
+        if (block == contained) return false;
+
+        if (block)
+        {
+            existing.BlockedDayOffsets.Add(dayOffset);
+            existing.BlockedDayOffsets.Sort();
+        }
+        else
+        {
+            existing.BlockedDayOffsets.Remove(dayOffset);
+        }
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
 
     public Task<IReadOnlyList<EligibleBuildSignup>> GetEligibleBuildSignupsAsync(
         Guid eventSettingsId, CancellationToken ct = default) =>
