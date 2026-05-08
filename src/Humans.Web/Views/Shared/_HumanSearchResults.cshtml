@@ -1,0 +1,90 @@
+@*
+    Canonical "page-style search" results partial. Used by:
+
+      - /Profile/Search       (PublicAll bit-flag — bio / city / interests / CV)
+      - /Profile/Admin        (AdminAll bit-flag — adds verified email + non-public ContactFields)
+
+    The model is the rendering view-model — controllers project
+    HumanSearchResult onto HumanSearchResultViewModel so the partial doesn't
+    care whether the search was public or admin. Admin-only fields
+    (AdminEmail, MembershipStatus, CreatedAt, LastLoginAt, AdminDetailUrl)
+    are rendered only when present, keeping the partial dual-purpose.
+*@
+@model IReadOnlyList<Humans.Web.Models.HumanSearchResultViewModel>
+
+@if (Model.Count == 0)
+{
+    <div class="alert alert-info">@Localizer["Search_NoResults"]</div>
+}
+else
+{
+    <div class="list-group">
+        @foreach (var result in Model)
+        {
+            <div class="list-group-item">
+                <div class="d-flex align-items-center gap-3">
+                    <vc:user-avatar user-id="@result.UserId" size="48" />
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <human-link user-id="@result.UserId"
+                                        display-name="@result.BurnerName"
+                                        show-popover="true"
+                                        admin="@(result.AdminDetailUrl is not null)">
+                                <strong>@result.BurnerName</strong>
+                            </human-link>
+                            @if (!string.IsNullOrEmpty(result.AdminEmail))
+                            {
+                                <small class="text-muted">@result.AdminEmail</small>
+                            }
+                            @if (!string.IsNullOrEmpty(result.MembershipStatus))
+                            {
+                                <span class="badge @StatusBadgeExtensions.GetMembershipStatusBadgeClass(result.MembershipStatus)">
+                                    @result.MembershipStatus
+                                </span>
+                            }
+                            @if (result.AdminDetailUrl is not null)
+                            {
+                                @await Component.InvokeAsync("NobodiesEmailBadge", new { userId = result.UserId, mode = "status" })
+                            }
+                        </div>
+                        @if (!string.IsNullOrEmpty(result.MatchField))
+                        {
+                            <small>
+                                <span class="badge bg-secondary">
+                                    @Localizer["Search_MatchedIn"] @result.MatchField
+                                </span>
+                                @if (!string.IsNullOrEmpty(result.MatchSnippet))
+                                {
+                                    <span class="text-muted ms-1">@result.MatchSnippet</span>
+                                }
+                                @if (!string.IsNullOrEmpty(result.MatchedEmail))
+                                {
+                                    <span class="text-muted ms-1">@result.MatchedEmail</span>
+                                }
+                            </small>
+                        }
+                        @if (result.CreatedAt.HasValue || result.LastLoginAt.HasValue)
+                        {
+                            <div class="small text-muted mt-1">
+                                @if (result.CreatedAt.HasValue)
+                                {
+                                    <span>@Localizer["Admin_Joined"] @result.CreatedAt.Value.ToDisplayDate()</span>
+                                }
+                                @if (result.LastLoginAt.HasValue)
+                                {
+                                    <span class="ms-2">@Localizer["Admin_LastLogin"] @result.LastLoginAt.Value.ToDisplayDate()</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                    @if (result.AdminDetailUrl is not null)
+                    {
+                        <a href="@result.AdminDetailUrl" class="btn btn-sm btn-outline-primary">
+                            @Localizer["MyTeams_View"]
+                        </a>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}

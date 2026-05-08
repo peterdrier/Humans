@@ -21,6 +21,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Services.Profiles;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Infrastructure.Repositories.Profiles;
 using Humans.Infrastructure.Repositories.Users;
@@ -866,166 +867,6 @@ public class ProfileServiceTests : IDisposable
     // --- Admin queries ---
 
     [HumansFact]
-    public async Task GetFilteredHumansAsync_NoFilter_ReturnsAll()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        var user1 = await SeedUserAsync(u1);
-        var user2 = await SeedUserAsync(u2);
-        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<User> { user1, user2 });
-
-        var result = await ProfileService.GetFilteredHumansFromSnapshotAsync(
-            [], null, null, new List<User> { user1, user2 }, _membershipCalculator);
-
-        result.Should().HaveCount(2);
-    }
-
-    [HumansFact]
-    public async Task GetFilteredHumansAsync_SearchByEmail()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        var user1 = await SeedUserAsync(u1);
-        var user2 = await SeedUserAsync(u2);
-        user2.Email = "special@example.com";
-        user2.UserName = "special@example.com";
-        await _dbContext.SaveChangesAsync();
-        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<User> { user1, user2 });
-
-        var result = await ProfileService.GetFilteredHumansFromSnapshotAsync(
-            [], "special", null, new List<User> { user1, user2 }, _membershipCalculator);
-
-        result.Should().HaveCount(1);
-        result[0].UserId.Should().Be(u2);
-    }
-
-    [HumansFact]
-    public async Task GetFilteredHumansAsync_SearchByDisplayName()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        var user1 = await SeedUserAsync(u1);
-        var user2 = await SeedUserAsync(u2);
-        user2.DisplayName = "UniqueFlame";
-        await _dbContext.SaveChangesAsync();
-        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<User> { user1, user2 });
-
-        var result = await ProfileService.GetFilteredHumansFromSnapshotAsync(
-            [], "UniqueFlame", null, new List<User> { user1, user2 }, _membershipCalculator);
-
-        result.Should().HaveCount(1);
-        result[0].UserId.Should().Be(u2);
-    }
-
-    [HumansFact]
-    public async Task GetFilteredHumansAsync_StatusActive()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        var user1 = await SeedUserAsync(u1);
-        var user2 = await SeedUserAsync(u2);
-        _dbContext.Profiles.Add(MakeProfile(u1, isApproved: true));
-        _dbContext.Profiles.Add(MakeProfile(u2, isApproved: false));
-        await _dbContext.SaveChangesAsync();
-
-        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<User> { user1, user2 });
-
-        _membershipCalculator
-            .PartitionUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
-                var ids = callInfo.Arg<IEnumerable<Guid>>().ToHashSet();
-                return Task.FromResult(new MembershipPartition(
-                    IncompleteSignup: [],
-                    PendingApproval: ids.Where(id => id == u2).ToHashSet(),
-                    Active: ids.Where(id => id == u1).ToHashSet(),
-                    MissingConsents: [],
-                    Suspended: [],
-                    PendingDeletion: []));
-            });
-
-        var result = await ProfileService.GetFilteredHumansFromSnapshotAsync(
-            [], null, "active", new List<User> { user1, user2 }, _membershipCalculator);
-
-        result.Should().HaveCount(1);
-        result[0].UserId.Should().Be(u1);
-    }
-
-    [HumansFact]
-    public async Task GetFilteredHumansAsync_StatusPending()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        var user1 = await SeedUserAsync(u1);
-        var user2 = await SeedUserAsync(u2);
-        _dbContext.Profiles.Add(MakeProfile(u1, isApproved: true));
-        _dbContext.Profiles.Add(MakeProfile(u2, isApproved: false));
-        await _dbContext.SaveChangesAsync();
-
-        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<User> { user1, user2 });
-
-        _membershipCalculator
-            .PartitionUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(ci =>
-            {
-                var ids = ci.Arg<IEnumerable<Guid>>().ToHashSet();
-                return Task.FromResult(new MembershipPartition(
-                    IncompleteSignup: [],
-                    PendingApproval: ids.Where(id => id == u2).ToHashSet(),
-                    Active: ids.Where(id => id == u1).ToHashSet(),
-                    MissingConsents: [],
-                    Suspended: [],
-                    PendingDeletion: []));
-            });
-
-        var result = await ProfileService.GetFilteredHumansFromSnapshotAsync(
-            [], null, "pending", new List<User> { user1, user2 }, _membershipCalculator);
-
-        result.Should().HaveCount(1);
-        result[0].UserId.Should().Be(u2);
-    }
-
-    [HumansFact]
-    public async Task GetFilteredHumansAsync_StatusSuspended()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        var user1 = await SeedUserAsync(u1);
-        var user2 = await SeedUserAsync(u2);
-        _dbContext.Profiles.Add(MakeProfile(u1, isSuspended: true));
-        _dbContext.Profiles.Add(MakeProfile(u2));
-        await _dbContext.SaveChangesAsync();
-
-        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<User> { user1, user2 });
-
-        _membershipCalculator
-            .PartitionUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(ci =>
-            {
-                var ids = ci.Arg<IEnumerable<Guid>>().ToHashSet();
-                return Task.FromResult(new MembershipPartition(
-                    IncompleteSignup: [],
-                    PendingApproval: [],
-                    Active: ids.Where(id => id == u2).ToHashSet(),
-                    MissingConsents: [],
-                    Suspended: ids.Where(id => id == u1).ToHashSet(),
-                    PendingDeletion: []));
-            });
-
-        var result = await ProfileService.GetFilteredHumansFromSnapshotAsync(
-            [], null, "suspended", new List<User> { user1, user2 }, _membershipCalculator);
-
-        result.Should().HaveCount(1);
-        result[0].UserId.Should().Be(u1);
-    }
-
-    [HumansFact]
     public async Task GetAdminHumanDetailAsync_ReturnsFullDetail()
     {
         var userId = Guid.NewGuid();
@@ -1148,19 +989,20 @@ public class ProfileServiceTests : IDisposable
         pendingEmailId.Should().BeNull();
     }
 
-    // --- Search (via static helpers, exercised directly since inner returns empty) ---
+    // --- SearchProfilesAsync (PersonSearchFields bit-flag) ---
 
     [HumansFact]
-    public async Task SearchHumansAsync_MatchesByDisplayName()
+    public async Task SearchProfilesAsync_PublicAll_MatchesByDisplayName()
     {
         var userId = Guid.NewGuid();
-        await SeedUserAsync(userId, displayName: "Sparkle Phoenix");
+        var user = await SeedUserAsync(userId, displayName: "Sparkle Phoenix");
         var profile = MakeProfile(userId, isApproved: true);
         _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync();
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User> { [userId] = user });
 
-        var snapshot = new[] { MakeFullProfile(profile, userId) };
-        var results = ProfileService.SearchHumansFromSnapshot(snapshot, "Sparkle");
+        var results = await _service.SearchProfilesAsync("Sparkle", PersonSearchFields.PublicAll);
 
         results.Should().HaveCount(1);
         results[0].UserId.Should().Be(userId);
@@ -1168,34 +1010,36 @@ public class ProfileServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SearchHumansAsync_MatchesByCity()
+    public async Task SearchProfilesAsync_PublicAll_MatchesByCity()
     {
         var userId = Guid.NewGuid();
-        await SeedUserAsync(userId);
+        var user = await SeedUserAsync(userId);
         var profile = MakeProfile(userId, isApproved: true);
         profile.City = "Barcelona";
         _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync();
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User> { [userId] = user });
 
-        var snapshot = new[] { MakeFullProfile(profile, userId) };
-        var results = ProfileService.SearchHumansFromSnapshot(snapshot, "Barcelona");
+        var results = await _service.SearchProfilesAsync("Barcelona", PersonSearchFields.PublicAll);
 
         results.Should().HaveCount(1);
         results[0].MatchField.Should().Be("City");
     }
 
     [HumansFact]
-    public async Task SearchHumansAsync_MatchesByBio()
+    public async Task SearchProfilesAsync_PublicAll_MatchesByBio()
     {
         var userId = Guid.NewGuid();
-        await SeedUserAsync(userId);
+        var user = await SeedUserAsync(userId);
         var profile = MakeProfile(userId, isApproved: true);
         profile.Bio = "I love fire dancing and community building";
         _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync();
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User> { [userId] = user });
 
-        var snapshot = new[] { MakeFullProfile(profile, userId) };
-        var results = ProfileService.SearchHumansFromSnapshot(snapshot, "fire dancing");
+        var results = await _service.SearchProfilesAsync("fire dancing", PersonSearchFields.PublicAll);
 
         results.Should().HaveCount(1);
         results[0].MatchField.Should().Be("Bio");
@@ -1203,60 +1047,122 @@ public class ProfileServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SearchHumansAsync_ExcludesSuspended()
+    public async Task SearchProfilesAsync_PublicAll_ExcludesSuspended()
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
-        await SeedUserAsync(u1);
-        await SeedUserAsync(u2);
+        var user1 = await SeedUserAsync(u1);
+        var user2 = await SeedUserAsync(u2);
         var p1 = MakeProfile(u1, isApproved: true, isSuspended: true);
         p1.City = "Madrid";
         var p2 = MakeProfile(u2, isApproved: true);
         p2.City = "Madrid";
         await _dbContext.Profiles.AddRangeAsync(p1, p2);
         await _dbContext.SaveChangesAsync();
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User> { [u1] = user1, [u2] = user2 });
 
-        var snapshot = new[] { MakeFullProfile(p1, u1), MakeFullProfile(p2, u2) };
-        var results = ProfileService.SearchHumansFromSnapshot(snapshot, "Madrid");
+        var results = await _service.SearchProfilesAsync("Madrid", PersonSearchFields.PublicAll);
 
         results.Should().HaveCount(1);
         results[0].UserId.Should().Be(u2);
     }
 
     [HumansFact]
-    public async Task SearchHumansAsync_ExcludesUnapproved()
+    public async Task SearchProfilesAsync_PublicAll_ExcludesUnapproved()
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
-        await SeedUserAsync(u1);
-        await SeedUserAsync(u2);
+        var user1 = await SeedUserAsync(u1);
+        var user2 = await SeedUserAsync(u2);
         var p1 = MakeProfile(u1, isApproved: false);
         p1.City = "Madrid";
         var p2 = MakeProfile(u2, isApproved: true);
         p2.City = "Madrid";
         await _dbContext.Profiles.AddRangeAsync(p1, p2);
         await _dbContext.SaveChangesAsync();
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User> { [u1] = user1, [u2] = user2 });
 
-        var snapshot = new[] { MakeFullProfile(p1, u1), MakeFullProfile(p2, u2) };
-        var results = ProfileService.SearchHumansFromSnapshot(snapshot, "Madrid");
+        var results = await _service.SearchProfilesAsync("Madrid", PersonSearchFields.PublicAll);
 
         results.Should().HaveCount(1);
         results[0].UserId.Should().Be(u2);
     }
 
     [HumansFact]
-    public async Task SearchHumansAsync_NoMatch_ReturnsEmpty()
+    public async Task SearchProfilesAsync_NoMatch_ReturnsEmpty()
     {
         var userId = Guid.NewGuid();
-        await SeedUserAsync(userId);
+        var user = await SeedUserAsync(userId);
         var profile = MakeProfile(userId, isApproved: true);
         _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync();
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User> { [userId] = user });
 
-        var snapshot = new[] { MakeFullProfile(profile, userId) };
-        var results = ProfileService.SearchHumansFromSnapshot(snapshot, "zzzznonexistent");
+        var results = await _service.SearchProfilesAsync("zzzznonexistent", PersonSearchFields.PublicAll);
 
         results.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task SearchProfilesAsync_None_ReturnsEmpty()
+    {
+        var userId = Guid.NewGuid();
+        var user = await SeedUserAsync(userId, displayName: "Match");
+        var profile = MakeProfile(userId, isApproved: true);
+        _dbContext.Profiles.Add(profile);
+        await _dbContext.SaveChangesAsync();
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User> { [userId] = user });
+
+        var results = await _service.SearchProfilesAsync("Match", PersonSearchFields.None);
+
+        results.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task SearchProfilesAsync_ExcludesRejected()
+    {
+        var u1 = Guid.NewGuid();
+        var u2 = Guid.NewGuid();
+        var user1 = await SeedUserAsync(u1);
+        var user2 = await SeedUserAsync(u2);
+        var p1 = MakeProfile(u1, isApproved: true);
+        p1.City = "Madrid";
+        p1.RejectedAt = _clock.GetCurrentInstant();
+        var p2 = MakeProfile(u2, isApproved: true);
+        p2.City = "Madrid";
+        await _dbContext.Profiles.AddRangeAsync(p1, p2);
+        await _dbContext.SaveChangesAsync();
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User> { [u1] = user1, [u2] = user2 });
+
+        var results = await _service.SearchProfilesAsync(
+            "Madrid", PersonSearchFields.AdminAll, limit: 50);
+
+        results.Should().HaveCount(1);
+        results[0].UserId.Should().Be(u2);
+    }
+
+    [HumansFact]
+    public async Task SearchProfilesAsync_AdminBit_IncludesSuspended()
+    {
+        var userId = Guid.NewGuid();
+        var user = await SeedUserAsync(userId);
+        var profile = MakeProfile(userId, isApproved: true, isSuspended: true);
+        profile.City = "Madrid";
+        _dbContext.Profiles.Add(profile);
+        await _dbContext.SaveChangesAsync();
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, User> { [userId] = user });
+
+        var results = await _service.SearchProfilesAsync(
+            "Madrid", PersonSearchFields.AdminAll, limit: 50);
+
+        results.Should().HaveCount(1);
+        results[0].UserId.Should().Be(userId);
     }
 
     // --- DB-backed fallback paths (§15 invariant: base service must work without decorator) ---
@@ -1318,83 +1224,6 @@ public class ProfileServiceTests : IDisposable
         result.Should().HaveCount(1);
         result[0].UserId.Should().Be(u1);
         result[0].City.Should().Be("Madrid");
-    }
-
-    [HumansFact]
-    public async Task SearchApprovedUsersAsync_BaseService_LoadsFromRepositoryAndFilters()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        var user1 = await SeedUserAsync(u1, displayName: "Unique Sparkle");
-        var user2 = await SeedUserAsync(u2, displayName: "Other Person");
-
-        var p1 = MakeProfile(u1, isApproved: true);
-        var p2 = MakeProfile(u2, isApproved: true);
-        await _dbContext.Profiles.AddRangeAsync(p1, p2);
-        await _dbContext.SaveChangesAsync();
-
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User> { [u1] = user1, [u2] = user2 });
-
-        var result = await _service.SearchApprovedUsersAsync("Sparkle");
-
-        result.Should().HaveCount(1);
-        result[0].UserId.Should().Be(u1);
-        result[0].DisplayName.Should().Be("Unique Sparkle");
-    }
-
-    [HumansFact]
-    public async Task SearchHumansAsync_BaseService_LoadsFromRepositoryAndFilters()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        var user1 = await SeedUserAsync(u1);
-        var user2 = await SeedUserAsync(u2);
-
-        var p1 = MakeProfile(u1, isApproved: true);
-        p1.City = "Barcelona";
-        var p2 = MakeProfile(u2, isApproved: true);
-        p2.City = "Valencia";
-        await _dbContext.Profiles.AddRangeAsync(p1, p2);
-        await _dbContext.SaveChangesAsync();
-
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User> { [u1] = user1, [u2] = user2 });
-
-        var result = await _service.SearchHumansAsync("Barcelona");
-
-        result.Should().HaveCount(1);
-        result[0].UserId.Should().Be(u1);
-        result[0].MatchField.Should().Be("City");
-    }
-
-    [HumansFact]
-    public async Task GetFilteredHumansAsync_BaseService_LoadsFromRepositoryAndReturnsRows()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        var user1 = await SeedUserAsync(u1, displayName: "Alice");
-        var user2 = await SeedUserAsync(u2, displayName: "Bob");
-
-        var p1 = MakeProfile(u1, isApproved: true);
-        _dbContext.Profiles.Add(p1);
-        // u2 has no profile
-        await _dbContext.SaveChangesAsync();
-
-        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<User> { user1, user2 });
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User> { [u1] = user1 });
-
-        var result = await _service.GetFilteredHumansAsync(null, null);
-
-        result.Should().HaveCount(2);
-        var alice = result.Single(r => r.UserId == u1);
-        alice.HasProfile.Should().BeTrue();
-        alice.IsApproved.Should().BeTrue();
-        var bob = result.Single(r => r.UserId == u2);
-        bob.HasProfile.Should().BeFalse();
-        bob.IsApproved.Should().BeFalse();
     }
 
     // --- GetFullProfileAsync ---

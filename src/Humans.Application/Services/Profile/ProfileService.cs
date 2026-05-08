@@ -18,6 +18,7 @@ using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Services.Profiles;
 
 namespace Humans.Application.Services.Profile;
 
@@ -560,15 +561,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         return GetApprovedProfilesWithLocationFromSnapshot(snapshot);
     }
 
-    public async Task<IReadOnlyList<AdminHumanRow>> GetFilteredHumansAsync(
-        string? search, string? statusFilter, CancellationToken ct = default)
-    {
-        var snapshot = await BuildFullProfileSnapshotAsync(ct);
-        var allUsers = await _userService.GetAllUsersAsync(ct);
-        return await GetFilteredHumansFromSnapshotAsync(
-            snapshot, search, statusFilter, allUsers, _membershipCalculator, ct);
-    }
-
     /// <summary>
     /// Builds a <see cref="FullProfile"/> snapshot from repositories.
     /// Used by the base <see cref="ProfileService"/> so that every read method
@@ -637,94 +629,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             .ToList();
     }
 
-    /// <summary>
-    /// Snapshot-based filter for <see cref="GetFilteredHumansAsync"/>. Called by both
-    /// the base (DB-backed) and decorator (dict-backed) paths. Takes <paramref name="allUsers"/>
-    /// and <paramref name="membershipCalculator"/> as parameters because the filter needs to
-    /// enumerate profileless users and compute membership partitions — both cross-cutting
-    /// concerns the static helper shouldn't own.
-    /// </summary>
-    public static async Task<IReadOnlyList<AdminHumanRow>> GetFilteredHumansFromSnapshotAsync(
-        IEnumerable<FullProfile> snapshot,
-        string? search,
-        string? statusFilter,
-        IReadOnlyList<User> allUsers,
-        IMembershipCalculator membershipCalculator,
-        CancellationToken ct = default)
-    {
-        var profilesByUserId = snapshot.ToDictionary(fp => fp.UserId);
-
-        // Build notification email lookup from the provided profile snapshot
-        var notificationEmails = new Dictionary<Guid, string>();
-        foreach (var user in allUsers)
-        {
-            if (profilesByUserId.TryGetValue(user.Id, out var fp) && fp.NotificationEmail is not null)
-                notificationEmails[user.Id] = fp.NotificationEmail;
-        }
-
-        var userList = allUsers.Select(u =>
-        {
-            profilesByUserId.TryGetValue(u.Id, out var fp);
-            return new
-            {
-                u.Id,
-                Email = u.Email ?? string.Empty,
-                u.DisplayName,
-                u.ProfilePictureUrl,
-                CreatedAt = u.CreatedAt.ToDateTimeUtc(),
-                LastLoginAt = u.LastLoginAt != null ? u.LastLoginAt.Value.ToDateTimeUtc() : (DateTime?)null,
-                HasProfile = fp is not null,
-                IsApproved = fp?.IsApproved ?? false,
-            };
-        }).ToList();
-
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            userList = userList
-                .Where(u =>
-                    u.Email.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    (notificationEmails.TryGetValue(u.Id, out var ne) && ne.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
-                    u.DisplayName.Contains(search, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-        }
-
-        var allIds = userList.Select(u => u.Id).ToList();
-        var partition = await membershipCalculator.PartitionUsersAsync(allIds, ct);
-
-        HashSet<Guid>? filteredIds = statusFilter switch
-        {
-            _ when string.Equals(statusFilter, "active", StringComparison.OrdinalIgnoreCase) => partition.Active,
-            _ when string.Equals(statusFilter, "missingconsents", StringComparison.OrdinalIgnoreCase) => partition.MissingConsents,
-            _ when string.Equals(statusFilter, "pending", StringComparison.OrdinalIgnoreCase) => partition.PendingApproval,
-            _ when string.Equals(statusFilter, "suspended", StringComparison.OrdinalIgnoreCase) => partition.Suspended,
-            _ when string.Equals(statusFilter, "incomplete", StringComparison.OrdinalIgnoreCase) => partition.IncompleteSignup,
-            _ when string.Equals(statusFilter, "deleting", StringComparison.OrdinalIgnoreCase) => partition.PendingDeletion,
-            _ => null
-        };
-
-        var rows = filteredIds is not null
-            ? userList.Where(u => filteredIds.Contains(u.Id)).ToList()
-            : userList;
-
-        return rows.Select(r => new AdminHumanRow(
-            r.Id,
-            notificationEmails.TryGetValue(r.Id, out var primaryEmail) ? primaryEmail : r.Email,
-            r.DisplayName,
-            r.ProfilePictureUrl,
-            r.CreatedAt,
-            r.LastLoginAt,
-            r.HasProfile,
-            r.IsApproved,
-            partition.PendingDeletion.Contains(r.Id) ? MembershipStatusLabels.PendingDeletion :
-            partition.Suspended.Contains(r.Id) ? MembershipStatusLabels.Suspended :
-            partition.PendingApproval.Contains(r.Id) ? MembershipStatusLabels.PendingApproval :
-            partition.MissingConsents.Contains(r.Id) ? MembershipStatusLabels.MissingConsents :
-            partition.Active.Contains(r.Id) ? MembershipStatusLabels.Active :
-            partition.IncompleteSignup.Contains(r.Id) ? MembershipStatusLabels.IncompleteSignup :
-            "Unknown"))
-        .ToList();
-    }
-
     public async Task<AdminHumanDetailData?> GetAdminHumanDetailAsync(Guid userId, CancellationToken ct = default)
     {
         var user = await _userService.GetByIdAsync(userId, ct);
@@ -780,91 +684,41 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         return (true, 0, null);
     }
 
-    public async Task<IReadOnlyList<UserSearchResult>> SearchApprovedUsersAsync(string query, CancellationToken ct = default)
+    public async Task<IReadOnlyList<HumanSearchResult>> SearchProfilesAsync(
+        string query,
+        PersonSearchFields fields,
+        int limit = 10,
+        CancellationToken ct = default)
     {
+        if (fields == PersonSearchFields.None || string.IsNullOrWhiteSpace(query) || limit <= 0)
+            return Array.Empty<HumanSearchResult>();
+
         var snapshot = await BuildFullProfileSnapshotAsync(ct);
-        return SearchApprovedUsersFromSnapshot(snapshot, query);
-    }
 
-    public async Task<IReadOnlyList<HumanSearchResult>> SearchHumansAsync(string query, CancellationToken ct = default)
-    {
-        var snapshot = await BuildFullProfileSnapshotAsync(ct);
-        return SearchHumansFromSnapshot(snapshot, query);
-    }
+        // Implicit scope: skip rejected profiles unconditionally.
+        // (Deleted profiles never reach FullProfile.Create because the
+        // owning User row is gone or anonymized; rejected profiles are
+        // still present and need an explicit filter.)
+        var eligible = snapshot.Where(p => !p.IsRejected).ToList();
 
-    public async Task<IReadOnlyList<HumanSearchResult>> SearchHumansByNameAsync(string query, CancellationToken ct = default)
-    {
-        var snapshot = await BuildFullProfileSnapshotAsync(ct);
-        return SearchHumansByNameFromSnapshot(snapshot, query);
-    }
-
-    /// <summary>
-    /// Searches all approved, non-suspended profiles from a pre-built <see cref="FullProfile"/>
-    /// snapshot for users whose display name or notification email contains <paramref name="query"/>.
-    /// Called by <c>CachingProfileService</c> with its private dict snapshot.
-    /// </summary>
-    public static IReadOnlyList<UserSearchResult> SearchApprovedUsersFromSnapshot(
-        IEnumerable<FullProfile> snapshot, string query)
-    {
-        return snapshot
-            .Where(p => p.IsApproved && !p.IsSuspended)
-            .Where(p =>
-                p.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                (p.NotificationEmail?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false))
-            .OrderBy(p => p.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .Take(20)
-            .Select(p => new UserSearchResult(p.UserId, p.DisplayName, p.NotificationEmail ?? ""))
-            .ToList();
-    }
-
-    /// <summary>
-    /// Searches all approved, non-suspended profiles from a pre-built <see cref="FullProfile"/>
-    /// snapshot for those matching <paramref name="query"/> on any indexed field.
-    /// Called by <c>CachingProfileService</c> with its private dict snapshot.
-    /// </summary>
-    public static IReadOnlyList<HumanSearchResult> SearchHumansFromSnapshot(
-        IEnumerable<FullProfile> snapshot, string query)
-    {
-        var results = new List<HumanSearchResult>();
-
-        foreach (var p in snapshot.Where(p => p.IsApproved && !p.IsSuspended))
+        IReadOnlyDictionary<Guid, IReadOnlyList<ContactField>>? contactFieldsByProfileId = null;
+        if ((fields & (PersonSearchFields.Bio | PersonSearchFields.Admin)) != PersonSearchFields.None)
         {
-            var (matchField, matchSnippet) = DetermineMatchFromCache(p, query);
-            if (matchField is null) continue;
-
-            results.Add(new HumanSearchResult(
-                p.UserId, p.DisplayName, p.BurnerName, p.City, p.Bio, p.ContributionInterests,
-                p.ProfilePictureUrl, p.HasCustomPicture, p.ProfileId, p.UpdatedAtTicks,
-                matchField, matchSnippet));
+            contactFieldsByProfileId = await LoadContactFieldsByProfileIdAsync(ct);
         }
 
-        return results
-            .OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .Take(50)
-            .ToList();
+        return PersonSearchMatcher.Match(eligible, query, fields, contactFieldsByProfileId, limit);
     }
 
-    /// <summary>
-    /// Narrowed snapshot search for the typeahead picker — matches DisplayName
-    /// (covers first + last) and BurnerName only. Skips bio / city / interests /
-    /// pronouns / CV so callers like the camp role picker get a tight result list.
-    /// </summary>
-    public static IReadOnlyList<HumanSearchResult> SearchHumansByNameFromSnapshot(
-        IEnumerable<FullProfile> snapshot, string query)
+    private async Task<IReadOnlyDictionary<Guid, IReadOnlyList<ContactField>>>
+        LoadContactFieldsByProfileIdAsync(CancellationToken ct)
     {
-        return snapshot
-            .Where(p => p.IsApproved && !p.IsSuspended)
-            .Where(p =>
-                p.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                (p.BurnerName?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false))
-            .OrderBy(p => p.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .Take(50)
-            .Select(p => new HumanSearchResult(
-                p.UserId, p.DisplayName, p.BurnerName, p.City, p.Bio, p.ContributionInterests,
-                p.ProfilePictureUrl, p.HasCustomPicture, p.ProfileId, p.UpdatedAtTicks,
-                p.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase) ? "Name" : "Burner Name",
-                null))
-            .ToList();
+        var all = await _contactFieldRepository.GetAllAsync(ct);
+        return all
+            .GroupBy(cf => cf.ProfileId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<ContactField>)g.ToList());
     }
 
     public async Task SaveCVEntriesAsync(Guid userId, IReadOnlyList<CVEntry> entries, CancellationToken ct = default)
@@ -1258,45 +1112,4 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         CancellationToken ct) =>
         _profileRepository.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
-
-    private static (string? Field, string? Snippet) DetermineMatchFromCache(FullProfile p, string query)
-    {
-        if (p.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase))
-            return ("Name", null);
-        if (p.BurnerName?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
-            return ("Burner Name", null);
-        if (p.City?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
-            return ("City", p.City);
-        if (p.ContributionInterests?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
-            return ("Interests", GetSnippet(p.ContributionInterests, query));
-        if (p.Bio?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
-            return ("Bio", GetSnippet(p.Bio, query));
-        if (p.Pronouns?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
-            return ("Pronouns", p.Pronouns);
-
-        foreach (var v in p.CVEntries)
-        {
-            if (v.EventName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                v.Description?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
-                return ("Burner CV", v.EventName);
-        }
-
-        return (null, null);
-    }
-
-    private static string GetSnippet(string text, string query, int contextChars = 60)
-    {
-        var index = text.IndexOf(query, StringComparison.OrdinalIgnoreCase);
-        if (index < 0) return text.Length <= contextChars * 2 ? text : text[..(contextChars * 2)] + "...";
-
-        var start = Math.Max(0, index - contextChars);
-        var end = Math.Min(text.Length, index + query.Length + contextChars);
-        var snippet = text[start..end];
-        if (start > 0) snippet = "..." + snippet;
-        if (end < text.Length) snippet += "...";
-        return snippet;
-    }
 }

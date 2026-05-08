@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Humans.Application.Interfaces.Issues;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -27,6 +28,7 @@ public class IssuesController : HumansControllerBase
     private readonly IIssuesService _issues;
     private readonly IAuthorizationService _authorization;
     private readonly IProfileService _profiles;
+    private readonly IUserService _users;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ILogger<IssuesController> _logger;
 
@@ -34,6 +36,7 @@ public class IssuesController : HumansControllerBase
         IIssuesService issues,
         IAuthorizationService authorization,
         IProfileService profiles,
+        IUserService users,
         UserManager<User> userManager,
         IStringLocalizer<SharedResource> localizer,
         ILogger<IssuesController> logger)
@@ -42,6 +45,7 @@ public class IssuesController : HumansControllerBase
         _issues = issues;
         _authorization = authorization;
         _profiles = profiles;
+        _users = users;
         _localizer = localizer;
         _logger = logger;
     }
@@ -265,11 +269,19 @@ public class IssuesController : HumansControllerBase
 
     private async Task PopulateAssigneeOptionsAsync(IssueDetailViewModel vm)
     {
-        var humans = await _profiles.GetFilteredHumansAsync(null, "Active");
-        vm.AssigneeOptions = humans
-            .OrderBy(h => h.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .Select(h => new AssigneeOption { Id = h.UserId, DisplayName = h.DisplayName })
-            .ToList();
+        var activeIds = await _profiles.GetActiveApprovedUserIdsAsync();
+        if (activeIds.Count == 0)
+        {
+            vm.AssigneeOptions = new List<AssigneeOption>();
+        }
+        else
+        {
+            var users = await _users.GetByIdsAsync(activeIds);
+            vm.AssigneeOptions = users.Values
+                .OrderBy(u => u.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .Select(u => new AssigneeOption { Id = u.Id, DisplayName = u.DisplayName })
+                .ToList();
+        }
 
         // If the current assignee isn't in the active list (left org, etc.),
         // surface them anyway so the dropdown doesn't silently un-assign.

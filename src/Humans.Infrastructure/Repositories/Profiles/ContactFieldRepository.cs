@@ -35,6 +35,14 @@ public sealed class ContactFieldRepository : IContactFieldRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<ContactField>> GetAllAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.ContactFields
+            .AsNoTracking()
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<ContactField>> GetVisibleByProfileIdAsync(
         Guid profileId, IReadOnlyList<ContactFieldVisibility> allowedVisibilities,
         CancellationToken ct = default)

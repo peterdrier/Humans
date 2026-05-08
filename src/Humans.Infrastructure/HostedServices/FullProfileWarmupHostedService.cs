@@ -10,8 +10,7 @@ namespace Humans.Infrastructure.HostedServices;
 /// startup so bulk-read paths
 /// (<see cref="CachingProfileService.GetBirthdayProfilesAsync"/>,
 /// <see cref="CachingProfileService.GetApprovedProfilesWithLocationAsync"/>,
-/// <see cref="CachingProfileService.GetFilteredHumansAsync"/>,
-/// <see cref="CachingProfileService.SearchApprovedUsersAsync"/>) return
+/// <see cref="CachingProfileService.SearchProfilesAsync"/>) return
 /// complete results immediately after deploy rather than filling in lazily
 /// as each user is accessed.
 /// </summary>

@@ -45,36 +45,20 @@ public class AdminHumanListViewModel : PagedListViewModel
     {
     }
 
-    public List<AdminHumanViewModel> Humans { get; set; } = [];
+    /// <summary>
+    /// Page of admin humans to render via the canonical
+    /// <c>_HumanSearchResults</c> partial. Admin-specific fields
+    /// (<c>AdminEmail</c>, <c>MembershipStatus</c>, <c>CreatedAt</c>,
+    /// <c>LastLoginAt</c>, <c>AdminDetailUrl</c>) are pre-populated by the
+    /// controller so the partial can render them inline.
+    /// </summary>
+    public List<HumanSearchResultViewModel> Humans { get; set; } = [];
     public string? SearchTerm { get; set; }
     public string? StatusFilter { get; set; }
     public string SortBy { get; set; } = "name";
     public string SortDir { get; set; } = "asc";
 }
 
-public class AdminHumanViewModel
-{
-    public Guid Id { get; set; }
-    public string Email { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
-    public string? ProfilePictureUrl { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime? LastLoginAt { get; set; }
-    public string MembershipStatus { get; set; } = "None";
-    public bool HasProfile { get; set; }
-    public bool IsApproved { get; set; }
-
-    /// <summary>
-    /// Whether this human has a verified @nobodies.team email.
-    /// </summary>
-    public bool HasNobodiesTeamEmail { get; set; }
-
-    /// <summary>
-    /// Whether the @nobodies.team email is used as their notification target.
-    /// Only meaningful when HasNobodiesTeamEmail is true.
-    /// </summary>
-    public bool NobodiesTeamEmailIsPrimary { get; set; }
-}
 
 public class AdminHumanDetailViewModel
 {
