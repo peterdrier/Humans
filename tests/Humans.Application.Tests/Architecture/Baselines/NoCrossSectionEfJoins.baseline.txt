@@ -31,4 +31,5 @@ src/Humans.Infrastructure/Data/Configurations/Shifts/ShiftSignupConfiguration.cs
 src/Humans.Infrastructure/Data/Configurations/Shifts/VolunteerEventProfileConfiguration.cs:HasOne<User>(Shifts->Users)#1
 src/Humans.Infrastructure/Data/Configurations/Shifts/VolunteerTagPreferenceConfiguration.cs:HasOne<User>(Shifts->Users)#1
 src/Humans.Infrastructure/Data/Configurations/Teams/TeamJoinRequestConfiguration.cs:HasOne(=>.User)(Teams->Users)#1
+src/Humans.Infrastructure/Data/Configurations/Containers/ContainerConfiguration.cs:HasOne(=>.CampSeason)(Containers->Camps)#1
 src/Humans.Infrastructure/Data/Configurations/Teams/TeamMemberConfiguration.cs:HasOne(=>.User)(Teams->Users)#1
