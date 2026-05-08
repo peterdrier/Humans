@@ -68,8 +68,12 @@ public sealed class ContainerRepository : IContainerRepository
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        await ctx.Containers
-            .Where(c => c.Id == id)
-            .ExecuteDeleteAsync(ct);
+        var container = await ctx.Containers.FirstOrDefaultAsync(c => c.Id == id, ct);
+        if (container is null)
+        {
+            return;
+        }
+        ctx.Containers.Remove(container);
+        await ctx.SaveChangesAsync(ct);
     }
 }
