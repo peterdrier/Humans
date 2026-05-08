@@ -1024,6 +1024,7 @@
   <data name="OnboardingReview_BulkClearedNone" xml:space="preserve"><value>No se aprob&#xF3; ning&#xFA;n humano seleccionado.</value></data>
   <data name="OnboardingReview_BulkCleared" xml:space="preserve"><value>Se aprobaron {0} humanos seleccionados.</value></data>
   <data name="OnboardingReview_BulkClearedPartial" xml:space="preserve"><value>Se aprobaron {0} de {1} seleccionados — los dem&#xE1;s ya no son elegibles.</value></data>
+  <data name="OnboardingReview_BulkClearButton" xml:space="preserve"><value>Aprobar todos los seleccionados</value></data>
   <data name="OnboardingReview_Flagged" xml:space="preserve"><value>Humano marcado para revisi&#xF3;n adicional.</value></data>
   <data name="OnboardingReview_RejectButton" xml:space="preserve"><value>Rechazar registro</value></data>
   <data name="OnboardingReview_RejectReasonPlaceholder" xml:space="preserve"><value>Motivo del rechazo...</value></data>

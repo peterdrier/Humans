@@ -1019,6 +1019,7 @@
   <data name="OnboardingReview_BulkClearedNone" xml:space="preserve"><value>Keine ausgew&#xE4;hlten Humans wurden freigegeben.</value></data>
   <data name="OnboardingReview_BulkCleared" xml:space="preserve"><value>{0} ausgew&#xE4;hlte Humans freigegeben.</value></data>
   <data name="OnboardingReview_BulkClearedPartial" xml:space="preserve"><value>{0} von {1} ausgew&#xE4;hlten freigegeben — die anderen sind nicht mehr berechtigt.</value></data>
+  <data name="OnboardingReview_BulkClearButton" xml:space="preserve"><value>Alle ausgew&#xE4;hlten freigeben</value></data>
   <data name="OnboardingReview_Flagged" xml:space="preserve"><value>Human zur weiteren Pr&#xFC;fung markiert.</value></data>
   <data name="OnboardingReview_RejectButton" xml:space="preserve"><value>Anmeldung ablehnen</value></data>
   <data name="OnboardingReview_RejectReasonPlaceholder" xml:space="preserve"><value>Ablehnungsgrund...</value></data>

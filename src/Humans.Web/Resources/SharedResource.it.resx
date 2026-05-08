@@ -1019,6 +1019,7 @@
   <data name="OnboardingReview_BulkClearedNone" xml:space="preserve"><value>Nessun human selezionato &#xE8; stato approvato.</value></data>
   <data name="OnboardingReview_BulkCleared" xml:space="preserve"><value>Approvati {0} humans selezionati.</value></data>
   <data name="OnboardingReview_BulkClearedPartial" xml:space="preserve"><value>Approvati {0} di {1} selezionati — gli altri non sono pi&#xF9; idonei.</value></data>
+  <data name="OnboardingReview_BulkClearButton" xml:space="preserve"><value>Approva tutti i selezionati</value></data>
   <data name="OnboardingReview_Flagged" xml:space="preserve"><value>Human segnalato per ulteriore revisione.</value></data>
   <data name="OnboardingReview_RejectButton" xml:space="preserve"><value>Rifiuta registrazione</value></data>
   <data name="OnboardingReview_RejectReasonPlaceholder" xml:space="preserve"><value>Motivo del rifiuto...</value></data>
