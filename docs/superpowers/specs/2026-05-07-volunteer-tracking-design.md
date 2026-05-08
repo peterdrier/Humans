@@ -159,7 +159,7 @@ public sealed class SetCampSetupForm
 
 The action parses `Date` with `LocalDatePattern.Iso.Parse`, returns a `BadRequest` view-model error on parse failure, and forwards the parsed `LocalDate` to the service. View renders the input as `<input type="date">` whose value is `yyyy-MM-dd`.
 
-**Audit & redirect:** All mutations on the tracking controller write an `AuditLogService` entry. The audit log's `EntityType` field uses a new constant `AuditLogEntityTypes.VolunteerBuildStatus` (per `memory/code/no-magic-strings.md`), added to the existing constants file. New `AuditAction` enum values appended (per the enum's docstring "new values can be appended without migration"):
+**Audit & redirect:** All mutations on the tracking controller write an `AuditLogService` entry. The audit log's `EntityType` field uses `nameof(VolunteerBuildStatus)` (per `memory/code/no-magic-strings.md`; matches the project's existing pattern — see `RoleAssignmentService.cs` using `nameof(User)`). New `AuditAction` enum values appended (per the enum's docstring "new values can be appended without migration"):
 
 - `VolunteerCampSetupSet` — coordinator set/changed `BarrioSetupStartDate`
 - `VolunteerCampSetupCleared` — coordinator cleared `BarrioSetupStartDate`
@@ -402,7 +402,7 @@ Volunteer self-service flow:
 ### Auth & audit
 - [ ] `PolicyNames.VolunteerTrackingWrite` constant added; policy registered in `AuthorizationPolicyExtensions` as a pure role-list policy (`Admin`, `VolunteerCoordinator`). **Privilege grant pre-approved by Frank on 2026-05-08** (per `memory/process/privilege-changes-need-explicit-approval.md`).
 - [ ] `AuditAction` enum gains `VolunteerCampSetupSet`, `VolunteerCampSetupCleared`, `VolunteerDayBlocked`, `VolunteerDayUnblocked`, `VolunteerOwnBlockedDaysSaved`. Audit-log display strings added.
-- [ ] `AuditLogEntityTypes.VolunteerBuildStatus` constant added; controllers use it for the `EntityType` parameter (per `memory/code/no-magic-strings.md`).
+- [ ] Audit log calls use `nameof(VolunteerBuildStatus)` for `EntityType` (per `memory/code/no-magic-strings.md`; matches the project's existing pattern).
 
 ### Service & controller
 - [ ] Service reuses existing `IUserService.GetAllParticipationsForYearAsync(int year, ct)` and `IGeneralAvailabilityRepository.GetByEventAsync(eventSettingsId, ct)` — **no new methods** on `IUserService`, `IShiftSignupRepository`, `IShiftManagementRepository`, or `IGeneralAvailabilityRepository`. All new methods live on `IVolunteerTrackingRepository` (per `memory/architecture/interface-method-budget-ratchet.md`).
