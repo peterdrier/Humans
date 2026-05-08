@@ -25,6 +25,10 @@ A new sub-page of the Shift Dashboard that:
 - Detecting partial-day patterns (e.g. signed up for morning, missed afternoon). The unit of analysis is a day.
 - Surfacing volunteers who declared participation but have **neither** signups **nor** availability filled in. Without either signal we have nothing to compare against.
 
+## Privilege Grant — Approved 2026-05-08
+
+The `VolunteerTrackingWrite` policy adds a new capability: Admin and VolunteerCoordinator may mutate another volunteer's `BarrioSetupStartDate` and `BlockedDayOffsets` on the volunteer's behalf. Per `memory/process/privilege-changes-need-explicit-approval.md`, this is a privilege change that needs Peter's explicit per-change approval. **Approved by Peter on 2026-05-08.**
+
 ## User-facing scope
 
 - **Read access (tracking page):** existing `ShiftDashboardAccess` policy — admits Admin, NoInfoAdmin, VolunteerCoordinator. No new read policy; the page is just another `ShiftDashboardAccess` page (matches `/ShiftDashboard` itself).
@@ -83,8 +87,8 @@ Owned by Shifts.
 | Field | Type | Notes |
 |---|---|---|
 | `Id` | `Guid` | PK |
-| `UserId` | `Guid` | FK to `users` (typed-FK form, no nav, per project rules) |
-| `EventSettingsId` | `Guid` | FK to `event_settings` |
+| `UserId` | `Guid` | **Bare Guid column** — no `HasOne<User>()` / `WithMany()` / `HasForeignKey(...)`, no nav. Cross-section linkage per `memory/architecture/no-cross-section-ef-joins.md`. |
+| `EventSettingsId` | `Guid` | Same-section FK to `event_settings`. May use `HasOne<EventSettings>().WithMany().HasForeignKey(...)` since `EventSettings` is Shifts-owned. No nav property on the entity. |
 | `BarrioSetupStartDate` | `LocalDate?` | Calendar date the volunteer left for barrio set-up. Null = not yet on set-up. |
 | `BlockedDayOffsets` | `List<int>` (jsonb, default `[]`) | Day offsets the volunteer is unavailable (doctor, rest day, etc.). Always inside `[BuildStartOffset, 0)`. Stored sorted, deduped. Pattern matches `GeneralAvailability.AvailableDayOffsets`. |
 | `Notes` | `string?` (≤500, server-side `[StringLength(500)]`) | Optional free-text from the coordinator who set/cleared the camp set-up date. |
@@ -101,9 +105,11 @@ Owned by Shifts.
 ### Service & repository
 
 - `IVolunteerTrackingService` (in `Humans.Application.Services.Shifts`) owns gap-detection and camp-set-up mutations.
-- `IVolunteerTrackingRepository` (in `Humans.Application.Interfaces.Repositories`) owns I/O on `volunteer_build_statuses`.
-- The service depends on `IShiftSignupRepository` and `IShiftManagementRepository` for signup, shift, rota, and event-settings reads — never on `HumansDbContext` directly.
-- The service is auth-free per design rules; authorization lives on the controller.
+- `IVolunteerTrackingRepository` interface in `Humans.Application.Interfaces.Repositories`; implementation `VolunteerTrackingRepository` under `Humans.Infrastructure.Repositories.Shifts/`. Owns I/O on `volunteer_build_statuses`.
+- Service depends on `IShiftSignupRepository`, `IShiftManagementRepository`, `IGeneralAvailabilityRepository`, and `IUserService` for cross-cutting reads — never on `HumansDbContext` directly (per `memory/architecture/repository-required-for-db-access.md`). All four are existing interfaces; the spec adds **zero new methods** to any of them, leveraging methods that already exist (`GetByEventAsync`, `GetAllParticipationsForYearAsync`, `GetByIdsAsync`, the build-period signup query already needed by other dashboard pages). This sidesteps `memory/architecture/interface-method-budget-ratchet.md`: every new method this feature needs lives on the brand-new `IVolunteerTrackingRepository`, which is not on the budget list. If a needed method turns out not to exist on an existing interface, the implementation plan must surface it before adding so we can decide whether to expand the new repository or take a budget-ratchet hit.
+- Repository methods return **materialized `IReadOnlyList<...>`** (not `IQueryable`), per `memory/architecture/no-linq-at-db-layer.md`. Grouping, intersection, and per-day cell-state computation happen in the service in-memory.
+- Service is auth-free per design rules; authorization lives on the controller.
+- Service performs **no display sorting** (per `memory/architecture/display-sort-in-controllers.md`). It returns `VolunteerTrackingViewModel` with both cohorts as unsorted `IReadOnlyList<VolunteerHeatmapRow>`. Sorting is the **controller's** job (in `VolunteerTrackingController.Index`) before the partials render.
 
 ### `design-rules.md` §8
 
@@ -119,7 +125,7 @@ Add `volunteer_build_statuses` to the Shifts table list in the same commit as th
 
 ### Tracking-page controller (VC/Admin)
 
-`VolunteerTrackingController` (`Humans.Web.Controllers`).
+`VolunteerTrackingController` (`Humans.Web.Controllers`). Inherits `HumansControllerBase` (per `memory/code/controller-base-conventions.md`); use `GetCurrentUserAsync()`, `SetSuccess()`, `SetError()` for current-user resolution and TempData; never raw `_userManager` or `TempData[…]`.
 
 - Class-level: `[Authorize(Policy = PolicyNames.ShiftDashboardAccess)]`.
 - `GET /ShiftDashboard/VolunteerTracking` → `Index(hideNoGaps: bool = false, hideCampSetup: bool = false, hideUnbookedSection: bool = false)` — renders both the main heatmap and the declared-but-unbooked section.
@@ -153,7 +159,7 @@ public sealed class SetCampSetupForm
 
 The action parses `Date` with `LocalDatePattern.Iso.Parse`, returns a `BadRequest` view-model error on parse failure, and forwards the parsed `LocalDate` to the service. View renders the input as `<input type="date">` whose value is `yyyy-MM-dd`.
 
-**Audit & redirect:** All mutations on the tracking controller write an `AuditLogService` entry. New `AuditAction` enum values appended (per the enum's docstring "new values can be appended without migration"):
+**Audit & redirect:** All mutations on the tracking controller write an `AuditLogService` entry. The audit log's `EntityType` field uses a new constant `AuditLogEntityTypes.VolunteerBuildStatus` (per `memory/code/no-magic-strings.md`), added to the existing constants file. New `AuditAction` enum values appended (per the enum's docstring "new values can be appended without migration"):
 
 - `VolunteerCampSetupSet` — coordinator set/changed `BarrioSetupStartDate`
 - `VolunteerCampSetupCleared` — coordinator cleared `BarrioSetupStartDate`
@@ -171,6 +177,8 @@ The actions return `RedirectToAction(nameof(Index))` (tracking controller) or `R
   - Top panel renders the `_VolunteerHeatmap` partial (the main "fell off" cohort).
   - Bottom panel, beneath a divider with heading "Declared participating, not booked yet", renders the `_VolunteerUnbookedHeatmap` partial.
   - Footer: legend explaining all cell colors across both panels.
+- Both partials below `@inject IAuthorizationService AuthService` and resolve write-policy gates inline via `(await AuthService.AuthorizeAsync(User, PolicyNames.VolunteerTrackingWrite)).Succeeded` (per `memory/code/auth-in-views-self-resolving.md`). The partials are **not** handed pre-computed `CanWrite` bools on the view model.
+- All icons use `fa-solid fa-*` (per `memory/code/icons-fa6-only.md`); no `bi bi-*` (Bootstrap Icons not loaded — invisible). Existing dashboard partials' `bi-chevron-right` violations are not propagated.
 - **`Views/VolunteerTracking/_VolunteerHeatmap.cshtml`** — Razor partial (matches existing dashboard convention: `_CoverageHeatmap.cshtml`, `_DepartmentsTable.cshtml`). Renders the main cohort.
   - Sticky left column: avatar, name, gap-count badge, set-up date if any.
   - Cell color mapping:
@@ -181,7 +189,7 @@ The actions return `RedirectToAction(nameof(Index))` (tracking controller) or `R
     - Blue (`bg-primary`) — `CampSetup`
     - Grey (`bg-secondary-subtle`) — `Outside` or `Expected`
   - Cell click → popover with: date, signup rota name(s), and write-policy-gated controls: (a) `<input type="date">` + "Mark went to camp set-up from this day" submit, (b) "Block this day" / "Unblock this day" toggle (single click via `SetBlock` action).
-  - **Default sort:** gap count desc, tiebreak by `lastEligibleSignupOffset` asc, then display name asc. `lastEligibleSignupOffset` = MAX day-offset across the volunteer's Confirmed + Pending Build signups.
+  - **Default sort applied by `VolunteerTrackingController.Index` (not by the partial or the service):** gap count desc, tiebreak by `lastEligibleSignupOffset` asc, then display name asc. `lastEligibleSignupOffset` = MAX day-offset across the volunteer's Confirmed + Pending Build signups.
 - **`Views/VolunteerTracking/_VolunteerUnbookedHeatmap.cshtml`** — Razor partial. Renders the declared-but-unbooked cohort.
   - Same column layout as the main heatmap (build-period day offsets).
   - Sticky left column: avatar, name, "available days" count, "unbooked" count badge.
@@ -192,7 +200,7 @@ The actions return `RedirectToAction(nameof(Index))` (tracking controller) or `R
     - Blue (`bg-primary`) — `CampSetup`
     - Grey (`bg-secondary-subtle`) — `NotAvailable`
   - Cell click → popover with date, "available" badge if applicable, and write-policy-gated `SetBlock` + camp-set-up controls (same as main).
-  - **Default sort:** unbooked count desc, then `firstAvailableDayOffset` asc, then display name asc.
+  - **Default sort applied by the controller (not the partial or the service):** unbooked count desc, then `firstAvailableDayOffset` asc, then display name asc.
 - All strings localized via `Localizer["VolTrack_*"]`. Audit-log display strings for the new `AuditAction` values added to the audit-log resource keys.
 - **Entry point** on `Views/ShiftDashboard/Index.cshtml`: card or link immediately below the top-of-page header block, above the period filter row, gated on `ShiftDashboardAccess`.
 
@@ -238,7 +246,7 @@ In `VolunteerTrackingService.GetTrackingDataAsync(ct)` (returns both cohorts in 
      - else if `d < todayOffset` → cell `Gap`
      - else → cell `Expected`
    - `gapCount = count of Gap cells`.
-8. Sort: `gapCount` desc, then `lastEligibleSignupOffset` asc, then display name asc.
+8. Service returns rows in **arbitrary order** (typically the order they came out of the repository materialization). Display sorting (gap-count desc, `lastEligibleSignupOffset` asc, display name asc) happens in `VolunteerTrackingController.Index` after the service call returns, per `memory/architecture/display-sort-in-controllers.md`.
 
 ### Declared-but-unbooked cohort
 
@@ -254,7 +262,7 @@ In `VolunteerTrackingService.GetTrackingDataAsync(ct)` (returns both cohorts in 
       - else if `availabilitySet.Contains(d) && d >= todayOffset` → cell `AvailableExpected`
       - else → cell `NotAvailable`
     - `unbookedCount = count of AvailableUnbooked cells`.
-12. Sort: `unbookedCount` desc, then `firstAvailableDay` asc, then display name asc.
+12. Service returns rows in arbitrary order. Controller sorts by `unbookedCount` desc, then `firstAvailableDay` asc, then display name asc.
 
 ### Display data
 
@@ -381,14 +389,34 @@ Volunteer self-service flow:
 
 ## Acceptance
 
+### Schema & rules
 - [ ] New `volunteer_build_statuses` table created via EF migration with `BarrioSetupStartDate`, `BlockedDayOffsets` (jsonb), `Notes`, `SetByUserId`, `SetAt`.
+- [ ] EF migration is **100% auto-generated**, not hand-edited (per `memory/architecture/no-hand-edited-migrations.md`).
+- [ ] `HumansDbContextModelSnapshot.cs` is auto-generated by `dotnet ef migrations add ...`; not hand-edited.
+- [ ] **`.claude/agents/ef-migration-reviewer.md` run** before commit (per `memory/process/ef-migration-review-gate.md`); findings addressed.
+- [ ] `UserId` is a bare `Guid` column with no `HasOne<User>()`/nav (per `memory/architecture/no-cross-section-ef-joins.md`).
 - [ ] `design-rules.md` §8 lists the new table under Shifts (same commit as the migration).
-- [ ] `Shifts.md` section invariant doc adds a sub-section for the new entity (parallel to `GeneralAvailability`) describing its read-only relationship to existing Shifts data.
-- [ ] `PolicyNames.VolunteerTrackingWrite` constant added; policy registered in `AuthorizationPolicyExtensions` as a pure role-list policy (`Admin`, `VolunteerCoordinator`).
+- [ ] `docs/sections/Shifts.md` adds a sub-section for the new entity (parallel to `GeneralAvailability`) describing its read-only relationship to existing Shifts data.
+- [ ] `docs/features/47-volunteer-tracking.md` created with business context, user stories, data model, workflows, related-feature cross-links (per `memory/process/feature-spec-on-new-feature.md`); committed in the same PR as the implementation.
+
+### Auth & audit
+- [ ] `PolicyNames.VolunteerTrackingWrite` constant added; policy registered in `AuthorizationPolicyExtensions` as a pure role-list policy (`Admin`, `VolunteerCoordinator`). **Privilege grant pre-approved by Peter on 2026-05-08** (per `memory/process/privilege-changes-need-explicit-approval.md`).
 - [ ] `AuditAction` enum gains `VolunteerCampSetupSet`, `VolunteerCampSetupCleared`, `VolunteerDayBlocked`, `VolunteerDayUnblocked`, `VolunteerOwnBlockedDaysSaved`. Audit-log display strings added.
-- [ ] Service reuses existing `IUserService.GetAllParticipationsForYearAsync(int year, ct)` and `IGeneralAvailabilityRepository.GetByEventAsync(eventSettingsId, ct)` — no new `IUserService` or repository methods added.
-- [ ] `ShiftsController.SaveBlockedDays(List<int> dayOffsets)` added at `POST /Shifts/Mine/BlockedDays`. UI panel added to `Views/Shifts/Mine.cshtml`.
+- [ ] `AuditLogEntityTypes.VolunteerBuildStatus` constant added; controllers use it for the `EntityType` parameter (per `memory/code/no-magic-strings.md`).
+
+### Service & controller
+- [ ] Service reuses existing `IUserService.GetAllParticipationsForYearAsync(int year, ct)` and `IGeneralAvailabilityRepository.GetByEventAsync(eventSettingsId, ct)` — **no new methods** on `IUserService`, `IShiftSignupRepository`, `IShiftManagementRepository`, or `IGeneralAvailabilityRepository`. All new methods live on `IVolunteerTrackingRepository` (per `memory/architecture/interface-method-budget-ratchet.md`).
+- [ ] Service performs no display sorting; `VolunteerTrackingController.Index` sorts before render (per `memory/architecture/display-sort-in-controllers.md`).
+- [ ] Repository methods return materialized `IReadOnlyList<...>` (per `memory/architecture/no-linq-at-db-layer.md`).
+- [ ] Controllers inherit `HumansControllerBase`; use `GetCurrentUserAsync` / `SetSuccess` / `SetError`; no raw `_userManager` / `TempData[…]` (per `memory/code/controller-base-conventions.md`).
+- [ ] `ShiftsController.SaveBlockedDays(List<int> dayOffsets)` added at `POST /Shifts/Mine/BlockedDays`; UserId pulled from `ClaimsPrincipal`, never from form. UI panel added to `Views/Shifts/Mine.cshtml`.
 - [ ] `VolunteerTrackingController` actions: `Index`, `SetCampSetup`, `ClearCampSetup`, `SetBlock`.
+
+### Views
+- [ ] Partials inject `IAuthorizationService` and resolve write-policy gates inline (per `memory/code/auth-in-views-self-resolving.md`); no pre-computed `CanWrite` bools on view models.
+- [ ] All icons use `fa-solid fa-*`; no `bi bi-*` (per `memory/code/icons-fa6-only.md`).
+
+### Build & test
 - [ ] All unit, repository, controller, and E2E tests pass.
-- [ ] `dotnet build Humans.slnx -v quiet` clean. `dotnet test Humans.slnx -v quiet` clean.
+- [ ] `dotnet build Humans.slnx -v quiet` clean. `dotnet test Humans.slnx -v quiet` clean (per `memory/process/dotnet-verbosity-quiet.md`).
 - [ ] Localization resources updated for all `VolTrack_*` keys.
