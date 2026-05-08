@@ -95,7 +95,7 @@ No one reads audit entries anonymously. The `/Board/AuditLog` dashboard is gated
 - Services **cannot** call `IAuditLogService.LogAsync` inside an outer `DbContext` transaction expecting audit to roll back with it — audit uses its own context via `IDbContextFactory`.
 - Services **cannot** bypass `IAuditLogService` and write `audit_log` directly. `AuditLogRepository` is the only non-test file that touches `DbContext.AuditLogEntries`.
 - The log **cannot** be pruned by production admins. There is no retention/cleanup job — entries persist indefinitely.
-- Controllers **cannot** read `audit_log` (or `users`/`teams` for audit display) directly. The Board/Admin dashboard goes through `IAuditLogService.GetAuditLogPageAsync`, which composes the page (entries + user/team display lookups) inside the Audit Log section.
+- Controllers **cannot** read `audit_log` (or `users`/`teams` for audit display) directly. The Board/Admin dashboard goes through `IAuditViewerService.GetPageAsync`, and per-entity / per-user views go through the other `IAuditViewerService` overloads — the viewer service composes the page (entries + actor/subject/team display batching) inside the Audit Log section. `IAuditLogService` is the write side; the read+render path is `IAuditViewerService`.
 
 ## Triggers
 
@@ -118,7 +118,7 @@ No other cross-section writes from this section outward. Audit is a sink.
 
 ## Architecture
 
-**Owning services:** `AuditLogService`
+**Owning services:** `AuditLogService` (write), `AuditViewerService` (read+render). `AuditEventTextualizer` is the stateless verb-table helper backing both `RenderPlainText` (agent tool output, with viewer-GUID → "You" substitution) and `RenderStructured` (view-component HTML composition).
 **Owned tables:** `audit_log`
 **Status:** (A) Migrated (issue nobodies-collective/Humans#552).
 

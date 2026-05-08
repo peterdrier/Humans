@@ -199,7 +199,7 @@ public sealed record AuditEvent(
     }
 
     private static string FormatDate(Instant occurredAt) =>
-        occurredAt.ToDateTimeUtc().ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        occurredAt.InUtc().Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 }
 
 /// <summary>
