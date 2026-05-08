@@ -219,10 +219,40 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
             unbookedRows);
     }
 
-    public Task<SetCampSetupResult> SetCampSetupAsync(
+    public async Task<SetCampSetupResult> SetCampSetupAsync(
         Guid targetUserId, LocalDate barrioSetupStartDate, string? notes,
         Guid coordinatorUserId, CancellationToken ct = default)
-        => throw new NotSupportedException("Not yet implemented.");
+    {
+        var es = await _shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false)
+            ?? throw new InvalidOperationException("No active event");
+        var setupOffset = Period.Between(es.GateOpeningDate, barrioSetupStartDate, PeriodUnits.Days).Days;
+
+        if (setupOffset >= 0)
+        {
+            return new SetCampSetupResult(false, "VolTrack_Err_SetupAtOrAfterGateOpen");
+        }
+
+        var signups = await _trackingRepo.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
+        int? firstSignup = signups
+            .Where(s => s.UserId == targetUserId)
+            .Select(s => (int?)s.DayOffset)
+            .DefaultIfEmpty(null)
+            .Min();
+        if (firstSignup.HasValue && setupOffset < firstSignup.Value)
+        {
+            return new SetCampSetupResult(false, "VolTrack_Err_SetupBeforeFirstSignup");
+        }
+
+        await _trackingRepo.UpsertCampSetupAsync(
+            targetUserId,
+            es.Id,
+            barrioSetupStartDate,
+            notes,
+            coordinatorUserId,
+            _clock.GetCurrentInstant(),
+            ct).ConfigureAwait(false);
+        return new SetCampSetupResult(true, null);
+    }
 
     public Task ClearCampSetupAsync(
         Guid targetUserId, Guid coordinatorUserId, CancellationToken ct = default)

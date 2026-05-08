@@ -308,6 +308,68 @@ public class VolunteerTrackingServiceTests
         row.Cells.Single(c => c.DayOffset == -4).State.Should().Be(VolunteerCellState.AvailableUnbooked);
     }
 
+    [HumansFact]
+    public async Task SetCampSetupAsync_rejects_offset_at_or_after_zero()
+    {
+        var es = MakeEvent(buildStartOffset: -5);
+        var userId = Guid.NewGuid();
+        var sut = BuildSut(es);
+
+        var result = await sut.SetCampSetupAsync(
+            userId, es.GateOpeningDate, notes: null, coordinatorUserId: Guid.NewGuid());
+
+        result.Ok.Should().BeFalse();
+        result.ErrorMessageKey.Should().Be("VolTrack_Err_SetupAtOrAfterGateOpen");
+    }
+
+    [HumansFact]
+    public async Task SetCampSetupAsync_rejects_date_before_first_signup()
+    {
+        var es = MakeEvent(buildStartOffset: -10);
+        var userId = Guid.NewGuid();
+        var signups = new List<EligibleBuildSignup>
+        {
+            new(userId, -5, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -4, SignupStatus.Confirmed, "Cleanup"),
+        };
+        var sut = BuildSut(es, signups: signups);
+
+        // Setup date at offset -8 (before first signup at -5).
+        var result = await sut.SetCampSetupAsync(
+            userId, es.GateOpeningDate.PlusDays(-8), notes: null, coordinatorUserId: Guid.NewGuid());
+
+        result.Ok.Should().BeFalse();
+        result.ErrorMessageKey.Should().Be("VolTrack_Err_SetupBeforeFirstSignup");
+    }
+
+    [HumansFact]
+    public async Task SetCampSetupAsync_succeeds_inside_build_window()
+    {
+        var es = MakeEvent(buildStartOffset: -10);
+        var userId = Guid.NewGuid();
+        var coordinatorId = Guid.NewGuid();
+        var signups = new List<EligibleBuildSignup>
+        {
+            new(userId, -5, SignupStatus.Confirmed, "Cleanup"),
+        };
+        var trackingRepo = new FakeVolunteerTrackingRepository(signups, Array.Empty<VolunteerBuildStatus>());
+        var sut = BuildSut(es, signups: signups, trackingRepo: trackingRepo);
+        var setupDate = es.GateOpeningDate.PlusDays(-3);
+
+        var result = await sut.SetCampSetupAsync(userId, setupDate, "left for setup", coordinatorId);
+
+        result.Ok.Should().BeTrue();
+        result.ErrorMessageKey.Should().BeNull();
+        trackingRepo.UpsertCalls.Should().HaveCount(1);
+        var call = trackingRepo.UpsertCalls[0];
+        call.UserId.Should().Be(userId);
+        call.EventSettingsId.Should().Be(es.Id);
+        call.Date.Should().Be(setupDate);
+        call.Notes.Should().Be("left for setup");
+        call.SetByUserId.Should().Be(coordinatorId);
+        call.SetAt.Should().Be(TestNow);
+    }
+
     private static GeneralAvailability Availability(Guid userId, Guid eventSettingsId, IReadOnlyList<int> days)
         => new()
         {
