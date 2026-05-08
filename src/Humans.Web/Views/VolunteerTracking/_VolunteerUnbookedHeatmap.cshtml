@@ -1,0 +1,162 @@
+@model Humans.Web.Models.UnbookedHeatmapPartialModel
+@using Humans.Application.DTOs
+@using Humans.Web.Authorization
+@using Microsoft.AspNetCore.Authorization
+@using NodaTime
+@inject IAuthorizationService AuthService
+
+@{
+    var canWrite = (await AuthService.AuthorizeAsync(User, PolicyNames.VolunteerTrackingWrite)).Succeeded;
+
+    if (Model.Rows.Count == 0)
+    {
+        <div class="alert alert-info">
+            <i class="fa-solid fa-circle-info me-2"></i>@Localizer["VolTrack_Unbooked_Empty"]
+        </div>
+        return;
+    }
+
+    var dayOffsets = Enumerable.Range(Model.BuildStartOffset, -Model.BuildStartOffset).ToList();
+
+    static string CellClass(VolunteerCellState s) => s switch
+    {
+        VolunteerCellState.AvailableUnbooked => "bg-warning",
+        VolunteerCellState.AvailableExpected => "bg-warning-subtle",
+        VolunteerCellState.Blocked => "bg-warning-subtle vt-striped",
+        VolunteerCellState.CampSetup => "bg-primary",
+        VolunteerCellState.NotAvailable => "bg-secondary-subtle",
+        _ => "bg-light",
+    };
+
+    string CellAria(VolunteerCellState s) => s switch
+    {
+        VolunteerCellState.AvailableUnbooked => Localizer["VolTrack_State_AvailableUnbooked"].Value,
+        VolunteerCellState.AvailableExpected => Localizer["VolTrack_State_AvailableExpected"].Value,
+        VolunteerCellState.Blocked => Localizer["VolTrack_State_Blocked"].Value,
+        VolunteerCellState.CampSetup => Localizer["VolTrack_State_CampSetup"].Value,
+        VolunteerCellState.NotAvailable => Localizer["VolTrack_State_NotAvailable"].Value,
+        _ => "",
+    };
+
+    static bool IsAvailable(VolunteerCellState s) =>
+        s == VolunteerCellState.AvailableUnbooked || s == VolunteerCellState.AvailableExpected;
+}
+
+<div class="card mb-3">
+    <div class="card-header">
+        <strong><i class="fa-solid fa-table-cells me-2"></i>@Localizer["VolTrack_Unbooked_Title"]</strong>
+        <span class="text-muted small ms-2">@string.Format(Localizer["VolTrack_Unbooked_Subtitle_Count"].Value, Model.Rows.Count)</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-bordered align-middle mb-0 vt-heatmap-table">
+            <thead class="table-light">
+                <tr>
+                    <th class="vt-sticky-head">@Localizer["VolTrack_Col_Volunteer"]</th>
+                    @foreach (var d in dayOffsets)
+                    {
+                        var date = Model.GateOpeningDate.PlusDays(d);
+                        <th class="text-center" style="font-size: 0.7rem;">
+                            <div>@date.Day</div>
+                            <div class="text-muted">@date.ToString("MMM", null)</div>
+                        </th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Rows)
+                {
+                    Model.Users.TryGetValue(row.UserId, out var user);
+                    var displayName = user?.DisplayName ?? Localizer["VolTrack_UnknownUser"].Value;
+                    var availableDays = row.Cells.Count(c => IsAvailable(c.State));
+
+                    <tr>
+                        <td class="vt-sticky-cell">
+                            <div class="d-flex align-items-center gap-2">
+                                <vc:user-avatar user-id="@row.UserId" size="32" />
+                                <div class="flex-grow-1 min-w-0">
+                                    <div class="fw-semibold text-truncate" title="@displayName">@displayName</div>
+                                    <div class="small">
+                                        <span class="badge bg-secondary me-1" title="@Localizer["VolTrack_AvailableDaysTooltip"]">
+                                            <i class="fa-solid fa-calendar-check me-1"></i>@string.Format(Localizer["VolTrack_AvailableDaysBadge"].Value, availableDays)
+                                        </span>
+                                        @if (row.UnbookedCount > 0)
+                                        {
+                                            <span class="badge bg-warning text-dark" title="@Localizer["VolTrack_UnbookedTooltip"]">
+                                                @string.Format(Localizer["VolTrack_UnbookedBadge"].Value, row.UnbookedCount)
+                                            </span>
+                                        }
+                                        @if (row.BarrioSetupStartDate.HasValue)
+                                        {
+                                            <span class="badge bg-primary ms-1">
+                                                <i class="fa-solid fa-campground me-1"></i>@row.BarrioSetupStartDate.Value.ToDisplayDate()
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        @foreach (var cell in row.Cells)
+                        {
+                            var date = Model.GateOpeningDate.PlusDays(cell.DayOffset);
+                            var cellId = $"vt-pop-u-{row.UserId:N}-{cell.DayOffset}";
+                            var isBlocked = cell.State == VolunteerCellState.Blocked;
+                            <td class="vt-cell @CellClass(cell.State)" aria-label="@CellAria(cell.State)">
+                                <button type="button"
+                                        data-vt-popover
+                                        data-bs-toggle="popover"
+                                        data-bs-trigger="manual"
+                                        aria-describedby="@cellId"
+                                        title="@displayName · @date.ToDisplayDate()"
+                                        aria-label="@CellAria(cell.State)">
+                                    <span class="visually-hidden">@CellAria(cell.State)</span>
+                                </button>
+                                <div class="vt-popover-content d-none">
+                                    <div class="fw-semibold mb-1">@date.ToDisplayDate()</div>
+                                    @if (IsAvailable(cell.State))
+                                    {
+                                        <div class="mb-2">
+                                            <span class="badge bg-warning text-dark"><i class="fa-solid fa-circle-check me-1"></i>@Localizer["VolTrack_Popover_Available"]</span>
+                                        </div>
+                                    }
+                                    <div class="small text-muted mb-2">
+                                        <span class="badge @CellClass(cell.State)">@CellAria(cell.State)</span>
+                                    </div>
+                                    @if (canWrite)
+                                    {
+                                        <hr class="my-2" />
+                                        <form method="post" asp-action="SetCampSetup" class="mb-2">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="UserId" value="@row.UserId" />
+                                            <input type="hidden" name="Date" value="@date.ToString("yyyy-MM-dd", null)" />
+                                            <button type="submit" class="btn btn-sm btn-primary w-100">
+                                                <i class="fa-solid fa-campground me-1"></i>@Localizer["VolTrack_Popover_MarkCampSetup"]
+                                            </button>
+                                        </form>
+                                        <form method="post" asp-action="SetBlock">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="UserId" value="@row.UserId" />
+                                            <input type="hidden" name="DayOffset" value="@cell.DayOffset" />
+                                            <input type="hidden" name="Block" value="@(!isBlocked)" />
+                                            @if (isBlocked)
+                                            {
+                                                <button type="submit" class="btn btn-sm btn-outline-warning w-100">
+                                                    <i class="fa-solid fa-lock-open me-1"></i>@Localizer["VolTrack_Popover_Unblock"]
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
+                                                    <i class="fa-solid fa-ban me-1"></i>@Localizer["VolTrack_Popover_Block"]
+                                                </button>
+                                            }
+                                        </form>
+                                    }
+                                </div>
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
