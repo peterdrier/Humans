@@ -1802,6 +1802,17 @@ public class ProfileServiceTests : IDisposable
         private readonly Dictionary<Guid, Profile> _byUserId = new();
         private readonly Lock _gate = new();
 
+        // Forces both concurrent SaveProfileAsync callers to observe the empty
+        // state on their first GetByUserIdAsync before either Add fires.
+        // Without this the scheduler sometimes lets one task fully complete
+        // before the other starts, so the TOCTOU interleaving the test exists
+        // to validate never actually happens and the AddIfNotExists==false
+        // assertion flakes. Subsequent Gets (e.g. the race-loser's re-fetch)
+        // bypass the barrier.
+        private readonly TaskCompletionSource _bothInitialGetsArrived =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _initialGetArrivals;
+
         public int AddIfNotExistsTrueCount { get; private set; }
         public int AddIfNotExistsFalseCount { get; private set; }
         public int UpdateCallCount { get; private set; }
@@ -1810,11 +1821,17 @@ public class ProfileServiceTests : IDisposable
             get { lock (_gate) { return _byUserId.Values.ToList(); } }
         }
 
-        public Task<Profile?> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
+        public async Task<Profile?> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
         {
+            if (!_bothInitialGetsArrived.Task.IsCompleted)
+            {
+                if (Interlocked.Increment(ref _initialGetArrivals) >= 2)
+                    _bothInitialGetsArrived.TrySetResult();
+                await _bothInitialGetsArrived.Task.WaitAsync(ct).ConfigureAwait(false);
+            }
             lock (_gate)
             {
-                return Task.FromResult(_byUserId.TryGetValue(userId, out var p) ? Clone(p) : null);
+                return _byUserId.TryGetValue(userId, out var p) ? Clone(p) : null;
             }
         }
 
