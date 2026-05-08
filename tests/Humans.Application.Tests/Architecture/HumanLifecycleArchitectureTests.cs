@@ -89,7 +89,6 @@ public class HumanLifecycleArchitectureTests
     {
         var ctor = typeof(HumanLifecycleService).GetConstructors().Single();
         var forbidden = ctor.GetParameters()
-            .Where(p => p.ParameterType != typeof(NodaTime.IClock))
             .Where(p => !p.ParameterType.IsInterface)
             .ToList();
 
