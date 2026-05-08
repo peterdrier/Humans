@@ -125,7 +125,7 @@ Add `volunteer_build_statuses` to the Shifts table list in the same commit as th
 - `GET /ShiftDashboard/VolunteerTracking` → `Index(hideNoGaps: bool = false, hideCampSetup: bool = false, hideUnbookedSection: bool = false)` — renders both the main heatmap and the declared-but-unbooked section.
 - `POST /ShiftDashboard/VolunteerTracking/SetCampSetup` — sets or updates `BarrioSetupStartDate`. `[Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]`.
 - `POST /ShiftDashboard/VolunteerTracking/ClearCampSetup(userId)` — clears `BarrioSetupStartDate`. `[Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]`.
-- `POST /ShiftDashboard/VolunteerTracking/ToggleBlock` — adds or removes a single day offset on another user's `BlockedDayOffsets`. Form: `{ UserId, DayOffset, Block: bool }`. `[Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]`.
+- `POST /ShiftDashboard/VolunteerTracking/SetBlock` — adds or removes a single day offset on another user's `BlockedDayOffsets`. Form: `{ UserId, DayOffset, Block: bool }`. `[Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]`.
 
 ### Volunteer self-service controller (any active human)
 
@@ -180,7 +180,7 @@ The actions return `RedirectToAction(nameof(Index))` (tracking controller) or `R
     - Yellow (`bg-warning-subtle`) — `Blocked`
     - Blue (`bg-primary`) — `CampSetup`
     - Grey (`bg-secondary-subtle`) — `Outside` or `Expected`
-  - Cell click → popover with: date, signup rota name(s), and write-policy-gated controls: (a) `<input type="date">` + "Mark went to camp set-up from this day" submit, (b) "Block this day" / "Unblock this day" toggle (single click via `ToggleBlock` action).
+  - Cell click → popover with: date, signup rota name(s), and write-policy-gated controls: (a) `<input type="date">` + "Mark went to camp set-up from this day" submit, (b) "Block this day" / "Unblock this day" toggle (single click via `SetBlock` action).
   - **Default sort:** gap count desc, tiebreak by `lastEligibleSignupOffset` asc, then display name asc. `lastEligibleSignupOffset` = MAX day-offset across the volunteer's Confirmed + Pending Build signups.
 - **`Views/VolunteerTracking/_VolunteerUnbookedHeatmap.cshtml`** — Razor partial. Renders the declared-but-unbooked cohort.
   - Same column layout as the main heatmap (build-period day offsets).
@@ -191,7 +191,7 @@ The actions return `RedirectToAction(nameof(Index))` (tracking controller) or `R
     - Yellow with diagonal stripe / `bg-warning-subtle` + class — `Blocked` (visually distinct from `AvailableUnbooked`)
     - Blue (`bg-primary`) — `CampSetup`
     - Grey (`bg-secondary-subtle`) — `NotAvailable`
-  - Cell click → popover with date, "available" badge if applicable, and write-policy-gated `ToggleBlock` + camp-set-up controls (same as main).
+  - Cell click → popover with date, "available" badge if applicable, and write-policy-gated `SetBlock` + camp-set-up controls (same as main).
   - **Default sort:** unbooked count desc, then `firstAvailableDayOffset` asc, then display name asc.
 - All strings localized via `Localizer["VolTrack_*"]`. Audit-log display strings for the new `AuditAction` values added to the audit-log resource keys.
 - **Entry point** on `Views/ShiftDashboard/Index.cshtml`: card or link immediately below the top-of-page header block, above the period filter row, gated on `ShiftDashboardAccess`.
@@ -217,8 +217,8 @@ In `VolunteerTrackingService.GetTrackingDataAsync(ct)` (returns both cohorts in 
 2. Build-period day-offset range = `[es.BuildStartOffset, 0)`. Compute `todayOffset = OffsetFor(today)` where `today` is in the event timezone via `clock.GetCurrentInstant().InZone(es.TimeZoneId).Date`.
 3. Load eligible Build-period signups via the repository: rows where `Shift.DayOffset ∈ [BuildStartOffset, 0)`, the rota's period ∈ `{Build, All}`, and `ShiftSignup.Status ∈ {Confirmed, Pending}`. Group in-memory by `UserId` → `Dictionary<int, ShiftSignupStatus>`. Skip Refused, Bailed, Cancelled, NoShow.
 4. Load all `VolunteerBuildStatus` rows for the event into a `Dictionary<Guid, VolunteerBuildStatus>` keyed by `UserId`.
-5. Load all `GeneralAvailability` rows for the event via `IGeneralAvailabilityRepository.GetForEventAsync(eventSettingsId, ct)` into a `Dictionary<Guid, IReadOnlySet<int>>` of `UserId → AvailableDayOffsets`.
-6. Load participation statuses via a new method `Task<IReadOnlyDictionary<Guid, ParticipationStatus>> GetParticipationStatusesByYearAsync(int year, ct)` on `IUserService` (single read of `event_participations` for the year). Use this both to exclude `NotAttending` and to qualify the declared-but-unbooked cohort by `Ticketed`/`Attended`.
+5. Load all `GeneralAvailability` rows for the event via the existing `IGeneralAvailabilityRepository.GetByEventAsync(eventSettingsId, ct)` into a `Dictionary<Guid, IReadOnlySet<int>>` of `UserId → AvailableDayOffsets`.
+6. Load participations via the existing `IUserService.GetAllParticipationsForYearAsync(es.Year, ct)` (already used by `TicketQueryService` etc.). Project into an in-memory `IReadOnlyDictionary<Guid, ParticipationStatus>`. Use this map both to exclude `NotAttending` and to qualify the declared-but-unbooked cohort by `Ticketed`/`Attended`. **No new `IUserService` method is added.**
 
 ### Main heatmap (signups cohort)
 
@@ -268,7 +268,7 @@ The repository layer scopes the query to the active event's Build-period rotas t
 - **Volunteer declared `NotAttending`** → excluded from both cohorts.
 - **Volunteer has no eligible Build-period signups and no availability** → excluded from both cohorts.
 - **Volunteer has signups but no availability** → main cohort only.
-- **Volunteer has availability but no signups, declared participating** → declared-but-unbooked cohort only.
+- **Volunteer has availability with at least one day inside `[BuildStartOffset, 0)`, no signups, declared participating** → declared-but-unbooked cohort only. Volunteers whose availability lies entirely outside the build window are excluded (no in-build days to render).
 - **Volunteer has availability but no signups, but `EventParticipation` not `Ticketed`/`Attended`** → excluded from both cohorts. Without a positive participation signal we don't pull them into either view.
 
 ### Camp set-up validation
@@ -330,19 +330,19 @@ Declared-but-unbooked cohort:
 - Upsert updates `BarrioSetupStartDate` + `SetByUserId` + `SetAt` + `Notes` on second set.
 - `ClearCampSetup` nulls `BarrioSetupStartDate`/`Notes` but preserves the row (and any `BlockedDayOffsets`).
 - `SaveBlockedDays` replaces the list (sorted, deduped) without touching `BarrioSetupStartDate`.
-- `ToggleBlock(add)` adds the offset; idempotent if already present.
-- `ToggleBlock(remove)` removes the offset; idempotent if absent.
+- `SetBlock(add)` adds the offset; idempotent if already present.
+- `SetBlock(remove)` removes the offset; idempotent if absent.
 - Row exists with `BarrioSetupStartDate = null` and empty `BlockedDayOffsets` → algorithm treats user as never marked (regression: empty-row trap).
 
 ### Controller tests — `tests/Humans.Web.Tests/Controllers/VolunteerTrackingControllerTests.cs`
 
 - Anonymous → 401/redirect.
 - Regular user → 403 on the page.
-- NoInfoAdmin: `GET Index` 200; `POST SetCampSetup` / `ClearCampSetup` / `ToggleBlock` all 403.
+- NoInfoAdmin: `GET Index` 200; `POST SetCampSetup` / `ClearCampSetup` / `SetBlock` all 403.
 - VolunteerCoordinator: all three POSTs succeed (302 to Index with success TempData).
 - Admin: all three POSTs succeed.
 - Audit log entry written on each successful mutation (including the per-offset `VolunteerDayBlocked` / `VolunteerDayUnblocked`).
-- `ToggleBlock` rejects offset outside `[BuildStartOffset, 0)` with BadRequest.
+- `SetBlock` rejects offset outside `[BuildStartOffset, 0)` with BadRequest.
 
 ### Controller tests — `tests/Humans.Web.Tests/Controllers/ShiftsControllerTests.cs` (additions for `SaveBlockedDays`)
 
@@ -386,9 +386,9 @@ Volunteer self-service flow:
 - [ ] `Shifts.md` section invariant doc adds a sub-section for the new entity (parallel to `GeneralAvailability`) describing its read-only relationship to existing Shifts data.
 - [ ] `PolicyNames.VolunteerTrackingWrite` constant added; policy registered in `AuthorizationPolicyExtensions` as a pure role-list policy (`Admin`, `VolunteerCoordinator`).
 - [ ] `AuditAction` enum gains `VolunteerCampSetupSet`, `VolunteerCampSetupCleared`, `VolunteerDayBlocked`, `VolunteerDayUnblocked`, `VolunteerOwnBlockedDaysSaved`. Audit-log display strings added.
-- [ ] `IUserService.GetParticipationStatusesByYearAsync(int year, ct)` added (returns `IReadOnlyDictionary<Guid, ParticipationStatus>`).
+- [ ] Service reuses existing `IUserService.GetAllParticipationsForYearAsync(int year, ct)` and `IGeneralAvailabilityRepository.GetByEventAsync(eventSettingsId, ct)` — no new `IUserService` or repository methods added.
 - [ ] `ShiftsController.SaveBlockedDays(List<int> dayOffsets)` added at `POST /Shifts/Mine/BlockedDays`. UI panel added to `Views/Shifts/Mine.cshtml`.
-- [ ] `VolunteerTrackingController` actions: `Index`, `SetCampSetup`, `ClearCampSetup`, `ToggleBlock`.
+- [ ] `VolunteerTrackingController` actions: `Index`, `SetCampSetup`, `ClearCampSetup`, `SetBlock`.
 - [ ] All unit, repository, controller, and E2E tests pass.
 - [ ] `dotnet build Humans.slnx -v quiet` clean. `dotnet test Humans.slnx -v quiet` clean.
 - [ ] Localization resources updated for all `VolTrack_*` keys.
