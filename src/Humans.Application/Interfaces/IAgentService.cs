@@ -20,7 +20,7 @@ public interface IAgentService : IUserDataContributor
 
     /// <summary>Admin-only listing of all conversations across users (for /Agent/Admin/Conversations).</summary>
     Task<IReadOnlyList<Humans.Domain.Entities.AgentConversation>> ListAllConversationsForAdminAsync(
-        bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
+        bool refusalsOnly, Guid? userId, int take, int skip,
         CancellationToken cancellationToken);
 
     /// <summary>Admin-only fetch of a single conversation with messages eagerly loaded.</summary>
