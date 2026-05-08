@@ -370,6 +370,19 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns UserEmail rows whose UserId points to a non-existent or tombstoned
+    /// User (User row absent OR <c>MergedToUserId</c> set). Used by the EmailProblems
+    /// admin scan. At ~500 users, full-table scan is trivial.
+    /// </summary>
+    Task<IReadOnlyList<UserEmail>> GetOrphanUserEmailsAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes a single UserEmail row by id. Used by EmailProblems orphan cleanup.
+    /// Idempotent — returns false if the row no longer exists.
+    /// </summary>
+    Task<bool> DeleteByIdAsync(Guid emailId, CancellationToken ct = default);
+
+    /// <summary>
     /// Find-or-create. Attaches the OAuth identity (<paramref name="provider"/>,
     /// <paramref name="providerKey"/>) to the user's email row matching
     /// <paramref name="email"/> (Ordinal/case-insensitive); creates a new

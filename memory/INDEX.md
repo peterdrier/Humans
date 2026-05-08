@@ -84,6 +84,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`pr-codex-thread-replies`](process/pr-codex-thread-replies.md) — reply per Codex inline thread (`POST /pulls/{n}/comments/{id}/replies`), not as top-level PR comment
 - [`pr-done-means-codex-clean`](process/pr-done-means-codex-clean.md) — a PR isn't "done" until Codex returns no findings; pushed+green is mid-state
 - [`pr-no-ping-reviewers`](process/pr-no-ping-reviewers.md) — don't `@codex review` after pushes; quota is limited, Claude reviews on push automatically
+- [`pr-resolve-declined-when-authorized`](process/pr-resolve-declined-when-authorized.md) — in /pr-fix, "decline because Peter authorized" → resolve the thread; leave-open is for technically-wrong findings only
 - [`pr-review-both-repos`](process/pr-review-both-repos.md) — pull comments from BOTH `peterdrier/Humans` AND `nobodies-collective/Humans`; use `/pulls/{n}/comments` for inline
 - [`privilege-changes-need-explicit-approval`](process/privilege-changes-need-explicit-approval.md) — HARD RULE. Any change granting users new/elevated capability (Drive role bumps, auth-scope additions, role grants, admin flags, default permission tiers, CORS/allowlist expansions) needs Peter's explicit per-change approval before implementation, regardless of issue tier or sprint plan
 - [`rules-maintenance`](process/rules-maintenance.md) — when a new project rule surfaces, capture as `memory/<bucket>/<name>.md` + INDEX entry in the same commit. Not external memory.

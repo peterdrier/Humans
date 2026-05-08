@@ -14,16 +14,16 @@ namespace Humans.Web.Controllers;
 [Route("Board")]
 public class BoardController : HumansControllerBase
 {
-    private readonly IAuditLogService _auditLogService;
+    private readonly IAuditViewerService _auditViewer;
     private readonly IAdminDashboardService _adminDashboardService;
 
     public BoardController(
-        IAuditLogService auditLogService,
+        IAuditViewerService auditViewer,
         IAdminDashboardService adminDashboardService,
         UserManager<User> userManager)
         : base(userManager)
     {
-        _auditLogService = auditLogService;
+        _auditViewer = auditViewer;
         _adminDashboardService = adminDashboardService;
     }
 
@@ -31,7 +31,7 @@ public class BoardController : HumansControllerBase
     public async Task<IActionResult> Index()
     {
         var dashboardData = await _adminDashboardService.GetAdminDashboardAsync();
-        var recentEntries = await _auditLogService.GetRecentAsync(15);
+        var recentEvents = await _auditViewer.GetRecentAsync(15);
 
         var viewModel = new BoardDashboardViewModel
         {
@@ -43,7 +43,7 @@ public class BoardController : HumansControllerBase
             Suspended = dashboardData.Suspended,
             PendingDeletion = dashboardData.PendingDeletion,
             PendingApplications = dashboardData.PendingApplications,
-            RecentActivity = recentEntries.Select(e => new RecentActivityViewModel
+            RecentActivity = recentEvents.Select(e => new RecentActivityViewModel
             {
                 Description = e.Description,
                 Timestamp = e.OccurredAt.ToDateTimeUtc(),
@@ -66,31 +66,16 @@ public class BoardController : HumansControllerBase
     public async Task<IActionResult> AuditLog(string? filter, int page = 1)
     {
         var pageSize = 50;
-        var result = await _auditLogService.GetAuditLogPageAsync(filter, page, pageSize);
-
-        var entries = result.Items.Select(e => new AuditLogEntryViewModel
-        {
-            Action = e.Action,
-            Description = e.Description,
-            OccurredAt = e.OccurredAt.ToDateTimeUtc(),
-            ActorUserId = e.ActorUserId,
-            IsSystemAction = e.ActorUserId is null,
-            EntityType = e.EntityType,
-            EntityId = e.EntityId,
-            RelatedEntityType = e.RelatedEntityType,
-            RelatedEntityId = e.RelatedEntityId
-        }).ToList();
+        var result = await _auditViewer.GetPageAsync(filter, page, pageSize);
 
         var viewModel = new AuditLogListViewModel
         {
-            Entries = entries,
+            Events = result.Items,
             ActionFilter = filter,
             AnomalyCount = result.AnomalyCount,
             TotalCount = result.TotalCount,
             PageNumber = page,
-            PageSize = pageSize,
-            UserDisplayNames = result.UserDisplayNames,
-            TeamNames = result.TeamNames
+            PageSize = pageSize
         };
 
         return View("~/Views/Shared/AuditLog.cshtml", viewModel);

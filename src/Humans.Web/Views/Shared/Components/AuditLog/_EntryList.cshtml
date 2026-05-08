@@ -1,14 +1,10 @@
 @model Humans.Web.ViewComponents.AuditLogComponentViewModel
 
 <ul class="list-group list-group-flush">
-    @foreach (var entry in Model.Entries)
+    @foreach (var ev in Model.Events)
     {
         <li class="list-group-item py-2">
-            @await Html.PartialAsync("Components/AuditLog/_Entry", entry, new ViewDataDictionary(ViewData)
-            {
-                ["UserDisplayNames"] = Model.UserDisplayNames,
-                ["TeamNames"] = Model.TeamNames
-            })
+            @await Html.PartialAsync("Components/AuditLog/_Entry", ev)
         </li>
     }
 </ul>

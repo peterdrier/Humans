@@ -20,7 +20,7 @@ As a **signed-in human** I want to **review my previous agent conversations** so
 
 **Acceptance:**
 - `GET /Agent/Conversations` lists the user's conversations with `StartedAt`, `LastMessageAt`, `MessageCount`.
-- `GET /Agent/Conversations/{id}` shows the transcript. No user-initiated delete endpoint — retention purges old conversations on the daily schedule.
+- `GET /Agent/Conversation/{id}` (singular) shows the transcript. No user-initiated delete endpoint — retention purges old conversations on the daily schedule. The plural-form `/Agent/Conversations/{id}` is the admin diagnostic view (see US-40.3).
 
 ### US-40.3 — Admin reviews agent behavior
 As an **Admin** I want to **see all agent conversations and refusals** so that **I can spot-check quality and feed corrections back into docs**.

@@ -218,23 +218,6 @@ public sealed class ProfileRepository : IProfileRepository
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<bool> AddIfNotExistsByUserIdAsync(Profile profile, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        ctx.Profiles.Add(profile);
-        try
-        {
-            await ctx.SaveChangesAsync(ct);
-            return true;
-        }
-        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
-        {
-            // Concurrent insert lost the race against the profiles.UserId
-            // unique index — treat as idempotent success per the method contract.
-            return false;
-        }
-    }
-
     public async Task UpdateAsync(Profile profile, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

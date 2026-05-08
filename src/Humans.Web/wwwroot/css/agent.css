@@ -41,3 +41,80 @@
         max-width: calc(100vw - 32px);
     }
 }
+
+/* Transcript view (/Agent/Conversation/{id}) — issue #632. Styled to match
+   the live chat panel above so the user sees a familiar bubble layout. */
+.agent-transcript {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    max-width: 800px;
+}
+.agent-transcript-row {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0.5rem;
+}
+.agent-transcript-row-user {
+    align-items: flex-end;
+}
+.agent-transcript-row-assistant {
+    align-items: flex-start;
+}
+.agent-transcript .agent-msg {
+    max-width: 90%;
+}
+.agent-transcript .agent-user-content p:last-child,
+.agent-transcript .agent-assistant-content p:last-child {
+    margin-bottom: 0;
+}
+/* Refusal bubbles dim into the page so the user can tell at a glance which
+   turns the agent declined to answer. */
+.agent-msg-refusal {
+    background: #f8f8f8 !important;
+    border: 1px dashed #ccc;
+    color: #555;
+}
+.agent-handoff {
+    border-top: 1px dotted #ccc;
+    padding-top: 0.4rem;
+    color: #444;
+}
+.agent-tool-calls summary {
+    cursor: pointer;
+}
+.agent-tool-calls-list {
+    list-style: none;
+    padding-left: 0.25rem;
+}
+.agent-tool-calls-list li {
+    margin-top: 0.25rem;
+}
+.agent-tool-args {
+    background: #fafafa;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    padding: 0.25rem 0.4rem;
+    margin-top: 0.15rem;
+    margin-bottom: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.8em;
+}
+.agent-msg-time {
+    margin-top: 0.15rem;
+    padding: 0 0.5rem;
+}
+.agent-context-card > summary {
+    cursor: pointer;
+    padding: 0.4rem 0;
+}
+.agent-context-body {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 0.5rem 0.75rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin-bottom: 0;
+}

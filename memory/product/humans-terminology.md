@@ -15,3 +15,4 @@ It applies across all locales (the word "humans" is kept in English even in es/d
 - Even in es/de/fr/it `.resx` files, "humans" stays in English; don't translate to "miembros", "freiwillige", etc.
 - Internal code (`User`, `IUserService`, `humans` table — wait, the table IS named for users; entity is `User`) is fine as-is.
 - "Volunteer" is OK only when specifically referring to the **Volunteer** role/team (the Spanish `Volunteers` team, the volunteer-vs-Colaborador-vs-Asociado tier distinction).
+- "Member" / "Camp member" is OK in the **Camps** context — `CampMember` is a real domain concept (a person's active participation in a specific camp/year), and "Camp Members" reads accurately for the per-camp roster UI. Don't apply the humans-replacement here.

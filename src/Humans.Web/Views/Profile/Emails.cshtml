@@ -58,6 +58,23 @@
             </p>
         }
 
+        @if (Model.LegacyIdentityEmailColumn is not null)
+        {
+            <div class="alert alert-secondary d-flex align-items-start mb-3 small">
+                <i class="fa-solid fa-database me-2 mt-1"></i>
+                <div>
+                    <strong>Legacy <code>User.Email</code> column:</strong>
+                    <code>@Model.LegacyIdentityEmailColumn</code>
+                    <div class="text-muted">
+                        Raw AspNetIdentity column value (Admin-only diagnostic). The
+                        runtime <code>User.Email</code> override returns the verified
+                        primary <code>UserEmail</code> row when present, falling back
+                        to this column when not.
+                    </div>
+                </div>
+            </div>
+        }
+
         <vc:temp-data-alerts />
 
         @if (!Model.IsAdminContext && Model.Emails.Any(e => e.IsPendingVerification))

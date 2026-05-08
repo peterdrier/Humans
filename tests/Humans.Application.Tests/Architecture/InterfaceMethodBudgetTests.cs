@@ -154,7 +154,15 @@ public class InterfaceMethodBudgetTests
         // both happen through IUserMerge.ReassignAsync on UserService;
         // DuplicateAccountService routes the logins move directly via
         // IUserRepository (it doesn't run the full IUserMerge fan-out).
-        [typeof(IUserService)] = 29,
+        // 29→30: issue-660 EmailProblems case 8. Added GetUsersWithLoginsButNoEmailsAsync
+        // to surface ghost AspNetUserLogins rows (auth artifacts left behind by old
+        // account flows). Authorized by repo owner — no expiable substitute exists
+        // at the service surface (UserLogins is auth-internal).
+        // 30→31: issue-660 EmailProblems case 8 cleanup. Added
+        // DeleteAllExternalLoginsForUserAsync — service surface for the admin
+        // "Delete ghost logins" action. Auth-table cleanup; no expiable substitute
+        // (only the User section can write to AspNetUserLogins).
+        [typeof(IUserService)] = 31,
     };
 
     [HumansTheory]

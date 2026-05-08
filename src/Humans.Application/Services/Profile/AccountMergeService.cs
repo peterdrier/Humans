@@ -95,19 +95,60 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
     {
         var request = await _mergeRepository.GetByIdAsync(requestId, ct)
             ?? throw new InvalidOperationException("Merge request not found.");
-
         if (request.Status != AccountMergeRequestStatus.Pending)
-        {
             throw new InvalidOperationException("Merge request is not pending.");
-        }
-
-        var now = _clock.GetCurrentInstant();
-        var mergedFromId = request.SourceUserId;
-        var mergedToId = request.TargetUserId;
 
         _logger.LogInformation(
             "Admin {AdminId} accepting merge request {RequestId}: folding {SourceUserId} into {TargetUserId}",
-            adminUserId, requestId, mergedFromId, mergedToId);
+            adminUserId, requestId, request.SourceUserId, request.TargetUserId);
+
+        var audit = new AuditEntry(
+            AuditAction.AccountMergeAccepted,
+            nameof(AccountMergeRequest), request.Id,
+            $"Folded source {request.SourceUserId} into target {request.TargetUserId} — email: {request.Email}",
+            RelatedEntityId: request.TargetUserId,
+            RelatedEntityType: nameof(User));
+
+        await FoldAsync(request.SourceUserId, request.TargetUserId, adminUserId, audit, ct);
+
+        var now = _clock.GetCurrentInstant();
+        using (var scope = new TransactionScope(
+            TransactionScopeOption.Required,
+            new TransactionOptions
+            {
+                IsolationLevel = IsolationLevel.ReadCommitted
+            },
+            TransactionScopeAsyncFlowOption.Enabled))
+        {
+            var verified = await _userEmailRepository.MarkVerifiedAsync(request.PendingEmailId, now, ct);
+            if (!verified)
+                throw new InvalidOperationException(
+                    $"Pending email {request.PendingEmailId} no longer exists. Cannot complete merge.");
+
+            request.Status = AccountMergeRequestStatus.Accepted;
+            request.ResolvedAt = now;
+            request.ResolvedByUserId = adminUserId;
+            request.AdminNotes = notes;
+            await _mergeRepository.UpdateAsync(request, ct);
+
+            scope.Complete();
+        }
+    }
+
+    private sealed record AuditEntry(
+        AuditAction Action,
+        string EntityType,
+        Guid EntityId,
+        string Description,
+        Guid? RelatedEntityId = null,
+        string? RelatedEntityType = null);
+
+    private async Task FoldAsync(
+        Guid sourceUserId, Guid targetUserId,
+        Guid adminUserId, AuditEntry audit,
+        CancellationToken ct)
+    {
+        var now = _clock.GetCurrentInstant();
 
         try
         {
@@ -120,70 +161,52 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
             // continuations.
             using (var scope = new TransactionScope(
                 TransactionScopeOption.Required,
-                new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+                new TransactionOptions
+                {
+                    IsolationLevel = IsolationLevel.ReadCommitted
+                },
                 TransactionScopeAsyncFlowOption.Enabled))
             {
-                // 1. Fan out across every section that owns user-keyed rows.
-                //    Each IUserMerge impl re-FKs its section's data from
-                //    source → target. Order doesn't matter for correctness
-                //    inside the same transaction.
+                // Fan out across every section that owns user-keyed rows.
+                // Each IUserMerge impl re-FKs its section's data from
+                // source → target. Order doesn't matter for correctness
+                // inside the same transaction.
                 foreach (var merger in _userMerges)
-                {
-                    await merger.ReassignAsync(mergedFromId, mergedToId, adminUserId, now, ct);
-                }
+                    await merger.ReassignAsync(sourceUserId, targetUserId, adminUserId, now, ct);
 
-                // 2. Verify the pending email on the target. The UserEmail
-                //    section's IUserMerge.ReassignAsync above moved any
-                //    non-conflicting source emails over; the pending row was
-                //    created on the target during request submission and
-                //    still needs to flip to verified.
-                var verified = await _userEmailRepository.MarkVerifiedAsync(request.PendingEmailId, now, ct);
-                if (!verified)
-                {
-                    throw new InvalidOperationException(
-                        $"Pending email {request.PendingEmailId} no longer exists. Cannot complete merge.");
-                }
+                // Tombstone the source User row: sets MergedToUserId,
+                // MergedAt, and locks out login. Does NOT wipe data —
+                // the source row stays as a redirect for chain-follow
+                // reads (audit, consent, budget).
+                await _userService.AnonymizeForMergeAsync(sourceUserId, targetUserId, now, ct);
 
-                // 3. Tombstone the source User row: sets MergedToUserId,
-                //    MergedAt, and locks out login. Does NOT wipe data —
-                //    the source row stays as a redirect for chain-follow
-                //    reads (audit, consent, budget).
-                await _userService.AnonymizeForMergeAsync(mergedFromId, mergedToId, now, ct);
-
-                // 4. Mark the merge request as accepted.
-                request.Status = AccountMergeRequestStatus.Accepted;
-                request.ResolvedAt = now;
-                request.ResolvedByUserId = adminUserId;
-                request.AdminNotes = notes;
-                await _mergeRepository.UpdateAsync(request, ct);
-
-                // 5. Audit inside the same scope so a rolled-back merge
-                //    doesn't leave a ghost audit row.
+                // Audit inside the same scope so a rolled-back fold
+                // doesn't leave a ghost audit row.
                 await _auditLogService.LogAsync(
-                    AuditAction.AccountMergeAccepted,
-                    nameof(AccountMergeRequest), request.Id,
-                    $"Folded source {mergedFromId} into target {mergedToId} — email: {request.Email}",
+                    audit.Action,
+                    audit.EntityType, audit.EntityId,
+                    audit.Description,
                     adminUserId,
-                    relatedEntityId: mergedToId, relatedEntityType: nameof(User));
+                    relatedEntityId: audit.RelatedEntityId,
+                    relatedEntityType: audit.RelatedEntityType);
 
                 scope.Complete();
             }
 
             // Cache invalidation runs AFTER the transaction commits so
             // cache-aside readers don't repopulate from rows that might
-            // still roll back. Each owning section service strips its own
-            // in-Reassign invalidator calls and we re-issue them here.
-            // FullProfile eviction for both users is handled by the
-            // CachingProfileService decorator inside the fan-out (covers
-            // Profile / UserEmail / ContactField / CommunicationPreference,
-            // all Profile-section). Claims + nav-badge cover RoleAssignment.
-            // Notification badge counts cover NotificationRecipient. Team
-            // caches cover the TeamService.ReassignAsync writes.
-            _teamService.RemoveMemberFromAllTeamsCache(mergedFromId);
-            _roleAssignmentService.InvalidateClaimsCacheForUser(mergedFromId);
-            _roleAssignmentService.InvalidateClaimsCacheForUser(mergedToId);
+            // still roll back. FullProfile eviction for both users is
+            // handled by the CachingProfileService decorator inside the
+            // fan-out (covers Profile / UserEmail / ContactField /
+            // CommunicationPreference, all Profile-section). Claims +
+            // nav-badge cover RoleAssignment. Notification badge counts
+            // cover NotificationRecipient. Team caches cover the
+            // TeamService.ReassignAsync writes.
+            _teamService.RemoveMemberFromAllTeamsCache(sourceUserId);
+            _roleAssignmentService.InvalidateClaimsCacheForUser(sourceUserId);
+            _roleAssignmentService.InvalidateClaimsCacheForUser(targetUserId);
             _roleAssignmentService.InvalidateNavBadgeCache();
-            _notificationService.InvalidateBadgeCachesForUsers([mergedFromId, mergedToId]);
+            _notificationService.InvalidateBadgeCachesForUsers([sourceUserId, targetUserId]);
         }
         finally
         {
@@ -279,4 +302,41 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
 
     public Task CreateAsync(AccountMergeRequest request, CancellationToken ct = default) =>
         _mergeRepository.AddAsync(request, ct);
+
+    public async Task AdminMergeAsync(
+        Guid sourceUserId, Guid targetUserId,
+        Guid adminUserId, string? notes = null,
+        CancellationToken ct = default)
+    {
+        if (sourceUserId == targetUserId)
+            throw new InvalidOperationException("Source and target users are the same.");
+
+        var source = await _userService.GetByIdAsync(sourceUserId, ct)
+            ?? throw new InvalidOperationException($"Source user {sourceUserId} not found.");
+        var target = await _userService.GetByIdAsync(targetUserId, ct)
+            ?? throw new InvalidOperationException($"Target user {targetUserId} not found.");
+
+        if (source.MergedToUserId is not null)
+            throw new InvalidOperationException(
+                $"Source user {sourceUserId} is already tombstoned (merged into {source.MergedToUserId}).");
+
+        if (target.MergedToUserId is not null)
+            throw new InvalidOperationException(
+                $"Target user {targetUserId} is already tombstoned.");
+
+        _logger.LogInformation(
+            "Admin {AdminId} initiated direct merge: folding {SourceUserId} into {TargetUserId}",
+            adminUserId, sourceUserId, targetUserId);
+
+        var description = $"Admin-initiated via EmailProblems: folded source {sourceUserId} into target {targetUserId}. Notes: {notes ?? "(none)"}";
+
+        var audit = new AuditEntry(
+            AuditAction.AccountMergeAccepted,
+            nameof(User), sourceUserId,
+            description,
+            RelatedEntityId: targetUserId,
+            RelatedEntityType: nameof(User));
+
+        await FoldAsync(sourceUserId, targetUserId, adminUserId, audit, ct);
+    }
 }

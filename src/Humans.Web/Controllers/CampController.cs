@@ -399,11 +399,30 @@ public class CampController : HumansCampControllerBase
         }
 
         var viewModel = MapToEditViewModel(editData);
+
+        return View(viewModel);
+    }
+
+    [Authorize]
+    [HttpGet("{slug}/Edit/Members")]
+    public async Task<IActionResult> Members(string slug, int? year, CancellationToken ct)
+    {
+        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
+        var editData = await _campService.GetCampEditDataAsync(camp.Id, year);
+        if (editData is null)
+        {
+            SetError("No season found for this camp.");
+            return RedirectToAction(nameof(Details), new { slug });
+        }
+
+        var viewModel = MapToEditViewModel(editData);
         await PopulateEditMembersAsync(viewModel);
 
-        // Build per-camp roles panel against the camp's open season (if any).
-        // canManage is implicitly true here: ResolveCampManagementAsync already
-        // returned Forbid for callers without CampOperationRequirement.Manage.
         var openSeason = camp.Seasons.FirstOrDefault(s => s.Status == CampSeasonStatus.Active);
         viewModel.RolesPanel = openSeason is null
             ? null
@@ -647,7 +666,7 @@ public class CampController : HumansCampControllerBase
         if (userId == Guid.Empty)
         {
             SetError("Please search and select a human first.");
-            return RedirectToAction(nameof(Edit), new { slug });
+            return RedirectToAction(nameof(Members), new { slug });
         }
 
         try
@@ -661,7 +680,7 @@ public class CampController : HumansCampControllerBase
             SetError(ex.Message);
         }
 
-        return RedirectToAction(nameof(Edit), new { slug });
+        return RedirectToAction(nameof(Members), new { slug });
     }
 
     [Authorize]
@@ -686,7 +705,7 @@ public class CampController : HumansCampControllerBase
             SetError(ex.Message);
         }
 
-        return RedirectToAction(nameof(Edit), new { slug });
+        return RedirectToAction(nameof(Members), new { slug });
     }
 
 
@@ -949,7 +968,7 @@ public class CampController : HumansCampControllerBase
             SetError(ex.Message);
         }
 
-        return RedirectToAction(nameof(Edit), new { slug });
+        return RedirectToAction(nameof(Members), new { slug });
     }
 
     [Authorize]
@@ -971,7 +990,7 @@ public class CampController : HumansCampControllerBase
             SetError(ex.Message);
         }
 
-        return RedirectToAction(nameof(Edit), new { slug });
+        return RedirectToAction(nameof(Members), new { slug });
     }
 
     [Authorize]
@@ -993,7 +1012,7 @@ public class CampController : HumansCampControllerBase
             SetError(ex.Message);
         }
 
-        return RedirectToAction(nameof(Edit), new { slug });
+        return RedirectToAction(nameof(Members), new { slug });
     }
 
     [Authorize]
@@ -1007,14 +1026,14 @@ public class CampController : HumansCampControllerBase
         if (userId == Guid.Empty)
         {
             SetError("Please search and select a human first.");
-            return RedirectToAction(nameof(Edit), new { slug });
+            return RedirectToAction(nameof(Members), new { slug });
         }
 
         var openSeason = camp.Seasons.FirstOrDefault(s => s.Status == CampSeasonStatus.Active);
         if (openSeason is null)
         {
             SetError("No active season for this camp.");
-            return RedirectToAction(nameof(Edit), new { slug });
+            return RedirectToAction(nameof(Members), new { slug });
         }
 
         try
@@ -1028,7 +1047,7 @@ public class CampController : HumansCampControllerBase
             SetError("Failed to add human to camp.");
         }
 
-        return RedirectToAction(nameof(Edit), new { slug });
+        return RedirectToAction(nameof(Members), new { slug });
     }
 
     // ======================================================================
@@ -1047,7 +1066,7 @@ public class CampController : HumansCampControllerBase
         if (openSeason is null)
         {
             SetError("No active season for this camp.");
-            return RedirectToAction(nameof(Edit), new { slug });
+            return RedirectToAction(nameof(Members), new { slug });
         }
 
         var outcome = await _campRoleService.AssignAsync(openSeason.Id, roleDefinitionId, campMemberId, user.Id, ct);
@@ -1074,7 +1093,7 @@ public class CampController : HumansCampControllerBase
             SetError(message);
         }
 
-        return RedirectToAction(nameof(Edit), new { slug });
+        return RedirectToAction(nameof(Members), new { slug });
     }
 
     /// <summary>
@@ -1094,14 +1113,14 @@ public class CampController : HumansCampControllerBase
         if (userId == Guid.Empty)
         {
             SetError("Please search and select a human first.");
-            return RedirectToAction(nameof(Edit), new { slug });
+            return RedirectToAction(nameof(Members), new { slug });
         }
 
         var openSeason = camp.Seasons.FirstOrDefault(s => s.Status == CampSeasonStatus.Active);
         if (openSeason is null)
         {
             SetError("No active season for this camp.");
-            return RedirectToAction(nameof(Edit), new { slug });
+            return RedirectToAction(nameof(Members), new { slug });
         }
 
         AssignCampRoleOutcome outcome;
@@ -1114,7 +1133,7 @@ public class CampController : HumansCampControllerBase
         {
             _logger.LogError(ex, "AssignRoleByUser failed for camp {CampSlug}, user {UserId}.", slug, userId);
             SetError("Failed to assign role.");
-            return RedirectToAction(nameof(Edit), new { slug });
+            return RedirectToAction(nameof(Members), new { slug });
         }
 
         var message = outcome switch
@@ -1140,7 +1159,7 @@ public class CampController : HumansCampControllerBase
             SetError(message);
         }
 
-        return RedirectToAction(nameof(Edit), new { slug });
+        return RedirectToAction(nameof(Members), new { slug });
     }
 
     [Authorize]
@@ -1172,7 +1191,7 @@ public class CampController : HumansCampControllerBase
             SetError("Assignment not found.");
         }
 
-        return RedirectToAction(nameof(Edit), new { slug });
+        return RedirectToAction(nameof(Members), new { slug });
     }
 
     // ======================================================================

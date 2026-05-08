@@ -71,8 +71,8 @@ public sealed class ProfileBackfillAdminController : HumansControllerBase
 
         foreach (var row in missing)
         {
-            // EnsureStubProfileAsync is idempotent — the repo translates the
-            // profiles.UserId 23505 unique-violation into a no-op so a parallel
+            // EnsureStubProfileAsync is idempotent — ProfileService takes a
+            // per-userId lock around the GetByUserId/Add pair, so a parallel
             // signup creating the profile between count and run is handled
             // cleanly. The caching decorator refreshes the FullProfile entry
             // after the write so downstream reads see the new Stub immediately

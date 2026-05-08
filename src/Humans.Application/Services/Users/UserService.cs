@@ -388,4 +388,10 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         var ids = await _repo.GetMergedSourceIdsAsync(targetUserId, ct);
         return ids.ToHashSet();
     }
+
+    public Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default) =>
+        _repo.GetUsersWithLoginsButNoEmailsAsync(ct);
+
+    public Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default) =>
+        _repo.DeleteAllExternalLoginsForUserAsync(userId, ct);
 }

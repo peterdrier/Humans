@@ -2366,7 +2366,11 @@ public class ProfileController : HumansControllerBase
             TargetUserId = user.Id,
             TargetDisplayName = user.DisplayName,
             IsAdminContext = isAdminContext,
-            WorkspaceLockedEmailId = workspaceLockedEmail?.Id
+            WorkspaceLockedEmailId = workspaceLockedEmail?.Id,
+            LegacyIdentityEmailColumn = isAdminContext
+                && User.IsInRole(Humans.Domain.Constants.RoleNames.Admin)
+                ? user.IdentityEmailColumn
+                : null,
         };
     }
 
