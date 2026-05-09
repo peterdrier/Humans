@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application.Configuration;
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Campaigns;
@@ -125,7 +126,7 @@ public class ProfileControllerPopoverTests
     }
 
     [HumansFact]
-    public async Task Popover_UserWithoutProfile_RendersFallbackWithBestAvailableEmail()
+    public async Task Popover_UserWithoutProfile_RendersFallbackWithVerifiedPrimaryEmail()
     {
         var id = Guid.NewGuid();
         var user = new User
@@ -138,8 +139,17 @@ public class ProfileControllerPopoverTests
         };
         _userService.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(user);
         _profileService.GetProfileAsync(id, Arg.Any<CancellationToken>()).Returns((Profile?)null);
-        _userEmailService.GetBestAvailableEmailAsync(id, Arg.Any<CancellationToken>())
-            .Returns("primary@example.com");
+
+        var emails = new List<UserEmailEditDto>
+        {
+            new(Guid.NewGuid(), "secondary@example.com", IsVerified: true, IsGoogle: false,
+                Provider: null, ProviderKey: null, IsPrimary: false, Visibility: null,
+                IsPendingVerification: false),
+            new(Guid.NewGuid(), "primary@example.com", IsVerified: true, IsGoogle: false,
+                Provider: null, ProviderKey: null, IsPrimary: true, Visibility: null,
+                IsPendingVerification: false),
+        };
+        _userEmailService.GetUserEmailsAsync(id, Arg.Any<CancellationToken>()).Returns(emails);
 
         var result = await _controller.Popover(id, CancellationToken.None);
 
@@ -158,12 +168,12 @@ public class ProfileControllerPopoverTests
     }
 
     [HumansFact]
-    public async Task Popover_UserWithoutProfile_AlwaysQueriesVerifiedEmails_IgnoringLegacyUserEmail()
+    public async Task Popover_UserWithoutProfile_DoesNotSeedFromLegacyUserEmail()
     {
         // Regression: User.Email falls back to the legacy Identity column when
         // UserEmails isn't loaded (see User.cs SILENT-FALLBACK FOOTGUN), so the
-        // fallback popover must never seed from popoverUser.Email — it must
-        // always derive from canonical verified UserEmail rows.
+        // fallback popover must always derive from verified UserEmail rows
+        // regardless of what popoverUser.Email returns.
         var id = Guid.NewGuid();
         var user = new User
         {
@@ -174,16 +184,20 @@ public class ProfileControllerPopoverTests
         };
         _userService.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(user);
         _profileService.GetProfileAsync(id, Arg.Any<CancellationToken>()).Returns((Profile?)null);
-        _userEmailService.GetBestAvailableEmailAsync(id, Arg.Any<CancellationToken>())
-            .Returns("canonical@example.com");
+
+        var emails = new List<UserEmailEditDto>
+        {
+            new(Guid.NewGuid(), "canonical@example.com", IsVerified: true, IsGoogle: false,
+                Provider: null, ProviderKey: null, IsPrimary: true, Visibility: null,
+                IsPendingVerification: false),
+        };
+        _userEmailService.GetUserEmailsAsync(id, Arg.Any<CancellationToken>()).Returns(emails);
 
         var result = await _controller.Popover(id, CancellationToken.None);
 
         var partial = result.Should().BeOfType<PartialViewResult>().Subject;
         var vm = partial.Model.Should().BeOfType<ProfileSummaryViewModel>().Subject;
         vm.Email.Should().Be("canonical@example.com");
-        await _userEmailService.Received(1).GetBestAvailableEmailAsync(
-            id, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

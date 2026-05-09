@@ -18,18 +18,6 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Returns the best canonical email for a user — the verified primary
-    /// `UserEmail` if any, falling back to any verified `UserEmail`. Returns
-    /// `null` when the user has no verified emails. Always derived from
-    /// `UserEmail` rows (never the legacy Identity column on `User`), so
-    /// callers building sparse views of imported / profile-less users get a
-    /// consistent answer regardless of how the `User` was loaded.
-    /// </summary>
-    Task<string?> GetBestAvailableEmailAsync(
-        Guid userId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Gets emails visible on a user's profile based on viewer access level.
     /// </summary>
     Task<IReadOnlyList<UserEmailDto>> GetVisibleEmailsAsync(
