@@ -1896,18 +1896,16 @@ public class ProfileController : HumansControllerBase
     {
         try
         {
-            var popoverUser = await _userService.GetByIdAsync(id, ct);
+            var userTask = _userService.GetByIdAsync(id, ct);
+            var profileTask = _profileService.GetProfileAsync(id, ct);
+            await Task.WhenAll(userTask, profileTask);
+            var popoverUser = await userTask;
             if (popoverUser is null) return NotFound();
 
-            var profile = await _profileService.GetProfileAsync(id, ct);
+            var profile = await profileTask;
             if (profile is null)
             {
-                // Profile-less user (e.g. mailing-list / ticketing import) —
-                // render a sparse popover from User + UserEmail data instead
-                // of returning 404. See issue #690. Email is derived from
-                // verified UserEmail rows directly; popoverUser.Email is
-                // unsafe here because GetByIdAsync doesn't include UserEmails
-                // (see User.Email SILENT-FALLBACK FOOTGUN).
+                // popoverUser.Email is unsafe here — User.Email SILENT-FALLBACK FOOTGUN.
                 var userEmails = await _userEmailService.GetUserEmailsAsync(id, ct);
                 var fallbackEmail = userEmails.FirstOrDefault(e => e.IsVerified && e.IsPrimary)?.Email
                     ?? userEmails.FirstOrDefault(e => e.IsVerified)?.Email;

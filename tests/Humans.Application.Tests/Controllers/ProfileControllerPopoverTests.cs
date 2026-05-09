@@ -39,11 +39,6 @@ using NSubstitute;
 
 namespace Humans.Application.Tests.Controllers;
 
-/// <summary>
-/// Tests for <see cref="ProfileController.Popover"/>'s fallback rendering when
-/// the user exists but has no <see cref="Profile"/> row (mailing-list /
-/// ticketing imports). See issue #690.
-/// </summary>
 public class ProfileControllerPopoverTests
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();
