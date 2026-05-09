@@ -29,7 +29,6 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Email;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
@@ -78,7 +77,6 @@ public class ProfileController : HumansControllerBase
     private readonly IClock _clock;
     private readonly IAuthorizationService _authorizationService;
     private readonly IUserService _userService;
-    private readonly IUserEmailRepository _userEmailRepository;
     private readonly IConsentService _consentService;
     private readonly IApplicationDecisionService _applicationDecisionService;
     private readonly IAccountDeletionService _accountDeletionService;
@@ -138,7 +136,6 @@ public class ProfileController : HumansControllerBase
         IClock clock,
         IAuthorizationService authorizationService,
         IUserService userService,
-        IUserEmailRepository userEmailRepository,
         IConsentService consentService,
         IApplicationDecisionService applicationDecisionService,
         IAccountDeletionService accountDeletionService,
@@ -173,7 +170,6 @@ public class ProfileController : HumansControllerBase
         _clock = clock;
         _authorizationService = authorizationService;
         _userService = userService;
-        _userEmailRepository = userEmailRepository;
         _consentService = consentService;
         _applicationDecisionService = applicationDecisionService;
         _accountDeletionService = accountDeletionService;
@@ -1499,15 +1495,9 @@ public class ProfileController : HumansControllerBase
             return RedirectToAction(nameof(Privacy));
         }
 
-        // Re-fetch user so the success message reflects the dates that
-        // AccountDeletionService just wrote (DeletionScheduledFor +
-        // optional DeletionEligibleAfter for the ticket-hold case).
-        var fresh = await _userService.GetByIdAsync(user.Id);
-        var effective = fresh?.DeletionEligibleAfter?.ToDateTimeUtc()
-            ?? fresh?.DeletionScheduledFor?.ToDateTimeUtc();
         SetSuccess(string.Format(CultureInfo.CurrentCulture,
             _localizer["Profile_DeletionRequested"].Value,
-            effective.ToDisplayLongDate() ?? ""));
+            result.EffectiveDeletionDate?.ToDateTimeUtc().ToDisplayLongDate() ?? ""));
         return RedirectToAction(nameof(Privacy));
     }
 
@@ -2157,7 +2147,7 @@ public class ProfileController : HumansControllerBase
 
         var profile = await _profileService.GetProfileAsync(id, ct);
         var applications = await _applicationDecisionService.GetUserApplicationsAsync(id, ct);
-        var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(id, ct);
+        var userEmails = await _userEmailService.GetEntitiesByUserIdAsync(id, ct);
         var consentCount = await _consentService.GetConsentRecordCountAsync(id, ct);
         var roleAssignments = await _roleAssignmentService.GetByUserIdAsync(id, ct);
 

@@ -87,14 +87,14 @@ public sealed class AccountDeletionService : IAccountDeletionService
     // User-initiated deletion request (30-day scheduled)
     // ==========================================================================
 
-    public async Task<OnboardingResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default)
+    public async Task<DeletionRequestResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default)
     {
         var user = await _userService.GetByIdAsync(userId, ct);
         if (user is null)
-            return new OnboardingResult(false, "NotFound");
+            return new DeletionRequestResult(false, "NotFound");
 
         if (user.IsDeletionPending)
-            return new OnboardingResult(false, "AlreadyPending");
+            return new DeletionRequestResult(false, "AlreadyPending");
 
         var now = _clock.GetCurrentInstant();
         var deletionDate = now.Plus(Duration.FromDays(30));
@@ -155,7 +155,10 @@ public sealed class AccountDeletionService : IAccountDeletionService
         //    the Profile caching decorator for correctness.
         _shiftAuthorizationInvalidator.Invalidate(userId);
 
-        return new OnboardingResult(true);
+        return new DeletionRequestResult(
+            Success: true,
+            EffectiveDeletionDate: eligibleAfter ?? deletionDate,
+            IsHeldForTicket: eligibleAfter is not null);
     }
 
     public async Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default)

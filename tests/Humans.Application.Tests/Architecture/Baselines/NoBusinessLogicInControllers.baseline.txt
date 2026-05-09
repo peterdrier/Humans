@@ -57,7 +57,6 @@ src/Humans.Web/Controllers/GoogleController.cs:RemediateGroupSettings/2
 src/Humans.Web/Controllers/GoogleController.cs:ResetPassword/1
 src/Humans.Web/Controllers/GoogleController.cs:ResetPasswordAndGenerate2Fa/1
 src/Humans.Web/Controllers/GovernanceController.cs:Index/0
-src/Humans.Web/Controllers/GuestController.cs:CancelDeletion/0
 src/Humans.Web/Controllers/GuestController.cs:RequestDeletion/0
 src/Humans.Web/Controllers/GuestController.cs:UpdatePreference/4
 src/Humans.Web/Controllers/HomeController.cs:DeclareNotAttending/0
@@ -91,7 +90,6 @@ src/Humans.Web/Controllers/ProfileController.cs:Edit/2
 src/Humans.Web/Controllers/ProfileController.cs:EndRole/3
 src/Humans.Web/Controllers/ProfileController.cs:ImportGooglePhoto/1
 src/Humans.Web/Controllers/ProfileController.cs:Popover/2
-src/Humans.Web/Controllers/ProfileController.cs:RequestDeletion/0
 src/Humans.Web/Controllers/ProfileController.cs:SendMessage/2
 src/Humans.Web/Controllers/ProfileController.cs:SetEmailVisibility/2
 src/Humans.Web/Controllers/ProfileController.cs:SetGoogle/2

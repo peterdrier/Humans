@@ -1,4 +1,5 @@
 using Humans.Application.Interfaces.Onboarding;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Users;
 
@@ -33,7 +34,7 @@ public interface IAccountDeletionService
     /// does not exist; <c>AlreadyPending</c> if a deletion request is
     /// already open.
     /// </summary>
-    Task<OnboardingResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default);
+    Task<DeletionRequestResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Cancels a pending user-initiated deletion request by clearing the
@@ -76,3 +77,19 @@ public interface IAccountDeletionService
     Task<AnonymizedAccountSummary?> AnonymizeExpiredAccountAsync(
         Guid userId, CancellationToken ct = default);
 }
+
+/// <summary>
+/// Outcome of <see cref="IAccountDeletionService.RequestDeletionAsync"/>.
+/// On success, <see cref="EffectiveDeletionDate"/> is the earliest instant at
+/// which the user's account becomes eligible for anonymization
+/// (<c>DeletionEligibleAfter</c> when held for a current event ticket, otherwise
+/// the standard 30-day <c>DeletionScheduledFor</c>). <see cref="IsHeldForTicket"/>
+/// signals the ticket-hold path so callers can render the right copy without a
+/// re-fetch. Mirrors <see cref="OnboardingResult"/>'s <c>ErrorKey</c> contract
+/// (<c>NotFound</c>, <c>AlreadyPending</c>) on failure.
+/// </summary>
+public sealed record DeletionRequestResult(
+    bool Success,
+    string? ErrorKey = null,
+    Instant? EffectiveDeletionDate = null,
+    bool IsHeldForTicket = false);

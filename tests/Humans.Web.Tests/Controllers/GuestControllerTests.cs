@@ -32,7 +32,6 @@ public class GuestControllerTests
     private readonly IGdprExportService _gdprExportService = Substitute.For<IGdprExportService>();
     private readonly IOnboardingWidgetState _widgetState = Substitute.For<IOnboardingWidgetState>();
     private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();
-    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IClock _clock = Substitute.For<IClock>();
 
     public GuestControllerTests()
@@ -54,7 +53,6 @@ public class GuestControllerTests
             _gdprExportService,
             _widgetState,
             _accountDeletionService,
-            _userService,
             _clock,
             NullLogger<GuestController>.Instance);
 

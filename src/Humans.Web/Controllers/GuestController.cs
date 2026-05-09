@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Application.Extensions;
+using Humans.Web.Extensions;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Users;
@@ -27,7 +28,6 @@ public class GuestController : HumansControllerBase
     private readonly IGdprExportService _gdprExportService;
     private readonly IOnboardingWidgetState _widgetState;
     private readonly IAccountDeletionService _accountDeletionService;
-    private readonly IUserService _userService;
     private readonly IClock _clock;
     private readonly ILogger<GuestController> _logger;
 
@@ -46,7 +46,6 @@ public class GuestController : HumansControllerBase
         IGdprExportService gdprExportService,
         IOnboardingWidgetState widgetState,
         IAccountDeletionService accountDeletionService,
-        IUserService userService,
         IClock clock,
         ILogger<GuestController> logger)
         : base(userManager)
@@ -57,7 +56,6 @@ public class GuestController : HumansControllerBase
         _gdprExportService = gdprExportService;
         _widgetState = widgetState;
         _accountDeletionService = accountDeletionService;
-        _userService = userService;
         _clock = clock;
         _logger = logger;
     }
@@ -215,26 +213,10 @@ public class GuestController : HumansControllerBase
                 return RedirectToAction(nameof(Index));
             }
 
-            // Re-fetch to read the dates the orchestrator just wrote so the
-            // confirmation message reflects whatever ticket-hold or 30-day
-            // grace-period date applies.
-            var fresh = await _userService.GetByIdAsync(user.Id);
-            if (fresh?.DeletionEligibleAfter.HasValue == true)
-            {
-                SetSuccess(
-                    $"Deletion request recorded. Because you have tickets for an upcoming event, " +
-                    $"your account will be deleted after {fresh.DeletionEligibleAfter.Value.ToDateTimeUtc():d MMM yyyy}.");
-            }
-            else if (fresh?.DeletionScheduledFor.HasValue == true)
-            {
-                SetSuccess(
-                    $"Deletion request recorded. Your account will be permanently deleted on " +
-                    $"{fresh.DeletionScheduledFor.Value.ToDateTimeUtc():d MMM yyyy}.");
-            }
-            else
-            {
-                SetSuccess("Deletion request recorded.");
-            }
+            var effective = result.EffectiveDeletionDate.ToDisplayDate();
+            SetSuccess(result.IsHeldForTicket
+                ? $"Deletion request recorded. Because you have tickets for an upcoming event, your account will be deleted after {effective}."
+                : $"Deletion request recorded. Your account will be permanently deleted on {effective}.");
 
             return RedirectToAction(nameof(Index));
         }
@@ -254,26 +236,17 @@ public class GuestController : HumansControllerBase
         if (user is null)
             return Challenge();
 
-        try
+        var result = await _accountDeletionService.CancelDeletionAsync(user.Id);
+        if (!result.Success)
         {
-            var result = await _accountDeletionService.CancelDeletionAsync(user.Id);
-            if (!result.Success)
-            {
-                SetError(string.Equals(result.ErrorKey, "NoDeletionPending", StringComparison.Ordinal)
-                    ? "No deletion request is pending."
-                    : "Failed to cancel deletion request. Please try again.");
-                return RedirectToAction(nameof(Index));
-            }
+            SetError(string.Equals(result.ErrorKey, "NoDeletionPending", StringComparison.Ordinal)
+                ? "No deletion request is pending."
+                : "Failed to cancel deletion request. Please try again.");
+            return RedirectToAction(nameof(Index));
+        }
 
-            SetSuccess("Deletion request cancelled.");
-            return RedirectToAction(nameof(Index));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to cancel deletion request for user {UserId}", user.Id);
-            SetError("Failed to cancel deletion request. Please try again.");
-            return RedirectToAction(nameof(Index));
-        }
+        SetSuccess("Deletion request cancelled.");
+        return RedirectToAction(nameof(Index));
     }
 
     // ─── Private Helpers ─────────────────────────────────────────────
