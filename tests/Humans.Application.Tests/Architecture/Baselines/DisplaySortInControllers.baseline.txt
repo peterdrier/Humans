@@ -85,7 +85,6 @@ src/Humans.Infrastructure/Repositories/Governance/ApplicationRepository.cs:ThenB
 src/Humans.Infrastructure/Repositories/Governance/ApplicationRepository.cs:ThenBy#2
 src/Humans.Infrastructure/Repositories/Issues/IssuesRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Issues/IssuesRepository.cs:OrderBy#2
-src/Humans.Infrastructure/Repositories/Legal/LegalDocumentRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Notifications/NotificationRepository.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/Notifications/NotificationRepository.cs:OrderByDescending#2
 src/Humans.Infrastructure/Repositories/Notifications/NotificationRepository.cs:OrderByDescending#3
