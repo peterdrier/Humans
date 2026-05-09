@@ -795,12 +795,15 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         var row = await _repository.GetByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
         if (row is null || !row.IsPrimary) return false;
 
-        // Only allow clearing IsPrimary when the user has another row also
-        // carrying the flag (the duplicate-flag recovery scenario). Clearing
-        // the sole IsPrimary row would leave the user in the ZeroIsPrimary
-        // state EmailProblems flags as a bug.
+        // Only allow clearing IsPrimary when the user has another verified
+        // IsPrimary row (the duplicate-flag recovery scenario). The verified
+        // filter mirrors the view's `hasMultiplePrimary` and the scanner's
+        // notion of a primary (`verifiedPrimaryCount`); without it, a row
+        // in `IsPrimary=true,IsVerified=false` would count as a successor
+        // and clearing the verified primary would leave zero verified
+        // primaries — the ZeroIsPrimary state EmailProblems flags as a bug.
         var allEmails = await _repository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
-        if (allEmails.Count(e => e.IsPrimary) <= 1) return false;
+        if (allEmails.Count(e => e.IsPrimary && e.IsVerified) <= 1) return false;
 
         row.IsPrimary = false;
         row.UpdatedAt = _clock.GetCurrentInstant();

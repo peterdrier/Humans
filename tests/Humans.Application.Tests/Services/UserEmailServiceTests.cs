@@ -557,6 +557,45 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
+    public async Task ClearPrimaryAsync_OnlyUnverifiedSuccessor_ReturnsFalse()
+    {
+        // Issue 686 hardening: an unverified row carrying IsPrimary doesn't
+        // count as a valid successor — clearing the sole verified IsPrimary
+        // row would still leave the user in a zero-verified-primary state
+        // EmailProblems flags as a bug. The guard mirrors the view's
+        // `hasMultiplePrimary` (verified-only) and the scanner's
+        // `verifiedPrimaryCount` semantics.
+        var userId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        var row = new UserEmail
+        {
+            Id = rowId,
+            UserId = userId,
+            Email = "a@x.test",
+            IsVerified = true,
+            IsPrimary = true,
+        };
+        var unverifiedSibling = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "b@x.test",
+            IsVerified = false,
+            IsPrimary = true,
+        };
+        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+            .Returns(row);
+        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmail> { row, unverifiedSibling });
+
+        var result = await _service.ClearPrimaryAsync(userId, rowId, userId);
+
+        result.Should().BeFalse();
+        row.IsPrimary.Should().BeTrue();
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task ClearPrimaryAsync_DoesNotAutoPromoteSuccessor()
     {
         // Admin-recovery semantics: after Clear, the user is left with the
