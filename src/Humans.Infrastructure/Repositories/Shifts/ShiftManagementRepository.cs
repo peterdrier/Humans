@@ -187,6 +187,33 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Rota>> SearchRotasAsync(
+        string query, Guid eventSettingsId, int max, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(query) || max <= 0)
+            return Array.Empty<Rota>();
+
+        var pattern = "%" + EscapeLikePattern(query.Trim()) + "%";
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Rotas
+            .AsNoTracking()
+            .Where(r => r.EventSettingsId == eventSettingsId
+                && r.IsVisibleToVolunteers
+                && (EF.Functions.ILike(r.Name, pattern, "\\")
+                    || (r.Description != null && EF.Functions.ILike(r.Description, pattern, "\\"))))
+            // Deterministic Take(max) for global search; orchestrator re-ranks by score before display.
+            .OrderBy(r => r.Name) // arch:db-sort-ok
+            .Take(max)
+            .ToListAsync(ct);
+    }
+
+    private static string EscapeLikePattern(string value)
+        => value
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
+
     public async Task SetRotaTagsAsync(Guid rotaId, IReadOnlyList<Guid> tagIds, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

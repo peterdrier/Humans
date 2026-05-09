@@ -1,3 +1,4 @@
+using Humans.Application.DTOs;
 using Humans.Application.Services.Camps;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -48,6 +49,18 @@ public interface ICampService
     /// </summary>
     Task<List<Camp>> GetCampsWithLeadsForYearAsync(int year, IReadOnlyList<CampSeasonStatus>? statusFilter = null, CancellationToken cancellationToken = default);
     Task<List<CampSeason>> GetPendingSeasonsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Camps participating in the current public-year whose <c>Slug</c>, the
+    /// year's <c>CampSeason.Name</c>, or its <c>BlurbShort</c> contains
+    /// <paramref name="query"/> (case-insensitive). The public year is
+    /// resolved from <c>CampSettings.PublicYear</c>. Capped at
+    /// <paramref name="max"/>; returned in unspecified order — the global
+    /// search orchestrator scores and ranks. Used by the global /Search
+    /// page (<c>SearchService</c>).
+    /// </summary>
+    Task<IReadOnlyList<CampSearchHit>> SearchAsync(
+        string query, int max, CancellationToken cancellationToken = default);
 
     // Season management
     Task<CampSeason> OptInToSeasonAsync(Guid campId, int year, CancellationToken cancellationToken = default);

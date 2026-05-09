@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application;
+using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Helpers;
 using Humans.Application.Interfaces.AuditLog;
@@ -218,6 +219,16 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
 
     public Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default) =>
         _repo.GetAllActiveAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<TeamSearchHit>> SearchAsync(
+        string query, bool includeHidden, int max,
+        CancellationToken cancellationToken = default)
+    {
+        var teams = await _repo.SearchAsync(query, includeHidden, max, cancellationToken);
+        return teams
+            .Select(t => new TeamSearchHit(t.Id, t.Name, t.Slug, t.Description))
+            .ToList();
+    }
 
     public Task<IReadOnlyList<TeamOptionDto>> GetActiveTeamOptionsAsync(CancellationToken cancellationToken = default) =>
         _repo.GetActiveOptionsAsync(cancellationToken);

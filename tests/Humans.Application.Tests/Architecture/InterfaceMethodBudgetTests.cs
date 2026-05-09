@@ -50,7 +50,13 @@ public class InterfaceMethodBudgetTests
         // from ITeamService (moved to IUserMerge.ReassignAsync, implemented
         // by TeamService and dispatched by AccountMergeService via
         // IEnumerable<IUserMerge> fan-out).
-        [typeof(ITeamService)] = 70,
+        // 70→71: issue-682 global search — added SearchAsync(query,
+        // includeHidden, max). Authorized exception (Peter, 2026-05-09):
+        // queries against teams must live in the owning section per
+        // design-rules §6, and the ratchet's "remove one to add one" rule
+        // doesn't apply when the addition is a moved-in query rather than
+        // a new feature surface.
+        [typeof(ITeamService)] = 71,
         // ICampService raised 53→57 for per-camp roles feature (peterdrier#489):
         // AddCampMemberAsLeadAsync, GetSeasonMembersAsync, GetCampMemberStatusAsync,
         // GetCampSeasonsForComplianceAsync — all needed by ICampRoleService and the
@@ -76,7 +82,10 @@ public class InterfaceMethodBudgetTests
         // new lead-pin feature on this branch already calls the repo
         // method directly); SetSeasonFullAsync and
         // GetCampSeasonBriefsForYearAsync (both zero callers, zero tests).
-        [typeof(ICampService)] = 51,
+        // 51→52: issue-682 global search — added SearchAsync(query, max).
+        // Authorized exception (Peter, 2026-05-09): queries against camps
+        // must live in the owning section per design-rules §6.
+        [typeof(ICampService)] = 52,
         // +1: GetOverallCoverageAsync for admin dashboard shift-coverage tile (peterdrier#349).
         // 50→50: account-merge fold redesign Phase 3.2. Added
         // ReassignProfilesAndTagPrefsToUserAsync; removed CanManageShiftsAsync
@@ -86,7 +95,10 @@ public class InterfaceMethodBudgetTests
         // 50→49: account-merge fold final consolidation — removed
         // ReassignProfilesAndTagPrefsToUserAsync from IShiftManagementService
         // (moved to IUserMerge.ReassignAsync, dispatched via fan-out).
-        [typeof(IShiftManagementService)] = 49,
+        // 49→50: issue-682 global search — added SearchAsync(query, max).
+        // Authorized exception (Peter, 2026-05-09): queries against rotas
+        // must live in the owning section per design-rules §6.
+        [typeof(IShiftManagementService)] = 50,
         // +1 for SetProfilePictureAsync (nobodies-collective/Humans#532 — Google avatar import button needs a
         // narrow service write that owns its own cache invalidation; controllers can't reach
         // the FullProfile cache directly).

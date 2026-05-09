@@ -10,28 +10,23 @@ using Humans.Domain.Entities;
 namespace Humans.Application.Services.Search;
 
 /// <summary>
-/// Application-layer implementation of <see cref="ISearchService"/>. Goes
-/// through public per-section service interfaces only — never reaches into
-/// another section's repository, store, or DbContext (design-rules §6 +
-/// §2c). Each section's data is already cached / hydrated by its owning
-/// service, so this orchestrator only loads existing snapshots and runs
-/// in-memory matching at ~500-user scale (per <c>CLAUDE.md</c>: "Prefer
-/// in-memory caching over query optimization").
+/// Application-layer implementation of <see cref="ISearchService"/>. The
+/// per-section query lives in each section's own service
+/// (<c>ITeamService.SearchAsync</c>, <c>ICampService.SearchAsync</c>,
+/// <c>IShiftManagementService.SearchAsync</c>,
+/// <c>IProfileService.SearchProfilesAsync</c>) — those services own their
+/// tables and do the case-insensitive Postgres ILike filter at the DB layer
+/// per <c>memory/feedback_ef_ilike_not_toupper.md</c>. This orchestrator
+/// merges the per-section hits, computes a uniform score, applies the
+/// optional group filter, and adds the surviving cross-modal pull-ins
+/// (people → teams + camps they lead).
 ///
 /// <para>
-/// In-memory matching also satisfies the
-/// <c>memory/feedback_ef_ilike_not_toupper.md</c> rule trivially — there
-/// are no Postgres LIKE queries to write here. The rule applies to
-/// repository code that does case-insensitive Postgres queries; an
-/// orchestrator that filters already-loaded objects in C# does not need
-/// it.
-/// </para>
-///
-/// <para>
-/// Authorization gate: <c>includeAdmin</c> is set by the controller
-/// only after the caller has been verified as an admin-shaped role.
-/// Forwards to <see cref="PersonSearchFields.AdminAll"/> versus
-/// <see cref="PersonSearchFields.PublicAll"/>.
+/// Authorization gate: <c>includeAdmin</c> is set by the controller only
+/// after the caller has been verified as an admin-shaped role. It maps to
+/// <see cref="PersonSearchFields.AdminAll"/> versus
+/// <see cref="PersonSearchFields.PublicAll"/> for humans, and to a
+/// hidden-teams-included filter for the team query.
 /// </para>
 /// </summary>
 public sealed class SearchService : ISearchService
@@ -81,22 +76,22 @@ public sealed class SearchService : ISearchService
         }
 
         // ------------------------------------------------------------------
-        // Direct hits per section. Each section's own data ownership is
-        // preserved — we go through the public interface, not the repo.
+        // Direct hits per section. Each section's own service runs the
+        // ILike DB query and returns the matched entities; we score and
+        // render here.
         // ------------------------------------------------------------------
         var humanHits = await SearchHumansAsync(trimmed, includeAdmin, perTypeLimit, ct);
         var (teamHits, matchedTeamIds) = await SearchTeamsAsync(trimmed, includeAdmin, perTypeLimit, ct);
-        var (campHits, matchedCampSlugs) = await SearchCampsAsync(trimmed, perTypeLimit, ct);
+        var campHits = await SearchCampsAsync(trimmed, perTypeLimit, ct);
         var shiftHits = await SearchShiftsAsync(trimmed, perTypeLimit, ct);
 
         // ------------------------------------------------------------------
         // Cross-modal relational hits — typing a person's name surfaces
-        // their teams and camps; typing a team's name surfaces its rotas;
-        // typing a camp's name surfaces its leads (the data model has no
-        // direct camp→rota link, so leads are the closest substitute).
+        // their teams and camps they lead; typing a team's name surfaces
+        // its rotas. Camps and rotas have no relational link in the data
+        // model, so there is no camp→shift expansion.
         // ------------------------------------------------------------------
-        var relationalHits = await BuildRelationalHitsAsync(
-            humanHits, teamHits, matchedTeamIds, campHits, matchedCampSlugs, ct);
+        var relationalHits = await BuildRelationalHitsAsync(humanHits, teamHits, matchedTeamIds, ct);
 
         // De-duplicate: a direct hit on a team should NOT be re-listed as a
         // relational pull-in if it already appears in teamHits.
@@ -157,121 +152,85 @@ public sealed class SearchService : ISearchService
     private async Task<(List<GlobalSearchResult> Hits, IReadOnlyList<Guid> MatchedTeamIds)>
         SearchTeamsAsync(string query, bool includeAdmin, int limit, CancellationToken ct)
     {
-        // GetAllTeamsAsync returns active teams only — exactly what a public
-        // search should surface. Hidden teams stay out of non-admin results
-        // (matches the team directory's three-bucket model: Departments /
-        // System / Hidden); admins see hidden teams too.
-        var teams = await _teamService.GetAllTeamsAsync(ct);
+        // ITeamService.SearchAsync runs the ILike filter at the DB layer
+        // (design-rules §6 — query lives in the owning section). Hidden
+        // teams are filtered there too; admins pass includeHidden=true.
+        var hits = await _teamService.SearchAsync(query, includeAdmin, limit, ct);
 
-        var matches = new List<(Team Entity, int Score, string MatchField)>();
-        foreach (var team in teams)
-        {
-            if (team.IsHidden && !includeAdmin) continue;
-            var score = ScoreEntityMatch(query, team.Name, team.Slug, team.Description, out var matchField);
-            if (score > 0)
+        var scored = hits
+            .Select(t =>
             {
-                matches.Add((team, score, matchField));
-            }
-        }
-
-        var ordered = matches
-            .OrderByDescending(m => m.Score)
-            .Take(limit)
+                var score = ScoreEntityMatch(query, t.Name, t.Slug, t.Description, out var matchField);
+                return (Hit: t, Score: score, MatchField: matchField);
+            })
+            .Where(s => s.Score > 0)
+            .OrderByDescending(s => s.Score)
             .ToList();
 
-        var hits = ordered
-            .Select(m => new GlobalSearchResult(
+        var rendered = scored
+            .Select(s => new GlobalSearchResult(
                 Type: SearchResultType.Team,
-                Title: m.Entity.Name,
-                Subtitle: ComposeSnippet(query, m.Entity.Description) ?? m.Entity.Slug,
-                Url: $"/Teams/{m.Entity.Slug}",
-                Score: m.Score,
-                MatchField: m.MatchField))
+                Title: s.Hit.Name,
+                Subtitle: ComposeSnippet(query, s.Hit.Description) ?? s.Hit.Slug,
+                Url: $"/Teams/{s.Hit.Slug}",
+                Score: s.Score,
+                MatchField: s.MatchField))
             .ToList();
 
-        var ids = ordered.Select(m => m.Entity.Id).ToList();
-        return (hits, ids);
+        var ids = scored.Select(s => s.Hit.Id).ToList();
+        return (rendered, ids);
     }
 
-    private async Task<(List<GlobalSearchResult> Hits, IReadOnlyList<string> MatchedSlugs)>
-        SearchCampsAsync(string query, int limit, CancellationToken ct)
+    private async Task<List<GlobalSearchResult>> SearchCampsAsync(
+        string query, int limit, CancellationToken ct)
     {
-        // Pull camps for the public year — this is the population a viewer
-        // would see in the camp directory, so the search surface matches.
-        var settings = await _campService.GetSettingsAsync(ct);
-        var camps = await _campService.GetCampsWithLeadsForYearAsync(
-            settings.PublicYear, statusFilter: null, ct);
+        // ICampService.SearchAsync owns the public-year resolution and the
+        // ILike DB filter; we just score and render.
+        var hits = await _campService.SearchAsync(query, limit, ct);
 
-        var year = settings.PublicYear;
-
-        var matches = new List<(Camp Camp, string Name, string? Blurb, int Score, string MatchField)>();
-        foreach (var camp in camps)
-        {
-            var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
-            var name = season?.Name ?? camp.Slug;
-            var blurb = season?.BlurbShort;
-            var score = ScoreEntityMatch(query, name, camp.Slug, blurb, out var matchField);
-            if (score > 0)
+        return hits
+            .Select(c =>
             {
-                matches.Add((camp, name, blurb, score, matchField));
-            }
-        }
-
-        var ordered = matches
-            .OrderByDescending(m => m.Score)
-            .Take(limit)
-            .ToList();
-
-        var hits = ordered
-            .Select(m => new GlobalSearchResult(
+                var score = ScoreEntityMatch(query, c.Name, c.Slug, c.Blurb, out var matchField);
+                return (Hit: c, Score: score, MatchField: matchField);
+            })
+            .Where(s => s.Score > 0)
+            .OrderByDescending(s => s.Score)
+            .Select(s => new GlobalSearchResult(
                 Type: SearchResultType.Camp,
-                Title: m.Name,
-                Subtitle: ComposeSnippet(query, m.Blurb) ?? m.Camp.Slug,
-                Url: $"/Camps/{m.Camp.Slug}",
-                Score: m.Score,
-                MatchField: m.MatchField))
+                Title: s.Hit.Name,
+                Subtitle: ComposeSnippet(query, s.Hit.Blurb) ?? s.Hit.Slug,
+                Url: $"/Camps/{s.Hit.Slug}",
+                Score: s.Score,
+                MatchField: s.MatchField))
             .ToList();
-
-        var slugs = ordered.Select(m => m.Camp.Slug).ToList();
-        return (hits, slugs);
     }
 
     private async Task<List<GlobalSearchResult>> SearchShiftsAsync(
         string query, int limit, CancellationToken ct)
     {
-        // The "shift" search hit is a Rota (named, role-shaped grouping of
-        // shifts) — an individual Shift row is a date+time slot with no
-        // human-readable title to match against. Iterate over departments
-        // that own rotas and match Rota.Name + Description.
-        var settings = await _shiftService.GetActiveAsync();
-        if (settings is null) return new List<GlobalSearchResult>();
+        // IShiftManagementService.SearchAsync runs the ILike filter at the
+        // DB layer and stitches the owning team's display name. The "shift"
+        // search hit is a Rota (named, role-shaped grouping of shifts) —
+        // an individual Shift row is a date+time slot with no
+        // human-readable title to match against.
+        var hits = await _shiftService.SearchAsync(query, limit, ct);
 
-        var departments = await _shiftService.GetDepartmentsWithRotasAsync(settings.Id);
-
-        var matches = new List<(Rota Rota, string TeamName, int Score, string MatchField)>();
-        foreach (var (teamId, teamName) in departments)
-        {
-            var rotas = await _shiftService.GetRotasByDepartmentAsync(teamId, settings.Id);
-            foreach (var rota in rotas.Where(r => r.IsVisibleToVolunteers))
+        return hits
+            .Select(r =>
             {
-                var score = ScoreEntityMatch(query, rota.Name, slug: null, rota.Description, out var matchField);
-                if (score > 0)
-                {
-                    matches.Add((rota, teamName, score, matchField));
-                }
-            }
-        }
-
-        return matches
-            .OrderByDescending(m => m.Score)
-            .Take(limit)
-            .Select(m => new GlobalSearchResult(
+                var score = ScoreEntityMatch(query, r.Name, slug: null, r.Description, out var matchField);
+                return (Hit: r, Score: score, MatchField: matchField);
+            })
+            .Where(s => s.Score > 0)
+            .OrderByDescending(s => s.Score)
+            .Select(s => new GlobalSearchResult(
                 Type: SearchResultType.Shift,
-                Title: m.Rota.Name,
-                Subtitle: ComposeSnippet(query, m.Rota.Description) ?? m.TeamName,
-                Url: $"/Shifts?departmentId={m.Rota.TeamId}",
-                Score: m.Score,
-                MatchField: m.MatchField))
+                Title: s.Hit.Name,
+                Subtitle: ComposeSnippet(query, s.Hit.Description) ?? s.Hit.TeamName,
+                Url: $"/Shifts?departmentId={s.Hit.TeamId}",
+                Score: s.Score,
+                MatchField: s.MatchField))
             .ToList();
     }
 
@@ -283,8 +242,6 @@ public sealed class SearchService : ISearchService
         IReadOnlyList<GlobalSearchResult> humanHits,
         IReadOnlyList<GlobalSearchResult> teamHits,
         IReadOnlyList<Guid> matchedTeamIds,
-        IReadOnlyList<GlobalSearchResult> campHits,
-        IReadOnlyList<string> matchedCampSlugs,
         CancellationToken ct)
     {
         var relational = new List<GlobalSearchResult>();
@@ -324,18 +281,13 @@ public sealed class SearchService : ISearchService
         // Person → camps they lead. Load camps-with-leads for the public
         // year; the lead row carries UserId only (per design-rules §6 the
         // section avoids cross-domain navs), so we match by id.
-        IReadOnlyList<Camp>? campsWithLeads = null;
-        int campYear = 0;
-        if (humanHits.Count > 0 || campHits.Count > 0)
+        if (humanHits.Count > 0)
         {
             var settings = await _campService.GetSettingsAsync(ct);
-            campYear = settings.PublicYear;
-            campsWithLeads = await _campService.GetCampsWithLeadsForYearAsync(
+            var campYear = settings.PublicYear;
+            var campsWithLeads = await _campService.GetCampsWithLeadsForYearAsync(
                 campYear, statusFilter: null, ct);
-        }
 
-        if (campsWithLeads is not null)
-        {
             foreach (var human in humanHits.Where(h => h.UserId.HasValue))
             {
                 var ledCamps = campsWithLeads.Where(c =>
@@ -373,34 +325,6 @@ public sealed class SearchService : ISearchService
                         Url: $"/Shifts?departmentId={rota.TeamId}",
                         Score: ScoreRelationalHit,
                         RelationContext: $"Shift in {teamHit.Title}"));
-                }
-            }
-        }
-
-        // Camp → leads (humans). The data model has no camp→rota
-        // relationship (rotas belong to Teams, not Camps), so the spec's
-        // "typing a camp name → that camp's shifts" surfaces as the camp's
-        // human leads instead — the actual people associated with that
-        // camp. Documented in PR description.
-        if (campsWithLeads is not null && matchedCampSlugs.Count > 0)
-        {
-            for (var i = 0; i < matchedCampSlugs.Count; i++)
-            {
-                var slug = matchedCampSlugs[i];
-                var campHit = campHits[i];
-                var camp = campsWithLeads.FirstOrDefault(c =>
-                    string.Equals(c.Slug, slug, StringComparison.OrdinalIgnoreCase));
-                if (camp is null) continue;
-                foreach (var lead in camp.Leads.Where(l => l.LeftAt == null))
-                {
-                    relational.Add(new GlobalSearchResult(
-                        Type: SearchResultType.Human,
-                        Title: $"Lead at {campHit.Title}",
-                        Subtitle: null,
-                        Url: $"/Profile/{lead.UserId}",
-                        Score: ScoreRelationalHit,
-                        UserId: lead.UserId,
-                        RelationContext: $"Lead at {campHit.Title}"));
                 }
             }
         }

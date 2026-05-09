@@ -78,6 +78,17 @@ public interface ICampRepository
     /// </summary>
     Task<bool> SlugExistsAsync(string slug, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns camps that have a season for <paramref name="year"/> whose
+    /// <c>Camp.Slug</c> OR the year's <c>CampSeason.Name</c> /
+    /// <c>CampSeason.BlurbShort</c> contain <paramref name="query"/>
+    /// (case-insensitive, Postgres ILike). Year-filtered seasons are included.
+    /// Capped at <paramref name="max"/>; ordering is unspecified (caller ranks).
+    /// Read-only, no cross-domain navs.
+    /// </summary>
+    Task<IReadOnlyList<Camp>> SearchForYearAsync(
+        string query, int year, int max, CancellationToken ct = default);
+
     // ==========================================================================
     // Writes — Camp / Season / Lead (aggregate)
     // ==========================================================================

@@ -130,6 +130,35 @@ public sealed class CampRepository : ICampRepository
         return await ctx.Camps.AnyAsync(b => b.Slug == slug, ct);
     }
 
+    public async Task<IReadOnlyList<Camp>> SearchForYearAsync(
+        string query, int year, int max, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(query) || max <= 0)
+            return Array.Empty<Camp>();
+
+        var pattern = "%" + EscapeLikePattern(query.Trim()) + "%";
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Camps
+            .AsNoTracking()
+            .Include(c => c.Seasons.Where(s => s.Year == year))
+            .Where(c => c.Seasons.Any(s => s.Year == year)
+                && (EF.Functions.ILike(c.Slug, pattern, "\\")
+                    || c.Seasons.Any(s => s.Year == year
+                        && (EF.Functions.ILike(s.Name, pattern, "\\")
+                            || EF.Functions.ILike(s.BlurbShort, pattern, "\\")))))
+            // Deterministic Take(max) for global search; orchestrator re-ranks by score before display.
+            .OrderBy(c => c.Slug) // arch:db-sort-ok
+            .Take(max)
+            .ToListAsync(ct);
+    }
+
+    private static string EscapeLikePattern(string value)
+        => value
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
+
     // ==========================================================================
     // Writes — Camp (aggregate)
     // ==========================================================================

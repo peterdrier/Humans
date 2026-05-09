@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.DTOs;
 using Humans.Application.Enums;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
@@ -1063,6 +1064,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<string?> GetTeamNameByGoogleGroupPrefixAsync(string googleGroupPrefix, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyDictionary<Guid, string>> GetTeamNamesByIdsAsync(IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<TeamSearchHit>> SearchAsync(string query, bool includeHidden, int max, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<TeamDirectoryResult> GetTeamDirectoryAsync(Guid? userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<TeamDetailResult?> GetTeamDetailAsync(string slug, Guid? userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<TeamMember>> GetUserTeamsAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
