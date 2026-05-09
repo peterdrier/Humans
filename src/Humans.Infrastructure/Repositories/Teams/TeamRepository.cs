@@ -571,7 +571,6 @@ public sealed class TeamRepository : ITeamRepository
             .AsNoTracking()
             .Include(r => r.Team)
             .Where(r => r.Status == TeamJoinRequestStatus.Pending)
-            .OrderBy(r => r.RequestedAt)
             .ToListAsync(ct);
     }
 
@@ -586,7 +585,6 @@ public sealed class TeamRepository : ITeamRepository
             .AsNoTracking()
             .Include(r => r.Team)
             .Where(r => teamIds.Contains(r.TeamId) && r.Status == TeamJoinRequestStatus.Pending)
-            .OrderBy(r => r.RequestedAt)
             .ToListAsync(ct);
     }
 
@@ -597,7 +595,6 @@ public sealed class TeamRepository : ITeamRepository
         return await db.TeamJoinRequests
             .AsNoTracking()
             .Where(r => r.TeamId == teamId && r.Status == TeamJoinRequestStatus.Pending)
-            .OrderBy(r => r.RequestedAt)
             .ToListAsync(ct);
     }
 

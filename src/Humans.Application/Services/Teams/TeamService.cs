@@ -992,7 +992,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         // Stitch the cross-domain User slice in memory.
         await StitchJoinRequestUserSlicesAsync(requests, cancellationToken);
 
-        return requests;
+        return OrderPendingJoinRequests(requests).ToList();
     }
 
     public async Task<IReadOnlyList<TeamJoinRequest>> GetPendingRequestsForTeamAsync(
@@ -1001,8 +1001,12 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
     {
         var requests = await _repo.GetPendingForTeamAsync(teamId, cancellationToken);
         await StitchJoinRequestUserSlicesAsync(requests, cancellationToken);
-        return requests;
+        return OrderPendingJoinRequests(requests).ToList();
     }
+
+    private static IOrderedEnumerable<TeamJoinRequest> OrderPendingJoinRequests(
+        IEnumerable<TeamJoinRequest> requests) =>
+        requests.OrderBy(r => r.RequestedAt);
 
     public Task<TeamJoinRequest?> GetUserPendingRequestAsync(
         Guid teamId,
