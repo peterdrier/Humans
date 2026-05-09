@@ -40,6 +40,7 @@ Also avoid entity-shape cleanup, serialization attribute changes, and other sche
 
 Prioritize items with clear payoff:
 
+- layer-separation violations: EF/repository/service code doing presentation sorting, UI filtering, arbitrary caps, navigation joins, or cross-section DB reads
 - one concern implemented several different ways
 - copy-pasted controller or service logic with the same business meaning
 - cross-domain methods that belong in a different service
@@ -52,6 +53,37 @@ Deprioritize:
 - large rewrites with weak behavioral payoff
 - breaking interface churn unless the call graph is fully understood
 - file splitting done only to reduce line count
+
+## Layer-Separation Rules
+
+Treat these as the first-pass search rules for new tech-debt runs.
+
+Repositories are persistence adapters. They may apply storage predicates needed to fetch the owned data set, but they must not own screen behavior:
+
+- no display sorting or user-facing ordering in repositories
+- no screen/page caps such as `Take(50)`, "recent", "top", or dashboard limits in repositories
+- no query-string, tab, or screen-specific filtering in repositories
+- no joins/includes added only to shape a view model
+
+Controllers and views own UI-specific shaping:
+
+- final display sort order
+- screen-specific filters
+- paging/window sizes and `Take(...)` limits
+- grouping and secondary ordering for tables/cards
+- dashboard-card "recent" or "top N" choices
+
+Services own reusable application behavior, not display choices. If a rule is truly domain/application behavior, put it in the owning service. If it is just how one screen wants to sort, filter, group, cap, or show data, keep it at the controller/view boundary.
+
+Sections must not reach across each other's persistence:
+
+- no cross-section DB calls or joins from repositories or services
+- no EF navigation joins across section boundaries
+- no repository method returning another section's entity graph
+- call the other section's public service/interface by IDs instead
+- merge data in memory at the controller/application boundary when a screen needs multiple sections
+
+Prefer typed foreign-key queries and narrow projections over navigation-property graph loading. A slower but explicit service call boundary is better than a hidden cross-section join.
 
 ## Safety Checks
 
