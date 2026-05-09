@@ -10,6 +10,7 @@ using Humans.Web.Models;
 using Humans.Application.Interfaces.Feedback;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 
 // FeedbackReport / FeedbackMessage cross-domain nav properties (User, ResolvedByUser,
 // AssignedToUser, AssignedToTeam, SenderUser) are [Obsolete] — FeedbackService stitches
@@ -26,6 +27,7 @@ public class FeedbackController : HumansControllerBase
     private readonly IFeedbackService _feedbackService;
     private readonly ITeamService _teamService;
     private readonly IProfileService _profileService;
+    private readonly IUserService _userService;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ILogger<FeedbackController> _logger;
 
@@ -33,6 +35,7 @@ public class FeedbackController : HumansControllerBase
         IFeedbackService feedbackService,
         ITeamService teamService,
         IProfileService profileService,
+        IUserService userService,
         UserManager<User> userManager,
         IStringLocalizer<SharedResource> localizer,
         ILogger<FeedbackController> logger)
@@ -41,8 +44,30 @@ public class FeedbackController : HumansControllerBase
         _feedbackService = feedbackService;
         _teamService = teamService;
         _profileService = profileService;
+        _userService = userService;
         _localizer = localizer;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Resolves active-approved humans into <see cref="AssigneeOption"/>
+    /// rows for the assignee dropdowns. Replaces the deleted
+    /// <c>IProfileService.GetFilteredHumansAsync(null, "Active")</c> path:
+    /// person-search consolidation moved that surface to
+    /// <c>SearchProfilesAsync</c>, which is for text search, not population
+    /// queries. Population goes through the existing
+    /// <c>GetActiveApprovedUserIdsAsync</c> + <c>GetByIdsAsync</c> primitives.
+    /// </summary>
+    private async Task<List<AssigneeOption>> GetActiveAssigneeOptionsAsync(CancellationToken ct = default)
+    {
+        var activeIds = await _profileService.GetActiveApprovedUserIdsAsync(ct);
+        if (activeIds.Count == 0) return new List<AssigneeOption>();
+
+        var users = await _userService.GetByIdsAsync(activeIds, ct);
+        return users.Values
+            .OrderBy(u => u.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .Select(u => new AssigneeOption { Id = u.Id, DisplayName = u.DisplayName })
+            .ToList();
     }
 
     [HttpGet("")]
@@ -68,12 +93,7 @@ public class FeedbackController : HumansControllerBase
         if (isAdmin)
         {
             teamOptions = (await _teamService.GetActiveTeamOptionsAsync()).ToList();
-
-            var humans = await _profileService.GetFilteredHumansAsync(null, "Active");
-            assigneeOptions = humans
-                .OrderBy(h => h.DisplayName, StringComparer.OrdinalIgnoreCase)
-                .Select(h => new AssigneeOption { Id = h.UserId, DisplayName = h.DisplayName })
-                .ToList();
+            assigneeOptions = await GetActiveAssigneeOptionsAsync();
         }
 
         var reporters = new List<ReporterDropdownItem>();
@@ -365,11 +385,7 @@ public class FeedbackController : HumansControllerBase
             }
         }
 
-        var humans = await _profileService.GetFilteredHumansAsync(null, "Active");
-        viewModel.AssigneeOptions = humans
-            .OrderBy(h => h.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .Select(h => new AssigneeOption { Id = h.UserId, DisplayName = h.DisplayName })
-            .ToList();
+        viewModel.AssigneeOptions = await GetActiveAssigneeOptionsAsync();
 
         // Include currently assigned human even if inactive, to prevent silent clearing
         if (viewModel.AssignedToUserId.HasValue &&

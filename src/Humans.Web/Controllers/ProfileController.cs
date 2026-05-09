@@ -31,9 +31,12 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Services.Profiles;
 
 // RoleAssignment cross-domain nav properties (User, CreatedByUser) are [Obsolete] —
 // RoleAssignmentService stitches them in memory from IUserService so controllers can
@@ -55,6 +58,7 @@ public class ProfileController : HumansControllerBase
     private readonly ICommunicationPreferenceService _commPrefService;
     private readonly IAuditLogService _auditLogService;
     private readonly IOnboardingService _onboardingService;
+    private readonly IHumanLifecycleService _humanLifecycleService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IShiftSignupService _shiftSignupService;
     private readonly IShiftManagementService _shiftMgmt;
@@ -71,6 +75,7 @@ public class ProfileController : HumansControllerBase
     private readonly IClock _clock;
     private readonly IAuthorizationService _authorizationService;
     private readonly IUserService _userService;
+    private readonly IMembershipCalculator _membershipCalculator;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly SignInManager<User> _signInManager;
     private readonly GoogleWorkspaceOptions _googleWorkspaceOptions;
@@ -109,6 +114,7 @@ public class ProfileController : HumansControllerBase
         ICommunicationPreferenceService commPrefService,
         IAuditLogService auditLogService,
         IOnboardingService onboardingService,
+        IHumanLifecycleService humanLifecycleService,
         IRoleAssignmentService roleAssignmentService,
         IShiftSignupService shiftSignupService,
         IShiftManagementService shiftMgmt,
@@ -125,6 +131,7 @@ public class ProfileController : HumansControllerBase
         IClock clock,
         IAuthorizationService authorizationService,
         IUserService userService,
+        IMembershipCalculator membershipCalculator,
         IHttpClientFactory httpClientFactory,
         SignInManager<User> signInManager,
         IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions)
@@ -138,6 +145,7 @@ public class ProfileController : HumansControllerBase
         _commPrefService = commPrefService;
         _auditLogService = auditLogService;
         _onboardingService = onboardingService;
+        _humanLifecycleService = humanLifecycleService;
         _roleAssignmentService = roleAssignmentService;
         _shiftSignupService = shiftSignupService;
         _shiftMgmt = shiftMgmt;
@@ -154,9 +162,62 @@ public class ProfileController : HumansControllerBase
         _clock = clock;
         _authorizationService = authorizationService;
         _userService = userService;
+        _membershipCalculator = membershipCalculator;
         _httpClientFactory = httpClientFactory;
         _signInManager = signInManager;
         _googleWorkspaceOptions = googleWorkspaceOptions.Value;
+    }
+
+    /// <summary>
+    /// Composes the admin humans list: optional text-filter via the
+    /// <see cref="PersonSearchFields.AdminAll"/> bit-flag search,
+    /// status-partition lookup, and projection to <see cref="AdminHumanRow"/>.
+    /// Replaces the deleted <c>IProfileService.GetFilteredHumansAsync</c>.
+    /// Pure controller-layer composition — no business logic, just data
+    /// orchestration.
+    /// </summary>
+    private async Task<IReadOnlyList<AdminHumanRow>> BuildAdminHumansAsync(
+        string? search, string? statusFilter, CancellationToken ct)
+    {
+        var allUsers = await _userService.GetAllUsersAsync(ct);
+        var allUserIds = allUsers.Select(u => u.Id).ToList();
+        var profilesByUserId = await _profileService.GetByUserIdsAsync(allUserIds, ct);
+        var notificationEmails =
+            await _userEmailService.GetNotificationEmailsByUserIdsAsync(allUserIds, ct);
+
+        IReadOnlySet<Guid>? searchUserIds = null;
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            // Admin auth is enforced by the action's [Authorize] policy, so
+            // PersonSearchFields.AdminAll is appropriate here. Limit large
+            // enough that "show me every match" is the practical effect at
+            // ~500-user scale; the controller paginates afterward.
+            var searchResults = await _profileService.SearchProfilesAsync(
+                search, PersonSearchFields.AdminAll, limit: 500, ct);
+
+            // Email-direct match isn't covered by the matcher's verified-emails
+            // bucket on User.Email (only UserEmail rows). Union the two so
+            // existing-data parity is preserved.
+            var byEmail = allUsers
+                .Where(u =>
+                    (u.Email ?? string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    u.DisplayName.Contains(search, StringComparison.OrdinalIgnoreCase))
+                .Select(u => u.Id);
+
+            searchUserIds = searchResults
+                .Select(r => r.UserId)
+                .Concat(byEmail)
+                .ToHashSet();
+        }
+
+        return await AdminHumanListAssembler.AssembleAsync(
+            allUsers,
+            profilesByUserId,
+            notificationEmails,
+            searchUserIds,
+            statusFilter,
+            _membershipCalculator,
+            ct);
     }
 
     // ─── Own Profile (Me) ────────────────────────────────────────────
@@ -1934,10 +1995,16 @@ public class ProfileController : HumansControllerBase
             return View(viewModel);
         }
 
-        var results = await _profileService.SearchHumansAsync(q, ct);
+        // PublicAll = name + bio + public ContactFields. Admin bit is gated
+        // by code review — never set on a public endpoint.
+        var results = await _profileService.SearchProfilesAsync(
+            q!, PersonSearchFields.PublicAll, limit: 50, ct);
 
+        // Display ordering at the controller per
+        // memory/architecture/display-sort-in-controllers.md.
         viewModel.Results = results
-            .Select(r => r.ToHumanSearchViewModel(Url))
+            .OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase)
+            .Select(r => r.ToHumanSearchViewModel())
             .ToList();
 
         return View(viewModel);
@@ -1949,47 +2016,47 @@ public class ProfileController : HumansControllerBase
     [HttpGet("Admin")]
     public async Task<IActionResult> AdminList(string? search, string? filter, string sort = "name", string dir = "asc", int page = 1, CancellationToken ct = default)
     {
-        var pageSize = 20;
-        var allRows = await _profileService.GetFilteredHumansAsync(search, filter, ct);
+        const int pageSize = 20;
+        var allRows = await BuildAdminHumansAsync(search, filter, ct);
         var totalCount = allRows.Count;
 
-        // Materialize for flexible sorting (fine at ~500 users)
-        // nobodies.team email status is now resolved by NobodiesEmailBadgeViewComponent in the view
-        var allMatching = allRows.Select(r => new AdminHumanViewModel
-        {
-            Id = r.UserId,
-            Email = r.Email,
-            DisplayName = r.DisplayName,
-            ProfilePictureUrl = r.ProfilePictureUrl,
-            CreatedAt = r.CreatedAt,
-            LastLoginAt = r.LastLoginAt,
-            HasProfile = r.HasProfile,
-            IsApproved = r.IsApproved,
-            MembershipStatus = r.MembershipStatus
-        }).ToList();
-
+        // Sort rows in the controller — display ordering belongs at the
+        // presentation layer per memory/architecture/display-sort-in-controllers.md.
         var ascending = !string.Equals(dir, "desc", StringComparison.OrdinalIgnoreCase);
-        IEnumerable<AdminHumanViewModel> sorted = sort?.ToLowerInvariant() switch
+        IEnumerable<AdminHumanRow> sorted = sort?.ToLowerInvariant() switch
         {
             "joined" => ascending
-                ? allMatching.OrderBy(m => m.CreatedAt)
-                : allMatching.OrderByDescending(m => m.CreatedAt),
+                ? allRows.OrderBy(r => r.CreatedAt)
+                : allRows.OrderByDescending(r => r.CreatedAt),
             "login" => ascending
-                ? allMatching.OrderBy(m => m.LastLoginAt.HasValue ? 0 : 1).ThenBy(m => m.LastLoginAt)
-                : allMatching.OrderBy(m => m.LastLoginAt.HasValue ? 0 : 1).ThenByDescending(m => m.LastLoginAt),
+                ? allRows.OrderBy(r => r.LastLoginAt.HasValue ? 0 : 1).ThenBy(r => r.LastLoginAt)
+                : allRows.OrderBy(r => r.LastLoginAt.HasValue ? 0 : 1).ThenByDescending(r => r.LastLoginAt),
             "status" => ascending
-                ? allMatching.OrderBy(m => m.MembershipStatus, StringComparer.OrdinalIgnoreCase)
-                : allMatching.OrderByDescending(m => m.MembershipStatus, StringComparer.OrdinalIgnoreCase),
+                ? allRows.OrderBy(r => r.MembershipStatus, StringComparer.OrdinalIgnoreCase)
+                : allRows.OrderByDescending(r => r.MembershipStatus, StringComparer.OrdinalIgnoreCase),
             _ => ascending
-                ? allMatching.OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
-                : allMatching.OrderByDescending(m => m.DisplayName, StringComparer.OrdinalIgnoreCase),
+                ? allRows.OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
+                : allRows.OrderByDescending(r => r.DisplayName, StringComparer.OrdinalIgnoreCase),
         };
 
-        var members = sorted.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+        var humans = sorted.Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(r => new HumanSearchResultViewModel
+            {
+                UserId = r.UserId,
+                BurnerName = r.DisplayName,
+                ProfilePictureUrl = r.ProfilePictureUrl,
+                AdminEmail = r.Email,
+                MembershipStatus = r.MembershipStatus,
+                CreatedAt = r.CreatedAt,
+                LastLoginAt = r.LastLoginAt,
+                AdminDetailUrl = Url.Action(nameof(AdminDetail), "Profile", new { id = r.UserId }),
+            })
+            .ToList();
 
         var viewModel = new AdminHumanListViewModel
         {
-            Humans = members,
+            Humans = humans,
             SearchTerm = search,
             StatusFilter = filter,
             SortBy = sort?.ToLowerInvariant() ?? "name",
@@ -2120,7 +2187,7 @@ public class ProfileController : HumansControllerBase
         if (currentUser is null)
             return NotFound();
 
-        var result = await _onboardingService.SuspendAsync(id, currentUser.Id, notes);
+        var result = await _humanLifecycleService.SuspendAsync(id, currentUser.Id, notes);
         if (!result.Success)
             return NotFound();
 
@@ -2137,7 +2204,7 @@ public class ProfileController : HumansControllerBase
         if (currentUser is null)
             return NotFound();
 
-        var result = await _onboardingService.UnsuspendAsync(id, currentUser.Id);
+        var result = await _humanLifecycleService.UnsuspendAsync(id, currentUser.Id);
         if (!result.Success)
             return NotFound();
 
@@ -2366,7 +2433,11 @@ public class ProfileController : HumansControllerBase
             TargetUserId = user.Id,
             TargetDisplayName = user.DisplayName,
             IsAdminContext = isAdminContext,
-            WorkspaceLockedEmailId = workspaceLockedEmail?.Id
+            WorkspaceLockedEmailId = workspaceLockedEmail?.Id,
+            LegacyIdentityEmailColumn = isAdminContext
+                && User.IsInRole(Humans.Domain.Constants.RoleNames.Admin)
+                ? user.IdentityEmailColumn
+                : null,
         };
     }
 

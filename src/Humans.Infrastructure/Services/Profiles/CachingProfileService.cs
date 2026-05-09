@@ -14,6 +14,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Services.Profiles;
 
 namespace Humans.Infrastructure.Services.Profiles;
 
@@ -74,6 +75,7 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
 
     private readonly IProfileRepository _profileRepository;
     private readonly IUserEmailRepository _userEmailRepository;
+    private readonly IContactFieldRepository _contactFieldRepository;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CachingProfileService> _logger;
 
@@ -82,11 +84,13 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
     public CachingProfileService(
         IProfileRepository profileRepository,
         IUserEmailRepository userEmailRepository,
+        IContactFieldRepository contactFieldRepository,
         IServiceScopeFactory scopeFactory,
         ILogger<CachingProfileService> logger)
     {
         _profileRepository = profileRepository;
         _userEmailRepository = userEmailRepository;
+        _contactFieldRepository = contactFieldRepository;
         _scopeFactory = scopeFactory;
         _logger = logger;
     }
@@ -225,8 +229,7 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
     /// <c>FullProfileWarmupHostedService</c> so bulk-read methods
     /// (<see cref="GetBirthdayProfilesAsync"/>,
     /// <see cref="GetApprovedProfilesWithLocationAsync"/>,
-    /// <see cref="GetFilteredHumansAsync"/>,
-    /// <see cref="SearchApprovedUsersAsync"/>) return complete results immediately
+    /// <see cref="SearchProfilesAsync"/>) return complete results immediately
     /// after deploy rather than filling in lazily as each user is accessed.
     /// </summary>
     /// <remarks>
@@ -360,21 +363,6 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
             ProfilesProfileService.GetApprovedProfilesWithLocationFromSnapshot(_byUserId.Values));
     }
 
-    public async Task<IReadOnlyList<Application.DTOs.AdminHumanRow>> GetFilteredHumansAsync(
-        string? search, string? statusFilter, CancellationToken ct = default)
-    {
-        // Snapshot the dict values once to avoid holding the live reference across awaits.
-        var snapshot = _byUserId.Values.ToList();
-
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
-        var membershipCalculator = scope.ServiceProvider.GetRequiredService<IMembershipCalculator>();
-
-        var allUsers = await userService.GetAllUsersAsync(ct);
-        return await ProfilesProfileService.GetFilteredHumansFromSnapshotAsync(
-            snapshot, search, statusFilter, allUsers, membershipCalculator, ct);
-    }
-
     public async Task<Application.DTOs.AdminHumanDetailData?> GetAdminHumanDetailAsync(
         Guid userId, CancellationToken ct = default)
     {
@@ -391,25 +379,31 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         return await inner.GetEmailCooldownInfoAsync(pendingEmailId, ct);
     }
 
-    public Task<IReadOnlyList<UserSearchResult>> SearchApprovedUsersAsync(
-        string query, CancellationToken ct = default)
+    public async Task<IReadOnlyList<HumanSearchResult>> SearchProfilesAsync(
+        string query,
+        PersonSearchFields fields,
+        int limit = 10,
+        CancellationToken ct = default)
     {
-        return Task.FromResult(
-            ProfilesProfileService.SearchApprovedUsersFromSnapshot(_byUserId.Values, query));
-    }
+        if (fields == PersonSearchFields.None || string.IsNullOrWhiteSpace(query) || limit <= 0)
+            return Array.Empty<HumanSearchResult>();
 
-    public Task<IReadOnlyList<HumanSearchResult>> SearchHumansAsync(
-        string query, CancellationToken ct = default)
-    {
-        return Task.FromResult(
-            ProfilesProfileService.SearchHumansFromSnapshot(_byUserId.Values, query));
-    }
+        // Snapshot the dict values once so the search reads a stable
+        // collection across awaits.
+        var snapshot = _byUserId.Values.Where(p => !p.IsRejected).ToList();
 
-    public Task<IReadOnlyList<HumanSearchResult>> SearchHumansByNameAsync(
-        string query, CancellationToken ct = default)
-    {
-        return Task.FromResult(
-            ProfilesProfileService.SearchHumansByNameFromSnapshot(_byUserId.Values, query));
+        IReadOnlyDictionary<Guid, IReadOnlyList<ContactField>>? contactFieldsByProfileId = null;
+        if ((fields & (PersonSearchFields.Bio | PersonSearchFields.Admin)) != PersonSearchFields.None)
+        {
+            var all = await _contactFieldRepository.GetAllAsync(ct);
+            contactFieldsByProfileId = all
+                .GroupBy(cf => cf.ProfileId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => (IReadOnlyList<ContactField>)g.ToList());
+        }
+
+        return PersonSearchMatcher.Match(snapshot, query, fields, contactFieldsByProfileId, limit);
     }
 
     public async Task<IReadOnlyList<ProfileLanguage>> GetProfileLanguagesAsync(

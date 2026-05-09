@@ -55,6 +55,7 @@ public static class AdminNavTree
         {
             new("Merge requests",        "AdminMerge", "Index",            null, null, "fa-solid fa-code-merge", PolicyNames.AdminOnly),
             new("Duplicate detection",   "AdminDuplicateAccounts", "Index", null, null, "fa-solid fa-clone",      PolicyNames.AdminOnly),
+            new("Email problems",        "ProfileAdmin", "EmailProblems", null, null, "fa-solid fa-envelope-circle-check", PolicyNames.AdminOnly),
             new("Audience segmentation", "Admin", "AudienceSegmentation",   null, null, "fa-solid fa-chart-pie",  PolicyNames.AdminOnly),
             new("Legal documents",       "AdminLegalDocuments", "LegalDocuments", null, null, "fa-solid fa-scale-balanced", PolicyNames.AdminOnly),
             new("Backfill Provider/IsGoogle", "Admin", "BackfillUserEmailProviders", null, null, "fa-solid fa-key", PolicyNames.AdminOnly),
@@ -85,8 +86,8 @@ internal static class PillCounts
 {
     public static async ValueTask<int?> ReviewQueue(IServiceProvider sp)
     {
-        var onboarding = sp.GetRequiredService<Humans.Application.Interfaces.Onboarding.IOnboardingService>();
-        var count = await onboarding.GetPendingReviewCountAsync();
+        var adminDashboard = sp.GetRequiredService<Humans.Application.Interfaces.Dashboard.IAdminDashboardService>();
+        var count = await adminDashboard.GetPendingReviewCountAsync();
         return count > 0 ? count : null;
     }
 
@@ -96,8 +97,8 @@ internal static class PillCounts
         var idClaim = http.HttpContext?.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
         if (idClaim is null || !Guid.TryParse(idClaim.Value, out var userId))
             return null;
-        var onboarding = sp.GetRequiredService<Humans.Application.Interfaces.Onboarding.IOnboardingService>();
-        var count = await onboarding.GetUnvotedApplicationCountAsync(userId);
+        var applications = sp.GetRequiredService<Humans.Application.Interfaces.Governance.IApplicationDecisionService>();
+        var count = await applications.GetUnvotedApplicationCountAsync(userId);
         return count > 0 ? count : null;
     }
 }

@@ -1,9 +1,11 @@
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.HumanLifecycle;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.HumanLifecycle;
 using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Governance;
@@ -45,6 +47,13 @@ internal static class GovernanceSectionExtensions
 
         services.AddScoped<IOnboardingWidgetState, OnboardingWidgetStateService>();
         services.AddScoped<IOnboardingWidgetSessionState, HttpOnboardingWidgetSessionState>();
+
+        // Human lifecycle — state-machine on already-onboarded humans
+        // (suspend / unsuspend; future re-consent suspensions, term-renewal,
+        // status recompute). Owns no tables — orchestrates IProfileService +
+        // notification dispatch. Extracted from OnboardingService in
+        // nobodies-collective#583 (umbrella nobodies-collective#563).
+        services.AddScoped<IHumanLifecycleService, HumanLifecycleService>();
 
         services.AddScoped<TermRenewalReminderJob>();
 

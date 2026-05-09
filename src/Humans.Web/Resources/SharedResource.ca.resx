@@ -1024,6 +1024,10 @@
   <data name="OnboardingReview_FlagConfirm" xml:space="preserve"><value>Això marcarà aquesta persona per a revisió addicional. Vols continuar?</value></data>
   <data name="OnboardingReview_AlreadyCleared" xml:space="preserve"><value>Aquesta persona ja ha estat aprovada.</value></data>
   <data name="OnboardingReview_Cleared" xml:space="preserve"><value>Revisió del perfil aprovada.</value></data>
+  <data name="OnboardingReview_BulkClearedNone" xml:space="preserve"><value>No s'ha aprovat cap persona seleccionada.</value></data>
+  <data name="OnboardingReview_BulkCleared" xml:space="preserve"><value>S'han aprovat {0} persones seleccionades.</value></data>
+  <data name="OnboardingReview_BulkClearedPartial" xml:space="preserve"><value>S'han aprovat {0} de {1} seleccionades — les altres ja no són elegibles.</value></data>
+  <data name="OnboardingReview_BulkClearButton" xml:space="preserve"><value>Aprova totes les seleccionades</value></data>
   <data name="OnboardingReview_Flagged" xml:space="preserve"><value>Persona marcada per a revisió addicional.</value></data>
   <data name="OnboardingReview_RejectButton" xml:space="preserve"><value>Rebutja el registre</value></data>
   <data name="OnboardingReview_RejectReasonPlaceholder" xml:space="preserve"><value>Motiu del rebuig...</value></data>
@@ -1887,6 +1891,16 @@
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>Si no estàs satisfet amb la nostra resposta, tens dret a presentar una reclamació davant l'Agència Espanyola de Protecció de Dades (AEPD) a {0}.</value><comment>{0} = AEPD URL</comment></data>
 
   <!-- Agent Widget -->
+  <data name="Agent_ConversationBackToHistory" xml:space="preserve"><value>Tornar a l'historial</value></data>
+  <data name="Agent_ConversationEmpty" xml:space="preserve"><value>No hi ha missatges en aquesta conversa.</value></data>
+  <data name="Agent_ConversationHandedOffToFeedback" xml:space="preserve"><value>Derivat a informe d'incidència</value></data>
+  <data name="Agent_ConversationRefusedLabel" xml:space="preserve"><value>L'assistent ha declinat respondre aquest torn.</value></data>
+  <data name="Agent_ConversationTitle" xml:space="preserve"><value>Conversa de l'assistent</value></data>
+  <data name="Agent_ConversationToolCallsSummary" xml:space="preserve"><value>{0} crida(es) a eines</value></data>
+  <data name="Agent_ConversationTranscript" xml:space="preserve"><value>Transcripció</value></data>
+  <data name="Agent_ContextCardCaveat" xml:space="preserve"><value>Aquest és el teu context actual. Si els teus rols o equips han canviat des d'aquesta conversa, l'assistent va veure una versió diferent en aquell moment.</value></data>
+  <data name="Agent_ContextCardEmpty" xml:space="preserve"><value>Actualment no s'envia cap context personal a l'assistent.</value></data>
+  <data name="Agent_ContextCardSummary" xml:space="preserve"><value>El teu context (tal com l'assistent et veu ara)</value></data>
   <data name="Agent_HistoryEmpty" xml:space="preserve"><value>Encara no hi ha converses.</value></data>
   <data name="Agent_HistoryLastMessage" xml:space="preserve"><value>Últim missatge</value></data>
   <data name="Agent_HistoryMessages" xml:space="preserve"><value>Missatges</value></data>

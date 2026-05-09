@@ -21,6 +21,12 @@ public class LogApiSettings
     public string ApiKey { get; set; } = string.Empty;
 }
 
+public class AgentApiSettings
+{
+    public const string SectionName = "AgentApi";
+    public string ApiKey { get; set; } = string.Empty;
+}
+
 public abstract class ApiKeyAuthFilterBase : IAuthorizationFilter
 {
     private const string ApiKeyHeaderName = "X-Api-Key";
@@ -54,4 +60,7 @@ public class IssuesApiKeyAuthFilter(IOptions<IssuesApiSettings> settings)
     : ApiKeyAuthFilterBase(settings.Value.ApiKey);
 
 public class LogApiKeyAuthFilter(IOptions<LogApiSettings> settings)
+    : ApiKeyAuthFilterBase(settings.Value.ApiKey);
+
+public class AgentApiKeyAuthFilter(IOptions<AgentApiSettings> settings)
     : ApiKeyAuthFilterBase(settings.Value.ApiKey);

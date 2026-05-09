@@ -11,6 +11,7 @@ using ProfilesUserEmailService = Humans.Application.Services.Profile.UserEmailSe
 using ProfilesCommunicationPreferenceService = Humans.Application.Services.Profile.CommunicationPreferenceService;
 using ProfilesAccountMergeService = Humans.Application.Services.Profile.AccountMergeService;
 using ProfilesDuplicateAccountService = Humans.Application.Services.Profile.DuplicateAccountService;
+using ProfilesEmailProblemsService = Humans.Application.Services.Profile.EmailProblemsService;
 using UsersAccountProvisioningService = Humans.Application.Services.Users.AccountProvisioningService;
 using UsersUnsubscribeService = Humans.Application.Services.Users.UnsubscribeService;
 using GoogleEmailProvisioningService = Humans.Application.Services.GoogleIntegration.EmailProvisioningService;
@@ -62,6 +63,7 @@ internal static class ProfileSectionExtensions
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ProfilesAccountMergeService>());
 
         services.AddScoped<IDuplicateAccountService, ProfilesDuplicateAccountService>();
+        services.AddScoped<IEmailProblemsService, ProfilesEmailProblemsService>();
         services.AddScoped<IAccountProvisioningService, UsersAccountProvisioningService>();
         services.AddScoped<IUserEmailProviderBackfillService, Humans.Application.Services.Users.UserEmailProviderBackfillService>();
 

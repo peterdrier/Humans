@@ -1,6 +1,7 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -123,22 +124,29 @@ public interface IProfileService : IUserMerge
     Task<IReadOnlyList<LocationProfileInfo>>
         GetApprovedProfilesWithLocationAsync(CancellationToken ct = default);
 
-    Task<IReadOnlyList<AdminHumanRow>> GetFilteredHumansAsync(
-        string? search, string? statusFilter, CancellationToken ct = default);
-
     Task<AdminHumanDetailData?> GetAdminHumanDetailAsync(Guid userId, CancellationToken ct = default);
 
-    Task<IReadOnlyList<UserSearchResult>> SearchApprovedUsersAsync(string query, CancellationToken ct = default);
-
-    Task<IReadOnlyList<HumanSearchResult>> SearchHumansAsync(string query, CancellationToken ct = default);
-
     /// <summary>
-    /// Narrowed variant of <see cref="SearchHumansAsync"/> that matches only on
-    /// display name (first/last) and burner name. Used by the typeahead picker
-    /// where a tighter, less noisy result list is what callers want; the full
-    /// search page (bio / city / interests / CV) keeps using the broad method.
+    /// Single canonical person-search method. Matches <paramref name="query"/>
+    /// against the buckets named by <paramref name="fields"/> and returns up
+    /// to <paramref name="limit"/> matches in unspecified order — callers
+    /// sort + take(N) at the presentation layer per
+    /// <c>memory/architecture/display-sort-in-controllers.md</c>.
+    ///
+    /// <para>Implicit scope: the service always filters to "not rejected,
+    /// not deleted" — the only population anyone is searching. Emergency
+    /// contact data is never reachable regardless of which bits are set.</para>
+    ///
+    /// <para>Auth boundary is the controller per design-rules §6: services
+    /// are auth-free, so a non-admin endpoint passing
+    /// <see cref="PersonSearchFields.Admin"/> is a programmer error caught
+    /// in code review, not a runtime check.</para>
     /// </summary>
-    Task<IReadOnlyList<HumanSearchResult>> SearchHumansByNameAsync(string query, CancellationToken ct = default);
+    Task<IReadOnlyList<HumanSearchResult>> SearchProfilesAsync(
+        string query,
+        PersonSearchFields fields,
+        int limit = 10,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Reconciles the user's CV entries (volunteer history) with the provided set.
@@ -244,7 +252,7 @@ public interface IProfileService : IUserMerge
     /// <summary>
     /// Sets <see cref="Profile.IsSuspended"/> to true and stamps
     /// <see cref="Profile.UpdatedAt"/> for users whose consent grace period has
-    /// expired. Unlike <see cref="SuspendAsync"/>, this variant does not
+    /// expired. Unlike <see cref="SetSuspendedAsync"/>, this variant does not
     /// require an admin actor, skip-list already-suspended profiles (so the
     /// caller can pre-filter with the returned set), and does not write an
     /// audit log entry — the caller is expected to emit the

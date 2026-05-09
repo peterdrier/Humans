@@ -693,8 +693,8 @@
             }
 
             const phoneTypes = ['Phone', 'WhatsApp'];
-            const phonePlaceholder = '@Html.Raw(Localizer["Validation_PhonePlaceholder"].Value)';
-            const phoneTitle = '@Html.Raw(Localizer["Validation_PhoneHint"].Value)';
+            const phonePlaceholder = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Validation_PhonePlaceholder"].Value));
+            const phoneTitle = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Validation_PhoneHint"].Value));
             const defaultPlaceholder = 'Enter contact info';
 
             function applyPhoneValidation(valueInput, isPhone) {

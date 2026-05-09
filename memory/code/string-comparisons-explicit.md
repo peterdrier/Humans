@@ -17,5 +17,5 @@ if (string.Equals(status, "submitted", StringComparison.Ordinal))
 ```
 
 **Search/input convention:**
-- For user-entered search terms, prefer the shared helpers in `Humans.Web.Extensions` (`HasSearchTerm`, `ContainsOrdinalIgnoreCase`, `WhereAnyContainsInsensitive`) instead of open-coding whitespace/length guards or ad hoc case handling
-- Keep EF-query helpers and in-memory string helpers separate so translation behavior stays explicit
+- For user-entered search terms, prefer the shared helpers in `Humans.Web.Extensions` (`HasSearchTerm`, `ContainsOrdinalIgnoreCase`) instead of open-coding whitespace/length guards or ad hoc case handling
+- For person search specifically, use `IProfileService.SearchProfilesAsync` with the `PersonSearchFields` bit-flag — never reach for `IQueryable` helpers; the search runs in-memory over the FullProfile cache snapshot

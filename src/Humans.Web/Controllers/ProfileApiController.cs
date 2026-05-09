@@ -1,4 +1,5 @@
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Services.Profiles;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -11,6 +12,8 @@ namespace Humans.Web.Controllers;
 [Route("api/profiles")]
 public class ProfileApiController : ControllerBase
 {
+    private const int MaxResults = 10;
+
     private readonly IProfileService _profileService;
 
     public ProfileApiController(IProfileService profileService)
@@ -25,13 +28,20 @@ public class ProfileApiController : ControllerBase
             return Ok(Array.Empty<HumanLookupSearchResult>());
 
         // scope=name → narrowed match on display name + burner name only.
-        // anything else (default) → broad match across bio / city / interests / CV / etc.
-        var results = string.Equals(scope, "name", StringComparison.OrdinalIgnoreCase)
-            ? await _profileService.SearchHumansByNameAsync(q)
-            : await _profileService.SearchHumansAsync(q);
+        // anything else (default) → broad match across bio / city / interests / CV +
+        // every public ContactField. Admin bit is never set here — services are
+        // auth-free, but a non-admin endpoint passing it would be a programmer
+        // error caught in code review (see PersonSearchFields docs).
+        var fields = string.Equals(scope, "name", StringComparison.OrdinalIgnoreCase)
+            ? PersonSearchFields.Name
+            : PersonSearchFields.PublicAll;
 
+        var results = await _profileService.SearchProfilesAsync(q, fields, MaxResults);
+
+        // Display ordering belongs at the presentation layer, per
+        // memory/architecture/display-sort-in-controllers.md.
         return Ok(results
-            .Take(10)
-            .Select(r => r.ToHumanLookupSearchResult()));
+            .OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase)
+            .Select(r => new HumanLookupSearchResult(r.UserId, r.BurnerName)));
     }
 }

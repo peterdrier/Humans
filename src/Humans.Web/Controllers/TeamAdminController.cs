@@ -22,6 +22,7 @@ using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Services.Profiles;
 
 namespace Humans.Web.Controllers;
 
@@ -271,6 +272,7 @@ public class TeamAdminController : HumansTeamControllerBase
             CanManageRoles = !team.IsSystemTeam,
             CanProvisionEmails = true,
             Members = members,
+            AllMemberUserIds = allMembers.Select(m => m.UserId).ToList(),
             PendingRequests = pendingRequestViewModels,
             TotalCount = totalCount,
             PageNumber = page,
@@ -398,21 +400,28 @@ public class TeamAdminController : HumansTeamControllerBase
 
         if (!q.HasSearchTerm())
         {
-            return Json(Array.Empty<ApprovedUserSearchResult>());
+            return Json(Array.Empty<HumanLookupSearchResult>());
         }
 
-        var results = await _profileService.SearchApprovedUsersAsync(q);
+        // Name-only narrows the picker to display name + burner name; admin
+        // bit is intentionally NOT set here (the callers are team admins, not
+        // global admins, so they don't get to search by hidden contact data).
+        var results = await _profileService.SearchProfilesAsync(
+            q, PersonSearchFields.Name, limit: 50);
 
-        // Exclude existing team members
+        // Exclude existing team members.
         var existingMemberIds = team.Members
             .Where(m => m.LeftAt is null)
             .Select(m => m.UserId)
             .ToHashSet();
 
+        // Display ordering at the controller per
+        // memory/architecture/display-sort-in-controllers.md.
         var filtered = results
             .Where(r => !existingMemberIds.Contains(r.UserId))
+            .OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase)
             .Take(10)
-            .Select(r => r.ToApprovedUserSearchResult())
+            .Select(r => new HumanLookupSearchResult(r.UserId, r.BurnerName))
             .ToList();
 
         return Json(filtered);
@@ -1053,12 +1062,16 @@ public class TeamAdminController : HumansTeamControllerBase
             .Select(m => new RoleAssignmentSearchResult(m.UserId, m.User.DisplayName, m.User.Email ?? "", true))
             .ToList();
 
-        // Also search all approved users for non-members
-        var allResults = await _profileService.SearchApprovedUsersAsync(q);
+        // Also search all approved humans for non-members. Name-only is the
+        // appropriate scope for the role-picker (no bio / contact data); admin
+        // bit is not set because team admins are not global admins.
+        var allResults = await _profileService.SearchProfilesAsync(
+            q, PersonSearchFields.Name, limit: 50);
         var nonMembers = allResults
             .Where(r => !teamMemberUserIds.Contains(r.UserId))
+            .OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase)
             .Take(10 - matchingTeamMembers.Count)
-            .Select(r => new RoleAssignmentSearchResult(r.UserId, r.DisplayName, r.Email, false))
+            .Select(r => new RoleAssignmentSearchResult(r.UserId, r.BurnerName, "", false))
             .ToList();
 
         var combined = matchingTeamMembers.Concat(nonMembers).ToList();

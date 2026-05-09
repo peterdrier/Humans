@@ -363,6 +363,31 @@ public sealed class UserRepository : IUserRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        // Distinct UserIds present in AspNetUserLogins
+        var loginUserIds = await ctx.Set<IdentityUserLogin<Guid>>()
+            .AsNoTracking()
+            .Select(l => l.UserId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        if (loginUserIds.Count == 0) return Array.Empty<Guid>();
+
+        // UserIds that DO have a user_emails row
+        var withEmail = await ctx.UserEmails
+            .AsNoTracking()
+            .Where(e => loginUserIds.Contains(e.UserId))
+            .Select(e => e.UserId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        var withEmailSet = withEmail.ToHashSet();
+        return loginUserIds.Where(id => !withEmailSet.Contains(id)).ToList();
+    }
+
     public async Task<bool> SetContactSourceIfNullAsync(
         Guid userId, ContactSource source, CancellationToken ct = default)
     {
@@ -374,6 +399,14 @@ public sealed class UserRepository : IUserRepository
         user.ContactSource = source;
         await ctx.SaveChangesAsync(ct);
         return true;
+    }
+
+    public async Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Set<IdentityUserLogin<Guid>>()
+            .Where(l => l.UserId == userId)
+            .ExecuteDeleteAsync(ct);
     }
 
     public async Task<int> ReassignLoginsToUserAsync(

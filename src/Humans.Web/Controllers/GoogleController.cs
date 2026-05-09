@@ -21,7 +21,7 @@ namespace Humans.Web.Controllers;
 public class GoogleController : HumansControllerBase
 {
     private readonly IGoogleSyncService _googleSyncService;
-    private readonly IAuditLogService _auditLogService;
+    private readonly IAuditViewerService _auditViewer;
     private readonly ITeamResourceService _teamResourceService;
     private readonly IEmailProvisioningService _emailProvisioningService;
     private readonly IGoogleAdminService _googleAdminService;
@@ -31,7 +31,7 @@ public class GoogleController : HumansControllerBase
     public GoogleController(
         UserManager<User> userManager,
         IGoogleSyncService googleSyncService,
-        IAuditLogService auditLogService,
+        IAuditViewerService auditViewer,
         ITeamResourceService teamResourceService,
         IEmailProvisioningService emailProvisioningService,
         IGoogleAdminService googleAdminService,
@@ -40,7 +40,7 @@ public class GoogleController : HumansControllerBase
         : base(userManager)
     {
         _googleSyncService = googleSyncService;
-        _auditLogService = auditLogService;
+        _auditViewer = auditViewer;
         _teamResourceService = teamResourceService;
         _emailProvisioningService = emailProvisioningService;
         _googleAdminService = googleAdminService;
@@ -494,12 +494,12 @@ public class GoogleController : HumansControllerBase
             return NotFound();
         }
 
-        var entries = await _auditLogService.GetByResourceAsync(id);
+        var events = await _auditViewer.GetForResourceAsync(id);
         return GoogleSyncAuditView(
             $"Sync Audit: {resource.Name}",
             Url.Action(nameof(Sync)),
             "Back to Sync Status",
-            entries);
+            events);
     }
 
     [HttpGet("Human/{id:guid}/SyncAudit")]
@@ -513,12 +513,12 @@ public class GoogleController : HumansControllerBase
             return NotFound();
         }
 
-        var entries = await _auditLogService.GetGoogleSyncByUserAsync(id);
+        var events = await _auditViewer.GetGoogleSyncForUserAsync(id);
         return GoogleSyncAuditView(
             $"Google Sync Audit: {user.DisplayName}",
             Url.Action("AdminDetail", "Profile", new { id }),
             "Back to Human Detail",
-            entries);
+            events);
     }
 
     // --- Human Email Provisioning (from HumanController) ---

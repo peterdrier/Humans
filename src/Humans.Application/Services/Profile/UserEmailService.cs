@@ -852,6 +852,33 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<UserEmail>> GetOrphanUserEmailsAsync(CancellationToken ct = default)
+    {
+        var allEmails = await _repository.GetAllAsync(ct);
+        var allUsers = await _userService.GetAllUsersAsync(ct);
+        var liveUserIds = allUsers
+            .Where(u => u.MergedToUserId is null)
+            .Select(u => u.Id)
+            .ToHashSet();
+
+        return allEmails
+            .Where(e => !liveUserIds.Contains(e.UserId))
+            .ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> DeleteByIdAsync(Guid emailId, CancellationToken ct = default)
+    {
+        var row = await _repository.GetByIdReadOnlyAsync(emailId, ct);
+        if (row is null) return false;
+
+        var deleted = await _repository.RemoveByIdAsync(emailId, ct);
+        if (deleted)
+            await _fullProfileInvalidator.InvalidateAsync(row.UserId, ct);
+        return deleted;
+    }
+
+    /// <inheritdoc />
     public async Task<bool> LinkAsync(
         Guid userId, string provider, string providerKey, string email, Guid actorUserId,
         CancellationToken cancellationToken = default)

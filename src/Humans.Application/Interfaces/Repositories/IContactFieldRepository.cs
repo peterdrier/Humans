@@ -18,6 +18,15 @@ public interface IContactFieldRepository
         Guid profileId, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns every contact field row, read-only, with no ordering. Used by
+    /// person-search (<c>IProfileService.SearchProfilesAsync</c>) so the
+    /// matcher can scan public + non-public ContactField values without
+    /// per-profile round-trips. Trivial at ~500-user scale; the row count
+    /// across all profiles is far smaller than the user count.
+    /// </summary>
+    Task<IReadOnlyList<ContactField>> GetAllAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Returns contact fields for a profile filtered by allowed visibility
     /// levels, read-only, ordered by <c>DisplayOrder</c> then <c>CreatedAt</c>.
     /// </summary>

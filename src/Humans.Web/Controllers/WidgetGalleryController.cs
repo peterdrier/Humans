@@ -94,6 +94,35 @@ public sealed class WidgetGalleryController : HumansControllerBase
                 PreferredLanguage = currentUser.PreferredLanguage,
                 Teams = sampleTeam is null ? new() : new() { sampleTeam.Name },
             },
+            SampleHumanSearchResults = new List<HumanSearchResultViewModel>
+            {
+                new()
+                {
+                    UserId = currentUser.Id,
+                    BurnerName = displayName,
+                    ProfilePictureUrl = currentUser.ProfilePictureUrl,
+                    MatchField = "Name",
+                },
+                new()
+                {
+                    UserId = Guid.NewGuid(),
+                    BurnerName = "Sparkle",
+                    MatchField = "Bio",
+                    MatchSnippet = "...love fire dancing and welding...",
+                },
+                new()
+                {
+                    UserId = Guid.NewGuid(),
+                    BurnerName = "Embers",
+                    MatchField = "Email",
+                    MatchedEmail = "embers@example.org",
+                    AdminEmail = "embers@example.org",
+                    MembershipStatus = "Active",
+                    CreatedAt = DateTime.UtcNow.AddMonths(-8),
+                    LastLoginAt = DateTime.UtcNow.AddDays(-2),
+                    AdminDetailUrl = "#",
+                },
+            },
         };
 
         return View(model);
@@ -225,4 +254,5 @@ public sealed class WidgetGalleryViewModel
     public required ShiftsSummaryCardViewModel SampleShiftsSummary { get; init; }
     public required PagerViewModel SamplePager { get; init; }
     public required ProfileSummaryViewModel SampleProfileSummary { get; init; }
+    public required IReadOnlyList<HumanSearchResultViewModel> SampleHumanSearchResults { get; init; }
 }

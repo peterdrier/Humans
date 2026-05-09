@@ -84,6 +84,20 @@ public sealed class AgentRepository : IAgentRepository
             .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<AgentConversation>> ListAllConversationsAsync(
+        bool refusalsOnly, Guid? userId, int take, int skip,
+        CancellationToken cancellationToken)
+    {
+        IQueryable<AgentConversation> q = _db.AgentConversations.AsNoTracking();
+
+        if (userId is Guid u) q = q.Where(c => c.UserId == u);
+        if (refusalsOnly) q = q.Where(c => c.Messages.Any(m => m.RefusalReason != null));
+
+        return await q.OrderByDescending(c => c.LastMessageAt)
+            .Skip(skip).Take(take)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<AgentConversation>> ListAllConversationsWithMessagesAsync(
         bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
         CancellationToken cancellationToken)
     {
@@ -93,7 +107,10 @@ public sealed class AgentRepository : IAgentRepository
         if (refusalsOnly) q = q.Where(c => c.Messages.Any(m => m.RefusalReason != null));
         if (handoffsOnly) q = q.Where(c => c.Messages.Any(m => m.HandedOffToFeedbackId != null));
 
+        // arch:db-sort-ok pagination top-N by LastMessageAt
         return await q.OrderByDescending(c => c.LastMessageAt)
+            // arch:db-sort-ok identity-ordered chronological message stream
+            .Include(c => c.Messages.OrderBy(m => m.CreatedAt))
             .Skip(skip).Take(take)
             .ToListAsync(cancellationToken);
     }

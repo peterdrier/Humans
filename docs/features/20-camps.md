@@ -166,7 +166,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 
 **Acceptance Criteria:**
 - CampAdmin can create, edit, deactivate, and reactivate role definitions at `/Camps/Admin/Roles`. Deactivated definitions are hidden from new-assignment UI but historical assignments stay intact.
-- Per-camp role assignments live on the Camp Edit page (`/Camps/{slug}/Edit`), one card per active role definition, ordered by `SortOrder`. Each card renders one row per slot up to `SlotCount`; filled slots show the assigned human plus an unassign button, empty slots show a `_HumanSearchInput` typeahead picker (search-as-you-type, name + burner name only via `?scope=name`).
+- Per-camp role assignments live on the Camp Members page (`/Camps/{slug}/Edit/Members`), one card per active role definition, ordered by `SortOrder`. Each card renders one row per slot up to `SlotCount`; filled slots show the assigned human plus an unassign button, empty slots show a `_HumanSearchInput` typeahead picker (search-as-you-type, name + burner name only via `?scope=name`).
 - The picker excludes humans already filling the same role from its suggestions (`ExcludeUserIds`), so leads can't accidentally re-assign the same human.
 - Assigning a role: the picker posts to `/Camps/{slug}/Roles/AssignByUser` which adds the picked human as a CampMember (Active) if they're not already one and assigns the role in one step (`ICampService.AddMemberAndAssignRoleAsync`). Audited as `CampMemberAddedByLead` for the membership add. The legacy `/Roles/Assign` endpoint (taking a `campMemberId`) remains available for callers that already have a member id.
 - Service still rejects with `MemberNotActive` / `MemberSeasonMismatch` if a stale member id is submitted to the legacy endpoint, and with `AlreadyHoldsRole` if the same human is re-submitted before the page refreshes.
@@ -185,11 +185,11 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 **Acceptance Criteria:**
 - On a camp's detail page, an authenticated human with no existing membership sees a "Request to join for {year}" button (only when the camp has an Active or Full season for the public year).
 - Authenticated humans who are already a **lead** of the camp see a "You are a lead for {year}" info alert instead of the request button — leads are part of the camp by definition and shouldn't be prompted to request membership.
-- The Actions card on a camp lead's detail view labels the edit link as "Edit Barrio / Assign roles" so leads understand the same page covers role management; non-leads still see the plain "Edit Barrio" label.
+- The Actions card on a camp lead's detail view labels the edit link as "Edit Barrio / Assign roles" so leads understand role management is one click away (the link goes to `/Edit`, which links through to `/Edit/Members` for role assignments and pending-request review); non-leads still see the plain "Edit Barrio" label.
 - Copy on the request card explicitly states that this does NOT join you to the camp — do that through the camp's own process first.
 - A pending request can be withdrawn by the requester; an active membership can be left by the member.
 - Membership state (Pending / Active) is never rendered on anonymous views.
-- Leads and CampAdmin see pending requests on the camp edit page with Approve / Reject buttons, and active members with a Remove button.
+- Leads and CampAdmin see pending requests on the camp Members page (`/Camps/{slug}/Edit/Members`) with Approve / Reject buttons, and active members with a Remove button.
 - Approve / Reject mutations are scoped to the authorizing camp — a lead of camp A cannot mutate camp B's memberships by submitting a crafted member id.
 - Concurrent duplicate "request" submissions resolve idempotently — the second one returns the winning row instead of a 500.
 - When a season is rejected or withdrawn, pending requesters receive a notification. Pending rows are left as-is (so if the season is later reactivated, the request is still live).
@@ -460,8 +460,9 @@ Transitions:
 | `GET /Camps/{slug}/Season/{year}` | Camp detail for specific season |
 | `GET /Camps/Register` | Registration form |
 | `POST /Camps/Register` | Submit registration |
-| `GET /Camps/{slug}/Edit` | Edit form |
+| `GET /Camps/{slug}/Edit` | Edit form (camp metadata only — links to Members for role/membership management) |
 | `POST /Camps/{slug}/Edit` | Submit edits |
+| `GET /Camps/{slug}/Edit/Members` | Members + roles management (pending requests, active members, role assignments) |
 | `POST /Camps/{slug}/OptIn/{year}` | Opt-in to season |
 | `POST /Camps/{slug}/Leads/Add` | Add co-lead |
 | `POST /Camps/{slug}/Leads/Remove/{leadId}` | Remove lead |
