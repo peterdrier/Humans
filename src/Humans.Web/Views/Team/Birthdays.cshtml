@@ -43,7 +43,13 @@
                         <div class="d-flex flex-wrap gap-3">
                             @foreach (var birthday in group)
                             {
-                                <vc:human user-id="@birthday.UserId" layout="AvatarName" size="48" />
+                                <div>
+                                    <vc:human user-id="@birthday.UserId" layout="AvatarName" size="48" />
+                                    @if (birthday.TeamNames.Count > 0)
+                                    {
+                                        <div><small class="text-muted">@string.Join(", ", birthday.TeamNames)</small></div>
+                                    }
+                                </div>
                             }
                         </div>
                     </div>
