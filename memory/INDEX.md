@@ -29,7 +29,6 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`refunds-manual-via-dashboard`](architecture/refunds-manual-via-dashboard.md) — HARD RULE. Humans never calls Stripe refund/payout APIs. Money-out is dashboard-manual; Humans only does bookkeeping (negative `StorePayment` rows).
 - [`repository-required-for-db-access`](architecture/repository-required-for-db-access.md) — HARD RULE. Every DB-accessing service goes through a repository interface; no service injects `HumansDbContext` directly, even for singleton-row tables.
 - [`shared-drives-only`](architecture/shared-drives-only.md) — Drive resources on Shared Drives only; API calls need `SupportsAllDrives` + `permissionDetails`
-- [`tier-derived-from-applications`](architecture/tier-derived-from-applications.md) — tier is derived from approved Application state; no `tier-locking` domain rule, no foundational query interface for it. Form may still host tier radios for onboarding efficiency.
 - [`user-profile-foundational`](architecture/user-profile-foundational.md) — UserService/ProfileService are bottom of the stack; no outbound calls to higher-level sections
 - [Widget Pending → Confirmed promotion](architecture/widget-pending-promotion.md) — how mid-onboarding signups stay Pending until consents land
 
@@ -83,6 +82,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`no-anon-perf-guards`](process/no-anon-perf-guards.md) — don't flag cheap `[AllowAnonymous]` DB reads as perf issues; auth guard is dead defensive code at this scale
 - [`no-data-backfills`](process/no-data-backfills.md) — HARD RULE. No data-mutation SQL in EF migrations, no autonomous one-shot runners. Bulk fixes go through an admin screen with a review → confirm UX (model: `BackfillLegacyEmails`). Default scope on a new invariant: enforce on writes + surface via scanner.
 - [`no-direct-to-main`](process/no-direct-to-main.md) — HARD RULE. Feature branch + PR for code/docs/config; `memory/**`-only changes either bundle with the discovery PR or go direct to `origin/main` standalone
+- [`context-discipline`](process/context-discipline.md) — read narrow, build/test → file (read incrementally), Write beats >3 sequential Edits, /reforge for symbol queries, commit checkpoints during long refactors
 - [`post-fix-doc-check`](process/post-fix-doc-check.md) — before final commit, scan `docs/features/` and `docs/sections/` for invariants the change touches; update inline
 - [`pr-codex-thread-replies`](process/pr-codex-thread-replies.md) — reply per Codex inline thread (`POST /pulls/{n}/comments/{id}/replies`), not as top-level PR comment
 - [`pr-done-means-codex-clean`](process/pr-done-means-codex-clean.md) — a PR isn't "done" until Codex returns no findings; pushed+green is mid-state
